@@ -4,19 +4,16 @@
   "description": "Query linked-data graphs by abstracting away traditional JSON-LD interaction",
   "author": {
     "name": "Blake Regalia",
-    "email": "blake.regalia@gmail.com",
+    "email": "blake.regalia@gmail.com"
   },
   "files": [
     "dist"
   ],
   "main": "dist/index.js",
   "keywords": [
-    "linked",
-    "data",
-    "semantic",
-    "web",
-    "json",
-    "ld"
+    "linked-data",
+    "semantic-web",
+    "json-ld"
   ],
   "repository": "blake-regalia/ldquery",
   "devDependencies": {
