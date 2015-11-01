@@ -1,0 +1,41 @@
+{
+  "name": "ldquery",
+  "version": "0.0.0",
+  "description": "Query linked-data graphs by abstracting away traditional JSON-LD interaction",
+  "author": {
+    "name": "Blake Regalia",
+    "email": "blake.regalia@gmail.com",
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "keywords": [
+    "linked",
+    "data",
+    "semantic",
+    "web",
+    "json",
+    "ld"
+  ],
+  "repository": "blake-regalia/ldquery",
+  "devDependencies": {
+    "gulp": "^3.6.0",
+    "gulp-eslint": "^1.0.0",
+    "gulp-exclude-gitignore": "^1.0.0",
+    "gulp-istanbul": "^0.9.0",
+    "gulp-mocha": "^2.0.0",
+    "gulp-plumber": "^1.0.0",
+    "gulp-nsp": "^0.4.5",
+    "gulp-coveralls": "^0.1.0",
+    "gulp-babel": "^5.1.0",
+    "del": "^2.0.2",
+    "babel-core": "^5.5.0",
+    "isparta": "^3.0.3"
+  },
+  "scripts": {
+    "prepublish": "gulp prepublish",
+    "test": "gulp"
+  },
+  "license": "ISC"
+}
