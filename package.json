@@ -15,7 +15,7 @@
     "semantic-web",
     "json-ld"
   ],
-  "repository": "blake-regalia/ldquery",
+  "repository": "blake-regalia/ldquery.js",
   "devDependencies": {
     "gulp": "^3.6.0",
     "gulp-eslint": "^1.0.0",
