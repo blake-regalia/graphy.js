@@ -1,5 +1,5 @@
 {
-  "name": "ldquery",
+  "name": "graphy",
   "version": "0.0.0",
   "description": "Query linked-data graphs by abstracting away traditional JSON-LD interaction",
   "author": {
@@ -15,7 +15,7 @@
     "semantic-web",
     "json-ld"
   ],
-  "repository": "blake-regalia/ldquery.js",
+  "repository": "blake-regalia/graphy.js",
   "devDependencies": {
     "gulp": "^3.6.0",
     "gulp-eslint": "^1.0.0",
