@@ -24,7 +24,7 @@ ns:Mickey ns:existsAs [
 ```js
 var graphy = require('graphy');
 
-query_sparql_engine('describe <vocab://Mickey>', function(json_ld) {
+query_sparql_engine('describe <vocab://ns/Mickey>', function(json_ld) {
 	var graph = graphy(json_ld);
 
 	graph.network('ns:').forEach(function(node) {
