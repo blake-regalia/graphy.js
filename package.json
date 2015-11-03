@@ -34,5 +34,11 @@
     "prepublish": "gulp prepublish",
     "test": "gulp"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "arginfo": "^1.1.2",
+    "cli-color": "^1.1.0",
+    "clone": "^1.0.2",
+    "rmprop": "^1.0.0"
+  }
 }
