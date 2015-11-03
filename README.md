@@ -1,20 +1,20 @@
-# ldquery [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] [![Coverage percentage][coveralls-image]][coveralls-url]
+# jsld [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] [![Coverage percentage][coveralls-image]][coveralls-url]
 > Query linked-data graphs by abstracting away traditional JSON-LD interaction
 
 
 ## Install
 
 ```sh
-$ npm install --save ldquery
+$ npm install --save jsld
 ```
 
 
 ## Usage
 
 ```js
-var ldquery = require('ldquery');
+var jsld = require('jsld');
 
-ldquery();
+jsld();
 ```
 
 ## License
@@ -22,11 +22,11 @@ ldquery();
 ISC © [Blake Regalia]()
 
 
-[npm-image]: https://badge.fury.io/js/ldquery.svg
-[npm-url]: https://npmjs.org/package/ldquery
-[travis-image]: https://travis-ci.org/blake-regalia/ldquery.svg?branch=master
-[travis-url]: https://travis-ci.org/blake-regalia/ldquery
-[daviddm-image]: https://david-dm.org/blake-regalia/ldquery.svg?theme=shields.io
-[daviddm-url]: https://david-dm.org/blake-regalia/ldquery
-[coveralls-image]: https://coveralls.io/repos/blake-regalia/ldquery/badge.svg
-[coveralls-url]: https://coveralls.io/r/blake-regalia/ldquery
+[npm-image]: https://badge.fury.io/js/jsld.svg
+[npm-url]: https://npmjs.org/package/jsld
+[travis-image]: https://travis-ci.org/blake-regalia/jsld.svg?branch=master
+[travis-url]: https://travis-ci.org/blake-regalia/jsld
+[daviddm-image]: https://david-dm.org/blake-regalia/jsld.svg?theme=shields.io
+[daviddm-url]: https://david-dm.org/blake-regalia/jsld
+[coveralls-image]: https://coveralls.io/repos/blake-regalia/jsld/badge.svg
+[coveralls-url]: https://coveralls.io/r/blake-regalia/jsld
