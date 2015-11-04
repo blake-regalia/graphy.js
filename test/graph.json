@@ -1,0 +1,68 @@
+{
+  "@id" : "ns:Banana",
+  "@type" : "ns:Fruit",
+  "alias" : [ "ns:Cavendish", "ns:Naner", "ns:Bananarama" ],
+  "appears" : "color:Yellow",
+  "class" : "ns:Berry",
+  "ns:data" : 25,
+  "shape" : "curved",
+  "stages" : {
+    "@list" : [ "ns:FindSpace", "plant:Seed", "plant:Grow", "plant:Harvest" ]
+  },
+  "ns:tastes" : "good",
+  "blossoms" : "ns:YearRound",
+  "@context" : {
+    "rest" : {
+      "@id" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#rest",
+      "@type" : "@id"
+    },
+    "first" : {
+      "@id" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#first",
+      "@type" : "@id"
+    },
+    "appears" : {
+      "@id" : "vocab://ns/appears",
+      "@type" : "@id"
+    },
+    "stages" : {
+      "@id" : "vocab://ns/stages",
+      "@type" : "@id"
+    },
+    "data" : {
+      "@id" : "vocab://ns/data",
+      "@type" : "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    "class" : {
+      "@id" : "vocab://ns/class",
+      "@type" : "@id"
+    },
+    "alias" : {
+      "@id" : "vocab://ns/alias",
+      "@type" : "@id"
+    },
+    "tastes" : {
+      "@id" : "vocab://ns/tastes",
+      "@type" : "http://www.w3.org/2001/XMLSchema#string"
+    },
+    "blossoms" : {
+      "@id" : "vocab://plant/blossoms",
+      "@type" : "@id"
+    },
+    "shape" : {
+      "@id" : "vocab://ns/shape",
+      "@type" : "vocab://ns/Liberty"
+    },
+    "" : "vocab://local/",
+    "plant" : "vocab://plant/",
+    "unit" : "http://qudt.org/vocab/unit#",
+    "rdfs" : "http://www.w3.org/2000/01/rdf-schema#",
+    "stko" : "http://stko.geog.ucsb.edu/vocab/",
+    "volt" : "http://blurcast.net/volt/",
+    "ns" : "vocab://ns/",
+    "color" : "vocab://color/",
+    "owl" : "http://www.w3.org/2002/07/owl#",
+    "xsd" : "http://www.w3.org/2001/XMLSchema#",
+    "rdf" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "qudt" : "http://qudt.org/schema/qudt#"
+  }
+}
