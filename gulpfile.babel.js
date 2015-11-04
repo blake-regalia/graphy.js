@@ -84,4 +84,4 @@ gulp.task('babel', ['clean'], () => {
 gulp.task('prepublish', ['babel']);
 
 // default
-gulp.task('default', ['static', 'test', 'coveralls']);
+gulp.task('default', ['static', 'test']);
