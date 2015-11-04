@@ -82,6 +82,11 @@ q_graph.network('ns:', function(k_banana) {
 	k_banana.appears['@type']; // '@id'
 	k_banana.appears.$('color:').$id; // 'Yellow'
 
+	// changing namespace
+	k_banana.$('plant:').blossoms(); // undefined
+	k_banana.$('plant:').blossoms.$id; // 'vocab://ns/YearRound'
+	k_banana.$('plant:').blossoms.$('ns:').$id; // 'YearRound'
+
 	// predicates with multiple objects
 	k_banana.alias; // emits warning: 'more than one triple share the same predicate "ns:alias" with subject "ns:Banana"; By using '.alias', you are accessing any one of these triples arbitrarily'
 

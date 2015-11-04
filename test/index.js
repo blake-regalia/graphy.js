@@ -31,6 +31,10 @@ describe('graphy node', () => {
 		it('contains suffixed type property', () => {
 			eq(k_banana.$type, 'Fruit');
 		});
+
+		it('supports namespace change', () => {
+			eq(k_banana.$('plant:').blossoms.$('ns:').$id, 'YearRound');
+		});
 	});
 });
 
