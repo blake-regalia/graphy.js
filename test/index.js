@@ -24,6 +24,10 @@ describe('graphy node', () => {
 			eq(k_banana['@type'], 'vocab://ns/Fruit');
 		});
 
+		it('contains suffixed id property', () => {
+			eq(k_banana.$id, 'Banana');
+		});
+
 		it('contains suffixed type property', () => {
 			eq(k_banana.$type, 'Fruit');
 		});

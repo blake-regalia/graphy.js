@@ -11,27 +11,94 @@ $ npm install --save graphy
 
 ## Usage
 
+Take the following graph:
 ```turtle
 @prefix ns: <vocab://ns/> .
+@prefix color: <vocab://color/> .
+@prefix plant: <vocab://plant/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-ns:Mickey ns:existsAs [
-	a ns:Mouse ;
-	ns:hasPet ns:Pluto ;
-	foaf:firstName "Mickey"^^xsd:string ;
-] .
+ns:Banana
+	a ns:Fruit ;
+	ns:shape "curved"^^ns:Liberty ;
+	ns:tastes "good"^^xsd:string ;
+	ns:data 25 ;
+	ns:class ns:Berry ;
+	ns:appears color:Yellow ;
+	plant:blossoms ns:YearRound ;
+	ns:alias ns:Cavendish ;
+	ns:alias ns:Naner ;
+	ns:alias ns:Bananarama ;
+	ns:stages (
+		ns:FindSpace
+		plant:Seed
+		plant:Grow
+		plant:Harvest
+	) .
 ```
 
 ```js
 var graphy = require('graphy');
 
-query_sparql_engine('describe <vocab://ns/Mickey>', function(json_ld) {
-	var graph = graphy(json_ld);
+var json_ld = require('./example.json');
+var q_graph = graphy(json_ld);
 
-	graph.network('ns:').forEach(function(node) {
-		node.$type; // String('Mouse'){'@type':'@id', '@id': 'vocab://ns/Mouse'}
-		node.hasPet; // String('Pluto'){'@type':'@id', '@id': 'vocab://ns/Pluto'}
-		node['foaf:firstName']; // String('Mickey'){'@type':'http://www.w3.org/2001/XMLSchema#string', '@value': 'Mickey'}
+// traverse the graph using namespace given by the prefix 'ns:'
+q_graph.network('ns:', function(k_banana) {
+
+	// get iri of node
+	k_banana.$id; // 'Banana'
+	k_banana['@id']; // 'vocab://ns/Banana'
+
+	// get default `rdf:type` property of node
+	k_banana.$type; // 'Fruit'
+	k_banana['@type']; // 'vocab://ns/Fruit'
+
+	// get value of a literal
+	k_banana.shape(); // 'curved'
+	k_banana.tastes(); // 'good'
+
+	// get suffixed datatype of a literal
+	k_banana.shape.$type; // 'Liberty'
+	k_banana.tastes.$type; // undefined
+
+	// get full path datatype of a literal
+	k_banana.shape['@type']; // 'vocab://ns/Liberty'
+	k_banana.tastes['@type']; // 'http://www.w3.org/2001/XMLSchema#string'
+
+	// change namespace to get suffixed datatype of literal
+	k_banana.tastes.$('xsd:').$type; // 'string'
+
+	// properties of an iri in same namespace
+	k_banana.class(); // 'Berry'
+	k_banana.class.$id; // 'Berry'
+	k_banana.class['@id']; // 'vocab://ns/Berry'
+	k_banana.class['@type']; // '@id'
+
+	// properties of an iri in different namespace
+	k_banana.appears(); // undefined
+	k_banana.appears.$id; // undefined
+	k_banana.appears['@id']; // 'vocab://color/Yellow'
+	k_banana.appears['@type']; // '@id'
+	k_banana.appears.$('color:').$id; // 'Yellow'
+
+	// predicates with multiple objects
+	k_banana.alias; // emits warning: 'more than one triple share the same predicate "ns:alias" with subject "ns:Banana"; By using '.alias', you are accessing any one of these triples arbitrarily'
+
+	// ..contd'
+	var a_items = [];
+	k_banana('alias').forEach(function(k_alias) {
+		a_items.push(k_alias());
 	});
+	a_items; // ['Cavendish', 'Naner', 'Bananarama']
+
+	// collections
+	let a_stages = [];
+	k_banana.stages.forEach(function(k_stage) {
+		var s_stage_name = k_stage.$id || k_stage.$('plant:').$id;
+		a_stages.push(s_stage_name);
+	});
+	a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
 });
 ```
 
