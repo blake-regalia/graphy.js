@@ -12,6 +12,7 @@ let includes = (a_list, a_test) => {
 
 let q_graph = graphy(h_graph);
 
+
 describe('graphy node', () => {
 
 	q_graph.network('ns:', (k_banana) => {
@@ -152,3 +153,19 @@ describe('graphy collection', () => {
 	});
 
 });
+
+
+describe('graphy interface function', () => {
+	let a_nodes = graphy(h_graph).network('ns:');
+
+	it('supports forEach', () => {
+		a_nodes.forEach((k_node) => {
+			eq(k_node.$id, 'Banana');
+		});
+	});
+
+	it('supports [0]', () => {
+		eq(a_nodes[0].$id, 'Banana');
+	});
+});
+
