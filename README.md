@@ -93,14 +93,14 @@ q_graph.network('ns:', function(k_banana) {
 
 	// ..contd'
 	var a_items = [];
-	k_banana('alias', function(k_alias) {
+	k_banana('alias', function(k_alias) { // implicit forEach
 		a_items.push(k_alias());
 	});
 	a_items; // ['Cavendish', 'Naner', 'Bananarama']
 
 	// collections
 	let a_stages = [];
-	k_banana.stages.forEach(function(k_stage) {
+	k_banana.stages(function(k_stage) { // implicit forEach
 		var s_stage_name = k_stage.$id || k_stage.$('plant:').$id;
 		a_stages.push(s_stage_name);
 	});
