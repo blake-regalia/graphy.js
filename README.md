@@ -92,7 +92,7 @@ q_graph.network('ns:', function(k_banana) {
 
 	// ..contd'
 	var a_items = [];
-	k_banana('alias').forEach(function(k_alias) {
+	k_banana('alias', function(k_alias) {
 		a_items.push(k_alias());
 	});
 	a_items; // ['Cavendish', 'Naner', 'Bananarama']

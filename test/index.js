@@ -104,7 +104,7 @@ describe('graphy iri', () => {
 
 
 
-describe('graphy collection', () => {
+describe('graphy predicate points to multiple objects', () => {
 
 	q_graph.network('ns:', (k_banana) => {
 
@@ -114,6 +114,40 @@ describe('graphy collection', () => {
 				a_items.push(k_item());
 			});
 			includes(a_items, ['Cavendish','Naner','Bananarama']);
+		});
+
+		it('supports implicit each', () => {
+			let a_items = [];
+			k_banana('alias', (k_item) => {
+				a_items.push(k_item());
+			});
+			includes(a_items, ['Cavendish','Naner','Bananarama']);
+		});
+	});
+
+});
+
+
+
+
+describe('graphy collections', () => {
+
+	q_graph.network('ns:', (k_banana) => {
+
+		it('supports forEach', () => {
+			let a_items = [];
+			k_banana('stages').forEach((k_item) => {
+				a_items.push(k_item.$id || k_item.$('plant:').$id);
+			});
+			includes(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);
+		});
+
+		it('supports implicit each', () => {
+			let a_items = [];
+			k_banana('stages', (k_item) => {
+				a_items.push(k_item.$id || k_item.$('plant:').$id);
+			});
+			includes(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);
 		});
 	});
 
