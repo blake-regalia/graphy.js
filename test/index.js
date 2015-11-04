@@ -130,13 +130,13 @@ describe('graphy predicate points to multiple objects', () => {
 
 
 
-describe('graphy collections', () => {
+describe('graphy collection', () => {
 
 	q_graph.network('ns:', (k_banana) => {
 
 		it('supports forEach', () => {
 			let a_items = [];
-			k_banana('stages').forEach((k_item) => {
+			k_banana.stages.forEach((k_item) => {
 				a_items.push(k_item.$id || k_item.$('plant:').$id);
 			});
 			includes(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);
@@ -144,7 +144,7 @@ describe('graphy collections', () => {
 
 		it('supports implicit each', () => {
 			let a_items = [];
-			k_banana('stages', (k_item) => {
+			k_banana.stages((k_item) => {
 				a_items.push(k_item.$id || k_item.$('plant:').$id);
 			});
 			includes(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);

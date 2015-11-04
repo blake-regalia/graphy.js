@@ -37,6 +37,7 @@ ns:Banana
 	) .
 ```
 
+Here, `example.json` is a JSON-LD file generated from the graph above:
 ```js
 var graphy = require('graphy');
 
