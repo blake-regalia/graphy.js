@@ -108,6 +108,12 @@ q_graph.network('ns:', function(k_banana) {
 });
 ```
 
+## Iterating
+
+`for..in`
+
+`for..of`
+
 ## License
 
 ISC © [Blake Regalia]()
