@@ -150,6 +150,27 @@ describe('graphy collection', () => {
 			});
 			includes(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);
 		});
+
+		it('returns simple array on invocation', () => {
+			let a_items = [];
+			k_banana.stages().forEach((k_item) => {
+				a_items.push(k_item.$id || k_item.$('plant:').$id);
+			});
+			includes(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);
+		});
+
+		it('emulates rdf:first/next/nil', () => {
+			let a_rdf = k_banana.stages.$('rdf:');
+			eq(a_rdf.first.$('ns:').$id, 'FindSpace');
+			let w_rest = a_rdf.rest;
+			eq(w_rest.first.$('plant:').$id, 'Seed');
+			w_rest = w_rest.rest;
+			eq(w_rest.first.$('plant:').$id, 'Grow');
+			w_rest = w_rest.rest;
+			eq(w_rest.first.$('plant:').$id, 'Harvest');
+			w_rest = w_rest.rest;
+			eq(w_rest.$id, 'nil');
+		});
 	});
 
 });

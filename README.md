@@ -114,6 +114,36 @@ q_graph.network('ns:', function(k_banana) {
 
 `for..of`
 
+## RDF Collections
+
+In order to be consistent with the graph, rdf collection properties are emulated on collection objects. So instead of accessing a collection's elements via Array's properties/methods, you can also use the `rdf:first` and `rdf:rest` properties:
+```javascript
+let w_list = k_banana.stages.$('rdf:');
+
+w_list.first.$('ns:').$id; // 'FindSpace'
+
+w_list = w_list.rest;
+w_list.first.$('plant:').$id; // 'Seed'
+
+w_list = w_list.rest;
+w_list.first.$('plant:').$id; // 'Grow'
+
+w_list = w_list.rest;
+w_list.first.$('plant:').$id; // 'Harvest'
+
+w_list = w_list.rest;
+w_list.$id; // 'nil'
+
+// ------------ or in a loop ------------
+let a_stages = [];
+let w_list = k_banana.stages.$('rdf:');
+while(w_list.$id !== 'nil') {
+	a_stage.push(w_list.first.$('plant:').$id || w_list.first.$('ns:').$id);
+	w_list = w_list.rest;
+}
+a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
+```
+
 ## License
 
 ISC © [Blake Regalia]()
