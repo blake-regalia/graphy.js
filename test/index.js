@@ -79,7 +79,7 @@ describe('graphy iri', () => {
 		it('contains @id property', () => {
 			eq(k_banana.appears['@id'], 'vocab://color/Yellow');
 		});
-		
+
 		it('contains @type property', () => {
 			eq(k_banana.class['@type'], '@id');
 		});
