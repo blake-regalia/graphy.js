@@ -3,8 +3,9 @@ import assert from 'assert';
 import graphy from '../lib';
 import h_graph from './graph.json';
 
-let eq = assert.strictEqual.bind(assert);
-let includes = (a_list, a_test) => {
+const eq = assert.strictEqual.bind(assert);
+const deep = assert.deepEqual.bind(assert);
+const includes = (a_list, a_test) => {
 	a_test.forEach((s_item) => {
 		assert(a_list.includes(s_item), 'list does not include '+s_item+'; '+arginfo(a_list));
 	});
@@ -154,15 +155,14 @@ describe('graphy predicate points to multiple objects', () => {
 			k_banana('alias').forEach((k_item) => {
 				a_items.push(k_item());
 			});
-			includes(a_items, ['Cavendish','Naner','Bananarama']);
+			includes(a_items, ['Cavendish', 'Naner', 'Bananarama']);
 		});
 
-		it('supports implicit each', () => {
-			let a_items = [];
-			k_banana('alias', (k_item) => {
-				a_items.push(k_item());
+		it('supports implicit map callback', () => {
+			let a_items = k_banana('alias', (k_item) => {
+				return k_item();
 			});
-			includes(a_items, ['Cavendish','Naner','Bananarama']);
+			includes(a_items, ['Cavendish', 'Naner', 'Bananarama']);
 		});
 	});
 
@@ -182,12 +182,10 @@ describe('graphy collection', () => {
 			includes(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);
 		});
 
-		it('supports implicit each', () => {
-			let a_items = [];
-			k_banana.stages((k_item) => {
-				a_items.push(k_item.$id || k_item.$('plant:').$id);
-			});
-			includes(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);
+		it('supports implicit map callback', () => {
+			deep(k_banana.stages((k_item) => {
+				return k_item.$id || k_item.$('plant:').$id;
+			}), ['FindSpace', 'Seed', 'Grow', 'Harvest']);
 		});
 
 		it('returns simple array on invocation', () => {

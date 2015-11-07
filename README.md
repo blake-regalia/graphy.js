@@ -114,19 +114,15 @@ q_graph.network('ns:', function(k_banana) {
 	k_banana.alias; // emits warning: 'more than one triple share the same predicate "ns:alias" with subject "ns:Banana"; By using '.alias', you are accessing any one of these triples arbitrarily'
 
 	// ..contd'
-	var a_items = [];
-	k_banana('alias', function(k_alias) { // implicit forEach
-		a_items.push(k_alias());
+	let a_items = k_banana('alias', function(k_alias) { // implicit `.map` callback
+		return k_alias();
 	});
 	a_items; // ['Cavendish', 'Naner', 'Bananarama']
 
 	// collections
-	let a_stages = [];
-	k_banana.stages(function(k_stage) { // implicit forEach
-		var s_stage_name = k_stage.$id || k_stage.$('plant:').$id;
-		a_stages.push(s_stage_name);
-	});
-	a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
+	k_banana.stages(function(k_stage) { // implicit `.map` callback
+		return k_stage.$id || k_stage.$('plant:').$id;
+	}); // ['FindSpace', 'Seed', 'Grow', 'Harvest']
 });
 ```
 
