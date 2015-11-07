@@ -92,6 +92,22 @@ q_graph.network('ns:', function(k_banana) {
 	k_banana.$.short; // ns:Banana
 	k_banana.appears.$.short; // color:Yellow
 
+	// type indicators
+	k_banana.$is(); // 'blanknode'
+	k_banana.$is.blanknode; // true
+
+	// type indicators ..contd'
+	k_banana.appears.$is(); // 'iri'
+	k_banana.data.$is(); // 'literal'
+	k_banana.stages.$is(); // 'collection'
+
+	// type indicators ..contd'
+	k_banana.appears.$is.iri; // true
+	k_banana.data.$is.literal; // true
+	k_banana.stages.$is.iri; // undefined
+	k_banana.stages.$is.literal; // undefined
+	k_banana.stages.$is.collection; // true
+
 	// predicates with multiple objects
 	k_banana.alias; // emits warning: 'more than one triple share the same predicate "ns:alias" with subject "ns:Banana"; By using '.alias', you are accessing any one of these triples arbitrarily'
 

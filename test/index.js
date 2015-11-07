@@ -36,6 +36,14 @@ describe('graphy node', () => {
 		it('supports namespace change', () => {
 			eq(k_banana.$('plant:').blossoms.$('ns:').$id, 'YearRound');
 		});
+
+		it('has blanknode type indicator', () => {
+			eq(k_banana.$is.blanknode, true);
+		});
+
+		it('calling type indicator returns iri', () => {
+			eq(k_banana.$is(), 'blanknode');
+		});
 	});
 });
 
@@ -66,6 +74,14 @@ describe('graphy literal', () => {
 
 		it('suffixes datatype on namespace changed', () => {
 			eq(k_banana.tastes.$('xsd:').$type, 'string');
+		});
+
+		it('has literal type indicator', () => {
+			eq(k_banana.tastes.$is.literal, true);
+		});
+
+		it('calling type indicator returns literal', () => {
+			eq(k_banana.tastes.$is(), 'literal');
 		});
 
 	});
@@ -108,6 +124,14 @@ describe('graphy iri', () => {
 			eq(k_banana.appears.$.short, 'color:Yellow');
 		});
 
+		it('has iri type indicator', () => {
+			eq(k_banana.appears.$is.iri, true);
+		});
+
+		it('calling type indicator returns iri', () => {
+			eq(k_banana.appears.$is(), 'iri');
+		});
+
 	});
 });
 
@@ -135,7 +159,6 @@ describe('graphy predicate points to multiple objects', () => {
 	});
 
 });
-
 
 
 
@@ -178,6 +201,14 @@ describe('graphy collection', () => {
 			eq(w_rest.first.$('plant:').$id, 'Harvest');
 			w_rest = w_rest.rest;
 			eq(w_rest.$id, 'nil');
+		});
+
+		it('has collection type indicator', () => {
+			eq(k_banana.stages.$is.collection, true);
+		});
+
+		it('calling type indicator returns collection', () => {
+			eq(k_banana.stages.$is(), 'collection');
 		});
 	});
 
