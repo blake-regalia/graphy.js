@@ -88,9 +88,11 @@ q_graph.network('ns:', function(k_banana) {
 	k_banana.$('plant:').blossoms.$id; // 'vocab://ns/YearRound'
 	k_banana.$('plant:').blossoms.$('ns:').$id; // 'YearRound'
 
-	// autp-prefixing an iri
-	k_banana.$.short; // ns:Banana
-	k_banana.appears.$.short; // color:Yellow
+	// autp-prefixing
+	k_banana.$.short; // 'ns:Banana'
+	k_banana.appears.$.short; // 'color:Yellow'
+	k_banana.tastes.$.short; // '"good"^^xsd:string'
+	k_banana.tastes.$.datatype; // 'xsd:string'
 
 	// type indicators
 	k_banana.$is(); // 'blanknode'

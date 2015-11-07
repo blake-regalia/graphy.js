@@ -84,6 +84,14 @@ describe('graphy literal', () => {
 			eq(k_banana.tastes.$is(), 'literal');
 		});
 
+		it('supports auto-prefixing datatype with literal', () => {
+			eq(k_banana.tastes.$.short, '"good"^^xsd:string');
+		});
+
+		it('supports auto-prefixing only datatype', () => {
+			eq(k_banana.tastes.$.datatype, 'xsd:string');
+		});
+
 	});
 });
 
