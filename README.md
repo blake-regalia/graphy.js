@@ -88,6 +88,10 @@ q_graph.network('ns:', function(k_banana) {
 	k_banana.$('plant:').blossoms.$id; // 'vocab://ns/YearRound'
 	k_banana.$('plant:').blossoms.$('ns:').$id; // 'YearRound'
 
+	// autp-prefixing an iri
+	k_banana.$.short; // ns:Banana
+	k_banana.appears.$.short; // color:Yellow
+
 	// predicates with multiple objects
 	k_banana.alias; // emits warning: 'more than one triple share the same predicate "ns:alias" with subject "ns:Banana"; By using '.alias', you are accessing any one of these triples arbitrarily'
 

@@ -100,6 +100,14 @@ describe('graphy iri', () => {
 			eq(k_banana.appears.$('color:').$id, 'Yellow');
 		});
 
+		it('supports auto-prefixing a node', () => {
+			eq(k_banana.$.short, 'ns:Banana');
+		});
+
+		it('supports auto-prefixing a property', () => {
+			eq(k_banana.appears.$.short, 'color:Yellow');
+		});
+
 	});
 });
 
