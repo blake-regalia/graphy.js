@@ -174,18 +174,12 @@ describe('graphy collection', () => {
 
 	q_graph.network('ns:', (k_banana) => {
 
-		it('supports forEach', () => {
-			let a_items = [];
-			k_banana.stages.forEach((k_item) => {
-				a_items.push(k_item.$id || k_item.$('plant:').$id);
-			});
-			includes(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);
-		});
-
 		it('supports implicit map callback', () => {
-			deep(k_banana.stages((k_item) => {
+			let a_items = k_banana.stages((k_item) => {
 				return k_item.$id || k_item.$('plant:').$id;
-			}), ['FindSpace', 'Seed', 'Grow', 'Harvest']);
+			});
+			eq(Array.isArray(a_items), true);
+			deep(a_items, ['FindSpace', 'Seed', 'Grow', 'Harvest']);
 		});
 
 		it('returns simple array on invocation', () => {
