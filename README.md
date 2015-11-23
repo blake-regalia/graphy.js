@@ -34,7 +34,10 @@ ns:Banana
 		plant:Seed
 		plant:Grow
 		plant:Harvest
-	) .
+	) ;
+	ns:considered [
+		a plant:Clone
+	]
 ```
 
 Here, `example.json` is a JSON-LD file generated from the graph above:
@@ -63,9 +66,12 @@ q_graph.network('ns:', function(k_banana) {
 	k_banana.shape.$type; // 'Liberty'
 	k_banana.tastes.$type; // undefined
 
-	// get full path datatype of a literal
+	// get absolute datatype of a literal
 	k_banana.shape['@type']; // 'vocab://ns/Liberty'
 	k_banana.tastes['@type']; // 'http://www.w3.org/2001/XMLSchema#string'
+
+	// get full SPARQL/TTL-compatible string representation of a literal
+	k_banana.tastes['@full']; // '"good"^^<http://www.w3.org/2001/XMLSchema#string>'
 
 	// change namespace to get suffixed datatype of literal
 	k_banana.tastes.$('xsd:').$type; // 'string'
@@ -88,27 +94,31 @@ q_graph.network('ns:', function(k_banana) {
 	k_banana.$('plant:').blossoms.$id; // 'vocab://ns/YearRound'
 	k_banana.$('plant:').blossoms.$('ns:').$id; // 'YearRound'
 
-	// autp-prefixing
-	k_banana.$.short; // 'ns:Banana'
-	k_banana.appears.$.short; // 'color:Yellow'
-	k_banana.tastes.$.short; // '"good"^^xsd:string'
-	k_banana.tastes.$.datatype; // 'xsd:string'
+	// terse form: auto-prefixing (SPARQL & TTL compatible strings)
+	k_banana.$terse(); // 'ns:Banana'
+	k_banana.appears.$terse(); // 'color:Yellow'
+	k_banana.tastes.$terse(); // '"good"^^xsd:string'
+	k_banana.tastes.$terse.value(); // '"good"'
+	k_banana.tastes.$terse.datatype(); // 'xsd:string'
 
 	// type indicators
-	k_banana.$is(); // 'blanknode'
-	k_banana.$is.blanknode; // true
+	k_banana.$is(); // 'node'
+	k_banana.$is.node; // true
 
 	// type indicators ..contd'
 	k_banana.appears.$is(); // 'iri'
 	k_banana.data.$is(); // 'literal'
 	k_banana.stages.$is(); // 'collection'
+	k_banana.considered.$is(); // 'blanknode'
 
 	// type indicators ..contd'
+	k_banana.$is.node; // true
 	k_banana.appears.$is.iri; // true
 	k_banana.data.$is.literal; // true
 	k_banana.stages.$is.iri; // undefined
 	k_banana.stages.$is.literal; // undefined
 	k_banana.stages.$is.collection; // true
+	k_banana.considered.$is.blanknode; // true
 
 	// predicates with multiple objects
 	k_banana.alias; // emits warning: 'more than one triple share the same predicate "ns:alias" with subject "ns:Banana"; By using '.alias', you are accessing any one of these triples arbitrarily'
@@ -120,6 +130,11 @@ q_graph.network('ns:', function(k_banana) {
 	a_items; // ['Cavendish', 'Naner', 'Bananarama']
 
 	// collections
+	k_banana.stages().map(function(k_stage) {
+		return k_stage.$id || k_stage.$('plant:').$id;
+	}); // ['FindSpace', 'Seed', 'Grow', 'Harvest']
+
+	// collections: implicit `.map`
 	k_banana.stages(function(k_stage) { // implicit `.map` callback
 		return k_stage.$id || k_stage.$('plant:').$id;
 	}); // ['FindSpace', 'Seed', 'Grow', 'Harvest']
@@ -133,6 +148,19 @@ q_graph.network('ns:', function(k_banana) {
 `for..of`
 
 ## RDF Collections
+
+Calling a collection node as a function with no arguments will return the underlying array.
+```js
+...
+```
+> The returned array is the underlying array; mutating the returned object will also affect the underlying array
+
+You can also iterate a collection node using `for..of`
+```js
+for(let k_stage of k_banana.stages) {
+	// ...
+}
+```
 
 In order to be consistent with the graph, rdf collection properties are emulated on collection objects. So instead of accessing a collection's elements via Array's properties/methods, you can also use the `rdf:first` and `rdf:rest` properties:
 ```javascript
@@ -161,6 +189,13 @@ while(w_list.$id !== 'nil') {
 }
 a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
 ```
+
+
+### node.$(terse_namespace: string)
+Returns a node that points to the same LD node but changes its namespace to the expanded version of the IRI given by `terse_namespace`. By chaining this call, you can change the namespace on the same line to access properties or iris by their suffix.
+
+### node.$terse()
+Returns a string representation of the node in terse form. The string is both SPARQL and TTL compatible; it is prefixed by the longest matching URI available in the original JSON-LD context, unless the resulting suffix would contain invalid characters for a prefixed IRI in either SPARQL or TTL.
 
 ## License
 

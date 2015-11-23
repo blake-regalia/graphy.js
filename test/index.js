@@ -38,15 +38,56 @@ describe('graphy node', () => {
 			eq(k_banana.$('plant:').blossoms.$('ns:').$id, 'YearRound');
 		});
 
-		it('has blanknode type indicator', () => {
-			eq(k_banana.$is.blanknode, true);
+		it('supports tersing', () => {
+			eq(k_banana.$terse(), 'ns:Banana');
 		});
 
-		it('calling type indicator returns iri', () => {
-			eq(k_banana.$is(), 'blanknode');
+		it('has node type indicator', () => {
+			eq(k_banana.$is.node, true);
+		});
+
+		it('calling type indicator returns node', () => {
+			eq(k_banana.$is(), 'node');
 		});
 	});
 });
+
+// describe('graphy blanknode', () => {
+
+// 	q_graph.network('ns:', (k_banana) => {
+
+// 		//
+// 		let k_node = k_banana.
+
+// 		it('contains @id property', () => {
+// 			eq(k_banana['@id'], 'vocab://ns/Banana');
+// 		});
+
+// 		it('contains @type property', () => {
+// 			eq(k_banana['@type'], 'vocab://ns/Fruit');
+// 		});
+
+// 		it('contains suffixed id property', () => {
+// 			eq(k_banana.$id, 'Banana');
+// 		});
+
+// 		it('contains suffixed type property', () => {
+// 			eq(k_banana.$type, 'Fruit');
+// 		});
+
+// 		it('supports namespace change', () => {
+// 			eq(k_banana.$('plant:').blossoms.$('ns:').$id, 'YearRound');
+// 		});
+
+// 		it('has node type indicator', () => {
+// 			eq(k_banana.$is.node, true);
+// 		});
+
+// 		it('calling type indicator returns node', () => {
+// 			eq(k_banana.$is(), 'node');
+// 		});
+// 	});
+// });
 
 
 describe('graphy literal', () => {
@@ -86,11 +127,11 @@ describe('graphy literal', () => {
 		});
 
 		it('supports auto-prefixing datatype with literal', () => {
-			eq(k_banana.tastes.$.short, '"good"^^xsd:string');
+			eq(k_banana.tastes.$terse(), '"good"^^xsd:string');
 		});
 
 		it('supports auto-prefixing only datatype', () => {
-			eq(k_banana.tastes.$.datatype, 'xsd:string');
+			eq(k_banana.tastes.$terse.datatype(), 'xsd:string');
 		});
 
 	});
@@ -125,12 +166,8 @@ describe('graphy iri', () => {
 			eq(k_banana.appears.$('color:').$id, 'Yellow');
 		});
 
-		it('supports auto-prefixing a node', () => {
-			eq(k_banana.$.short, 'ns:Banana');
-		});
-
-		it('supports auto-prefixing a property', () => {
-			eq(k_banana.appears.$.short, 'color:Yellow');
+		it('supports tersing', () => {
+			eq(k_banana.appears.$terse(), 'color:Yellow');
 		});
 
 		it('has iri type indicator', () => {
