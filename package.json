@@ -1,6 +1,6 @@
 {
   "name": "graphy",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Query linked-data graphs by abstracting away traditional JSON-LD interaction",
   "author": {
     "name": "Blake Regalia",
