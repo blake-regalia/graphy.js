@@ -138,6 +138,9 @@ q_graph.network('ns:', function(k_banana) {
 	k_banana.stages(function(k_stage) { // implicit `.map` callback
 		return k_stage.$id || k_stage.$('plant:').$id;
 	}); // ['FindSpace', 'Seed', 'Grow', 'Harvest']
+
+	// collections: implicit array accessor
+	k_banana.stages(0).$id; // 'FindSpace'
 });
 ```
 

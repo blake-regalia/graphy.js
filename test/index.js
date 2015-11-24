@@ -26,6 +26,10 @@ describe('graphy node', () => {
 			eq(k_banana['@type'], 'vocab://ns/Fruit');
 		});
 
+		// it('contains @full property; ttl serialization', () => {
+		// 	eq(k_banana['@type'], '...');
+		// });
+
 		it('contains suffixed id property', () => {
 			eq(k_banana.$id, 'Banana');
 		});
@@ -106,6 +110,10 @@ describe('graphy literal', () => {
 			eq(k_banana.tastes['@type'], 'http://www.w3.org/2001/XMLSchema#string');
 		});
 
+		it('contains @full property; ttl serialization', () => {
+			eq(k_banana.tastes['@full'], '"good"^^<http://www.w3.org/2001/XMLSchema#string>');
+		});
+
 		it('suffixes namespaced datatype', () => {
 			eq(k_banana.shape.$type, 'Liberty');
 		});
@@ -148,6 +156,10 @@ describe('graphy iri', () => {
 
 		it('contains @type property', () => {
 			eq(k_banana.class['@type'], '@id');
+		});
+
+		it('contains @full property; ttl serialization', () => {
+			eq(k_banana.class['@full'], '<vocab://ns/Berry>');
 		});
 
 		it('contains suffixed id property', () => {
@@ -210,6 +222,10 @@ describe('graphy predicate points to multiple objects', () => {
 describe('graphy collection', () => {
 
 	q_graph.network('ns:', (k_banana) => {
+
+		it('contains @full property; ttl serialization', () => {
+			eq(k_banana.stages['@full'], '[<http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://ns/FindSpace>;<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> (<vocab://plant/Seed> <vocab://plant/Grow> <vocab://plant/Harvest>)]');
+		});
 
 		it('supports implicit map callback', () => {
 			let a_items = k_banana.stages((k_item) => {
