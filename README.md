@@ -70,8 +70,10 @@ q_graph.network('ns:', function(k_banana) {
 	k_banana.shape['@type']; // 'vocab://ns/Liberty'
 	k_banana.tastes['@type']; // 'http://www.w3.org/2001/XMLSchema#string'
 
-	// get full SPARQL/TTL-compatible string representation of a literal
+	// get full SPARQL/TTL-compatible string representation of any entity
+	k_banana.class['@full']; // '<vocab://ns/Berry>'
 	k_banana.tastes['@full']; // '"good"^^<http://www.w3.org/2001/XMLSchema#string>'
+	k_banana.stages['@full']; // '[<http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://ns/FindSpace>;<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> (<vocab://plant/Seed> <vocab://plant/Grow> <vocab://plant/Harvest>)]'
 
 	// change namespace to get suffixed datatype of literal
 	k_banana.tastes.$('xsd:').$type; // 'string'
