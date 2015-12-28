@@ -69,6 +69,7 @@
 				"afterColon": true
 			}
 		],
+		"no-debugger": 1,
 		"no-eval": 2,
 		"no-with": 2,
 		"space-infix-ops": 0,

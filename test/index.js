@@ -42,9 +42,9 @@ describe('graphy node', () => {
 			eq(k_banana.$('plant:').blossoms.$('ns:').$id, 'YearRound');
 		});
 
-		it('supports tersing', () => {
-			eq(k_banana.$terse(), 'ns:Banana');
-		});
+		// it('supports tersing', () => {
+		// 	eq(k_banana.$terse(), 'ns:Banana');
+		// });
 
 		it('has node type indicator', () => {
 			eq(k_banana.$is.node, true);
@@ -94,12 +94,47 @@ describe('graphy node', () => {
 // });
 
 
-describe('graphy literal', () => {
+// describe('graphy simple literal', () => {
+
+// 	q_graph.network('ns:', (k_banana) => {
+
+// 		it('returns primitive value when called', () => {
+// 			eq(k_banana.tastes(), 'good');
+// 		});
+
+// 		it('does not contain @type property', () => {
+// 			eq(k_banana.tastes['@type'], undefined);
+// 		});
+
+// 		it('contains @full property; ttl serialization', () => {
+// 			eq(k_banana.tastes['@full'], '"good"');
+// 		});
+
+// 		it('has literal type indicator', () => {
+// 			eq(k_banana.tastes.$is.literal, true);
+// 		});
+
+// 		it('calling type indicator returns literal', () => {
+// 			eq(k_banana.tastes.$is(), 'literal');
+// 		});
+
+// 		it('returns simple literal without datatype', () => {
+// 			eq(k_banana.tastes.$terse(), '"good"');
+// 		});
+
+// 		it('returns undefined datatype on terse', () => {
+// 			eq(k_banana.tastes.$terse.datatype(), undefined);
+// 		});
+
+// 	});
+// });
+
+describe('graphy typed literal', () => {
 
 	q_graph.network('ns:', (k_banana) => {
 
 		it('returns primitive value when called', () => {
-			eq(k_banana.tastes(), 'good');
+			eq(k_banana.$('rdfs:').label(), 'Banana');
 		});
 
 		it('returns primitive value when is numeric and called', () => {
@@ -110,8 +145,12 @@ describe('graphy literal', () => {
 			eq(k_banana.tastes['@type'], 'http://www.w3.org/2001/XMLSchema#string');
 		});
 
+		it('contains @value property', () => {
+			eq(k_banana.tastes['@value'], '"good"');
+		});
+
 		it('contains @full property; ttl serialization', () => {
-			eq(k_banana.tastes['@full'], '"good"^^<http://www.w3.org/2001/XMLSchema#string>');
+			eq(k_banana.$('rdfs:').label['@full'], '"Banana"^^<http://www.w3.org/2001/XMLSchema#string>');
 		});
 
 		it('suffixes namespaced datatype', () => {
@@ -119,27 +158,27 @@ describe('graphy literal', () => {
 		});
 
 		it('does not mis-suffix non-namespaced datatype', () => {
-			eq(k_banana.tastes.$type, undefined);
+			eq(k_banana.$('rdfs:').label.$type, undefined);
 		});
 
 		it('suffixes datatype on namespace changed', () => {
-			eq(k_banana.tastes.$('xsd:').$type, 'string');
+			eq(k_banana.$('rdfs:').label.$('xsd:').$type, 'string');
 		});
 
 		it('has literal type indicator', () => {
-			eq(k_banana.tastes.$is.literal, true);
+			eq(k_banana.$('rdfs:').label.$is.literal, true);
 		});
 
 		it('calling type indicator returns literal', () => {
-			eq(k_banana.tastes.$is(), 'literal');
+			eq(k_banana.$('rdfs:').label.$is(), 'literal');
 		});
 
 		it('supports auto-prefixing datatype with literal', () => {
-			eq(k_banana.tastes.$terse(), '"good"^^xsd:string');
+			eq(k_banana.$('rdfs:').label.$terse(), '"Banana"^^xsd:string');
 		});
 
 		it('supports auto-prefixing only datatype', () => {
-			eq(k_banana.tastes.$terse.datatype(), 'xsd:string');
+			eq(k_banana.$('rdfs:').label.$terse.datatype(), 'xsd:string');
 		});
 
 	});

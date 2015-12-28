@@ -1,6 +1,7 @@
 {
   "@id" : "ns:Banana",
   "@type" : "ns:Fruit",
+  "rdfs:label" : "Banana",
   "alias" : [ "ns:Cavendish", "ns:Naner", "ns:Bananarama" ],
   "appears" : "color:Yellow",
   "class" : "ns:Berry",
@@ -24,9 +25,9 @@
       "@id" : "vocab://ns/appears",
       "@type" : "@id"
     },
-    "stages" : {
-      "@id" : "vocab://ns/stages",
-      "@type" : "@id"
+    "label" : {
+      "@id" : "http://www.w3.org/2000/01/rdf-schema#label",
+      "@type" : "http://www.w3.org/2001/XMLSchema#string"
     },
     "data" : {
       "@id" : "vocab://ns/data",
@@ -48,21 +49,20 @@
       "@id" : "vocab://plant/blossoms",
       "@type" : "@id"
     },
+    "stages" : {
+      "@id" : "vocab://ns/stages",
+      "@type" : "@id"
+    },
     "shape" : {
       "@id" : "vocab://ns/shape",
       "@type" : "vocab://ns/Liberty"
     },
-    "" : "vocab://local/",
-    "plant" : "vocab://plant/",
-    "unit" : "http://qudt.org/vocab/unit#",
-    "rdfs" : "http://www.w3.org/2000/01/rdf-schema#",
-    "stko" : "http://stko.geog.ucsb.edu/vocab/",
-    "volt" : "http://blurcast.net/volt/",
-    "ns" : "vocab://ns/",
     "color" : "vocab://color/",
-    "owl" : "http://www.w3.org/2002/07/owl#",
-    "xsd" : "http://www.w3.org/2001/XMLSchema#",
     "rdf" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-    "qudt" : "http://qudt.org/schema/qudt#"
+    "ns" : "vocab://ns/",
+    "plant" : "vocab://plant/",
+    "xsd" : "http://www.w3.org/2001/XMLSchema#",
+    "rdfs" : "http://www.w3.org/2000/01/rdf-schema#",
+    "graph" : "graph://"
   }
 }
