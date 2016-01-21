@@ -1,5 +1,3 @@
-'use strict';
-
 // native imports
 import path from 'path';
 
@@ -19,6 +17,8 @@ import coveralls from 'gulp-coveralls';
 import del from 'del';
 import {Instrumenter} from 'isparta';
 
+// local config
+import compileConfig from './.compileconfig.json';
 
 // static
 gulp.task('static', () => {
@@ -74,14 +74,28 @@ gulp.task('clean', () => {
 });
 
 // babel
-gulp.task('babel', ['clean'], () => {
-	return gulp.src('lib/**/*.js')
-		.pipe(babel())
-		.pipe(gulp.dest('dist'));
+compileConfig.transpile.forEach((s_directory) => {
+
+	// register cleaner
+	gulp.task('clean-'+s_directory, () => {
+		return del([
+			'./dist/'+s_directory,
+		]);
+	});
+
+	// register builder
+	gulp.task('build-'+s_directory, ['clean-'+s_directory], () => {
+		return gulp.src('./lib/'+s_directory+'/*.js')
+			.pipe(babel())
+			.pipe(gulp.dest('./dist/'+s_directory));
+	});
 });
+
+// transpile source code using babel
+gulp.task('babel', compileConfig.transpile.map(s_directory => 'build-'+s_directory));
 
 // prepublish
 gulp.task('prepublish', ['babel']);
 
 // default
-gulp.task('default', ['static', 'test']);
+gulp.task('default', ['babel']);

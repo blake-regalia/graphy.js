@@ -1,0 +1,2 @@
+#!/bin/bash
+nodemon --delay 2 -x 'gulp && node-debug --cli --debug-brk --no-preload --save-live-edit' -w lib $1

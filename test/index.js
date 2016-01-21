@@ -1,7 +1,8 @@
 import arginfo from 'arginfo';
 import assert from 'assert';
-import graphy from '../lib';
+import graphy from '../lib/main';
 import h_graph from './graph.json';
+
 
 const eq = assert.strictEqual.bind(assert);
 const deep = assert.deepEqual.bind(assert);
