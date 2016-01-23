@@ -77,6 +77,7 @@ q_graph.network('ns:', function(k_banana) {
 
 	// change namespace to get suffixed datatype of literal
 	k_banana.tastes.$('xsd:').$type; // 'string'
+	k_banana.tastes.$('xsd:').$types; // ['string']
 
 	// properties of an iri in same namespace
 	k_banana.class(); // 'Berry'
@@ -196,11 +197,42 @@ a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
 ```
 
 
-### node.$(terse_namespace: string)
-Returns a node that points to the same LD node but changes its namespace to the expanded version of the IRI given by `terse_namespace`. By chaining this call, you can change the namespace on the same line to access properties or iris by their suffix.
+### node.$(namespace: string)
+Returns a node that points to the same LD node but changes its namespace to the expanded version of the IRI given by `namespace`, may be either an n3 prefix or a full IRI. By chaining this call, you can change the namespace on the same line to access properties or IRIs by their suffix.
 
-### node.$terse()
-Returns a string representation of the node in terse form. The string is both SPARQL and TTL compatible; it is prefixed by the longest matching URI available in the original JSON-LD context, unless the resulting suffix would contain invalid characters for a prefixed IRI in either SPARQL or TTL.
+### node.$n3()
+Returns a terse n3 representation of the node as a string. It is prefixed by the longest matching URI available in the original JSON-LD context, unless the resulting suffix would contain invalid characters for a prefixed IRI in either SPARQL or TTL. The string is compatible with SPARQL and TTL as long as the corresponding prefix is also included in the document.
+
+### node.$nquad()
+Returns the n-quad representation of this node. Useful for serializing to SPARQL/TTL without worrying about prefixes.
+
+### node.$is()
+Calling this function returns the type of this node as a string. You can also use a shorthand check by testing if `node.$is.[type]` is defined as `true`. eg: `if(node.$is.iri === true) ...`. Possible values for type are:
+ - *link* - this is a named thing which exists as the subject of triple(s). This node contains predicates that point to objects
+ - *blanknode* - this is an anonymous blanknode (@id starts with `_:`)
+ - *iri* - this is a mere symbollic reference to an IRI, which exists as the object of some triple. If you encounter this type, it means that you reached a named thing (ie: not a blanknode). Use `.$node` to obtain the node of this IRI if it exists in the current graph
+ - *literal* - an RDF literal
+ - *collection* - an RDF collection
+
+### node.$node()
+Only defined on nodes of type `iri`. Will return the node 
+
+### node['@id']
+Reflects the json-ld `@id` property.
+
+### node.$id
+The suffix of the `@id` property after removing the current namespace from the beginning. If the current namespace does not match, this will return `undefined`.
+
+### node['@type']
+Reflects the json-ld `@type` property. For literals, this will be the datatype. For nodes, this will be an array of objects pointed to by the `rdf:type` predicate.
+
+### node.$types
+An array containing the suffixes of the IRIs pointed to by the `@type` property after removing the current namespace from the beginning of the IRI. If the current namespace does not match any of the IRIs, this will return an empty array `[]`.
+
+### node.$type
+Shortcut for `node.$types[0]`. If this node has more than one `rdf:type`, accessing this property will issue a warning. If the current namespace does not match any of the IRIs, this will return `undefined`. 
+
+
 
 ## License
 
