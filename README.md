@@ -2,6 +2,11 @@
 > Query linked-data graphs by abstracting away traditional JSON-LD interaction
 
 
+# Contents
+ - [Setup](#Install)
+ - [Example Usage](#Usage)
+ - [API Reference](#API Reference)
+
 ## Install
 
 ```sh
@@ -160,7 +165,7 @@ graphy(json_ld, (q_network) => {
 
 ## Iterating
 
-`for..of`
+### `for..of`
 An entity of type `node` supports iteration directly on the reference itself. The key of the iterator will be the predicate suffixed by the current accessor namespace, the value of the iterator will be an array of entities that are pointed to by that predicate:
 
 ```js
@@ -241,6 +246,8 @@ while(w_list.$id('rdf:') !== 'nil') {
 a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
 ```
 
+# API Reference
+
 ---------------------------------------
 <a name="graphy" />
 ## Graphy
@@ -312,6 +319,9 @@ Applies the given `map_callback` to every item in the array and returns the resu
 <a name="e.$" />
 ### entity.$(namespace: string)
 Sets the accessor namespace of the returned object to the expanded version of the IRI given by `namespace`, may be either an n3 prefix or a full IRI. By chaining this call, you can change the accessor namespace on the same line to access properties or IRIs by their suffix.
+
+### entity.$()
+This no-args version of the namespace method will instead return the full IRI of the current accessor namespace.
 
 <a name="e.$n3" />
 ### entity.$n3()
