@@ -32,9 +32,7 @@ ns:Banana
 	ns:appears color:Yellow ;
 	ns:class ns:Berry ;
 	plant:blossoms ns:YearRound ;
-	ns:alias ns:Cavendish ;
-	ns:alias ns:Naner ;
-	ns:alias ns:Bananarama ;
+	ns:alias ns:Cavendish, ns:Naner, ns:Bananarama ;
 	ns:stages (
 		ns:FindSpace
 		plant:Seed
@@ -54,16 +52,17 @@ var json_ld = require('./example.json');
 graphy(json_ld, (q_network) => {
 	
 	// select a node from the graph by IRI; set accessor namespace to `ns:` prefix
-	let k_banana = q_network.select('ns:Banana', 'ns:');
+	let k_banana = q_network.select('ns:Banana').$('ns:');
 
 	// get IRI of node
 	k_banana['@id']; // 'vocab://ns/Banana'
 	k_banana.$id(); // 'Banana'
 
-	// get default `rdf:type` property of node
+	// get `rdf:type` property(s) of node
 	k_banana['@type']; // ['vocab://plant/Fruit', 'vocab://ns/Food']
 	k_banana.$types(); // ['Food']
 	k_banana.$type(); // 'Food'
+	k_banana.$types('plant:'); // ['Fruit']
 	k_banana.$type('plant:'); // 'Fruit'
 
 	// get value of a literal
@@ -76,10 +75,9 @@ graphy(json_ld, (q_network) => {
 
 	// get suffixed datatype of a literal
 	k_banana.shape.$type(); // 'Liberty'
-	k_banana.tastes.$type(); // undefined
-	k_banana.tastes.$type('xsd:'); // 'string'
 
-	// change accessor namespace to get suffixed datatype of literal
+	// set terminal namespace to get suffixed datatype of literal
+	k_banana.tastes.$type(); // undefined
 	k_banana.tastes.$type('xsd:'); // 'string'
 
 	// properties of an IRI in same accessor namespace
@@ -90,6 +88,7 @@ graphy(json_ld, (q_network) => {
 
 	// properties of an IRI in different namespace
 	k_banana.appears(); // undefined
+	k_banana.appears('color:'); // 'Yellow'
 	k_banana.appears.$id(); // undefined
 	k_banana.appears.$id('color:'); // 'Yellow'
 	k_banana.appears['@id']; // 'vocab://color/Yellow'
@@ -99,10 +98,11 @@ graphy(json_ld, (q_network) => {
 	k_banana.$types('plant:'); // ['Fruit', 'EdiblePart']
 	k_banana.$('plant:').blossoms(); // undefined
 	k_banana.$('plant:').blossoms['@id']; // 'vocab://ns/YearRound'
-	k_banana.$('plant:').blossoms.$id('ns:'); // 'YearRound'
+	k_banana.$('plant:').blossoms('ns:'); // 'YearRound'
 
 	// get SPARQL/TTL-compatible string representation of any entity
 	k_banana.$n3(); // 'ns:Banana'
+	k_banana.$n3(false); // '<vocab://ns/Banana>'
 	k_banana.appears.$n3(); // 'color:Yellow'
 	k_banana.tastes.$n3(); // '"good"^^xsd:string'
 	k_banana.tastes.$n3.value(); // '"good"'
@@ -160,13 +160,47 @@ graphy(json_ld, (q_network) => {
 
 ## Iterating
 
-`for..in`
-
 `for..of`
+An entity of type `node` supports iteration directly on the reference itself. The key of the iterator will be the predicate suffixed by the current accessor namespace, the value of the iterator will be an array of entities that are pointed to by that predicate:
+
+```js
+for(let [s_predicate_suffix, a_objects] of k_banana) {
+	a_objects.forEach((k_node) => {
+		console.log(s_predicate+' => {'+k_node.$is()+'} '+k_node.$n3());
+	});
+}
+
+// alias => {iri} ns:Cavendish
+// alias => {iri} ns:Naner
+// alias => {iri} ns:Bananarama
+// appears => {iri} color:Yellow
+// class => {iri} ns:Berry
+// considered => {blanknode} _:b4
+// data => {literal} "25"^^xsd:integer
+// stages => {collection} [rdf:first ns:FindSpace;rdf:rest (plant:Seed plant:Grow plant:Harvest)]
+// ...
+```
+
+You can also iterate on the no-args call of a node entity, this will set the namespace to an empty string so that the key of each iterator is the full IRI of each predicate:
+```js
+for(let [p_predicate, a_objects] of k_banana()) {  // same as k_banana.$('')
+	a_objects.forEach((k_node) => {
+		console.log(q_graph.shorten(p_predicate)+' => {'+k_node.$is()+'} '+k_node.$n3());
+	});
+}
+
+// ns:alias => {iri} ns:Cavendish
+// ns:alias => {iri} ns:Naner
+// ns:alias => {iri} ns:Bananarama
+// ns:appears => {iri} color:Yellow
+// plant:blossoms => {iri} ns:YearRound
+// ns:class => {iri} ns:Berry
+// ...
+```
 
 ## RDF Collections
 
-Calling a collection node as a function with no arguments will return the underlying array.
+Calling a collection entity as a function with no arguments will return the underlying array.
 ```js
 ...
 ```
@@ -228,6 +262,10 @@ Returns the graphy [entity](#entity) for the IRI given by `name`, which may be a
 ### network.top([map: function])
 Returns an array of only [entities](#entity) that are named things (ie not blanknodes) or blanknodes that do not appear in the object position of any triples in the current graph. These can be thought of as top-level nodes. Accepts an optional `map` function callback to transform the entities before returning the array. These entities will have empty an accessor namespace by default.
 
+<a name="n.shorten" />
+### network.shorten(iri: string)
+Shortens an IRI using prefixes defined in the @context of the original jsonld object.
+
 <a name="n.@" />
 ### network.[...]
 [Network](#network) is an array, so it supports all native functions. Each item in the array is a graphy [entity](#entity) with an empty accessor namespace.
@@ -238,35 +276,58 @@ Returns an array of only [entities](#entity) that are named things (ie not blank
 A reference to an RDF entity/jsonld object covered by the set of methods/properties documented in this section. An entity can be obtained by [`network.select()`](#n.select), or any one of the array interface methods on [network](#network).
 
 <a name="e" />
-### ()
+### entity()
+> Only for types: `node`
 Returns a Map of {predicate => object} pairs for all triples stemming from this entity as the subject. The key of each pair is a string representing the full predicate IRI, the value is an [entity](#entity) representing the object.
 
-### (access_name: string)
+### entity([namespace: string])
+> Only for types: `iri`
+Returns the IRI of this entity suffixed by the current accessor namespace or the `namespace` argument if it is used. You can obtain the full IRI no matter the current accessor namespace by using an empty string for `namespace`.
+
+### entity()
+> Only for types: `literal
+Returns the value portion of the literal. See [`entity.$type`](#e.type) and [`entity.$n3.datatype`](#entity.$n3.datatype) for getting the datatype of a literal.
+
+### entity(access_name: string)
+> Only for types: `node`
 Returns an array of [entities](#entity) that are pointed to by the namespaced predicate suffix `access_name`. If the current accessor namespace is empty, then the access name would be the full IRI of the predicate.
 
 <a name="e" />
-### (access_name: string[, ])
+### entity(access_name: string[, ])
+> Only for types: `node`
 Same as [`()`](#e) except  an array of [entities](#entity) that are pointed to by the namespaced predicate suffix `access_name`. If the current accessor namespace is empty, then the access name would be the full IRI of the predicate.
 
+### entity()
+> Only for types: `collection`
+Returns the array 
+
+### entity(item_index: integer)
+> Only for types: `collection`
+Returns the item at `item_index` in the collection.
+
+### entity(map_callback: function)
+> Only for types: `collection`
+Applies the given `map_callback` to every item in the array and returns the resulting array.
+
 <a name="e.$" />
-### .$(namespace: string)
+### entity.$(namespace: string)
 Sets the accessor namespace of the returned object to the expanded version of the IRI given by `namespace`, may be either an n3 prefix or a full IRI. By chaining this call, you can change the accessor namespace on the same line to access properties or IRIs by their suffix.
 
 <a name="e.$n3" />
-### .$n3()
+### entity.$n3()
 Returns a terse n3 representation of the current entity as a string. It is prefixed by the longest matching URI available in the original JSON-LD context, unless the resulting suffix would contain invalid characters for a prefixed IRI in either SPARQL or TTL. The string is compatible with SPARQL and TTL as long as the corresponding prefix is also included in the document.
 
 <a name="e.$nquad" />
-### .$nquad()
+### entity.$nquad()
 Returns the n-quad representation of this entity. Useful for serializing to SPARQL/TTL without worrying about prefixes.
 > Caution: `.$nquad()` does not currently support nested RDF collections (it will produce blanknode collisions)
 
 <a name="e.$in" />
-### .$in(namespace: string)
+### entity.$in(namespace: string)
 Returns true if the current entity's IRI is in the given `namespace`. Will always return false for blanknodes, collections and literals.
 
 <a name="e.$is" />
-### .$is()
+### entity.$is()
 Calling this function returns the reference type of this entity as a string. You can also use a shorthand check by testing if `.$is[ref_type]` is defined as `true`. eg: `if(entity.$is.iri === true) ...`. Possible values for type are:
  - *node* - this entity exists as the subject of some triple(s). This entity contains predicates that point to objects
  - *iri* - this is a mere symbollic reference to an IRI, which exists as the object of some triple. If you encounter this type, it means that you reached a named thing (ie: not a blanknode). Use [`.$node()`](#e.node) to obtain the node of this IRI if it exists in the current graph
@@ -274,33 +335,39 @@ Calling this function returns the reference type of this entity as a string. You
  - *collection* - an RDF collection
 
 <a name="e.node" />
-### .$node([namespace: string])
+### entity.$node([namespace: string])
 Only defined on entities of type `iri`. Will return the node object for accessing triples that have this IRI as its subject. If there are no triples in the current jsonld graph that have this IRI as its subject, calling `.$node()` will return undefined for this IRI. Passing an optional `namespace` argument will set the accessor namespace on the returned graphy [entity](#entity).
 
 <a name="e.@id" />
-### ['@id']
+### entity['@id']
 Reflects the json-ld `@id` property.
 
 <a name="e.$id" />
-### .$id([namespace: string])
+### entity.$id([namespace: string])
 The suffix of the `@id` property after removing the current accessor namespace from the beginning. If the current accessor namespace does not match, or this IRI is a blanknode, this method will return `undefined`. If a `namespace` argument is passed, the method will use the given `namespace` instead of the current accessor namespace to suffix the IRI.
 
 <a name="e.@type" />
-### ['@type']
+### entity['@type']
 Reflects the json-ld `@type` property. For literals, this will be the datatype. For nodes, this will be an array of objects pointed to by the `rdf:type` predicate.
 
 <a name="e.$types." />
-### .$types
+### entity.$types
+> Only for types: `node`
 An array of the IRI entities that are pointed to by the `@type` property for this entity.
 
 <a name="e.$types" />
-### .$types()
+### entity.$types()
+> Only for types: `node`
 Returns an array containing the suffixes of the IRIs pointed to by the `@type` property after removing the current accessor namespace from the beginning of the IRI. If the current accessor namespace does not match any of the IRIs, this will return an empty array `[]`.
 
 <a name="e.$type" />
-### .$type([namespace: string])
-Shortcut for `.$types[0].$id`. If this node has more than one `rdf:type`, accessing this property will issue a warning. If the current accessor namespace does not match any of the IRIs, this will return `undefined`. If a `namespace` argument is passed, the method will use the given namespace instead of the current accessor namespace to suffix the IRI.
+### entity.$type([namespace: string])
+> Only for types: `node`
+Shortcut for `.$types[0].$id`. If this node entity has more than one `rdf:type`, accessing this property will issue a warning. If the current accessor namespace does not match any of the IRIs, this will return `undefined`. If a `namespace` argument is passed, the method will use the given namespace instead of the current accessor namespace to suffix the IRI.
 
+### entity.$type([namespace: string])
+> Only for types: `literal`
+Returns the datatype of this literal entity suffixed by the current accessor namespace or the `namespace` argument if it is used.
 
 
 ## License

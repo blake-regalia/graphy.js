@@ -32,7 +32,7 @@ describe('graphy', () => {
 			});
 
 			it('contains @type property', () => {
-				deep(k_banana['@type'], ['vocab://plant/Fruit', 'vocab://ns/Food']);
+				includes(k_banana['@type'], ['vocab://plant/Fruit', 'vocab://ns/Food', 'vocab://plant/EdiblePart']);
 			});
 
 			it('contains suffixed id property', () => {
@@ -47,12 +47,16 @@ describe('graphy', () => {
 				deep(k_banana.$types(), ['Food']);
 			});
 
-			it('allows types() ns change', () => {
-				deep(k_banana.$types('plant:'), ['Fruit']);
-			});
-
 			it('supports namespace change', () => {
 				eq(k_banana.$('plant:').blossoms.$('ns:').$id(), 'YearRound');
+			});
+
+			it('supports $type() ns change', () => {
+				deep(k_banana.$('plant:').$type('ns:'), 'Food');
+			});
+
+			it('supports $types() namespace change', () => {
+				deep(k_banana.$types('plant:'), ['Fruit', 'EdiblePart']);
 			});
 
 			it('serializes to n3', () => {
@@ -148,6 +152,10 @@ describe('graphy', () => {
 				eq(k_banana.class.$id(), 'Berry');
 			});
 
+			it('supports $id ns change', () => {
+				eq(k_banana.appears.$id('color:'), 'Yellow');
+			});
+
 			it('suffixes iri when called', () => {
 				eq(k_banana.class(), 'Berry');
 			});
@@ -156,7 +164,15 @@ describe('graphy', () => {
 				eq(k_banana.appears(), undefined);
 			});
 
-			it('suffixes datatype on namespace changed', () => {
+			it('suffixes datatype on iri ns change when called', () => {
+				eq(k_banana.appears('color:'), 'Yellow');
+			});
+
+			it('suffixes datatype on ns change before call', () => {
+				eq(k_banana.appears.$('color:')(), 'Yellow');
+			});
+
+			it('suffixes datatype on ns change before $id', () => {
 				eq(k_banana.appears.$('color:').$id(), 'Yellow');
 			});
 
@@ -186,7 +202,7 @@ describe('graphy', () => {
 		});
 
 
-		describe('graphy predicate points to multiple objects', () => {
+		describe('predicate points to multiple objects', () => {
 
 			it('supports forEach', () => {
 				let a_items = [];
@@ -206,7 +222,7 @@ describe('graphy', () => {
 		});
 
 
-		describe('graphy collection', () => {
+		describe('collection', () => {
 
 			it('serializes to n3', () => {
 				eq(k_banana.stages.$n3(), '[rdf:first ns:FindSpace;rdf:rest (plant:Seed plant:Grow plant:Harvest)]');
@@ -259,6 +275,11 @@ describe('graphy', () => {
 			it('calling type indicator returns collection', () => {
 				eq(k_banana.stages.$is(), 'collection');
 			});
+		});
+
+	
+		describe('iterating', () => {
+			
 		});
 	});
 });

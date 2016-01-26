@@ -4,7 +4,7 @@
     "@type" : [ "plant:Fruit", "plant:Clone" ]
   }, {
     "@id" : "ns:Banana",
-    "@type" : [ "plant:Fruit", "ns:Food" ],
+    "@type" : [ "plant:Fruit", "plant:EdiblePart", "ns:Food" ],
     "rdfs:label" : "Banana",
     "alias" : [ "ns:Cavendish", "ns:Naner", "ns:Bananarama" ],
     "appears" : "color:Yellow",
@@ -50,12 +50,12 @@
       "@id" : "vocab://ns/class",
       "@type" : "@id"
     },
-    "alias" : {
-      "@id" : "vocab://ns/alias",
-      "@type" : "@id"
-    },
     "stages" : {
       "@id" : "vocab://ns/stages",
+      "@type" : "@id"
+    },
+    "alias" : {
+      "@id" : "vocab://ns/alias",
       "@type" : "@id"
     },
     "tastes" : {
