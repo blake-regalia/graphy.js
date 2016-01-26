@@ -7,7 +7,7 @@
  <!-- - [Features](#Features) -->
  - [Example Usage](#Usage)
  - [Iterators and Collections](#Iterators)
- - [API Reference](#API Reference)
+ - [API_Reference](#API_Reference)
 
 
 <a name="#Setup" />
@@ -245,7 +245,7 @@ while(w_list.$id('rdf:') !== 'nil') {
 a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
 ```
 
-<a name="#API Reference" />
+<a name="#API_Reference" />
 # API Reference
 
 ---------------------------------------
