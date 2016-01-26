@@ -1,17 +1,26 @@
 {
-  "@id" : "ns:Banana",
-  "@type" : "ns:Fruit",
-  "rdfs:label" : "Banana",
-  "alias" : [ "ns:Cavendish", "ns:Naner", "ns:Bananarama" ],
-  "appears" : "color:Yellow",
-  "class" : "ns:Berry",
-  "ns:data" : 25,
-  "shape" : "curved",
-  "stages" : {
-    "@list" : [ "ns:FindSpace", "plant:Seed", "plant:Grow", "plant:Harvest" ]
-  },
-  "ns:tastes" : "good",
-  "blossoms" : "ns:YearRound",
+  "@graph" : [ {
+    "@id" : "_:b4",
+    "@type" : [ "plant:Fruit", "plant:Clone" ]
+  }, {
+    "@id" : "ns:Banana",
+    "@type" : [ "plant:Fruit", "ns:Food" ],
+    "rdfs:label" : "Banana",
+    "alias" : [ "ns:Cavendish", "ns:Naner", "ns:Bananarama" ],
+    "appears" : "color:Yellow",
+    "class" : "ns:Berry",
+    "considered" : "_:b4",
+    "ns:data" : 25,
+    "shape" : "curved",
+    "stages" : {
+      "@list" : [ "ns:FindSpace", "plant:Seed", "plant:Grow", "plant:Harvest" ]
+    },
+    "ns:tastes" : "good",
+    "blossoms" : "ns:YearRound"
+  }, {
+    "@id" : "plant:Fruit",
+    "contains" : "plant:Seeds"
+  } ],
   "@context" : {
     "rest" : {
       "@id" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#rest",
@@ -19,6 +28,10 @@
     },
     "first" : {
       "@id" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#first",
+      "@type" : "@id"
+    },
+    "contains" : {
+      "@id" : "vocab://ns/contains",
       "@type" : "@id"
     },
     "appears" : {
@@ -41,16 +54,20 @@
       "@id" : "vocab://ns/alias",
       "@type" : "@id"
     },
+    "stages" : {
+      "@id" : "vocab://ns/stages",
+      "@type" : "@id"
+    },
     "tastes" : {
       "@id" : "vocab://ns/tastes",
       "@type" : "http://www.w3.org/2001/XMLSchema#string"
     },
-    "blossoms" : {
-      "@id" : "vocab://plant/blossoms",
+    "considered" : {
+      "@id" : "vocab://ns/considered",
       "@type" : "@id"
     },
-    "stages" : {
-      "@id" : "vocab://ns/stages",
+    "blossoms" : {
+      "@id" : "vocab://plant/blossoms",
       "@type" : "@id"
     },
     "shape" : {
@@ -62,7 +79,6 @@
     "ns" : "vocab://ns/",
     "plant" : "vocab://plant/",
     "xsd" : "http://www.w3.org/2001/XMLSchema#",
-    "rdfs" : "http://www.w3.org/2000/01/rdf-schema#",
-    "graph" : "graph://"
+    "rdfs" : "http://www.w3.org/2000/01/rdf-schema#"
   }
 }
