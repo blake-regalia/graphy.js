@@ -6,7 +6,7 @@
  - [Setup](#Setup)
  - [Example Usage](#Usage)
  - [Iterators and Collections](#Iterators)
- - [API_Reference](#API_Reference)
+ - [API Reference](#API_Reference)
 
 
 <a name="#Setup" />
