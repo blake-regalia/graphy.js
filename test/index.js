@@ -70,6 +70,10 @@ describe('graphy', () => {
 			it('calling type indicator returns node', () => {
 				eq(k_banana.$is(), 'node');
 			});
+
+			it('returns map of all predicate/object pairs', () => {
+				eq(k_banana() instanceof Map, true);
+			});
 		});
 
 

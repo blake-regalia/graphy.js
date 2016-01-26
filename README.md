@@ -17,6 +17,7 @@ Take the following graph:
 @prefix color: <vocab://color/> .
 @prefix plant: <vocab://plant/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
 plant:Fruit
@@ -57,12 +58,13 @@ graphy(json_ld, (q_network) => {
 
 	// get IRI of node
 	k_banana['@id']; // 'vocab://ns/Banana'
-	k_banana.$id; // 'Banana'
+	k_banana.$id(); // 'Banana'
 
 	// get default `rdf:type` property of node
 	k_banana['@type']; // ['vocab://plant/Fruit', 'vocab://ns/Food']
-	k_banana.$types; // ['Food']
-	k_banana.$type; // 'Food'
+	k_banana.$types(); // ['Food']
+	k_banana.$type(); // 'Food'
+	k_banana.$type('plant:'); // 'Fruit'
 
 	// get value of a literal
 	k_banana.tastes(); // 'good'
@@ -73,56 +75,57 @@ graphy(json_ld, (q_network) => {
 	k_banana.tastes['@type']; // 'http://www.w3.org/2001/XMLSchema#string'
 
 	// get suffixed datatype of a literal
-	k_banana.shape.$type; // 'Liberty'
-	k_banana.tastes.$type; // undefined
-
-	// get SPARQL/TTL-compatible string representation of any entity
-	k_banana.class.$nquad(); // '<vocab://ns/Berry>'
-	k_banana.class.$n3(); // 'ns:Berry'
-	k_banana.tastes.$nquad(); // '"good"^^<http://www.w3.org/2001/XMLSchema#string>'k_banana.tastes.$n3(); // '"good"^^xsd:string'
-	k_banana.stages.$n3(); // '[rdf:first ns:FindSpace; rdf:rest (plant:Seed plant:Grow plant:Harvest)]'
-	k_banana.stages.$n3(false); // '[<http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://ns/FindSpace>;<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> (<vocab://plant/Seed> <vocab://plant/Grow> <vocab://plant/Harvest>)]'
+	k_banana.shape.$type(); // 'Liberty'
+	k_banana.tastes.$type(); // undefined
+	k_banana.tastes.$type('xsd:'); // 'string'
 
 	// change accessor namespace to get suffixed datatype of literal
-	k_banana.tastes.$('xsd:').$type; // 'string'
+	k_banana.tastes.$type('xsd:'); // 'string'
 
 	// properties of an IRI in same accessor namespace
 	k_banana.class(); // 'Berry'
-	k_banana.class.$id; // 'Berry'
+	k_banana.class.$id(); // 'Berry'
 	k_banana.class['@id']; // 'vocab://ns/Berry'
 	k_banana.class['@type']; // '@id'
 
 	// properties of an IRI in different namespace
 	k_banana.appears(); // undefined
-	k_banana.appears.$id; // undefined
+	k_banana.appears.$id(); // undefined
+	k_banana.appears.$id('color:'); // 'Yellow'
 	k_banana.appears['@id']; // 'vocab://color/Yellow'
 	k_banana.appears['@type']; // '@id'
-	k_banana.appears.$('color:').$id; // 'Yellow'
 
 	// changing accessor namespace
-	k_banana.$('plant:').$types; // ['Fruit', 'EdiblePart']
+	k_banana.$types('plant:'); // ['Fruit', 'EdiblePart']
 	k_banana.$('plant:').blossoms(); // undefined
 	k_banana.$('plant:').blossoms['@id']; // 'vocab://ns/YearRound'
-	k_banana.$('plant:').blossoms.$('ns:').$id; // 'YearRound'
+	k_banana.$('plant:').blossoms.$id('ns:'); // 'YearRound'
 
-	// terse form: auto-prefixing (SPARQL & TTL compatible strings)
-	k_banana.$terse(); // 'ns:Banana'
-	k_banana.appears.$terse(); // 'color:Yellow'
-	k_banana.tastes.$terse(); // '"good"^^xsd:string'
-	k_banana.tastes.$terse.value(); // '"good"'
-	k_banana.tastes.$terse.datatype(); // 'xsd:string'
+	// get SPARQL/TTL-compatible string representation of any entity
+	k_banana.$n3(); // 'ns:Banana'
+	k_banana.appears.$n3(); // 'color:Yellow'
+	k_banana.tastes.$n3(); // '"good"^^xsd:string'
+	k_banana.tastes.$n3.value(); // '"good"'
+	k_banana.tastes.$n3.datatype(); // 'xsd:string'
+
+	// ...cont'd
+	k_banana.class.$n3(); // 'ns:Berry'
+	k_banana.class.$nquad(); // '<vocab://ns/Berry>'
+	k_banana.tastes.$nquad(); // '"good"^^<http://www.w3.org/2001/XMLSchema#string>'
+	k_banana.stages.$n3(); // '[rdf:first ns:FindSpace; rdf:rest (plant:Seed plant:Grow plant:Harvest)]'
+	k_banana.stages.$n3(false); // '[<http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://ns/FindSpace>;<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> (<vocab://plant/Seed> <vocab://plant/Grow> <vocab://plant/Harvest>)]'
 
 	// type indicators
 	k_banana.$is(); // 'node'
 	k_banana.$is.node; // true
 
-	// type indicators ..contd'
+	// ...cont'd
 	k_banana.appears.$is(); // 'iri'
 	k_banana.data.$is(); // 'literal'
 	k_banana.stages.$is(); // 'collection'
 	k_banana.considered.$is(); // 'blanknode'
 
-	// type indicators ..contd'
+	// ...cont'd
 	k_banana.$is.node; // true
 	k_banana.appears.$is.iri; // true
 	k_banana.data.$is.literal; // true
@@ -142,16 +145,16 @@ graphy(json_ld, (q_network) => {
 
 	// collections
 	k_banana.stages().map(function(k_stage) {
-		return k_stage.$id || k_stage.$('plant:').$id;
+		return k_stage.$id() || k_stage.$id('plant:');
 	}); // ['FindSpace', 'Seed', 'Grow', 'Harvest']
 
 	// collections: (equivalent to above) implicit `.map`
 	k_banana.stages(function(k_stage) { // implicit `.map` callback
-		return k_stage.$id || k_stage.$('plant:').$id;
+		return k_stage.$id() || k_stage.$id('plant:');
 	}); // ['FindSpace', 'Seed', 'Grow', 'Harvest']
 
 	// collections: implicit array accessor
-	k_banana.stages(0).$id; // 'FindSpace'
+	k_banana.stages(0).$id(); // 'FindSpace'
 });
 ```
 
@@ -180,25 +183,25 @@ In order to be consistent with the graph, rdf collection properties are emulated
 ```javascript
 let w_list = k_banana.stages.$('rdf:');
 
-w_list.first.$('ns:').$id; // 'FindSpace'
+w_list.first.$id('ns:'); // 'FindSpace'
 
 w_list = w_list.rest;
-w_list.first.$('plant:').$id; // 'Seed'
+w_list.first.$id('plant:'); // 'Seed'
 
 w_list = w_list.rest;
-w_list.first.$('plant:').$id; // 'Grow'
+w_list.first.$id('plant:'); // 'Grow'
 
 w_list = w_list.rest;
-w_list.first.$('plant:').$id; // 'Harvest'
+w_list.first.$id('plant:'); // 'Harvest'
 
 w_list = w_list.rest;
-w_list.$id; // 'nil'
+w_list.$id('rdf:'); // 'nil'
 
 // ------------ or in a loop ------------
 let a_stages = [];
 let w_list = k_banana.stages.$('rdf:');
-while(w_list.$id !== 'nil') {
-	a_stage.push(w_list.first.$('plant:').$id || w_list.first.$('ns:').$id);
+while(w_list.$id('rdf:') !== 'nil') {
+	a_stage.push(w_list.first.$id('plant:') || w_list.first.$id('ns:'));
 	w_list = w_list.rest;
 }
 a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
