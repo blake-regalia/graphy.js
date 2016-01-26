@@ -4,7 +4,6 @@
 
 # Contents
  - [Setup](#Setup)
- <!-- - [Features](#Features) -->
  - [Example Usage](#Usage)
  - [Iterators and Collections](#Iterators)
  - [API_Reference](#API_Reference)
@@ -16,11 +15,6 @@
 ```sh
 $ npm install --save graphy
 ```
-
-<!--
-<a name="#Features" />
-## Features
--->
 
 <a name="#Usage" />
 ## Usage
