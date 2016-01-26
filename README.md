@@ -3,20 +3,18 @@
 
 
 # Contents
- - [Setup](#Setup)
- - [Example Usage](#Usage)
- - [Iterators and Collections](#Iterators)
- - [API Reference](#API_Reference)
+ - [Setup](#install)
+ - [Example Usage](#usage)
+ - [Iterators and Collections](#iterating)
+ - [API Reference](#api-reference)
 
 
-<a name="#Setup" />
 ## Install
 
 ```sh
 $ npm install --save graphy
 ```
 
-<a name="#Usage" />
 ## Usage
 
 Take the following graph:
@@ -329,7 +327,7 @@ This no-args version of the namespace method will instead return the full IRI of
 ### entity.$n3()
 Returns a terse n3 representation of the current entity as a string. It is prefixed by the longest matching URI available in the original JSON-LD context, unless the resulting suffix would contain invalid characters for a prefixed IRI in either SPARQL or TTL. The string is compatible with SPARQL and TTL as long as the corresponding prefix is also included in the document.
 
-<a name="e.$n3_datatype"
+<a name="e.$n3_datatype" />
 ### entity.$n3.datatype()
 > Only for types: `literal`
 
