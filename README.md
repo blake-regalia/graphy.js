@@ -395,7 +395,7 @@ Returns the datatype of this literal entity suffixed by the current accessor nam
 ISC © [Blake Regalia]()
 
 
-[npm-image]: https://badge.fury.io/js/graphy.js.svg
+[npm-image]: https://badge.fury.io/js/graphy.svg
 [npm-url]: https://npmjs.org/package/graphy
 [travis-image]: https://travis-ci.org/blake-regalia/graphy.js.svg?branch=master
 [travis-url]: https://travis-ci.org/blake-regalia/graphy.js
