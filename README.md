@@ -296,7 +296,7 @@ Returns the IRI of this entity suffixed by the current accessor namespace or the
 ### entity()
 > Only for types: `literal`
 
-Returns the value portion of the literal. See [`entity.$type`](#e.$type) and [`entity.$n3.datatype`](#entity.$n3.datatype) for getting the datatype of a literal.
+Returns the value portion of the literal. See [`entity.$type`](#e.$type) and [`entity.$n3.datatype`](#entity.$n3_datatype) for getting the datatype of a literal.
 
 ### entity(access_name: string)
 > Only for types: `node`
@@ -335,7 +335,7 @@ This no-args version of the namespace method will instead return the full IRI of
 ### entity.$n3()
 Returns a terse n3 representation of the current entity as a string. It is prefixed by the longest matching URI available in the original JSON-LD context, unless the resulting suffix would contain invalid characters for a prefixed IRI in either SPARQL or TTL. The string is compatible with SPARQL and TTL as long as the corresponding prefix is also included in the document.
 
-<a name="e.$n3.datatype"
+<a name="e.$n3_datatype"
 ### entity.$n3.datatype()
 > Only for types: `literal`
 
