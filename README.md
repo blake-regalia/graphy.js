@@ -294,9 +294,9 @@ Returns a Map of {predicate => object} pairs for all triples stemming from this 
 Returns the IRI of this entity suffixed by the current accessor namespace or the `namespace` argument if it is used. You can obtain the full IRI no matter the current accessor namespace by using an empty string for `namespace`.
 
 ### entity()
-> Only for types: `literal
+> Only for types: `literal`
 
-Returns the value portion of the literal. See [`entity.$type`](#e.type) and [`entity.$n3.datatype`](#entity.$n3.datatype) for getting the datatype of a literal.
+Returns the value portion of the literal. See [`entity.$type`](#e.$type) and [`entity.$n3.datatype`](#entity.$n3.datatype) for getting the datatype of a literal.
 
 ### entity(access_name: string)
 > Only for types: `node`
@@ -304,10 +304,10 @@ Returns the value portion of the literal. See [`entity.$type`](#e.type) and [`en
 Returns an array of entities that are pointed to by the namespaced predicate suffix `access_name`. If the current accessor namespace is empty, then the access name would be the full IRI of the predicate.
 
 <a name="e" />
-### entity(access_name: string[, ])
+### entity(access_name: string[, map_callback: function])
 > Only for types: `node`
 
-Same as [`()`](#e) except  an array of entities that are pointed to by the namespaced predicate suffix `access_name`. If the current accessor namespace is empty, then the access name would be the full IRI of the predicate.
+Same as [`entity()`](#e) except that it maps every object pointed to by `access_name` to the given `map_callback` function before returning the array of entities.
 
 ### entity()
 > Only for types: `collection`
@@ -335,6 +335,12 @@ This no-args version of the namespace method will instead return the full IRI of
 ### entity.$n3()
 Returns a terse n3 representation of the current entity as a string. It is prefixed by the longest matching URI available in the original JSON-LD context, unless the resulting suffix would contain invalid characters for a prefixed IRI in either SPARQL or TTL. The string is compatible with SPARQL and TTL as long as the corresponding prefix is also included in the document.
 
+<a name="e.$n3.datatype"
+### entity.$n3.datatype()
+> Only for types: `literal`
+
+Returns the IRI datatype of this literal in terese n3 form.
+
 <a name="e.$nquad" />
 ### entity.$nquad()
 Returns the n-quad representation of this entity. Useful for serializing to SPARQL/TTL without worrying about prefixes.
@@ -348,7 +354,7 @@ Returns true if the current entity's IRI is in the given `namespace`. Will alway
 ### entity.$is()
 Calling this function returns the reference type of this entity as a string. You can also use a shorthand check by testing if `.$is[ref_type]` is defined as `true`. eg: `if(entity.$is.iri === true) ...`. Possible values for type are:
  - *node* - this entity exists as the subject of some triple(s). This entity contains predicates that point to objects
- - *iri* - this is a mere symbollic reference to an IRI, which exists as the object of some triple. If you encounter this type, it means that you reached a named thing (ie: not a blanknode). Use [`.$node()`](#e.node) to obtain the node of this IRI if it exists in the current graph
+ - *iri* - this is a mere symbollic reference to an IRI, which exists as the object of some triple. If you encounter this type, it means that you reached a named thing (ie: not a blanknode). Use [`entity.$node()`](#e.node) to obtain the node of this IRI if it exists in the current graph
  - *literal* - an RDF literal
  - *collection* - an RDF collection
 

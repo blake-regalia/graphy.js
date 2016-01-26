@@ -277,10 +277,10 @@ describe('graphy', () => {
 			});
 		});
 
-	
-		describe('iterating', () => {
-			
-		});
+
+		// describe('iterating', () => {
+
+		// });
 	});
 });
 
@@ -356,20 +356,3 @@ describe('graphy', () => {
 
 	// 	});
 	// });
-
-
-
-	// describe('graphy interface function', () => {
-	// 	let a_nodes = graphy(h_graph).network('ns:');
-
-	// 	it('supports forEach', () => {
-	// 		a_nodes.forEach((k_node) => {
-	// 			eq(k_node.$id, 'Banana');
-	// 		});
-	// 	});
-
-	// 	it('supports [0]', () => {
-	// 		eq(a_nodes[0].$id, 'Banana');
-	// 	});
-	// });
-// });
