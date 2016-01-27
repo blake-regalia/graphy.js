@@ -1,6 +1,6 @@
 {
   "name": "graphy",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Query linked-data graphs by abstracting away traditional JSON-LD interaction",
   "author": {
     "name": "Blake Regalia",
@@ -41,9 +41,7 @@
   "dependencies": {
     "arginfo": "^1.1.2",
     "classer": "^0.1.5",
-    "cli-color": "^1.1.0",
-    "clone": "^1.0.2",
-    "rapunzel": "^0.1.8",
+    "jsonld": "^0.4.5",
     "rmprop": "^1.1.1",
     "xtend": "^4.0.1"
   }
