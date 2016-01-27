@@ -45,6 +45,7 @@
     "classer": "^0.1.5",
     "cli-color": "^1.1.0",
     "clone": "^1.0.2",
+    "jsonld": "^0.4.5",
     "rapunzel": "^0.1.8",
     "rmprop": "^1.1.1",
     "xtend": "^4.0.1"
