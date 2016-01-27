@@ -352,7 +352,9 @@ Calling this function returns the reference type of this entity as a string. You
 
 <a name="e.node" />
 ### entity.$node([namespace: string])
-Only defined on entities of type `iri`. Will return the node object for accessing triples that have this IRI as its subject. If there are no triples in the current jsonld graph that have this IRI as its subject, calling `.$node()` will return undefined for this IRI. Passing an optional `namespace` argument will set the accessor namespace on the returned graphy entity.
+> Only for types: `iri`
+
+Will return the node object for accessing triples that have this IRI as its subject. If there are no triples in the current jsonld graph that have this IRI as its subject, calling `.$node()` will return undefined for this IRI. Passing an optional `namespace` argument will set the accessor namespace on the returned graphy entity.
 
 <a name="e.@id" />
 ### entity['@id']
@@ -370,19 +372,19 @@ Reflects the json-ld `@type` property. For literals, this will be the datatype. 
 ### entity.$types
 > Only for types: `node`
 
-An array of the IRI entities that are pointed to by the `@type` property for this entity.
+An array of graphy IRI entities that are pointed to by the `@type` property (which is the `rdf:type` predicate) for this entity.
 
 <a name="e.$types" />
-### entity.$types()
+### entity.$types([namespace: string])
 > Only for types: `node`
 
-Returns an array containing the suffixes of the IRIs pointed to by the `@type` property after removing the current accessor namespace from the beginning of the IRI. If the current accessor namespace does not match any of the IRIs, this will return an empty array `[]`.
+Returns an array of strings that are the suffixes of the IRIs pointed to by the `@type` property after removing the current accessor namespace (or the given `namespace` argument) from the beginning of the IRI. If the namespace does not match any of the IRIs, this will return an empty array `[]`.
 
 <a name="e.$type" />
 ### entity.$type([namespace: string])
 > Only for types: `node`
 
-Shortcut for `.$types[0].$id`. If this node entity has more than one `rdf:type`, accessing this property will issue a warning. If the current accessor namespace does not match any of the IRIs, this will return `undefined`. If a `namespace` argument is passed, the method will use the given namespace instead of the current accessor namespace to suffix the IRI.
+Shortcut for `.$types(..)[0]`. If this node entity has more than one `rdf:type`, accessing this property will issue a warning. If the current accessor namespace does not match any of the IRIs, this will return `undefined`. If a `namespace` argument is passed, the method will use the given namespace instead of the current accessor namespace to suffix the IRI.
 
 ### entity.$type([namespace: string])
 > Only for types: `literal`
