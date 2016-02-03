@@ -9,7 +9,7 @@
   "files": [
     "dist"
   ],
-  "main": "dist/main/graphy.js",
+  "main": "dist/main/index.js",
   "keywords": [
     "linked-data",
     "semantic-web",
