@@ -1,5 +1,5 @@
 # graphy [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] [![Coverage percentage][coveralls-image]][coveralls-url]
-> Query linked-data graphs by abstracting away traditional JSON-LD interaction
+> Abstracts JSON-LD objects with an API for easy traversal and exploration of an RDF graph programatically. It emphasizes the use of iterators and namespaces to access entities by their suffix.
 
 
 # Contents
