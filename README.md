@@ -1,4 +1,4 @@
-# graphy [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] [![Coverage percentage][coveralls-image]][coveralls-url]
+# graphy [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 > Abstracts JSON-LD objects with an API for easy traversal and exploration of an RDF graph programatically. It emphasizes the use of iterators and namespaces to access entities by their suffix.
 
 
@@ -403,5 +403,4 @@ ISC © [Blake Regalia]()
 [travis-url]: https://travis-ci.org/blake-regalia/graphy.js
 [daviddm-image]: https://david-dm.org/blake-regalia/graphy.js.svg?theme=shields.io
 [daviddm-url]: https://david-dm.org/blake-regalia/graphy.js
-[coveralls-image]: https://coveralls.io/repos/blake-regalia/graphy.js/badge.svg
-[coveralls-url]: https://coveralls.io/r/blake-regalia/graphy.js
+
