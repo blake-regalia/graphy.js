@@ -323,6 +323,20 @@ Sets the accessor namespace of the returned object to the expanded version of th
 ### entity.$()
 This no-args version of the namespace method will instead return the full IRI of the current accessor namespace.
 
+<a name="e.$namespaces" />
+### entity.$namespaces()
+Returns a hash whose values are entities of this node under different namespace accessors; one for each IRI prefix in the JSON-LD document's context (which is the key of each key-value pair).
+
+```js
+// destructuring assignment
+let {rdfs, owl, other} = banana.$namespaces();
+rdfs.label; // 'Banana'
+other.ns.tastes(); // 'good'
+```
+
+### entity.$()
+This no-args version of the namespace method will instead return the full IRI of the current accessor namespace.
+
 <a name="e.$n3" />
 ### entity.$n3()
 Returns a terse n3 representation of the current entity as a string. It is prefixed by the longest matching URI available in the original JSON-LD context, unless the resulting suffix would contain invalid characters for a prefixed IRI in either SPARQL or TTL. The string is compatible with SPARQL and TTL as long as the corresponding prefix is also included in the document.
