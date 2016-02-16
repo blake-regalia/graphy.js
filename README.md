@@ -329,7 +329,7 @@ Returns a hash whose values are entities of this node under different namespace 
 
 ```js
 // destructuring assignment
-let {rdfs, owl, other} = banana.$namespaces();
+let {rdfs, owl, ...other} = banana.$namespaces();
 rdfs.label; // 'Banana'
 other.ns.tastes(); // 'good'
 ```
