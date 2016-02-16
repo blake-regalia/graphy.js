@@ -78,6 +78,12 @@ describe('graphy', () => {
 			it('returns map of all predicate/object pairs', () => {
 				eq(k_banana() instanceof Map, true);
 			});
+
+			it('support namespace mapping', () => {
+				let {plant, rdfs} = k_banana.$namespaces();
+				eq(rdfs.label(), 'Banana');
+				eq(plant.blossoms('ns:'), 'YearRound');
+			});
 		});
 
 
