@@ -22,7 +22,7 @@ describe('graphy', () => {
 	graphy(h_graph, (q_graph) => {
 
 		// select banana
-		let k_banana = q_graph.select('ns:Banana', 'ns:');
+		let k_banana = q_graph.select('ns:Banana');
 
 		//
 		describe('node', () => {
@@ -35,6 +35,10 @@ describe('graphy', () => {
 				includes(k_banana['@type'], ['vocab://plant/Fruit', 'vocab://ns/Food', 'vocab://plant/EdiblePart']);
 			});
 
+			it('namespace set to iri prefix', () => {
+				eq(k_banana.$(), 'vocab://ns/');
+			});
+
 			it('contains suffixed id property', () => {
 				eq(k_banana.$id(), 'Banana');
 			});
@@ -45,6 +49,14 @@ describe('graphy', () => {
 
 			it('contains types as array', () => {
 				deep(k_banana.$types(), ['Food']);
+			});
+
+			it('defaults namespace to iri prefix', () => {
+				deep(k_banana.$type(), 'Food');
+			});
+
+			it('supports namespace access', () => {
+				eq(k_banana.$.plant.blossoms.$.ns.$id(), 'YearRound');
 			});
 
 			it('supports namespace change', () => {
@@ -84,11 +96,19 @@ describe('graphy', () => {
 				eq(rdfs.label(), 'Banana');
 				eq(plant.blossoms('ns:'), 'YearRound');
 			});
+
+			it('expands namespace', () => {
+				eq(k_banana.$(), q_graph.expand('ns:'));
+			});
 		});
 
 
 		//
 		describe('typed literal', () => {
+
+			it('supports access-by-name property on namespace accessor', () => {
+				eq(k_banana.$.rdfs.label(), 'Banana');
+			});
 
 			it('returns primitive value when called', () => {
 				eq(k_banana.$('rdfs:').label(), 'Banana');
@@ -205,6 +225,10 @@ describe('graphy', () => {
 			it('dereferences to node', () => {
 				eq(k_banana.$types.filter(x => x.$in('plant:'))[0].$node('ns:').contains.$id('plant:'), 'Seeds');
 			});
+
+			it('supports access-by-name property on namespace accessor', () => {
+				eq(k_banana.appears.$.color.$id(), 'Yellow');
+			});
 		});
 
 
@@ -283,82 +307,6 @@ describe('graphy', () => {
 			});
 		});
 
-
-		// describe('iterating', () => {
-
-		// });
 	});
+
 });
-
-	// describe('graphy blanknode', () => {
-
-	// 	q_graph.network('ns:', (k_banana) => {
-
-	// 		//
-	// 		let k_node = k_banana.
-
-	// 		it('contains @id property', () => {
-	// 			eq(k_banana['@id'], 'vocab://ns/Banana');
-	// 		});
-
-	// 		it('contains @type property', () => {
-	// 			eq(k_banana['@type'], 'vocab://ns/Fruit');
-	// 		});
-
-	// 		it('contains suffixed id property', () => {
-	// 			eq(k_banana.$id, 'Banana');
-	// 		});
-
-	// 		it('contains suffixed type property', () => {
-	// 			eq(k_banana.$type, 'Fruit');
-	// 		});
-
-	// 		it('supports namespace change', () => {
-	// 			eq(k_banana.$('plant:').blossoms.$('ns:').$id, 'YearRound');
-	// 		});
-
-	// 		it('has node type indicator', () => {
-	// 			eq(k_banana.$is.node, true);
-	// 		});
-
-	// 		it('calling type indicator returns node', () => {
-	// 			eq(k_banana.$is(), 'node');
-	// 		});
-	// 	});
-	// });
-
-
-	// describe('graphy simple literal', () => {
-
-	// 	q_graph.network('ns:', (k_banana) => {
-
-	// 		it('returns primitive value when called', () => {
-	// 			eq(k_banana.tastes(), 'good');
-	// 		});
-
-	// 		it('does not contain @type property', () => {
-	// 			eq(k_banana.tastes['@type'], undefined);
-	// 		});
-
-	// 		it('contains @full property; ttl serialization', () => {
-	// 			eq(k_banana.tastes['@full'], '"good"');
-	// 		});
-
-	// 		it('has literal type indicator', () => {
-	// 			eq(k_banana.tastes.$is.literal, true);
-	// 		});
-
-	// 		it('calling type indicator returns literal', () => {
-	// 			eq(k_banana.tastes.$is(), 'literal');
-	// 		});
-
-	// 		it('returns simple literal without datatype', () => {
-	// 			eq(k_banana.tastes.$terse(), '"good"');
-	// 		});
-
-	// 		it('returns undefined datatype on terse', () => {
-	// 			eq(k_banana.tastes.$terse.datatype(), undefined);
-	// 		});
-
-	// 	});
-	// });
