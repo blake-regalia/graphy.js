@@ -6,7 +6,8 @@
  - [Setup](#install)
  - [Example Usage](#usage)
  - [Iterators and Collections](#iterating)
- - [API Reference](#api-reference)
+ - [Concepts](#concepts)
+ - [API Reference](#api_reference)
 
 
 ## Install
@@ -185,7 +186,7 @@ graphy(json_ld, (network) => {
 });
 ```
 
-<a name="#Iterators" />
+<a name="#iterating" />
 ## Iterating
 
 ### `for..of`
@@ -258,11 +259,26 @@ while(w_list.$id('rdf:') !== 'nil') {
 a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
 ```
 
-<a name="#API_Reference" />
+<a name="concepts" />
+# Concepts
+
+<a name="_accessor_namespace" />
+## Accessor Namespace
+All instances of type [entity](#_entity) have methods and properties that 'access' the suffixed part of the IRIs the entity is associated with. This suffix is made by removing the current accessor namespace from the beginning of the IRI. So for example:
+```js
+let banana = network.select('dbr:Banana');
+let rdfs = banana.$('http://www.w3.org/2000/01/rdf-schema#'); // sets the accessor namespace to the IRI aka by the prefix `rdfs:`
+rdfs.label(); // the `label` property was created because `http://www.w3.org/2000/01/rdf-schema#` was removed from the beginning of the predicate IRI
+```
+
+The accessor namespace of a variable does not change unless you reassign the variable; instead, the accessor namespace is mutated by chaining successive namespace modifier calls to a variable.
+
+<a name="api_reference" />
 # API Reference
 
+
 ---------------------------------------
-<a name="graphy" />
+<a name="_graphy" />
 ## Graphy
 The module itself.
 
@@ -278,18 +294,30 @@ An array of the jsonld objects in this graph, each represented by a graphy [enti
 <a name="network.select" />
 ### network.select(iri: string[, namespace: string])
 
-Returns the graphy entity for the IRI given by `iri`, which may be either a prefixed or absolute IRI. Optional `namespace` argument will set the accessor namespace for the returned object (see [entity.$()](#entity.$)). If `namespace` is ommitted, the namespace will get set to the longest matching prefix to the provided `iri`.
+Returns the graphy [entity](#_entity) for the IRI given by `iri`, which may be either a prefixed or absolute IRI. Optional `namespace` argument will set the [accessor namespace](#_accessor_namespace) for the returned object (see [`entity.$()`](#entity.$)). If `namespace` is ommitted, then the accessor namespace will get set to the longest matching prefix of the provided `iri`.
+
+Example:
+```js
+graphy(jsonld, (network) => {
+
+	// select the set of triples in this JSONLD graph where `ns:Banana` is the subject
+	let banana = network.select('ns:Banana');
+
+	// the namespace accessor defaulted to `ns:`
+	banana.$id(); // 'Banana'
+});
+```
 
 
 <a name="network.top" />
 ### network.top([map_callback: function])
-Returns an array of only entities that are named things (ie not blanknodes) or blanknodes that do not appear in the object position of any triples in the current graph. These can be thought of as top-level nodes. Accepts an optional `map_callback` function to transform the entities before returning the array. These entities will have empty an accessor namespace by default.
+Returns an array of entities that are named things (ie not blanknodes) or blanknodes that do not appear in the object position of any triples in the current graph. These can be thought of as top-level nodes. Accepts an optional `map_callback` function to transform the entities before returning the array. These entities will have empty an accessor namespace by default.
 
 
 <a name="network.shorten" />
 
 ### network.shorten(iri: string)
-Shortens an IRI using prefixes defined in the @context object of the original JSON-LD document. Uses the prefix that has the longest matching URI.
+Shortens an IRI using prefixes defined in the @context object of the original JSON-LD document. Picks the prefix with the longest matching URI.
 
 
 <a name="network.expand" />
@@ -301,7 +329,7 @@ Expands a prefixed n3 IRI using prefixes defined in the @context object of the o
 <a name="network.@" />
 
 ### network.[...]
-[Network](#network) is an array, so it supports all native functions. Each item in the array is a graphy entity with an empty accessor namespace.
+[Network](#network) is an array, so it supports all native Array functions. Each item in the array is a graphy entity with an empty accessor namespace.
 
 ---------------------------------------
 <a name="_entity" />
@@ -312,12 +340,11 @@ This class is abstract. The methods and properties in this section are available
  - [Node](#_node)
  - [IRI](#_iri)
  - [Literal](#_literal)
- - [Collection]#(_collection)
+ - [Collection](#_collection)
 
 
 <a name="e.$is" />
-### entity.$is()
-### entity.$is[type]
+### entity.$is(),  entity.$is[type]
 
 Returns the representative `type` of this entity as a string. You can also use a shorthand check by testing if `.$is[type]` is defined as `true`. eg: `if(entity.$is.iri === true) ...`. Possible values for `type` are:
  - *node* - a [node](#_node)
@@ -325,11 +352,18 @@ Returns the representative `type` of this entity as a string. You can also use a
  - *literal* - a [literal](#_literal)
  - *collection* - a [collection](#_collection)
 
+Example:
+ ```js
+banana.$is(); // 'node'
+banana.$is.node; // true
+banana.$is.literal; // false
+ ```
+
 
 <a name="entity.$" />
 ### entity.$(namespace: string)
 
-Sets the accessor namespace of the returned object to the expanded version of the IRI given by `namespace`, may be either an n3 prefix or a full IRI. By chaining this call, you can change the accessor namespace on the same line to access properties or IRIs by their suffix. For an even shorter syntax, see [`entity.$[@prefix_name]`](#entity.$.@prefix_name) .
+Sets the accessor namespace of the returned object to the expanded version of the IRI given by `namespace`, may be either an n3 prefix or a full IRI. By chaining this call, you can change the accessor namespace on the same line to access properties or IRIs by their suffix. For an even shorter syntax, see [`entity.$[prefix_name]`](#entity.$.@prefix_name) .
 
 
 ### entity.$()
@@ -338,7 +372,7 @@ The no-args version of this method returns the absolute IRI of the current acces
 
 
 <a name="entity.$.@prefix_name" />
-### entity.$[@prefix_name]
+### entity.$[prefix_name]
 A hash whose values are entities embodying objects of the triples belonging to this node under different prefix names (given by the key of each key-value pair); one for each IRI prefix in the JSON-LD document's context.
 
 Example:
@@ -398,7 +432,7 @@ Returns `true` if the current entity's IRI is within the given `namespace`. Will
 
 
 <a name="entity.@id" />
-### entity['@id']
+### entity["@id"]
 
 The absolute IRI of this entity. Reflects the JSON-LD `@id` property.
 
@@ -427,12 +461,16 @@ The suffix of the `@id` property after removing the current accessor namespace f
 banana.$id(); // 'Banana'
 
 // for iris
-banana.class.$id(); // 'vocab://ns/Berry'
+let ns = banana.$('ns:');
+ns.class.$id(); // 'Berry'
+ns.appears.$id(); // undefined
+ns.appears.$id('color:'); // 'Yellow'
+ns.appears.$.color.$id(); // 'Yellow'
 ```
 
 
 <a name="entity.@type" />
-### entity['@type']
+### entity["@type"]
 
 Reflects the JSON-LD `@type` property. For literals, this will return the absolute datatype IRI as a string. For nodes, this will return an array of absolute IRIs representing the objects pointed to by the `rdf:type` predicate.
 
