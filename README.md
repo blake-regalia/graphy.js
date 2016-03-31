@@ -70,7 +70,7 @@ graphy(json_ld, (network) => {
 
 	// ... and their datatype
 	dbp.wikiPageID['@type']; // 'http://www.w3.org/2001/XMLSchema#integer'
-	dbp.wikiPageID.$type('xsd:'); // 'double'
+	dbp.wikiPageID.$type('xsd:'); // 'integer'
 
 	// predicates linking to more than one object
 	dbp.caption.length; // 2
@@ -514,9 +514,9 @@ for(let [predicate, objects] of banana) {
 
 
 <a name="node.$types." />
-### entity.$types
+### node.$types
 
-An array of graphy IRI entities that are pointed to by the `@type` property (which is the `rdf:type` predicate) for this entity.
+An array of graphy IRI entities that are pointed to by the `@type` property (which is the `rdf:type` predicate) for this node.
 
 Example:
 ```js
@@ -528,7 +528,7 @@ banana.$types[0].$id('ns:');
 
 
 <a name="node.$types" />
-### entity.$types([namespace: string])
+### node.$types([namespace: string])
 
 Returns an array of strings that are the suffixes of the IRIs pointed to by the `@type` property after removing the current accessor namespace (or the given `namespace` argument) from the beginning of the IRI. If the namespace does not match any of the IRIs, this will return an empty array `[]`.
 
