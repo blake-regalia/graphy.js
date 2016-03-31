@@ -51,7 +51,7 @@ graphy(json_ld, (network) => {
 	banana.$.dct.subject(s => s.$id('dbc:')); // ['Fiber_plants', 'Staple_foods', 'Tropical_agriculture', ...]
 
 	// get IRI of node
-	banana['@id']; // 'vocab://ns/Banana'
+	banana['@id']; // 'http://dbpedia.org/resource/Banana'
 	banana.$id(); // 'Banana'
 });
 ```
