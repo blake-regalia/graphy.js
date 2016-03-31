@@ -18,43 +18,11 @@ $ npm install --save graphy
 
 ## Usage
 
-Take the following graph:
-```turtle
-@prefix ns: <vocab://ns/> .
-@prefix color: <vocab://color/> .
-@prefix plant: <vocab://plant/> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-plant:Fruit
-	ns:contains plant:Seeds .
-
-ns:Banana
-	a ns:Food, plant:Fruit, plant:EdiblePart;
-	rdfs:label "Banana"^^xsd:string;
-	ns:tastes "good" ;
-	ns:shape "curved"^^ns:Liberty ;
-	ns:data 25 ;
-	ns:appears color:Yellow ;
-	ns:class ns:Berry ;
-	plant:blossoms ns:YearRound ;
-	ns:alias ns:Cavendish, ns:Naner, ns:Bananarama ;
-	ns:stages (
-		ns:FindSpace
-		plant:Seed
-		plant:Grow
-		plant:Harvest
-	) ;
-	ns:considered [
-		a plant:Clone, plant:Fruit
-	] .
-```
-
-Here, `example.json` is a JSON-LD file generated from the graph above:
+Take this example using DBpedia's [dbr:Banana](http://dbpedia.org/page/Banana) resource:
 ```js
 var graphy = require('graphy');
-var json_ld = require('./example.json');
+
+let json_ld = ...; // JSON-LD for dbr:Banana from DBpedia
 
 graphy(json_ld, (network) => {
 	
@@ -85,106 +53,10 @@ graphy(json_ld, (network) => {
 	// get IRI of node
 	banana['@id']; // 'vocab://ns/Banana'
 	banana.$id(); // 'Banana'
-
-	// get `rdf:type` property(s) of node
-	k_banana['@type']; // ['vocab://plant/Fruit', 'vocab://ns/Food']
-	k_banana.$types(); // ['Food']
-	k_banana.$type(); // 'Food'
-	k_banana.$types('plant:'); // ['Fruit']
-	k_banana.$type('plant:'); // 'Fruit'
-
-	// get value of a literal
-	k_banana.tastes(); // 'good'
-	k_banana.shape(); // 'curved'
-
-	// get absolute datatype of a literal
-	k_banana.shape['@type']; // 'vocab://ns/Liberty'
-	k_banana.tastes['@type']; // 'http://www.w3.org/2001/XMLSchema#string'
-
-	// get suffixed datatype of a literal
-	k_banana.shape.$type(); // 'Liberty'
-
-	// set terminal namespace to get suffixed datatype of literal
-	k_banana.tastes.$type(); // undefined
-	k_banana.tastes.$type('xsd:'); // 'string'
-
-	// properties of an IRI in same accessor namespace
-	k_banana.class(); // 'Berry'
-	k_banana.class.$id(); // 'Berry'
-	k_banana.class['@id']; // 'vocab://ns/Berry'
-	k_banana.class['@type']; // '@id'
-
-	// properties of an IRI in different namespace
-	k_banana.appears(); // undefined
-	k_banana.appears('color:'); // 'Yellow'
-	k_banana.appears.$id(); // undefined
-	k_banana.appears.$id('color:'); // 'Yellow'
-	k_banana.appears['@id']; // 'vocab://color/Yellow'
-	k_banana.appears['@type']; // '@id'
-
-	// changing accessor namespace
-	k_banana.$types('plant:'); // ['Fruit', 'EdiblePart']
-	k_banana.$('plant:').blossoms(); // undefined
-	k_banana.$('plant:').blossoms['@id']; // 'vocab://ns/YearRound'
-	k_banana.$('plant:').blossoms('ns:'); // 'YearRound'
-
-	// get SPARQL/TTL-compatible string representation of any entity
-	k_banana.$n3(); // 'ns:Banana'
-	k_banana.$n3(false); // '<vocab://ns/Banana>'
-	k_banana.appears.$n3(); // 'color:Yellow'
-	k_banana.tastes.$n3(); // '"good"^^xsd:string'
-	k_banana.tastes.$n3.value(); // '"good"'
-	k_banana.tastes.$n3.datatype(); // 'xsd:string'
-
-	// ...cont'd
-	k_banana.class.$n3(); // 'ns:Berry'
-	k_banana.class.$nquad(); // '<vocab://ns/Berry>'
-	k_banana.tastes.$nquad(); // '"good"^^<http://www.w3.org/2001/XMLSchema#string>'
-	k_banana.stages.$n3(); // '[rdf:first ns:FindSpace; rdf:rest (plant:Seed plant:Grow plant:Harvest)]'
-	k_banana.stages.$n3(false); // '[<http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://ns/FindSpace>;<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> (<vocab://plant/Seed> <vocab://plant/Grow> <vocab://plant/Harvest>)]'
-
-	// type indicators
-	k_banana.$is(); // 'node'
-	k_banana.$is.node; // true
-
-	// ...cont'd
-	k_banana.appears.$is(); // 'iri'
-	k_banana.data.$is(); // 'literal'
-	k_banana.stages.$is(); // 'collection'
-	k_banana.considered.$is(); // 'blanknode'
-
-	// ...cont'd
-	k_banana.$is.node; // true
-	k_banana.appears.$is.iri; // true
-	k_banana.data.$is.literal; // true
-	k_banana.stages.$is.iri; // undefined
-	k_banana.stages.$is.literal; // undefined
-	k_banana.stages.$is.collection; // true
-	k_banana.considered.$is.blanknode; // true
-
-	// predicates with multiple objects
-	k_banana.alias; // emits warning: 'more than one triple share the same predicate "ns:alias" with subject "ns:Banana"; By using '.alias', you are accessing any one of these triples arbitrarily'
-
-	// ..contd'
-	let a_items = k_banana('alias', function(k_alias) { // implicit `.map` callback
-		return k_alias();
-	});
-	a_items; // ['Cavendish', 'Naner', 'Bananarama']
-
-	// collections
-	k_banana.stages().map(function(k_stage) {
-		return k_stage.$id() || k_stage.$id('plant:');
-	}); // ['FindSpace', 'Seed', 'Grow', 'Harvest']
-
-	// collections: (equivalent to above) implicit `.map`
-	k_banana.stages(function(k_stage) { // implicit `.map` callback
-		return k_stage.$id() || k_stage.$id('plant:');
-	}); // ['FindSpace', 'Seed', 'Grow', 'Harvest']
-
-	// collections: implicit array accessor
-	k_banana.stages(0).$id(); // 'FindSpace'
 });
 ```
+
+
 
 <a name="#iterating" />
 ## Iterating
