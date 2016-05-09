@@ -434,14 +434,15 @@ Will return the node object for accessing triples that have this IRI as its subj
 A graphy [entity](#entity) that represents an RDF literal.
 
 ```js
-rdsf.label.$is(); // 'literal'
+rdfs.label.$is(); // 'literal'
 ```
 
 
 <a name="literal." />
 ### literal()
 
-Returns the value portion of the literal. See [`literal.$datatype`](#literal.$datatype) and [`literal.$n3.datatype`](#literal.$n3_datatype) for getting the datatype of a literal.
+Returns the value portion of the literal.
+> See [`literal.$datatype`](#literal.$datatype) and [`literal.$n3.datatype`](#literal.$n3_datatype) for getting the datatype of a literal.
 
 ```js
 rdfs.label(); // 'Banana'
@@ -451,10 +452,12 @@ rdfs.label(); // 'Banana'
 <a name="literal.$datatype" />
 ### literal.$datatype([namespace: string])
 
-Returns the suffix of this literal's datatype IRI using either the current accessor namespace unless a `namespace` argument is provided. To get the absolute IRI
+Returns the suffix of this literal's datatype IRI using the current accessor namespace unless a `namespace` argument is provided.
+> To get the absolute IRI, you can pass an empty string for the `namespace` argument.
 
 ```js
 rdfs.label.$datatype('xsd:'); // 'string'
+rdfs.label.$datatype(''); // 'http://www.w3.org/2001/XMLSchema#string'
 ```
 
 
@@ -462,6 +465,7 @@ rdfs.label.$datatype('xsd:'); // 'string'
 ### literal.$n3.datatype()
 
 Returns the terse datatype IRI of this literal in n3 form.
+> This is a property of the [`entity.$n3`](#entity.n3) function.
 
 ```js
 rdfs.label.$n3.datatype(); // 'xsd:string'
@@ -472,6 +476,7 @@ rdfs.label.$n3.datatype(); // 'xsd:string'
 ### literal.$nquad.datatype()
 
 Returns the absolute datatype IRI of this literal in nquad form.
+> This is a property of the [`entity.$nquad`](#entity.nquad) function.
 
 ```js
 rdfs.label.$nquad.datatype; // 'http://www.w3.org/2001/XMLSchema#string'
