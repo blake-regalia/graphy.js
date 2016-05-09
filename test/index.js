@@ -59,6 +59,14 @@ describe('graphy', () => {
 				eq(k_banana.$.plant.blossoms.$.ns.$id(), 'YearRound');
 			});
 
+			it('supports namespace destruct', () => {
+				let {
+					plant: k_plant,
+				} = k_banana.$;
+
+				eq(k_plant.blossoms.$.ns.$id(), 'YearRound');
+			});
+
 			it('supports namespace change', () => {
 				eq(k_banana.$('plant:').blossoms.$('ns:').$id(), 'YearRound');
 			});
