@@ -1,6 +1,6 @@
 import arginfo from 'arginfo';
 import assert from 'assert';
-import graphy from '../lib/main';
+import graphy from '../..//lib/main';
 import h_graph from './graph.json';
 
 

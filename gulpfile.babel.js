@@ -1,17 +1,19 @@
 // native imports
 import path from 'path';
 
-// gulp & gulp-specific plugins
+// gulp
 import gulp from 'gulp';
-import babel from 'gulp-babel';
-import mocha from 'gulp-mocha';
-import istanbul from 'gulp-istanbul';
-import plumber from 'gulp-plumber';
 
-import eslint from 'gulp-eslint';
-import excludeGitignore from 'gulp-exclude-gitignore';
-import nsp from 'gulp-nsp';
-import coveralls from 'gulp-coveralls';
+// load gulp plugins
+import plugins from 'gulp-load-plugins';
+const $ = plugins({
+	// // uncomment these lines to show debug messages while loading gulp plugins
+	// DEBUG: true,
+
+	// load gulp and vinyl modules
+	pattern: ['gulp-*', 'vinyl-*'],
+	replaceString: /^(?:gulp|vinyl)(-|\.)/,
+});
 
 // general libraries
 import del from 'del';
@@ -20,40 +22,42 @@ import {Instrumenter} from 'isparta';
 // local config
 import compileConfig from './.compileconfig.json';
 
-// static
-gulp.task('static', () => {
-	return gulp.src('lib/index.js')
-		.pipe(excludeGitignore())
-		.pipe(eslint())
-		.pipe(eslint.format())
-		.pipe(eslint.failAfterError());
-});
-
-// nsp
-gulp.task('nsp', (cb) => {
-	nsp('package.json', cb);
-});
-
 // pre-test
 gulp.task('pre-test', () => {
 	return gulp.src('lib/**/*.js')
-		.pipe(istanbul({
+		.pipe($.istanbul({
 			includeUntested: true,
 			instrumenter: Instrumenter
 		}))
-		.pipe(istanbul.hookRequire());
+		.pipe($.istanbul.hookRequire());
+});
+
+
+// test volt
+gulp.task('test-volt', ['pre-test'], (cb) => {
+	let mochaErr;
+	gulp.src('test/volt/*.js')
+		.pipe($.plumber())
+		.pipe($.mocha({reporter: 'spec'}))
+		.on('error', (err) => {
+			mochaErr = err;
+		})
+		.pipe($.istanbul.writeReports())
+		.on('end', () => {
+			cb(mochaErr);
+		});
 });
 
 // test
 gulp.task('test', ['pre-test'], (cb) => {
 	let mochaErr;
 	gulp.src('test/**/*.js')
-		.pipe(plumber())
-		.pipe(mocha({reporter: 'spec'}))
+		.pipe($.plumber())
+		.pipe($.mocha({reporter: 'spec'}))
 		.on('error', (err) => {
 			mochaErr = err;
 		})
-		.pipe(istanbul.writeReports())
+		.pipe($.istanbul.writeReports())
 		.on('end', () => {
 			cb(mochaErr);
 		});
@@ -65,7 +69,7 @@ gulp.task('coveralls', ['test'], () => {
 		return;
 	}
 	return gulp.src(path.join(__dirname, 'coverage/lcov.info'))
-		.pipe(coveralls());
+		.pipe($.coveralls());
 });
 
 // clean
@@ -85,8 +89,28 @@ compileConfig.transpile.forEach((s_directory) => {
 
 	// register builder
 	gulp.task('build-'+s_directory, ['clean-'+s_directory], () => {
+
+		// load all javascript source files
 		return gulp.src('./lib/'+s_directory+'/*.js')
-			.pipe(babel())
+
+			// handle uncaught exceptions thrown by any of the plugins that follow
+			.pipe($.plumber())
+
+			// do not recompile unchanged files
+			.pipe($.cached(`build-${s_directory}`))
+
+			// lint all javascript source files
+			.pipe($.eslint())
+			.pipe($.eslint.format())
+
+			// // preserve mappings to source files for debugging in es5 runtime
+			// .pipe($.sourcemaps.init())
+
+				// transpile es2015 => es5
+				.pipe($.babel())
+			// .pipe($.sourcemaps.write())
+
+			// write output to dist directory
 			.pipe(gulp.dest('./dist/'+s_directory));
 	});
 });
