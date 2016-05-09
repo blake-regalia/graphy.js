@@ -33,10 +33,10 @@ gulp.task('pre-test', () => {
 });
 
 
-// test volt
-gulp.task('test-volt', ['pre-test'], (cb) => {
+// test basic
+gulp.task('test-basic', ['pre-test'], (cb) => {
 	let mochaErr;
-	gulp.src('test/volt/*.js')
+	gulp.src('test/basic/*.js')
 		.pipe($.plumber())
 		.pipe($.mocha({reporter: 'spec'}))
 		.on('error', (err) => {
@@ -48,20 +48,9 @@ gulp.task('test-volt', ['pre-test'], (cb) => {
 		});
 });
 
+
 // test
-gulp.task('test', ['pre-test'], (cb) => {
-	let mochaErr;
-	gulp.src('test/**/*.js')
-		.pipe($.plumber())
-		.pipe($.mocha({reporter: 'spec'}))
-		.on('error', (err) => {
-			mochaErr = err;
-		})
-		.pipe($.istanbul.writeReports())
-		.on('end', () => {
-			cb(mochaErr);
-		});
-});
+gulp.task('test', ['pre-test', 'test-basic']);
 
 // coveralls
 gulp.task('coveralls', ['test'], () => {

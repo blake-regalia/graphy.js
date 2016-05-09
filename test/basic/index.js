@@ -135,15 +135,15 @@ describe('graphy', () => {
 			});
 
 			it('suffixes namespaced datatype', () => {
-				eq(k_banana.shape.$type(), 'Liberty');
+				eq(k_banana.shape.$datatype(), 'Liberty');
 			});
 
 			it('does not mis-suffix non-namespaced datatype', () => {
-				eq(k_banana.$('rdfs:').label.$type(), undefined);
+				eq(k_banana.$('rdfs:').label.$datatype(), undefined);
 			});
 
 			it('suffixes datatype on namespace changed', () => {
-				eq(k_banana.$('rdfs:').label.$type('xsd:'), 'string');
+				eq(k_banana.$('rdfs:').label.$datatype('xsd:'), 'string');
 			});
 
 			it('has literal type indicator', () => {
@@ -267,14 +267,14 @@ describe('graphy', () => {
 			});
 
 			it('serializes to nquad', () => {
-				eq(k_banana.stages.$nquad(), '_:b5 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://ns/FindSpace>. '
-					+'_:b5 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b6. '
-					+'_:b6 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Seed>. '
-					+'_:b6 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b7. '
-					+'_:b7 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Grow>. '
-					+'_:b7 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b8. '
-					+'_:b8 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Harvest>. '
-					+'_:b8 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil>. ');
+				eq(k_banana.stages.$nquad(), '_:b9 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://ns/FindSpace>. '
+					+'_:b9 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b10. '
+					+'_:b10 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Seed>. '
+					+'_:b10 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b11. '
+					+'_:b11 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Grow>. '
+					+'_:b11 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b12. '
+					+'_:b12 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Harvest>. '
+					+'_:b12 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil>. ');
 			});
 
 			it('supports implicit map callback', () => {
@@ -312,6 +312,13 @@ describe('graphy', () => {
 
 			it('calling type indicator returns collection', () => {
 				eq(k_banana.stages.$is(), 'collection');
+			});
+
+			it('indicates nested items', () => {
+				let a_names = k_banana.related((k_related) => {
+					return k_related.name();
+				});
+				deep(a_names, ['Monkeys', 'Gros Michel']);
 			});
 		});
 

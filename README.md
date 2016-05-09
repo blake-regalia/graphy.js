@@ -38,7 +38,7 @@ graphy(json_ld, (network) => {
 
 	// ... and their datatype
 	dbp.wikiPageID['@type']; // 'http://www.w3.org/2001/XMLSchema#integer'
-	dbp.wikiPageID.$type('xsd:'); // 'integer'
+	dbp.wikiPageID.$datatype('xsd:'); // 'integer'
 
 	// predicates linking to more than one object
 	dbp.caption.length; // 2
@@ -433,20 +433,28 @@ Will return the node object for accessing triples that have this IRI as its subj
 ## Literal
 A graphy [entity](#entity) that represents an RDF literal.
 
+```js
+rdsf.label.$is(); // 'literal'
+```
+
 
 <a name="literal." />
 ### literal()
 
-Returns the value portion of the literal. See [`entity.$type`](#e.$type) and [`entity.$n3.datatype`](#entity.$n3_datatype) for getting the datatype of a literal.
+Returns the value portion of the literal. See [`literal.$datatype`](#literal.$datatype) and [`literal.$n3.datatype`](#literal.$n3_datatype) for getting the datatype of a literal.
+
+```js
+rdfs.label(); // 'Banana'
+```
 
 
-<a name="literal.$type" />
-### literal.$type([namespace: string])
+<a name="literal.$datatype" />
+### literal.$datatype([namespace: string])
 
 Returns the suffix of this literal's datatype IRI using either the current accessor namespace unless a `namespace` argument is provided. To get the absolute IRI
 
 ```js
-
+rdfs.label.$datatype('xsd:'); // 'string'
 ```
 
 
@@ -455,6 +463,9 @@ Returns the suffix of this literal's datatype IRI using either the current acces
 
 Returns the terse datatype IRI of this literal in n3 form.
 
+```js
+rdfs.label.$n3.datatype(); // 'xsd:string'
+```
 
 
 <a name="literal.$nquad.datatype" />
@@ -462,6 +473,9 @@ Returns the terse datatype IRI of this literal in n3 form.
 
 Returns the absolute datatype IRI of this literal in nquad form.
 
+```js
+rdfs.label.$nquad.datatype; // 'http://www.w3.org/2001/XMLSchema#string'
+```
 
 
 ## Collection
