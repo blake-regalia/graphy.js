@@ -1,12 +1,12 @@
 {
   "@graph" : [ {
     "@id" : "_:b2",
+    "@type" : [ "plant:Fruit", "plant:Clone" ]
+  }, {
+    "@id" : "_:b3",
     "ns:name" : "Gros Michel"
   }, {
     "@id" : "_:b7",
-    "@type" : [ "plant:Fruit", "plant:Clone" ]
-  }, {
-    "@id" : "_:b8",
     "ns:name" : "Monkeys"
   }, {
     "@id" : "ns:Banana",
@@ -15,10 +15,11 @@
     "alias" : [ "ns:Cavendish", "ns:Naner", "ns:Bananarama" ],
     "appears" : "color:Yellow",
     "class" : "ns:Berry",
-    "considered" : "_:b7",
+    "considered" : "_:b2",
     "ns:data" : 25,
+    "modified" : "1970-01-01T00:00:01.337Z",
     "related" : {
-      "@list" : [ "_:b8", "_:b2" ]
+      "@list" : [ "_:b7", "_:b3" ]
     },
     "shape" : "curved",
     "stages" : {
@@ -39,6 +40,10 @@
       "@id" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#first",
       "@type" : "@id"
     },
+    "name" : {
+      "@id" : "vocab://ns/name",
+      "@type" : "http://www.w3.org/2001/XMLSchema#string"
+    },
     "contains" : {
       "@id" : "vocab://ns/contains",
       "@type" : "@id"
@@ -51,8 +56,8 @@
       "@id" : "http://www.w3.org/2000/01/rdf-schema#label",
       "@type" : "http://www.w3.org/2001/XMLSchema#string"
     },
-    "stages" : {
-      "@id" : "vocab://ns/stages",
+    "related" : {
+      "@id" : "vocab://ns/related",
       "@type" : "@id"
     },
     "data" : {
@@ -63,6 +68,10 @@
       "@id" : "vocab://ns/class",
       "@type" : "@id"
     },
+    "stages" : {
+      "@id" : "vocab://ns/stages",
+      "@type" : "@id"
+    },
     "alias" : {
       "@id" : "vocab://ns/alias",
       "@type" : "@id"
@@ -71,8 +80,12 @@
       "@id" : "vocab://ns/tastes",
       "@type" : "http://www.w3.org/2001/XMLSchema#string"
     },
-    "related" : {
-      "@id" : "vocab://ns/related",
+    "modified" : {
+      "@id" : "vocab://ns/modified",
+      "@type" : "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "considered" : {
+      "@id" : "vocab://ns/considered",
       "@type" : "@id"
     },
     "blossoms" : {
@@ -82,14 +95,6 @@
     "shape" : {
       "@id" : "vocab://ns/shape",
       "@type" : "vocab://ns/Liberty"
-    },
-    "considered" : {
-      "@id" : "vocab://ns/considered",
-      "@type" : "@id"
-    },
-    "name" : {
-      "@id" : "vocab://ns/name",
-      "@type" : "http://www.w3.org/2001/XMLSchema#string"
     },
     "color" : "vocab://color/",
     "rdf" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#",

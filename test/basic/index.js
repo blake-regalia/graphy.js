@@ -169,6 +169,22 @@ describe('graphy', () => {
 			it('supports auto-prefixing just datatype', () => {
 				eq(k_banana.$('rdfs:').label.$n3.datatype(), 'xsd:string');
 			});
+
+			it('recognizes parseable datatype: string', () => {
+				eq(k_banana.$.rdfs.label.$datatype.parseable(), true);
+			});
+
+			it('recognizes parseable datatype: date-time', () => {
+				eq(k_banana.$.rdfs.label.$datatype.parseable(), true);
+			});
+
+			it('parses parseable datatype', () => {
+				eq(k_banana.modified().getTime(), 1337);
+			});
+
+			it('returns raw datatype', () => {
+				eq(k_banana.modified.$raw(), '1970-01-01T00:00:01.337Z');
+			});
 		});
 
 
@@ -267,14 +283,14 @@ describe('graphy', () => {
 			});
 
 			it('serializes to nquad', () => {
-				eq(k_banana.stages.$nquad(), '_:b9 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://ns/FindSpace>. '
+				eq(k_banana.stages.$nquad(), '_:b8 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://ns/FindSpace>. '
+					+'_:b8 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b9. '
+					+'_:b9 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Seed>. '
 					+'_:b9 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b10. '
-					+'_:b10 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Seed>. '
+					+'_:b10 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Grow>. '
 					+'_:b10 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b11. '
-					+'_:b11 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Grow>. '
-					+'_:b11 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b12. '
-					+'_:b12 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Harvest>. '
-					+'_:b12 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil>. ');
+					+'_:b11 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <vocab://plant/Harvest>. '
+					+'_:b11 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil>. ');
 			});
 
 			it('supports implicit map callback', () => {

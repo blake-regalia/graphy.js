@@ -441,7 +441,7 @@ rdfs.label.$is(); // 'literal'
 <a name="literal." />
 ### literal()
 
-Returns the value portion of the literal.
+Returns the value portion of the literal. Certain datatypes are automatically parsed to their corresponding javascript datatype; see the list [here](#literal.$datatype.parseable). To access the unparsed value, use [`literal.$raw()`](#literal.$raw).
 > See [`literal.$datatype`](#literal.$datatype) and [`literal.$n3.datatype`](#literal.$n3_datatype) for getting the datatype of a literal.
 
 ```js
@@ -458,6 +458,25 @@ Returns the suffix of this literal's datatype IRI using the current accessor nam
 ```js
 rdfs.label.$datatype('xsd:'); // 'string'
 rdfs.label.$datatype(''); // 'http://www.w3.org/2001/XMLSchema#string'
+```
+
+<a name="literal.$datatype.parseable" />
+### literal.$datatype([namespace: string])
+
+Returns true if this literal was automatically parsed to its corresponding javascript datatype. Applies to the following `xsd:` datatypes:
+ - string
+ - boolean
+ - decimal
+ - byte, unsignedByte
+ - short, unsignedShort
+ - long, unsignedLong
+ - int, unsignedInt
+ - integer, positiveInteger, nonPositiveInteger, negativeInteger, nonNegativeInteger
+ - float, double
+ - dateTime
+
+```js
+rdfs.label.$datatype.parseable; // true
 ```
 
 
@@ -481,6 +500,13 @@ Returns the absolute datatype IRI of this literal in nquad form.
 ```js
 rdfs.label.$nquad.datatype; // 'http://www.w3.org/2001/XMLSchema#string'
 ```
+
+
+<a name="literal.$raw()" />
+### literal.$raw()
+
+Returns the raw, unparsed value of this literal from the JSON-LD graph. For most cases, this will be the same as the parsed value.
+
 
 
 ## Collection
