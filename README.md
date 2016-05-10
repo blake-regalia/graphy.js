@@ -461,7 +461,7 @@ rdfs.label.$datatype(''); // 'http://www.w3.org/2001/XMLSchema#string'
 ```
 
 <a name="literal.$datatype.parseable" />
-### literal.$datatype([namespace: string])
+### literal.$datatype.parseable()
 
 Returns true if this literal was automatically parsed to its corresponding javascript datatype. Applies to the following `xsd:` datatypes:
  - string
@@ -476,7 +476,7 @@ Returns true if this literal was automatically parsed to its corresponding javas
  - dateTime
 
 ```js
-rdfs.label.$datatype.parseable; // true
+rdfs.label.$datatype.parseable(); // true
 ```
 
 
