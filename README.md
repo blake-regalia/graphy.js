@@ -104,7 +104,7 @@ for(let [p_predicate, a_objects] of k_banana()) {  // same as k_banana.$('')
 Collection objects are arrays that are also an [entity](#entity).
 
 In order to be consistent with the graph, rdf collection properties are emulated on collection objects. So instead of accessing a collection's elements via Array's properties/methods, you can also use the `rdf:first` and `rdf:rest` properties:
-```javascript
+```js
 let w_list = k_banana.stages.$('rdf:');
 
 w_list.first.$id('ns:'); // 'FindSpace'
@@ -441,7 +441,7 @@ rdfs.label.$is(); // 'literal'
 <a name="literal." />
 ### literal()
 
-Returns the value portion of the literal. Certain datatypes are automatically parsed to their corresponding javascript datatype; see the list [here](#literal.$datatype.parseable). To access the unparsed value, use [`literal.$raw()`](#literal.$raw).
+Returns the value portion of the literal. Certain datatypes are automatically parsed to their corresponding JavaScript datatype; see the list [here](#literal.$datatype.parseable). To access the unparsed value, use [`literal.$raw()`](#literal.$raw).
 > See [`literal.$datatype`](#literal.$datatype) and [`literal.$n3.datatype`](#literal.$n3_datatype) for getting the datatype of a literal.
 
 ```js
@@ -463,7 +463,7 @@ rdfs.label.$datatype(''); // 'http://www.w3.org/2001/XMLSchema#string'
 <a name="literal.$datatype.parseable" />
 ### literal.$datatype.parseable()
 
-Returns true if this literal was automatically parsed to its corresponding javascript datatype. Applies to the following `xsd:` datatypes:
+Returns true if this literal was automatically parsed to its corresponding JavaScript datatype. Applies to the following `xsd:` datatypes:
  - string
  - boolean
  - decimal
