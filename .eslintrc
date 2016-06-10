@@ -13,7 +13,10 @@
 		],
 		"brace-style": [
 			2,
-			"stroustrup"
+			"stroustrup",
+			{
+				"allowSingleLine": true
+			}
 		],
 		"consistent-return": 0,
 		"indent": [
@@ -21,6 +24,12 @@
 			"tab",
 			{
 				"SwitchCase": 1
+			}
+		],
+		"no-empty": [
+			2,
+			{
+				"allowEmptyCatch": true
 			}
 		],
 		"no-multiple-empty-lines": [
@@ -71,7 +80,7 @@
 			}
 		],
 		"no-debugger": 1,
-		"no-eval": 2,
+		"no-eval": 0,
 		"no-with": 2,
 		"space-infix-ops": 0,
 		"dot-notation": [
@@ -96,14 +105,14 @@
 		"no-multi-spaces": 2,
 		"no-multi-str": 2,
 		"no-native-reassign": 2,
-		"no-new": 2,
+		"no-new": 0,
 		"no-new-func": 2,
 		"no-new-wrappers": 2,
 		"no-octal-escape": 2,
 		"no-proto": 2,
-		"no-return-assign": 2,
+		"no-return-assign": 0,
 		"no-script-url": 2,
-		"no-sequences": 2,
+		"no-sequences": 0,
 		"no-unused-vars": 1,
 		"no-unused-expressions": 2,
 		"yoda": [
@@ -118,7 +127,7 @@
 		"no-undef-init": 2,
 		"camelcase": 0,
 		"comma-spacing": 2,
-		"new-cap": 1,
+		"new-cap": 0,
 		"new-parens": 2,
 		"no-array-constructor": 2,
 		"no-extra-parens": 0,
@@ -128,7 +137,7 @@
 		"no-underscore-dangle": [
 			2,
 			{
-				"allow": ["__proto__", "__class_name", "__construct"]
+				"allow": ["__proto__", "_private"]
 			}
 		],
 		"comma-dangle": 0,

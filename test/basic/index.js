@@ -1,7 +1,7 @@
-import arginfo from 'arginfo';
-import assert from 'assert';
-import graphy from '../..//lib/main';
-import h_graph from './graph.json';
+const arginfo = require('arginfo');
+const assert = require('assert');
+const graphy = require('../..//lib/main');
+const h_graph = require('./graph.json');
 
 
 const eq = assert.strictEqual.bind(assert);
