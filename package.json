@@ -29,6 +29,7 @@
     "gulp": "^3.9.1",
     "gulp-babel": "^6.1.2",
     "gulp-cached": "^1.1.0",
+    "gulp-clone": "^1.0.0",
     "gulp-coveralls": "^0.1.4",
     "gulp-debug": "^2.1.2",
     "gulp-eslint": "^2.0.0",

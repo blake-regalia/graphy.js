@@ -44,20 +44,37 @@ soda(gulp, {
 
 	//
 	domain: {
-		ttl: 'builder-js',
+		ttl: [
+			'builder-js: dist.es6',
+		],
+		debug: [
+			'es5: dist.es5',
+			'es6: dist.es6',
+		],
 	},
 
 	//
 	range: {
 		'builder-js': [
 			'builder',
-			'[test]: mocha',
-			'mocha: istanbul',
-			'istanbul: transpile',
-			'transpile:builder',
-			'develop:builder',
+			'develop: builder',
+		],
+
+		es5: [
+			'transpile',
+			'develop: transpile',
+		],
+
+		es6: [
+			'copy',
+			'develop: copy',
 		],
 	},
+
+			// '[test]: mocha',
+			// 'mocha: istanbul',
+			// 'istanbul: transpile',
+			// 'transpile: builder',
 
 	//
 	options: {

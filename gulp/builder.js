@@ -1,37 +1,61 @@
+const es = require('event-stream');
 const Builder = require('Builder');
 const builder = new Builder();
 
+// runs Builder.js' preprocessor on macros
+const f_builder = (s_prepend) => {
+	return (h_file, t) => {
+		h_file.contents = new Buffer(
+			builder.machine.execute(
+				s_prepend+'\n'+h_file.contents.toString()));
+	};
+};
+
+// 
 module.exports = function(gulp, $, p_src, p_dest) {
 
 	// load source files
-	let ds_built = gulp.src(p_src+'/**/*.js')
+	let ds_built = gulp.src(p_src+'/**/parser.js')
 
 		// handle uncaught exceptions thrown by any of the plugins that follow
 		.pipe($.plumber())
 
 		// do not recompile unchanged files
-		.pipe($.cached(this.task))
-
-		// transform file objects with gulp-tap
-		.pipe($.tap((h_file) => {
-
-			// run Builder preprocessor on macros
-			h_file.contents = new Buffer(builder.machine.execute(h_file.contents.toString()));
-		}));
+		.pipe($.cached(this.task));
 
 
-	// output es6
-	ds_built
+	// make stream parser
+	let ds_stream_parser = ds_built
 
-		// stream parser
-		.pipe($.insert.prepend(`@set STREAM true\n@setNETWORK false`))
+		// clone unprocessed parser src
+		.pipe($.clone())
+
+		// set macro variables and then apply Builder.js
+		.pipe($.tap(f_builder(`@set STREAM true\n@set NETWORK false`)))
 
 		// rename
 		.pipe($.rename(h => {
 			h.basename = 'stream-parser';
-		}))
+		}));
 
-		// output
+
+	// make static parser
+	let ds_static_parser = ds_built
+
+		// clone unprocessed parser src
+		.pipe($.clone())
+
+		// set macro variables and then apply Builder.js
+		.pipe($.tap(f_builder(`@set STREAM false\n@set NETWORK true`)))
+
+		// rename
+		.pipe($.rename(h => {
+			h.basename = 'static-parser';
+		}));
+
+
+	// output both parsers
+	return es.merge(ds_static_parser, ds_stream_parser)
 		.pipe(gulp.dest(p_dest));
 
 
