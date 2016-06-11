@@ -15,7 +15,7 @@ const f_builder = (s_prepend) => {
 module.exports = function(gulp, $, p_src, p_dest) {
 
 	// load source files
-	let ds_built = gulp.src(p_src+'/**/parser.js')
+	let ds_built = gulp.src(p_src+'/**/*.js')
 
 		// handle uncaught exceptions thrown by any of the plugins that follow
 		.pipe($.plumber())
@@ -33,9 +33,12 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		// set macro variables and then apply Builder.js
 		.pipe($.tap(f_builder(`@set STREAM true\n@set NETWORK false`)))
 
+		// beautify
+		.pipe($.beautify({indent_with_tabs: true}))
+
 		// rename
 		.pipe($.rename(h => {
-			h.basename = 'stream-parser';
+			h.basename = 'stream-'+h.basename;
 		}));
 
 
@@ -50,7 +53,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 		// rename
 		.pipe($.rename(h => {
-			h.basename = 'static-parser';
+			h.basename = 'static-'+h.basename;
 		}));
 
 

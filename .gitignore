@@ -1,5 +1,7 @@
 node_modules
 coverage
 dist
+dist.es5
+dist.es6
 scrap
 fixed
