@@ -45,7 +45,8 @@ soda(gulp, {
 	//
 	domain: {
 		ttl: [
-			'builder-js: dist.es6',
+			'builder-es5: dist.es5',
+			'builder-es6: dist.es6',
 		],
 		debug: [
 			'es5: dist.es5',
@@ -55,9 +56,14 @@ soda(gulp, {
 
 	//
 	range: {
-		'builder-js': [
-			'builder',
-			'develop: builder',
+		'builder-es5': [
+			'builder-es5',
+			'develop: builder-es5',
+		],
+
+		'builder-es6': [
+			'builder-es6',
+			'develop: builder-es6',
 		],
 
 		es5: [

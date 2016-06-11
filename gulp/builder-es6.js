@@ -24,7 +24,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		.pipe($.cached(this.task));
 
 
-	// make stream parser
+	// make stream parser es6
 	let ds_stream_parser = ds_built
 
 		// clone unprocessed parser src
@@ -42,7 +42,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		}));
 
 
-	// make static parser
+	// make static parser es6
 	let ds_static_parser = ds_built
 
 		// clone unprocessed parser src
