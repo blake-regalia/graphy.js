@@ -44,6 +44,10 @@ soda(gulp, {
 
 	//
 	domain: {
+		graphy: [
+			'es5: dist.es5',
+			'es6: dist.es6',
+		],
 		ttl: [
 			'builder-es5: dist.es5',
 			'builder-es6: dist.es6',
@@ -52,6 +56,7 @@ soda(gulp, {
 			'es5: dist.es5',
 			'es6: dist.es6',
 		],
+		routers: 'routing',
 	},
 
 	//
@@ -63,6 +68,9 @@ soda(gulp, {
 
 		'builder-es6': [
 			'builder-es6',
+			'[test]: mocha',
+			'mocha: istanbul',
+			'istanbul: builder-es6',
 			'develop: builder-es6',
 		],
 
@@ -75,17 +83,28 @@ soda(gulp, {
 			'copy',
 			'develop: copy',
 		],
-	},
 
-			// '[test]: mocha',
-			// 'mocha: istanbul',
-			// 'istanbul: transpile',
-			// 'transpile: builder',
+		routing: [
+			'routing',
+			'develop: routing',
+		],
+	},
 
 	//
 	options: {
 		'*': {
-			test_src: 'test/basic/*.js',
+			test_src: 'test/ttl/*.js',
 		},
+		routing: {
+			map: {
+				'ttl.js': 'ttl',
+				'index.js': 'dist',
+			},
+		},
+	},
+
+	//
+	aliases: {
+		test: ['mocha'],
 	},
 });

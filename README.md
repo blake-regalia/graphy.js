@@ -1,4 +1,38 @@
 # graphy [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
+
+A faster-than-lightning Turtle (TTL) parser
+
+#### Parser expects valid characters
+This tool is **not a validator**. Do not use it on files written by humans. The parser is engineered for performance, so it mostly assumes that the input is valid syntax. It does not check for invalid characters.
+
+For example,
+```js
+<#a> <#iri refs aren't supposed to have spaces> <#c> .
+```
+
+Is technically not valid TTL. However, graphy will not emit any errors. Instead, it will emit the following triple:
+```js
+{
+	subject: '#a',
+	predicate: '#iri refs aren't supposed to have spaces'
+	object: '#c',
+}
+```
+
+The parser *does however* handle unexpected tokens that violate syntax:
+```js
+<#a> _:blank_nodes_cannot_be_predicates <#c> .
+```
+
+Emits the error:
+```
+`_:blank_nodes_cannot_be_predicates `
+ ^
+expected pairs.  failed to parse a valid token starting at "_"
+```
+
+However the parser is not intended to catch arbitrary syntax errors. The above only works because finding an unexpected token does not incur any performance cost. Only the insides of certain tokens are at risk for invalid characters. This is due to the fact that the parser uses the simplest regular expressions it can to match tokens, opting for patterns that only exclude characters that might belong to the next token, rather than specifying ranges of valid character inclusion.
+
 > Abstracts JSON-LD objects with an API for easy traversal and exploration of an RDF graph programatically. It emphasizes the use of iterators and namespaces to access entities by their suffix.
 
 

@@ -7,9 +7,12 @@
     "email": "blake.regalia@gmail.com"
   },
   "files": [
-    "dist"
+    "dist",
+    "dist.es5",
+    "dist.es6",
+    "ttl"
   ],
-  "main": "dist/main/index.js",
+  "main": "dist/router.js",
   "keywords": [
     "linked-data",
     "semantic-web",

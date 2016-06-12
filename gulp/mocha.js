@@ -1,4 +1,3 @@
-require('babel-core/register');
 
 module.exports = function(gulp, $, p_src, p_dest, f_done) {
 

@@ -6,10 +6,12 @@ module.exports = function(gulp, $, p_src, p_dest) {
 	gulp.src(path.join(p_src, this.options.glob || '**/*'))
 
 		// optional rename
-		.pipe($.rename((...a_args) => {
-			if(this.options.rename) this.options.rename(...a_args);
+		.pipe($.rename((h) => {
+			if(['gulp', 'lib', 'scrap', 'test'].includes(h.basename)) throw 'bad router name';
+			h.dirname = h.basename;
+			h.basename = 'index';
 		}))
 
 		// output
-		.pipe(gulp.dest(this.options.dest || p_dest));
+		.pipe(gulp.dest('./'));
 };
