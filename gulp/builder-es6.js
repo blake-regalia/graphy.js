@@ -58,7 +58,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 
 	// output both parsers
-	return es.merge(ds_static_parser, ds_stream_parser)
+	return es.merge(ds_stream_parser)
 		.pipe(gulp.dest(p_dest));
 
 
