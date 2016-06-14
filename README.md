@@ -1,8 +1,15 @@
 # graphy [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
+### Differences from N3.js
+`graphy` does the following things:
+ - Nested triples are emitted in the order they appear, rather than from the outside-in.
+ - RDF object terms are represented as objects, not strings
+ - When blank nodes are in the subject position of a triple, they are represented by a string starting with a space `' '` character, rather than `'_:'`
+ - Anonymous blank nodes (e.g., `[]`) are assigned a label starting with the character `g`, rather than `b`. This is done in order to minimize the time spent testing and renaming conflicts with existing labeled blank nodes in the document (such as `_:b0`, `_:b1`, etc.).
+
 A faster-than-lightning Turtle (TTL) parser
 
-#### Parser expects valid characters
+#### Parser is for valid syntax only
 This tool is **not a validator**. Do not use it on files written by humans. The parser is engineered for performance, so it mostly assumes that the input is valid syntax. It does not check for invalid characters.
 
 For example,
@@ -19,7 +26,8 @@ Is technically not valid TTL. However, graphy will not emit any errors. Instead,
 }
 ```
 
-The parser *does however* handle unexpected tokens that violate syntax:
+
+The parser *does however* handle unexpected tokens that violate syntax. For example:
 ```js
 <#a> _:blank_nodes_cannot_be_predicates <#c> .
 ```
@@ -31,7 +39,10 @@ Emits the error:
 expected pairs.  failed to parse a valid token starting at "_"
 ```
 
-However the parser is not intended to catch arbitrary syntax errors. The above only works because finding an unexpected token does not incur any performance cost. Only the insides of certain tokens are at risk for invalid characters. This is due to the fact that the parser uses the simplest regular expressions it can to match tokens, opting for patterns that only exclude characters that might belong to the next token, rather than specifying ranges of valid character inclusion.
+However, this is not by design. It is simply an inherent quality that emerges naturally because each state of the DFA expects a limited set of tokens. It is not safe to assume that it can handle all permutations. In other words, the parser is not intended to catch arbitrary syntax errors. And at this time, I cannot verify that it covers all cases.
+
+> Then why bother checking for errors at all?
+Stumbling into an invalid token does not incur a performance cost since it is the very last branch in a series of else jumps. It is mostly the characters inside of expected tokens that are at risk of sneaking invalid characters through. This is due to the fact that the parser uses the simplest regular expressions it can to match tokens, opting for patterns that only exclude characters that might belong to the next token, rather than specifying ranges of valid character inclusion. This compiles DFAs that require far fewer states with fewer instructions, hence less CPU time.
 
 > Abstracts JSON-LD objects with an API for easy traversal and exploration of an RDF graph programatically. It emphasizes the use of iterators and namespaces to access entities by their suffix.
 
