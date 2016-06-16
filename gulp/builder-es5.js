@@ -6,8 +6,9 @@ const builder = new Builder();
 const f_builder = (s_prepend) => {
 	return (h_file, t) => {
 		h_file.contents = new Buffer(
-			builder.machine.execute(
-				s_prepend+'\n'+h_file.contents.toString()));
+			builder.machine.execute(s_prepend+'\n'+h_file.contents.toString())
+				.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
+		);
 	};
 };
 

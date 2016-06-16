@@ -2,17 +2,26 @@ const es = require('event-stream');
 const Builder = require('Builder');
 const builder = new Builder();
 
-// runs Builder.js' preprocessor on macros
-const f_builder = (s_prepend) => {
-	return (h_file, t) => {
-		h_file.contents = new Buffer(
-			builder.machine.execute(
-				s_prepend+'\n'+h_file.contents.toString()));
-	};
-};
-
 // 
 module.exports = function(gulp, $, p_src, p_dest) {
+
+	// runs Builder.js' preprocessor on macros
+	const mk_builder = (h_define) => {
+		let s_define = '';
+		// prep define string
+		for(let s_define_property in h_define) {
+			s_define += `@set ${s_define_property} ${h_define[s_define_property]}\n`;
+		}
+
+		// tap stream
+		return $.tap((h_file, t) => {
+			h_file.contents = new Buffer(
+				builder.machine.execute(s_define+h_file.contents.toString())
+					.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
+			);
+		});
+	};
+
 
 	// load source files
 	let ds_built = gulp.src(p_src+'/**/*.js')
@@ -24,14 +33,16 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		.pipe($.cached(this.task));
 
 
-	// make stream parser es6
-	let ds_stream_parser = ds_built
+	// make parser es6
+	let ds_parser = ds_built
 
 		// clone unprocessed parser src
 		.pipe($.clone())
 
 		// set macro variables and then apply Builder.js
-		.pipe($.tap(f_builder(`@set STREAM true\n@set NETWORK false`)))
+		.pipe(mk_builder({
+
+		}))
 
 		// beautify
 		.pipe($.beautify({indent_with_tabs: true}))
@@ -42,23 +53,44 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		}));
 
 
-	// make static parser es6
-	let ds_static_parser = ds_built
+	// // make parser with relative iris
+	// let ds_parser_relative_irirs = ds_built
 
-		// clone unprocessed parser src
-		.pipe($.clone())
+	// 	// clone unprocessed parser src
+	// 	.pipe($.clone())
 
-		// set macro variables and then apply Builder.js
-		.pipe($.tap(f_builder(`@set STREAM false\n@set NETWORK true`)))
+	// 	// set macro variables and then apply Builder.js
+	// 	.pipe(mk_builder({
+	// 		RELATIVE_IRIS: true,
+	// 	}))
 
-		// rename
-		.pipe($.rename(h => {
-			h.basename = 'static-'+h.basename;
-		}));
+	// 	// beautify
+	// 	.pipe($.beautify({indent_with_tabs: true}))
+
+	// 	// rename
+	// 	.pipe($.rename(h => {
+	// 		h.basename = `${h.basename}-relative-iris`;
+	// 	}));
+
+
+
+	// // make static parser es6
+	// let ds_static_parser = ds_built
+
+	// 	// clone unprocessed parser src
+	// 	.pipe($.clone())
+
+	// 	// set macro variables and then apply Builder.js
+	// 	.pipe($.tap(f_builder(`@set STREAM false\n@set NETWORK true`)))
+
+	// 	// rename
+	// 	.pipe($.rename(h => {
+	// 		h.basename = 'static-'+h.basename;
+	// 	}));
 
 
 	// output both parsers
-	return es.merge(ds_stream_parser)
+	return es.merge(ds_parser)
 		.pipe(gulp.dest(p_dest));
 
 
