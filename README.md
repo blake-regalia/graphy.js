@@ -1,5 +1,13 @@
 # graphy [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
+### How graphy optimizes
+This module is engineered for maximum performance. It acheives this in a variety of ways, but perhaps the most general rule that guides the optimization process is this: graphy tries parsing items based on benefit-cost ratios in descending order. "Benefit" is represented by the probability that a given route is the correct one (derived from typical document freqency), where "Cost" is represented by the amount of time it takes to test whether or not a given route *is* the correct one.
+
+For example, double quoted string literals are more common in TTL documents than single quoted string literals. For this reason, double quoted strings literals have a higher benefit. Since testing time for each of these two tokens is identical, they have the same cost. Therefore, if we test for double quoted string literals before single quoted string literals, we end up making fewer tests a majority of the time.
+
+However, the optimization doesn't stop there. We can significantly cut down on the cost of parsing a double quoted string literal if we know it does not contain any escape sequences. String literals without escape sequences are not significantly more common than literals with them, so the benefit is not very high - however, the cost savings is enormous (i.e., the ratio's denominator shrinks) and so it outweighs the benefit thusly saving time overall.
+
+
 ### Differences from N3.js
 `graphy` does the following things:
  - Nested triples are emitted in the order they appear, rather than from the outside-in.
@@ -8,6 +16,7 @@
  - Anonymous blank nodes (e.g., `[]`) are assigned a label starting with the character `g`, rather than `b`. This is done in order to minimize the time spent testing and renaming conflicts with existing labeled blank nodes in the document (such as `_:b0`, `_:b1`, etc.).
 
 A faster-than-lightning Turtle (TTL) parser
+
 
 #### Parser is for valid syntax only
 This tool is **not a validator**. Do not use it on files written by humans. The parser is engineered for performance, so it mostly assumes that the input is valid syntax. It does not check for invalid characters.
