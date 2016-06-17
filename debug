@@ -1,2 +1,6 @@
 #!/bin/bash
-nodemon --delay 2 -x 'gulp && node-debug --cli --debug-brk --no-preload --save-live-edit' -w lib $1
+script=$1; shift
+dir=`dirname $script`
+nodemon -x 'node-debug --cli --debug-brk --no-preload' \
+	--watch $dir \
+	$script $@
