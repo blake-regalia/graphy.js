@@ -44,11 +44,16 @@ soda(gulp, {
 
 	//
 	domain: {
+		flavors: 'n3',
 		graphy: [
 			'es5: dist.es5',
 			'es6: dist.es6',
 		],
 		ttl: [
+			'builder-es5: dist.es5',
+			'builder-es6: dist.es6',
+		],
+		nt: [
 			'builder-es5: dist.es5',
 			'builder-es6: dist.es6',
 		],
@@ -61,6 +66,11 @@ soda(gulp, {
 
 	//
 	range: {
+		n3: [
+			'n3',
+			'develop: n3',
+		],
+
 		'builder-es5': [
 			'builder-es5',
 			'develop: builder-es5',
