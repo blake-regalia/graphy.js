@@ -24,13 +24,21 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 
 	// load source files into a stream that will be cloned for each n3 flavor
-	let ds_source = gulp.src(p_src+'/**/*.js')
+	let h_sources = {
+		n: gulp.src(p_src+'/**/n-*.js')
+			// handle uncaught exceptions thrown by any of the plugins that follow
+			.pipe($.plumber())
 
-		// handle uncaught exceptions thrown by any of the plugins that follow
-		.pipe($.plumber())
+			// do not recompile unchanged files
+			.pipe($.cached(this.task)),
 
-		// do not recompile unchanged files
-		.pipe($.cached(this.task));
+		t: gulp.src(p_src+'/**/t-*.js')
+			// handle uncaught exceptions thrown by any of the plugins that follow
+			.pipe($.plumber())
+
+			// do not recompile unchanged files
+			.pipe($.cached(this.task)),
+	};
 
 
 	// make a variety of flavors
@@ -38,7 +46,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		return Object.keys(h_flavors).map((s_flavor) => {
 
 			// make flavor
-			let ds_flavor = ds_source
+			let ds_flavor = h_sources[s_flavor[0]]
 
 				// clone unprocessed source
 				.pipe($.clone())
