@@ -36,16 +36,15 @@ module.exports = function(gulp, $, p_src, p_dest) {
 	// make a variety of flavors
 	const mk_flavors = (h_flavors) => {
 		return Object.keys(h_flavors).map((s_flavor) => {
-			let h_builder_config = h_flavors[s_flavor];
 
 			// make flavor
-			let ds_flavor = ds_source
+			return ds_source
 
 				// clone unprocessed source
 				.pipe($.clone())
 
 				// set macro variables and then apply Builder.js
-				.pipe(mk_builder(h_builder_config))
+				.pipe(mk_builder(h_flavors[s_flavor]))
 
 				// beautify
 				.pipe($.beautify({indent_with_tabs: true}))
@@ -88,6 +87,6 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 
 	// output all flavors
-	return es.merge(a_streams)
+	return es.merge.apply(es, a_streams)
 		.pipe(gulp.dest(this.sub_dest('')));
 };
