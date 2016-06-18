@@ -58,7 +58,8 @@ soda(gulp, {
 			'builder-es6: dist.es6',
 		],
 		debug: [
-			'es5: dist.es5',
+			'es5: dist',
+			// 'es5: dist.es5',
 			'es6: dist.es6',
 		],
 		routers: 'routing',
@@ -104,6 +105,9 @@ soda(gulp, {
 	options: {
 		'*': {
 			test_src: 'test/ttl/*.js',
+		},
+		'n3-flavors': {
+			es5: true,
 		},
 		routing: {
 			map: {

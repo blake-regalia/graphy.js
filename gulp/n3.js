@@ -14,7 +14,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		}
 
 		// tap stream
-		return $.tap((h_file, t) => {
+		return $.tap((h_file) => {
 			h_file.contents = new Buffer(
 				builder.machine.execute(s_define+h_file.contents.toString())
 					.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
@@ -38,7 +38,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		return Object.keys(h_flavors).map((s_flavor) => {
 
 			// make flavor
-			return ds_source
+			let ds_flavor = ds_source
 
 				// clone unprocessed source
 				.pipe($.clone())
@@ -53,6 +53,24 @@ module.exports = function(gulp, $, p_src, p_dest) {
 				.pipe($.rename(h => {
 					h.dirname = s_flavor;
 				}));
+
+			// transpile & minify
+			if(this.options.es5) {
+				return ds_flavor
+
+					// preserve mappings to beautified source file for debugging
+					.pipe($.sourcemaps.init())
+
+					// transpile
+					.pipe($.babel())
+
+					// uglify
+					.pipe($.uglify())
+				.pipe($.sourcemaps.write());
+			}
+
+			// return as is
+			return ds_flavor;
 		});
 	};
 
