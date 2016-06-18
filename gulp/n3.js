@@ -1,3 +1,4 @@
+const path = require('path');
 const es = require('event-stream');
 const Builder = require('Builder');
 const builder = new Builder();
@@ -15,6 +16,10 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 		// tap stream
 		return $.tap((h_file) => {
+			// set search directory for Builder module so it finds macro include file
+			builder.machine.readers.file.searchDirs.unshift(path.dirname(h_file.path));
+
+			// process contents as string through Builder
 			h_file.contents = new Buffer(
 				builder.machine.execute(s_define+h_file.contents.toString())
 					.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
@@ -25,19 +30,21 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 	// load source files into a stream that will be cloned for each n3 flavor
 	let h_sources = {
+		// N-Quads & N-Triples
 		n: gulp.src(p_src+'/**/n-*.js')
 			// handle uncaught exceptions thrown by any of the plugins that follow
-			.pipe($.plumber())
+			.pipe($.plumber()),
 
-			// do not recompile unchanged files
-			.pipe($.cached(this.task)),
+			// // do not recompile unchanged files
+			// .pipe($.cached(this.task)),
 
+		// Turtle and TriG
 		t: gulp.src(p_src+'/**/t-*.js')
 			// handle uncaught exceptions thrown by any of the plugins that follow
-			.pipe($.plumber())
+			.pipe($.plumber()),
 
-			// do not recompile unchanged files
-			.pipe($.cached(this.task)),
+			// // do not recompile unchanged files
+			// .pipe($.cached(this.task)),
 	};
 
 
@@ -59,6 +66,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 				// rename
 				.pipe($.rename(h => {
+					h.basename = h.basename.replace(/^[a-z]\-/, '');
 					h.dirname = s_flavor;
 				}));
 

@@ -107,7 +107,7 @@ soda(gulp, {
 			test_src: 'test/ttl/*.js',
 		},
 		'n3-flavors': {
-			// es5: true,
+			es5: true,
 		},
 		routing: {
 			map: {
