@@ -71,7 +71,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 				}));
 
 			// transpile & minify
-			if(this.options.es5) {
+			if(this.options.minify) {
 				return ds_flavor
 
 					// preserve mappings to beautified source file for debugging
@@ -82,6 +82,8 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 					// uglify
 					.pipe($.uglify())
+
+				// write sourcemaps
 				.pipe($.sourcemaps.write());
 			}
 

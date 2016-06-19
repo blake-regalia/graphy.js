@@ -44,7 +44,10 @@ soda(gulp, {
 
 	//
 	domain: {
-		flavors: 'n3',
+		flavors: [
+			'n3-minify: dist',
+			'n3: dist.es6'
+		],
 		graphy: [
 			'es5: dist.es5',
 			'es6: dist.es6',
@@ -67,6 +70,12 @@ soda(gulp, {
 
 	//
 	range: {
+		'n3-minify': [
+			'[minify]: n3',
+			'n3',
+			'develop: n3-minify',
+		],
+
 		n3: [
 			'n3',
 			'develop: n3',
@@ -106,8 +115,8 @@ soda(gulp, {
 		'*': {
 			test_src: 'test/ttl/*.js',
 		},
-		'n3-flavors': {
-			// es5: true,
+		'n3-flavors-n3-minify': {
+			minify: true,
 		},
 		routing: {
 			map: {
