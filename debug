@@ -1,6 +1,6 @@
 #!/bin/bash
 script=$1; shift
-dir=`dirname $script`
+dir=$(dirname `dirname $script`)
 nodemon -x 'node-debug --cli --debug-brk --no-preload' \
 	--watch $dir \
 	$script $@

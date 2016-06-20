@@ -72,19 +72,44 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 			// transpile & minify
 			if(this.options.minify) {
+
+				// // property names not to mangle
+				// let a_save_properties = [
+				// 	'lastIndex', 'length', 'exec',
+				// 	'exports',
+				// 	'value', 'termType', 'datatype', 'language',
+				// 	'setEncoding',
+				// 	'triple', 'base', 'prefix', 'error', 'end',
+				// 	'resume', 'statement', 'collection_subject', 'collection_object',
+				// 	'pairs', 'object_list', 'post_object', 'end_of_triple', 'after_end_of_triple',
+				// 	'base_iri', 'prefix_id', 'prefix_iri', 'full_stop',
+				// ];
+
 				return ds_flavor
 
 					// preserve mappings to beautified source file for debugging
 					.pipe($.sourcemaps.init())
 
-					// transpile
-					.pipe($.babel())
+						// rename certain symbols
+						.pipe($.regexp_sourcemaps(/GenericTerm(?=[.()])/g, 'G'))
+						.pipe($.regexp_sourcemaps(/NamedNode(?=[.()])/g, 'N'))
+						.pipe($.regexp_sourcemaps(/Literal(?=[.()])/g, 'L'))
+						.pipe($.regexp_sourcemaps(/BlankNode(?=[.()])/g, 'B'))
 
-					// uglify
-					.pipe($.uglify())
+						// transpile
+						.pipe($.babel())
 
-				// write sourcemaps
-				.pipe($.sourcemaps.write());
+						// uglify
+						.pipe($.uglify({
+							// mangleProperties: {
+							// 	// regex: /base(_\w+)?/,
+							// 	// regex: /^((?!length|exports|value|setEncoding|triple|base|prefix|error|end).)*$/,
+							// 	regex: new RegExp(`^((?!${a_save_properties.join('|')}).)*$`, 'g'),
+							// },
+						}))
+
+					// write sourcemaps
+					.pipe($.sourcemaps.write());
 			}
 
 			// return as is
@@ -100,24 +125,28 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		nt: {
 			N: true,
 			NT: true,
+			TRIPLES: true,
 		},
 
 		// N-Quads
 		nq: {
 			N: true,
 			NQ: true,
+			QUADS: true,
 		},
 
 		// Turtle
 		ttl: {
 			T: true,
 			TTL: true,
+			TRIPLES: true,
 		},
 
 		// TriG
 		trig: {
 			T: true,
 			TRIG: true,
+			QUADS: true,
 		},
 	});
 

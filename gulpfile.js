@@ -52,14 +52,6 @@ soda(gulp, {
 			'es5: dist.es5',
 			'es6: dist.es6',
 		],
-		ttl: [
-			'builder-es5: dist.es5',
-			'builder-es6: dist.es6',
-		],
-		nt: [
-			'builder-es5: dist.es5',
-			'builder-es6: dist.es6',
-		],
 		debug: [
 			'es5: dist',
 			// 'es5: dist.es5',
@@ -71,27 +63,15 @@ soda(gulp, {
 	//
 	range: {
 		'n3-minify': [
-			'[minify]: n3',
 			'n3',
-			'develop: n3-minify',
+			'develop: n3',
 		],
 
 		n3: [
 			'n3',
 			'develop: n3',
-		],
-
-		'builder-es5': [
-			'builder-es5',
-			'develop: builder-es5',
-		],
-
-		'builder-es6': [
-			'builder-es6',
-			'[test]: mocha',
-			'mocha: istanbul',
-			'istanbul: builder-es6',
-			'develop: builder-es6',
+			'istanbul',
+			'mocha:istanbul',
 		],
 
 		es5: [

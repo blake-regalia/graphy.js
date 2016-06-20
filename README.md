@@ -1,5 +1,7 @@
 # graphy [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
+A faster-than-lightning parser, validator, and interaction-driven API for Turtle (TTL), TriG, N-Triples and N-Quads that implements the [RDFJS representation interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces).
+
 
 # API
 
@@ -7,14 +9,12 @@
 All triples in graphy are represented by a javascript object with three keys:
 
 #### `subject`
-A string, which can either be:
- - an IRI reference, in which case the string is the full URI
- - **OR** a string starting with a space `' '` character followed by the label of the blank node it represents
+Will be either a `NamedNode` (which *has* an IRI reference) or a `BlankNode` (which has a label).
 
 For example:
 ```js
-if(triple.subject[0] === ' ') {  // subject is a blank node
-	let blank_node_label = triple.subject.substr(1);
+if(triple.subject.isBlankNode) {  // subject is a blank node
+	let blank_node_label = triple.subject.value;
 	console.log('Subject blank node label: ' + blank_node_label);
 }
 else {  // subject is an IRI reference
@@ -22,25 +22,25 @@ else {  // subject is an IRI reference
 }
 ```
 
- #### `predicate`
- A string containing the full URI of the predicate, always.
+#### `predicate`
+Will always be a `NamedNode`.
 
- #### `object`
- A javascript object that represents either an IRI reference, blank node, or literal. It will always have the property `.is`, which is a function that respectively returns the string `'iri'`, `'blanknode'`, or `'literal'`, depending on the type. The same string also exists as a property on the `.is` function, which is the recommended style of determing its type since this lookup is faster than calling the function.
+#### `object`
+Will be a `NamedNode`, `BlankNode`, or `Literal`. In addition to the  will always have the property `.is`, which is a function that respectively returns the string `'iri'`, `'blanknode'`, or `'literal'`, depending on the type. The same string also exists as a property on the `.is` function, which is the recommended style of determing its type since this lookup is faster than calling the function.
 
-Example usage if `.is`:
+Example usage of determining term type:
 ```js
 // :a :b :c
-triple.object.is();  // 'iri'
-triple.object.is.iri;  // true
+triple.object.termType;  // 'NamedNode'
+triple.object.isNamedNode;  // true
 
 // :a :b _:c
-triple.object.is();  // 'blanknode'
-triple.object.is.blanknode;  // true
+triple.object.termType;  // 'BlankNode'
+triple.object.isBlankNode;  // true
 
 // :a :b "c"^^d .
-triple.object.is();  // 'literal'
-triple.object.is.literal;  // true
+triple.object.termType  // 'Literal'
+triple.object.isLiteral;  // true
 ```
 
 You can also generate the Notation3 string serialization of an object by invoking its `toString` method:
@@ -108,9 +108,6 @@ However, the optimization doesn't stop there. We can significantly cut down on t
  - RDF object terms are represented as objects, not strings
  - When blank nodes are in the subject position of a triple, they are represented by a string starting with a space `' '` character, rather than `'_:'`
  - Anonymous blank nodes (e.g., `[]`) are assigned a label starting with the character `g`, rather than `b`. This is done in order to minimize the time spent testing and renaming conflicts with existing labeled blank nodes in the document (such as `_:b0`, `_:b1`, etc.).
-
-A faster-than-lightning Turtle (TTL) parser
-
 
 #### Parser is for valid syntax only
 This tool is **not a validator**. Do not use it on files written by humans. The parser is engineered for performance, so it mostly assumes that the input is valid syntax. It does not check for invalid characters.
