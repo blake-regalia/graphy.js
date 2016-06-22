@@ -134,12 +134,7 @@
 		"no-new-object": 2,
 		"no-spaced-func": 2,
 		"no-trailing-spaces": 1,
-		"no-underscore-dangle": [
-			2,
-			{
-				"allow": ["__proto__", "_private"]
-			}
-		],
+		"no-underscore-dangle": 0,
 		"comma-dangle": 0,
 		"semi": 2,
 		"semi-spacing": [
