@@ -20,8 +20,8 @@ graphy.ttl.network(results, (network) => {
   // traverse a link to a set of objects, then filter by type and language
   banana.at('rdfs:label').literals('@en').values();  // ['Banana']
   
-  // or use a semantic access path to trivialize it
-  banana.at.rdfs.label(); // 'Banana'
+  // or use a semantic access path to trivialize things
+  banana.is.dbp.group.of.nodes; // 'Banana'
 
   // or use direct URIs for max performance
   banana.links['http://www.w3.org/2000/01/rdf-schema#label'][0].value; // 'Banana'
