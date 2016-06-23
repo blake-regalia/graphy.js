@@ -1,16 +1,16 @@
 # graphy.js
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
-A **[faster-than-lightning](#benchmark-results)** RDF deserializer and property-path-driven JavaScript API that implements the [RDFJS Representation Interfaces](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces). It natively parses Turtle, TriG, N-Triples, and N-Quads.
+A **[faster-than-lightning](#benchmark-results)**, asynchronous, streaming RDF deserializer and [query/property-path-driven](#interaction-paradigm) JavaScript API for traversing RDF graphs. It implements the [RDFJS Representation Interfaces](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces) and natively parses Turtle, TriG, N-Triples, and N-Quads.
 
-> JSON-LD support has been temporarily suspended until a faster implementation of the expand algorithm is implemented.
+> JSON-LD support has been temporarily suspended until the expand algorithm is implemented.
 
 # Contents
- - [Introduction](#intro)
+ - [Introduction & Example Usage](#intro)
  - [Setup](#install)
- - [Example Usage](#usage)
+ - [**API** Documentation](#api)
  - [Compatibility](#compatibility) and [Performance](#performance)
- - [Comparisons to N3.js](#n3-js)
+ - [API Differences to N3.js](#n3-js)
 
 
 <a name="intro" />
@@ -24,7 +24,7 @@ using **graphy.js**:
 console.time('g');
 const parser = require('graphy'); let c_triples = 0;
 graphy.nt.parse(fs.createReadStream('persondata_en.nt'), {
-  triple() {
+  data(h_triple) {
     c_triples += 1;
   },
   end() {
@@ -61,37 +61,30 @@ Each benchmark listed was the best of 3 trials (and w/ variations of less than 5
 What's the catch? [See Performance details](#performance)
 
 
-## A Property-Path-Driven API for interacting with RDF Graphs
-For instance, a SPARQL `describe` query to DBpedia:
-```sparql
-describe dbr:Banana ?exotics {
-  ?exotics dbp:group dbr:Banana .
-}
-```
-
-Using graphy, explore the results:
+<a name="interaction-paradigm" />
+## Use a Query/Property-Path-Driven API to interact with RDF graphs
+Interact with your static graph by mimicing the semantics of SPARQL property-paths and filters in a query-like manner:
 ```js
 const graphy = require('graphy');
-graphy.ttl.network(results, (network) => {
+/* ttl_results = sparql('describe dbr:Banana ?exotics { ?exotics dbp:group dbr:Banana }') */
+graphy.ttl.networks(ttl_results, (g) => {
 
-  // enter network at a specific node
-  let banana = network.enter('dbr:Banana');
+  let banana = g.enter('dbr:Banana');
 
-  // traverse a link to a set of objects, then filter by type and language
+  // traverse a link to its set of objects, then filter by language
   banana.at('rdfs:label').literals('@en').values();  // ['Banana']
   
-  // or use a semantic access path to trivialize things
-  banana.is.dbp.group.of.nodes; // 'Banana'
+  // access the underlying data object directly
+  banana.links['http://www.w3.org/2000/01/rdf-schema#label'].length;  // 9
 
-  // or use direct URIs for max performance
-  banana.links['http://www.w3.org/2000/01/rdf-schema#label'][0].value; // 'Banana'
+  // mimic property paths and filtering by chaining calls together in order
+  //  dbr:Banana ^dbp:group/rdfs:label ?label. FILTER(isLiteral(?label) && lang(?label)="en")
+  banana.inverseAt('dbp:group').at('rdfs:label').literals('@en')
+    .values();  // ['Saba banana', 'Gros Michel banana', 'Red banana', ...]
 
-  // chain a sequence of links together to mimic property paths
-  // such as     dbr:Banana ^dbp:group/rdfs:label ?exotic_labels
-  let exotic_labels = banana.inverse('dbp:group').at('rdfs:label');
-
-  // filter those objects by literals with a given language tag
-  exotic_labels.literals('@en').values();  // ['Saba banana', 'Gros Michel banana', 'Red banana', ...]
+  // use optional semantic access paths to trivialize things
+  banana.is.dbp.group.of.nodes  // dbr:Banana ^dbp:group ?node. FILTER(isIri(?node))
+    .terms.map(g.terse);  // ['dbr:Saba_banana', 'dbr:Señorita_banana', ...]
 });
 ```
 
@@ -102,96 +95,33 @@ graphy.ttl.network(results, (network) => {
 $ npm install graphy
 ```
 
-## Usage
-graphy parses the following serializations of RDF:
- - Turtle (.ttl)
- - TriG (.trig)
- - N-Triples (.nt)
- - N-Quads (.nq)
-
-
-## Compatibility
-Lexing input this fast is only possible by taking advantage of an ECMAScript 2015 feature (the sticky "y" RegExp flag) which is not yet implemented in all browsers, even though this is already the new standard ([see compatibility table](https://kangax.github.io/compat-table/es6/#test-RegExp_y_and_u_flags) at row `RegExp "y" and "u" flags`). It also means that only Node.js versions >= 6.0 are supported, which will also [soon be the new LTS](https://github.com/nodejs/LTS) anyway. Failure to use a modern engine with graphy will result in:
-```
-SyntaxError: Invalid flags supplied to RegExp constructor 'y'
-    at new RegExp (native)
-    ....
-```
-
-## Performance
-High performance has a cost, namely that [this module is not a validator](#not-validator), although it **does handle parsing errors**. Full validation will likely never be implemented in graphy since it slows down parsing and because [N3.js](https://github.com/RubenVerborgh/N3.js/) already does a fine job at it.
-
-<a name="not-validator" />
-#### Parser is intended for valid syntax only
-This tool is intended for serialized formats that were generated by a machine. Quite simply, it does not check the contents of certain tokens for "invalid" characters; namely for: IRIREFs, PrefixedNames, and BlankNodeLabels.
-
-For example:
-```js
-<a> <iri refs aren't supposed to have spaces> <c> .
-```
-
-Is technically not valid TTL. However, graphy will not emit any errors. Instead, it will emit the following triple:
-```js
-{
-  subject: {value: 'a', termType: 'NamedNode', ...},
-  predicate: {value: 'iri refs aren't supposed to have spaces', termType: 'NamedNode', ...},
-  object: {value: 'c', termType: 'NamedNode', ...},
-}
-```
-
-
-The parser **does however** handle any and all unexpected token errors that violate syntax. For example:
-```js
-<a> _:blank_nodes_cannot_be_predicates <c> .
-```
-
-Emits the error:
-```
-`_:blank_nodes_cannot_be_predicates `
- ^
-expected pairs.  failed to parse a valid token starting at "_"
-```
-
-A full list of the test cases can be found in [./test/parser](test/parser)
-
-
-> Why bother checking for errors at all?
-
-Stumbling into an invalid token does not incur a performance cost since it is the very last branch in a series of if-else jumps. It is mainly the characters inside of expected tokens that are at risk of sneaking invalid characters through. This is due to the fact that the parser uses the simplest regular expressions it can to match tokens, opting for patterns that only exclude characters that might belong to the next token, rather than specifying ranges of valid character inclusion. This compiles DFAs that require far fewer states with fewer instructions, hence less CPU time.
-
-
-### How graphy optimizes
-This module is engineered for maximum performance, which is acheived in a variety of ways. Perhaps the most general rule that guides the optimization process is this: graphy tries parsing items based on benefit-cost ratios in descending order. "Benefit" is represented by the probability that a given route is the correct one (derived from typical document freqency), where "Cost" is represented by the amount of time it takes to test whether or not a given route *is* the correct one.
-
-For example, double quoted string literals are more common in TTL documents than single quoted string literals. For this reason, double quoted strings literals have a higher benefit -- and since testing time for each of these two tokens is identical, then they have the same cost. Therefore, if we test for double quoted string literals before single quoted string literals, we end up making fewer tests a majority of the time.
-
-However, the optimization doesn't stop there. We can significantly cut down on the cost of parsing a double quoted string literal if we know it does not contain any escape sequences. String literals without escape sequences are not significantly more common than literals with them, so the benefit is not very high - however, the cost savings is enormous (i.e., the ratio's denominator shrinks) and so it outweighs the benefit thusly saving time overall.
-
 
 ----
 ## API
  - [Introduction](#introduction)
  - [Parsing](#parsing)
+ - [Graph](#)
 
 ### Introduction
 
 
 ### Parsing
+This section documents graphy's high performance parser, which can be used directly for parsing a readable stream, transforming a readable stream to a writable stream, and parsing static strings. Each parser also allows [pausing and resuming the stream](#stream-control).
  - [Parser events](#parser-events)
-   - [triple(triple: Triple)](#event-triple)
-   - [quad(quad: Quad)](#event-quad)
-   - [base(iri: string)](#event-base)
+   - [data(quad: Quad)](#event-data)
    - [prefix(id: string, iri: string)](#event-prefix)
+   - [base(iri: string)](#event-base)
    - [error(message: string)](#event-error)
    - [end(prefixes: hash)](#event-end)
  - [Parser options](#parser-options)
    - [max_token_length](#option-max-token-length)
    - [max_string_length](#option-max-string-length)
+ - [Stream Control](#stream-control)
  - **Parsers**
-   - [`graphy.ttl.parser` - Turtle  (.ttl)](#graphy-ttl-parser)
-   - [TriG  (.trig)](#graphy-trig-parser)
-   - [N-Triples  (.nt)](#graphy-nt-parser)
-   - [N-Quads  (.nq)](#graphy-nq-parser)
+   - [Turtle (.ttl) - `graphy.ttl.parse`](#graphy-ttl-parse)
+   - [TriG  (.trig) - `graphy.trig.parse`](#graphy-trig-parse)
+   - [N-Triples  (.nt) - `graphy.nt.parse`](#graphy-nt-parser)
+   - [N-Quads  (.nq) - `graphy.nq.parse`](#graphy-nq-parser)
  
 #### Parser Events
 The parsers are engineered to run as fast as computerly possible. For this reason, they do not extend EventEmitter, which normally allows event handlers to bind via `.on()` calls. Instead, any event handlers must be specified at the time the parser is invoked. The name of an event is passed as a key in the hash object passed to the `config` parameter, where the value of the entry is the event handler/callback.
@@ -209,24 +139,18 @@ parse_ttl(input, {
 });
 ```
 
-<a name="event-triple" />
-##### Event: triple(triple: [Triple](#triple)[, output: list])
-Gets called once for each triple as soon as it is parsed. The `output` list is for `.push`ing strings to the output stream which is only available when the parser is [used as a transform](#parse-ttl-transform).
-> Only for [`graphy.ttl.parser`](#graphy-ttl-parser) and [`graphy.nt.parser`](#graphy-nt-parser)
-
-<a name="event-quad" />
-##### Event: quad(quad: [Quad](#quad)[, output: list])
-Gets called once for each quad as soon as it is parsed. The `output` list is for `.push`ing strings to the output stream which is only available when the parser is [used as a transform](#parse-trig-transform).
-> Only for [`graphy.trig.parser`](#graphy-trig-parser) and [`graphy.nq.parser`](#graphy-nq-parser)
-
-<a name="event-base" />
-##### Event: base(iri: string)
-Gets called once for each `@base` statement as soon as it is parsed. `iri` is the full URI of the new base.
-> Only for [`graphy.ttl.parser`](#graphy-ttl-parser) and [`graphy.trig.parser`](#graphy-trig-parser)
+<a name="event-data" />
+##### Event: data(quad: [Quad](#triple)[, output: list])
+Gets called once for each triple/quad as soon as it is parsed. The `output` list is for `.push`ing strings to the output stream which is only available when the parser is [used as a transform](#parse-ttl-transform).
 
 <a name="event-prefix" />
 ##### Event: prefix(id: string, iri: string)
 Gets called once for each `@prefix` statement as soon as it is parsed. `id` is the name of the prefix without the colon (e.g., `'dbr'`) and `iri` is the full URI of the associated mapping (e.g., `'http://dbpedia.org/resource/'`).
+> Only for [`graphy.ttl.parser`](#graphy-ttl-parser) and [`graphy.trig.parser`](#graphy-trig-parser)
+
+<a name="event-base" />
+##### Event: base(iri: string)
+Gets called once for each `@base` statement as soon as it is parsed. `iri` is the full URI of the new base.
 > Only for [`graphy.ttl.parser`](#graphy-ttl-parser) and [`graphy.trig.parser`](#graphy-trig-parser)
 
 <a name="event-error" />
@@ -240,6 +164,7 @@ Gets called once at the very end of the input. For piped streams, this occurs on
 > The `prefixes` argument is a hash of the final mappings at the time the end of the input was reached. It is only available for [`graphy.ttl.parser`](#graphy-ttl-parser) and [`graphy.trig.parser`](#graphy-trig-parser)
 
 
+----
 #### Parser Options
 In addition to [specifying events](#parser-events), the parser function's `config` parameter also accepts a set of options:
 
@@ -252,6 +177,32 @@ A `number` that defines the maximum number of characters to expect of any token 
 A `number` that defines the maximum number of characters to expect of any quoted literal. This option only exists to prevent invalid input from endlessly consuming the parser (such as a long-quoted literal `""" that never ends...`) when using streams as input. By default, this value is set to **65536** characters. However, you may set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
 
 
+----
+#### Stream Control
+For any of the event callbacks listed above, you can control the state of the stream and pause events from being emitted by using calls to `this`.
+
+For example:
+```js
+parse_ttl(input, {
+    data(triple) {
+        if(triple.object.isNamedNode) {
+            this.pause();  // no events will be emitted ...
+            asyncFunction(() => {
+                this.resume();  // ... until now
+            });
+        }
+    },
+});
+```
+
+#### `this.pause()`
+ - Immediately suspends any `data`, `prefix` or `base` events from being emitted until `this.resume()` is called. Also pauses the readable input stream until more data is needed.
+   - Some of the parsers will finish parsing the current chunk of stream data before the call to `this.pause()` returns. When this happens, it will queue any events to a buffer which will be released to the corresponding event callbacks once `this.resume()` is called.
+
+#### `this.resume()`
+ - Resumes firing event callbacks. Once there are no more queued events, a parser will automatically resume the readable input stream.
+
+----
 <a name="graphy-ttl-parser" />
 #### graphy.ttl.parse
 The Turtle parser:
@@ -351,30 +302,77 @@ Asynchronously parses the given `input` stream object. It supports the event han
 ##### parse_nq(config: hash)
 Creates a [`Transform`](https://nodejs.org/api/stream.html#stream_duplex_and_transform_streams) for simultaneously reading input data and writing output data. It supports the event handlers: [`error`](#event-error), [`end`](#event-end) and an **extended version** of the [`quad`](#event-quad) event handler that allows the callback to write output data by pushing strings to the callback function's `output` argument. For each chunk that is read from the input, the parser will join this `output` array (and terminate it) using the newline `\n` character and then write that to the output.
 
-# API
 
-## Triple representation
-All triples in graphy are represented by a javascript object with three keys:
 
-#### `subject`
-Will be either a `NamedNode` (which *has* an IRI reference) or a `BlankNode` (which has a label).
+## Compatibility
+Lexing input this fast is only possible by taking advantage of an ECMAScript 2015 feature (the sticky "y" RegExp flag) which is not yet implemented in all browsers, even though it is now the current standard ([see compatibility table](https://kangax.github.io/compat-table/es6/#test-RegExp_y_and_u_flags) at row `RegExp "y" and "u" flags`). It also means that only Node.js versions >= 6.0 are supported, which will also [soon be the new LTS](https://github.com/nodejs/LTS) anyway. Failure to use a modern engine with graphy will result in:
+```
+SyntaxError: Invalid flags supplied to RegExp constructor 'y'
+    at new RegExp (native)
+    ....
+```
+
+## Performance
+High performance has a cost, namely that [this module is not a validator](#not-validator), although it **does handle parsing errors**. Full validation will likely never be implemented in graphy since it slows down parsing and because [N3.js](https://github.com/RubenVerborgh/N3.js/) already does a fine job at it.
+
+<a name="not-validator" />
+#### Parser is intended for valid syntax only
+This tool is intended for serialized formats that were generated by a machine. Quite simply, it does not check the contents of certain tokens for "invalid" characters; such as those found inside of: IRIs, prefixed names, and blank node labels.
 
 For example:
 ```js
-if(triple.subject.isBlankNode) {  // subject is a blank node
-  let blank_node_label = triple.subject.value;
-  console.log('Subject blank node label: ' + blank_node_label);
-}
-else {  // subject is an IRI reference
-  console.log('Subject URI: ' + triple.subject);
+<a> <iri refs aren't supposed to have spaces> <c> .
+```
+
+Is technically not valid TTL. However, graphy will not emit any errors. Instead, it will emit the following triple:
+```js
+{
+  subject: {value: 'a', termType: 'NamedNode', ...},
+  predicate: {value: 'iri refs aren't supposed to have spaces', termType: 'NamedNode', ...},
+  object: {value: 'c', termType: 'NamedNode', ...},
+  graph: {value: '', ..}
 }
 ```
 
-#### `predicate`
-Will always be a `NamedNode`.
 
-#### `object`
-Will be a `NamedNode`, `BlankNode`, or `Literal`. In addition to the  will always have the property `.is`, which is a function that respectively returns the string `'iri'`, `'blanknode'`, or `'literal'`, depending on the type. The same string also exists as a property on the `.is` function, which is the recommended style of determing its type since this lookup is faster than calling the function.
+The parser **does however** handle any and all unexpected token errors that violate syntax. For example:
+```js
+<a> _:blank_nodes_cannot_be_predicates <c> .
+```
+
+Emits the error:
+```
+`_:blank_nodes_cannot_be_predicates `
+ ^
+expected pairs.  failed to parse a valid token starting at "_"
+```
+
+A full list of the test cases can be found in [./test/parser](test/parser)
+
+#### Why bother checking for errors at all?
+
+Stumbling into an invalid token does not incur a performance cost since it is the very last branch in a series of if-else jumps. It is mainly the characters inside of expected tokens that are at risk of sneaking invalid characters through. This is due to the fact that the parser uses the simplest regular expressions it can to match tokens, opting for patterns that only exclude characters that can belong to the next token, rather than specifying ranges of valid character inclusion. This compiles DFAs that require far fewer states with fewer instructions, hence less CPU time.
+
+
+#### How graphy optimizes
+Optimizations are acheived in a variety of ways, but perhaps the most general rule that guides the process is this: graphy tries parsing items based on benefit-cost ratios in descending order. "Benefit" is represented by the probability that a given route is the correct one (derived from typical document freqency), where "Cost" is represented by the amount of time it takes to test whether or not a given route *is* the correct one.
+
+For example, double quoted string literals are more common in TTL documents than single quoted string literals. For this reason, double quoted strings literals have a higher benefit -- and since testing time for each of these two tokens is identical, then they have the same cost. Therefore, if we test for double quoted string literals before single quoted string literals, we end up making fewer tests a majority of the time.
+
+However, the optimization doesn't stop there. We can significantly cut down on the cost of parsing a double quoted string literal if we know it does not contain any escape sequences. String literals without escape sequences are not significantly more common than literals with them, so the benefit is not very high - however, the cost savings is enormous (i.e., the ratio's denominator shrinks) and so it outweighs the benefit thusly saving time overall.
+
+----
+<a name="n3-differences" />
+## API Differences to N3.js @v0.4.5
+If you're familiar with the N3.js parser, it's important to realize some of the differences about graphy's parser, which does the following things differently:
+ - [Does not check IRIs, prefixed names, or blank node labels for invalid characters.](#performance)
+ - All RDF terms are represented as JavaScript objects, as per the [RDFJS Data Interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces), rather than as strings.
+ - Nested blank node property lists and RDF collections are emitted in the order they appear, rather than from the outside-in.
+ - Anonymous blank nodes (e.g., `[]`) are assigned a label starting with the character `g`, rather than `b`. This is done in order to minimize the time spent testing and renaming conflicts with common existing blank node labels in the document (such as `_:b0`, `_:b1`, etc.).
+
+---
+
+The same string also exists as a property on the `.is` function, which is the recommended style of determing its type since this lookup is faster than calling the function.
 
 Example usage of determining term type:
 ```js
@@ -402,576 +400,6 @@ triple.object.toString();  // '<http://ex/c>'
 // :a :b "c"^^:d .
 triple.object+'';  // '"c"^^<http://ex/d>'
 ```
-
-The actual properties of the object depending on its type are as follows:
- - `'iri'` type - has the properties:
-  - `iri` - a string that is the full URI of the object
- - `'blanknode'` type - has the properties:
-  - `'label'` - a string that is the blank node's label as it appeared in the document, or as it was generated by the parser (if it was an anonymous blank node)
- - `'literal'` type - has the properties:
-  - `'value'` - a string that is the unescaped string literal value
-    - **OR** a number that is the numeric value of an xsd:integer, xsd:decimal or xsd:double (only for Turtle and TriG)
-    - **OR** a boolean that is the boolean value of an xsd:boolean (only for Turtle and TriG)
-    - > Note: string literals with numeric or boolean datatypes will not have their values automatically converted to their javascript equivalent. The two types above are only produced for numeric or boolean tokens from Turtle and TriG documents
-  - `'language'` - a lowercase string that is the language tag of a string literal, otherwise `undefined`
-  - `'datatype'` - a string that is the full URI of the literal's datatype. If no datatype was explicitly given by document, will be `undefined`
-    - > Note: datatype is set automatically for numeric and boolean literals
-    - > Note: datatype will be `undefined` if the literal has a `language` property
-
-Numeric and boolean literals:
-```js
-// :a :b 5 .
-triple.object.value * 2;  // 10
-typeof triple.object.value;  // 'number'
-triple.object.datatype;  // '<http://www.w3.org/2001/XMLSchema#integer>'
-
-// :a :b 5.0 .
-triple.object.value * 2;  // 10
-typeof triple.object.value;  // 'number'
-triple.object.datatype;  // '<http://www.w3.org/2001/XMLSchema#decimal>'
-
-// :a :b 0.05e+2 .
-triple.object.value * 2;  // 10
-typeof triple.object.value;  // 'number'
-triple.object.datatype;  // '<http://www.w3.org/2001/XMLSchema#double>'
-
-// :a :b true .
-!triple.object.value;  // false
-typeof triple.object.value;  // 'boolean'
-triple.object.datatype;  // '<http://www.w3.org/2001/XMLSchema#boolean>'
-```
-
-
-
-# Contents
- - [Setup](#install)
- - [Example Usage](#usage)
- - [Iterators and Collections](#iterating)
- - [Concepts](#concepts)
- - [API Reference](#api_reference)
-
-
-## Install
-
-```sh
-$ npm install --save graphy
-```
-
-## Usage
-
-Take this example using DBpedia's [dbr:Banana](http://dbpedia.org/page/Banana) resource:
-```js
-var graphy = require('graphy');
-
-let json_ld = ...; // JSON-LD for dbr:Banana from DBpedia
-
-graphy(json_ld, (network) => {
-  
-  // select a node from the graph by IRI
-  let banana = network.select('ns:Banana');
-
-  // reference some prefixes we will be using
-  let {rdfs, dbo, dbp, owl} = banana.$;
-
-  // acess some literals
-  rdfs.label(); // 'Banana'
-  dbo.wikiPageID(); // 38940
-
-  // ... and their datatype
-  dbp.wikiPageID['@type']; // 'http://www.w3.org/2001/XMLSchema#integer'
-  dbp.wikiPageID.$datatype('xsd:'); // 'integer'
-
-  // predicates linking to more than one object
-  dbp.caption.length; // 2
-  dbp.caption(0); // 'Coconut, banana and banana leaves [...]'
-
-  // get suffixes of rdf:type object IRIs for a given prefix
-  banana.$types('umbel-rc:'); // ['Plant', 'EukaryoticCell', 'BiologicalLivingObject']
-
-  // transform an object list into an array of IRI suffixes
-  banana.$.dct.subject(s => s.$id('dbc:')); // ['Fiber_plants', 'Staple_foods', 'Tropical_agriculture', ...]
-
-  // get IRI of node
-  banana['@id']; // 'http://dbpedia.org/resource/Banana'
-  banana.$id(); // 'Banana'
-});
-```
-
-
-
-<a name="#iterating" />
-## Iterating
-
-### `for..of`
-An entity of type `node` supports iteration directly on the reference itself. The key of the iterator will be the predicate suffixed by the current accessor namespace, the value of the iterator will be an array of entities that are pointed to by that predicate:
-
-```js
-for(let [s_predicate_suffix, a_objects] of k_banana) {
-  a_objects.forEach((k_node) => {
-    console.log(s_predicate+' => {'+k_node.$is()+'} '+k_node.$n3());
-  });
-}
-
-// alias => {iri} ns:Cavendish
-// alias => {iri} ns:Naner
-// alias => {iri} ns:Bananarama
-// appears => {iri} color:Yellow
-// class => {iri} ns:Berry
-// considered => {blanknode} _:b4
-// data => {literal} "25"^^xsd:integer
-// stages => {collection} [rdf:first ns:FindSpace;rdf:rest (plant:Seed plant:Grow plant:Harvest)]
-// ...
-```
-
-You can also iterate on the no-args call of a node entity, this will set the namespace to an empty string so that the key of each iterator is the full IRI of each predicate:
-```js
-for(let [p_predicate, a_objects] of k_banana()) {  // same as k_banana.$('')
-  a_objects.forEach((k_node) => {
-    console.log(q_graph.shorten(p_predicate)+' => {'+k_node.$is()+'} '+k_node.$n3());
-  });
-}
-
-// ns:alias => {iri} ns:Cavendish
-// ns:alias => {iri} ns:Naner
-// ns:alias => {iri} ns:Bananarama
-// ns:appears => {iri} color:Yellow
-// plant:blossoms => {iri} ns:YearRound
-// ns:class => {iri} ns:Berry
-// ...
-```
-
-## RDF Collections
-
-Collection objects are arrays that are also an [entity](#entity).
-
-In order to be consistent with the graph, rdf collection properties are emulated on collection objects. So instead of accessing a collection's elements via Array's properties/methods, you can also use the `rdf:first` and `rdf:rest` properties:
-```js
-let w_list = k_banana.stages.$('rdf:');
-
-w_list.first.$id('ns:'); // 'FindSpace'
-
-w_list = w_list.rest;
-w_list.first.$id('plant:'); // 'Seed'
-
-w_list = w_list.rest;
-w_list.first.$id('plant:'); // 'Grow'
-
-w_list = w_list.rest;
-w_list.first.$id('plant:'); // 'Harvest'
-
-w_list = w_list.rest;
-w_list.$id('rdf:'); // 'nil'
-
-// ------------ or in a loop ------------
-let a_stages = [];
-let w_list = k_banana.stages.$('rdf:');
-while(w_list.$id('rdf:') !== 'nil') {
-  a_stage.push(w_list.first.$id('plant:') || w_list.first.$id('ns:'));
-  w_list = w_list.rest;
-}
-a_stages; // ['FindSpace', 'Seed', 'Grow', 'Harvest']
-```
-
-<a name="concepts" />
-# Concepts
-
-<a name="_accessor_namespace" />
-## Accessor Namespace
-All instances of type [entity](#_entity) have methods and properties that 'access' the suffixed part of the IRIs the entity is associated with. This suffix is made by removing the current accessor namespace from the beginning of the IRI. So for example:
-```js
-let banana = network.select('dbr:Banana');
-let rdfs = banana.$('http://www.w3.org/2000/01/rdf-schema#'); // sets the accessor namespace to the IRI aka by the prefix `rdfs:`
-rdfs.label(); // the `label` property was created because `http://www.w3.org/2000/01/rdf-schema#` was removed from the beginning of the predicate IRI
-```
-
-The accessor namespace of a variable does not change unless you reassign the variable; instead, the accessor namespace is mutated by chaining successive namespace modifier calls to a variable.
-
-<a name="api_reference" />
-# API Reference
-
-
----------------------------------------
-<a name="_graphy" />
-## Graphy
-The module itself.
-
-## graphy(jsonld: Jsonld_object, ready: function)
-Calls `ready(network: Network)` once a graphy [network](#_network) has been created for the given `jsonld` object.
-
----------------------------------------
-<a name="_network" />
-## Network
-An array of the jsonld objects in this graph, each represented by a graphy [entity](#_entity). 
-
-
-<a name="network.select" />
-### network.select(iri: string[, namespace: string])
-
-Returns the graphy [entity](#_entity) for the IRI given by `iri`, which may be either a prefixed or absolute IRI. Optional `namespace` argument will set the [accessor namespace](#_accessor_namespace) for the returned object (see [`entity.$()`](#entity.$)). If `namespace` is ommitted, then the accessor namespace will get set to the longest matching prefix of the provided `iri`.
-
-Example:
-```js
-graphy(jsonld, (network) => {
-
-  // select the set of triples in this JSONLD graph where `ns:Banana` is the subject
-  let banana = network.select('ns:Banana');
-
-  // the namespace accessor defaulted to `ns:`
-  banana.$id(); // 'Banana'
-});
-```
-
-
-<a name="network.top" />
-### network.top([map_callback: function])
-Returns an array of entities that are named things (ie not blanknodes) or blanknodes that do not appear in the object position of any triples in the current graph. These can be thought of as top-level nodes. Accepts an optional `map_callback` function to transform the entities before returning the array. These entities will have empty an accessor namespace by default.
-
-
-<a name="network.shorten" />
-
-### network.shorten(iri: string)
-Shortens an IRI using prefixes defined in the @context object of the original JSON-LD document. Picks the prefix with the longest matching URI.
-
-
-<a name="network.expand" />
-
-### network.expand(n3_iri: string)
-Expands a prefixed n3 IRI using prefixes defined in the @context object of the original JSON-LD document.
-
-
-<a name="network.@" />
-
-### network.[...]
-[Network](#network) is an array, so it supports all native Array functions. Each item in the array is a graphy entity with an empty accessor namespace.
-
----------------------------------------
-<a name="_entity" />
-## Entity
-An abstract class that represents an RDF entity / JSON-LD object, supported by the set of methods and properties documented in this section and in the appropriate subclass. A graphy entity can be obtained by calling [`network.select()`](#network.select), or any one of the array interface methods in the [network](#_network) class.
-
-This class is abstract. The methods and properties in this section are available on all its subclasses; those subclasses are:
- - [Node](#_node)
- - [IRI](#_iri)
- - [Literal](#_literal)
- - [Collection](#_collection)
-
-
-<a name="e.$is" />
-### entity.$is(),  entity.$is[type]
-
-Returns the representative `type` of this entity as a string. You can also use a shorthand check by testing if `.$is[type]` is defined as `true`. eg: `if(entity.$is.iri === true) ...`. Possible values for `type` are:
- - *node* - a [node](#_node)
- - *iri* - an [iri](#_iri)
- - *literal* - a [literal](#_literal)
- - *collection* - a [collection](#_collection)
-
-Example:
- ```js
-banana.$is(); // 'node'
-banana.$is.node; // true
-banana.$is.literal; // false
- ```
-
-
-<a name="entity.$" />
-### entity.$(namespace: string)
-
-Sets the accessor namespace of the returned object to the expanded version of the IRI given by `namespace`, may be either an n3 prefix or a full IRI. By chaining this call, you can change the accessor namespace on the same line to access properties or IRIs by their suffix. For an even shorter syntax, see [`entity.$[prefix_name]`](#entity.$.@prefix_name) .
-
-
-### entity.$()
-
-The no-args version of this method returns the absolute IRI of the current accessor namespace.
-
-
-<a name="entity.$.@prefix_name" />
-### entity.$[prefix_name]
-A hash whose values are entities embodying objects of the triples belonging to this node under different prefix names (given by the key of each key-value pair); one for each IRI prefix in the JSON-LD document's context.
-
-Example:
-```js
-// accessing a property that is expected to always be there
-banana.$.rdfs.label(); // 'Banana'
-
-// ... not guaranteed to be there
-let rdfs = banana.$('rdfs:');
-if(rdfs.label) {
-  rdfs.label();
-}
-
-// 'en masse' destructuring assignment
-let {rdfs, owl, ns} = banana.$;
-rdfs.label; // 'Banana'
-ns.tastes(); // 'good'
-```
-
-> Warning: If a certain prefix/namespace is not guaranteed to be in the JSON-LD document, chaining properties on this object may throw an `Uncaught TypeError` since the prefix does not exist in the document and would return `undefined`. Hence, it is recommended to use [`entity.$(namespace)`](#entity.$) for these cases.
-
-
-<a name="entity.$n3" />
-### entity.$n3([use_absolute_iris: boolean])
-
-Returns a terse n3 representation of this entity as a string. All IRIs are prefixed by the longest matching URI available in the original JSON-LD context, unless the resulting suffix would contain invalid characters for a prefixed IRI in either SPARQL or TTL. The resulting string is fully compatible and ready for use in SPARQL and TTL as long as the corresponding prefixes are also included in the document. If `use_absolute_iris` is set to `true`, then no prefixes will be used.
-
-Example:
-```js
-// for literals
-banana.tastes.$n3(); // '"good"^^xsd:string'
-banana.tastes.$n3(true); // '"good"^^<http://www.w3.org/2001/XMLSchema#string>'
-
-// for 
-banana.appears.$n3; //
-```
-
-
-<a name="entity.$nquad" />
-### entity.$nquad()
-
-Returns the n-quad representation of this entity. Useful for serializing to SPARQL/TTL without worrying about prefixes.
-> Note: this difffers from `.$n3()` 
-> Caution: `.$nquad()` does not currently support nested RDF collections (it will produce blanknode collisions)
-
-Example:
-```js
-// for collections
-banana.stages.$nquad();
-```
-
-
-<a name="entity.$in" />
-### entity.$in(namespace: string)
-
-Returns `true` if the current entity's IRI is within the given `namespace`. Will always return `false` for blanknodes, collections and literals.
-
-
-<a name="entity.@id" />
-### entity["@id"]
-
-The absolute IRI of this entity. Reflects the JSON-LD `@id` property.
-
-Examples:
-```js
-// for nodes
-banana['@id']; // 'vocab://ns/Banana'
-
-// for iris
-banana.class['@id']; // 'vocab://ns/Berry'
-banana.appears['@id']; // 'vocab://color/Yellow'
-
-// for blanknodes
-banana.considered
-// 
-```
-
-
-<a name="entity.$id" />
-### entity.$id([namespace: string])
-
-The suffix of the `@id` property after removing the current accessor namespace from the beginning. If the current accessor namespace does not match, or this IRI is a blanknode, this method will return `undefined`. If a `namespace` argument is passed, the method will use the given `namespace` instead of the current accessor namespace to suffix the IRI
-
-```js
-// for nodes
-banana.$id(); // 'Banana'
-
-// for iris
-let ns = banana.$('ns:');
-ns.class.$id(); // 'Berry'
-ns.appears.$id(); // undefined
-ns.appears.$id('color:'); // 'Yellow'
-ns.appears.$.color.$id(); // 'Yellow'
-```
-
-
-<a name="entity.@type" />
-### entity["@type"]
-
-Reflects the JSON-LD `@type` property. For literals, this will return the absolute datatype IRI as a string. For nodes, this will return an array of absolute IRIs representing the objects pointed to by the `rdf:type` predicate.
-
-
-
-## Node
-A graphy [entity](#_entity) that represents a set of triples belonging to the same subject. By default, blanknodes that are included in the provided graph will be returned as node entities, whereas named things will be returned as IRI entities. See [iri.$node](#iri.$node) to turn an IRI entity into a node entity.
-
-
-<a name="node" />
-### node()
-
-Returns a Map of {predicate => array[object]} pairs for all triples in this set (which are stemming from the subject that this node repesents). For each pair, the key is a full IRI of the predicate as a string, the value is an array of graphy entities representing the objects pointed to by the given predicate.
-
-
-<a name="node" />
-### node(access_name: string[, map_callback: function])
-
-Returns an array of entities that are pointed to by the namespaced predicate suffix `access_name`. If the current accessor namespace is empty, then the access name would be the full IRI of the predicate.
-
-The optional `map_callback` argument is a function that will be applied the array of entities before they are returned.
-
-
-<a name="node.@@iterator" />
-### node[@@iterator]
-
-Enables iteration over the Map of {predicate => array[object]} pairs where the key is an absolute IRI as a string and the value is an array of graphy entities.
-
-```js
-for(let [predicate, objects] of banana) {
-  console.log(
-    graph.shorten(predicate)
-    + ' => '
-    + objects.map(o => o.$n3()).join(', ')
-  );
-}
-// rdf:type => ns:Food, plant:Fruit, plant:EdiblePart
-// rdfs:label => "Banana"^^xsd:string
-// ...
-```
-
-
-<a name="node.$types." />
-### node.$types
-
-An array of graphy IRI entities that are pointed to by the `@type` property (which is the `rdf:type` predicate) for this node.
-
-Example:
-```js
-banana.$types.length;
-banana.$types[0].$id('ns:');
-```
-
-> The `.$types` property is both an array and a function. To use it as a function see [`node.$types()`](#node.$types) .
-
-
-<a name="node.$types" />
-### node.$types([namespace: string])
-
-Returns an array of strings that are the suffixes of the IRIs pointed to by the `@type` property after removing the current accessor namespace (or the given `namespace` argument) from the beginning of the IRI. If the namespace does not match any of the IRIs, this will return an empty array `[]`.
-
-
-<a name="node.$type" />
-### node.$type([namespace: string])
-
-Shortcut for `.$types(..)[0]`. If this node entity has more than one `rdf:type`, accessing this property will issue a warning. If the current accessor namespace does not match any of the IRIs, this will return `undefined`. If a `namespace` argument is passed, the method will use the given namespace instead of the current accessor namespace to suffix the IRI.
-
-
-
-## IRI
-A graphy [entity](#_entity) that represents a simple RDF IRI, typically encountered when reaching an object of a triple that is neither a blanknode nor literal. Use [`iri.$node()`](#iri.node) to obtain the graphy [node](#_node) of this IRI if it exists in the current graph.
-
-
-<a name="iri." />
-### iri([namespace: string])
-
-Returns the suffixed portion of this IRI as a string, using the current accessor namespace or the `namespace` argument if one is provided. You can obtain the full IRI no matter the current accessor namespace by using an empty string for `namespace`, or by using the JSON-LD property [`entity['@id']`](#entity.$id) .
-
-
-<a name="iri.node" />
-### iri.$node([namespace: string])
-
-Will return the node object for accessing triples that have this IRI as its subject. If there are no triples in the current jsonld graph that have this IRI as its subject, calling `.$node()` will return undefined for this IRI. Passing an optional `namespace` argument will set the accessor namespace on the returned graphy entity.
-
-
-
-
-## Literal
-A graphy [entity](#entity) that represents an RDF literal.
-
-```js
-rdfs.label.$is(); // 'literal'
-```
-
-
-<a name="literal." />
-### literal()
-
-Returns the value portion of the literal. Certain datatypes are automatically parsed to their corresponding JavaScript datatype; see the list [here](#literal.$datatype.parseable). To access the unparsed value, use [`literal.$raw()`](#literal.$raw).
-> See [`literal.$datatype`](#literal.$datatype) and [`literal.$n3.datatype`](#literal.$n3_datatype) for getting the datatype of a literal.
-
-```js
-rdfs.label(); // 'Banana'
-```
-
-
-<a name="literal.$datatype" />
-### literal.$datatype([namespace: string])
-
-Returns the suffix of this literal's datatype IRI using the current accessor namespace unless a `namespace` argument is provided.
-> To get the absolute IRI, you can pass an empty string for the `namespace` argument.
-
-```js
-rdfs.label.$datatype('xsd:'); // 'string'
-rdfs.label.$datatype(''); // 'http://www.w3.org/2001/XMLSchema#string'
-```
-
-<a name="literal.$datatype.parseable" />
-### literal.$datatype.parseable()
-
-Returns true if this literal was automatically parsed to its corresponding JavaScript datatype. Applies to the following `xsd:` datatypes:
- - string
- - boolean
- - decimal
- - byte, unsignedByte
- - short, unsignedShort
- - long, unsignedLong
- - int, unsignedInt
- - integer, positiveInteger, nonPositiveInteger, negativeInteger, nonNegativeInteger
- - float, double
- - dateTime
-
-```js
-rdfs.label.$datatype.parseable(); // true
-```
-
-
-<a name="literal.$n3.datatype" />
-### literal.$n3.datatype()
-
-Returns the terse datatype IRI of this literal in n3 form.
-> This is a property of the [`entity.$n3`](#entity.n3) function.
-
-```js
-rdfs.label.$n3.datatype(); // 'xsd:string'
-```
-
-
-<a name="literal.$nquad.datatype" />
-### literal.$nquad.datatype()
-
-Returns the absolute datatype IRI of this literal in nquad form.
-> This is a property of the [`entity.$nquad`](#entity.nquad) function.
-
-```js
-rdfs.label.$nquad.datatype; // 'http://www.w3.org/2001/XMLSchema#string'
-```
-
-
-<a name="literal.$raw()" />
-### literal.$raw()
-
-Returns the raw, unparsed value of this literal from the JSON-LD graph. For most cases, this will be the same as the parsed value.
-
-
-
-## Collection
-A graphy [entity](#_entity) that represents an RDF collection.
-
-
-<a name="collection." />
-### collection()
-
-Returns the array 
-
-
-<a name="collection.at" />
-### entity(item_index: integer)
-### entity.at(item_index: integer)
-
-Returns the item at `item_index` in the collection.
-
-
-<a name="collection.map" />
-### entity(map_callback: function)
-### entity.map(map_callback: function)
-
-Applies every entity in this collection to the provided `map_callback` and returns the resulting array.
 
 
 ## License

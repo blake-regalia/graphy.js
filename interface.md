@@ -241,7 +241,7 @@ An unordered list of [Terms](#term)
 
 **Methods:**
  - `.first()` -- selects exactly one [Term](#term) from the unordered list and returns its `.value`. Convenient if you are certain the bag has only one element, otherwise it accesses an arbitrary item from the set.
-     - **returns** a `string`
+     - **returns** a `string` or `undefined` if Bag is empty
      - *example:*
          ```js
          banana.at.dbp.commons.first();  // 'Banana'
@@ -296,23 +296,20 @@ An unordered list of [Terms](#term)
    - *{function}* `(filter: function)` -- filter by callback function w/ params: `(element: Node)`
      - **returns** a [new NodeSet](#nodeset)
 
+ - `.collections` : `chain/function` -- selects any nodes that have an `rdf:first` property
 
 ----
 <a name="bunch" />
 ### abstract **Bunch** extends Bag
 An abstract class that represents an unordered list of [Terms](#term) which are all of the same term type.
 
-**Operator:** (inherited from Bunch) *{function*} `()` -- when the instance is called as a function
- - selects exactly one [Term](#term) from the unordered list and returns its `.value`. Convenient if you are certain the bag has only one element.
- - **returns** a `string`
-
-**Properties:**
+**abstract Properties:**
  - `.termType` : `string` -- the term type shared by all the Terms in this Bunch.
  - ... and [those inherited from Bag](#bag)
 
-**Methods:**
+**abstract Methods:**
  - `.filter(filter: function)` -- applies `filter` callback function to each Term in this Bunch.
-   - **returns** a new Bunch
+   - **returns** a new Bunch of the same type
  - ... and [those inherited from Bag](#bag)
 
 ----
@@ -349,4 +346,10 @@ A `hash` of namespaced suffixes where each entry links to a sets of objects.
         ```js
         banana.at.rdfs.label;  // returns a Bag of the objects linked via `rdfs:label`
         ```
+
+---
+### **Graph**
+A class that represents an RDF graph in which any of its nodes are accessible by their id (i.e., either IRI or blank node label).
+
+
 
