@@ -107,23 +107,25 @@ $ npm install graphy
 
 ### Parsing
 This section documents graphy's high performance parser, which can be used directly for parsing a readable stream, transforming a readable stream to a writable stream, and parsing static strings. Each parser also allows [pausing and resuming the stream](#stream-control).
- - [Parser events](#parser-events)
+ - [Parse events](#parse-events)
    - [data(quad: Quad)](#event-data)
    - [prefix(id: string, iri: string)](#event-prefix)
    - [base(iri: string)](#event-base)
+   - [graph_open(graph: Term)](#event-graph-open)
+   - [graph_close(graph: Term)](#event-graph-close)
    - [error(message: string)](#event-error)
    - [end(prefixes: hash)](#event-end)
- - [Parser options](#parser-options)
+ - [Parse options](#parse-options)
    - [max_token_length](#option-max-token-length)
    - [max_string_length](#option-max-string-length)
  - [Stream Control](#stream-control)
  - **Parsers**
    - [Turtle (.ttl) - `graphy.ttl.parse`](#graphy-ttl-parse)
    - [TriG  (.trig) - `graphy.trig.parse`](#graphy-trig-parse)
-   - [N-Triples  (.nt) - `graphy.nt.parse`](#graphy-nt-parser)
-   - [N-Quads  (.nq) - `graphy.nq.parse`](#graphy-nq-parser)
+   - [N-Triples  (.nt) - `graphy.nt.parse`](#graphy-nt-parse)
+   - [N-Quads  (.nq) - `graphy.nq.parse`](#graphy-nq-parse)
  
-#### Parser Events
+#### Parse Events
 The parsers are engineered to run as fast as computerly possible. For this reason, they do not extend EventEmitter, which normally allows event handlers to bind via `.on()` calls. Instead, any event handlers must be specified at the time the parser is invoked. The name of an event is passed as a key in the hash object passed to the `config` parameter, where the value of the entry is the event handler/callback.
 
 For example:
@@ -146,12 +148,22 @@ Gets called once for each triple/quad as soon as it is parsed. The `output` list
 <a name="event-prefix" />
 ##### Event: prefix(id: string, iri: string)
 Gets called once for each `@prefix` statement as soon as it is parsed. `id` is the name of the prefix without the colon (e.g., `'dbr'`) and `iri` is the full URI of the associated mapping (e.g., `'http://dbpedia.org/resource/'`).
-> Only for [`graphy.ttl.parser`](#graphy-ttl-parser) and [`graphy.trig.parser`](#graphy-trig-parser)
+> Only for [`graphy.ttl.parse`](#graphy-ttl-parse) and [`graphy.trig.parse`](#graphy-trig-parse)
 
 <a name="event-base" />
 ##### Event: base(iri: string)
 Gets called once for each `@base` statement as soon as it is parsed. `iri` is the full URI of the new base.
-> Only for [`graphy.ttl.parser`](#graphy-ttl-parser) and [`graphy.trig.parser`](#graphy-trig-parser)
+> Only for [`graphy.ttl.parse`](#graphy-ttl-parse) and [`graphy.trig.parse`](#graphy-trig-parse)
+
+<a name="event-graph-open" />
+##### Event: graph_open(term: Term)
+Gets called once for each graph block as soon as the opening `{` character is parsed. `term` is either a [NamedNode](#namednode), [BlankNode](#blanknode) or [DefaultGraph](#defaultgraph).
+> Only for [`graphy.trig.parse`](#graphy-trig-parse)
+
+<a name="event-graph" />
+##### Event: graph_close(term: Term)
+Gets called once for each graph block as soon as the closing `}` character is parsed. `term` is either a [NamedNode](#namednode), [BlankNode](#blanknode) or [DefaultGraph](#defaultgraph).
+> Only for [`graphy.trig.parse`](#graphy-trig-parse)
 
 <a name="event-error" />
 ##### Event: error(message: string)
@@ -161,12 +173,12 @@ Gets called if a parsing error occurs at any time. If an error does occur, no ot
 ##### Event: end([prefixes: hash])
 Gets called once at the very end of the input. For piped streams, this occurs once the Readable input stream has no more data to be consumed (i.e., `Transform#_flush`). For stream objects, this occurs after the stream's 'end' event.
 
-> The `prefixes` argument is a hash of the final mappings at the time the end of the input was reached. It is only available for [`graphy.ttl.parser`](#graphy-ttl-parser) and [`graphy.trig.parser`](#graphy-trig-parser)
+> The `prefixes` argument is a hash of the final mappings at the time the end of the input was reached. It is only available for [`graphy.ttl.parse`](#graphy-ttl-parse) and [`graphy.trig.parse`](#graphy-trig-parse)
 
 
 ----
-#### Parser Options
-In addition to [specifying events](#parser-events), the parser function's `config` parameter also accepts a set of options:
+#### Parse Options
+In addition to [specifying events](#parse-events), the parser function's `config` parameter also accepts a set of options:
 
 <a name="option-max-token-length" />
 ##### Option: max_token_length
@@ -197,82 +209,140 @@ parse_ttl(input, {
 
 #### `this.pause()`
  - Immediately suspends any `data`, `prefix` or `base` events from being emitted until `this.resume()` is called. Also pauses the readable input stream until more data is needed.
-   - Some of the parsers will finish parsing the current chunk of stream data before the call to `this.pause()` returns. When this happens, it will queue any events to a buffer which will be released to the corresponding event callbacks once `this.resume()` is called.
+   - Some of the parsers will finish parsing the current chunk of stream data before the call to `this.pause()` returns, others will finish parsing the current production. When this happens, the parser queues any would-be events to a buffer which will be released to the corresponding event callbacks once `this.resume()` is called.
 
 #### `this.resume()`
- - Resumes firing event callbacks. Once there are no more queued events, a parser will automatically resume the readable input stream.
+ - Resumes firing event callbacks. Once there are no more queued events, the parser will automatically resume the readable input stream.
 
 ----
-<a name="graphy-ttl-parser" />
+<a name="graphy-ttl-parse" />
 #### graphy.ttl.parse
 The Turtle parser:
 ```js
 const parse_ttl = graphy.ttl.parse;
 ```
 
-The parser function (in the example above, `parse_ttl`) has three variants:
+The parse function (in the example above, `parse_ttl`) has three variants:
 
 ##### parse_ttl(input: string, config: hash)
-Synchronously parses the given `input` string. It supports the event handlers: [`base`](#event-base), [`prefix`](#event-prefix), [`triple`](#event-triple), [`error`](#event-error) and [`end`](#event-end).
+Synchronously parses the given `input` string. It supports the event handlers:  [`data`](#event-data), [`prefix`](#event-prefix), [`base`](#event-base), [`error`](#event-error) and [`end`](#event-end). If a call to `this.pause()` is made during event callbacks, the operation becomes an asynchronous.
 
-##### parse_ttl(input: stream, config: hash)
-Asynchronously parses the given `input` stream object. It supports the event handlers: [`base`](#event-base), [`prefix`](#event-prefix), [`triple`](#event-triple), [`error`](#event-error) and [`end`](#event-end).
+*Example:*
+```js
+parse_ttl('@prefix : <http://ex.org>. ex:s ex:p: ex:o.', {
+    data(triple) {
+        console.log(triple+'');  // '<http://ex.org/s> <http://ex.org/p> <http://ex.org/o> .'
+    },
+});
+```
+
+##### parse_ttl(input: Stream, config: hash)
+Asynchronously parses the given `input` stream. It supports the event handlers: [`data`](#event-data), [`prefix`](#event-prefix), [`base`](#event-base), [`error`](#event-error) and [`end`](#event-end).
+
+*Example:*
+```js
+// download images from DBpedia
+let foaf_depiction = 'http://xmlns.com/foaf/0.1/depiction';
+parse_ttl(fs.createReadStream('input.ttl'), {
+    data(triple) {  // for each triple...
+        if(triple.predicate.startsWith(foaf_depiction)) {
+            download_queue.push(triple.object.value);  // download the image
+            if(download_queue.is_full) {  // if there's too many requests...
+                this.pause();
+                download_queue.once('available', () => {
+                    this.resume();
+                });
+            }
+        }
+    },
+});
+```
 
 ##### parse_ttl(config: hash)
-Creates a [`Transform`](https://nodejs.org/api/stream.html#stream_duplex_and_transform_streams) for simultaneously reading input data and writing output data. It supports the event handlers: [`base`](#event-base), [`prefix`](#event-prefix), [`error`](#event-error), [`end`](#event-end) and an **extended version** of the [`triple`](#event-triple) event handler that allows the callback to write output data by pushing strings to the callback function's `output` argument. For each chunk that is read from the input, the parser will join this `output` array (and terminate it) using the newline `\n` character and then write that to the output. For example:
+Creates a [`Transform`](https://nodejs.org/api/stream.html#stream_duplex_and_transform_streams) for simultaneously reading input data and writing output data. It supports the event handlers: [`prefix`](#event-prefix), [`base`](#event-base), [`error`](#event-error) and [`end`](#event-end) and an **extended version** of the [`data`](#event-data) event handler that allows the callback to write output data by pushing strings to the callback function's `output` argument. For each chunk that is read from the input, the parser will join this `output` array (and terminate it) using the newline `\n` character and then write that to the output.
+
+*Example:*
 ```js
 // convert a .ttl Turtle file into a .nt N-Triples file
 fs.createReadStream('input.ttl', 'utf8')
     .pipe(parse_ttl({
-        // for each triple...
-        triple(h_triple, a_output) {
-            // use Term#toString() method to produce canonicalized forms
-            a_output.push(h_triple.subject+' '+h_triple.predicate+' '+h_triple.object+' .');
+        data(triple, output) {  // for each triple...
+            // cast it to a string to produce its canonicalized form
+            output.push(triple+'');
         },
     }))
     .pipe(fs.createWriteStream('output.nt'));
 ```
 
 
-<a name="graphy-trig-parser" />
+<a name="graphy-trig-parse" />
 #### graphy.trig.parse
 The TriG parser:
 ```js
 const parse_trig = graphy.trig.parse;
 ```
 
-The parser function (in the example above, `parse_trig`) has three variants:
+The parse function (in the example above, `parse_trig`) has three variants:
 
 ##### parse_trig(input: string, config: hash)
-Synchronously parses the given `input` string. It supports the event handlers: [`base`](#event-base), [`prefix`](#event-prefix), [`quad`](#event-quad), [`error`](#event-error) and [`end`](#event-end).
+Synchronously parses the given `input` string. It supports the event handlers: [`data`](#event-data), [`graph`](#event-graph), [`prefix`](#event-prefix), [`base`](#event-base), [`error`](#event-error) and [`end`](#event-end). If a call to `this.pause()` is made during event callbacks, the operation becomes an asynchronous.
+
+*Example:*
+```js
+parse_trig('@prefix : <http://ex.org>.  ex:g { ex:s ex:p: ex:o. }', {
+    data(quad) {
+        console.log(quad+'');  // '<http://ex.org/s> <http://ex.org/p> <http://ex.org/o> <http://ex.org/g> .'
+    },
+});
+```
 
 ##### parse_trig(input: stream, config: hash)
-Asynchronously parses the given `input` stream object. It supports the event handlers: [`base`](#event-base), [`prefix`](#event-prefix), [`quad`](#event-quad), [`error`](#event-error) and [`end`](#event-end).
+Asynchronously parses the given `input` stream object. It supports the event handlers: [`data`](#event-data), [`graph`](#event-graph), [`prefix`](#event-prefix), [`base`](#event-base), [`error`](#event-error) and [`end`](#event-end).
+
+*Example:*
+```js
+// only inspect triples within a certain graph
+let inspect = false;
+parse_trig(input, {
+    graph_open(graph) {
+        if(graph.value === 'http://target-graph') inspect = true;
+    },
+    graph_close(graph) {
+     if(inspect) inpsect = false;
+    },
+    data(quad) {
+        if(inspect) {  // much faster than comparing quad.graph to a string
+            // do something with triples
+        }
+    },
+});
+```
 
 ##### parse_trig(config: hash)
-Creates a [`Transform`](https://nodejs.org/api/stream.html#stream_duplex_and_transform_streams) for simultaneously reading input data and writing output data. It supports the event handlers: [`base`](#event-base), [`prefix`](#event-prefix), [`error`](#event-error), [`end`](#event-end) and an **extended version** of the [`quad`](#event-quad) event handler that allows the callback to write output data by pushing strings to the callback function's `output` argument. For each chunk that is read from the input, the parser will join this `output` array (and terminate it) using the newline `\n` character and then write that to the output. For example:
+Creates a [`Transform`](https://nodejs.org/api/stream.html#stream_duplex_and_transform_streams) for simultaneously reading input data and writing output data. It supports the event handlers: [`graph`](#event-graph), [`prefix`](#event-prefix), [`base`](#event-base), [`error`](#event-error), [`end`](#event-end) and an **extended version** of the [`data`](#event-data) event handler that allows the callback to write output data by pushing strings to the callback function's `output` argument. For each chunk that is read from the input, the parser will join this `output` array (and terminate it) using the newline `\n` character and then write that to the output. 
+
+*Example:*
 ```js
 // convert a .trig TriG file into a .nq N-Quads file
 fs.createReadStream('input.trig', 'utf8')
-    .pipe(parse_ttl({
-        // for each quad...
-        quad(h_quad, a_output) {
-            // use Term#toString() method to produce canonicalized forms
-            a_output.push(h_quad.subject+' '+h_quad.predicate+' '+h_quad.object+' '+h_quad.graph+' .');
+    .pipe(parse_trig({
+        data(quad, output) {  // for each quad...
+            // cast it to a string to produce its canonicalized form
+            output.push(quad+'');
         },
     }))
     .pipe(fs.createWriteStream('output.nq'));
 ```
 
 
-<a name="graphy-nt-parser" />
+<a name="graphy-nt-parse" />
 #### graphy.nt.parse
 The N-Triples parser:
 ```js
 const parse_nt = graphy.nt.parse;
 ```
 
-The parser function (in the example above, `parse_nt`) has three variants:
+The parse function (in the example above, `parse_nt`) has three variants:
 
 ##### parse_nt(input: string, config: hash)
 Synchronously parses the given `input` string. It supports the event handlers: [`triple`](#event-triple), [`error`](#event-error) and [`end`](#event-end).
@@ -284,14 +354,14 @@ Asynchronously parses the given `input` stream object. It supports the event han
 Creates a [`Transform`](https://nodejs.org/api/stream.html#stream_duplex_and_transform_streams) for simultaneously reading input data and writing output data. It supports the event handlers: [`error`](#event-error), [`end`](#event-end) and an **extended version** of the [`triple`](#event-triple) event handler that allows the callback to write output data by pushing strings to the callback function's `output` argument. For each chunk that is read from the input, the parser will join this `output` array (and terminate it) using the newline `\n` character and then write that to the output.
 
 
-<a name="graphy-nq-parser" />
+<a name="graphy-nq-parse" />
 #### graphy.nq.parse
 The N-Quads parser:
 ```js
 const parse_nq = graphy.nq.parse;
 ```
 
-The parser function (in the example above, `parse_nq`) has three variants:
+The parse function (in the example above, `parse_nq`) has three variants:
 
 ##### parse_nq(input: string, config: hash)
 Synchronously parses the given `input` string. It supports the event handlers: [`quad`](#event-quad), [`error`](#event-error) and [`end`](#event-end).
