@@ -1,11 +1,28 @@
 
 
+# Graphs
+A powerful, query-like API is accessible by instructing graphy to create a group of Networks from a given `input`. The following sections are organized as follows:
+ - [Understanding Pseudo-Datatypes used in this documentation](#pseudo-datatypes)
+ - [Creating a group of Networks](#graphy-networks)
+ - [RDF Terms](#rdf-terms)
+    - [Term](#term)
+    - [NamedNode](#namenode)
+    - [BlankNode](#blanknode)
+    - [Literal](#literal)
+    - [DefaultGraph](#defaultgraph)
+ - [Quad](#quad), [Triple](#triple)
+ - [Node](#node), [NodeSet](#nodeset)
+ - [Bag](#bag), [Bunch](#bunch), and [LiteralBunch](#bunch)
+ - [Namespace](#namespace)
+ - [Network](#network)
+ - [Graph](#graph)
+
 ### Pseudo-Datatypes:
 Throughout this API document, the following datatypes are used to represent expectations imposed on primitive-datatyped parameters to functions, exotic uses of primitives in class methods, and so forth:
  - `hash` - refers to a simple `object` with keys and values (e.g. `{key: 'value'}`)
  - `key` - refers to a `string` used for accessing an arbitrary value in a `hash`
  - `list` - refers to a one-dimensional `Array` containing only elments of the same type/class
- - `iri` - refers to a `string` that represents an IRI either by:
+ - `iri` - refers to a `string` that represents an IRI in Notation3 format either by:
    - absolute reference, starting with `'<'` and ending with `'>'`
    - or prefixed name, where the prefix id is given by the characters preceeding the first `':'` and the suffix is given by everything after that
  - `label` - refers to a `string` that represents a blank node label by starting with `'_:'`
@@ -15,15 +32,42 @@ Throughout this API document, the following datatypes are used to represent expe
  - `function/hash` - refers to a `function` that also acts as a `hash`, so it can either be used to access certain properties or it can be called with/without certain arguments.
    - e.g., `thing.method(arg); /*and*/ thing.method[property]; // are both acceptable and may do different things`
 
+<a name="graphy-networks" />
+##### `graphy.[format].networks(input: [string|Stream], callback: function)`
+ - Parses `input` and invokes `callback(g: Graph)`, where `g` is a [new Graph](#graph)
+ - *example:*
+     ```js
+     let input = '@prefix : <ex://>.  :Mars a :Planet;  :looks :Red, "baron" .';
+     graphy.ttl.networks(input, (g) => {
+        let mars = g.enter(':Mars');
+        mars.at.rdf.type.values();  // ['ex://Planet']
+        mars.at(':looks').nodes.values();  // ['ex://Red']
+        mars.at(':looks').literals.values();  // ['baron']
+    });
+    ```
+ - Where `[format]` is one of: `ttl`, `trig`, `nt`, or `nq`. Such as:
+    - `graphy.ttl.networks()`
+    - `graphy.trig.networks()`
+    - `graphy.nt.networks()`
+    - `graphy.nq.networks()`
+
 
 ----
+
+### RDF Terms
+You can use the following functions to construct new instances of a [Term](#term).
+ - [`new graphy.NamedNode (iri: string)`](#namednode)
+ - [`new graphy.BlankNode (label: string)`](#blanknode)
+ - [`new graphy.Literal (value: string, datatype_or_lang: [string|langtag])`](#literal)
+ - [`new graphy.DefaultGraph ()`](#defaultgraph)
+
 <a name="term" />
 ### abstract **Term** implements @RDFJS Term
 An abstract class that represents an RDF term by implementing the [RDFJS Term interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#term).
 
 **Properties:** (implementing RDFJS Term interface)
  - `.termType` : `string` -- either `'NamedNode'`, `'BlankNode'`, `'Literal'` or `'DefaultGraph'`
- - `.value` : `string` -- depends on the type of term; could be the content of a [Literal](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#literal-extends-term), the label of a [BlankNode](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#blanknode-extends-term), or the iri of a [NamedNode](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#namednode-extends-term)
+ - `.value` : `string` -- depends on the type of term; could be the content of a [Literal](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#literal-extends-term), the label of a [BlankNode](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#blanknode-extends-term), or the IRI of a [NamedNode](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#namednode-extends-term)
 
 **Methods:** (implementing RDFJS Term interface)
  - `.equals(other: Term)` -- tests if this term is equal to `other`
@@ -32,8 +76,15 @@ An abstract class that represents an RDF term by implementing the [RDFJS Term in
    - **returns** a `string`
 
 **Methods:**
- - `.toString()` -- alias of `.toCanonical()`
-
+ - `.valueOf()` -- gets called when cast to a `string`. It simply returns `.toCanonical()`
+   - **returns** a `string`
+   - *example:*
+       ```js
+       let hey = new graphy.NamedNode('hello');
+       let you = new graphy.Literal('world!', '@en');
+       console.log(hey+' '+you); // '<hello> "world!"@en'
+       ```
+      
 
 ----
 <a name="namednode" />
@@ -45,7 +96,7 @@ A class that represents an RDF named node by implementing the [RDFJS NamedNode i
  - `.value` : `string` -- the IRI of this named node
 
 **Properties:**
- - `.isNamedNode` : `boolean` = `true` -- the preferred way of testing for NamedNode term type
+ - `.isNamedNode` : `boolean` = `true` -- the preferred and fastest way to test for NamedNode term types
 
 **Methods:**
  - ... [those inherited from Term](#term)
@@ -57,11 +108,11 @@ A class that represents an RDF named node by implementing the [RDFJS NamedNode i
 A class that represents an RDF blank node by implementing the [RDFJS BlankNode interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#blanknode-extends-term)
 
 **Properties:** (inherited from Term & implementing RDFJS NamedNode)
- - `.termType` : `string` = `'NamedNode'`
- - `.value` : `string` -- the IRI of this named node
+ - `.termType` : `string` = `'BlankNode'`
+ - `.value` : `string` -- the label of this blank node (i.e., without leading `'_:'`)
 
 **Properties:**
- - `.isNamedNode` : `boolean` = `true` -- the preferred way of testing for named node term types
+ - `.isBlankNode` : `boolean` = `true` -- the preferred and fastest way to test for BlankNode term types
 
 **Methods:**
  - ... [those inherited from Term](#term)
@@ -81,7 +132,7 @@ A class that represents an RDF literal by implementing the [RDFJS Literal interf
  - `.language` : `string` -- the language tag associated with this literal (empty string if it has no language)
 
 **Properties:**
- - `.isLiteral` : `boolean` = `true` -- the preferred way of testing for literal term types
+ - `.isLiteral` : `boolean` = `true` -- the preferred and fastest way to test for Literal term types
 
 
 ----
@@ -94,7 +145,7 @@ A class that represents the default graph by implementing the [RDFJS DefaultGrap
  - `.value` : `string` = `''` -- always an empty string
 
 **Properties:**
- - `.isDefaultGraph` : `boolean` = `true` -- the preferred way of testing for default graph term types
+ - `.isDefaultGraph` : `boolean` = `true` -- the preferred and fastest way to test for DefaultGraph term types
 
 
 ----
@@ -131,37 +182,37 @@ A class that represents an RDF triple by implementing the [RDFJS Triple interfac
 ----
 <a name="node" />
 ### **Node** extends [NamedNode|BlankNode]
-A class that represents an RDF node - which can be either a [NamedNode](#namednode) or a [BlankNode](#blanknode) - and all of its links to objects or other nodes.
+A class that wraps an RDF node - which can be either a [NamedNode](#namednode) or a [BlankNode](#blanknode) - for traversing links that lead to objects or other nodes.
 
-**Properties:** (inherited from Term)
+**Properties:** (inherited from [NamedNode|BlankNode])
  - `.termType` : `string` = either `'NamedNode'` or `'BlankNode'`.
- - `.value` : `string` -- the IRI of this node.
+ - `.value` : `string` -- the ID of this node (either an IRI or blank node label).
+ - `.is[Named|Blank]Node` : `boolean` = `true` -- the preferred and fastest way to test for NamedNode or BlankNode term types, only one will be defined, the other will be `undefined`.
 
 **Properties:**
- - `.is[Named|Blank]Node` : `boolean` = `true` -- the preferred way of testing for NamedNode or BlankNode term type, the other will be `undefined`.
  - `.links` : `hash[predicate_uri: key]` -- access to the underlying [Network](#network)
    - selects the set of objects linked via `predicate_uri` from this subject node.
-   - **returns** an `Array` of [Terms](#terms) that represent the objects of the triples.
+   - **returns** an `Array` of [Terms](#terms) which represents the objects of the triples.
    - *example:*
         ```js
         banana.links['http://www.w3.org/2000/01/rdf-schema#label'];
         // returns: [ Literal {value:'Banana', language:'en', datatype:...}, ...]
         ````
  - `.inverseLinks` : `hash[predicate_uri: key]` -- access to the [Network](#network) of inverse links
-   - selects the set of subjects linked via `predicate_uri` wherever this node appears as the object in the current graph.
+   - selects the set of subjects linked via `predicate_uri` wherever this Node appears in the object position of a triple in the current graph.
    - **returns** an `Array` of [Nodes](#nodes) that represent the subjects of the triples.
    - *example:*
         ```js
         banana.inverseLinks['http://dbpedia.org/property/group'];
         // returns: [ {value:'http://dbpedia.org/resource/Saba_banana', termType:'NamedNode', ...}, ...]
         ````
- - `.of` : `this` -- identity property for semantic access paths; in other words, it does absolutely nothing and **returns** `this`. Check out the `.is` example below to see why.
+ - `.of` : `this` -- identity property for semantic access paths; in other words, it simply points to `this` for chaining calls together. Check out the `.is` example below to see why.
 
 **Methods:**
  - `.at` : `funciton/hash`
    - *{function}* `(predicate: iri[, ...])`
    - *{function}* `(predicates: array)`
-     - traverses `predicate(s)` a maximum distance of length one in the normal direction. Multiple arguments or an array is equivalent to the OR path operation which tries all possibilities.
+     - traverses `predicate(s)` a maximum distance of length one in the normal direction. Multiple arguments or an Array of them is equivalent to using the OR property path operation.
 	 - **returns** a [new Bag](#bag).
 	 - *example*
 	      ```js
@@ -171,9 +222,9 @@ A class that represents an RDF node - which can be either a [NamedNode](#namedno
 	      banana.at('rdfs:label', 'rdfs:comment');
 	      banana.at(['rdfs:label', 'rdfs:comment']); // same as above
 	      ```
-   - *{hash}* `[prefix_id: key]` -- provides a semantic access path for traversing
+   - *{hash}* `[prefix_id: key]` -- provides a semantic access path for traversing the graph in an expressive way
      - selects a subset of the predicates that link this subject to its objects by filtering predicates that start with the IRI given by the corresponding `prefix_id`.
-     - **returns** a [new Namespace](#namespace).
+     - **returns** a [Namespace](#namespace).
        - *CAUTION:* Accessing a namespace or subsequent suffix that **does not exist** will cause a `TypeError` because you cannot chain `undefined`. It is safer to use the `.at()` function if you are not guaranteed that a certain path will exist.
 	 - *example:*
 	      ```js
@@ -185,38 +236,45 @@ A class that represents an RDF node - which can be either a [NamedNode](#namedno
  - `.inverseAt` : `funciton/hash`
    - *{function}* `(predicate: iri[, ...])`
    - *{function}* `(predicates: array)`
-     - traverses `predicate(s)` a maximum distance of length one. Multiple arguments or an array is equivalent to the OR path operation which tries all possibilities.
+     - traverses `predicate(s)` a maximum distance of length one. Multiple arguments or an Array of them is equivalent to using the OR property path operation.
 	 - **returns** a [new Bag](#bag).
 	 - *example:*
 	      ```js
 	      // semantic access path
-	      banana.inverse('dbp:group');  // returns a NodeSet of the subjects linked via `^dbp:group`
+	      banana.inverseAt('dbp:group');  // returns a NodeSet of the subjects linked via `^dbp:group`
 	      banana.is.dbp.group.of; // same as above
 	      // --- or ---
-	      banana.inverse('dbo:wikiPageRedirects', 'dbo:wikiPageDisambiguates');
-	      // equivalent to property path: `^(dbo:wikiPageRedirects|dbo:wikiPageDisambiguates)`
+	      banana.inverseAt('dbo:wikiPageRedirects', 'dbo:wikiPageDisambiguates');
+	      // equivalent to property path  ^(dbo:wikiPageRedirects|dbo:wikiPageDisambiguates)
 	      ```
-   - *{hash}* `[prefix_id: key]` -- provides a semantic access path for traversing
-     - selects a subset of the predicates that link this subject to its objects by filtering predicates that start with the IRI given by the corresponding `prefix_id`.
+   - *{hash}* `[prefix_id: key]` -- provides a semantic access path for traversing the graph in an expressive way
+     - selects a subset of the predicates that link this **object to its subjects** by filtering predicates that start with the IRI given by the corresponding `prefix_id`.
      - **returns** a [new Namespace](#namespace).
-       - *CAUTION:* Accessing a namespace or subsequent suffix that **does not exist** will cause a `TypeError` because you cannot chain `undefined`. It is safer to use the `.at()` function if you are not guaranteed that a certain path will exist.
+       - *CAUTION:* Accessing a namespace or subsequent suffix that **does not exist** will cause a `TypeError` because you cannot chain `undefined`. It is safer to use the `.inverseAt()` function if you are not guaranteed that a certain path will exist.
 	 - *example:*
 	      ```js
-	      banana.at.rdfs;  // { label: Bag{..}, comment: Bag{..}, ...}
-	      // --- or ---
-	      banana.at[some_prefix_id];
+	      banana.is.dbp.group.of  // dbr:Banana ^dbp:group ?things
+	        .nodes.values();  // ['http://dbpedia.org/resource/Red_banana', ...]
 	      ```
  - `.all` : `chain/function` -- selects all sets of objects linked via all predicates from this subject node in the normal direction
    - *{chain}* | *{function}* `()`
      - **returns** a [new Bag](#bag)
+     - *example:*
+         ```js
+         banana.all.literals.terms;  // returns Array of all Literals that are object of dbr:Banana
+         ```
  - `.inverseAll` : `chain/function` -- selects the set of all subjects linked via all predicates from this node in the inverse direction
    - *{chain}* | *{function}* `()`
      - **returns** a [new NodeSet](#nodeset)
+     - *example:*
+         ```js
+         banana.inverseAll.namedNodes.values();  // returns IRIs of all subjects that point to dbr:Banana
+         ```
 
 ----
 <a name="nodeset" />
 ### **NodeSet**
-A class that represents a set of RDF nodes - each of which can be either a [NamedNode](#namednode) or a [BlankNode](#blanknode). All methods of this class apply the corresponding operation to each item in the set and return
+A class that wraps a set of [Nodes](#node). Since it is a set, no two of its items will be identical. Each method in this class simply applies the corresponding operation to each Node.
 
 **Properties:**
  - `.areNodes` : `boolean` = `true`
@@ -226,7 +284,7 @@ A class that represents a set of RDF nodes - each of which can be either a [Name
 **Methods:**
  - `.at` -- behaves the same as [Node#at](#node)
    - **returns** a [new Bag](#bag)
- - `.inverseAt`, `.is`, `.are` -- behaves the same as [Node#inverse](#node)
+ - `.inverseAt`, `.is`, `.are` -- behaves the same as [Node#inverseAt](#node)
    - **returns** a [new NodeSet](#nodeset)
  - `.all` -- behaves the same as [Node#all](#node)
    - **returns** a [new Bag](#bag)
@@ -235,20 +293,21 @@ A class that represents a set of RDF nodes - each of which can be either a [Name
 
 ----
 ### **Bag**
-An unordered list of [Terms](#term)
+An unordered list of [Terms](#term). "Unordered" refers to the fact that the ordering of its elements is arbitrary. The list is not a set, so it may contain duplicates.
 
 **Properties:**
  - `.terms` : `Array` -- access to the underlying `list` of [Terms](#term)
 
 **Methods:**
- - `.first()` -- selects exactly one [Term](#term) from the unordered list and returns its `.value`. Convenient if you are certain the bag has only one element, otherwise it accesses an arbitrary item from the set.
+ - `.sample()` -- selects exactly one [Term](#term) from the unordered list and returns its `.value`. Convenient if you are certain the bag has only one element, otherwise it accesses the first/next+ item from the unordered list.
      - **returns** a `string` or `undefined` if Bag is empty
      - *example:*
          ```js
-         banana.at.dbp.commons.first();  // 'Banana'
-         // is okay. but in bags with more than one element:
-         banana.at.rdfs.label.first();  // 'Банан'
-         banana.at.rdf.type.first();  // 'http://umbel.org/umbel/rc/Plant'
+         banana.at.dbp.commons.sample();  // 'Banana'
+         // in bags with more than one element:
+         banana.at.rdfs.label.sample();  // 'Банан'
+         banana.at.rdfs.label.sample();  // 'Banane'
+         banana.at.rdf.type.sample();  // 'http://umbel.org/umbel/rc/Plant'
          ```
  - `.values()` -- fetches all elements' `.value` property
    - **returns** an `Array` of strings
@@ -323,7 +382,7 @@ A class that represents an unordered list of [Literals](#literal).
  - ... and [those inherited from Bag](#bag)
 
 **Properties:**
- - `.areLiterals` : `boolean` = `true` -- preferred way of distinguishing this class from others that may extend Bunch
+ - `.areLiterals` : `boolean` = `true` -- distinguishes this Bunch from other potential types
 
 **Methods:** (inherited from Bunch and Bag)
  - `.values()` -- **returns** an `Array` of strings that are the contents of each Literal in this Bunch
@@ -345,12 +404,13 @@ A `hash` of namespaced suffixes where each entry links to a sets of objects (Lit
    - **returns** a [Bag instance](#bag)
    - *example:*
         ```js
-        banana.at.rdfs.label;  // returns a Bag of the objects linked via `rdfs:label`
+        banana.at.rdfs  // this is a Namespace
+            .label;  // selects the Bag of the objects linked via `rdfs:label`
         ```
 
 ----
 ### **Network**
-A `hash` that represents all predicates from the current node to its objects (Literals) or to other nodes (NamedNodes or BlankNodes). An instance can either represent links in the normal direction (to objects and nodes) *OR* it can represent links in the inverse direction (only to nodes), depending on how it was created. Reserved keys are prefixed with a `'^'` to prevent collisions with predicate IRIs:
+A `hash` that represents all predicates from the current node to its objects (Literals, NamedNodes, BlankNodes) or to its subject nodes (NamedNodes or BlankNodes). An instance can either represent links in the normal direction (to objects) *OR* it can represent links in the inverse direction (to nodes), depending on how it was created. Reserved keys are prefixed with a `'^'` to prevent collisions with predicate IRIs:
  - *{hash}* `['^direction']` : `number` -- indicates the direction of the predicates.
    - either a `1` for normal direction (i.e., `subject --> object`) or a `-1` for inverse direction (i.e., `subject <-- object`).
  - *{hash}* `['^term']` -- the [Term](#node) that is the 'owner' of this Network.

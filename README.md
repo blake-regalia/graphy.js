@@ -24,13 +24,13 @@ using **graphy.js**:
 console.time('g');
 const parser = require('graphy'); let c_triples = 0;
 graphy.nt.parse(fs.createReadStream('persondata_en.nt'), {
-  data(h_triple) {
-    c_triples += 1;
-  },
-  end() {
-    console.timeEnd('g');
-    console.log(`${c_triples} triples parsed`);
-  },
+    data(triple) {
+        c_triples += 1;
+    },
+    end() {
+        console.timeEnd('g');
+        console.log(`${c_triples} triples parsed`);
+    },
 });
 ```
 
@@ -38,14 +38,14 @@ using **[N3.js v0.4.5](https://github.com/RubenVerborgh/N3.js)**:
 ```js
 console.time('n');
 const n3 = require('n3'); let c_triples = 0;
-new n3.Parser().parse(fs.createReadStream('persondata_en.nt'), function(e_parse, h_triple) {
-  if(h_triple) {
-    c_triples += 1;
-  }
-  else {
-    console.timeEnd('n');
-    console.log(`${c_triples} triples parsed`);
-  }
+new n3.Parser().parse(fs.createReadStream('persondata_en.nt'), function(err, triple) {
+    if(triple) {
+        c_triples += 1;
+    }
+    else {
+        console.timeEnd('n');
+        console.log(`${c_triples} triples parsed`);
+    }
 });
 ```
 
@@ -69,22 +69,22 @@ const graphy = require('graphy');
 /* ttl_results = sparql('describe dbr:Banana ?exotics { ?exotics dbp:group dbr:Banana }') */
 graphy.ttl.networks(ttl_results, (g) => {
 
-  let banana = g.enter('dbr:Banana');
-
-  // traverse a link to its set of objects, then filter by language
-  banana.at('rdfs:label').literals('@en').values();  // ['Banana']
-  
-  // access the underlying data object directly
-  banana.links['http://www.w3.org/2000/01/rdf-schema#label'].length;  // 9
-
-  // mimic property paths and filtering by chaining calls together in order
-  //  dbr:Banana ^dbp:group/rdfs:label ?label. FILTER(isLiteral(?label) && lang(?label)="en")
-  banana.inverseAt('dbp:group').at('rdfs:label').literals('@en')
-    .values();  // ['Saba banana', 'Gros Michel banana', 'Red banana', ...]
-
-  // use optional semantic access paths to trivialize things
-  banana.is.dbp.group.of.nodes  // dbr:Banana ^dbp:group ?node. FILTER(isIri(?node))
-    .terms.map(g.terse);  // ['dbr:Saba_banana', 'dbr:Señorita_banana', ...]
+    let banana = g.enter('dbr:Banana');
+    
+    // traverse a link to its set of objects, then filter by language
+    banana.at('rdfs:label').literals('@en').values();  // ['Banana']
+    
+    // access the underlying data object directly
+    banana.links['http://www.w3.org/2000/01/rdf-schema#label'].length;  // 9
+    
+    // mimic property paths and filtering by chaining calls together in order
+    //  dbr:Banana ^dbp:group/rdfs:label ?label. FILTER(isLiteral(?label) && lang(?label)="en")
+    banana.inverseAt('dbp:group').at('rdfs:label').literals('@en')
+        .values();  // ['Saba banana', 'Gros Michel banana', 'Red banana', ...]
+    
+    // use optional semantic access paths to trivialize things
+    banana.is.dbp.group.of.nodes  // dbr:Banana ^dbp:group ?node. FILTER(isIri(?node))
+        .terms.map(g.terse);  // ['dbr:Saba_banana', 'dbr:Señorita_banana', ...]
 });
 ```
 
@@ -191,7 +191,7 @@ A `number` that defines the maximum number of characters to expect of any quoted
 
 ----
 #### Stream Control
-For any of the event callbacks listed above, you can control the state of the stream and pause events from being emitted by using calls to `this`.
+For any of the event callbacks listed above, you can control the stream's state and temporarily suspend events from being emitted by using calls to `this`.
 
 For example:
 ```js
@@ -213,6 +213,20 @@ parse_ttl(input, {
 
 #### `this.resume()`
  - Resumes firing event callbacks. Once there are no more queued events, the parser will automatically resume the readable input stream.
+
+#### `this.stop()`
+ - Immediately stops parsing and permanently unbinds all event liteners so that no more events will be emitted, not even `end`. Will also attempt to close the input stream if it can (calls `.destroy` on `fs.ReadStream` objects). Useful for exitting read streams of large files prematurely.
+ - *example:*
+     ```js
+     parse_ttl(fs.createReadStream('input.ttl'), {
+        data() {
+            // once we've found all the data we need
+            if(triple.object.isLiteral && /find me/.test(triple.object.value)) {
+                this.stop();
+            }
+        },
+     });
+     ```
 
 ----
 <a name="graphy-ttl-parse" />
@@ -441,35 +455,6 @@ If you're familiar with the N3.js parser, it's important to realize some of the 
  - Anonymous blank nodes (e.g., `[]`) are assigned a label starting with the character `g`, rather than `b`. This is done in order to minimize the time spent testing and renaming conflicts with common existing blank node labels in the document (such as `_:b0`, `_:b1`, etc.).
 
 ---
-
-The same string also exists as a property on the `.is` function, which is the recommended style of determing its type since this lookup is faster than calling the function.
-
-Example usage of determining term type:
-```js
-// :a :b :c
-triple.object.termType;  // 'NamedNode'
-triple.object.isNamedNode;  // true
-
-// :a :b _:c
-triple.object.termType;  // 'BlankNode'
-triple.object.isBlankNode;  // true
-
-// :a :b "c"^^d .
-triple.object.termType  // 'Literal'
-triple.object.isLiteral;  // true
-```
-
-You can also generate the Notation3 string serialization of an object by invoking its `toString` method:
-```js
-// :a :b :c
-triple.object.toString();  // '<http://ex/c>'
-
-// :a :b _:c
-''+triple.object;  // '_:c'
-
-// :a :b "c"^^:d .
-triple.object+'';  // '"c"^^<http://ex/d>'
-```
 
 
 ## License
