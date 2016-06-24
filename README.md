@@ -1,4 +1,4 @@
-# graphy.js
+# graphy.js 🍌
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
 A **[faster-than-lightning](#benchmark-results)**, asynchronous, streaming RDF deserializer and [query/property-path-driven](#interaction-paradigm) JavaScript API for traversing RDF graphs. It implements the [RDFJS Representation Interfaces](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces) and natively parses Turtle, TriG, N-Triples, and N-Quads.

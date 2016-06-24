@@ -93,7 +93,10 @@ soda(gulp, {
 	//
 	options: {
 		'*': {
-			test_src: 'test/ttl/*.js',
+			test_src: [
+				'test/parsers/ttl.js',
+				'test/parsers/trig.js',
+			],
 		},
 		'n3-flavors-n3-minify': {
 			minify: true,
