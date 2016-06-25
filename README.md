@@ -15,7 +15,7 @@ A **[faster-than-lightning](#benchmark-results)**, asynchronous, streaming RDF d
 
 <a name="intro" />
 ### Parse Serialized RDF Graphs Faster than Lightning!
-This library boasts a set of high performance parsers, each one is specialized for its corresponding serialization format. Consider the following benchmark trial:
+This library boasts a set of high performance parsers, each one is specialized for its corresponding serialization format. Consider the following benchmark test:
 
 ##### Count how many triples are in [DBpedia's 2015-04 English persondata.nt](http://wiki.dbpedia.org/Downloads2015-04#persondata) in N-Triples format:
 
@@ -67,18 +67,20 @@ Interact with your static graph by mimicing the semantics of SPARQL property-pat
 ```js
 const graphy = require('graphy');
 /* ttl_results = sparql('describe dbr:Banana ?exotics { ?exotics dbp:group dbr:Banana }') */
-graphy.ttl.networks(ttl_results, (g) => {
+graphy.ttl.linked(ttl_results, (g) => {
 
-    let banana = g.enter('dbr:Banana');
-    
     // traverse a link to its set of objects, then filter by language
-    banana.at('rdfs:label').literals('@en').values();  // ['Banana']
+    g.enter('dbr:Banana').at('rdfs:label').literals('@en').values();  // ['Banana']
     
-    // access the underlying data object directly
-    banana.links['http://www.w3.org/2000/01/rdf-schema#label'].length;  // 9
+    // acheive the same result by using the data objects directly
+    g.nodes['http://dbpedia.org/resource/Banana']
+        .links['http://www.w3.org/2000/01/rdf-schema#label']
+        .filter(term => term.isLiteral() && term.language == 'en')
+        .map(term => term.value());  // ['Banana']
+
+    let banana = g.enter('dbr:Banana');  //  🍌
     
-    // mimic property paths and filtering by chaining calls together in order
-    //  dbr:Banana ^dbp:group/rdfs:label ?label. FILTER(isLiteral(?label) && lang(?label)="en")
+    // dbr:Banana ^dbp:group/rdfs:label ?label. FILTER(isLiteral(?label) && lang(?label)="en")
     banana.inverseAt('dbp:group').at('rdfs:label').literals('@en')
         .values();  // ['Saba banana', 'Gros Michel banana', 'Red banana', ...]
     
@@ -90,9 +92,9 @@ graphy.ttl.networks(ttl_results, (g) => {
 
 ## Setup
 
-**Install:**
+**Install it as a dependency for your project:**
 ```sh
-$ npm install graphy
+$ npm install --save graphy
 ```
 
 
@@ -105,8 +107,9 @@ $ npm install graphy
 ### Introduction
 Although this module provides an API for interacting with RDF graphs, you may wish to only use graphy for its parsers - great! The module does not `require` its dependencies until they are explicitly accessed by the user (i.e., they are lazily loaded), so only what is requested will be loaded (the same goes for browsers, so long as you are using [browserify](http://browserify.org/) to bundle your project). 
 
-However, no matter which component of graphy you are loading, the DataFactory methods will always be available. These allow you to create new instances of RDF terms for comparing, injecting, serializing, or using alongside their parsed siblings.
+However, no matter which component of graphy you are loading, the DataFactory methods will always be available. These allow you to create new instances of RDF terms for comparing, injecting, serializing, or using alongside their parser-derived siblings.
 
+<a name="graphy-factory" />
 ### **graphy** implements @RDFJS DataFactory
 The module's main export implements the [RDFJS DataFactory](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#datafactory)
 
@@ -141,7 +144,7 @@ const graphy = require('graphy');
          graphy.nt.parse('<a> <b> <c> .', {
             data() { graphy.blankNode(this)+''; },  // _:g0
          });
-         graphy.nt.network('<a> <b> [] .', (g) => {
+         graphy.nt.linked('<a> <b> [] .', (g) => {
             graphy.blankNode(g)+'';  // _:g1
          });
          ```
@@ -180,7 +183,7 @@ This section documents graphy's high performance parser, which can be used direc
    - [N-Quads  (.nq) - `graphy.nq.parse`](#graphy-nq-parse)
  
 #### Parse Events
-The parsers are engineered to run as fast as computerly possible. For this reason, they do not extend EventEmitter, which normally allows event handlers to bind via `.on()` calls. Instead, any event handlers must be specified at the time the parser is invoked. The name of an event is passed as a key in the hash object passed to the `config` parameter, where the value of the entry is the event handler/callback.
+The parsers are engineered to run as fast as computerly possible. For this reason, they do not extend EventEmitter, which normally allows event handlers to bind via `.on()` calls. Instead, any event handlers must be specified during a call to the parser. The name of an event is given by the key of a `hash` that gets passed as the `config`, where the value of each entry is the event's callback function.
 
 For example:
 ```js

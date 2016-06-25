@@ -1,9 +1,9 @@
 
 
 # Graphs
-A powerful, query-like API is accessible by instructing graphy to create a group of Networks from a given `input`. The following sections are organized as follows:
+A powerful, query-like API is accessible by instructing graphy to create a linked data structure from a given `input`. The following sections are organized as follows:`
  - [Understanding Pseudo-Datatypes used in this documentation](#pseudo-datatypes)
- - [Creating a group of Networks](#graphy-networks)
+ - [Creating a linked data structure](#graphy-linked)
  - [RDF Terms](#rdf-terms)
     - [Term](#term)
     - [NamedNode](#namenode)
@@ -14,8 +14,9 @@ A powerful, query-like API is accessible by instructing graphy to create a group
  - [Node](#node), [NodeSet](#nodeset)
  - [Bag](#bag), [Bunch](#bunch), and [LiteralBunch](#bunch)
  - [Namespace](#namespace)
- - [Network](#network)
+ - [Links](#links)
  - [Graph](#graph)
+ - [Store](#store)
 
 ### Pseudo-Datatypes:
 Throughout this API document, the following datatypes are used to represent expectations imposed on primitive-datatyped parameters to functions, exotic uses of primitives in class methods, and so forth:
@@ -32,13 +33,13 @@ Throughout this API document, the following datatypes are used to represent expe
  - `function/hash` - refers to a `function` that also acts as a `hash`, so it can either be used to access certain properties or it can be called with/without certain arguments.
    - e.g., `thing.method(arg); /*and*/ thing.method[property]; // are both acceptable and may do different things`
 
-<a name="graphy-networks" />
-##### `graphy.[format].networks(input: string|Stream, callback: function)`
- - Parses `input` and invokes `callback(g: Graph)`, where `g` is a [new Graph](#graph)
+<a name="graphy-linked" />
+##### graphy.`[format]`.linked(input: string|Stream[, parse_options: hash], callback: function)
+ - Parses `input` and invokes `callback(g: Graph, s: Store)`, where `g` is a [Graph](#graph) that encapsulates the DefaultGraph, and `s` is a [Store](#store) that holds pointers to all the Graphs from `input`. Accepts an optional `parse_options` that accepts the options specified in [Parse Options](#parse-options).
  - *example:*
      ```js
      let input = '@prefix : <ex://>.  :Mars a :Planet;  :looks :Red, "baron" .';
-     graphy.ttl.networks(input, (g) => {
+     graphy.ttl.linked(input, (g) => {
         let mars = g.enter(':Mars');
         mars.at.rdf.type.values();  // ['ex://Planet']
         mars.at(':looks').nodes.values();  // ['ex://Red']
@@ -46,24 +47,15 @@ Throughout this API document, the following datatypes are used to represent expe
     });
     ```
  - Where `[format]` is one of: `ttl`, `trig`, `nt`, or `nq`. Such as:
-    - `graphy.ttl.networks()`
-    - `graphy.trig.networks()`
-    - `graphy.nt.networks()`
-    - `graphy.nq.networks()`
+    - `graphy.ttl.linked(...)`
+    - `graphy.trig.linked(...)`
+    - `graphy.nt.linked(...)`
+    - `graphy.nq.linked(...)`
 
-
-----
-<a name="rdf-terms" />
-### RDF Terms & instantiation
-You can use the following functions to construct new instances of a [Term](#term).
- - [`graphy.namedNode (iri: string)`](#namednode) : **returns** a [new NamedNode](#NamedNode)
- - [`graphy.blankNode (label: string)`](#blanknode)
- - [`graphy.literal (value: string, datatype_or_lang: string|langtag)`](#literal)
- - [`graphy.defaultGraph ()`](#defaultgraph)
 
 <a name="term" />
 ### abstract **Term** implements @RDFJS Term
-An abstract class that represents an RDF term by implementing the [RDFJS Term interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#term).
+An abstract class that represents an RDF term by implementing the [RDFJS Term interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#term). If you are looking to create an instance of Term, see the [graphy DataFactory](#graphy-factory).
 
 **Properties:** (implementing RDFJS Term interface)
  - `.termType` : `string` -- either `'NamedNode'`, `'BlankNode'`, `'Literal'` or `'DefaultGraph'`
@@ -80,8 +72,8 @@ An abstract class that represents an RDF term by implementing the [RDFJS Term in
    - **returns** a `string`
    - *example:*
        ```js
-       let hey = new graphy.NamedNode('hello');
-       let you = new graphy.Literal('world!', '@en');
+       let hey = graphy.namedNode('hello');
+       let you = graphy.literal('world!', '@en');
        console.log(hey+' '+you); // '<hello> "world!"@en'
        ```
       
@@ -180,7 +172,17 @@ A class that represents an RDF triple/quad by implementing the [RDFJS Quad inter
  - `.toCanonical()` -- produces an [N-Triples canonical form](https://www.w3.org/TR/n-triples/#canonical-ntriples) of the Quad.
 
 **Methods:**
- - `.toString()` -- alias of `.toCanonical()`
+ - `.valueOf()` -- gets called when cast to a `string`. It simply returns `.toCanonical()`
+   - **returns** a `string`
+   - *example:*
+       ```js
+       graphy.quad(
+           graphy.namedNode('subject'),
+           graphy.namedNode('predicate'),
+           graphy.namedNode('object'),
+           graphy.namedNode('graph'),
+       )+'';  // '<subject> <predicate> <object> <graph> .'
+       ```
 
 ----
 <a name="triple" />
@@ -193,6 +195,7 @@ A class that represents an RDF triple by implementing the [RDFJS Triple interfac
 
 **Methods:** (aliasing Quad & implementing RDFJS Triple interface)
  - ... [those in Quad](#Quad)
+
 ----
 <a name="node" />
 ### **Node** extends [NamedNode|BlankNode]
@@ -204,7 +207,7 @@ A class that wraps an RDF node - which can be either a [NamedNode](#namednode) o
  - `.is[Named|Blank]Node` : `boolean` = `true` -- the preferred and fastest way to test for NamedNode or BlankNode term types, only one will be defined, the other will be `undefined`.
 
 **Properties:**
- - `.links[predicate_uri: key]` -- a `hash` that provides access to the underlying [Network](#network)
+ - `.links[predicate_uri: key]` -- a `hash` that provides access to the underlying [Links](#link)
    - selects the set of objects linked via `predicate_uri` from this subject node.
    - **returns** an `Array` of [Terms](#terms) which represents the objects of the triples.
    - *example:*
@@ -212,7 +215,7 @@ A class that wraps an RDF node - which can be either a [NamedNode](#namednode) o
         banana.links['http://www.w3.org/2000/01/rdf-schema#label'];
         // returns: [ Literal {value:'Banana', language:'en', datatype:...}, ...]
         ````
- - `.inverseLinks[predicate_uri: key]` -- a `hash` that provides access to the [Network](#network) of inverse links
+ - `.inverseLinks[predicate_uri: key]` -- a `hash` that provides access to the inverse [Links](#links)
    - selects the set of subjects linked via `predicate_uri` wherever this Node appears in the object position of a triple in the current graph.
    - **returns** an `Array` of [Nodes](#nodes) that represent the subjects of the triples.
    - *example:*
@@ -294,6 +297,7 @@ A class that wraps a set of [Nodes](#node). Since it is a set, no two of its ite
  - `.areNodes` : `boolean` = `true`
  - `.nodes` : `hash` -- access to the underlying `hash` of [Nodes](#node)
  - `.of` : `this` -- behaves the same as [Node#of](#node)
+ - `.length` : `integer` -- the number of items in the set
 
 **Methods:**
  - `.at` -- behaves the same as [Node#at](#node)
@@ -410,6 +414,19 @@ A class that represents an unordered list of [Literals](#literal).
 
 
 ----
+### **Void**
+A class that represents the absence of a [Node](#node). It is used to prevent `TypeError`s from being thrown during chaining if a requested Node does not exist.
+
+**Properties/Methods:**
+ - `.at` : `hash/function` -- **returns** an empty [Bag](#bag)
+ - `.inverseAt`, `.is`, `.of` : `hash/function` -- **returns** an empty [NodeSet](#nodeset)
+ - `.all`, `.inverseAll` : `hash` -- **returns** an empty [Bag](#bag)
+ - `.nodes`, `.namedNodes`, `.blankNodes` : `hash` -- **returns** an empty [NodeSet](#nodeset)
+ - `.literals` : `hash/function` -- **returns** an empty [LiteralBunch](#literalbunch)
+ - `.values()` -- **returns** an empty `Array`
+ - `.datatypes()`, `.languages()` -- **returns** an empty `Array`
+
+----
 ### **Namespace**
 A `hash` of namespaced suffixes where each entry links to a sets of objects (Literals) or to other nodes (NamedNodes or BlankNodes).
  - *{hash}* `[predicate_suffix: key]`
@@ -423,11 +440,11 @@ A `hash` of namespaced suffixes where each entry links to a sets of objects (Lit
         ```
 
 ----
-### **Network**
-A `hash` that represents all predicates from the current node to its objects (Literals, NamedNodes, BlankNodes) or to its subject nodes (NamedNodes or BlankNodes). An instance can either represent links in the normal direction (to objects) *OR* it can represent links in the inverse direction (to subject nodes), depending on how it was created. Reserved keys are prefixed with a `'^'` to prevent collisions with predicate IRIs:
+### **Links**
+A `hash` that represents the set of predicates from the current node to its objects (Literals, NamedNodes, and BlankNodes) *OR* to its subjects (NamedNodes and BlankNodes). An instance can either represent links in the normal direction (i.e., to objects) *OR* it can represent links in the inverse direction (i.e., to subject nodes), depending on how it was created. Reserved keys are prefixed with a `'^'` to prevent collisions with predicate IRIs:
  - *{hash}* `['^direction']` : `number` -- indicates the direction of the predicates.
    - either a `1` for normal direction (i.e., `subject --> object`) or a `-1` for inverse direction (i.e., `subject <-- object`).
- - *{hash}* `['^term']` -- the [Term](#term) that is the 'owner' of this Network. This will always be either a [NamedNode](#namednode) or [BlankNode](#blanknode).
+ - *{hash}* `['^term']` -- the [Term](#term) that is the 'owner' of these Links. This will always be either a [NamedNode](#namednode) or [BlankNode](#blanknode).
  - *{hash}* `[predicate_iri: key]`
    - selects the set of objects that are pointed to, or subjcets that are pointed from, the given `predicate_iri` -- depending on `^direction`.
 
@@ -438,48 +455,51 @@ A class that represents a set of triples in which any of its nodes are accessibl
 Prior associations to an RDF graph IRI
 
 **Properties:**
- - `.term` -- the [Term](#term) that is the 'owner' of this Graph. This will always be either a [NamedNode](#namednode) or [BlankNode](#blanknode).
- - `.nodes[node_id: key]` -- a `hash` that provides access to the underlying graph, which returns the [Node](#node) belonging to the given `node_id`. In order to prevent collisions with obscure IRIs, the `node_id` for blank nodes is a space `' '` followed by the label value.
+ - `.id` -- the Graph's id, which is either the IRI of a NamedNode, *OR* a `'_:'` followed by the label of a BlankNode.
+ - `.prefixes[prefix_id: key]` -- a `hash` that provides access to the prefixes used by all graphs in the Store.
+   - **returns** a `string` of the prefix' IRI
+ - `.nodes[node_id: key]` -- a `hash` that provides access to the underlying graph, which returns the [Node](#node) belonging to the given `node_id`.
    - **returns** a [Node](#node)
    - *example:*
        ```js
        g.nodes['http://dbpedia.org/resource/Banana'];
        // -- or --
-       g.nodes[' b12'];
+       g.nodes['_:b12'];
        ```
- - `.roots[node_id: key]` -- a `hash` that provides access to named nodes that appear **at least once** in the subject position of any triple AND blank nodes that **only** appear in the subject position of any triple. Useful for iteration with the `in` operator. In order to prevent collisions with obscure IRIs, the `node_id` for blank nodes is a space `' '` followed by the label value.
+ - `.roots[node_id: key]` -- a `hash` that provides access to named nodes that appear **at least once** in the subject position of any triple AND blank nodes that **only** appear in the subject position of any triple. Useful for iteration with the `in` operator.
      - **returns** a [Node](#node)
      - *example:*
          ```js
          for(let node_id in g.roots) {
-           if(node_id.startsWith(' ')) {
+           if(node_id.startsWith('_:')) {
              // blank nodes only appearing as subject in this set of triples
              let blank_node = g.roots[node_id];
            }
          }
          ```
 
-
 **Methods:**
- - `.enter(node_id: iri|label)` -- selects the node in the current graph given by `node_id`.
-   - **returns** a [Node](#node)
+ - `.enter(node_id: iri|label)` -- selects the node in the current graph given by `node_id`. However, if no such node is found then it will return an [EmptySet](#emptyset) so that chaining may continue.
+   - **returns** a [Node](#node) or [EmptySet](#emptyset)
    - *example:*
        ```js
        let banana = g.enter('dbr:Banana');
        ```
+ - `.resolve(prefixed_name: string)` -- returns the IRI of the given `prefixed_name` by replacing the prefix with its corresponding IRI.
+   - **returns** a `string` of the IRI, or `undefined` if no such prefix exists
  - `.terse` : `function` -- produces the most terse Turtle serialization of a node's IRI, a blank node's label, or a literal's content and language/datatype. For IRIs, it will find the longest matching prefix and attempt to to create a prefixed name unless the resulting name contains invalid characters, in which case an absolute IRI reference (with `'<'` and `'>'`) is returned. For literals, it will omit the datatype if it is `xsd:string`, and will attempt to represent `xsd:boolean`, `xsd:integer`, `xsd:decimal` and `xsd:double` as numeric literals so long as the contents are parseable. See example for details.
    - *{function}* `(term: Term)` -- for any: [NamedNode](#namednode), [BlankNode](#blanknode), or [Literal](#literal).
    - *{function}* `(node: Node)` -- serializes the IRI or the label associated with `node`
    - *{function}* `(iri: string)` -- attempts to shorten the given `iri`
-     - **returns** a `string`
+     - **returns** a `string` in Notation3, or `undefined` if a prefix does not exist
      - *example:*
          ```js
          // .terse(term: Term)
          g.terse(banana.term);  // 'dbr:Banana'
-         g.terse(new graphy.Literal('hello world!'));  // '"hello world!"'
-         g.terse(new graphy.Literal('42', 'http://www.w3.org/2001/XMLSchema#decimal'));  // '42.0'
-         g.terse(new graphy.Literal('hola mundo!', '@es'));  // '"hola mundo!"@es
-         g.terse(new graphy.Literal('f', 'http://www.w3.org/2001/XMLSchema#double'));  // '"f"^^xsd:double'
+         g.terse(graphy.literal('hello world!'));  // '"hello world!"'
+         g.terse(graphy.literal('42', 'http://www.w3.org/2001/XMLSchema#decimal'));  // '42.0'
+         g.terse(graphy.literal('hola mundo!', '@es'));  // '"hola mundo!"@es
+         g.terse(graphy.literal('f', 'http://www.w3.org/2001/XMLSchema#double'));  // '"f"^^xsd:double'
          
          // .terse(node: Node)
          g.terse(banana);  // 'dbr:Banana'
@@ -506,13 +526,13 @@ Prior associations to an RDF graph IRI
 A class that represents a set of [Graphs](#graph). 
 
 **Properties:**
- - `.graphs[graph_id: key]` -- a `hash` that provides access to the underlying store, which returns a [Graph](#graph) of all triples associated with the given `graph_id`. In order to prevent collisions with obscure IRIs, the `graph_id` for blank nodes is a space `' '` followed by the label value. The default graph has a `graph_id` of `''` (the empty string).
+ - `.graphs[graph_id: key]` -- a `hash` that provides access to the underlying store, which returns a [Graph](#graph) of all triples associated with the given `graph_id`.
      - **returns** a [Graph](#graph)
      - *example:*
          ```js
          s.graphs['http://named-graph-id/'];
          // -- or --
-         s.graphs[' b0'];
+         s.graphs['_:b0'];
          // -- or --
          s.graphs[''];  // the default graph
          ```
