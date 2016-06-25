@@ -1,9 +1,9 @@
 # graphy.js 🍌
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
-A **[faster-than-lightning](#benchmark-results)**, asynchronous, streaming RDF deserializer and [query/property-path-driven](#interaction-paradigm) JavaScript API for traversing RDF graphs. It implements the [RDFJS Representation Interfaces](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces) and natively parses Turtle, TriG, N-Triples, and N-Quads.
+A **[faster-than-lightning](#benchmark-results)**, asynchronous, streaming RDF deserializer and [query-like](#interaction-paradigm) JavaScript API for traversing RDF graphs. It implements the [RDFJS Representation Interfaces](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces) and natively parses Turtle, TriG, N-Triples, and N-Quads.
 
-> JSON-LD support has been temporarily suspended until the expand algorithm is implemented.
+> JSON-LD support has been temporarily suspended until the expand algorithm is re-implemented.
 
 # Contents
  - [Introduction & Example Usage](#intro)
@@ -50,19 +50,19 @@ new n3.Parser().parse(fs.createReadStream('persondata_en.nt'), function(err, tri
 ```
 
 #### Benchmark Results:
-Each benchmark listed was the best of 3 trials (and w/ variations of less than 5%):
-| trial                    | size     | # statements | N3.js ms    | <--op/s | graphy.js ms | <--op/s   | speedup  |
+Each benchmark listed was the best of 5 trials:
+| test                    | size     | # statements | N3.js ms    | <--op/s | graphy.js ms | <--op/s   | speedup  |
 | ------------------------ | -------- | ------------:| -----------:| -------:| ------------:| ---------:| -------- |
-| persondata_en.nt         | 967 MiB  |      8397081 | 16030.645ms | 523,835 |  4715.599ms  | 1,780,929 | 3.4 x    |
-| redirects_en.ttl         | 994 MiB  |      6831505 | 12079.796ms | 565,568 |  6790.367ms  | 1,006,112 | 1.778 x  |
-| article-categories_en.nq | 5.16 GiB |     20232709 | 46261.009ms | 437,359 | 26855.249ms  |   753,405 | 1.722 x  |
+| persondata_en.nt         | 967 MiB  |    8,397,081 | 16030.645ms | 523,835 |  4715.599ms  | 1,780,929 | 3.4 x    |
+| redirects_en.ttl         | 994 MiB  |    6,831,505 | 12079.796ms | 565,568 |  6790.367ms  | 1,006,112 | 1.778 x  |
+| article-categories_en.nq | 5.16 GiB |   20,232,709 | 46261.009ms | 437,359 | 26855.249ms  |   753,405 | 1.722 x  |
 | need to find a .trig     |          |              |             |         |              |           |          |
 
 What's the catch? [See Performance details](#performance)
 
 
 <a name="interaction-paradigm" />
-## Use a Query/Property-Path-Driven API to interact with RDF graphs
+## Use a query-like API to interact with RDF graphs
 Interact with your static graph by mimicing the semantics of SPARQL property-paths and filters in a query-like manner:
 ```js
 const graphy = require('graphy');
@@ -103,11 +103,65 @@ $ npm install graphy
  - [Graph](#)
 
 ### Introduction
+Although this module provides an API for interacting with RDF graphs, you may wish to only use graphy for its parsers - great! The module does not `require` its dependencies until they are explicitly accessed by the user (i.e., they are lazily loaded), so only what is requested will be loaded (the same goes for browsers, so long as you are using [browserify](http://browserify.org/) to bundle your project). 
 
+However, no matter which component of graphy you are loading, the DataFactory methods will always be available. These allow you to create new instances of RDF terms for comparing, injecting, serializing, or using alongside their parsed siblings.
 
+### **graphy** implements @RDFJS DataFactory
+The module's main export implements the [RDFJS DataFactory](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#datafactory)
+
+```js
+const graphy = require('graphy');
+```
+
+**Methods:**
+ - `graphy.namedNode (iri: string)`
+   - **returns** a [new NamedNode](#namednode)
+   - *example:*
+       ```js
+       graphy.namedNode('ex://test')+'';  // '<ex://test>'
+       ```
+ - `graphy.literal(contents: string[, datatype_or_lang: string|langtag])`
+   - **returns** a [new Literal](#literal) with optional `datatype_or_lang`
+   - *example:*
+       ```js
+       graphy.literal('"')+'';  // '"\""^^<http://www.w3.org/2001/XMLSchema#string>'
+       graphy.literal('42', 'ex://datatype')+'';  // '"42"^^<ex://datatype>'
+       graphy.literal('hello Mars!', '@en')+'';  // '"hello Mars!"@en'
+       ```
+ - `graphy.blankNode` : `function`
+   - *{function}* `()` -- no args constructor will generate a new UUID4 in order to thwart label collisions
+   - *{function}* `(label: string)` -- uses the given `label` 
+   - *{function}* `(label_manager: Parser|Graph|other)` -- calls `label_manager.next_label()` to generate a new label. Alwyas better to use this method than the no-args version because it guarantees collision-free labels and is also more efficient.
+     - **returns** a [new BlankNode](#blanknode)
+     - *example:*
+         ```js
+         graphy.blankNode()+'';  // '_:439e14ae_1531_4683_ac96_b9f091da9595'
+         graphy.blankNode('label')+'';  // '_:label'
+         graphy.nt.parse('<a> <b> <c> .', {
+            data() { graphy.blankNode(this)+''; },  // _:g0
+         });
+         graphy.nt.network('<a> <b> [] .', (g) => {
+            graphy.blankNode(g)+'';  // _:g1
+         });
+         ```
+ - `graphy.defaultGraph()`
+   - **returns** a [new DefaultGraph](#defaultgraph)
+   - *example:*
+       ```js
+       graphy.defaultGraph()+'';  // ''
+       graphy.defaultGraph().termType;  // 'DefaultGraph'
+       ```
+ - `graphy.triple(subject: Term, predicate: Term, object: Term)`
+   - **returns** a [new Triple](#triple)
+ - `graphy.quad(subject: Term, predicate: Term, object: Term, graph: Term)`
+   - **returns** a [new Quad](#quad)
+ 
+----
 ### Parsing
 This section documents graphy's high performance parser, which can be used directly for parsing a readable stream, transforming a readable stream to a writable stream, and parsing static strings. Each parser also allows [pausing and resuming the stream](#stream-control).
  - [Parse events](#parse-events)
+   - [ready()](#event-ready)
    - [data(quad: Quad)](#event-data)
    - [prefix(id: string, iri: string)](#event-prefix)
    - [base(iri: string)](#event-base)
@@ -130,16 +184,20 @@ The parsers are engineered to run as fast as computerly possible. For this reaso
 
 For example:
 ```js
-const parse_ttl = graphy.ttl.parse;
-parse_ttl(input, {
-    triple(h_triple) {  // 'triple' event handler
+const parse_trig = graphy.trig.parse;
+parse_trig(input, {
+    data(quad) {  // 'data' event handler
         // ..
     },
-    error(e_parse) {  // 'error' event handler
+    error(parse_error) {  // 'error' event handler
         // ..
     },
 });
 ```
+
+<a name="event-ready" />
+##### Event: ready()
+Gets called once the input stream is readable. On the other hand, if the input is a string then this event gets called immediately.
 
 <a name="event-data" />
 ##### Event: data(quad: [Quad](#triple)[, output: list])
@@ -167,7 +225,7 @@ Gets called once for each graph block as soon as the closing `}` character is pa
 
 <a name="event-error" />
 ##### Event: error(message: string)
-Gets called if a parsing error occurs at any time. If an error does occur, no other instance events will ever be called after this. If you do not include an `error` event handler, the parser will throw the error's `message` string.
+Gets called if a parsing error occurs at any time. If an error does occur, no other events will be called on the instance after this. If you do not include an `error` event handler, the parser will throw the error's `message` string.
 
 <a name="event-end" />
 ##### Event: end([prefixes: hash])
@@ -191,7 +249,7 @@ A `number` that defines the maximum number of characters to expect of any quoted
 
 ----
 #### Stream Control
-For any of the event callbacks listed above, you can control the stream's state and temporarily suspend events from being emitted by using calls to `this`.
+For any of the event callbacks listed above, you can control the stream's state and temporarily suspend events from being emitted by making calls through `this`.
 
 For example:
 ```js
@@ -219,8 +277,8 @@ parse_ttl(input, {
  - *example:*
      ```js
      parse_ttl(fs.createReadStream('input.ttl'), {
-        data() {
-            // once we've found all the data we need
+        data(triple) {
+            // once we've found what we're looking for...
             if(triple.object.isLiteral && /find me/.test(triple.object.value)) {
                 this.stop();
             }
@@ -239,7 +297,7 @@ const parse_ttl = graphy.ttl.parse;
 The parse function (in the example above, `parse_ttl`) has three variants:
 
 ##### parse_ttl(input: string, config: hash)
-Synchronously parses the given `input` string. It supports the event handlers:  [`data`](#event-data), [`prefix`](#event-prefix), [`base`](#event-base), [`error`](#event-error) and [`end`](#event-end). If a call to `this.pause()` is made during event callbacks, the operation becomes an asynchronous.
+Synchronously parses the given `input` string. It supports the event handlers:  [`data`](#event-data), [`prefix`](#event-prefix), [`base`](#event-base), [`error`](#event-error) and [`end`](#event-end). If a call to `this.pause()` is made during event callbacks, the operation becomes asynchronous.
 
 *Example:*
 ```js
