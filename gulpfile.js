@@ -96,6 +96,7 @@ soda(gulp, {
 			test_src: [
 				'test/parsers/ttl.js',
 				'test/parsers/trig.js',
+				'test/main/linked.js',
 			],
 		},
 		'n3-flavors-n3-minify': {

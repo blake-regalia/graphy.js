@@ -173,6 +173,7 @@ This section documents graphy's high performance parser, which can be used direc
    - [error(message: string)](#event-error)
    - [end(prefixes: hash)](#event-end)
  - [Parse options](#parse-options)
+   - [async](#option-async)
    - [max_token_length](#option-max-token-length)
    - [max_string_length](#option-max-string-length)
  - [Stream Control](#stream-control)
@@ -240,6 +241,10 @@ Gets called once at the very end of the input. For piped streams, this occurs on
 ----
 #### Parse Options
 In addition to [specifying events](#parse-events), the parser function's `config` parameter also accepts a set of options:
+
+<a name="option-async" />
+##### Option: async
+Only applies when input is a string (does nothing when using streams as input). If value is truthy, makes the operation asynchronous (i.e., the `end` callback will fire *after* the current event loop instead of before). This also clears the call stack which is a good idea if the input is a large string and `end` makes a lot of nested function calls and might overflow the stack.
 
 <a name="option-max-token-length" />
 ##### Option: max_token_length

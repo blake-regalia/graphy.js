@@ -1,0 +1,807 @@
+@prefix dbo:	<http://dbpedia.org/ontology/> .
+@prefix dbr:	<http://dbpedia.org/resource/> .
+<http://dbpedia.org/resource/Saba_(disambiguation)>	dbo:wikiPageDisambiguates	dbr:Saba_banana .
+@prefix rdf:	<http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix yago:	<http://dbpedia.org/class/yago/> .
+dbr:Saba_banana	rdf:type	yago:BananaCultivars ,
+		dbo:Plant ,
+		yago:LivingThing100004258 ,
+		dbo:CultivatedVariety ,
+		yago:Plant100017222 .
+@prefix owl:	<http://www.w3.org/2002/07/owl#> .
+dbr:Saba_banana	rdf:type	owl:Thing ,
+		dbo:Eukaryote ,
+		yago:Abstraction100002137 ,
+		yago:Whole100003553 ,
+		yago:Object100002684 ,
+		yago:Organism100004475 ,
+		yago:Cultivar113084834 ,
+		yago:PhysicalEntity100001930 ,
+		yago:Group100031264 ,
+		yago:VascularPlant113083586 ,
+		yago:Variety108101085 ,
+		yago:BiologicalGroup107941170 .
+@prefix wikidata:	<http://www.wikidata.org/entity/> .
+dbr:Saba_banana	rdf:type	wikidata:Q19088 ,
+		wikidata:Q4886 ,
+		yago:TaxonomicGroup107992450 ,
+		wikidata:Q756 ,
+		dbo:Species .
+@prefix dct:	<http://purl.org/dc/terms/> .
+@prefix dbc:	<http://dbpedia.org/resource/Category:> .
+dbr:Saba_banana	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	30413568 ;
+	dbo:wikiPageRevisionID	660709732 ;
+	dbo:wikiPageExternalLink	<http://www.lemanger.fr/index.php/ethnology/saba-banana-can-do-anything-even-ketchup/?lang=en> ,
+		<http://www.promusa.org/tiki-index.php?page=Saba> .
+@prefix dbpedia-id:	<http://id.dbpedia.org/resource/> .
+dbr:Saba_banana	owl:sameAs	dbpedia-id:Pisang_kepok ,
+		<http://rdf.freebase.com/ns/m.0g5pzh_> .
+@prefix dbpedia-wikidata:	<http://wikidata.dbpedia.org/resource/> .
+dbr:Saba_banana	owl:sameAs	dbpedia-wikidata:Q7395795 ,
+		wikidata:Q7395795 .
+@prefix yago-res:	<http://yago-knowledge.org/resource/> .
+dbr:Saba_banana	owl:sameAs	yago-res:Saba_banana .
+@prefix dbp:	<http://dbpedia.org/property/> .
+dbr:Saba_banana	dbp:group	dbr:Banana ;
+	dbp:image	"Saba Bananas.jpg"@en ,
+		"Saba banana 3.jpg"@en ;
+	dbp:imageCaption	"Saba bananas typically grow to very large sizes."@en ;
+	dbp:imageWidth	250 ;
+	dbp:origin	dbr:Philippines ;
+	dbp:width	120 ;
+	dbp:caption	"Saba bananas and inflorescence."@en ,
+		"The angular squarish fruits of the Saba banana."@en ;
+	dbp:cultivar	"'Saba'"@en ;
+	dbp:hybrid	"Musa acuminata \u00D7 Musa balbisiana"@en .
+@prefix rdfs:	<http://www.w3.org/2000/01/rdf-schema#> .
+dbr:Saba_banana	rdfs:label	"Saba banana"@en ;
+	rdfs:comment	"Saba banana is a triploid hybrid (ABB) banana cultivar originating from the Philippines. It is primarily a cooking banana though it can also be eaten raw. It is one of the most important banana varieties in Philippine cuisine. It is also sometimes known as the cardaba banana, though the latter name may be more correctly applied to a very similar cultivar also classified within the saba subgroup."@en .
+@prefix foaf:	<http://xmlns.com/foaf/0.1/> .
+dbr:Saba_banana	foaf:name	"Musa 'Saba'"@en ;
+	dbp:name	"Musa 'Saba'"@en ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Saba_banana_tree.jpg> .
+@prefix wikipedia-en:	<http://en.wikipedia.org/wiki/> .
+dbr:Saba_banana	foaf:isPrimaryTopicOf	wikipedia-en:Saba_banana ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Saba_banana_tree.jpg?width=300> .
+@prefix prov:	<http://www.w3.org/ns/prov#> .
+dbr:Saba_banana	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Saba_banana?oldid=660709732> ;
+	dbo:abstract	"Saba banana is a triploid hybrid (ABB) banana cultivar originating from the Philippines. It is primarily a cooking banana though it can also be eaten raw. It is one of the most important banana varieties in Philippine cuisine. It is also sometimes known as the cardaba banana, though the latter name may be more correctly applied to a very similar cultivar also classified within the saba subgroup."@en ;
+	dbo:hybrid	dbr:Musa_acuminata ;
+	dbo:origin	dbr:Philippines .
+dbr:Señorita_banana	rdf:type	dbo:Species ,
+		yago:LivingThing100004258 ,
+		yago:BananaCultivars ,
+		yago:PhysicalEntity100001930 ,
+		yago:TaxonomicGroup107992450 ,
+		yago:Abstraction100002137 ,
+		dbo:CultivatedVariety ,
+		yago:Plant100017222 ,
+		dbo:Eukaryote ,
+		yago:BiologicalGroup107941170 ,
+		yago:Object100002684 ,
+		yago:Organism100004475 ,
+		yago:Cultivar113084834 ,
+		yago:Whole100003553 ,
+		wikidata:Q756 ,
+		yago:Group100031264 ,
+		wikidata:Q4886 ,
+		owl:Thing ,
+		yago:Variety108101085 ,
+		yago:VascularPlant113083586 ,
+		dbo:Plant ,
+		wikidata:Q19088 ;
+	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	30472262 ;
+	dbo:wikiPageRevisionID	671872949 .
+@prefix dbpedia-fr:	<http://fr.dbpedia.org/resource/> .
+dbr:Señorita_banana	owl:sameAs	dbpedia-fr:Señorita ,
+		<http://rdf.freebase.com/ns/m.0g9vccy> ,
+		dbpedia-wikidata:Q7459686 ,
+		wikidata:Q7459686 ,
+		yago-res:Señorita_banana ;
+	dbp:group	dbr:Banana ;
+	dbp:imageWidth	250 ;
+	dbp:origin	dbr:Philippines ;
+	dbp:species	"Musa acuminata"@en ;
+	dbp:cultivar	"'Se\u00F1orita'"@en ;
+	rdfs:label	"Se\u00F1orita"@fr ,
+		"Se\u00F1orita banana"@en ;
+	rdfs:comment	"'Se\u00F1orita' (connu aussi sous les noms de 'Monkoy', 'Cari\u00F1osa' ou 'Cuarenta Dias') est un cultivar diplo\u00EFde d'un bananier de l'esp\u00E8ce Musa acuminata, originaire des Philippines.  Il produit de tr\u00E8s petites bananes robustes qui, comme toutes les bananes provenant de cultivars du groupe AA, sont connues pour \u00EAtre extr\u00EAmement sucr\u00E9es."@fr ,
+		"Se\u00F1orita bananas (also known as Monkoy, Cari\u00F1osa, or Cuarenta Dias) are diploid cultivars of the banana Musa acuminata originating from the Philippines.  They are very small stout bananas which, like all bananas belonging to the AA cultivar group, are known for being extraordinarily sweet."@en ;
+	foaf:name	"Musa acuminata 'Se\u00F1orita'"@en ;
+	dbp:name	"Musa acuminata 'Se\u00F1orita'"@en ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Ripe_se\u00F1orita_bananas_(Musa_acuminata_\u0027Se\u00F1orita\u0027).jpg> ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Señorita_banana ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Ripe_se\u00F1orita_bananas_(Musa_acuminata_\u0027Se\u00F1orita\u0027).jpg?width=300> ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Se\u00F1orita_banana?oldid=671872949> ;
+	dbo:abstract	"'Se\u00F1orita' (connu aussi sous les noms de 'Monkoy', 'Cari\u00F1osa' ou 'Cuarenta Dias') est un cultivar diplo\u00EFde d'un bananier de l'esp\u00E8ce Musa acuminata, originaire des Philippines.  Il produit de tr\u00E8s petites bananes robustes qui, comme toutes les bananes provenant de cultivars du groupe AA, sont connues pour \u00EAtre extr\u00EAmement sucr\u00E9es."@fr ,
+		"Se\u00F1orita bananas (also known as Monkoy, Cari\u00F1osa, or Cuarenta Dias) are diploid cultivars of the banana Musa acuminata originating from the Philippines.  They are very small stout bananas which, like all bananas belonging to the AA cultivar group, are known for being extraordinarily sweet."@en ;
+	dbo:origin	dbr:Philippines ;
+	dbo:species	dbr:Musa_acuminata .
+dbr:Gros_Michel_banana	rdf:type	wikidata:Q4886 ,
+		yago:BiologicalGroup107941170 ,
+		wikidata:Q756 ,
+		yago:Whole100003553 ,
+		yago:PhysicalEntity100001930 ,
+		owl:Thing ,
+		yago:Organism100004475 ,
+		yago:Object100002684 ,
+		yago:LivingThing100004258 ,
+		yago:TaxonomicGroup107992450 ,
+		yago:Plant100017222 ,
+		dbo:Eukaryote ,
+		dbo:Species ,
+		yago:Abstraction100002137 ,
+		dbo:CultivatedVariety ,
+		yago:BananaCultivars ,
+		wikidata:Q19088 ,
+		dbo:Plant ,
+		yago:VascularPlant113083586 ,
+		yago:Variety108101085 ,
+		yago:Cultivar113084834 ,
+		yago:Group100031264 ;
+	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	5845425 ;
+	dbo:wikiPageRevisionID	683300161 ;
+	owl:sameAs	<http://rdf.freebase.com/ns/m.0f8pzn> ,
+		wikidata:Q1547451 ,
+		dbpedia-wikidata:Q1547451 .
+@prefix dbpedia-ko:	<http://ko.dbpedia.org/resource/> .
+dbr:Gros_Michel_banana	owl:sameAs	dbpedia-ko:그로스_미셸 .
+@prefix dbpedia-de:	<http://de.dbpedia.org/resource/> .
+dbr:Gros_Michel_banana	owl:sameAs	dbpedia-de:Gros_Michel ,
+		dbpedia-fr:Gros_Michel ,
+		yago-res:Gros_Michel_banana .
+@prefix dbpedia-it:	<http://it.dbpedia.org/resource/> .
+dbr:Gros_Michel_banana	owl:sameAs	dbpedia-it:Gros_Michel ;
+	dbp:group	dbr:Banana ;
+	dbp:imageCaption	"Gros Michel bananas from Jamaica."@en ;
+	dbp:imageWidth	250 ;
+	dbp:origin	dbr:Jamaica ,
+		dbr:Martinique ;
+	dbp:species	"Musa acuminata"@en ;
+	dbp:cultivar	"'Gros Michel'"@en ;
+	rdfs:label	"Gros Michel banana"@en ,
+		"Gros Michel"@fr ,
+		"Gros Michel"@it ,
+		"Gros Michel"@de ,
+		"\u5927\u7C73\u4E03\u9999\u8549"@zh ;
+	rdfs:comment	"Gros Michel, often known as Big Mike, is an export cultivar of banana and was, until the 1950s, the main variety exported to the United States."@en ,
+		"\u5927\u7C73\u4E03\u9999\u8549\u53C8\u4F5C\u5927\u9EA5\u514B\u9999\u8549\uFF08Gros Michel\uFF0C\u7F8E\u570B\u5167\u5E38\u7A31\u70BABig Mike\uFF09\uFF0C\u662F\u5C0F\u679C\u91CE\u8549\u7684\u4E09\u500D\u9AD4\u54C1\u7A2E\uFF0C\u5C6CAAA\u7A2E\u3002\u7531\u65BC\u5176\u6C92\u6709\u679C\u7C7D\u3001\u5916\u76AE\u539A\u3001\u5916\u578B\u8A98\u4EBA\u7684\u7279\u6027\uFF0C\u4F7F\u5B83\u70BA\u7F8E\u570B\u7684\u9999\u8549\u516C\u53F8\u6240\u6B61\u8FCE\uFF0C\u662F1950\u5E74\u4EE3\u524D\u5165\u53E3\u7F8E\u570B\u7684\u4E3B\u8981\u9999\u8549\u683D\u57F9\u54C1\u7A2E\u3002\u5176\u6B63\u5F0F\u540D\u7A31\u662FMusa acuminata (AAA Group) 'Gros Michel'\u3002\u53E6\u6709\u7570\u540D\u5305\u62EC\uFF1A Musa acuminata L. cv. 'Gros Michel' Musa \u00D7 paradisiaca L. cv. 'Gros Michel'\u2191 \u2191 \u2191"@zh ,
+		"Gros Michel est une vari\u00E9t\u00E9 de banane originaire de l'Asie du Sud-Est et import\u00E9e en Martinique vers 1820 par des officiers et colons fran\u00E7ais qui donn\u00E8rent cette appellation en raison notamment de la taille du fruit Musa acuminata."@fr ,
+		"La variet\u00E0 di banana chiamata Gros Michel, negli Stati Uniti conosciuta anche come Big Mike, fu la prima banana destinata all'esportazione in massa."@it ,
+		"Die Bananensorte 'Gros Michel' (\u201EGro\u00DFer Michel\u201C), US-amerikanisch auch \u201EBig Mike\u201C genannt, war die erste Exportbanane in die USA und bis zum Ende der 1950er Jahre die bedeutendste Handelssorte unter den Dessertbananen weltweit. Obwohl es andere Dessertbananen gab, eignete sich die 'Gros Michel' besonders f\u00FCr den Export in L\u00E4nder au\u00DFerhalb der Tropen."@de ;
+	foaf:name	"Musa acuminata 'Gros Michel'"@en ;
+	dbp:name	"Musa acuminata 'Gros Michel'"@en ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Gros_Michel_bananas_(4337785985).jpg> ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Gros_Michel_banana ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Gros_Michel_bananas_(4337785985).jpg?width=300> ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Gros_Michel_banana?oldid=683300161> ;
+	dbo:abstract	"Die Bananensorte 'Gros Michel' (\u201EGro\u00DFer Michel\u201C), US-amerikanisch auch \u201EBig Mike\u201C genannt, war die erste Exportbanane in die USA und bis zum Ende der 1950er Jahre die bedeutendste Handelssorte unter den Dessertbananen weltweit. Obwohl es andere Dessertbananen gab, eignete sich die 'Gros Michel' besonders f\u00FCr den Export in L\u00E4nder au\u00DFerhalb der Tropen.  Die 'Gros Michel' stammt urspr\u00FCnglich aus S\u00FCdostasien (Burma, Thailand, Malaysia, Indonesien, Sri Lanka) und wurde in den 1820er Jahren durch franz\u00F6sische Seeoffiziere nach Martinique gebracht. Von dort verbreitete sich der Anbau in der Karibik einschlie\u00DFlich Jamaica. Der Legende nach begann der Gro\u00DFhandelsexport der Banane in die USA im Jahre 1879 mit der ersten Verschiffung von 'Gros-Michel'-Bananen von Jamaica nach New Jersey durch Seekapit\u00E4n Lorenzo Dow Baker, der sp\u00E4ter mit dem Unternehmer Andrew Preston die Firma Boston Fruit gr\u00FCndete, die heute Teil der Chiquita Brands International ist. Der gro\u00DFe Exporterfolg der Jamaica-Banane f\u00FChrte zur weitl\u00E4ufigen Verbreitung ihres Anbaus von Fidschi \u00FCber Nicaragua und Hawaii bis nach Australien. Seit Anfang des 20. Jahrhunderts bis etwa 1960 wurde ein Gro\u00DFteil der Best\u00E4nde von der Panama-Krankheit \u2013 hervorgerufen durch den Pilz Fusarium oxyssporum f. sp. cubense \u2013 vernichtet. Um 1960 waren alle Importeure der 'Gros Michel' fast bankrott, da sie bis zur letzten Minute gewartet hatten, um dieser Anbaukrise mit dem notwendigen finanziellen Aufwand zu begegnen. Als Exportprodukt wurde die 'Gros Michel' schlie\u00DFlich von der aus Vietnam stammenden 'Cavendish'-Banane abgel\u00F6st, die f\u00FCr die Panama-Krankheit nicht anf\u00E4llig war. Aufgrund der dickeren Schale erfordert 'Gros Michel' weniger Sorgfalt bei Ernte und Transport als die 'Cavendish'. Auch ist die 'Gros Michel' geschmackvoller als die kleinere 'Cavendish'-Bananensorte.Die 'Cavendish' wurde sp\u00E4ter ebenfalls von einer neuen Variante der Panamakrankheit befallen. Man sieht nunmehr als wesentlichen Grund eine Krankheitsanf\u00E4lligkeit der Plantagenkulturen durch die vegetative Vermehrung, was faktisch dem Klonen gleichkommt. Die Honduranische Stiftung f\u00FCr Agrarforschung hat dagegen seit 1958 an neuen Bananensorten gearbeitet, die durch generative Vermehrung mit Samenbildung gez\u00FCchtet werden, darunter auch Varianten der 'Gros Michel'. Die ersten neuen Bananensorten der FHIA, die resistent gegen die Panama-Krankheit sind (FHIA-01 von 1988), stammen allerdings nicht von der 'Gros Michel' ab (FHIA-23).Nach der gro\u00DFfl\u00E4chigen Ausrottung der 'Gros Michel' wird diese Bananensorte heute nur noch in kleinen Gebieten angebaut. Der Export in nichttropische Regionen beschr\u00E4nkt sich auf den Delikatessenhandel. Anbaugebiete sind heute der zentrale Kongo und einige Inseln wie Saint Lucia, die von der Epidemie verschont blieben."@de ,
+		"La variet\u00E0 di banana chiamata Gros Michel, negli Stati Uniti conosciuta anche come Big Mike, fu la prima banana destinata all'esportazione in massa."@it ,
+		"Gros Michel, often known as Big Mike, is an export cultivar of banana and was, until the 1950s, the main variety exported to the United States."@en ,
+		"Gros Michel est une vari\u00E9t\u00E9 de banane originaire de l'Asie du Sud-Est et import\u00E9e en Martinique vers 1820 par des officiers et colons fran\u00E7ais qui donn\u00E8rent cette appellation en raison notamment de la taille du fruit Musa acuminata."@fr ,
+		"\u5927\u7C73\u4E03\u9999\u8549\u53C8\u4F5C\u5927\u9EA5\u514B\u9999\u8549\uFF08Gros Michel\uFF0C\u7F8E\u570B\u5167\u5E38\u7A31\u70BABig Mike\uFF09\uFF0C\u662F\u5C0F\u679C\u91CE\u8549\u7684\u4E09\u500D\u9AD4\u54C1\u7A2E\uFF0C\u5C6CAAA\u7A2E\u3002\u7531\u65BC\u5176\u6C92\u6709\u679C\u7C7D\u3001\u5916\u76AE\u539A\u3001\u5916\u578B\u8A98\u4EBA\u7684\u7279\u6027\uFF0C\u4F7F\u5B83\u70BA\u7F8E\u570B\u7684\u9999\u8549\u516C\u53F8\u6240\u6B61\u8FCE\uFF0C\u662F1950\u5E74\u4EE3\u524D\u5165\u53E3\u7F8E\u570B\u7684\u4E3B\u8981\u9999\u8549\u683D\u57F9\u54C1\u7A2E\u3002\u5176\u6B63\u5F0F\u540D\u7A31\u662FMusa acuminata (AAA Group) 'Gros Michel'\u3002\u53E6\u6709\u7570\u540D\u5305\u62EC\uFF1A Musa acuminata L. cv. 'Gros Michel' Musa \u00D7 paradisiaca L. cv. 'Gros Michel'\u2191 \u2191 \u2191"@zh ;
+	dbo:origin	dbr:Jamaica ,
+		dbr:Martinique ;
+	dbo:species	dbr:Musa_acuminata .
+<http://dbpedia.org/resource/Maruya_(food)>	dbo:ingredient	dbr:Banana .
+dbr:Unni_appam	dbp:mainIngredient	dbr:Banana ;
+	dbo:ingredient	dbr:Banana .
+dbr:Frozen_banana	dbo:ingredient	dbr:Banana .
+dbr:Bánh_chuối	dbo:ingredient	dbr:Banana .
+dbr:Black_sigatoka	dbp:hosts	dbr:Banana .
+dbr:Bananas_Foster	dbo:ingredient	dbr:Banana .
+dbr:Grand_Nain	rdf:type	yago:LivingThing100004258 ,
+		yago:Abstraction100002137 ,
+		yago:Plant100017222 ,
+		dbo:Eukaryote ,
+		yago:BananaCultivars ,
+		dbo:CultivatedVariety ,
+		wikidata:Q19088 ,
+		dbo:Species ,
+		dbo:Plant ,
+		yago:Cultivar113084834 ,
+		yago:Group100031264 ,
+		yago:PhysicalEntity100001930 ,
+		owl:Thing ,
+		yago:VascularPlant113083586 ,
+		yago:Variety108101085 ,
+		yago:BiologicalGroup107941170 ,
+		yago:TaxonomicGroup107992450 ,
+		yago:Whole100003553 ,
+		wikidata:Q4886 ,
+		wikidata:Q756 ,
+		yago:Organism100004475 ,
+		yago:Object100002684 ;
+	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	21939957 ;
+	dbo:wikiPageRevisionID	626265684 ;
+	owl:sameAs	yago-res:Grand_Nain ,
+		wikidata:Q5594821 ,
+		<http://rdf.freebase.com/ns/m.05s_sr8> ,
+		dbpedia-wikidata:Q5594821 ;
+	dbp:group	dbr:Banana ;
+	dbp:imageCaption	"Majority of the Cavendish bananas sold in the world market belong to the Grand Nain cultivar."@en ;
+	dbp:imageWidth	250 ;
+	dbp:species	"Musa acuminata"@en ;
+	dbp:cultivar	"'Grand Nain'"@en ;
+	rdfs:label	"Grand Nain"@en ;
+	rdfs:comment	"Grand Nain bananas (also spelled Grande Naine) are banana cultivars of Musa acuminata. It is one of the most commonly cultivated bananas and a source of commercial Cavendish bananas. It is also known as the Chiquita banana, because it is the main product of Chiquita Brands International."@en ;
+	foaf:name	"Musa acuminata 'Grand Nain'"@en ;
+	dbp:name	"Musa acuminata 'Grand Nain'"@en ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Bundesarchiv_B_145_Bild-F079081-0035,_Bonn,_Marktst\u00E4nde.jpg> ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Grand_Nain ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Bundesarchiv_B_145_Bild-F079081-0035,_Bonn,_Marktst\u00E4nde.jpg?width=300> ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Grand_Nain?oldid=626265684> ;
+	dbo:abstract	"Grand Nain bananas (also spelled Grande Naine) are banana cultivars of Musa acuminata. It is one of the most commonly cultivated bananas and a source of commercial Cavendish bananas. It is also known as the Chiquita banana, because it is the main product of Chiquita Brands International."@en ;
+	dbo:species	dbr:Musa_acuminata .
+dbr:Grand_Nain_banana	dbo:wikiPageRedirects	dbr:Grand_Nain .
+dbr:Grand_Naine	dbo:wikiPageRedirects	dbr:Grand_Nain .
+dbr:Grande_Naine	dbo:wikiPageRedirects	dbr:Grand_Nain .
+dbr:Lacatan	dbo:wikiPageRedirects	dbr:Lacatan_banana .
+dbr:Lacatan_Banana	dbo:wikiPageRedirects	dbr:Lacatan_banana .
+dbr:Lacatan_banana	rdf:type	yago:Object100002684 ,
+		yago:Cultivar113084834 ,
+		yago:Organism100004475 ,
+		wikidata:Q19088 ,
+		dbo:CultivatedVariety ,
+		dbo:Eukaryote ,
+		yago:TaxonomicGroup107992450 ,
+		yago:PhysicalEntity100001930 ,
+		yago:BananaCultivars ,
+		yago:Whole100003553 ,
+		dbo:Species ,
+		yago:BiologicalGroup107941170 ,
+		dbo:Plant ,
+		yago:Variety108101085 ,
+		yago:VascularPlant113083586 ,
+		yago:Plant100017222 ,
+		yago:Abstraction100002137 ,
+		wikidata:Q756 ,
+		wikidata:Q4886 ,
+		yago:Group100031264 ,
+		owl:Thing ,
+		yago:LivingThing100004258 ;
+	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	30443816 ;
+	dbo:wikiPageRevisionID	682696824 ;
+	dbo:wikiPageExternalLink	<http://www.promusa.org/tiki-index.php?page=Lakatan> ;
+	owl:sameAs	dbpedia-wikidata:Q6468137 ,
+		<http://rdf.freebase.com/ns/m.0g5q40z> ,
+		dbpedia-fr:Lakatan ,
+		yago-res:Lacatan_banana ,
+		wikidata:Q6468137 ;
+	dbp:direction	"vertical"@en ;
+	dbp:group	dbr:Banana ;
+	dbp:image	"Lacatan banana.JPG"@en ,
+		"Overripe lacatan bananas.jpg"@en ,
+		"Lacatan_Banana_close-up.jpg"@en ;
+	dbp:imageCaption	"Lakatan illustration in the 1880 book Flora de Filipinas by Francisco Manuel Blanco"@en ;
+	dbp:imageWidth	160 ;
+	dbp:origin	dbr:Philippines ;
+	dbp:species	"Musa acuminata"@en ;
+	dbp:width	160 ;
+	dbp:caption	"Lakatan bananas"@en ,
+		"The skin of overripe Lakatan bananas typically turns black."@en ,
+		"Close up of Lakatan bananas."@en ;
+	dbp:cultivar	"'Lakatan'"@en ;
+	rdfs:label	"Lakatan"@fr ,
+		"Lacatan banana"@en ;
+	rdfs:comment	"'Lakatan' (\u00E0 ne pas confondre avec le cultivar 'Lacatan' du groupe des bananiers Cavendish, appel\u00E9 \u00E9galement 'Bungulan') est un cultivar de bananier diplo\u00EFde originaire des Philippines. C'est l'un des cultivars de bananiers les plus communs aux Philippines, avec les cultivars 'Latundan' et 'Saba'."@fr ,
+		"Lakatan bananas (not to be confused with the Cavendish banana Lacatan, also called Bungulan) are diploid banana cultivars from the Philippines. It is one of the most common banana cultivars in the Philippines, along with the Latundan and Saba bananas."@en ;
+	foaf:name	"Musa acuminata 'Lakatan'"@en ;
+	dbp:name	"Musa acuminata 'Lakatan'"@en ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Musa_paradisiaca_Blanco1.88-cropped.jpg> ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Lacatan_banana ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Musa_paradisiaca_Blanco1.88-cropped.jpg?width=300> ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Lacatan_banana?oldid=682696824> ;
+	dbo:abstract	"Lakatan bananas (not to be confused with the Cavendish banana Lacatan, also called Bungulan) are diploid banana cultivars from the Philippines. It is one of the most common banana cultivars in the Philippines, along with the Latundan and Saba bananas."@en ,
+		"'Lakatan' (\u00E0 ne pas confondre avec le cultivar 'Lacatan' du groupe des bananiers Cavendish, appel\u00E9 \u00E9galement 'Bungulan') est un cultivar de bananier diplo\u00EFde originaire des Philippines. C'est l'un des cultivars de bananiers les plus communs aux Philippines, avec les cultivars 'Latundan' et 'Saba'."@fr ;
+	dbo:origin	dbr:Philippines ;
+	dbo:species	dbr:Musa_acuminata .
+dbr:Lakatan	dbo:wikiPageRedirects	dbr:Lacatan_banana .
+dbr:Lakatan_Banana	dbo:wikiPageRedirects	dbr:Lacatan_banana .
+dbr:Pisang_goreng	dbp:mainIngredient	dbr:Banana ;
+	dbo:ingredient	dbr:Banana .
+dbr:Carinosa_banana	dbo:wikiPageRedirects	dbr:Señorita_banana .
+dbr:Cariñosa_banana	dbo:wikiPageRedirects	dbr:Señorita_banana .
+dbr:Cuarenta_dias_banana	dbo:wikiPageRedirects	dbr:Señorita_banana .
+dbr:Cow_cod_soup	dbo:ingredient	dbr:Banana .
+dbr:Chiquita_Brands_International	dbo:product	dbr:Banana .
+dbr:Señorita	dbo:wikiPageDisambiguates	dbr:Señorita_banana .
+<http://dbpedia.org/resource/Banana_(disambiguation)>	dbo:wikiPageDisambiguates	dbr:Banana .
+<http://dbpedia.org/resource/Turon_(food)>	dbo:ingredient	dbr:Banana .
+dbr:Biu_gedang_saba	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Cardaba	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Cardaba_Banana	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Dippig	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Kluai_Hin	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Opu-’ulu	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Pisang_Kepok	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Pisang_Nepah	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Pisang_Nipah	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Saba_Banana	dbo:wikiPageRedirects	dbr:Saba_banana .
+dbr:Monkoy_banana	dbo:wikiPageRedirects	dbr:Señorita_banana .
+dbr:Pisang_Empat_Puluh_Hari	dbo:wikiPageRedirects	dbr:Señorita_banana .
+dbr:Senorita_banana	dbo:wikiPageRedirects	dbr:Señorita_banana .
+dbr:Señorita_Banana	dbo:wikiPageRedirects	dbr:Señorita_banana .
+dbr:Sopa_de_pata	dbo:ingredient	dbr:Banana .
+dbr:Pisang_Ambon	dbp:flavour	dbr:Banana .
+dbr:Apple_Banana	dbo:wikiPageRedirects	dbr:Latundan_banana .
+dbr:Latundan	dbo:wikiPageRedirects	dbr:Latundan_banana .
+dbr:Latundan_Banana	dbo:wikiPageRedirects	dbr:Latundan_banana .
+dbr:Latundan_banana	rdf:type	yago:Whole100003553 ,
+		yago:LivingThing100004258 ,
+		owl:Thing ,
+		yago:TaxonomicGroup107992450 ,
+		yago:Cultivar113084834 ,
+		yago:Group100031264 ,
+		yago:VascularPlant113083586 ,
+		yago:Variety108101085 ,
+		yago:Abstraction100002137 ,
+		yago:Plant100017222 ,
+		wikidata:Q19088 ,
+		wikidata:Q756 ,
+		wikidata:Q4886 ,
+		yago:Object100002684 ,
+		yago:Organism100004475 ,
+		dbo:CultivatedVariety ,
+		dbo:Eukaryote ,
+		yago:BiologicalGroup107941170 ,
+		yago:PhysicalEntity100001930 ,
+		yago:BananaCultivars ,
+		dbo:Species ,
+		dbo:Plant ;
+	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	30436900 ;
+	dbo:wikiPageRevisionID	622791187 ;
+	owl:sameAs	wikidata:Q16984252 ,
+		<http://rdf.freebase.com/ns/m.0g5qvf1> ,
+		dbpedia-id:Pisang_raja_sereh ,
+		yago-res:Latundan_banana ,
+		dbpedia-wikidata:Q16984252 ;
+	dbp:group	dbr:Banana ;
+	dbp:imageCaption	"Apple bananas"@en ;
+	dbp:imageWidth	250 ;
+	dbp:origin	dbr:Philippines ;
+	dbp:cultivar	"'Silk'"@en ;
+	dbp:hybrid	"Musa acuminata \u00D7 Musa balbisiana"@en ;
+	rdfs:label	"Latundan banana"@en ;
+	rdfs:comment	"Latundan bananas (also called Tundan, Silk bananas, Pisang raja sereh, Manzana bananas or Apple bananas), are triploid hybrid banana cultivars from the Philippines. It is one of the most common banana cultivars in Southeast Asia and the Philippines, along with the Lacatan and Saba bananas."@en ;
+	foaf:name	"Musa 'Silk'"@en ;
+	dbp:name	"Musa 'Silk'"@en ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Lacatan.jpg> ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Latundan_banana ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Lacatan.jpg?width=300> ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Latundan_banana?oldid=622791187> ;
+	dbo:abstract	"Latundan bananas (also called Tundan, Silk bananas, Pisang raja sereh, Manzana bananas or Apple bananas), are triploid hybrid banana cultivars from the Philippines. It is one of the most common banana cultivars in Southeast Asia and the Philippines, along with the Lacatan and Saba bananas."@en ;
+	dbo:hybrid	dbr:Musa_acuminata ;
+	dbo:origin	dbr:Philippines .
+dbr:Manzana_Banana	dbo:wikiPageRedirects	dbr:Latundan_banana .
+<http://dbpedia.org/resource/Musa_\u0027Silk\u0027>	dbo:wikiPageRedirects	dbr:Latundan_banana .
+dbr:Musa_Silk	dbo:wikiPageRedirects	dbr:Latundan_banana .
+dbr:Pisang_raja_sereh	dbo:wikiPageRedirects	dbr:Latundan_banana .
+dbr:Silk_Banana	dbo:wikiPageRedirects	dbr:Latundan_banana .
+dbr:Tundan	dbo:wikiPageRedirects	dbr:Latundan_banana .
+dbr:Blue_Java_banana	rdf:type	wikidata:Q4886 ,
+		yago:BiologicalGroup107941170 ,
+		wikidata:Q756 ,
+		dbo:Species ,
+		yago:Plant100017222 ,
+		yago:Variety108101085 ,
+		yago:VascularPlant113083586 ,
+		yago:Abstraction100002137 ,
+		yago:TaxonomicGroup107992450 ,
+		yago:Object100002684 ,
+		yago:Group100031264 ,
+		yago:LivingThing100004258 ,
+		yago:Cultivar113084834 ,
+		yago:Organism100004475 ,
+		owl:Thing ,
+		yago:PhysicalEntity100001930 ,
+		yago:BananaCultivars ,
+		wikidata:Q19088 ,
+		dbo:CultivatedVariety ,
+		dbo:Eukaryote ,
+		dbo:Plant ,
+		yago:Whole100003553 ;
+	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	23139600 ;
+	dbo:wikiPageRevisionID	594268673 ;
+	owl:sameAs	<http://rdf.freebase.com/ns/m.064q63r> ,
+		dbpedia-wikidata:Q4929278 ,
+		yago-res:Blue_Java_banana ,
+		wikidata:Q4929278 ;
+	dbp:group	dbr:Banana ;
+	dbp:imageCaption	"Blue Java banana strands in Maui, Hawaii."@en ;
+	dbp:imageWidth	250 ;
+	dbp:origin	"Southeast Asia up to North Australia"@en ;
+	dbp:cultivar	"'Blue Java'"@en ;
+	dbp:hybrid	"Musa acuminata \u00D7 balbisiana"@en ;
+	rdfs:label	"Blue Java banana"@en ;
+	rdfs:comment	"The Blue Java (also known as Ice Cream banana, Hawaiian banana, Ney Mannan, Krie, or Cenizo) is a hardy, cold tolerant banana cultivar known for its sweet aromatic fruit which is said to have an ice cream like consistency and flavor reminiscent of vanilla."@en ;
+	foaf:name	"Musa 'Blue Java'"@en ;
+	dbp:name	"Musa 'Blue Java'"@en ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Hawaiian_Banana.jpg> ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Blue_Java_banana ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Hawaiian_Banana.jpg?width=300> ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Blue_Java_banana?oldid=594268673> ;
+	dbo:abstract	"The Blue Java (also known as Ice Cream banana, Hawaiian banana, Ney Mannan, Krie, or Cenizo) is a hardy, cold tolerant banana cultivar known for its sweet aromatic fruit which is said to have an ice cream like consistency and flavor reminiscent of vanilla."@en ;
+	dbo:hybrid	dbr:Musa_acuminata ;
+	dbo:origin	dbr:Southeast_Asia .
+dbr:Blue_java	dbo:wikiPageRedirects	dbr:Blue_Java_banana .
+dbr:Blue_java_banana	dbo:wikiPageRedirects	dbr:Blue_Java_banana .
+dbr:Hawaiian_Banana	dbo:wikiPageRedirects	dbr:Blue_Java_banana .
+dbr:Krie	dbo:wikiPageRedirects	dbr:Blue_Java_banana .
+<http://dbpedia.org/resource/Musa_\u0027Blue_Java\u0027>	dbo:wikiPageRedirects	dbr:Blue_Java_banana .
+dbr:Musa_Blue_Java	dbo:wikiPageRedirects	dbr:Blue_Java_banana .
+dbr:Ney_Mannan	dbo:wikiPageRedirects	dbr:Blue_Java_banana .
+<http://dbpedia.org/resource/Banana_boat_(food)>	dbo:ingredient	dbr:Banana .
+dbr:Banana_split	dbo:ingredient	dbr:Banana .
+dbr:Panama_disease	dbp:hosts	dbr:Banana .
+dbr:Alcapurria	dbp:mainIngredient	dbr:Banana ;
+	dbo:ingredient	dbr:Banana .
+dbr:Cokodok	dbp:mainIngredient	dbr:Banana ;
+	dbo:ingredient	dbr:Banana .
+dbr:Banoffee_pie	dbo:ingredient	dbr:Banana .
+dbr:Hummingbird_cake	dbo:ingredient	dbr:Banana .
+dbr:Mannish_water	dbo:ingredient	dbr:Banana .
+@prefix umbel-rc:	<http://umbel.org/umbel/rc/> .
+dbr:Banana	rdf:type	umbel-rc:Plant ,
+		umbel-rc:EukaryoticCell ,
+		umbel-rc:BiologicalLivingObject ,
+		owl:Thing ;
+	dct:subject	dbc:Edible_fruits ,
+		dbc:Staple_foods ,
+		dbc:Bananas ,
+		dbc:Cormous_plants ,
+		dbc:Fiber_plants ,
+		dbc:Allergenic_foods ,
+		dbc:Tropical_fruit ,
+		dbc:Tropical_agriculture ;
+	dbo:wikiPageID	38940 ;
+	dbo:wikiPageRevisionID	682050817 ;
+	dbo:wikiPageExternalLink	<http://kukr.lib.ku.ac.th/Fulltext_kukr/KU0222075c.pdf> ,
+		<http://ndb.nal.usda.gov/ndb/search/list?qlookup=09040&format=Full> .
+@prefix ns21:	<http://agritrade.cta.int/Agriculture/Commodities/> .
+dbr:Banana	dbo:wikiPageExternalLink	ns21:Bananas ,
+		<http://www.ogtr.gov.au/internet/ogtr/publishing.nsf/content/banana-3/$FILE/biologybanana08.pdf> .
+@prefix ns22:	<http://www.kew.org/science-conservation/plants-fungi/> .
+dbr:Banana	dbo:wikiPageExternalLink	ns22:musa-acuminata-banana ,
+		<http://agroforestry.net/tti/Banana-plantain-overview.pdf> ,
+		<http://www.webcitation.org/6DWPTd1hm> ,
+		<http://agroforestry.net/tti/Musa-banana-plantain.pdf> ;
+	owl:sameAs	dbpedia-wikidata:Q503 ,
+		wikidata:Q503 ,
+		dbpedia-it:Banana ,
+		<http://rdf.freebase.com/ns/m.09qck> ,
+		<http://nl.dbpedia.org/resource/Banaan_(vrucht)> .
+@prefix dbpedia-ja:	<http://ja.dbpedia.org/resource/> .
+dbr:Banana	owl:sameAs	dbpedia-ja:バナナ .
+@prefix dbpedia-pt:	<http://pt.dbpedia.org/resource/> .
+dbr:Banana	owl:sameAs	dbpedia-pt:Banana ,
+		dbpedia-id:Pisang ,
+		dbpedia-fr:Banane .
+@prefix dbpedia-cs:	<http://cs.dbpedia.org/resource/> .
+dbr:Banana	owl:sameAs	dbpedia-cs:Banán ,
+		dbpedia-ko:바나나 .
+@prefix dbpedia-el:	<http://el.dbpedia.org/resource/> .
+dbr:Banana	owl:sameAs	dbpedia-el:Μπανάνα .
+@prefix dbpedia-eu:	<http://eu.dbpedia.org/resource/> .
+dbr:Banana	owl:sameAs	dbpedia-eu:Banana .
+@prefix ns28:	<http://dbpedia.org/datatype/> .
+dbr:Banana	dbp:carbs	"22.84"^^ns28:gram .
+@prefix xsd:	<http://www.w3.org/2001/XMLSchema#> .
+dbr:Banana	dbp:cholineMg	9.8000000000000007105 ;
+	dbp:commons	"Banana"@en ;
+	dbp:direction	"vertical"@en ;
+	dbp:fat	"0.33"^^ns28:gram ;
+	dbp:fiber	"2.6"^^ns28:gram ;
+	dbp:folateUg	20 ;
+	dbp:group	"\"Note\""@en ;
+	dbp:image	"Thanin market banana flowers and leaves.jpg"@en ,
+		"River Kaveri worship Tiruchirappalli.jpg"@en ;
+	dbp:ironMg	0.26000000000000000888 ;
+	dbp:kj	371 ;
+	dbp:magnesiumMg	27 ;
+	dbp:manganeseMg	0.27000000000000001776 ;
+	dbp:niacinMg	0.66500000000000003553 ;
+	dbp:note	<http://ndb.nal.usda.gov/ndb/search/list?qlookup=09040&format=Full> ;
+	dbp:opt1n	dbr:Fluoride ;
+	dbp:opt1v	2.2000000000000001776 ;
+	dbp:pantothenicMg	0.3340000000000000191 ;
+	dbp:phosphorusMg	22 ;
+	dbp:potassiumMg	358 ;
+	dbp:protein	"1.09"^^ns28:gram ;
+	dbp:q	"no"@en ;
+	dbp:riboflavinMg	0.072999999999999995448 ;
+	dbp:sodiumMg	1 ;
+	dbp:sourceUsda	1 ;
+	dbp:sugars	"12.23"^^ns28:gram ;
+	dbp:thiaminMg	0.030999999999999999778 ;
+	dbp:vitb6Mg	0.4000000000000000222 ;
+	dbp:vitcMg	8.6999999999999992895 ;
+	dbp:width	220 ;
+	dbp:wikt	"banana"@en ;
+	dbp:zincMg	0.14999999999999999445 ;
+	dbp:b	"no"@en ;
+	dbp:caption	"Coconut, banana and banana leaves used while worshiping River Kaveri at Tiruchirappalli, India."@en ,
+		"Banana flowers and leaves for sale in the Thanin market in Chiang Mai, Thailand."@en ;
+	dbp:n	"no"@en ;
+	dbp:s	1911 ;
+	dbp:v	"Banana production"@en ;
+	dbp:voy	"no"@en ;
+	rdfs:label	"\u0411\u0430\u043D\u0430\u043D"@ru ,
+		"Banane"@fr ,
+		"\u0645\u0648\u0632"@ar ,
+		"\u9999\u8549"@zh ,
+		"Banana"@it ,
+		"Banaan (vrucht)"@nl ,
+		"\u30D0\u30CA\u30CA"@ja ,
+		"Banana"@pt ,
+		"Banana"@en ;
+	rdfs:comment	"Banana, pacoba ou pacova \u00E9 uma pseudobaga da bananeira, uma planta herb\u00E1cea vivaz acaule da fam\u00EDlia Musaceae (g\u00E9nero Musa - al\u00E9m do g\u00E9nero Ensete, que produz as chamadas \"falsas bananas\"). S\u00E3o cultivadas em 130 pa\u00EDses. Origin\u00E1rias do sudeste da \u00C1sia s\u00E3o atualmente cultivadas em praticamente todas as regi\u00F5es tropicais do planeta.Vulgarmente, inclusive para efeitos comerciais, o termo \"banana\" refere-se \u00E0s frutas de polpa macia e doce que podem ser consumidas cruas."@pt ,
+		"La banane est le fruit ou la baie d\u00E9rivant de l\u2019inflorescence du bananier. Les bananes sont des fruits tr\u00E8s g\u00E9n\u00E9ralement st\u00E9riles issus de vari\u00E9t\u00E9s domestiqu\u00E9es. Les fruits des bananiers sauvages et de quelques cultivars domestiques contiennent des graines. Les bananes sont g\u00E9n\u00E9ralement jaunes lorsqu'elles sont m\u00FBres et vertes quand elles ne le sont pas.Les bananes constituent un \u00E9l\u00E9ment essentiel du r\u00E9gime alimentaire de certaines r\u00E9gions."@fr ,
+		"\u0411\u0430\u043D\u0430\u043D \u2014 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u0441\u044A\u0435\u0434\u043E\u0431\u043D\u044B\u0445 \u043F\u043B\u043E\u0434\u043E\u0432 \u043A\u0443\u043B\u044C\u0442\u0438\u0432\u0438\u0440\u0443\u0435\u043C\u044B\u0445 \u0432\u0438\u0434\u043E\u0432 \u0440\u043E\u0434\u0430 \u0411\u0430\u043D\u0430\u043D (Musa); \u043E\u0431\u044B\u0447\u043D\u043E \u043F\u043E\u0434 \u0442\u0430\u043A\u043E\u0432\u044B\u043C\u0438 \u043F\u043E\u043D\u0438\u043C\u0430\u044E\u0442 Musa acuminata \u0438 Musa \u00D7 paradisiaca, \u0430 \u0442\u0430\u043A\u0436\u0435 Musa balbisiana, Musa fehi, Musa troglodytarum \u0438 \u0440\u044F\u0434 \u0434\u0440\u0443\u0433\u0438\u0445. \u0422\u0430\u043A\u0436\u0435 \u0431\u0430\u043D\u0430\u043D\u0430\u043C\u0438 \u043C\u043E\u0433\u0443\u0442 \u043D\u0430\u0437\u044B\u0432\u0430\u0442\u044C \u043F\u043B\u043E\u0434\u044B Ensete ventricosum (\u0441\u0442\u0440\u043E\u0433\u043E \u0433\u043E\u0432\u043E\u0440\u044F, \u044F\u0432\u043B\u044F\u044E\u0449\u0435\u0433\u043E\u0441\u044F \u043F\u0440\u0435\u0434\u0441\u0442\u0430\u0432\u0438\u0442\u0435\u043B\u0435\u043C \u0434\u0440\u0443\u0433\u043E\u0433\u043E \u0440\u043E\u0434\u0430 \u0441\u0435\u043C\u0435\u0439\u0441\u0442\u0432\u0430 \u0411\u0430\u043D\u0430\u043D\u043E\u0432\u044B\u0435). \u0421 \u0431\u043E\u0442\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u043E\u0439 \u0442\u043E\u0447\u043A\u0438 \u0437\u0440\u0435\u043D\u0438\u044F \u0431\u0430\u043D\u0430\u043D \u044F\u0432\u043B\u044F\u0435\u0442\u0441\u044F \u044F\u0433\u043E\u0434\u043E\u0439, \u043C\u043D\u043E\u0433\u043E\u0441\u0435\u043C\u0435\u043D\u043D\u043E\u0439 \u0438 \u0442\u043E\u043B\u0441\u0442\u043E\u043A\u043E\u0436\u0435\u0439."@ru ,
+		"Een banaan is een langwerpige, licht gebogen vrucht, die afkomstig is van de bananenplant. In Suriname spreekt men van bacove als het om de vrucht gaat die rechtstreeks uit de schil gegeten kan worden en van banaan als het om groene bakbananen gaat. In Indische gerechten wordt de banaan meestal pisang genoemd, het Maleise woord voor de vrucht."@nl ,
+		"Il banano \u00E8 una pianta della famiglia delle Musaceae.Il termine banana \u00E8 applicato al frutto della pianta, che si sviluppa (nella specie e nelle variet\u00E0 commestibili) in una serie di grappoli. Le banane pesano tipicamente 125 \u2013 200 g, bench\u00E9 questo peso vari considerevolmente fra le differenti cultivar."@it ,
+		"\u30D0\u30CA\u30CA\uFF08\u7518\u8549\u3001\u5B9F\u82AD\u8549\u3001\u5B66\u540D Musa spp. \uFF09\u306F\u30D0\u30B7\u30E7\u30A6\u79D1\u30D0\u30B7\u30E7\u30A6\u5C5E\u306E\u3046\u3061\u3001\u679C\u5B9F\u3092\u98DF\u7528\u3068\u3059\u308B\u54C1\u7A2E\u7FA4\u306E\u7DCF\u79F0\u3002\u307E\u305F\u3001\u305D\u306E\u679C\u5B9F\u306E\u3053\u3068\u3002\u3044\u304F\u3064\u304B\u306E\u539F\u7A2E\u304B\u3089\u80B2\u7A2E\u3055\u308C\u305F\u591A\u5E74\u8349\u3002\u7A2E\u306B\u3088\u3063\u3066\u306F\u719F\u3059\u307E\u3067\u306F\u6BD2\u3092\u6301\u3064\u3082\u306E\u3082\u3042\u308B\u3002"@ja ,
+		"The banana is an edible fruit, botanically a berry, produced by several kinds of large herbaceous flowering plants in the genus Musa. In some countries, bananas used for cooking may be called plantains. The fruit is variable in size, color and firmness, but is usually elongated and curved, with soft flesh rich in starch covered with a rind which may be green, yellow, red, purple, or brown when ripe. The fruits grow in clusters hanging from the top of the plant."@en ,
+		"\u0627\u0644\u0645\u0648\u0632 \u0623\u062D\u062F \u0623\u0647\u0645 \u0645\u062D\u0627\u0635\u064A\u0644 \u0627\u0644\u0641\u0627\u0643\u0647\u0629. \u0641\u064A \u0623\u0643\u062B\u0631 \u0627\u0644\u0644\u063A\u0627\u062A \u0627\u0644\u0623\u062C\u0646\u0628\u064A\u0629 \u064A\u0633\u0645\u0649 banane/banana \u0623\u0648 \u0646\u062D\u0648 \u0630\u0644\u0643 - \u0648\u0647\u064A \u0643\u0644\u0645\u0629 \u0623\u0635\u0644\u0647\u0627 \u0641\u064A \u063A\u0631\u0628 \u0623\u0641\u0631\u064A\u0642\u064A\u0627 \u0645\u0646 \u0627\u0644\u0644\u063A\u0629 \u0627\u0644\u0648\u0644\u0648\u0641\u064A\u0629 \u0625\u0644\u0627 \u0623\u0646\u0647\u0627 \u0642\u062F \u062A\u0643\u0648\u0646 \u0645\u0646 \u0623\u0635\u0644 \u0639\u0631\u0628\u064A \u0642\u0628\u0644 \u0630\u0644\u0643 \u062D\u064A\u062B \u0643\u0627\u0646 (\u0625\u0635\u0628\u0639 \u0627\u0644\u0645\u0648\u0632) \u064A\u0633\u0645\u0649 (\u0628\u0646\u0627\u0646 \u0627\u0644\u0645\u0648\u0632) \u0641\u062A\u0635\u0628\u062D \u0627\u0644\u0645\u0648\u0632\u0629 (\u0628\u0646\u0627\u0646\u0629)."@ar ;
+	rdfs:seeAlso	dbr:Musa_acuminata ,
+		dbr:Cooking_plantain ;
+	dbp:name	"Bananas, raw"@en ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Bananavarieties.jpg> ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Banana ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Bananavarieties.jpg?width=300> ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Banana?oldid=682050817> ;
+	dbo:abstract	"\u0411\u0430\u043D\u0430\u043D \u2014 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u0441\u044A\u0435\u0434\u043E\u0431\u043D\u044B\u0445 \u043F\u043B\u043E\u0434\u043E\u0432 \u043A\u0443\u043B\u044C\u0442\u0438\u0432\u0438\u0440\u0443\u0435\u043C\u044B\u0445 \u0432\u0438\u0434\u043E\u0432 \u0440\u043E\u0434\u0430 \u0411\u0430\u043D\u0430\u043D (Musa); \u043E\u0431\u044B\u0447\u043D\u043E \u043F\u043E\u0434 \u0442\u0430\u043A\u043E\u0432\u044B\u043C\u0438 \u043F\u043E\u043D\u0438\u043C\u0430\u044E\u0442 Musa acuminata \u0438 Musa \u00D7 paradisiaca, \u0430 \u0442\u0430\u043A\u0436\u0435 Musa balbisiana, Musa fehi, Musa troglodytarum \u0438 \u0440\u044F\u0434 \u0434\u0440\u0443\u0433\u0438\u0445. \u0422\u0430\u043A\u0436\u0435 \u0431\u0430\u043D\u0430\u043D\u0430\u043C\u0438 \u043C\u043E\u0433\u0443\u0442 \u043D\u0430\u0437\u044B\u0432\u0430\u0442\u044C \u043F\u043B\u043E\u0434\u044B Ensete ventricosum (\u0441\u0442\u0440\u043E\u0433\u043E \u0433\u043E\u0432\u043E\u0440\u044F, \u044F\u0432\u043B\u044F\u044E\u0449\u0435\u0433\u043E\u0441\u044F \u043F\u0440\u0435\u0434\u0441\u0442\u0430\u0432\u0438\u0442\u0435\u043B\u0435\u043C \u0434\u0440\u0443\u0433\u043E\u0433\u043E \u0440\u043E\u0434\u0430 \u0441\u0435\u043C\u0435\u0439\u0441\u0442\u0432\u0430 \u0411\u0430\u043D\u0430\u043D\u043E\u0432\u044B\u0435). \u0421 \u0431\u043E\u0442\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u043E\u0439 \u0442\u043E\u0447\u043A\u0438 \u0437\u0440\u0435\u043D\u0438\u044F \u0431\u0430\u043D\u0430\u043D \u044F\u0432\u043B\u044F\u0435\u0442\u0441\u044F \u044F\u0433\u043E\u0434\u043E\u0439, \u043C\u043D\u043E\u0433\u043E\u0441\u0435\u043C\u0435\u043D\u043D\u043E\u0439 \u0438 \u0442\u043E\u043B\u0441\u0442\u043E\u043A\u043E\u0436\u0435\u0439. \u0423 \u043A\u0443\u043B\u044C\u0442\u0443\u0440\u043D\u044B\u0445 \u0444\u043E\u0440\u043C \u0447\u0430\u0441\u0442\u043E \u043E\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u044E\u0442 \u0441\u0435\u043C\u0435\u043D\u0430, \u043D\u0435\u043D\u0443\u0436\u043D\u044B\u0435 \u043F\u0440\u0438 \u0432\u0435\u0433\u0435\u0442\u0430\u0442\u0438\u0432\u043D\u043E\u043C \u0440\u0430\u0437\u043C\u043D\u043E\u0436\u0435\u043D\u0438\u0438. \u0418\u043C\u0435\u044E\u0442 \u0440\u0430\u0437\u043C\u0435\u0440\u044B \u0434\u043E 15 \u0441\u043C \u0432 \u0434\u043B\u0438\u043D\u0443 \u0438 3\u20144 \u0441\u043C \u0432 \u0434\u0438\u0430\u043C\u0435\u0442\u0440\u0435. \u0421\u043E\u043F\u043B\u043E\u0434\u0438\u044F \u043C\u043E\u0433\u0443\u0442 \u0441\u043E\u0441\u0442\u043E\u044F\u0442\u044C \u0438\u0437 300 \u043F\u043B\u043E\u0434\u043E\u0432 \u0438 \u0438\u043C\u0435\u0442\u044C \u043C\u0430\u0441\u0441\u0443 \u0434\u043E 50\u201460 \u043A\u0433.\u0411\u0430\u043D\u0430\u043D\u044B \u2014 \u043E\u0434\u043D\u0430 \u0438\u0437 \u0434\u0440\u0435\u0432\u043D\u0435\u0439\u0448\u0438\u0445 \u043F\u0438\u0449\u0435\u0432\u044B\u0445 \u043A\u0443\u043B\u044C\u0442\u0443\u0440, \u0430 \u0434\u043B\u044F \u0442\u0440\u043E\u043F\u0438\u0447\u0435\u0441\u043A\u0438\u0445 \u0441\u0442\u0440\u0430\u043D \u0432\u0430\u0436\u043D\u0435\u0439\u0448\u0435\u0435 \u043F\u0438\u0449\u0435\u0432\u043E\u0435 \u0440\u0430\u0441\u0442\u0435\u043D\u0438\u0435 \u0438 \u0433\u043B\u0430\u0432\u043D\u0430\u044F \u0441\u0442\u0430\u0442\u044C\u044F \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430. \u0421\u043F\u0435\u043B\u044B\u0435 \u0431\u0430\u043D\u0430\u043D\u044B \u0448\u0438\u0440\u043E\u043A\u043E \u0443\u043F\u043E\u0442\u0440\u0435\u0431\u043B\u044F\u044E\u0442\u0441\u044F \u0432 \u043F\u0438\u0449\u0443 \u043F\u043E \u0432\u0441\u0435\u043C\u0443 \u043C\u0438\u0440\u0443, \u0438\u0445 \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u044E\u0442 \u043F\u0440\u0438 \u043F\u0440\u0438\u0433\u043E\u0442\u043E\u0432\u043B\u0435\u043D\u0438\u0438 \u0431\u043E\u043B\u044C\u0448\u043E\u0433\u043E \u043A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u0430 \u0431\u043B\u044E\u0434. \u041F\u043E\u043C\u0438\u043C\u043E \u0443\u043F\u043E\u0442\u0440\u0435\u0431\u043B\u0435\u043D\u0438\u044F \u0432 \u0441\u0432\u0435\u0436\u0435\u043C \u0432\u0438\u0434\u0435, \u0432 \u043A\u0443\u0445\u043D\u0435 \u043D\u0435\u043A\u043E\u0442\u043E\u0440\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432 \u0431\u0430\u043D\u0430\u043D\u044B \u043C\u043E\u0433\u0443\u0442 \u0437\u0430\u0436\u0430\u0440\u0438\u0432\u0430\u0442\u044C\u0441\u044F, \u0438\u043B\u0438 \u0432\u0430\u0440\u0438\u0442\u044C\u0441\u044F \u043A\u0430\u043A \u0432 \u043E\u0447\u0438\u0449\u0435\u043D\u043D\u043E\u043C, \u0442\u0430\u043A \u0438 \u0432 \u043D\u0435\u043E\u0447\u0438\u0449\u0435\u043D\u043D\u043E\u043C \u0432\u0438\u0434\u0435. \u0418\u0445 \u0442\u0430\u043A\u0436\u0435 \u0441\u0443\u0448\u0430\u0442, \u043A\u043E\u043D\u0441\u0435\u0440\u0432\u0438\u0440\u0443\u044E\u0442, \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u044E\u0442 \u0434\u043B\u044F \u043F\u0440\u0438\u0433\u043E\u0442\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0431\u0430\u043D\u0430\u043D\u043E\u0432\u043E\u0439 \u043C\u0443\u043A\u0438, \u043C\u0430\u0440\u043C\u0435\u043B\u0430\u0434\u0430, \u0441\u0438\u0440\u043E\u043F\u043E\u0432, \u0432\u0438\u043D. \u0411\u0430\u043D\u0430\u043D\u044B \u043F\u0440\u0438\u043C\u0435\u043D\u044F\u044E\u0442\u0441\u044F \u0442\u0430\u043A\u0436\u0435 \u0432 \u043A\u0430\u0447\u0435\u0441\u0442\u0432\u0435 \u043A\u043E\u0440\u043C\u0430 \u0434\u043B\u044F \u0441\u043A\u043E\u0442\u0430. \u0417\u0430\u043F\u0430\u0445 \u0431\u0430\u043D\u0430\u043D\u043E\u0432 \u043E\u043F\u0440\u0435\u0434\u0435\u043B\u044F\u044E\u0442 \u0438\u0437\u043E\u0432\u0430\u043B\u0435\u0440\u0438\u0430\u043D\u043E\u0432\u043E-\u0438\u0437\u043E\u0430\u043C\u0438\u043B\u043E\u0432\u044B\u0439 \u0438 \u0443\u043A\u0441\u0443\u0441\u043D\u043E-\u0438\u0437\u043E\u0430\u043C\u0438\u043B\u043E\u0432\u044B\u0439 \u044D\u0444\u0438\u0440\u044B. \u0412\u044B\u0440\u0430\u0449\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u0432 \u0442\u0440\u043E\u043F\u0438\u0447\u0435\u0441\u043A\u0438\u0445 \u0438 \u0441\u0443\u0431\u0442\u0440\u043E\u043F\u0438\u0447\u0435\u0441\u043A\u0438\u0445 \u0440\u0430\u0439\u043E\u043D\u0430\u0445 \u0441 \u0436\u0430\u0440\u043A\u0438\u043C \u0432\u043B\u0430\u0436\u043D\u044B\u043C \u043A\u043B\u0438\u043C\u0430\u0442\u043E\u043C. \u0421\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u043E\u0435 \u0447\u0438\u0441\u043B\u043E \u0441\u043E\u0440\u0442\u043E\u0432 \u0441\u044A\u0435\u0434\u043E\u0431\u043D\u044B\u0445 \u0432\u0438\u0434\u043E\u0432 \u0431\u0430\u043D\u0430\u043D\u0430.\u0412\u043E \u043C\u043D\u043E\u0433\u0438\u0445 \u0441\u0442\u0440\u0430\u043D\u0430\u0445 \u0431\u0430\u043D\u0430\u043D\u044B \u044F\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u043E\u0434\u043D\u0438\u043C \u0438\u0437 \u043E\u0441\u043D\u043E\u0432\u043D\u044B\u0445 \u0438\u0441\u0442\u043E\u0447\u043D\u0438\u043A\u043E\u0432 \u043F\u0438\u0442\u0430\u043D\u0438\u044F \u2014 \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440, \u0442\u043E\u043B\u044C\u043A\u043E \u0432 \u042D\u043A\u0432\u0430\u0434\u043E\u0440\u0435 \u0433\u043E\u0434\u043E\u0432\u043E\u0435 \u043F\u043E\u0442\u0440\u0435\u0431\u043B\u0435\u043D\u0438\u0435 \u044D\u0442\u043E\u0433\u043E \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0430 \u0441\u043E\u0441\u0442\u0430\u0432\u043B\u044F\u0435\u0442 73,8 \u043A\u0433 \u043D\u0430 \u0434\u0443\u0448\u0443 \u043D\u0430\u0441\u0435\u043B\u0435\u043D\u0438\u044F (\u0434\u043B\u044F \u0441\u0440\u0430\u0432\u043D\u0435\u043D\u0438\u044F, \u0432 \u0420\u043E\u0441\u0441\u0438\u0438 \u044D\u0442\u043E\u0442 \u043F\u043E\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u044C \u0440\u0430\u0432\u0435\u043D 7,29 \u043A\u0433). \u0421\u0443\u0449\u0435\u0441\u0442\u0432\u0435\u043D\u043D\u0443\u044E \u0434\u043E\u043B\u044E \u043F\u043E\u0442\u0440\u0435\u0431\u043B\u0435\u043D\u0438\u044F \u0431\u0430\u043D\u0430\u043D\u044B \u0442\u0430\u043A\u0436\u0435 \u0441\u043E\u0441\u0442\u0430\u0432\u043B\u044F\u044E\u0442 \u0432 \u0411\u0443\u0440\u0443\u043D\u0434\u0438 (189,4 \u043A\u0433), \u0421\u0430\u043C\u043E\u0430 (85,0 \u043A\u0433), \u041A\u043E\u043C\u043E\u0440\u0441\u043A\u0438\u0445 \u041E\u0441\u0442\u0440\u043E\u0432\u0430\u0445 (77,8 \u043A\u0433) \u0438 \u043D\u0430 \u0424\u0438\u043B\u0438\u043F\u043F\u0438\u043D\u0430\u0445 (40,6 \u043A\u0433)."@ru ,
+		"La banane est le fruit ou la baie d\u00E9rivant de l\u2019inflorescence du bananier. Les bananes sont des fruits tr\u00E8s g\u00E9n\u00E9ralement st\u00E9riles issus de vari\u00E9t\u00E9s domestiqu\u00E9es. Les fruits des bananiers sauvages et de quelques cultivars domestiques contiennent des graines. Les bananes sont g\u00E9n\u00E9ralement jaunes lorsqu'elles sont m\u00FBres et vertes quand elles ne le sont pas.Les bananes constituent un \u00E9l\u00E9ment essentiel du r\u00E9gime alimentaire de certaines r\u00E9gions."@fr ,
+		"The banana is an edible fruit, botanically a berry, produced by several kinds of large herbaceous flowering plants in the genus Musa. In some countries, bananas used for cooking may be called plantains. The fruit is variable in size, color and firmness, but is usually elongated and curved, with soft flesh rich in starch covered with a rind which may be green, yellow, red, purple, or brown when ripe. The fruits grow in clusters hanging from the top of the plant.  Almost all modern edible parthenocarpic (seedless) bananas come from two wild species \u2013 Musa acuminata and Musa balbisiana. The scientific names of most cultivated bananas are Musa acuminata, Musa balbisiana, and Musa \u00D7 paradisiaca for the hybrid Musa acuminata \u00D7 M. balbisiana, depending on their genomic constitution. The old scientific name Musa sapientum is no longer used.Musa species are native to tropical Indomalaya and Australia, and are likely to have been first domesticated in Papua New Guinea. They are grown in at least 107 countries, primarily for their fruit, and to a lesser extent to make fiber, banana wine and banana beer and as ornamental plants.Worldwide, there is no sharp distinction between \"bananas\" and \"plantains\". Especially in the Americas and Europe, \"banana\" usually refers to soft, sweet, dessert bananas, particularly those of the Cavendish group, which are the main exports from banana-growing countries. By contrast, Musa cultivars with firmer, starchier fruit are called \"plantains\". In other regions, such as Southeast Asia, many more kinds of banana are grown and eaten, so the simple two-fold distinction is not useful and is not made in local languages.The term \"banana\" is also used as the common name for the plants which produce the fruit. This can extend to other members of the genus Musa like the scarlet banana (Musa coccinea), pink banana (Musa velutina) and the Fe'i bananas. It can also refer to members of the genus Ensete, like the snow banana (Ensete glaucum) and the economically important false banana (Ensete ventricosum). Both genera are classified under the banana family, Musaceae."@en ,
+		"Een banaan is een langwerpige, licht gebogen vrucht, die afkomstig is van de bananenplant. In Suriname spreekt men van bacove als het om de vrucht gaat die rechtstreeks uit de schil gegeten kan worden en van banaan als het om groene bakbananen gaat. In Indische gerechten wordt de banaan meestal pisang genoemd, het Maleise woord voor de vrucht. Ook in het Afrikaans kent men dat woord, maar dan gespeld als piesang.Een bananenplant of bananenboom is in werkelijkheid een kruid, 's werelds grootste kruid (kruidachtige). Volgens de tuinbouwkundige definitie wordt de banaan echter tot de groenten gerekend. Volgens de culinaire definitie is het echter een vrucht, omdat de banaan als nagerecht dan wel als tussendoortje wordt gegeten."@nl ,
+		"\u0627\u0644\u0645\u0648\u0632 \u0623\u062D\u062F \u0623\u0647\u0645 \u0645\u062D\u0627\u0635\u064A\u0644 \u0627\u0644\u0641\u0627\u0643\u0647\u0629. \u0641\u064A \u0623\u0643\u062B\u0631 \u0627\u0644\u0644\u063A\u0627\u062A \u0627\u0644\u0623\u062C\u0646\u0628\u064A\u0629 \u064A\u0633\u0645\u0649 banane/banana \u0623\u0648 \u0646\u062D\u0648 \u0630\u0644\u0643 - \u0648\u0647\u064A \u0643\u0644\u0645\u0629 \u0623\u0635\u0644\u0647\u0627 \u0641\u064A \u063A\u0631\u0628 \u0623\u0641\u0631\u064A\u0642\u064A\u0627 \u0645\u0646 \u0627\u0644\u0644\u063A\u0629 \u0627\u0644\u0648\u0644\u0648\u0641\u064A\u0629 \u0625\u0644\u0627 \u0623\u0646\u0647\u0627 \u0642\u062F \u062A\u0643\u0648\u0646 \u0645\u0646 \u0623\u0635\u0644 \u0639\u0631\u0628\u064A \u0642\u0628\u0644 \u0630\u0644\u0643 \u062D\u064A\u062B \u0643\u0627\u0646 (\u0625\u0635\u0628\u0639 \u0627\u0644\u0645\u0648\u0632) \u064A\u0633\u0645\u0649 (\u0628\u0646\u0627\u0646 \u0627\u0644\u0645\u0648\u0632) \u0641\u062A\u0635\u0628\u062D \u0627\u0644\u0645\u0648\u0632\u0629 (\u0628\u0646\u0627\u0646\u0629)."@ar ,
+		"Il banano \u00E8 una pianta della famiglia delle Musaceae.Il termine banana \u00E8 applicato al frutto della pianta, che si sviluppa (nella specie e nelle variet\u00E0 commestibili) in una serie di grappoli. Le banane pesano tipicamente 125 \u2013 200 g, bench\u00E9 questo peso vari considerevolmente fra le differenti cultivar. Il frutto \u00E8 commestibile per circa l'80%, il restante 20% \u00E8 buccia; pu\u00F2 essere consumato crudo o cotto.Quasi tutte le moderne banane partenocarpiche utilizzate a scopo alimentare provengono dalle specie Musa acuminata e Musa balbisiana. Il nome scientifico delle banane \u00E8 Musa acuminata, Musa balbisiana o l'ibrido Musa acuminata \u00D7 balbisiana, a seconda della costituzione del loro genoma. I vecchi nomi scientifici Musa sapientum e Musa paradisiaca non sono pi\u00F9 in uso.Nella cultura popolare e nel commercio \"banana\" di solito si riferisce alle morbide e dolci banane utilizzate come frutta. Invece le cultivar di Musa con frutti pi\u00F9 duri e ricchi d'amido vengono talvolta chiamate \"platani\", un prestito dello spagnolo pl\u00E1tano. Questa distinzione tuttavia \u00E8 puramente arbitraria; le parole platano e banana sono spesso intercambiabili quando il tipo di frutto \u00E8 desumibile dal contesto.In Italia possono sopravvivere alcune cultivar di banana. In particolare la cultivar comune di Sicilia \u00E8 abbastanza rustica in Sicilia dove riesce a portare a maturazione i frutti."@it ,
+		"\u30D0\u30CA\u30CA\uFF08\u7518\u8549\u3001\u5B9F\u82AD\u8549\u3001\u5B66\u540D Musa spp. \uFF09\u306F\u30D0\u30B7\u30E7\u30A6\u79D1\u30D0\u30B7\u30E7\u30A6\u5C5E\u306E\u3046\u3061\u3001\u679C\u5B9F\u3092\u98DF\u7528\u3068\u3059\u308B\u54C1\u7A2E\u7FA4\u306E\u7DCF\u79F0\u3002\u307E\u305F\u3001\u305D\u306E\u679C\u5B9F\u306E\u3053\u3068\u3002\u3044\u304F\u3064\u304B\u306E\u539F\u7A2E\u304B\u3089\u80B2\u7A2E\u3055\u308C\u305F\u591A\u5E74\u8349\u3002\u7A2E\u306B\u3088\u3063\u3066\u306F\u719F\u3059\u307E\u3067\u306F\u6BD2\u3092\u6301\u3064\u3082\u306E\u3082\u3042\u308B\u3002"@ja ,
+		"Banana, pacoba ou pacova \u00E9 uma pseudobaga da bananeira, uma planta herb\u00E1cea vivaz acaule da fam\u00EDlia Musaceae (g\u00E9nero Musa - al\u00E9m do g\u00E9nero Ensete, que produz as chamadas \"falsas bananas\"). S\u00E3o cultivadas em 130 pa\u00EDses. Origin\u00E1rias do sudeste da \u00C1sia s\u00E3o atualmente cultivadas em praticamente todas as regi\u00F5es tropicais do planeta.Vulgarmente, inclusive para efeitos comerciais, o termo \"banana\" refere-se \u00E0s frutas de polpa macia e doce que podem ser consumidas cruas. Contudo, existem variedades de cultivo, de polpa mais rija e de casca mais firme e verde, geralmente designadas por pl\u00E1tanos, em l\u00EDngua espanhola, banana-p\u00E3o ou banana-da-terra, em portugu\u00EAs, ou plantains, em ingl\u00EAs, que s\u00E3o consumidas cozinhadas (assadas, cozidas ou fritas), constituindo o alimento base de muitas popula\u00E7\u00F5es de regi\u00F5es tropicais. A maioria das bananas para exporta\u00E7\u00E3o \u00E9 do primeiro tipo, ainda que apenas 10 a 15 por cento da produ\u00E7\u00E3o mundial seja para exporta\u00E7\u00E3o, sendo os Estados Unidos e a Uni\u00E3o Europeia as principais pot\u00EAncias importadoras.As bananas formam-se em cachos na parte superior dos \"pseudocaules\" que nascem de um verdadeiro caule subterr\u00E2neo (rizoma ou cormo) cuja longevidade chega a 15 anos ou mais. Depois da matura\u00E7\u00E3o e colheita do cacho de bananas, o pseudocaule morre (ou \u00E9 cortado), dando origem, posteriormente, a um novo pseudocaule.As pseudobagas formam-se em \"pencas\" com at\u00E9 cerca de vinte bananas. Os cachos de bananas, pendentes na extremidade do falso caule da bananeira, podem ter 5 a 20 pencas e podem pesar de 30 a 50 kg. Cada banana pesa, em m\u00E9dia, 125g, com uma composi\u00E7\u00E3o de 75% de \u00E1gua e 25% de mat\u00E9ria seca. Bananas s\u00E3o fonte apreci\u00E1vel de vitamina A, vitamina C, fibras e pot\u00E1ssio.Ainda que as esp\u00E9cies selvagens apresentem numerosas sementes, grandes e duras, quase todas as variedades de banana utilizadas na alimenta\u00E7\u00E3o humana n\u00E3o t\u00EAm sementes, como frutos partenoc\u00E1rpicos que s\u00E3o, exce\u00E7\u00E3o feita \u00E0 esp\u00E9cie Musa balbisiana, comercializada no mercado indon\u00E9sio, excepcionalmente com sementes.Devido ao elevado teor de pot\u00E1ssio em sua composi\u00E7\u00E3o, as bananas s\u00E3o levemente radioativas, mais do que a maioria dos outros frutos. Isso se deve \u00E0 presen\u00E7a do is\u00F3topo radioativo pot\u00E1ssio-40 (40K), regularmente distribu\u00EDdo no pot\u00E1ssio ocorrente na natureza, apesar de que o is\u00F3topo comum, pot\u00E1ssio-39 (39K), seja n\u00E3o-radioativo. Por esta raz\u00E3o, os ambientalistas em energia nuclear, por vezes, costumam referir-se \u00E0 \"dose equivalente em banana\" de radia\u00E7\u00E3o para apoiar seus argumentos durante debates em congressos e encontros sobre a mat\u00E9ria. Embora a radioatividade da banana seja muito leve, todavia, grandes carregamentos da fruta em navios podem ser suficientes para disparar detetores ou sensores de radia\u00E7\u00E3o em determinadas circunst\u00E2ncias."@pt .
+<http://dbpedia.org/resource/Amok_(dish)>	dbo:ingredient	dbr:Banana .
+dbr:Goldfinger	dbo:wikiPageDisambiguates	dbr:Goldfinger_banana .
+dbr:Goldfinger_banana	rdf:type	dbo:Plant ,
+		yago:Cultivar113084834 ,
+		yago:Group100031264 ,
+		yago:TaxonomicGroup107992450 ,
+		yago:Variety108101085 ,
+		yago:VascularPlant113083586 ,
+		yago:BiologicalGroup107941170 ,
+		wikidata:Q756 ,
+		wikidata:Q4886 ,
+		yago:Whole100003553 ,
+		yago:Organism100004475 ,
+		yago:LivingThing100004258 ,
+		yago:Object100002684 ,
+		owl:Thing ,
+		yago:Abstraction100002137 ,
+		dbo:Eukaryote ,
+		yago:Plant100017222 ,
+		dbo:CultivatedVariety ,
+		yago:BananaCultivars ,
+		wikidata:Q19088 ,
+		dbo:Species ,
+		yago:PhysicalEntity100001930 ;
+	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	8279730 ;
+	dbo:wikiPageRevisionID	646170541 ;
+	dbo:wikiPageExternalLink	<http://www.promusa.org/tiki-index.php?page=FHIA-01> ,
+		<http://archive.idrc.ca/books/reports/V221/banana.html> ,
+		<http://www.fhia.org.hn/dowloads/info_hibridos/fhia01.pdf> ;
+	owl:sameAs	yago-res:Goldfinger_banana ,
+		dbpedia-it:FHIA-1 ,
+		wikidata:Q5580155 ,
+		dbpedia-wikidata:Q5580155 ,
+		<http://rdf.freebase.com/ns/m.026ytv3> ;
+	dbp:group	dbr:Banana ;
+	dbp:imageWidth	250 ;
+	dbp:origin	dbr:Honduras ;
+	dbp:cultivar	"'FHIA-01 Goldfinger'"@en ;
+	dbp:hybrid	"\u00D7 Musa balbisiana hybrid,"@en ,
+		"Musa acuminata"@en ,
+		"\u00D7 SH-3142"@en ,
+		"Musa  'Prata-an\u00E3'"@en ;
+	rdfs:label	"FHIA-1"@it ,
+		"Goldfinger banana"@en ;
+	rdfs:comment	"La FHIA-01 nota anche come Goldfinger \u00E8 una cultivar di banana sviluppata dalla Fundaci\u00F3n Hondure\u00F1a de Investigaci\u00F3n Agr\u00EDcola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttivit\u00E0 e la notevole resistenza ai patogeni."@it ,
+		"The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA)  by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en ;
+	foaf:name	"Musa 'FHIA-01 Goldfinger'"@en ;
+	dbp:name	"Musa 'FHIA-01 Goldfinger'"@en ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Goldfinger_banana ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Goldfinger_banana?oldid=646170541> ;
+	dbo:abstract	"The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA)  by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en ,
+		"La FHIA-01 nota anche come Goldfinger \u00E8 una cultivar di banana sviluppata dalla Fundaci\u00F3n Hondure\u00F1a de Investigaci\u00F3n Agr\u00EDcola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttivit\u00E0 e la notevole resistenza ai patogeni."@it ;
+	dbo:hybrid	dbr:Musa_balbisiana ,
+		dbr:Banana ,
+		dbr:Musa_acuminata ;
+	dbo:origin	dbr:Honduras .
+dbr:Banana_bread	dbo:ingredient	dbr:Banana .
+dbr:Maraca_pie	dbo:ingredient	dbr:Banana .
+<http://dbpedia.org/resource/Po\u0027e>	dbo:ingredient	dbr:Banana .
+dbr:Martex_Farms	dbo:product	dbr:Banana .
+dbr:Cuban_Red_Banana	dbo:wikiPageRedirects	dbr:Red_banana .
+dbr:Jamaican_banana	dbo:wikiPageRedirects	dbr:Red_banana .
+dbr:Jamaican_bananas	dbo:wikiPageRedirects	dbr:Red_banana .
+dbr:Klue_nak	dbo:wikiPageRedirects	dbr:Red_banana .
+dbr:Pisang_raja_udang	dbo:wikiPageRedirects	dbr:Red_banana .
+dbr:Red_Banana	dbo:wikiPageRedirects	dbr:Red_banana .
+dbr:Red_Dacca	dbo:wikiPageRedirects	dbr:Red_banana .
+dbr:Red_Dacca_Banana	dbo:wikiPageRedirects	dbr:Red_banana .
+dbr:Red_banana	rdf:type	dbo:Species ,
+		dbo:CultivatedVariety ,
+		dbo:Eukaryote ,
+		yago:LivingThing100004258 ,
+		yago:Abstraction100002137 ,
+		yago:Plant100017222 ,
+		yago:Object100002684 ,
+		yago:Organism100004475 ,
+		yago:Cultivar113084834 ,
+		yago:Whole100003553 ,
+		yago:PhysicalEntity100001930 ,
+		yago:TaxonomicGroup107992450 ,
+		wikidata:Q4886 ,
+		yago:BananaCultivars ,
+		wikidata:Q756 ,
+		owl:Thing ,
+		dbo:Plant ,
+		yago:Group100031264 ,
+		wikidata:Q19088 ,
+		yago:Variety108101085 ,
+		yago:VascularPlant113083586 ,
+		yago:BiologicalGroup107941170 ;
+	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	13261606 ;
+	dbo:wikiPageRevisionID	671679946 ;
+	owl:sameAs	yago-res:Red_banana ,
+		dbpedia-wikidata:Q2427471 ,
+		<http://it.dbpedia.org/resource/Red_(banana)> ,
+		dbpedia-id:Pisang_susu_merah ,
+		dbpedia-pt:Banana_vermelha .
+@prefix dbpedia-nl:	<http://nl.dbpedia.org/resource/> .
+dbr:Red_banana	owl:sameAs	dbpedia-nl:Rode_banaan ,
+		wikidata:Q2427471 ,
+		<http://rdf.freebase.com/ns/m.03b_nbt> ;
+	dbp:group	dbr:Banana ;
+	dbp:imageCaption	"Red banana plant from Tanzania showing fruits and inflorescence."@en ;
+	dbp:imageWidth	250 ;
+	dbp:origin	"West Indies and Central America"@en ;
+	dbp:species	"Musa acuminata"@en ;
+	dbp:cultivar	"'Red Dacca'"@en ;
+	rdfs:label	"Rode banaan"@nl ,
+		"\u0645\u0648\u0632 \u0623\u062D\u0645\u0631"@ar ,
+		"Red banana"@en ,
+		"Banana vermelha"@pt ,
+		"Red (banana)"@it ;
+	rdfs:comment	"Red bananas, also known as Red Dacca bananas in Australia, are a variety of banana with reddish-purple skin. They are smaller and plumper than the common Cavendish banana. When ripe, raw red bananas have a flesh that is cream to light pink in color. They are also softer and sweeter than the yellow Cavendish varieties, with a slight mango flavor. Many red bananas are imported from producers in East Africa, Asia and South America."@en ,
+		"De rode banaan of Cuba-banaan is een vrucht die behoort tot het geslacht Musa, de sectie Musa en het genoomtype AAA heeft, waartoe ook de gewone dessertbanaan behoort. De naam rode banaan is een synoniem van het ras Red Dacca."@nl ,
+		"A banana-vermelha \u00E9 um cultivar da banana Musa acuminata. Pertence ao grupo AAA, que \u00E9 o mesmo da banana de Cavendish. \u00C9 origin\u00E1ria originaria do Caribe. Na Austr\u00E1lia s\u00E3o chamadas de Red Daccas."@pt ,
+		"La banana Red \u00E8 un tipo di banana che possiede la buccia di colore rosso o violaceo. Sono in genere pi\u00F9 piccole e pi\u00F9 tozze delle banane Cavendish. Quando sono mature, la polpa assume un colore crema o rosa chiaro. Sono anche pi\u00F9 morbide e dolci della variet\u00E0 Cavendish. Molte di queste banane vengono importate dall'Asia e dall'America meridionale, e sono vendute molto frequentemente in America centrale."@it ,
+		"\u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u0648\u0647\u0648 \u0623\u062D\u062F \u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0645\u062D\u062F\u0648\u062F\u0629 \u0627\u0644\u0627\u0646\u062A\u0634\u0627\u0631 \u0630\u0648 \u0637\u0639\u0645 \u0644\u0630\u064A\u0630 \u0642\u0631\u064A\u0628 \u0645\u0646 \u062E\u0644\u064A\u0637 \u0627\u0644\u0645\u0648\u0632 \u0645\u0639 \u0627\u0644\u062A\u0648\u062A \u0643\u062B\u064A\u0641 \u0627\u0644\u0644\u0628 \u0648\u062B\u0645\u0631\u0647 \u0648\u0627\u062D\u062F\u0629 \u0645\u0646\u0647 \u062A\u0643\u0641\u064A \u0639\u0646 3 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u0635\u0641\u0631 \u0648\u062A\u062D\u062A\u0648\u064A \u0627\u0644\u0645\u0648\u0632\u0629 \u0645\u062A\u0648\u0633\u0637\u0629 \u0627\u0644\u062D\u062C\u0645 \u0639\u0644\u0649 400 \u0645\u0644\u063A \u0645\u0646 \u0627\u0644\u0628\u0648\u062A\u0627\u0633\u064A\u0648\u0645.\u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u063A\u0646\u064A \u0623\u064A\u0636\u0627 \u0628\u0641\u064A\u062A\u0627\u0645\u064A\u0646 \u0633\u064A."@ar ;
+	foaf:name	"Musa acuminata 'Red Dacca'"@en ;
+	dbp:name	"Musa acuminata 'Red Dacca'"@en ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Red_banana_in_Tanzania_0196_Nevit.jpg> ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Red_banana ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Red_banana_in_Tanzania_0196_Nevit.jpg?width=300> ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Red_banana?oldid=671679946> ;
+	dbo:abstract	"\u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u0648\u0647\u0648 \u0623\u062D\u062F \u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0645\u062D\u062F\u0648\u062F\u0629 \u0627\u0644\u0627\u0646\u062A\u0634\u0627\u0631 \u0630\u0648 \u0637\u0639\u0645 \u0644\u0630\u064A\u0630 \u0642\u0631\u064A\u0628 \u0645\u0646 \u062E\u0644\u064A\u0637 \u0627\u0644\u0645\u0648\u0632 \u0645\u0639 \u0627\u0644\u062A\u0648\u062A \u0643\u062B\u064A\u0641 \u0627\u0644\u0644\u0628 \u0648\u062B\u0645\u0631\u0647 \u0648\u0627\u062D\u062F\u0629 \u0645\u0646\u0647 \u062A\u0643\u0641\u064A \u0639\u0646 3 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u0635\u0641\u0631 \u0648\u062A\u062D\u062A\u0648\u064A \u0627\u0644\u0645\u0648\u0632\u0629 \u0645\u062A\u0648\u0633\u0637\u0629 \u0627\u0644\u062D\u062C\u0645 \u0639\u0644\u0649 400 \u0645\u0644\u063A \u0645\u0646 \u0627\u0644\u0628\u0648\u062A\u0627\u0633\u064A\u0648\u0645.\u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u063A\u0646\u064A \u0623\u064A\u0636\u0627 \u0628\u0641\u064A\u062A\u0627\u0645\u064A\u0646 \u0633\u064A. \u0641\u062D\u0628\u0629 \u0648\u0627\u062D\u062F\u0629 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u062A\u063A\u0637\u064A 15\u066A \u0645\u0646 \u062D\u0627\u062C\u0629 \u0627\u0644\u062C\u0633\u0645 \u0644\u0647\u0630\u0627 \u0627\u0644\u0641\u064A\u062A\u0627\u0645\u064A\u0646 \u0643\u0645\u0627 \u0623\u0646\u0647 \u063A\u0646\u064A \u0628\u0627\u0644\u0623\u0644\u064A\u0627\u0641 \u0627\u0644\u063A\u0630\u0627\u0626\u064A\u0629 \u0627\u0644\u062A\u064A \u062A\u0642\u0644\u0644 \u062E\u0637\u0631 \u0627\u0644\u0625\u0635\u0627\u0628\u0629 \u0628\u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0642\u0644\u0628 \u0648\u062F\u0627\u0621 \u0627\u0644\u0633\u0643\u0631\u064A \u0645\u0646 \u0627\u0644\u0646\u0648\u0639 \u0627\u0644\u062B\u0627\u0646\u064A.\u064A\u0632\u0631\u0639 \u0647\u0630\u0627 \u0627\u0644\u0646\u0648\u0639 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0641\u064A \u0627\u0644\u0645\u0646\u0627\u0637\u0642 \u0627\u0644\u0627\u0633\u062A\u0648\u0627\u0626\u064A\u0629 \u0648\u0634\u0628\u0647 \u0627\u0644\u0627\u0633\u062A\u0648\u0627\u0626\u064A\u0629 \u0648\u0639\u0627\u062F\u0629 \u0645\u0627 \u064A\u0633\u062A\u063A\u0631\u0642 \u062D\u0648\u0627\u0644\u064A 9 \u0623\u0634\u0647\u0631 \u062D\u062A\u0649 \u064A\u0635\u0644 \u0644\u0645\u0631\u062D\u0644\u0629 \u0627\u0644\u0646\u0636\u0648\u062C \u0648\u0645\u0646 \u0623\u0634\u0647\u0631 \u0627\u0644\u062F\u0648\u0644 \u0627\u0644\u062A\u064A \u064A\u0632\u0631\u0639 \u0641\u064A\u0647\u0627 \u0643\u0648\u0633\u062A\u0627\u0631\u064A\u0643\u0627 \u0648\u0627\u0644\u0645\u0643\u0633\u064A\u0643 \u0648\u0628\u0639\u0636 \u0627\u0644\u062F\u0648\u0644 \u0627\u0644\u0625\u0641\u0631\u064A\u0642\u064A \u0645\u062B\u0644 \u062A\u0646\u0632\u0627\u0646\u064A\u0627 \u0648\u0632\u0646\u062C\u0628\u0627\u0631."@ar ,
+		"A banana-vermelha \u00E9 um cultivar da banana Musa acuminata. Pertence ao grupo AAA, que \u00E9 o mesmo da banana de Cavendish. \u00C9 origin\u00E1ria originaria do Caribe. Na Austr\u00E1lia s\u00E3o chamadas de Red Daccas."@pt ,
+		"Red bananas, also known as Red Dacca bananas in Australia, are a variety of banana with reddish-purple skin. They are smaller and plumper than the common Cavendish banana. When ripe, raw red bananas have a flesh that is cream to light pink in color. They are also softer and sweeter than the yellow Cavendish varieties, with a slight mango flavor. Many red bananas are imported from producers in East Africa, Asia and South America. They are a favorite in Central America but are sold throughout the world."@en ,
+		"De rode banaan of Cuba-banaan is een vrucht die behoort tot het geslacht Musa, de sectie Musa en het genoomtype AAA heeft, waartoe ook de gewone dessertbanaan behoort. De naam rode banaan is een synoniem van het ras Red Dacca. Andere synoniemen zijn Cuba-banaan, Venkadali, Green Red, Pisang raja udang (Maleisi\u00EB), Morado, Klue nak (Thailand).De rode banaan wordt aangevoerd vanuit Indonesi\u00EB, maar komt ook voor in heel Azi\u00EB (onder andere in Sri Lanka).De rode banaan is ongeveer 12 cm lang en daarmee kleiner dan de dessertbanaan. De schil heeft een groenrode tot rode kleur, veroorzaakt door de anti-oxidant b\u00E8tacaroteen. Het vruchtvlees is cr\u00E8me tot lichtroze van kleur. De smaak is iets zoeter dan die van de dessertbanaan. De vrucht kan zowel vers als gebakken gegeten worden.De rode banaan is al zo'n 20/30 jaar in speciale groentezaken in Europa te verkrijgen. Ook groothandels importeren ze af en toe."@nl ,
+		"La banana Red \u00E8 un tipo di banana che possiede la buccia di colore rosso o violaceo. Sono in genere pi\u00F9 piccole e pi\u00F9 tozze delle banane Cavendish. Quando sono mature, la polpa assume un colore crema o rosa chiaro. Sono anche pi\u00F9 morbide e dolci della variet\u00E0 Cavendish. Molte di queste banane vengono importate dall'Asia e dall'America meridionale, e sono vendute molto frequentemente in America centrale. Come le banane gialle, le banane rosse diventano mature in qualche giorno a temperatura ambiente.Le prime banane vendute a Toronto erano banane rosse, tra il 1870 e il 1880."@it ;
+	dbo:origin	dbr:Central_America ,
+		dbr:West_Indies ;
+	dbo:species	dbr:Musa_acuminata .
+dbr:Red_bananas	dbo:wikiPageRedirects	dbr:Red_banana .
+dbr:Banana_pudding	dbo:ingredient	dbr:Banana .
+dbr:List_of_Good_Eats_episodes	dbp:aux	dbr:Banana .
+dbr:Binignit	dbp:mainIngredient	dbr:Banana ;
+	dbo:ingredient	dbr:Banana .
+<http://dbpedia.org/resource/Peanut_butter,_banana_and_bacon_sandwich>	dbp:mainIngredient	dbr:Banana ;
+	dbo:ingredient	dbr:Banana .
+dbr:Rhino_Horn_banana	rdf:type	yago:LivingThing100004258 ,
+		wikidata:Q4886 ,
+		wikidata:Q756 ,
+		yago:BananaCultivars ,
+		yago:Plant100017222 ,
+		yago:Group100031264 ,
+		owl:Thing ,
+		yago:Variety108101085 ,
+		yago:Abstraction100002137 ,
+		yago:VascularPlant113083586 ,
+		dbo:Plant ,
+		dbo:Species ,
+		yago:Whole100003553 ,
+		yago:PhysicalEntity100001930 ,
+		yago:TaxonomicGroup107992450 ,
+		dbo:CultivatedVariety ,
+		yago:BiologicalGroup107941170 ,
+		dbo:Eukaryote ,
+		wikidata:Q19088 ,
+		yago:Object100002684 ,
+		yago:Organism100004475 ,
+		yago:Cultivar113084834 ;
+	dct:subject	dbc:Banana_cultivars ;
+	dbo:wikiPageID	22326975 ;
+	dbo:wikiPageRevisionID	589133155 ;
+	dbo:wikiPageExternalLink	<http://www.agristarts.com/musa_africanrhino.htm> ;
+	owl:sameAs	yago-res:Rhino_Horn_banana ,
+		<http://rdf.freebase.com/ns/m.05szl2y> ,
+		wikidata:Q7320597 ,
+		dbpedia-wikidata:Q7320597 ;
+	dbp:group	dbr:Banana ;
+	dbp:origin	dbr:Africa ;
+	dbp:cultivar	"'African Rhino Horn'"@en ;
+	dbp:hybrid	"Musa acuminata \u00D7 Musa balbisiana"@en ;
+	rdfs:label	"Rhino Horn banana"@en ;
+	rdfs:comment	"Rhino Horn bananas, also called Rhino Horn plantains or African Rhino Horn, are hybrid banana cultivars from Africa. It produces strongly curved and elongated edible bananas which can grow to a length of two feet, making them have the longest fruits among banana cultivars."@en ;
+	foaf:name	"Musa 'African Rhino Horn'"@en ;
+	dbp:name	"Musa 'African Rhino Horn'"@en ;
+	foaf:isPrimaryTopicOf	wikipedia-en:Rhino_Horn_banana ;
+	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Rhino_Horn_banana?oldid=589133155> ;
+	dbo:abstract	"Rhino Horn bananas, also called Rhino Horn plantains or African Rhino Horn, are hybrid banana cultivars from Africa. It produces strongly curved and elongated edible bananas which can grow to a length of two feet, making them have the longest fruits among banana cultivars."@en ;
+	dbo:hybrid	dbr:Musa_acuminata ;
+	dbo:origin	dbr:Africa .
+dbr:Bananna	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Banana_trade	dbo:wikiPageRedirects	dbr:Banana .
+wikipedia-en:Banana	foaf:primaryTopic	dbr:Banana .
+dbr:Banana_custard	dbo:ingredient	dbr:Banana .
+dbr:Big_Mike_banana	dbo:wikiPageRedirects	dbr:Gros_Michel_banana .
+dbr:Gros_Michel	dbo:wikiPageRedirects	dbr:Gros_Michel_banana .
+dbr:Kluai_hom_thong	dbo:wikiPageRedirects	dbr:Gros_Michel_banana .
+<http://dbpedia.org/resource/Musa_\u0027Gros_Michel\u0027>	dbo:wikiPageRedirects	dbr:Gros_Michel_banana .
+dbr:Musa_Gros_Michel	dbo:wikiPageRedirects	dbr:Gros_Michel_banana .
+dbr:Pisang_Embung	dbo:wikiPageRedirects	dbr:Gros_Michel_banana .
+dbr:Thihmwe	dbo:wikiPageRedirects	dbr:Gros_Michel_banana .
+dbr:African_Rhino_Horn_banana	dbo:wikiPageRedirects	dbr:Rhino_Horn_banana .
+dbr:African_Rhino_Horn_plantain	dbo:wikiPageRedirects	dbr:Rhino_Horn_banana .
+<http://dbpedia.org/resource/Musa_\u0027African_Rhino_Horn\u0027>	dbo:wikiPageRedirects	dbr:Rhino_Horn_banana .
+dbr:Musa_African_Rhino_Horn	dbo:wikiPageRedirects	dbr:Rhino_Horn_banana .
+dbr:Musa_Rhino_Horn	dbo:wikiPageRedirects	dbr:Rhino_Horn_banana .
+dbr:Musa_Rhino_Horn_Banana	dbo:wikiPageRedirects	dbr:Rhino_Horn_banana .
+dbr:Rhino_Horn_Banana	dbo:wikiPageRedirects	dbr:Rhino_Horn_banana .
+dbr:Rhino_Horn_Plantain	dbo:wikiPageRedirects	dbr:Rhino_Horn_banana .
+dbr:Bannana	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Bannanas	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Bananas	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Candle_salad	dbo:ingredient	dbr:Banana .
+dbr:Ginanggang	dbo:ingredient	dbr:Banana .
+dbr:Purple_bananas	dbo:wikiPageRedirects	dbr:Banana .
+dbr:FHIA-01	dbo:wikiPageRedirects	dbr:Goldfinger_banana .
+dbr:Musa_goldfinger	dbo:wikiPageRedirects	dbr:Goldfinger_banana .
+dbr:Banaan	dbo:wikiPageRedirects	dbr:Banana .
+<http://dbpedia.org/resource/Banana_(fruit)>	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Banana_Tree	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Banana_Trees	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Banana_plant	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Banana_tree	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Bananaa	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Banannas	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Bannanna	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Chocolate_bananas	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Dessert_banana	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Ndisi	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Nendran_banana	dbo:wikiPageRedirects	dbr:Banana .
+dbr:🍌	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Kluai_buat_chi	dbo:ingredient	dbr:Banana .
+dbr:Banana_flower	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Banana_cultivation	dbo:wikiPageRedirects	dbr:Banana .
+dbr:Banana_stalk_carving	dbo:wikiPageRedirects	dbr:Banana .
+dbr:مۆز	dbo:wikiPageRedirects	dbr:Banana .
+<http://dbpedia.org/resource/Se%C3%B1orita_banana>	owl:sameAs	dbr:Señorita_banana .
+wikipedia-en:Red_banana	foaf:primaryTopic	dbr:Red_banana .
+wikipedia-en:Grand_Nain	foaf:primaryTopic	dbr:Grand_Nain .
+wikipedia-en:Gros_Michel_banana	foaf:primaryTopic	dbr:Gros_Michel_banana .
+wikipedia-en:Rhino_Horn_banana	foaf:primaryTopic	dbr:Rhino_Horn_banana .
+wikipedia-en:Lacatan_banana	foaf:primaryTopic	dbr:Lacatan_banana .
+wikipedia-en:Latundan_banana	foaf:primaryTopic	dbr:Latundan_banana .
+wikipedia-en:Saba_banana	foaf:primaryTopic	dbr:Saba_banana .
+wikipedia-en:Señorita_banana	foaf:primaryTopic	dbr:Señorita_banana .
+wikipedia-en:Blue_Java_banana	foaf:primaryTopic	dbr:Blue_Java_banana .
+wikipedia-en:Goldfinger_banana	foaf:primaryTopic	dbr:Goldfinger_banana .

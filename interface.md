@@ -223,23 +223,7 @@ A class that wraps an RDF node - which can be either a [NamedNode](#namednode) o
         banana.inverseLinks['http://dbpedia.org/property/group'];
         // returns: [ {value:'http://dbpedia.org/resource/Saba_banana', termType:'NamedNode', ...}, ...]
         ````
- - `.of` : `this` -- identity property for semantic access paths; in other words, it simply points to `this` for chaining calls together. Check out the `.is` example below to see why.
-
-**Methods:**
- - `.at` : `funciton/hash`
-   - *{function}* `(predicate: iri[, ...])`
-   - *{function}* `(predicates: array)`
-     - traverses `predicate(s)` a maximum distance of length one in the normal direction. Multiple arguments or an Array of them is equivalent to using the OR property path operation.
-   - **returns** a [new Bag](#bag).
-   - *example*
-        ```js
-        banana.at('rdfs:label');  // returns a Bag of the objects linked via `rdfs:label`
-        // --- or ---
-        // the equivalent to a property path: `(rdfs:label|rdfs:comment)`
-        banana.at('rdfs:label', 'rdfs:comment');
-        banana.at(['rdfs:label', 'rdfs:comment']); // same as above
-        ```
-   - *{hash}* `[prefix_id: key]` -- provides a semantic access path for traversing the graph in an expressive way
+ - `.at[prefix_id: key]` : `hash` -- provides a semantic access path for traversing the graph in an expressive way
      - selects a subset of the predicates that link this subject to its objects by filtering predicates that start with the IRI given by the corresponding `prefix_id`.
      - **returns** a [Namespace](#namespace).
        - *CAUTION:* Accessing a namespace or subsequent suffix that **does not exist** will cause a `TypeError` because you cannot chain `undefined`. It is safer to use the `.at()` function if you are not guaranteed that a certain path will exist.
@@ -249,8 +233,32 @@ A class that wraps an RDF node - which can be either a [NamedNode](#namednode) o
         // --- or ---
         banana.at[some_prefix_id];
         ```
- - `.is` : alias of `.inverseAt`
- - `.inverseAt` : `funciton/hash`
+ - `.of` : `this` -- identity property for semantic access paths; in other words, it simply points to `this` for chaining calls together. Check out the `.is` example below to see why.
+ - `.is[prefix_id: key]` -- provides a semantic access path for traversing the graph in an expressive way
+   - selects a subset of the predicates that link this **object to its subjects** by filtering predicates that start with the IRI given by the corresponding `prefix_id`.
+   - **returns** a [new Namespace](#namespace).
+     - *CAUTION:* Accessing a namespace or subsequent suffix that **does not exist** will cause a `TypeError` because you cannot chain `undefined`. It is safer to use the `.inverseAt()` function if you are not guaranteed that a certain path will exist.
+    - *example:*
+        ```js
+        banana.is.dbp.group.of  // dbr:Banana ^dbp:group ?things
+            .nodes.values();  // ['http://dbpedia.org/resource/Red_banana', ...]
+        ```
+
+**Methods:**
+ - `.hop` : `function`
+   - *{function}* `(predicate: iri[, ...])`
+   - *{function}* `(predicates: array)`
+     - traverses `predicate(s)` a maximum distance of length one in the normal direction. Multiple arguments or an Array of them is equivalent to using the OR property path operation.
+   - **returns** a [new Bag](#bag).
+   - *example*
+        ```js
+        banana.hop('rdfs:label');  // returns a Bag of the objects linked via `rdfs:label`
+        // --- or ---
+        // the equivalent to a property path: `(rdfs:label|rdfs:comment)`
+        banana.hop('rdfs:label', 'rdfs:comment');
+        banana.hop(['rdfs:label', 'rdfs:comment']); // same as above
+        ```
+ - `.inverseHop` : `function`
    - *{function}* `(predicate: iri[, ...])`
    - *{function}* `(predicates: array)`
      - traverses `predicate(s)` a maximum distance of length one. Multiple arguments or an Array of them is equivalent to using the OR property path operation.
@@ -258,22 +266,13 @@ A class that wraps an RDF node - which can be either a [NamedNode](#namednode) o
    - *example:*
         ```js
         // semantic access path
-        banana.inverseAt('dbp:group');  // returns a NodeSet of the subjects linked via `^dbp:group`
+        banana.inverseHop('dbp:group');  // fetch subjects linked via `^dbp:group`
         banana.is.dbp.group.of; // same as above
         // --- or ---
-        banana.inverseAt('dbo:wikiPageRedirects', 'dbo:wikiPageDisambiguates');
-        // equivalent to property path  ^(dbo:wikiPageRedirects|dbo:wikiPageDisambiguates)
+        banana.inverseHop('dbo:wikiPageRedirects', 'dbo:wikiPageDisambiguates');
+        // equivalent property path  ^(dbo:wikiPageRedirects|dbo:wikiPageDisambiguates)
         ```
-   - *{hash}* `[prefix_id: key]` -- provides a semantic access path for traversing the graph in an expressive way
-     - selects a subset of the predicates that link this **object to its subjects** by filtering predicates that start with the IRI given by the corresponding `prefix_id`.
-     - **returns** a [new Namespace](#namespace).
-       - *CAUTION:* Accessing a namespace or subsequent suffix that **does not exist** will cause a `TypeError` because you cannot chain `undefined`. It is safer to use the `.inverseAt()` function if you are not guaranteed that a certain path will exist.
-   - *example:*
-        ```js
-        banana.is.dbp.group.of  // dbr:Banana ^dbp:group ?things
-          .nodes.values();  // ['http://dbpedia.org/resource/Red_banana', ...]
-        ```
- - `.all` : `chain/function` -- selects all sets of objects linked via all predicates from this subject node in the normal direction
+ - `.all` : `chain/function` -- selects all sets of objects linked via all predicates from this subject node in the normal direction. The function may support a filter arguent in future versions, that is why this is listed under methods for now.
    - *{chain}* | *{function}* `()`
      - **returns** a [new Bag](#bag)
      - *example:*
@@ -295,14 +294,13 @@ A class that wraps a set of [Nodes](#node). Since it is a set, no two of its ite
 
 **Properties:**
  - `.areNodes` : `boolean` = `true`
- - `.nodes` : `hash` -- access to the underlying `hash` of [Nodes](#node)
+ - `.nodes` : `list` -- access to the underlying `list` of [Nodes](#node)
  - `.of` : `this` -- behaves the same as [Node#of](#node)
- - `.length` : `integer` -- the number of items in the set
 
 **Methods:**
- - `.at` -- behaves the same as [Node#at](#node)
+ - `.hop` -- behaves the same as [Node#hop](#node)
    - **returns** a [new Bag](#bag)
- - `.inverseAt`, `.is`, `.are` -- behaves the same as [Node#inverseAt](#node)
+ - `.inverseHop` -- behaves the same as [Node#inverseHop](#node)
    - **returns** a [new NodeSet](#nodeset)
  - `.all` -- behaves the same as [Node#all](#node)
    - **returns** a [new Bag](#bag)
@@ -327,6 +325,8 @@ An unordered list of [Terms](#term). "Unordered" refers to the fact that the ord
          banana.at.rdfs.label.sample();  // 'Banane'
          banana.at.rdf.type.sample();  // 'http://umbel.org/umbel/rc/Plant'
          ```
+ - `.filter(filter: function[, new_instance: boolean])` -- applies `filter` callback function to each Term in this Bag. By default, will mutate the `Array` of Terms belonging to `this`. If you plan to reuse the original Bag of Terms before it was filtered, you can pass `true` to `new_instance`.
+   - **returns** `this` or a new Bag, depending on `new_instance`
  - `.values()` -- fetches all elements' `.value` property
    - **returns** an `Array` of strings
    - *example:*
@@ -354,14 +354,6 @@ An unordered list of [Terms](#term). "Unordered" refers to the fact that the ord
             return literal.value.length < 512;
          });
          ```
- - `.nodes` : `chain/function` -- selects only distinct terms of type NamedNode or BlankNode and applies an optional `filter`.
-   - *{chain}* | *{function}* `()`
-   - *{function}* `(filter: function)` -- filter by callback function w/ params: `(element: Node)`
-     - **returns** a [new NodeSet](#nodeset)
-     - *example:*
-         ```js
-         banana.at('rdf:type').nodes;  // ensures all elements are Nodes and gives us more methods to work with
-         ```
  - `.namedNodes` : `chain/function` -- selects only distinct terms of type NamedNode, optionally filters nodes whos IRIs start with `prefix`, and then applies an optional `filter`.
    - *{chain}* | *{function}* `()`
    - *{function}* `(prefix: iri)` -- filter by whos IRIs start with `prefix`
@@ -373,44 +365,39 @@ An unordered list of [Terms](#term). "Unordered" refers to the fact that the ord
    - *{function}* `(filter: RegExp)` -- filter by label
    - *{function}* `(filter: function)` -- filter by callback function w/ params: `(element: Node)`
      - **returns** a [new NodeSet](#nodeset)
+ - `.anyNodes` : `chain/function` -- selects only distinct terms of type NamedNode **or** BlankNode and applies an optional `filter`.
+   - *{chain}* | *{function}* `()`
+   - *{function}* `(filter: function)` -- filter by callback function w/ params: `(element: Node)`
+     - **returns** a [new NodeSet](#nodeset)
+     - *example:*
+         ```js
+         banana.at('rdf:type').anyNodes;  // ensures all elements are Nodes and gives us more methods to work with
+         ```
 
  - `.collections` : `chain/function` -- selects any nodes that have an `rdf:first` property
 
 ----
-<a name="bunch" />
-### abstract **Bunch** extends Bag
-An abstract class that represents an unordered list of [Terms](#term) which are all of the same term type.
-
-**abstract Properties:**
- - `.termType` : `string` -- the term type shared by all the Terms in this Bunch.
- - ... and [those inherited from Bag](#bag)
-
-**abstract Methods:**
- - `.filter(filter: function)` -- applies `filter` callback function to each Term in this Bunch.
-   - **returns** a new Bunch of the same type
- - ... and [those inherited from Bag](#bag)
-
-----
 <a name="literalbunch" />
-### **LiteralBunch** extends Bunch
+### **LiteralBunch**
 A class that represents an unordered list of [Literals](#literal).
 
-**Properties:** (inherited from Bunch and Bag)
- - `.termType` : `string` = `'Literal'`
- - ... and [those inherited from Bag](#bag)
-
 **Properties:**
- - `.areLiterals` : `boolean` = `true` -- distinguishes this Bunch from other potential types
-
-**Methods:** (inherited from Bunch and Bag)
- - `.values()` -- **returns** an `Array` of strings that are the contents of each Literal in this Bunch
- - `.filter(filter: function)` -- applies `filter` callback w/ params: `(element: Literal)`
-   - **returns** a [new LiteralBunch](#literalbunch)
- - ... and [those inherited from Bag](#bag)
+ - `.areLiterals` : `boolean` = `true`
+ - `.terms` : `Array` -- access to the underlying `list` of [Terms](#term)
 
 **Methods:**
- - `.datatypes()` -- **returns** an `Array` of strings that are the IRIs of each Literal in this Bunch
- - `.languages()` -- **returns** an `Array` of strings that are the languages of each Literal in this Bunch
+ - `.filter(filter: function)` -- applies `filter` callback w/ params: `(element: Literal)`
+   - **returns** a [new LiteralBunch](#literalbunch)
+ - `.sample()` -- selects exactly one [Literal](#literal) from the unordered list and returns is `.value`. Convenient if you are certain the bag has only one element, otherwise it accesses the first/next+ item from the unordered list.
+   - **returns** a `string` or `undefined` if LiteralBunch is empty
+ - `.values()` -- fetches all Literals' `.value` property
+   - **returns** an `Array` of strings
+ - `.termTypes()` -- fetches all Literals' `.termType` property
+   - **returns** an `Array` of strings
+ - `.datatypes()` -- fetches all Literals' `.datatype` property
+   - **returns** an `Array` of strings
+ - `.languages()` -- fetches all Literals' `.language` property
+   - **returns** an `Array` of strings
 
 
 ----
@@ -429,6 +416,8 @@ A class that represents the absence of a [Node](#node). It is used to prevent `T
 ----
 ### **Namespace**
 A `hash` of namespaced suffixes where each entry links to a sets of objects (Literals) or to other nodes (NamedNodes or BlankNodes).
+
+Also, certain object protoype properties (such as `.length`) are overriden by defining them as `undefined` on this `hash` so that false positives are avoided. Obviously, if the predicate's suffix *is* `'length'`, then that property *will* be defined on the `hash`, as it should.
  - *{hash}* `[predicate_suffix: key]`
    - selects the set of objects corresponding to the predicate given by the current namespace prefix concatenated with `predicate_suffix`
      - > i.e., the keys are the strings leftover after removing the prefix IRI from the beginning of every predicate
@@ -441,24 +430,24 @@ A `hash` of namespaced suffixes where each entry links to a sets of objects (Lit
 
 ----
 ### **Links**
-A `hash` that represents the set of predicates from the current node to its objects (Literals, NamedNodes, and BlankNodes) *OR* to its subjects (NamedNodes and BlankNodes). An instance can either represent links in the normal direction (i.e., to objects) *OR* it can represent links in the inverse direction (i.e., to subject nodes), depending on how it was created. Reserved keys are prefixed with a `'^'` to prevent collisions with predicate IRIs:
- - *{hash}* `['^direction']` : `number` -- indicates the direction of the predicates.
+A `hash` that represents the set of predicates from the current node to its objects (Literals, NamedNodes, and BlankNodes) *OR* to its subjects (NamedNodes and BlankNodes). An instance can either represent links in the normal direction (i.e., to objects) *OR* it can represent links in the inverse direction (i.e., to subject nodes), depending on how it was created.
+
+Reserved keys are prefixed with a `'^'` to prevent collisions with predicate IRIs. Also, certain object protoype properties (such as `.toString` and `.hasOwnProperty`) are overriden by defining them as `undefined` on this `hash` so that false positives are avoided. Obviously, if a predicate's suffix *is* `'hasOwnProperty'`, then that property *will* be defined on the `hash`, as it should. What this means is that you cannot use these prototypical methods -- however, this does not interfere with own-property iteration such as `for..in` and `Object.keys`.
+ - *{hash}* `['^direction']` *non-enumerable* : `number` -- indicates the direction of the predicates.
    - either a `1` for normal direction (i.e., `subject --> object`) or a `-1` for inverse direction (i.e., `subject <-- object`).
- - *{hash}* `['^term']` -- the [Term](#term) that is the 'owner' of these Links. This will always be either a [NamedNode](#namednode) or [BlankNode](#blanknode).
+ - *{hash}* `['^term']`  *non-enumerable* -- the Term that is the 'owner' of these Links. This will always be either a [NamedNode](#namednode) or [BlankNode](#blanknode).
  - *{hash}* `[predicate_iri: key]`
    - selects the set of objects that are pointed to, or subjcets that are pointed from, the given `predicate_iri` -- depending on `^direction`.
 
 ----
 ### **Graph**
-A class that represents a set of triples in which any of its nodes are accessible by their id, which is either an IRI or a blank node label. Nodes are linked to one another by the predicates that were extracted from the input triples. 
-
-Prior associations to an RDF graph IRI
+A class that represents a set of triples in which any of its subject nodes are accessible by their id, which is either an IRI or a blank node label. Nodes are linked to other [Nodes](#node) or to [Bags](#bag) of objects by the predicates that were extracted from the input triples. 
 
 **Properties:**
- - `.id` -- the Graph's id, which is either the IRI of a NamedNode, *OR* a `'_:'` followed by the label of a BlankNode.
+ - `.term` -- the Term that is the 'owner' of this Graph, which is either a [NamedNode](#namednode) or a [BlankNode](#blanknode).
  - `.prefixes[prefix_id: key]` -- a `hash` that provides access to the prefixes used by all graphs in the Store.
    - **returns** a `string` of the prefix' IRI
- - `.nodes[node_id: key]` -- a `hash` that provides access to the underlying graph, which returns the [Node](#node) belonging to the given `node_id`.
+ - `.nodes[node_id: key]` -- a `hash` that provides access to the underlying set of subject Nodes by returning the [Node](#node) belonging to the given `node_id`.
    - **returns** a [Node](#node)
    - *example:*
        ```js
