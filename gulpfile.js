@@ -49,12 +49,11 @@ soda(gulp, {
 			'n3: dist.es6'
 		],
 		graphy: [
-			'es5: dist.es5',
+			'es5: dist',
 			'es6: dist.es6',
 		],
 		debug: [
 			'es5: dist',
-			// 'es5: dist.es5',
 			'es6: dist.es6',
 		],
 		routers: 'routing',
@@ -96,7 +95,9 @@ soda(gulp, {
 			test_src: [
 				'test/parsers/ttl.js',
 				'test/parsers/trig.js',
-				'test/main/linked.js',
+				'test/parsers/nt.js',
+				'test/parsers/nq.js',
+				'test/main/data-factory.js',
 			],
 		},
 		'n3-flavors-n3-minify': {

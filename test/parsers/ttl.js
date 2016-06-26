@@ -1,6 +1,7 @@
 /*eslint indent:0*/
 const assert = require('assert');
 const deq = assert.deepEqual;
+const eq = assert.strictEqual;
 
 const graphy = require('../../dist/index.js');
 const parse_ttl = graphy.ttl.parse;
@@ -18,12 +19,13 @@ const P_IRI_XSD_INTEGER = P_IRI_XSD+'integer';
 const P_IRI_XSD_DECIMAL = P_IRI_XSD+'decimal';
 const P_IRI_XSD_DOUBLE = P_IRI_XSD+'double';
 
+const P_RDF_LANGSTRING = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString';
 
 const R_WANTS_PREFIX = /^\s*[(:_\[]/;
 const S_AUTO_PREFIX = '@prefix : <#>.\n';
 
 
-const as_quad = function(a_this) {
+const as_triple = function(a_this) {
 	let s_subject = a_this[0];
 	let s_predicate = a_this[1];
 	let z_object = a_this[2];
@@ -65,7 +67,7 @@ const allow = function(s_test, s_ttl, a_pattern) {
 				assert.ifError(e_parse);
 			},
 			end() {
-				deq(a_quads, a_pattern.map(as_quad));
+				deq(a_quads, a_pattern.map(as_triple));
 			},
 		});
 	});
@@ -111,7 +113,7 @@ const survive = (s_test, s_ttl, a_pattern) => {
 				a_quads.push(h_triple);
 			},
 			end() {
-				deq(a_quads, a_pattern.map(as_quad));
+				deq(a_quads, a_pattern.map(as_triple));
 				f_done();
 			},
 		}));
@@ -575,8 +577,8 @@ describe('ttl parser:', () => {
 			:a :b "c"@en .
 			:d :e "f"@EN .
 			`, [
-				['#a', '#b', {value: 'c', language: 'en'}],
-				['#d', '#e', {value: 'f', language: 'en'}],
+				['#a', '#b', {value: 'c', language: 'en', datatype: P_RDF_LANGSTRING}],
+				['#d', '#e', {value: 'f', language: 'en', datatype: P_RDF_LANGSTRING}],
 			]);
 
 		allow('datatype', `
@@ -596,25 +598,25 @@ describe('ttl parser:', () => {
 		allow('integers', `
 			:a :b 0, -2, +20 .
 			`, [
-				['#a', '#b', {value: 0, datatype: P_IRI_XSD_INTEGER}],
-				['#a', '#b', {value: -2, datatype: P_IRI_XSD_INTEGER}],
-				['#a', '#b', {value: +20, datatype: P_IRI_XSD_INTEGER}],
+				['#a', '#b', {value: '0', number: 0}],
+				['#a', '#b', {value: '-2', number: -2}],
+				['#a', '#b', {value: '+20', number: +20}],
 			]);
 
 		allow('decimals', `
 			:a :b .0, -0.2, +20.0 .
 			`, [
-				['#a', '#b', {value: 0, datatype: P_IRI_XSD_DECIMAL}],
-				['#a', '#b', {value: -0.2, datatype: P_IRI_XSD_DECIMAL}],
-				['#a', '#b', {value: +20, datatype: P_IRI_XSD_DECIMAL}],
+				['#a', '#b', {value: '.0', number: 0}],
+				['#a', '#b', {value: '-0.2', number: -0.2}],
+				['#a', '#b', {value: '+20.0', number: +20.0}],
 			]);
 
 		allow('doubles', `
 			:a :b 0.e1, -2.0e-1, +0.02e+3 .
 			`, [
-				['#a', '#b', {value: 0, datatype: P_IRI_XSD_DOUBLE}],
-				['#a', '#b', {value: -0.2, datatype: P_IRI_XSD_DOUBLE}],
-				['#a', '#b', {value: +20, datatype: P_IRI_XSD_DOUBLE}],
+				['#a', '#b', {value: '0.e1', number: 0}],
+				['#a', '#b', {value: '-2.0e-1', number: -2.0e-1}],
+				['#a', '#b', {value: '+0.02e+3', number: +0.02e+3}],
 			]);
 	});
 
@@ -623,15 +625,15 @@ describe('ttl parser:', () => {
 		allow('true', `
 			:a :b true, TRUE .
 			`, [
-				['#a', '#b', {value: true, datatype: P_IRI_XSD_BOOLEAN}],
-				['#a', '#b', {value: true, datatype: P_IRI_XSD_BOOLEAN}],
+				['#a', '#b', {value: 'true', boolean: true}],
+				['#a', '#b', {value: 'true', boolean: true}],
 			]);
 
 		allow('false', `
 			:a :b false, FALSE .
 			`, [
-				['#a', '#b', {value: false, datatype: P_IRI_XSD_BOOLEAN}],
-				['#a', '#b', {value: false, datatype: P_IRI_XSD_BOOLEAN}],
+				['#a', '#b', {value: 'false', boolean: false}],
+				['#a', '#b', {value: 'false', boolean: false}],
 			]);
 	});
 
@@ -691,7 +693,7 @@ describe('ttl parser:', () => {
 			]);
 
 			survive('numeric literals', ':a :b 25.12e-1 .', [
-				['#a', '#b', {value: '2.512', datatype: P_IRI_XSD_DOUBLE}],
+				['#a', '#b', {value: '25.12e-1', number: 25.12e-1}],
 			]);
 		});
 

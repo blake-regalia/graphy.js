@@ -19,7 +19,7 @@ This library boasts a set of high performance parsers, each one is specialized f
 
 ##### Count how many triples are in [DBpedia's 2015-04 English persondata.nt](http://wiki.dbpedia.org/Downloads2015-04#persondata) in N-Triples format:
 
-using **graphy.js**:
+using **graphy**:
 ```js
 console.time('g');
 const parser = require('graphy'); let c_triples = 0;
@@ -34,7 +34,7 @@ graphy.nt.parse(fs.createReadStream('persondata_en.nt'), {
 });
 ```
 
-using **[N3.js v0.4.5](https://github.com/RubenVerborgh/N3.js)**:
+versus **[N3.js v0.4.5](https://github.com/RubenVerborgh/N3.js)**:
 ```js
 console.time('n');
 const n3 = require('n3'); let c_triples = 0;
@@ -51,11 +51,11 @@ new n3.Parser().parse(fs.createReadStream('persondata_en.nt'), function(err, tri
 
 #### Benchmark Results:
 Each benchmark listed was the best of 5 trials:
-| test                    | size     | # statements | N3.js ms    | <--op/s | graphy.js ms | <--op/s   | speedup  |
+| test                    | size     | # statements | N3.js *time*    | *velocity* | graphy *time* | *velocity*   | speedup  |
 | ------------------------ | -------- | ------------:| -----------:| -------:| ------------:| ---------:| -------- |
-| persondata_en.nt         | 967 MiB  |    8,397,081 | 16030.645ms | 523,835 |  4715.599ms  | 1,780,929 | 3.4 x    |
-| redirects_en.ttl         | 994 MiB  |    6,831,505 | 12079.796ms | 565,568 |  6790.367ms  | 1,006,112 | 1.778 x  |
-| article-categories_en.nq | 5.16 GiB |   20,232,709 | 46261.009ms | 437,359 | 26855.249ms  |   753,405 | 1.722 x  |
+| persondata_en.nt         | 967 MiB  |    8,397,081 | 16030.645ms | 523,835 op/s |  4715.599ms  | 1,780,929 op/s | 3.4 x    |
+| redirects_en.ttl         | 994 MiB  |    6,831,505 | 12079.796ms | 565,568 op/s |  6790.367ms  | 1,006,112 op/s | 1.778 x  |
+| article-categories_en.nq | 5.16 GiB |   20,232,709 | 46261.009ms | 437,359 op/s | 26855.249ms  |   753,405 op/s | 1.722 x  |
 | need to find a .trig     |          |              |             |         |              |           |          |
 
 What's the catch? [See Performance details](#performance)
@@ -70,21 +70,21 @@ const graphy = require('graphy');
 graphy.ttl.linked(ttl_results, (g) => {
 
     // traverse a link to its set of objects, then filter by language
-    g.enter('dbr:Banana').at('rdfs:label').literals('@en').values();  // ['Banana']
+    g.enter('dbr:Banana').cross('rdfs:label').literals('@en').values();  // ['Banana']
     
-    // acheive the same result by using the data objects directly
+    // acheive the same result by accessing the data objects directly
     g.nodes['http://dbpedia.org/resource/Banana']
         .links['http://www.w3.org/2000/01/rdf-schema#label']
-        .filter(term => term.isLiteral() && term.language == 'en')
+        .filter(term => term.isLiteral && term.language == 'en')
         .map(term => term.value());  // ['Banana']
 
     let banana = g.enter('dbr:Banana');  //  🍌
     
     // dbr:Banana ^dbp:group/rdfs:label ?label. FILTER(isLiteral(?label) && lang(?label)="en")
-    banana.inverseAt('dbp:group').at('rdfs:label').literals('@en')
+    banana.back('dbp:group').cross('rdfs:label').literals('@en')
         .values();  // ['Saba banana', 'Gros Michel banana', 'Red banana', ...]
     
-    // use optional semantic access paths to trivialize things
+    // or, use optional semantic access paths to trivialize things
     banana.is.dbp.group.of.nodes  // dbr:Banana ^dbp:group ?node. FILTER(isIri(?node))
         .terms.map(g.terse);  // ['dbr:Saba_banana', 'dbr:Señorita_banana', ...]
 });
