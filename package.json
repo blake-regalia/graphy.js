@@ -1,34 +1,35 @@
 {
   "name": "graphy",
   "version": "1.3.1",
-  "description": "Query linked-data graphs by abstracting away traditional JSON-LD interaction",
+  "description": "A faster-than-lightning, asynchronous, streaming RDF deserializer that implements the RDFJS Representation Interfaces and natively parses Turtle, TriG, N-Triples, and N-Quads.",
   "author": {
     "name": "Blake Regalia",
     "email": "blake.regalia@gmail.com"
   },
   "files": [
-    "dist",
-    "dist.es5",
-    "dist.es6",
-    "ttl"
+    "dist"
   ],
-  "main": "dist/router.js",
+  "main": "dist/main/graphy.js",
   "keywords": [
+    "rdf",
+    "rdfjs",
     "linked-data",
     "semantic-web",
-    "json-ld"
+    "turtle",
+    "ttl",
+    "trig",
+    "n-triples",
+    "nt",
+    "n-quads",
+    "nq"
   ],
   "repository": "blake-regalia/graphy.js",
   "devDependencies": {
     "Builder": "^1.0.0",
-    "arginfo": "^1.1.2",
+    "async": "^2.0.0-rc.6",
     "babel-core": "^6.5.1",
     "babel-eslint": "^6.0.4",
-    "babel-node-debug": "^2.0.0",
-    "babel-plugin-array-includes": "^2.0.3",
-    "babel-plugin-transform-runtime": "^6.5.0",
     "babel-preset-es2015": "^6.5.0",
-    "benchmark": "^2.1.0",
     "del": "^2.2.0",
     "gulp": "^3.9.1",
     "gulp-babel": "^6.1.2",
@@ -53,17 +54,12 @@
     "gulp-uglify": "^1.5.3",
     "gulp-util": "^3.0.7",
     "isparta": "^4.0.0",
-    "istanbul": "github:gotwarlost/istanbul#v1"
+    "istanbul": "github:gotwarlost/istanbul#v1",
+    "request": "^2.72.0"
   },
   "scripts": {
     "test": "gulp"
   },
   "license": "ISC",
-  "dependencies": {
-    "arginfo": "^1.1.2",
-    "classer": "^1.2.0",
-    "jsonld": "^0.4.5",
-    "rmprop": "^1.1.1",
-    "xtend": "^4.0.1"
-  }
+  "dependencies": {}
 }

@@ -146,6 +146,10 @@ describe('ttl parser:', () => {
 
 		allow('prefixed names w/ empty prefix id', '@prefix : <z://>. :a :b :c .', abc);
 
+		allow('prefixed names w/ trailing colon & mid-stops', `
+			@prefix : <z://>. :a: :b.b :c:c.c: .`,
+			[['z://a:', 'z://b.b', 'z://c:c.c:']]);
+
 		allow('prefixed names w/ non-empty prefix id', '@prefix p: <z://>. p:a p:b p:c .', abc);
 
 		allow('prefixed names w/ empty suffix', '@prefix pa: <z://a>. @prefix pb: <z://b>. @prefix pc: <z://c>. pa: pb: pc: .', abc);
@@ -544,10 +548,12 @@ describe('ttl parser:', () => {
 
 		allow('long single quotes', `
 			:a :b '''''' .
+			:a :b '''\r''' .
 			:a :b '''c''' .
 			:a :b '''"c\\u002C\\n\n'''' .
 			`, [
 				['#a', '#b', {value: ''}],
+				['#a', '#b', {value: '\r'}],
 				['#a', '#b', {value: 'c'}],
 				['#a', '#b', {value: `"c,\n\n'`}],
 			]);
