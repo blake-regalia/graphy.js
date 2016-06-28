@@ -542,8 +542,7 @@ typed.datatype;  // 'ex://datatype'
 typed.hasOwnProperty('datatype');  // true
 
 let langed = graphy.literal('language tag', '@en');
-simple.datatype;  // 'http://www.w3.org/2001/XMLSchema#string'
-simple.hasOwnProperty('datatype');  // false
+simple.datatype;  // 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString'
 ```
 
 ----
