@@ -698,7 +698,7 @@ For example:
 ```
 
 Is technically not valid TTL. However, graphy will not emit any errors. Instead, it will emit the following triple:
-```js
+```
 {
   subject: {value: 'a', termType: 'NamedNode', ...},
   predicate: {value: 'iri refs aren't supposed to have spaces', termType: 'NamedNode', ...},
