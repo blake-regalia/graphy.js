@@ -51,13 +51,13 @@ new n3.Parser(/* faster w/o format*/).parse(input, function(err, triple) {
 #### Benchmark Results:
 Each benchmark listed was the best of 10 trials:
 
-| DBpedia file             | # quads    | N3.js time  | "" velocity  | graphy time | "" velocity       | vs. speedup |
-| ------------------------ | ----------:| -----------:| ------------:| -----------:| --------------:| -----------:|
-| persondata_en.nt         |  8,397,081 | 13859.52 ms | 605,871 op/s |  4792.09 ms | 1,752,276 op/s |      2.892x |
-| instance-types_en.nq     |  5,647,972 | 12440.54 ms | 453,997 op/s |  6478.85 ms |   871,755 op/s |      1.920x |
-| redirects_en.ttl         |  6,831,505 | 12098.22 ms | 564,670 op/s |  7000.85 ms |   975,810 op/s |      1.728x |
-| persondata_en.ttl        |  8,397,081 | 15740.68 ms | 533,463 op/s |  9287.94 ms |   904,084 op/s |      1.694x |
-| article-categories_en.nq | 20,232,709 | 46386.98 ms | 436,172 op/s | 27561.32 ms |   734,098 op/s |      1.683x |
+| DBpedia file             | # quads    | N3.js time | "" velocity  | graphy time | "" velocity    | speedup |
+| ------------------------ | ----------:| ----------:| ------------:| -----------:| --------------:| -------:|
+| persondata_en.nt         |  8,397,081 |   13859 ms | 605,871 op/s |     4792 ms | 1,752,276 op/s |  2.892x |
+| instance-types_en.nq     |  5,647,972 |   12440 ms | 453,997 op/s |     6478 ms |   871,755 op/s |  1.920x |
+| redirects_en.ttl         |  6,831,505 |   12098 ms | 564,670 op/s |     7000 ms |   975,810 op/s |  1.728x |
+| persondata_en.ttl        |  8,397,081 |   15740 ms | 533,463 op/s |     9287 ms |   904,084 op/s |  1.694x |
+| article-categories_en.nq | 20,232,709 |   46386 ms | 436,172 op/s |    27561 ms |   734,098 op/s |  1.683x |
 
 What's the catch? [See Performance details](#performance)
 
