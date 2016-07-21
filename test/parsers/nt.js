@@ -2,7 +2,7 @@
 const assert = require('assert');
 const deq = assert.deepEqual;
 
-const graphy = require('../../dist/index.js');
+const graphy = require('../../dist/main/graphy.js');
 const parse_nt = graphy.nt.parse;
 
 

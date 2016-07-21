@@ -8,23 +8,12 @@ lib-cov
 # Coverage directory used by tools like istanbul
 coverage
 
-
-# Directories
-
 # auxillary git repositories
 .git-*
 
-# data files
-data
-
 # compiled distributions
 dist
-dist.es5
 dist.es6
-ttl
-
-# runtime logs
-logs
 
 # dependencies
 node_modules
@@ -34,3 +23,16 @@ scrap
 
 # ignore files
 *.ignore
+
+# developer utilities
+debug
+fixed
+
+# auxillary
+lib/debug/*
+lib/doc/*
+lib/future/*
+test/main/linked.js
+
+# performance data
+performance/data/*

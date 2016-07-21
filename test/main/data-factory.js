@@ -1,5 +1,5 @@
 const assert = require('assert');
-const graphy = require('../../dist/index');
+const graphy = require('../../dist/main/graphy.js');
 
 const eq = assert.strictEqual;
 const deq = assert.deepEqual;
@@ -40,3 +40,6 @@ describe('DataFactory:', () => {
 		});
 	});
 });
+
+// RDFJS Data Model test suite
+require('rdf-data-model-test-suite')(graphy);

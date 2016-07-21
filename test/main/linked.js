@@ -4,7 +4,7 @@ const deq = assert.deepStrictEqual;
 const eq = assert.strictEqual;
 const fs = require('fs');
 
-const graphy = require('../../dist/index.js');
+const graphy = require('../../dist/main/graphy.js');
 
 
 describe('linked api:', () => {

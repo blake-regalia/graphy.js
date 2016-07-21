@@ -3,7 +3,7 @@ const assert = require('assert');
 const deq = assert.deepEqual;
 const eq = assert.strictEqual;
 
-const graphy = require('../../dist/index.js');
+const graphy = require('../../dist.es6/main/graphy.js');
 const parse_ttl = graphy.ttl.parse;
 
 

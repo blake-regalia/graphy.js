@@ -101,6 +101,9 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 						// uglify
 						.pipe($.uglify({
+							// compress: {
+							// 	keep_fnames: true,
+							// },
 							// mangleProperties: {
 							// 	// regex: /base(_\w+)?/,
 							// 	// regex: /^((?!length|exports|value|setEncoding|triple|base|prefix|error|end).)*$/,
@@ -126,6 +129,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			N: true,
 			NT: true,
 			TRIPLES: true,
+			FLAVOR: '"nt"',
 		},
 
 		// N-Quads
@@ -133,6 +137,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			N: true,
 			NQ: true,
 			QUADS: true,
+			FLAVOR: '"nq"',
 		},
 
 		// Turtle
@@ -140,6 +145,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			T: true,
 			TTL: true,
 			TRIPLES: true,
+			FLAVOR: '"ttl"',
 		},
 
 		// TriG
@@ -147,6 +153,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			T: true,
 			TRIG: true,
 			QUADS: true,
+			FLAVOR: '"trig"',
 		},
 	});
 

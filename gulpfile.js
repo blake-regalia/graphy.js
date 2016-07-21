@@ -10,30 +10,16 @@ soda(gulp, {
 			'es6: dist.es6',
 		],
 		flavors: [
-			'n3-minify: dist',
-			'n3: dist.es6'
+			'flavors-minify: dist',
+			'flavors: dist.es6'
 		],
 		debug: [
-			'es5: dist',
 			'es6: dist.es6',
 		],
-		routers: 'routing',
 	},
 
 	//
 	range: {
-		'n3-minify': [
-			'n3',
-			'develop: n3',
-		],
-
-		n3: [
-			'n3',
-			'develop: n3',
-			'istanbul',
-			'mocha:istanbul',
-		],
-
 		es5: [
 			'transpile',
 			'develop: transpile',
@@ -44,9 +30,16 @@ soda(gulp, {
 			'develop: copy',
 		],
 
-		routing: [
-			'routing',
-			'develop: routing',
+		'flavors-minify': [
+			'flavors',
+			'develop: flavors',
+		],
+
+		flavors: [
+			'flavors',
+			'develop: flavors',
+			'istanbul',
+			'mocha:istanbul',
 		],
 	},
 
@@ -54,21 +47,15 @@ soda(gulp, {
 	options: {
 		'*': {
 			test_src: [
-				'test/parsers/ttl.js',
-				'test/parsers/trig.js',
-				'test/parsers/nt.js',
-				'test/parsers/nq.js',
+				// 'test/parsers/ttl.js',
+				// 'test/parsers/trig.js',
+				// 'test/parsers/nt.js',
+				// 'test/parsers/nq.js',
 				'test/main/data-factory.js',
 			],
 		},
-		'n3-flavors-n3-minify': {
+		'parsers-flavors-parsers-minify': {
 			minify: true,
-		},
-		routing: {
-			map: {
-				'ttl.js': 'ttl',
-				'index.js': 'dist',
-			},
 		},
 	},
 

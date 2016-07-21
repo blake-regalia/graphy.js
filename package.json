@@ -1,13 +1,15 @@
 {
   "name": "graphy",
-  "version": "1.3.1",
+  "version": "2.0.0",
   "description": "A faster-than-lightning, asynchronous, streaming RDF deserializer that implements the RDFJS Representation Interfaces and natively parses Turtle, TriG, N-Triples, and N-Quads.",
   "author": {
     "name": "Blake Regalia",
     "email": "blake.regalia@gmail.com"
   },
   "files": [
-    "dist"
+    "dist",
+    "dist.es6",
+    "es6.js"
   ],
   "main": "dist/main/graphy.js",
   "keywords": [
@@ -55,10 +57,11 @@
     "gulp-util": "^3.0.7",
     "isparta": "^4.0.0",
     "istanbul": "github:gotwarlost/istanbul#v1",
+    "rdf-data-model-test-suite": "github:bergos/rdf-data-model-test-suite",
     "request": "^2.72.0"
   },
   "scripts": {
-    "test": "gulp"
+    "test": "gulp && gulp test"
   },
   "license": "ISC",
   "dependencies": {}

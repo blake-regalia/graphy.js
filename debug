@@ -1,6 +1,6 @@
 #!/bin/bash
 script=$1; shift
 dir=$(dirname `dirname $script`)
-nodemon -x 'node-debug --cli --debug-brk --no-preload' \
+nodemon -x 'node-debug --web-port 8081 --cli --debug-brk --no-preload --nodejs --max-old-space-size=6144' \
 	--watch $dir \
 	$script $@
