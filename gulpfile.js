@@ -21,13 +21,13 @@ soda(gulp, {
 	//
 	range: {
 		es5: [
-			'transpile',
-			'develop: transpile',
+			'transpile-macro',
+			'develop: transpile-macro',
 		],
 
 		es6: [
-			'copy',
-			'develop: copy',
+			'transpile-macro',
+			'develop: transpile-macro',
 		],
 
 		'flavors-minify': [
@@ -54,7 +54,10 @@ soda(gulp, {
 				'test/main/data-factory.js',
 			],
 		},
-		'parsers-flavors-parsers-minify': {
+		'flavors-flavors-flavors-minify': {
+			minify: true,
+		},
+		'transpile-macro-main-es5': {
 			minify: true,
 		},
 	},

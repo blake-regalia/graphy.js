@@ -230,8 +230,8 @@ Gets called once for each graph block as soon as the closing `}` character is pa
 Gets called if a parsing error occurs at any time. If an error does occur, no other events will be called on the instance after this. If you do not include an `error` event handler, the parser will throw the error's `message` string.
 
 <a name="event-end" />
-##### Event: end([prefixes: hash])
-Gets called once at the very end of the input. For piped streams, this occurs once the Readable input stream has no more data to be consumed (i.e., `Transform#_flush`). For stream objects, this occurs after the stream's 'end' event.
+##### Event: end([[stream: Transform], prefixes: hash])
+Gets called once at the very end of the input. For piped streams, this occurs once the Readable input stream has no more data to be consumed (i.e., `Transform#_flush`). For stream objects, this occurs after the stream's 'end' event. If being used as a transform, the first argument will be the Transform object allowing you to write data directly to the output stream via `Transform#push`.
 
 > The `prefixes` argument is a hash of the final mappings at the time the end of the input was reached. It is only available for [`graphy.ttl.parse`](#graphy-ttl-parse) and [`graphy.trig.parse`](#graphy-trig-parse)
 
