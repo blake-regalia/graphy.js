@@ -23,6 +23,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			h_file.contents = new Buffer(
 				builder.machine.execute(s_define+h_file.contents.toString())
 					.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
+					.replace(/\n\n+/g, '\n')
 			);
 		});
 	};
