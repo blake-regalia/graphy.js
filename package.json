@@ -66,5 +66,7 @@
     "test": "gulp && gulp test"
   },
   "license": "ISC",
-  "dependencies": {}
+  "dependencies": {
+    "Builder": "^1.0.0"
+  }
 }
