@@ -47,11 +47,11 @@ soda(gulp, {
 	options: {
 		'*': {
 			test_src: [
-				// 'test/parsers/ttl.js',
+				'test/parsers/ttl.js',
 				// 'test/parsers/trig.js',
 				// 'test/parsers/nt.js',
 				// 'test/parsers/nq.js',
-				'test/main/data-factory.js',
+				// 'test/main/data-factory.js',
 			],
 		},
 		'flavors-flavors-flavors-minify': {
