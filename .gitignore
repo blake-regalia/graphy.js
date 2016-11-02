@@ -27,6 +27,7 @@ scrap
 # developer utilities
 debug
 fixed
+.devtoolrc
 
 # auxillary
 lib/debug/*
@@ -36,3 +37,4 @@ test/main/linked.js
 
 # performance data
 performance/data/*
+data
