@@ -45,6 +45,11 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 			// // do not recompile unchanged files
 			// .pipe($.cached(this.task)),
+
+		// HDT
+		hdt: gulp.src(p_src+'/**/hdt-*.js')
+			// handle uncaught exceptions thrown by any of the plugins that follow
+			.pipe($.plumber()),
 	};
 
 
@@ -53,7 +58,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		return Object.keys(h_flavors).map((s_flavor) => {
 
 			// make flavor
-			let ds_flavor = h_sources[s_flavor[0]]
+			let ds_flavor = h_sources[h_flavors[s_flavor].code]
 
 				// clone unprocessed source
 				.pipe($.clone())
@@ -66,7 +71,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 				// rename
 				.pipe($.rename(h => {
-					h.basename = h.basename.replace(/^[a-z]\-/, '');
+					h.basename = h.basename.replace(/^[a-z]+\-/, '');
 					h.dirname = s_flavor;
 				}));
 
@@ -126,6 +131,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 		// N-Triples
 		nt: {
+			code: 'n',
 			N: true,
 			NT: true,
 			TRIPLES: true,
@@ -134,6 +140,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 		// N-Quads
 		nq: {
+			code: 'n',
 			N: true,
 			NQ: true,
 			QUADS: true,
@@ -142,6 +149,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 		// Turtle
 		ttl: {
+			code: 't',
 			T: true,
 			TTL: true,
 			TRIPLES: true,
@@ -150,10 +158,18 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 		// TriG
 		trig: {
+			code: 't',
 			T: true,
 			TRIG: true,
 			QUADS: true,
 			FLAVOR: '"trig"',
+		},
+
+		// HDT
+		hdt: {
+			code: 'hdt',
+			BINARY: true,
+			FLAVOR: '"hdt"',
 		},
 	});
 
