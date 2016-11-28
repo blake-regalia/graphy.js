@@ -64,7 +64,8 @@
     "lazypipe": "^1.0.1",
     "minimist": "^1.2.0",
     "rdf-data-model-test-suite": "github:bergos/rdf-data-model-test-suite",
-    "request": "^2.75.0"
+    "request": "^2.75.0",
+    "snappyjs": "^0.5.0"
   },
   "scripts": {
     "test": "gulp && gulp test"
