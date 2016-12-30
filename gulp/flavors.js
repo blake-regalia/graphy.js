@@ -1,10 +1,10 @@
 const path = require('path');
 const es = require('event-stream');
 const Builder = require('Builder');
-const builder = new Builder();
 
 // 
 module.exports = function(gulp, $, p_src, p_dest) {
+	const builder = new Builder();
 
 	// runs Builder.js' preprocessor on macros
 	const mk_builder = (h_define) => {

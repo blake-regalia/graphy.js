@@ -1,6 +1,5 @@
 const es = require('event-stream');
 const Builder = require('Builder');
-const builder = new Builder();
 
 // runs Builder.js' preprocessor on macros
 const f_builder = (s_prepend) => {
@@ -14,6 +13,7 @@ const f_builder = (s_prepend) => {
 
 // 
 module.exports = function(gulp, $, p_src, p_dest) {
+	const builder = new Builder();
 
 	// load source files
 	let ds_built = gulp.src(p_src+'/**/*.js')

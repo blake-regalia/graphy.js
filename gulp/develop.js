@@ -4,7 +4,6 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 	// each dependency
 	this.deps.forEach((s_dep) => {
-
 		// make glob path for files to watch
 		let h_friend = this.friend(s_dep);
 		let p_watch = path.join(h_friend.src, h_friend.options.watch || '**/*');
@@ -16,3 +15,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 		gulp.watch(p_watch, [s_dep]);
 	});
 };
+
+module.exports.dependenies = [
+	'gulp-util',
+];

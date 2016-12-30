@@ -1,31 +1,31 @@
 const gulp = require('gulp');
 const soda = require('gulp-soda');
 
-soda(gulp, {
 
-	//
-	domain: {
+soda(gulp, {
+	
+	inputs: {
 		main: [
-			'es5: dist',
-			'es6: dist.es6',
+			'node: dist.es6/',
 		],
-		flavors: [
-			'flavors-minify: dist',
-			'flavors: dist.es6'
-		],
+
 		debug: [
-			'es6: dist.es6',
+			'node: dist.es6/',
+		],
+
+		flavors: [
+			'flavors: dist.es6/',
+			'flavors-minify: dist/',
+		],
+
+		web: [
+			'bundle: webapp/',
 		],
 	},
 
-	//
-	range: {
-		es5: [
-			'transpile-macro',
-			'develop: transpile-macro',
-		],
 
-		es6: [
+	targets: {
+		node: [
 			'transpile-macro',
 			'develop: transpile-macro',
 		],
@@ -40,6 +40,17 @@ soda(gulp, {
 			'develop: flavors',
 			'istanbul',
 			'mocha:istanbul',
+		],
+
+		// webapp development
+		bundle: [
+			'[all]: less pug browserify copy',
+			'less',
+			'pug',
+			'browserify',
+			'copy',
+			'browser-sync: all',
+			'develop: all',
 		],
 	},
 
@@ -60,6 +71,20 @@ soda(gulp, {
 		'transpile-macro-main-es5': {
 			minify: true,
 		},
+
+		less: {
+			watch: '**/*.less',
+			rename: h => h.dirname = './styles',
+		},
+		pug: {
+			watch: '**/*.pug',
+			// rename: h => h.dirname = h.dirname.replace(/^src/, '.'),
+		},
+		browserify: {
+			watch: '**/*.js',
+			src: '_scripts',
+			rename: h => h.dirname = path.join('scripts', h.dirname),
+		},
 	},
 
 	//
@@ -67,3 +92,4 @@ soda(gulp, {
 		test: ['mocha'],
 	},
 });
+
