@@ -16,6 +16,6 @@ module.exports = function(gulp, $, p_src, p_dest) {
 	});
 };
 
-module.exports.dependenies = [
+module.exports.dependencies = [
 	'gulp-util',
 ];

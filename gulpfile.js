@@ -15,11 +15,7 @@ soda(gulp, {
 
 		flavors: [
 			'flavors: dist.es6/',
-			'flavors-minify: dist/',
-		],
-
-		web: [
-			'bundle: webapp/',
+			// 'flavors-minify: dist/',
 		],
 	},
 
@@ -41,17 +37,6 @@ soda(gulp, {
 			'istanbul',
 			'mocha:istanbul',
 		],
-
-		// webapp development
-		bundle: [
-			'[all]: less pug browserify copy',
-			'less',
-			'pug',
-			'browserify',
-			'copy',
-			'browser-sync: all',
-			'develop: all',
-		],
 	},
 
 	//
@@ -71,20 +56,6 @@ soda(gulp, {
 		'transpile-macro-main-es5': {
 			minify: true,
 		},
-
-		less: {
-			watch: '**/*.less',
-			rename: h => h.dirname = './styles',
-		},
-		pug: {
-			watch: '**/*.pug',
-			// rename: h => h.dirname = h.dirname.replace(/^src/, '.'),
-		},
-		browserify: {
-			watch: '**/*.js',
-			src: '_scripts',
-			rename: h => h.dirname = path.join('scripts', h.dirname),
-		},
 	},
 
 	//
@@ -92,4 +63,5 @@ soda(gulp, {
 		test: ['mocha'],
 	},
 });
+
 
