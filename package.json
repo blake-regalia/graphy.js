@@ -83,6 +83,7 @@
   "license": "ISC",
   "dependencies": {
     "Builder": "^1.0.0",
-    "buffer": "^5.0.2"
+    "buffer": "^5.0.2",
+    "shm-typed-array": "0.0.8"
   }
 }
