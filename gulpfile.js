@@ -6,16 +6,20 @@ soda(gulp, {
 	
 	inputs: {
 		main: [
-			'node: dist.es6/',
+			'node',
 		],
 
 		debug: [
-			'node: dist.es6/',
+			'node',
 		],
 
 		flavors: [
-			'flavors: dist.es6/',
+			'flavors',
 			// 'flavors-minify: dist/',
+		],
+
+		gen: [
+			'compile',
 		],
 	},
 
@@ -36,6 +40,11 @@ soda(gulp, {
 			'develop: flavors',
 			'istanbul',
 			'mocha:istanbul',
+		],
+
+		compile: [
+			'compile',
+			'develop: compile',
 		],
 	},
 
