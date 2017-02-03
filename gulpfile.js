@@ -5,22 +5,16 @@ const soda = require('gulp-soda');
 soda(gulp, {
 	
 	inputs: {
-		main: [
-			'node',
-		],
-
-		debug: [
-			'node',
-		],
+		main: 'node',
+		store: 'node',
+		debug: 'node',
 
 		flavors: [
 			'flavors',
 			// 'flavors-minify: dist/',
 		],
 
-		gen: [
-			'compile',
-		],
+		gen: 'compile',
 	},
 
 

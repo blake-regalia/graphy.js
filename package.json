@@ -11,7 +11,7 @@
     "dist.es6",
     "es6.js"
   ],
-  "main": "./dist.es6/main/graphy.js",
+  "main": "./dist/main/graphy.js",
   "keywords": [
     "rdf",
     "rdfjs",
