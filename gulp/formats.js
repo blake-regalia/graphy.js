@@ -1,9 +1,10 @@
 const path = require('path');
-const es = require('event-stream');
-const Builder = require('Builder');
 
 // 
 module.exports = function(gulp, $, p_src, p_dest) {
+	const es = require('event-stream');
+	const Builder = require('Builder');
+
 	const builder = new Builder();
 
 	// runs Builder.js' preprocessor on macros
@@ -20,10 +21,15 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			builder.machine.readers.file.searchDirs.unshift(path.dirname(h_file.path));
 
 			// process contents as string through Builder
-			h_file.contents = new Buffer(
-				builder.machine.execute(s_define+h_file.contents.toString())
-					.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
-			);
+			try {
+				h_file.contents = new Buffer(
+					builder.machine.execute(s_define+h_file.contents.toString())
+						.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
+				);
+			}
+			catch(e_compile) {
+				throw 'error while compiling '+h_file.path+'\n\n'+e_compile.stack;
+			}
 		});
 	};
 
@@ -75,50 +81,50 @@ module.exports = function(gulp, $, p_src, p_dest) {
 					h.dirname = s_flavor;
 				}));
 
-			// transpile & minify
-			if(this.options.minify) {
+			// // transpile & minify
+			// if(this.options.minify) {
 
-				// // property names not to mangle
-				// let a_save_properties = [
-				// 	'lastIndex', 'length', 'exec',
-				// 	'exports',
-				// 	'value', 'termType', 'datatype', 'language',
-				// 	'setEncoding',
-				// 	'triple', 'base', 'prefix', 'error', 'end',
-				// 	'resume', 'statement', 'collection_subject', 'collection_object',
-				// 	'pairs', 'object_list', 'post_object', 'end_of_triple', 'after_end_of_triple',
-				// 	'base_iri', 'prefix_id', 'prefix_iri', 'full_stop',
-				// ];
+			// 	// // property names not to mangle
+			// 	// let a_save_properties = [
+			// 	// 	'lastIndex', 'length', 'exec',
+			// 	// 	'exports',
+			// 	// 	'value', 'termType', 'datatype', 'language',
+			// 	// 	'setEncoding',
+			// 	// 	'triple', 'base', 'prefix', 'error', 'end',
+			// 	// 	'resume', 'statement', 'collection_subject', 'collection_object',
+			// 	// 	'pairs', 'object_list', 'post_object', 'end_of_triple', 'after_end_of_triple',
+			// 	// 	'base_iri', 'prefix_id', 'prefix_iri', 'full_stop',
+			// 	// ];
 
-				return ds_flavor
+			// 	return ds_flavor
 
-					// preserve mappings to beautified source file for debugging
-					.pipe($.sourcemaps.init())
+			// 		// preserve mappings to beautified source file for debugging
+			// 		.pipe($.sourcemaps.init())
 
-						// rename certain symbols
-						.pipe($.regexp_sourcemaps(/GenericTerm(?=[.()])/g, 'G'))
-						.pipe($.regexp_sourcemaps(/NamedNode(?=[.()])/g, 'N'))
-						.pipe($.regexp_sourcemaps(/Literal(?=[.()])/g, 'L'))
-						.pipe($.regexp_sourcemaps(/BlankNode(?=[.()])/g, 'B'))
+			// 			// rename certain symbols
+			// 			.pipe($.regexp_sourcemaps(/GenericTerm(?=[.()])/g, 'G'))
+			// 			.pipe($.regexp_sourcemaps(/NamedNode(?=[.()])/g, 'N'))
+			// 			.pipe($.regexp_sourcemaps(/Literal(?=[.()])/g, 'L'))
+			// 			.pipe($.regexp_sourcemaps(/BlankNode(?=[.()])/g, 'B'))
 
-						// transpile
-						.pipe($.babel())
+			// 			// transpile
+			// 			.pipe($.babel())
 
-						// uglify
-						.pipe($.uglify({
-							// compress: {
-							// 	keep_fnames: true,
-							// },
-							// mangleProperties: {
-							// 	// regex: /base(_\w+)?/,
-							// 	// regex: /^((?!length|exports|value|setEncoding|triple|base|prefix|error|end).)*$/,
-							// 	regex: new RegExp(`^((?!${a_save_properties.join('|')}).)*$`, 'g'),
-							// },
-						}))
+			// 			// uglify
+			// 			.pipe($.uglify({
+			// 				// compress: {
+			// 				// 	keep_fnames: true,
+			// 				// },
+			// 				// mangleProperties: {
+			// 				// 	// regex: /base(_\w+)?/,
+			// 				// 	// regex: /^((?!length|exports|value|setEncoding|triple|base|prefix|error|end).)*$/,
+			// 				// 	regex: new RegExp(`^((?!${a_save_properties.join('|')}).)*$`, 'g'),
+			// 				// },
+			// 			}))
 
-					// write sourcemaps
-					.pipe($.sourcemaps.write());
-			}
+			// 		// write sourcemaps
+			// 		.pipe($.sourcemaps.write());
+			// }
 
 			// return as is
 			return ds_flavor;
@@ -135,7 +141,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			N: true,
 			NT: true,
 			TRIPLES: true,
-			FLAVOR: '"nt"',
+			FORMAT: 'nt',
 		},
 
 		// N-Quads
@@ -144,7 +150,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			N: true,
 			NQ: true,
 			QUADS: true,
-			FLAVOR: '"nq"',
+			FORMAT: 'nq',
 		},
 
 		// Turtle
@@ -153,7 +159,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			T: true,
 			TTL: true,
 			TRIPLES: true,
-			FLAVOR: '"ttl"',
+			FORMAT: 'ttl',
 		},
 
 		// TriG
@@ -162,14 +168,14 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			T: true,
 			TRIG: true,
 			QUADS: true,
-			FLAVOR: '"trig"',
+			FORMAT: 'trig',
 		},
 
 		// HDT
 		hdt: {
 			code: 'hdt',
 			BINARY: true,
-			FLAVOR: '"hdt"',
+			FORMAT: 'hdt',
 		},
 	});
 
@@ -178,3 +184,14 @@ module.exports = function(gulp, $, p_src, p_dest) {
 	return es.merge.apply(es, a_streams)
 		.pipe(gulp.dest(this.sub_dest('')));
 };
+
+module.exports.dependencies = [
+	'event-stream',
+	'Builder',
+	'gulp-tap',
+	'gulp-sourcemaps',
+	'gulp-plumber',
+	'gulp-clone',
+	'gulp-beautify',
+	'gulp-rename',
+];

@@ -9,29 +9,20 @@ soda(gulp, {
 		store: 'node',
 		debug: 'node',
 
-		flavors: [
-			'flavors',
-			// 'flavors-minify: dist/',
-		],
-
+		formats: 'formats',
 		gen: 'compile',
 	},
 
 
 	targets: {
 		node: [
-			'transpile-macro',
-			'develop: transpile-macro',
+			'macro',
+			'develop: macro',
 		],
 
-		'flavors-minify': [
-			'flavors',
-			'develop: flavors',
-		],
-
-		flavors: [
-			'flavors',
-			'develop: flavors',
+		formats: [
+			'formats',
+			'develop: formats',
 			'istanbul',
 			'mocha:istanbul',
 		],
@@ -53,10 +44,10 @@ soda(gulp, {
 				// 'test/main/data-factory.js',
 			],
 		},
-		'flavors-flavors-flavors-minify': {
+		'formats-formats-formats-minify': {
 			minify: true,
 		},
-		'transpile-macro-main-es5': {
+		'macro-main-es5': {
 			minify: true,
 		},
 	},

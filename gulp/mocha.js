@@ -1,5 +1,5 @@
 
-module.exports = function(gulp, $, p_src, p_dest, f_done) {
+module.exports = Object.assign(function(gulp, $, p_src, p_dest, f_done) {
 
 	let e_mocha;
 
@@ -16,4 +16,12 @@ module.exports = function(gulp, $, p_src, p_dest, f_done) {
 				$.util.log('hey');
 				f_done(e_mocha);
 			});
-};
+}, {
+	dependencies: [
+		'gulp-plumber',
+		'gulp-debug',
+		'gulp-mocha',
+		'gulp-istanbul',
+		'gulp-util',
+	],
+});
