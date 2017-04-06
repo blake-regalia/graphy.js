@@ -12,8 +12,7 @@ A **[faster-than-lightning](#benchmark-results)**, asynchronous, streaming RDF d
  - [Compatibility](#compatibility) and [Performance](#performance)
 
 
-<a name="intro" />
-### Parse serialized RDF graphs faster than lightning!
+### <a name="intro"></a> Parse serialized RDF graphs faster than lightning!
 This library boasts a set of high performance parsers, each one is specialized for its corresponding serialization format. Consider the following benchmark test:
 
 ##### Count how many triples are in [DBpedia's 2015-04 English persondata.nt](http://wiki.dbpedia.org/Downloads2015-04#persondata) in N-Triples format:
@@ -103,8 +102,7 @@ Throughout this API document, the following datatypes are used to represent expe
  - `list` - refers to a one-dimensional `Array` containing only elments of the same type/class
 
 
-<a name="graphy-factory" />
-### **graphy** implements @RDFJS DataFactory
+### <a name="graphy-factory"></a> **graphy** implements @RDFJS DataFactory
 The module's main export implements the [RDFJS DataFactory](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#datafactory)
 
 ```js
@@ -197,12 +195,10 @@ parse_trig(input, {
 });
 ```
 
-<a name="event-ready" />
-##### Event: ready()
+##### <a name="event-ready"></a> Event: ready()
 Gets called once the input stream is readable. On the other hand, if the input is a string then this event gets called immediately.
 
-<a name="event-data" />
-##### Event: data(quad: [Quad](#triple)[, output: list])
+##### <a name="event-data"></a> Event: data(quad: [Quad](#triple)[, output: list])
 Gets called once for each triple/quad as soon as it is parsed. The `output` list is for `.push`ing strings to the output stream which is only available when the parser is [used as a transform](#graphy-ttl-parse-transform).
 
 <a name="event-prefix" />
