@@ -3,7 +3,7 @@ const soda = require('gulp-soda');
 
 
 soda(gulp, {
-	
+
 	inputs: {
 		main: 'node',
 		store: 'node',

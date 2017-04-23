@@ -1,13 +1,50 @@
 const path = require('path');
+const util = require('util');
 
 // 
 module.exports = function(gulp, $, p_src, p_dest) {
 	const es = require('event-stream');
+	const jmacs = require('jmacs');
 	const Builder = require('Builder');
 
 	const builder = new Builder();
 
-	// runs Builder.js' preprocessor on macros
+	// runs jmacs
+	const mk_jmacs = (h_define) => {
+		let s_define = '';
+		// prep define string
+		for(let s_define_property in h_define) {
+			s_define += `@set ${s_define_property} ${JSON.stringify(h_define[s_define_property])}\n`;
+		}
+
+		// tap stream
+		return $.tap((h_file) => {
+			// process contents as string through Builder
+			try {
+				let s_file_contents = h_file.contents.toString();
+				let h_result = jmacs.compile({
+					input: s_define+s_file_contents,
+					cwd: path.dirname(h_file.path),
+				});
+
+				if(h_result.error) {
+					console.dir(h_result);
+					console.dir(h_result.error);
+					console.dir(h_result.error.message);
+					console.log(h_result.error.message);
+					throw `error while compiling ${h_file.path}\n\n${h_result.error.message}`;
+				}
+
+				h_file.contents = new Buffer(
+					h_result.output.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
+				);
+			}
+			catch(e_compile) {
+				throw 'error while compiling '+h_file.path+'\n\n'+e_compile.stack;
+			}
+		});
+	};
+
 	const mk_builder = (h_define) => {
 		let s_define = '';
 		// prep define string
@@ -70,7 +107,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 				.pipe($.clone())
 
 				// set macro variables and then apply Builder.js
-				.pipe(mk_builder(h_flavors[s_flavor]))
+				.pipe(mk_jmacs(h_flavors[s_flavor]))
 
 				// beautify
 				.pipe($.beautify({indent_with_tabs: true}))

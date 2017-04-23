@@ -1,7 +1,7 @@
 /* eslint-disable */
 
 @ // import parser macros
-@include 'general-parser-macros.builder-js'
+@include 'general-parser-macros.jmacs'
 
 
 @ // possible mode types are:
@@ -48,7 +48,7 @@
 /* whitespace */
 
 
-@ /** control variables **/
+@ // control variables
 
 @ // count how many braces need closing
 @set match_counter 0

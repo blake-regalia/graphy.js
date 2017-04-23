@@ -5,6 +5,89 @@
 @end
 
 
+
+@macro compress_iri(graph)
+	// attempt to compress
+	let m_compress = R_COMPRESS.exec(p_iri);
+
+	// cannot be compressed
+	if(!m_compress) {
+		// use iriref
+		s_word = '\u0002'+p_iri;
+	}
+	// try finding compressed prefix id
+	else {
+		// lookup prefix id from prefix lookup
+		let s_prefix_id = @{graph}.prefix_lookup[m_compress[1]];
+
+		// prefix not exists
+		if(!s_prefix_id) {
+			// no such node
+			s_word = '';
+		}
+		// found the prefix
+		else {
+			// construct word using prefix
+			s_word = s_prefix_id+'\u0001'+m_compress[2];
+		}
+	}
+@end
+
+
+@macro compress_n3_node(n3, on_fail, graph)
+	@if !graph
+		@set graph 'this'
+	@end
+
+	let s_word = '';
+
+	// iriref
+	if('<' === @{n3}[0]) {
+		// construct iri
+		let p_iri = @{n3}.slice(1, -1);
+
+		@{compress_iri(graph)}
+	}
+	// prefixed name
+	else {
+		// extract prefix / suffix
+		let [s_user_prefix, s_suffix] = @{n3}.split(':');
+
+		// lookup dict prefix from mapped user prefix
+		let s_prefix_id = @{graph}.user_prefixes[s_user_prefix];
+
+		// prefix mapping does not exist
+		if(!s_prefix_id) {
+			// grab user prefix iri
+			let p_prefix_iri = @{graph}.user_prefix_iris[s_user_prefix];
+
+			// no such user prefix defined
+			if(!p_prefix_iri) {
+				throw `no such prefix "${s_user_prefix}"`;
+			}
+
+			// reconstruct full iri
+			let p_iri = p_prefix_iri+s_suffix;
+
+			@{compress_iri(graph)}
+		}
+		// prefix mapping does exist
+		else {
+			// construct word using prefix
+			s_word = s_prefix_id+'\u0001'+s_suffix;
+		}
+	}
+
+	// no such node
+	if(!s_word) 
+	@if on_fail
+		@{on_fail};
+	@else
+		return 0;
+	@end
+@end
+
+
 @macro mk_uint_array(size, range)
 	@{range} <= 0xff
 		? new Uint8Array(@{size})
