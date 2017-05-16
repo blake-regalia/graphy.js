@@ -13,6 +13,7 @@ A **[faster-than-lightning](#benchmark-results)**, asynchronous, streaming RDF d
 
 
 <a name="intro" />
+
 ### Parse serialized RDF graphs faster than lightning!
 This library boasts a set of high performance parsers, each one is specialized for its corresponding serialization format. Consider the following benchmark test:
 
@@ -104,6 +105,7 @@ Throughout this API document, the following datatypes are used to represent expe
 
 
 <a name="graphy-factory" />
+
 ### **graphy** implements @RDFJS DataFactory
 The module's main export implements the [RDFJS DataFactory](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#datafactory)
 
@@ -198,38 +200,46 @@ parse_trig(input, {
 ```
 
 <a name="event-ready" />
+
 ##### Event: ready()
 Gets called once the input stream is readable. On the other hand, if the input is a string then this event gets called immediately.
 
 <a name="event-data" />
+
 ##### Event: data(quad: [Quad](#triple)[, output: list])
 Gets called once for each triple/quad as soon as it is parsed. The `output` list is for `.push`ing strings to the output stream which is only available when the parser is [used as a transform](#graphy-ttl-parse-transform).
 
 <a name="event-prefix" />
+
 ##### Event: prefix(id: string, iri: string)
 Gets called once for each `@prefix` statement as soon as it is parsed. `id` is the name of the prefix without the colon (e.g., `'dbr'`) and `iri` is the full URI of the associated mapping (e.g., `'http://dbpedia.org/resource/'`).
 > Only for [`graphy.ttl.parse`](#graphy-ttl-parse) and [`graphy.trig.parse`](#graphy-trig-parse)
 
 <a name="event-base" />
+
 ##### Event: base(iri: string)
 Gets called once for each `@base` statement as soon as it is parsed. `iri` is the full URI of the new base.
 > Only for [`graphy.ttl.parse`](#graphy-ttl-parse) and [`graphy.trig.parse`](#graphy-trig-parse)
 
 <a name="event-graph-open" />
+
 ##### Event: graph_open(term: Term)
 Gets called once for each graph block as soon as the opening `{` character is parsed. `term` is either a [NamedNode](#namednode), [BlankNode](#blanknode) or [DefaultGraph](#defaultgraph).
 > Only for [`graphy.trig.parse`](#graphy-trig-parse)
 
 <a name="event-graph" />
+
 ##### Event: graph_close(term: Term)
 Gets called once for each graph block as soon as the closing `}` character is parsed. `term` is either a [NamedNode](#namednode), [BlankNode](#blanknode) or [DefaultGraph](#defaultgraph).
 > Only for [`graphy.trig.parse`](#graphy-trig-parse)
 
 <a name="event-error" />
+
 ##### Event: error(message: string)
 Gets called if a parsing error occurs at any time. If an error does occur, no other events will be called on the instance after this. If you do not include an `error` event handler, the parser will throw the error's `message` string.
 
 <a name="event-end" />
+
 ##### Event: end([prefixes: hash])
 Gets called once at the very end of the input. For piped streams, this occurs once the Readable input stream has no more data to be consumed (i.e., `Transform#_flush`). For stream objects, this occurs after the stream's 'end' event.
 
@@ -282,16 +292,19 @@ parse_ttl(input, {
 In addition to [specifying events](#parse-events), the parser function's `config` parameter also accepts a set of options:
 
 <a name="option-max-token-length" />
+
 ##### Option: max_token_length
 A `number` that defines the maximum number of characters to expect of any token other than a quoted literal. This option only exists to prevent invalid input from endlessly consuming the parser when using streams as input. By default, this value is set to **2048**, which is more than the recommended maximum URL length. However, you may wish to set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
 
 <a name="option-max-string-length" />
+
 ##### Option: max_string_length
 A `number` that defines the maximum number of characters to expect of any quoted literal. This option only exists to prevent invalid input from endlessly consuming the parser (such as a long-quoted literal `""" that never ends...`) when using streams as input. By default, this value is set to **65536** characters. However, you may set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
 
 
 ----
 <a name="graphy-ttl-parse" />
+
 #### graphy.ttl.parse
 The Turtle parser:
 ```js
@@ -335,6 +348,7 @@ parse_ttl(fs.createReadStream('input.ttl'), {
 ```
 
 <a name="graphy-ttl-parse-transform" />
+
 ##### parse_ttl(config: hash)
 Creates a [`Transform`](https://nodejs.org/api/stream.html#stream_duplex_and_transform_streams) for simultaneously reading input data and writing output data. It supports the event handlers: [`prefix`](#event-prefix), [`base`](#event-base), [`error`](#event-error) and [`end`](#event-end) and an **extended version** of the [`data`](#event-data) event handler that allows the callback to write output data by pushing strings to the callback function's `output` argument. For each chunk that is read from the input, the parser will join all the strings in this `output` array (by an empty character) and then write that to the output.
 
@@ -353,6 +367,7 @@ fs.createReadStream('input.ttl', 'utf8')
 
 ----
 <a name="graphy-trig-parse" />
+
 #### graphy.trig.parse
 The TriG parser:
 ```js
@@ -413,6 +428,7 @@ fs.createReadStream('input.trig', 'utf8')
 
 ----
 <a name="graphy-nt-parse" />
+
 #### graphy.nt.parse
 The N-Triples parser:
 ```js
@@ -433,6 +449,7 @@ Creates a [`Transform`](https://nodejs.org/api/stream.html#stream_duplex_and_tra
 
 ----
 <a name="graphy-nq-parse" />
+
 #### graphy.nq.parse
 The N-Quads parser:
 ```js
@@ -456,6 +473,7 @@ The following section documents how graphy represents RDF data in its various fo
 
 
 <a name="term" />
+
 ### abstract **Term** implements @RDFJS Term
 An abstract class that represents an RDF term by implementing the [RDFJS Term interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#term). If you are looking to create an instance of Term, see the [graphy DataFactory](#graphy-factory).
 
@@ -484,6 +502,7 @@ An abstract class that represents an RDF term by implementing the [RDFJS Term in
 
 ----
 <a name="namednode" />
+
 ### **NamedNode** extends Term implements @RDFJS NamedNode
 A class that represents an RDF named node by implementing the [RDFJS NamedNode interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#namednode-extends-term)
 
@@ -500,6 +519,7 @@ A class that represents an RDF named node by implementing the [RDFJS NamedNode i
 
 ----
 <a name="blanknode" />
+
 ### **BlankNode** extends Term implements @RDFJS BlankNode
 A class that represents an RDF blank node by implementing the [RDFJS BlankNode interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#blanknode-extends-term)
 
@@ -516,6 +536,7 @@ A class that represents an RDF blank node by implementing the [RDFJS BlankNode i
 
 ----
 <a name="literal" />
+
 ### **Literal** extends Term implements @RDFJS Literal
 A class that represents an RDF literal by implementing the [RDFJS Literal interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#literal-extends-term)
 
@@ -547,6 +568,7 @@ simple.datatype;  // 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString'
 
 ----
 <a name="integerliteral" />
+
 ### **IntegerLiteral** extends Literal
 A class that represents an RDF literal that was obtained by deserializing a syntactic integer.
 
@@ -562,6 +584,7 @@ A class that represents an RDF literal that was obtained by deserializing a synt
 
 ----
 <a name="decimalliteral" />
+
 ### **DecimalLiteral** extends Literal
 A class that represents an RDF literal that was obtained by deserializing a syntactic decimal.
 
@@ -577,6 +600,7 @@ A class that represents an RDF literal that was obtained by deserializing a synt
 
 ----
 <a name="doubleliteral" />
+
 ### **DoubleLiteral** extends Literal
 A class that represents an RDF literal that was obtained by deserializing a syntactic double.
 
@@ -605,6 +629,7 @@ graphy.ttl.parse('<a> <b> 0.42e+2 .', {
 
 ----
 <a name="booleanliteral" />
+
 ### **BooleanLiteral** extends Literal
 A class that represents an RDF literal that was obtained by deserializing a syntactic boolean.
 
@@ -620,6 +645,7 @@ A class that represents an RDF literal that was obtained by deserializing a synt
 
 ----
 <a name="defaultgraph" />
+
 ### **DefaultGraph** extends Term implements @RDFJS DefaultGraph
 A class that represents the default graph by implementing the [RDFJS DefaultGraph interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#defaultgraph-extends-term)
 
@@ -633,6 +659,7 @@ A class that represents the default graph by implementing the [RDFJS DefaultGrap
 
 ----
 <a name="quad" />
+
 ### **Quad** implements @RDFJS Quad
 A class that represents an RDF triple/quad by implementing the [RDFJS Quad interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#quad)
 
@@ -665,6 +692,7 @@ A class that represents an RDF triple/quad by implementing the [RDFJS Quad inter
 
 ----
 <a name="triple" />
+
 ### **Triple** aliases Quad implements @RDFJS Triple
 A class that represents an RDF triple by implementing the [RDFJS Triple interface](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#quad). Same as `Quad` except that `.graph` will always be a [DefaultGraph](#defaultgraph).
 
@@ -688,6 +716,7 @@ SyntaxError: Invalid flags supplied to RegExp constructor 'y'
 High performance has a cost, namely that [this module is not a validator](#not-validator), although it **does handle parsing errors**. Full validation will likely never be implemented in graphy since it only slows down parsing and because [N3.js](https://github.com/RubenVerborgh/N3.js/) already does a fine job at it.
 
 <a name="not-validator" />
+
 #### Parser is intended for valid syntax only
 This tool is intended for serialized formats that were generated by a machine. Quite simply, it does not check the contents of certain tokens for "invalid" characters; such as those found inside of: IRIs, prefixed names, and blank node labels.
 
