@@ -3,8 +3,8 @@ const assert = require('assert');
 const deq = assert.deepEqual;
 const eq = assert.strictEqual;
 
-const graphy = require('../../dist.es6/main/graphy.js');
-const parse_ttl = graphy.ttl.parse;
+const graphy = require('../../dist/main/graphy.js');
+const parse_ttl = graphy.ttl.deserializer;
 
 
 
@@ -702,6 +702,11 @@ describe('ttl parser:', () => {
 				['#a', '#b', {value: '25.12e-1', number: 25.12e-1}],
 			]);
 		});
+
+		survive('prefixed names with dots', ':a :b :c.d. :a :b "c"^^d.e.', [
+			['#a', '#b', '#c.d'],
+			['#a', '#b', {value:'c', datatype:'#d.e'}],
+		]);
 
 		survive('property list nesting', `
 			:a0a :b0a[:b1a :c1a,:c1b;:b1b[:b2a :c2a;],:c1c,[:b2b :c2b],:c2d;:b1c :c1c;:b1d[]].`, [

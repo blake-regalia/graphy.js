@@ -1,24 +1,5 @@
-
-
 const S_UUID_V4 = 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx';
 const R_UUID_V4 = /[xy]/g;
-
-const terse = (p_iri, h_prefixes) => {
-	let s_best_prefix_id = '';
-	let nl_best_prefix_iri = 0;
-	for(let s_prefix_id in h_prefixes) {
-		let p_prefix_iri = h_prefixes[s_prefix_id];
-		if(p_iri.startsWith(p_prefix_iri) && p_prefix_iri.length > nl_best_prefix_iri) {
-			s_best_prefix_id = s_prefix_id;
-		}
-	}
-
-	if(nl_best_prefix_iri) {
-		return s_best_prefix_id+':'+p_iri.substr(nl_best_prefix_iri);
-	}
-
-	return '<'+p_iri+'>';
-};
 
 function GenericTerm() {}
 Object.assign(GenericTerm.prototype, {
@@ -34,10 +15,10 @@ Object.assign(GenericTerm.prototype, {
 	},
 });
 
-
 function NamedNode(s_iri) {
 	this.value = s_iri;
-} NamedNode.prototype = Object.assign(
+}
+NamedNode.prototype = Object.assign(
 	Object.create(GenericTerm.prototype), {
 		termType: 'NamedNode',
 		isNamedNode: true,
@@ -45,10 +26,10 @@ function NamedNode(s_iri) {
 			return this.value;
 		},
 		verbose() {
-			return '<'+this.value+'>';
+			return '<' + this.value + '>';
 		},
-		terse(h_prefixes={}) {
-			return terse(this.value, h_prefixes);
+		terse() {
+			return '<' + this.value + '>';
 		},
 		toObject() {
 			return {
@@ -57,49 +38,49 @@ function NamedNode(s_iri) {
 			};
 		},
 	});
-
 const HP_NN_XSD_STRING = new NamedNode('http://www.w3.org/2001/XMLSchema#string');
 const HP_NN_RDFS_LANG_STRING = new NamedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#langString');
+
 function Literal(s_value, z_datatype_or_lang) {
 	this.value = s_value;
-	if(z_datatype_or_lang) {
-		if('string' === typeof z_datatype_or_lang) {
+	if (z_datatype_or_lang) {
+		if ('string' === typeof z_datatype_or_lang) {
 			this.language = z_datatype_or_lang;
 			this.datatype = HP_NN_RDFS_LANG_STRING;
-		}
-		else {
+		} else {
 			this.datatype = z_datatype_or_lang;
 		}
 	}
-} Literal.prototype = Object.assign(
+}
+Literal.prototype = Object.assign(
 	Object.create(GenericTerm.prototype), {
 		datatype: HP_NN_XSD_STRING,
 		language: '',
 		termType: 'Literal',
 		isLiteral: true,
 		equals(h_other) {
-			return 'Literal' === h_other.termType && h_other.value === this.value
-				&& this.datatype.equals(h_other.datatype) && h_other.language === this.language;
+			return 'Literal' === h_other.termType && h_other.value === this.value &&
+				this.datatype.equals(h_other.datatype) && h_other.language === this.language;
 		},
 		valueOf() {
-			return (this.language? '@'+this.language: '^'+this.datatype.value)
-				+'"'+this.value;
+			return (this.language ? '@' + this.language : '^' + this.datatype.value) +
+				'"' + this.value;
 		},
 		verbose() {
 			return JSON.stringify(this.value) +
-				(this.language
-					? '@'+this.language
-					: (this.datatype !== HP_NN_XSD_STRING
-						? '^^<'+this.datatype.value+'>'
-						: ''));
+				(this.language ?
+					'@' + this.language :
+					(this.datatype !== HP_NN_XSD_STRING ?
+						'^^<' + this.datatype.value + '>' :
+						''));
 		},
-		terse(h_prefixes={}) {
+		terse() {
 			return JSON.stringify(this.value) +
-				(this.language
-					? '@'+this.language
-					: (this.datatype !== HP_NN_XSD_STRING
-						? '^^'+terse(this.datatype.value, h_prefixes)
-						: ''));
+				(this.language ?
+					'@' + this.language :
+					(this.datatype !== HP_NN_XSD_STRING ?
+						'^^<' + this.datatype.value + '>' :
+						''));
 		},
 		toObject() {
 			return {
@@ -113,18 +94,19 @@ function Literal(s_value, z_datatype_or_lang) {
 
 function BlankNode(s_value) {
 	this.value = s_value;
-} BlankNode.prototype = Object.assign(
+}
+BlankNode.prototype = Object.assign(
 	Object.create(GenericTerm.prototype), {
 		termType: 'BlankNode',
 		isBlankNode: true,
 		valueOf() {
-			return ':'+this.value;
+			return ':' + this.value;
 		},
 		verbose() {
-			return '_:'+this.value;
+			return '_:' + this.value;
 		},
 		terse() {
-			return '_:'+this.value;
+			return '_:' + this.value;
 		},
 		toObject() {
 			return {
@@ -156,10 +138,7 @@ DefaultGraph.prototype = Object.assign(
 			};
 		},
 	});
-
 const H_DEFAULT_GRAPH = new DefaultGraph();
-
-
 // creates a new Quad by copying the current terms from the parser state
 function Quad(h_subject, h_predicate, h_object, h_graph) {
 	this.subject = h_subject;
@@ -167,16 +146,15 @@ function Quad(h_subject, h_predicate, h_object, h_graph) {
 	this.object = h_object;
 	this.graph = h_graph;
 }
-
 Object.assign(Quad.prototype, {
 	equals(y_other) {
-		return this.object.equals(y_other.object)
-			&& this.subject.equals(y_other.subject)
-			&& this.predicate.equals(y_other.predicate)
-			&& this.graph.equals(y_other.graph);
+		return this.object.equals(y_other.object) &&
+			this.subject.equals(y_other.subject) &&
+			this.predicate.equals(y_other.predicate) &&
+			this.graph.equals(y_other.graph);
 	},
 	valueOf() {
-		return this.graph+' '+this.subject+' '+this.predicate+' '+this.object;
+		return this.graph + ' ' + this.subject + ' ' + this.predicate + ' ' + this.object;
 	},
 	toObject() {
 		return {
@@ -187,15 +165,12 @@ Object.assign(Quad.prototype, {
 		};
 	},
 	toNT() {
-		return this.subject.toNT()
-			+' '+this.predicate.toNT()
-			+' '+this.object.toNT()
-			+' '+(this.graph.isDefaultGraph? '': this.graph.toNT()+' ')+'.';
+		return this.subject.toNT() +
+			' ' + this.predicate.toNT() +
+			' ' + this.object.toNT() +
+			' ' + (this.graph.isDefaultGraph ? '' : this.graph.toNT() + ' ') + '.';
 	},
 });
-
-
-
 // Turtle package
 const ttl = {
 	// serialize ttl output
@@ -204,14 +179,12 @@ const ttl = {
 		delete ttl.serializer;
 		return ttl.serializer = require('../ttl/serializer.js');
 	},
-
 	// deserialize ttl input
 	get deserializer() {
 		// memoize
 		delete ttl.deserializer;
-		return ttl.deserializer = require('../ttl/deserializer.js');
+		// return ttl.deserializer = require('../ttl/deserializer.js');
 	},
-
 	// // creates a linked data structure from ttl input
 	// get linked() {
 	// 	// memoize
@@ -219,7 +192,6 @@ const ttl = {
 	// 	return ttl.linked = require('./linked.js')(ttl.parse, true);
 	// },
 };
-
 // TriG package
 const trig = {
 	// serialize trig output
@@ -228,14 +200,12 @@ const trig = {
 		delete trig.serializer;
 		return trig.serializer = require('../trig/serializer.js');
 	},
-
 	// deserialize trig input
 	get deserializer() {
 		// memoize
 		delete trig.deserializer;
 		// return trig.deserializer = require('../trig/deserializer.js');
 	},
-
 	// // creates a linked data structure from trig input
 	// get linked() {
 	// 	// memoize
@@ -243,7 +213,6 @@ const trig = {
 	// 	return trig.linked = require('./linked.js')(trig.parse, false);
 	// },
 };
-
 // N-Triples package
 const nt = {
 	// serialize nt output
@@ -252,14 +221,12 @@ const nt = {
 		delete nt.serializer;
 		return nt.serializer = require('../nt/serializer.js');
 	},
-
 	// deserialize nt input
 	get deserializer() {
 		// memoize
 		delete nt.deserializer;
 		// return nt.deserializer = require('../nt/deserializer.js');
 	},
-
 	// // creates a linked data structure from nt input
 	// get linked() {
 	// 	// memoize
@@ -267,7 +234,6 @@ const nt = {
 	// 	return nt.linked = require('./linked.js')(nt.parse, true);
 	// },
 };
-
 // N-Quads package
 const nq = {
 	// serialize nt output
@@ -276,14 +242,12 @@ const nq = {
 		delete nq.serializer;
 		return nq.serializer = require('../nq/serializer.js');
 	},
-
 	// deserialize nt input
 	get deserializer() {
 		// memoize
 		delete nq.deserializer;
 		// return nq.deserializer = require('../nq/deserializer.js');
 	},
-
 	// // creates a linked data structure from nq input
 	// get linked() {
 	// 	// memoize
@@ -291,17 +255,14 @@ const nq = {
 	// 	return nq.linked = require('./linked.js')(nq.parse, true);
 	// },
 };
-
 // HDT package
 const hdt = {
-
 	// // parses hdt input
 	// get parse() {
 	// 	// memoize
 	// 	delete hdt.parse;
 	// 	return hdt.parse = require('../hdt/parser.js');
 	// },
-
 	// // creates a linked data structure from nq input
 	// get linked() {
 	// 	// memoize
@@ -309,29 +270,22 @@ const hdt = {
 	// 	return nq.linked = require('./linked.js')(nq.parse, true);
 	// },
 };
-
-
-
 const graphy = module.exports = {
-
 	/**
-	* API:
-	**/
-
+	 * API:
+	 **/
 	// load triple data from arbitrary parser into memory
 	get load() {
 		// memoize
 		delete graphy.load;
 		return graphy.load = require('./rdf-loader.js');
 	},
-
 	// 
 	get dti() {
 		// memoize
 		delete graphy.dti;
 		return graphy.dti = require('./dti.js');
 	},
-
 	//
 	get linkedGraph() {
 		// memoize
@@ -341,67 +295,55 @@ const graphy = module.exports = {
 			return new linked_graph(...a_args);
 		};
 	},
-
 	/**
-	* flavors:
-	**/
-
+	 * flavors:
+	 **/
 	ttl,
 	trig,
 	nt,
 	nq,
 	hdt,
-
-
 	/**
-	* DataFactory:
-	**/
-
+	 * DataFactory:
+	 **/
 	namedNode(s_iri) {
 		return new NamedNode(s_iri);
 	},
-
 	blankNode(z_label) {
 		// no label given, generate a UUID
-		if(!z_label) {
+		if (!z_label) {
 			let d = Date.now();
 			// eslint-disable-next-line no-undef
-			if('undefined' !== typeof performance) d += performance.now();
+			if ('undefined' !== typeof performance) d += performance.now();
 			return new BlankNode(S_UUID_V4.replace(R_UUID_V4, function(c) {
-				let r = (d + Math.random()*16)%16 | 0;
+				let r = (d + Math.random() * 16) % 16 | 0;
 				d = Math.floor(d / 16);
 				// eslint-disable-next-line eqeqeq
-				return ('x'==c? r: (r&0x3|0x8)).toString(16);
+				return ('x' == c ? r : (r & 0x3 | 0x8)).toString(16);
 			}));
 		}
 		// label given
-		else if('string' === typeof z_label) {
+		else if ('string' === typeof z_label) {
 			return new BlankNode(z_label);
 		}
 		// parser or graph object given
-		else if('object' === typeof z_label) {
+		else if ('object' === typeof z_label) {
 			return new BlankNode(z_label.next_label());
 		}
 		throw new TypeError('unexpected type for `label` parameter');
 	},
-
 	literal(s_value, z_datatype_or_lang) {
 		return new Literal(s_value, z_datatype_or_lang);
 	},
-
 	defaultGraph() {
 		return new DefaultGraph();
 	},
-
 	triple(h_subject, h_predicate, h_object) {
 		return new Quad(h_subject, h_predicate, h_object, H_DEFAULT_GRAPH);
 	},
-
 	quad(h_subject, h_predicate, h_object, h_graph) {
 		return new Quad(h_subject, h_predicate, h_object, h_graph || H_DEFAULT_GRAPH);
 	},
-
 };
-
 // export graphy to window object if in browser
-if('browser' === process.title) window.graphy = graphy;
+if ('browser' === process.title) window.graphy = graphy;

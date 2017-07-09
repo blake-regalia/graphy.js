@@ -34,7 +34,7 @@
 @end
 
 
-@macro compress_n3_node(n3, on_fail, graph)
+@macro compress_tt_node(tt, on_fail, graph)
 	@if !graph
 		@set graph 'this'
 	@end
@@ -42,16 +42,16 @@
 	let s_word = '';
 
 	// iriref
-	if('<' === @{n3}[0]) {
+	if('<' === @{tt}[0]) {
 		// construct iri
-		let p_iri = @{n3}.slice(1, -1);
+		let p_iri = @{tt}.slice(1, -1);
 
 		@{compress_iri(graph)}
 	}
 	// prefixed name
 	else {
 		// extract prefix / suffix
-		let [s_user_prefix, s_suffix] = @{n3}.split(':');
+		let [s_user_prefix, s_suffix] = @{tt}.split(':');
 
 		// lookup dict prefix from mapped user prefix
 		let s_prefix_id = @{graph}.user_prefixes[s_user_prefix];
