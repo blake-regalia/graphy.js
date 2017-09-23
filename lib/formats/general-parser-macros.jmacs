@@ -206,6 +206,9 @@
 			terse() {
 				return '<'+this.value+'>';
 			},
+			concise() {
+				return this.value;
+			},
 		});
 
 	const HP_NN_XSD_STRING = new NamedNode('http://www.w3.org/2001/XMLSchema#string');
@@ -241,6 +244,13 @@
 							? '^^<'+this.datatype.value+'>'
 							: '')) ;
 			},
+			concise() {
+				return this.language
+					? '@'+this.language+'"'+this.value
+					: (this.datatype !== HP_NN_XSD_STRING
+							? '^'+this.datatype.value+'"'+this.value
+							: '"'+this.value);
+			},
 		});
 
 	@ // for Turtle an TriG only
@@ -253,6 +263,9 @@
 			Object.create(Literal.prototype), {
 				terse() {
 					return this.value;
+				},
+				concise() {
+					return '^http://www.w3.org/2001/XMLSchema#integer"'+this.value;
 				},
 				datatype: new NamedNode('http://www.w3.org/2001/XMLSchema#integer'),
 				isNumeric: true,
@@ -267,6 +280,9 @@
 				terse() {
 					return this.value;
 				},
+				concise() {
+					return '^http://www.w3.org/2001/XMLSchema#decimal"'+this.value;
+				},
 				datatype: new NamedNode('http://www.w3.org/2001/XMLSchema#decimal'),
 				isNumeric: true,
 			});
@@ -280,6 +296,9 @@
 				terse() {
 					return this.value;
 				},
+				concise() {
+					return '^http://www.w3.org/2001/XMLSchema#double"'+this.value;
+				},
 				datatype: new NamedNode('http://www.w3.org/2001/XMLSchema#double'),
 				isNumeric: true,
 			});
@@ -292,6 +311,9 @@
 			Object.create(Literal.prototype), {
 				terse() {
 					return this.value;
+				},
+				concise() {
+					return '^http://www.w3.org/2001/XMLSchema#boolean"'+this.value;
 				},
 				datatype: new NamedNode('http://www.w3.org/2001/XMLSchema#boolean'),
 				isBoolean: true,
@@ -312,6 +334,9 @@
 			},
 			terse() {
 				return '_:'+this.value;
+			},
+			concise() {
+				return '_'+this.value;
 			},
 		});
 
