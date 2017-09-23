@@ -52,6 +52,7 @@
   "license": "ISC",
   "dependencies": {
     "buffer": "^5.0.5",
-    "progress": "^2.0.0"
+    "progress": "^2.0.0",
+    "worker": "^1.0.0"
   }
 }
