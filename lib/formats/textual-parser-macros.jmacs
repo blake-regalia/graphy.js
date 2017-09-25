@@ -174,7 +174,8 @@
 	this.pre = @{use_field_chunk?'this.':''}@{CHUNK}.slice(i);
 
 	// if we're not parsing a stream, then this is an error
-	return this.eos && this.eos();
+	this.eos && this.eos();
+	return;
 @end
 
 
@@ -273,10 +274,8 @@
 	// at this point, a new statement has been parsed
 	@{emit_statement()}
 
-	// goto next parsing state
-	return process.nextTick(() => {
-		this.after_end_of_statement()
-	});
+	// goto next parsing state; bail out of stack
+	return this.after_end_of_statement;
 @end
 
 
