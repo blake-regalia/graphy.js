@@ -111,6 +111,15 @@
 	return this[s_resume_state]();
 @end
 
+@ // save current state to stack
+@macro push_nest(state)
+	this.nested.push('@{state}');
+@end
+
+@ // restore previous state from stack
+@macro pop_nest()
+	return this[this.nested.pop()]();
+@end
 
 
 @ // change state
@@ -193,6 +202,32 @@
 @ // else, test the current character without use of intermediate variable
 @macro else_if_char_only(a)
 	} else if (`@{a}` === s[i]) {
+@end
+
+
+@ // test regex
+@macro if_test(regex, local)
+	@ // count how many else branches we'll need to close
+	@set match_counter (match_counter + 0)
+
+	// prepare sticky regex index
+	@{regex}.lastIndex = i;
+
+	if(@{regex}.test(s)) {
+
+	// advance index
+	@{local? '': 'this.'}i = @{regex}.lastIndex;
+@end
+
+@ // try next test
+@macro else_if_test(regex, local)
+	@ // count how many else branches we'll need to close
+	@set match_counter (match_counter + 1)
+
+	@ // whern previous test fails
+	} else {
+		@ // try next test
+		@{if_test(regex, local)}
 @end
 
 
