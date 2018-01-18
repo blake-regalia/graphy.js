@@ -6,6 +6,7 @@ soda(gulp, {
 
 	inputs: {
 		main: 'node',
+		parsing: 'node',
 		bat: 'node',
 		store: 'node',
 		debug: 'node',
@@ -43,6 +44,7 @@ soda(gulp, {
 				// 'test/parsers/nt.js',
 				// 'test/parsers/nq.js',
 				// 'test/main/data-factory.js',
+				// 'test/specs/ttl.js',
 			],
 		},
 		'formats-formats-formats-minify': {

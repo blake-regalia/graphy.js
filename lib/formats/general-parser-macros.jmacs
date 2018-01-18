@@ -369,11 +369,12 @@
 			this.graph = quad.graph;
 		}
 	@else
-		function Quad(subject, predicate, object, graph) {
-			this.subject = subject;
-			this.predicate = predicate;
-			this.object = object;
-			this.graph = graph;
+		// creates the quad from components
+		function Quad(k_subject, k_predicate, k_object, k_graph) {
+			this.subject = k_subject;
+			this.predicate = k_predicate;
+			this.object = k_object;
+			this.graph = k_graph;
 		}
 	@end
 
@@ -383,6 +384,15 @@
 				&& this.subject.equals(y_other.subject)
 				&& this.predicate.equals(y_other.predicate)
 				&& this.graph.equals(y_other.graph);
+		},
+		verbose() {
+			return this.subject.verbose()
+				+' '+this.predicate.verbose()
+				+' '+this.object.verbose()
+				+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.\n';
+		},
+		toCanonical() {
+			return this.verbose();
 		},
 		// terse() {
 		// 	return this.subject.terse()

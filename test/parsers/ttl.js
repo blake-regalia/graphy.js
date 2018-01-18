@@ -44,12 +44,12 @@ const as_triple = function(a_this) {
 		},
 		object: 'string' === typeof z_object
 			? (' ' === z_object[0]
-				? {value: z_object.substr(1)}
+				? {value:z_object.substr(1)}
 				: ('.' === z_object
-					? {value: P_IRI_RDF_NIL}
-					: {value: z_object}))
+					? {value:P_IRI_RDF_NIL}
+					: {value:z_object}))
 			: ('number' === typeof z_object
-				? {value: z_object+''}
+				? {value:z_object+''}
 				: z_object),
 		graph: {},
 	};
@@ -257,7 +257,7 @@ describe('ttl parser:', () => {
 			@prefix p:<z://>.p:a<z://b>p:c,p:d;p:e"f"^^p:g.`, [
 				['z://a', 'z://b', 'z://c'],
 				['z://a', 'z://b', 'z://d'],
-				['z://a', 'z://e', {value: 'f', datatype: 'z://g'}],
+				['z://a', 'z://e', {value:'f', datatype:{value:'z://g'}}],
 			]);
 
 	});
@@ -531,8 +531,8 @@ describe('ttl parser:', () => {
 			:a :b 'c' .
 			:a :b '"c\\u002C\\n\\'' .
 			`, [
-				['#a', '#b', {value: ''}],
-				['#a', '#b', {value: 'c'}],
+				['#a', '#b', {value:''}],
+				['#a', '#b', {value:'c'}],
 				['#a', '#b', {value: `"c,\n'`}],
 			]);
 
@@ -541,8 +541,8 @@ describe('ttl parser:', () => {
 			:a :b "c" .
 			:a :b "'c\\u002C\\n\\"" .
 			`, [
-				['#a', '#b', {value: ''}],
-				['#a', '#b', {value: 'c'}],
+				['#a', '#b', {value:''}],
+				['#a', '#b', {value:'c'}],
 				['#a', '#b', {value: `'c,\n"`}],
 			]);
 
@@ -552,9 +552,9 @@ describe('ttl parser:', () => {
 			:a :b '''c''' .
 			:a :b '''"c\\u002C\\n\n'''' .
 			`, [
-				['#a', '#b', {value: ''}],
-				['#a', '#b', {value: '\r'}],
-				['#a', '#b', {value: 'c'}],
+				['#a', '#b', {value:''}],
+				['#a', '#b', {value:'\r'}],
+				['#a', '#b', {value:'c'}],
 				['#a', '#b', {value: `"c,\n\n'`}],
 			]);
 
@@ -563,8 +563,8 @@ describe('ttl parser:', () => {
 			:a :b """c""" .
 			:a :b """'c\\u002C\\n\n"""" .
 			`, [
-				['#a', '#b', {value: ''}],
-				['#a', '#b', {value: 'c'}],
+				['#a', '#b', {value:''}],
+				['#a', '#b', {value:'c'}],
 				['#a', '#b', {value: `'c,\n\n"`}],
 			]);
 
@@ -573,18 +573,18 @@ describe('ttl parser:', () => {
 				"\\"\\"\\"\\"\\"\\"",
 				"\\"\\u00C5\\"", "\\"\\U0001D11E\\"\\\\test\\"" .
 			`, [
-				['#a', '#b', {value: '"\\t = \'\t\'"'}],
-				['#a', '#b', {value: '""""""'}],
-				['#a', '#b', {value: '"Å"'}],
-				['#a', '#b', {value: '"𝄞"\\test"'}],
+				['#a', '#b', {value:'"\\t = \'\t\'"'}],
+				['#a', '#b', {value:'""""""'}],
+				['#a', '#b', {value:'"Å"'}],
+				['#a', '#b', {value:'"𝄞"\\test"'}],
 			]);
 
 		allow('langtag', `
 			:a :b "c"@en .
 			:d :e "f"@EN .
 			`, [
-				['#a', '#b', {value: 'c', language: 'en', datatype: P_RDF_LANGSTRING}],
-				['#d', '#e', {value: 'f', language: 'en', datatype: P_RDF_LANGSTRING}],
+				['#a', '#b', {value:'c', language:'en', datatype:{value:P_RDF_LANGSTRING}}],
+				['#d', '#e', {value:'f', language:'en', datatype:{value:P_RDF_LANGSTRING}}],
 			]);
 
 		allow('datatype', `
@@ -593,9 +593,9 @@ describe('ttl parser:', () => {
 			:d :e "f"^^<y> .
 			:g :h "i"^^<z://z> .
 			`, [
-				['#a', '#b', {value: 'c', datatype: '#x'}],
-				['#d', '#e', {value: 'f', datatype: 'z://y'}],
-				['#g', '#h', {value: 'i', datatype: 'z://z'}],
+				['#a', '#b', {value:'c', datatype:{value:'#x'}}],
+				['#d', '#e', {value:'f', datatype:{value:'z://y'}}],
+				['#g', '#h', {value:'i', datatype:{value:'z://z'}}],
 			]);
 	});
 
@@ -604,25 +604,25 @@ describe('ttl parser:', () => {
 		allow('integers', `
 			:a :b 0, -2, +20 .
 			`, [
-				['#a', '#b', {value: '0', number: 0}],
-				['#a', '#b', {value: '-2', number: -2}],
-				['#a', '#b', {value: '+20', number: +20}],
+				['#a', '#b', {value:'0', number:0}],
+				['#a', '#b', {value:'-2', number:-2}],
+				['#a', '#b', {value:'+20', number:+20}],
 			]);
 
 		allow('decimals', `
 			:a :b .0, -0.2, +20.0 .
 			`, [
-				['#a', '#b', {value: '.0', number: 0}],
-				['#a', '#b', {value: '-0.2', number: -0.2}],
-				['#a', '#b', {value: '+20.0', number: +20.0}],
+				['#a', '#b', {value:'.0', number:0}],
+				['#a', '#b', {value:'-0.2', number:-0.2}],
+				['#a', '#b', {value:'+20.0', number:+20.0}],
 			]);
 
 		allow('doubles', `
 			:a :b 0.e1, -2.0e-1, +0.02e+3 .
 			`, [
-				['#a', '#b', {value: '0.e1', number: 0}],
-				['#a', '#b', {value: '-2.0e-1', number: -2.0e-1}],
-				['#a', '#b', {value: '+0.02e+3', number: +0.02e+3}],
+				['#a', '#b', {value:'0.e1', number:0}],
+				['#a', '#b', {value:'-2.0e-1', number:-2.0e-1}],
+				['#a', '#b', {value:'+0.02e+3', number:+0.02e+3}],
 			]);
 	});
 
@@ -631,15 +631,15 @@ describe('ttl parser:', () => {
 		allow('true', `
 			:a :b true, TRUE .
 			`, [
-				['#a', '#b', {value: 'true', boolean: true}],
-				['#a', '#b', {value: 'true', boolean: true}],
+				['#a', '#b', {value:'true', boolean:true}],
+				['#a', '#b', {value:'true', boolean:true}],
 			]);
 
 		allow('false', `
 			:a :b false, FALSE .
 			`, [
-				['#a', '#b', {value: 'false', boolean: false}],
-				['#a', '#b', {value: 'false', boolean: false}],
+				['#a', '#b', {value:'false', boolean:false}],
+				['#a', '#b', {value:'false', boolean:false}],
 			]);
 	});
 
@@ -654,7 +654,7 @@ describe('ttl parser:', () => {
 		err('prefix declaration without a dot',
 			'@prefix : <a> ;', ';', 'full_stop');
 
-		err('',
+		err('invalid collection syntax',
 			'<a> <b> (]).', ']', 'collection_object');
 
 		err('blank node predicate',
@@ -695,17 +695,17 @@ describe('ttl parser:', () => {
 			]);
 
 			survive('string literals', ':a :b "charlie"^^<z://delta> .', [
-				['#a', '#b', {value: 'charlie', datatype: 'z://delta'}],
+				['#a', '#b', {value:'charlie', datatype:{value:'z://delta'}}],
 			]);
 
 			survive('numeric literals', ':a :b 25.12e-1 .', [
-				['#a', '#b', {value: '25.12e-1', number: 25.12e-1}],
+				['#a', '#b', {value:'25.12e-1', number:25.12e-1}],
 			]);
 		});
 
-		survive('prefixed names with dots', ':a :b :c.d. :a :b "c"^^d.e.', [
+		survive('prefixed names with dots', ':a :b :c.d. :a :b "c"^^:d.e.', [
 			['#a', '#b', '#c.d'],
-			['#a', '#b', {value:'c', datatype:'#d.e'}],
+			['#a', '#b', {value:'c', datatype:{value:'#d.e'}}],
 		]);
 
 		survive('property list nesting', `

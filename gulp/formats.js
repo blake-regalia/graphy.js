@@ -5,9 +5,6 @@ const util = require('util');
 module.exports = function(gulp, $, p_src, p_dest) {
 	const es = require('event-stream');
 	const jmacs = require('jmacs');
-	const Builder = require('Builder');
-
-	const builder = new Builder();
 
 	// runs jmacs
 	const mk_jmacs = (h_define) => {
@@ -17,9 +14,22 @@ module.exports = function(gulp, $, p_src, p_dest) {
 			s_define += `@set ${s_define_property} ${JSON.stringify(h_define[s_define_property])}\n`;
 		}
 
+		s_define += '/**\n'
+			+'code: @{code}\n'
+			+'N: @{N}\n'
+			+'NT: @{NT}\n'
+			+'NQ: @{NQ}\n'
+			+'T: @{T}\n'
+			+'TTL: @{TTL}\n'
+			+'TRIG: @{TRIG}\n'
+			+'QUADS: @{QUADS}\n'
+			+'BINARY: @{BINARY}\n'
+			+'FORMAT: @{FORMAT}\n'
+			+'**/\n';
+
 		// tap stream
 		return $.tap((h_file) => {
-			// process contents as string through Builder
+			// process contents as string through jmacs
 			try {
 				let s_file_contents = h_file.contents.toString();
 				let h_result = jmacs.compile({
@@ -37,31 +47,6 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 				h_file.contents = new Buffer(
 					h_result.output.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
-				);
-			}
-			catch(e_compile) {
-				throw 'error while compiling '+h_file.path+'\n\n'+e_compile.stack;
-			}
-		});
-	};
-
-	const mk_builder = (h_define) => {
-		let s_define = '';
-		// prep define string
-		for(let s_define_property in h_define) {
-			s_define += `@set ${s_define_property} ${h_define[s_define_property]}\n`;
-		}
-
-		// tap stream
-		return $.tap((h_file) => {
-			// set search directory for Builder module so it finds macro include file
-			builder.machine.readers.file.searchDirs.unshift(path.dirname(h_file.path));
-
-			// process contents as string through Builder
-			try {
-				h_file.contents = new Buffer(
-					builder.machine.execute(s_define+h_file.contents.toString())
-						.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
 				);
 			}
 			catch(e_compile) {
@@ -106,11 +91,11 @@ module.exports = function(gulp, $, p_src, p_dest) {
 				// clone unprocessed source
 				.pipe($.clone())
 
-				// set macro variables and then apply Builder.js
+				// set macro variables and then apply jmacs
 				.pipe(mk_jmacs(h_flavors[s_flavor]))
 
 				// beautify
-				.pipe($.beautify({indent_with_tabs: true}))
+				.pipe($.beautify({indent_with_tabs:true}))
 
 				// rename
 				.pipe($.rename(h => {
@@ -224,7 +209,7 @@ module.exports = function(gulp, $, p_src, p_dest) {
 
 module.exports.dependencies = [
 	'event-stream',
-	'Builder',
+	'jmacs',
 	'gulp-tap',
 	'gulp-sourcemaps',
 	'gulp-plumber',

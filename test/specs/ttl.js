@@ -1,7 +1,7 @@
 const assert = require('assert');
 const stream = require('stream');
 
-const graphy = require('../../dist.es6/main/graphy.js');
+const graphy = require('../../dist/main/graphy.js');
 const async = require('async');
 const request = require('request');
 
@@ -28,7 +28,7 @@ function test_eval(s_subject_id) {
 	let s_output = '';
 	return parse({
 		data(h_triple) {
-			s_output += h_triple+'';
+			s_output += h_triple.verbose();
 		},
 		error(e_parse) {
 			console.error('parsing failed on '+s_subject_id);
@@ -97,20 +97,23 @@ function validate(s_subject_id) {
 				if(h_labels[s_label]) return h_labels[s_label];
 				return h_labels[s_label] = '_:g'+(i_anon++);
 			})
-			// wtf? canonical N-Triples form explicitly states that characters MUST NOT be represented by UCHAR!
-			.replace(/\\u([0-9a-fA-F]{4})/g, (s_uchar, x_cp) => {
-				return String.fromCharCode(parseInt(x_cp, 16));
-			})
-			.replace(/\\U([0-9a-fA-F]{8})/g, (s_uchar, s_cp) => {
-				let x_cp = parseInt(s_cp, 16);
-				if(x_cp < 0x10000) return '\\u'+x_cp.toString(16);
-				return String.fromCodePoint(x_cp);
-			})
-			// some more things i do not understand why they don't escape / conform to
-			.replace(/\u0008/g, '\\b')
-			.replace(/\f/g, '\\f')
-			.replace(/\r/g, '\\r')
-			.replace(/@en-UK/, '@en-uk')
+			// // wtf? canonical N-Triples form explicitly states that characters MUST NOT be represented by UCHAR!
+			// .replace(/\\u([0-9a-fA-F]{4})/g, (s_uchar, x_cp) => {
+			// 	return String.fromCharCode(parseInt(x_cp, 16));
+			// })
+
+			// lowercase-ify unicode escapes
+			.replace(/\\u([0-9A-F]{4})/g, (s_uchar, s_cp) => JSON.stringify(String.fromCodePoint(parseInt(s_cp, 16))).slice(1, -1))
+			.replace(/\\U([0-9A-F]{8})/g, (s_uchar, s_cp) => JSON.stringify(String.fromCodePoint(parseInt(s_cp, 16))).slice(1, -1))
+
+			// // some more things i do not understand why they don't escape / conform to
+			// .replace(/\u0008/g, '\\b')
+			// .replace(/\f/g, '\\f')
+			// .replace(/\r/g, '\\r')
+
+			// lowercase-ify language tags
+			.replace(/@[a-zA-Z](-[a-zA-Z0-9]+)*/, s => s.toLowerCase())
+
 			// we don't do document base IRI
 			.replace(/<http:\/\/www\.w3\.org\/2013\/TurtleTests\/(?:.*\.ttl#)?([xy]|[abc][0-9])/g, '<$1');
 	});
@@ -118,7 +121,7 @@ function validate(s_subject_id) {
 }
 
 
-const parse = graphy.ttl.parse;
+const parse = (...a_args) => graphy.deserializer('text/turtle', ...a_args);
 
 const q_tests = async.queue(function(h_task, f_okay) {
 	request(P_PATH+h_task.data.object.value)
@@ -173,7 +176,7 @@ q_tests.drain = function() {
 };
 
 request(P_PATH+'manifest.ttl')
-	.pipe(graphy.ttl.parse({
+	.pipe(parse({
 		data(h_triple) {
 			// ref parts
 			let p_subject = h_triple.subject.value;
@@ -183,19 +186,19 @@ request(P_PATH+'manifest.ttl')
 			// mf action
 			if(P_IRI_MF_ACTION === p_predicate) {
 				let h_info = h_tests[p_subject];
-				if(h_info) q_tests.push({pipe: h_info.pipe, data: h_triple});
+				if(h_info) q_tests.push({pipe:h_info.pipe, data:h_triple});
 			}
 			// mf result
 			else if(P_IRI_MF_RESULT === p_predicate) {
-				q_tests.push({pipe: validate, data: h_triple});
+				q_tests.push({pipe:validate, data:h_triple});
 			}
 			// rdf:type
 			else if(P_IRI_RDF_TYPE === p_predicate) {
 				if(P_IRI_RDFT_TEST_TURTLE_EVAL === w_object) {
-					h_tests[p_subject] = {pipe: test_eval};
+					h_tests[p_subject] = {pipe:test_eval};
 				}
 				else if(P_IRI_RDFT_TEST_TURTLE_POSITIVE_SYNTAX === w_object) {
-					h_tests[p_subject] = {pipe: test_positive_syntax};
+					h_tests[p_subject] = {pipe:test_positive_syntax};
 					h_answers[p_subject] = true;
 				}
 				// // negative syntaxes are not of concern since we only care about parsing valid syntax documents

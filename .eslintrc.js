@@ -3,7 +3,10 @@ module.exports = {
         browser: true,
         node: true,
         commonjs: true,
-        es6: true
+        es6: true,
+    },
+    parserOptions: {
+        ecmaVersion: 2017,
     },
     extends: 'eslint:recommended',
     rules: {
