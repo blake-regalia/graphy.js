@@ -135,8 +135,7 @@
 				this.prefix = this.restore_prefix;
 			}
 
-			// resume state
-			this.state();
+			this.safe_parse();
 		@end
 	};
 @end
@@ -327,7 +326,7 @@
 			termType: 'BlankNode',
 			isBlankNode: true,
 			valueOf() {
-				return ' '+this.value;
+				return '_'+this.value;
 			},
 			verbose() {
 				return '_:'+this.value;

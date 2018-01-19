@@ -5,7 +5,7 @@ const graphy = require('../../dist/main/graphy.js');
 const async = require('async');
 const request = require('request');
 
-const P_PATH = 'https://www.w3.org/2013/TurtleTests/';
+const P_PATH = 'http://www.w3.org/2013/TurtleTests/';
 
 const P_IRI_MF = 'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#';
 const P_IRI_MF_ACTION = P_IRI_MF+'action';
@@ -26,9 +26,14 @@ const h_answers = {};
 
 function test_eval(s_subject_id) {
 	let s_output = '';
+	let k_set = graphy.set();
 	return parse({
+		// set default base
+		prepend: `@base <${P_PATH}${s_subject_id.slice(1)}.ttl> .\n`,
+
 		data(h_triple) {
-			s_output += h_triple.verbose();
+			// s_output += h_triple.verbose();
+			k_set.add(h_triple);
 		},
 		error(e_parse) {
 			console.error('parsing failed on '+s_subject_id);
@@ -38,15 +43,16 @@ function test_eval(s_subject_id) {
 		end() {
 			let h_labels = {};
 			let i_anon = 0;
-			h_results[s_subject_id] = s_output
-				// try to make non-anymous blank node labels match auto-incrementing ones
-				.replace(/_:[^g\s]+/g, (s_label) => {
-					if('#turtle-subm-10' === s_subject_id) {
-						i_anon += 1;
-					}
-					if(h_labels[s_label]) return h_labels[s_label];
-					return h_labels[s_label] = '_:g'+(i_anon++);
-				});
+			h_results[s_subject_id] = k_set.canonicalize();
+			// s_output
+			// 	// try to make non-anymous blank node labels match auto-incrementing ones
+			// 	.replace(/_:[^g\s]+/g, (s_label) => {
+			// 		if('#turtle-subm-10' === s_subject_id) {
+			// 			i_anon += 1;
+			// 		}
+			// 		if(h_labels[s_label]) return h_labels[s_label];
+			// 		return h_labels[s_label] = '_:g'+(i_anon++);
+			// 	});
 		},
 	});
 }
@@ -91,31 +97,41 @@ function validate(s_subject_id) {
 	d_reader.on('finish', () => {
 		let h_labels = {};
 		let i_anon = 0;
-		h_answers[s_subject_id] = s_nt
-			// remove blank node labels and make them match auto-assigned anonymous labels
-			.replace(/_:(b|el|innerEl|outerEl|genid|hasParent)[0-9]*/g, (s_label) => {
-				if(h_labels[s_label]) return h_labels[s_label];
-				return h_labels[s_label] = '_:g'+(i_anon++);
-			})
-			// // wtf? canonical N-Triples form explicitly states that characters MUST NOT be represented by UCHAR!
-			// .replace(/\\u([0-9a-fA-F]{4})/g, (s_uchar, x_cp) => {
-			// 	return String.fromCharCode(parseInt(x_cp, 16));
-			// })
 
-			// lowercase-ify unicode escapes
-			.replace(/\\u([0-9A-F]{4})/g, (s_uchar, s_cp) => JSON.stringify(String.fromCodePoint(parseInt(s_cp, 16))).slice(1, -1))
-			.replace(/\\U([0-9A-F]{8})/g, (s_uchar, s_cp) => JSON.stringify(String.fromCodePoint(parseInt(s_cp, 16))).slice(1, -1))
+		let k_set = graphy.set();
+		graphy.nt.deserializer(s_nt, {
+			data(h_triple) {
+				k_set.add(h_triple);
+			},
+		});
 
-			// // some more things i do not understand why they don't escape / conform to
-			// .replace(/\u0008/g, '\\b')
-			// .replace(/\f/g, '\\f')
-			// .replace(/\r/g, '\\r')
+		h_answers[s_subject_id] = k_set.canonicalize();
 
-			// lowercase-ify language tags
-			.replace(/@[a-zA-Z](-[a-zA-Z0-9]+)*/, s => s.toLowerCase())
+		// s_nt
+		// 	// remove blank node labels and make them match auto-assigned anonymous labels
+		// 	.replace(/_:(b|el|innerEl|outerEl|genid|hasParent)[0-9]*/g, (s_label) => {
+		// 		if(h_labels[s_label]) return h_labels[s_label];
+		// 		return h_labels[s_label] = '_:g'+(i_anon++);
+		// 	})
+		// 	// // wtf? canonical N-Triples form explicitly states that characters MUST NOT be represented by UCHAR!
+		// 	// .replace(/\\u([0-9a-fA-F]{4})/g, (s_uchar, x_cp) => {
+		// 	// 	return String.fromCharCode(parseInt(x_cp, 16));
+		// 	// })
 
-			// we don't do document base IRI
-			.replace(/<http:\/\/www\.w3\.org\/2013\/TurtleTests\/(?:.*\.ttl#)?([xy]|[abc][0-9])/g, '<$1');
+		// 	// lowercase-ify unicode escapes
+		// 	.replace(/\\u([0-9A-F]{4})/g, (s_uchar, s_cp) => JSON.stringify(String.fromCodePoint(parseInt(s_cp, 16))).slice(1, -1))
+		// 	.replace(/\\U([0-9A-F]{8})/g, (s_uchar, s_cp) => JSON.stringify(String.fromCodePoint(parseInt(s_cp, 16))).slice(1, -1))
+
+		// 	// // some more things i do not understand why they don't escape / conform to
+		// 	// .replace(/\u0008/g, '\\b')
+		// 	// .replace(/\f/g, '\\f')
+		// 	// .replace(/\r/g, '\\r')
+
+		// 	// lowercase-ify language tags
+		// 	.replace(/@[a-zA-Z](-[a-zA-Z0-9]+)*/, s => s.toLowerCase())
+
+		// 	// we don't do document base IRI
+		// 	.replace(/<http:\/\/www\.w3\.org\/2013\/TurtleTests\/(?:.*\.ttl#)?([xy]|[abc][0-9])/g, '<$1');
 	});
 	return d_reader;
 }
@@ -208,6 +224,7 @@ request(P_PATH+'manifest.ttl')
 				// }
 			}
 		},
+
 		end() {
 			console.log('running tests...');
 		},

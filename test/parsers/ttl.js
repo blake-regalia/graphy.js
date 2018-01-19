@@ -83,7 +83,7 @@ const err = (s_test, s_ttl, s_err_char, s_err_state) => {
 			data() {},
 			error(e_parse) {
 				assert.notStrictEqual(e_parse, undefined);
-				let s_match = 'failed to parse a valid token starting at '+(s_err_char? '"'+s_err_char+'"': '<EOF>');
+				let s_match = 'failed to parse a valid token starting at '+('string' === typeof s_err_char? '"'+s_err_char+'"': '<<EOF>>');
 				assert.notStrictEqual(-1, e_parse.indexOf(s_match));
 				if(s_err_state) {
 					assert.strictEqual(/expected (\w+)/.exec(e_parse)[1], s_err_state);
@@ -676,7 +676,7 @@ describe('ttl parser:', () => {
 			'<a> <b> (]).', ']', 'collection_object');
 
 		err('no end of triple',
-			':a :b :c ', '', 'post_object');
+			':a :b :c ', '\0', 'post_object');
 	});
 
 	describe('states interrupted by end-of-stream:', () => {

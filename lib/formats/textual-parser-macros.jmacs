@@ -480,7 +480,7 @@
 	}),
 
 	// parse_error (not meant to be an event callback)
-	parse_error(s_expected) {
+	parse_error(s_expected, b_eof) {
 		@if T
 			let i = this.i;
 			let i_off = Math.min(i, Math.abs(i-15));
@@ -491,6 +491,6 @@
 		let s = this.s;
 		this._error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
 			+` ${' '.repeat(i-i_off)}^\n`
-			+`expected ${s_expected}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<EOF>'}`);
+			+`expected ${s_expected} ${b_eof? 'but encountered <<EOF>>': ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
 	},
 @end
