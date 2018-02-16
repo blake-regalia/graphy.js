@@ -22,7 +22,13 @@
 	// pause the parser (& stream if applicable)
 	this.pause = this.restore_pause = function() {
 		// already paused
-		if(this.n < 0) return;
+		if(this.n < 0) {
+			debugger;
+			return;
+		}
+
+		// set length too low so execution will hault
+		this.n = -1;
 
 		@ // parser is streaming input
 		@if stream
@@ -30,14 +36,14 @@
 			@{stream}.pause();
 		@end
 
-		// set length too low so execution will hault
-		this.n = -1;
+		// make sure we are not currently emptying queue
+		if(this.data !== F_QUEUE_DATA) {
+			// save original data event callback
+			this.restore_data = this.data;
 
-		// save original data event callback
-		this.restore_data = this.data;
-
-		// set up callback to capture data events that happen while pausing
-		this.data = F_QUEUE_DATA;
+			// set up callback to capture data events that happen while pausing
+			this.data = F_QUEUE_DATA;
+		}
 
 		@ // for Turtle and TriG
 		@if T
@@ -113,17 +119,14 @@
 			}
 		}
 
-		@ // for streams only
-		@if stream
-			// now that event queue is empty, resume readable input stream
-			@{stream}.resume();
-		@end
-
 		// restore pause function
 		this.pause = this.restore_pause;
 
 		// restore data event
 		this.data = this.restore_data;
+
+		// eof'ed
+		if(null === this.s) return;
 
 		@ // for Turtle and TriG
 		@if T
@@ -135,7 +138,32 @@
 				this.prefix = this.restore_prefix;
 			}
 
-			this.safe_parse();
+			// parse remainder
+			if(this.i < this.n) {
+				this.safe_parse();
+
+				// user paused!
+				if(this.n < 0) {
+					// slice current
+					if(this.i) {
+						this.pre = this.s.slice(this.i);
+					}
+
+					// do not turn stream back on
+					return;
+				}
+			}
+
+			// slice current
+			if(this.i) {
+				this.pre = this.s.slice(this.i);
+			}
+		@end
+
+		@ // for streams only
+		@if stream
+			// now that event queue is empty, resume readable input stream
+			@{stream}.resume();
 		@end
 	};
 @end
@@ -173,6 +201,108 @@
 	else {
 		// store label in hash so we avoid future collisions
 		this.labels[s_label] = 1;
+	}
+@end
+
+@def PN_CHARS_BASE()
+	A-Za-z\xc0-\xd6\xd8-\xf6\xf8-\u{02ff}\u{0370}-\u{037d}\u{037f}-\u{1fff}\u{200c}-\u{200d}\u{2070}-\u{218f}\u{2c00}-\u{2fef}\u{3001}-\u{d7ff}\u{f900}-\u{fdcf}\u{fdf0}-\u{fffd}\u{10000}-\u{effff}
+@end
+
+@def PN_CHARS_U()
+	@{PN_CHARS_BASE()}_
+@end
+
+@def PN_CHARS()
+	@{PN_CHARS_U()}\-0-9\xb7\u{0300}-\u{036f}\u{203f}-\u{2040}
+@end
+
+@def PN_CHARS_FS()
+	([@{PN_CHARS()}.]*[@{PN_CHARS()}])?
+@end
+
+@def PN_PREFIX()
+	[@{PN_CHARS_BASE()}]@{PN_CHARS_FS()}
+@end
+
+@def PLX()
+	%[A-Fa-f0-9]{2}|\\[_~.\-!$&'()*+,;=/?#@%]
+@end
+
+@def PN_LOCAL()
+	([@{PN_CHARS_U()}:0-9]|@{PLX()})(([@{PN_CHARS()}.:]|@{PLX()})*([@{PN_CHARS()}:]|@{PLX()}))?
+@end
+
+@def UCHAR(ins='')
+	\\u[@{ins}A-Fa-f0-9]{4}|\\U[@{ins}A-Fa-f0-9]{8}
+@end
+
+@def validators()
+	{
+		blank_node(s_value, b_named) {
+			if(!R_BLANK_NODE_VALID.test(s_value)) return this._error(`invalid blank node label: "${s_value}"`);
+			return new BlankNode(s_value, b_named);
+		},
+
+		named_node(s_iri) {
+			if(!R_NAMED_NODE_VALID.test(s_iri)) return this._error(`invalid IRI: "${s_iri}"`);
+			return new NamedNode(s_iri);
+		},
+
+		unescape_literal_long(s_literal) {
+			if(R_ESCAPES_INVALID.test(s_literal)) return this._error(`invalid literal: "${s_literal}"`);
+			try {
+				return unescape_literal_long(s_literal);
+			}
+			catch(e_parse) {
+				return this._error(`invalid string literal: "${s_literal}"`);
+			}
+		},
+
+		unescape_literal_short(s_literal) {
+			if(R_ESCAPES_INVALID.test(s_literal)) return this._error(`invalid literal: "${s_literal}"`);
+			try {
+				return unescape_literal_short(s_literal);
+			}
+			catch(e_parse) {
+				return this._error(`invalid string literal: "${s_literal}"`);
+			}
+		},
+
+		match_prefixed_name_escapeless(s, i) {
+			let [m_prefixed_name_e, im_prefixed_name_e] = match_prefixed_name_escapeless(s, i);
+			if(m_prefixed_name_e) {
+				// invalid namespace
+				if(!R_PREFIXED_NAME_NAMESPACE_VALID.test(m_prefixed_name_e[1])) {
+					this._error(`invalid prefixed name namespace: "${m_prefixed_name_e[1]}:"`);
+					return;
+				}
+				// invalid local name
+				else if(!R_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name_e[2])) {
+					this._error(`invalid prefixed name local name: "${m_prefixed_name_e[2]}:"`);
+					return;
+				}
+			}
+
+			return [m_prefixed_name_e, im_prefixed_name_e];
+		},
+
+		match_prefixed_name(s, i) {
+			let [m_prefixed_name, im_prefixed_name] = match_prefixed_name(s, i);
+			if(m_prefixed_name) {
+				// invalid namespace
+				if(!R_PREFIXED_NAME_NAMESPACE_VALID.test(m_prefixed_name[1])) {
+					this._error(`invalid prefixed name namespace: "${m_prefixed_name[1]}:"`);
+					return;
+				}
+				// invalid local name
+				else if(!R_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name[2])) {
+					this._error(`invalid prefixed name local name: "${m_prefixed_name[2]}:"`);
+					return;
+				}
+			}
+
+			return [m_prefixed_name, im_prefixed_name];
+		},
 	}
 @end
 
@@ -268,6 +398,7 @@
 				},
 				datatype: new NamedNode('http://www.w3.org/2001/XMLSchema#integer'),
 				isNumeric: true,
+				isInteger: true,
 			});
 
 		function DecimalLiteral(s_value) {
@@ -284,6 +415,7 @@
 				},
 				datatype: new NamedNode('http://www.w3.org/2001/XMLSchema#decimal'),
 				isNumeric: true,
+				isDecimal: true,
 			});
 
 		function DoubleLiteral(s_value) {
@@ -300,6 +432,7 @@
 				},
 				datatype: new NamedNode('http://www.w3.org/2001/XMLSchema#double'),
 				isNumeric: true,
+				isDouble: true,
 			});
 
 		function BooleanLiteral(b_value) {
@@ -339,6 +472,13 @@
 			},
 		});
 
+	function AnonymousBlankNode(s_value) {
+		this.value = s_value;
+	} AnonymousBlankNode.prototype = Object.assign(
+		Object.create(BlankNode.prototype), {
+			isAnonymous: true,
+		});
+
 	function DefaultGraph() {}
 	DefaultGraph.prototype = Object.assign(
 		Object.create(GenericTerm.prototype), {
@@ -353,6 +493,9 @@
 			},
 			terse() {
 				return '';
+			},
+			concise() {
+				return '*';
 			},
 		});
 
@@ -390,6 +533,12 @@
 				+' '+this.object.verbose()
 				+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.\n';
 		},
+		concise() {
+			return this.graph.concise()+'\n\t'
+				+this.subject.concise()+'\n\t\t'
+				+this.predicate.concise()+'\n\t\t\t'
+				+this.object.concise()+'\n';
+		},
 		toCanonical() {
 			return this.verbose();
 		},
@@ -403,6 +552,9 @@
 			return this.graph+' '+this.subject+' '+this.predicate+' '+this.object;
 		},
 	});
+
+	const R_BLANK_NODE_VALID = /^[@{PN_CHARS_U()}0-9]@{PN_CHARS_FS()}$/u;
+	const R_NAMED_NODE_VALID = /^([^\0- <>"{}|^`\\]|@{UCHAR()})*$/;
 
 @end
 

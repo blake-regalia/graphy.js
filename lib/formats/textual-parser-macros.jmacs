@@ -15,7 +15,8 @@
 @ // constants for all modes
 @macro constants()
 	@ // all modes need to unescape characters inside of string literals and IRIs
-	const R_ESCAPES = /(\\[\\])|\\([^tbnrfu\\])/g;
+	const R_ESCAPES = /(\\[\\])|\\([^tbnrfuU\\])/g;
+	const R_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/g;
 
 	// const R_UNICODE_8 = /\\U(?:0000([0-9A-Fa-f]{4})|([0-9A-Fa-f]{8}))/g;
 	// const R_UNICODE_ANY = /\\u([0-9A-Fa-f]{4})|\\U([0-9A-Fa-f]{8})/g;
@@ -27,6 +28,11 @@
 	// 	let x_cp = parseInt(s_8, 16) - 0x10000;
 	// 	return String.fromCharCode(0xD800 + (x_cp >> 10), 0xDC00 + (x_cp & 0x3FF));
 	// };
+
+	@if T
+		const R_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
+		const R_PREFIXED_NAME_LOCAL_NAME_VALID = /^@{PN_LOCAL()}$/u;
+	@end
 
 	const R_UNICODE_8 = /\\U([0-9A-Fa-f]{8})/g;
 	const R_UNICODE_ANY = /\\U([0-9A-Fa-f]{8})|\\u([0-9A-Fa-f]{4})/g;
@@ -274,6 +280,29 @@
 		@{if_match(regex, match, local)}
 @end
 
+// try something else
+@def else_if_call(method, match, local)
+	@ // increment number of else branches we'll need to close
+	@set match_counter (match_counter + 1)
+
+	// match_counter: @{match_counter}
+
+	@ // when previous match fails
+	} else {
+		// try match
+		let aw_valid = @{method}(s, i);
+
+		if(!aw_valid) return;
+
+		let [@{match}, i@{match}] = aw_valid;
+
+		@ // test
+		if(@{match}) {
+
+			// advance index
+			@{local? '': 'this.'}i = i@{match};
+@end
+
 
 @ // close all preceeding else branches
 @macro end_else()
@@ -354,32 +383,32 @@
 	// absolute iri
 	if(!this.base_url || R_IRI_ABSOLUTE.test(s_iri)) {
 		// set @{term}
-		@{not_this? '': 'this.'}@{term} = @{object?'new NamedNode(':''}s_iri@{object?')':''};
+		@{not_this? '': 'this.'}@{term} = @{object?'this.named_node(':''}s_iri@{object?')':''};
 	}
 	// relative iri
 	else {
 		// make @{term}
 		switch(s_iri[0]) {
 			case '#':
-				@{not_this? '': 'this.'}@{term} = @{object?'new NamedNode(':''}this.base_url + s_iri@{object?')':''};
+				@{not_this? '': 'this.'}@{term} = @{object?'this.named_node(':''}this.base_url + s_iri@{object?')':''};
 				break;
 			case '?':
-				@{not_this? '': 'this.'}@{term} = @{object?'new NamedNode(':''}this.base_url.replace(/(\?.*)?$/, s_iri)@{object?')':''};
+				@{not_this? '': 'this.'}@{term} = @{object?'this.named_node(':''}this.base_url.replace(/(\?.*)?$/, s_iri)@{object?')':''};
 				break;
 			case '/':
 				// relative to scheme
 				if('/' === s_iri[1]) {
-					@{not_this? '': 'this.'}@{term} = @{object?'new NamedNode(':''}this.base_url_scheme + F_DOT_SEGMENTS(s_iri.substr(1))@{object?')':''};
+					@{not_this? '': 'this.'}@{term} = @{object?'this.named_node(':''}this.base_url_scheme + F_DOT_SEGMENTS(s_iri.substr(1))@{object?')':''};
 				}
 				// relative to root
 				else {
-					@{not_this? '': 'this.'}@{term} = @{object?'new NamedNode(':''}this.base_url_root + F_DOT_SEGMENTS(s_iri)@{object?')':''};
+					@{not_this? '': 'this.'}@{term} = @{object?'this.named_node(':''}this.base_url_root + F_DOT_SEGMENTS(s_iri)@{object?')':''};
 				}
 				break;
 			// empty
 			case undefined:
 				// identity
-				@{not_this? '': 'this.'}@{term} = @{object?'new NamedNode(':''}this.base_url@{object?')':''};
+				@{not_this? '': 'this.'}@{term} = @{object?'this.named_node(':''}this.base_url@{object?')':''};
 				break;
 			// dot segment
 			case '.':
@@ -387,7 +416,7 @@
 				s_iri = '/'+s_iri;
 			// relative to path
 			default:
-				@{not_this? '': 'this.'}@{term} = @{object?'new NamedNode(':''}this.base_url_root + F_DOT_SEGMENTS(this.base_url_path + s_iri)@{object?')':''};
+				@{not_this? '': 'this.'}@{term} = @{object?'this.named_node(':''}this.base_url_root + F_DOT_SEGMENTS(this.base_url_path + s_iri)@{object?')':''};
 		}
 	}
 
@@ -427,9 +456,9 @@
 
 
 @ // unescape a string literal
-@macro unescape(str, version)
-	JSON.parse('"'
-		+@{str}
+@macro unescape(version)
+	return JSON.parse('"'
+		+s_literal
 			.@{replace_unicode()}
 			.replace(R_ESCAPES, '$1$2') // no need to escape anything other than reserved characters
 			@if 'long' == version
@@ -439,7 +468,7 @@
 			@else
 				.replace(/"/g, '\\"') // escape all quotes ;)
 			@end
-		+'"')
+		+'"');
 @end
 
 @ // set the object value of a string literal
@@ -449,7 +478,7 @@
 	@if 'no-escape' == version
 		@{match}[1];
 	@else
-		@{unescape(match+'[1]', version)};
+		this.unescape_literal_@{'long'===version? 'long': 'short'}(@{match}[1]);
 	@end
 @end
 
@@ -476,6 +505,10 @@
 @macro this_defer_errors()
 	// error event
 	_error: h_config.error || ((e_parse) => {
+		if(this.grace) {
+			this.grace(e_parse);
+		}
+
 		throw `parse error: ${e_parse}`;
 	}),
 
