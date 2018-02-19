@@ -36,6 +36,7 @@ module.exports = Object.assign(function(gulp, $, p_src, p_dest) {
 
 				h_file.contents = new Buffer(
 					h_result.output.replace(/\/\*+\s*whitespace\s*\*+\/\s*/g, '')
+						.replace(/(?:\r?\n){4,}/g, '\n')
 				);
 			}
 			catch(e_compile) {

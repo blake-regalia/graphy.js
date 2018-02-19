@@ -7,6 +7,7 @@ soda(gulp, {
 	inputs: {
 		main: 'node',
 		parsing: 'node',
+		isomorphic: 'node',
 		bat: 'node',
 		store: 'node',
 		debug: 'node',
