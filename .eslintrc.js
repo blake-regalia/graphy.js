@@ -59,7 +59,7 @@ module.exports = {
         'no-label-var': 2,
         // 'no-lone-blocks': 0,
         // 'no-loop-func': 0,
-        'no-multi-spaces': 2,
+        'no-multi-spaces': [2, {ignoreEOLComments: true}],
         'no-multi-str': 2,
         'no-multiple-empty-lines': [2, {max:3}],
         'no-native-reassign': 2,
