@@ -1,0 +1,117 @@
+const stream = require('stream');
+
+const pattern = require('./pattern.js');
+
+
+class graph {
+	constructor(k_store) {
+		Object.assign(this, {
+			store: k_store,
+		});
+	}
+
+	pattern() {
+		return new pattern(this.store);
+	}
+}
+
+class store extends stream.Writable {
+	constructor(g_config={}) {
+		super({
+			objectMode: true,
+		});
+
+		Object.assign(this, {
+			prefixes: g_config.prefixes || {},
+
+			ready: g_config.ready || null,
+		});
+
+		// on end of stream
+		this.on('end', () => {
+			let k_graph = new graph(this);
+
+			if(this.ready) {
+				this.ready(k_graph);
+			}
+		});
+	}
+
+	_write(g_quad, s_obj_mode, fk_write) {
+		debugger;
+		fk_write(g_quad);
+	}
+
+}
+
+module.exports = function(...a_args) {
+	// single arg
+	if(1 === a_args.length) {
+		let z_arg_0 = a_args[0];
+
+		// struct
+		if('object' === typeof z_arg_0 && Object === z_arg_0.constructor) {
+			return new store(z_arg_0);
+		}
+
+		throw new TypeError(`unexpected argument type: ${z_arg_0}`);
+	}
+
+	throw new Error(`not yet implemented`);
+};
+
+// class store extends stream.Writable {
+// 	constructor(g_options={}) {
+// 		super();
+// 		Object.assign(this, {
+// 			prefixes: g_options.prefixes || {},
+// 		});
+// 	}
+
+// 	load(z_arg_0, z_arg_1) {
+// 		// first arg is mime type
+// 		if('string' === z_arg_0) {
+// 			// next arg is struct
+// 			if('object' === typeof z_arg_1) {
+// 				let pm_input = z_arg_0;
+
+// 				// ref options
+// 				let g_options = z_arg_1;
+
+// 				// // mime type
+// 				// let pm_input = g_options.mime;
+
+// 				// no type
+// 				if(!pm_input) throw new Error('must specify a MIME type');
+
+// 				// fetch deserializer
+// 				let k_deserializer = graphy.deserializer(pm_input);
+
+// 				// mime type not supported
+// 				if(!k_deserializer) throw new Error(`MIME type not supported: '${pm_input}'`);
+
+// 				// proceed
+// 				this.deserializer = k_deserializer;
+// 			}
+// 			// next arg is callback
+// 			else if('function' === z_arg_1) {
+// 				// become consumable
+// 				this.on('pipe', (ds_input) => {
+// 					ds_input.unpipe(this);
+// 					ds_input.pipe(this.deserializer);
+// 				});
+// 			}
+// 			// invalid
+// 			else {
+// 				throw new RangeError(`invalid argument: ${z_arg_1}`);
+// 			}
+// 		}
+// 		// // first arg is struct
+// 		// else if('object' === typeof z_arg_0) {
+
+// 		// }
+
+// 		let k_graph = new graph(this);
+// 	}
+// }
+

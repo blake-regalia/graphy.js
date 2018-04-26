@@ -1,0 +1,332 @@
+const cp = require('child_process');
+const factory = require('@graphy/factory');
+
+const dot_escape = s => ('string' === typeof s
+	? (s[0] === '<'
+		? s
+		: `"${s.replace(/"/g, '\\"')}"`)
+	: s);
+
+/*
+
+var H_SPECS = {
+	variable: {
+		style: 'filled',
+		fillcolor: '0.65,0.25,0.95',
+		fontcolor: 'blue',
+	},
+	blanknode: {
+		label: '',
+	},
+	typed_literal: {
+		style: 'filled',
+		fillcolor: '0.1,0.6,1',
+		fontcolor: '0.1,0.9,0.4',
+	},
+	named_thing: {
+		style: 'filled',
+		fillcolor: '0.8,0,0.85',
+	},
+	empty: {
+		label: '',
+		style: 'filled',
+		fillcolor: '0.8,0.5,0.99',
+	},
+};
+
+*/
+
+// styles
+const H_STYLE_GRAPH = {
+	rankdir: 'LR',
+	bgcolor: 'transparent',
+};
+
+const H_STYLE_ALL = {
+	fontname: 'ArialMT',
+};
+
+const H_STYLE_LITERAL = Object.assign({
+	style: 'filled',
+	fillcolor: '0.1,0.6,1',
+	fontcolor: '0.1,0.9,0.4',
+}, H_STYLE_ALL);
+
+const H_STYLE_LITERAL_LANG = Object.assign({}, H_STYLE_LITERAL, {
+	fontcolor: '0.0,0.9,0.4',
+});
+
+const H_STYLE_LITERAL_DTYPE = Object.assign({}, H_STYLE_LITERAL, {
+	fontcolor: '0.6,0.9,0.4',
+});
+
+const H_STYLE_NODE = Object.assign({
+	style: 'filled',
+	fillcolor: '0.8,0,0.75',
+	fontcolor: '0.58,0.65,0.24',
+}, H_STYLE_ALL);
+
+const H_STYLE_HIGHLIGHT_NODE = {
+	color: 'blue',
+	penwidth: 2,
+};
+
+const H_STYLE_PREDICATE = Object.assign({
+	fontsize: 12,
+	labeldistance: 600,
+	// decorate: true,
+}, H_STYLE_ALL);
+
+
+class dot_attrs {
+	constructor(h_attrs={}) {
+		Object.assign(this, {
+			attrs: h_attrs,
+		});
+	}
+
+	attrs_dot() {
+		// each attr
+		let a_attrs = [];
+		let h_attrs = this.attrs;
+		for(let s_key in h_attrs) {
+			a_attrs.push(`${s_key} = ${dot_escape(h_attrs[s_key])}`);
+		}
+
+		return '\n\t\t'+a_attrs.join(',\n\t\t')+'\n\t';
+	}
+}
+
+class dot_digraph extends dot_attrs {
+	constructor(s_id, h_attrs) {
+		super(h_attrs);
+
+		Object.assign(this, {
+			type: 'digraph',
+			id: s_id,
+			clusters: [],
+			nodes: [],
+			edges: [],
+		});
+	}
+
+	cluster(s_id, h_attrs) {
+		let k_cluster = new dot_subgraph(dot_escape(`cluster_${s_id || this.clusters.length}`), h_attrs);
+		this.clusters.push(k_cluster);
+		return k_cluster;
+	}
+
+	node(s_id, h_attrs) {
+		let k_node = new dot_node(s_id, h_attrs);
+		this.nodes.push(k_node);
+		return k_node;
+	}
+
+	edge(sct_subject, sct_object, h_attrs) {
+		let k_edge = new dot_edge(sct_subject, sct_object, h_attrs);
+		this.edges.push(k_edge);
+		return k_edge;
+	}
+
+	dot() {
+		return /* syntax: dot */ `${this.type} "${this.id}" {
+			graph [${this.attrs_dot()}];
+			${[
+				this.clusters,
+				this.nodes,
+				this.edges,
+			].map(a => a.map(k => k.dot()).join('\n')+'\n').join('\n')}
+		}`;
+	}
+}
+
+class dot_subgraph extends dot_digraph {
+	constructor(s_id, h_attrs) {
+		super(s_id, h_attrs);
+
+		Object.assign(this, {
+			type: 'subgraph',
+		});
+	}
+}
+
+class dot_node extends dot_attrs {
+	constructor(s_id, h_attrs) {
+		super(h_attrs);
+
+		Object.assign(this, {
+			id: s_id,
+		});
+	}
+
+	dot() {
+		return `\t${dot_escape(this.id)} [${this.attrs_dot()}];`;
+	}
+}
+
+class dot_edge extends dot_attrs {
+	constructor(sct_subject, sct_object, h_attrs) {
+		super(h_attrs);
+
+		Object.assign(this, {
+			subject: sct_subject,
+			object: sct_object,
+		});
+	}
+
+	dot() {
+		return `\t${dot_escape(this.subject)} -> ${dot_escape(this.object)} [${this.attrs_dot()}]; `;
+	}
+}
+
+
+class viz {
+	constructor(g_opts) {
+		Object.assign(this, {
+			name: g_opts.name || 'input',
+			set: g_opts.set,
+			prefixes: g_opts.prefixes,
+			hues: {},
+			n_hues: 1,
+			hue_code: 0,
+			highlight_nodes: g_opts.highlight_nodes || {},
+		});
+	}
+
+	prefix_hue(sct_predicate) {
+		let s_prefix = factory.ct(sct_predicate).terse(this.prefixes).split(':')[0];
+		if(!(s_prefix in this.hues)) {
+			this.hues[s_prefix] = this.hue_code;
+			this.n_hues += 1;
+			this.hue_code = (1 / this.n_hues).toFixed(2);
+		}
+		return this.hues[s_prefix];
+	}
+
+	dot() {
+		let {
+			set: k_set,
+			prefixes: h_prefixes,
+			highlight_nodes: h_highlight_nodes,
+		} = this;
+
+
+		// hash of nodes
+		let h_nodes = {};
+
+		// make super graph
+		let yg_super = new dot_digraph(this.name, H_STYLE_GRAPH);
+
+		for(let sct_graph of k_set.graphs()) {
+			// make cluster
+			let yg_sub;
+
+			// default graph
+			if('*' === sct_graph) {
+				yg_sub = yg_super;
+			}
+			// not default graph
+			else {
+				yg_sub = yg_super.cluster(sct_graph, Object.assign(H_STYLE_GRAPH, {
+					label: factory.ct(sct_graph).terse(h_prefixes),
+				}));
+			}
+
+			// each subject
+			for(let sct_subject of k_set.subjects(sct_graph)) {
+				// fetch or make subject node
+				let yn_subject = (sct_subject in h_nodes)
+					? h_nodes[sct_subject]
+					: yg_sub.node(sct_subject, Object.assign({
+						label: factory.ct(sct_subject).terse(h_prefixes),
+					}, H_STYLE_NODE, (sct_subject in h_highlight_nodes)
+						? Object.assign({}, H_STYLE_HIGHLIGHT_NODE, {color:h_highlight_nodes[sct_subject]})
+						: {}));
+
+				// save node
+				h_nodes[sct_subject] = yn_subject;
+
+				// each predicate
+				for(let sct_predicate of k_set.predicates(sct_graph, sct_subject)) {
+					// each object
+					for(let sct_object of k_set.objects(sct_graph, sct_subject, sct_predicate)) {
+						let s_object_label = factory.ct(sct_object).terse(h_prefixes);
+
+						let h_style_object = Object.assign({}, H_STYLE_NODE, (sct_object in h_highlight_nodes)
+							? Object.assign({}, H_STYLE_HIGHLIGHT_NODE, {color:h_highlight_nodes[sct_object]})
+							: {});
+
+						switch(sct_object[0]) {
+							case '@': {
+								h_style_object = H_STYLE_LITERAL_LANG;
+								let a_split = s_object_label.split('@');
+								s_object_label = `<${a_split.slice(0, -1).join('').replace(/"/g, '&quot;')}<SUB>@@${a_split[a_split.length-1]}</SUB>>`;
+								break;
+							}
+							case '^': {
+								h_style_object = H_STYLE_LITERAL_DTYPE;
+								// let m_split = /^\^([^"]+)"(.*)$/.exec(s_object_label);
+								// s_object_label = `<${a_split.slice(0, -1).join('').replace(/"/g, '&quot;')}<SUP>^^${a_split[a_split.length-1]}</SUP>>`;
+								break;
+							}
+							case '"': {
+								h_style_object = H_STYLE_LITERAL;
+								break;
+							}
+							case '>': break;
+							default: {
+								let a_split = s_object_label.split(':');
+								s_object_label = `<<B>${a_split[0]||' '}</B>:${a_split.slice(1).join('')}>`;
+							}
+						}
+
+						// fetch or make object node
+						let yn_object = (sct_object in h_nodes)
+							? h_nodes[sct_subject]
+							: yg_sub.node(sct_object, Object.assign({
+								label: s_object_label,
+							}, h_style_object));
+
+						// save node
+						h_nodes[sct_object] = yn_object;
+
+
+						// make predicate edge
+						let ye_predicate = yg_sub.edge(sct_subject, sct_object, Object.assign({
+							label: factory.ct(sct_predicate).terse(h_prefixes),
+							color: `${this.prefix_hue(sct_predicate)},0.5,0.5`,
+							fontcolor: `${this.prefix_hue(sct_predicate)},0.5,0.3`,
+						}, H_STYLE_PREDICATE));
+					}
+				}
+			}
+		}
+
+		// output dot string
+		return yg_super.dot();
+	}
+
+	// 
+	pipe(ds_out) {
+		ds_out.write(this.dot());
+		try {
+			ds_out.end();
+		}
+		catch(e_write) {}
+	}
+
+	png(ds_out) {
+		let du_dot = cp.spawn('dot', ['-Tpng']);
+
+		// pipe stdout to output
+		du_dot.stdout.pipe(ds_out);
+
+		// write to stdin
+		du_dot.stdin.write(this.dot());
+		du_dot.stdin.end();
+	}
+}
+
+module.exports = function(...a_args) {
+	return new viz(...a_args);
+};

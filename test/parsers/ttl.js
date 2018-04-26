@@ -550,22 +550,22 @@ describe('ttl parser:', () => {
 			:a :b '''''' .
 			:a :b '''\r''' .
 			:a :b '''c''' .
-			:a :b '''"c\\u002C\\n\n'''' .
+			:a :b '''"c\\u002C''\\n'\n''' .
 			`, [
 				['#a', '#b', {value:''}],
 				['#a', '#b', {value:'\r'}],
 				['#a', '#b', {value:'c'}],
-				['#a', '#b', {value: `"c,\n\n'`}],
+				['#a', '#b', {value: `"c,''\n'\n`}],
 			]);
 
 		allow('long double quotes', `
 			:a :b """""" .
 			:a :b """c""" .
-			:a :b """'c\\u002C\\n\n"""" .
+			:a :b """'c\\u002C""\\n"\n""" .
 			`, [
 				['#a', '#b', {value:''}],
 				['#a', '#b', {value:'c'}],
-				['#a', '#b', {value: `'c,\n\n"`}],
+				['#a', '#b', {value: `'c,""\n"\n`}],
 			]);
 
 		allow('escapes & unicode', `

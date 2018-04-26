@@ -1,0 +1,469 @@
+
+const S_UUID_V4 = 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx';
+const R_UUID_V4 = /[xy]/g;
+
+const concise = (p_iri, h_prefixes) => {
+	// best prefix id
+	let s_best_prefix_id = '';
+
+	// length of longest matching iri
+	let nl_best_prefix_iri = 0;
+
+	// each prefix in hash
+	for(let s_prefix_id in h_prefixes) {
+		let p_prefix_iri = h_prefixes[s_prefix_id];
+
+		// target iri starts with prefix iri and its longer than the current best
+		if(p_iri.startsWith(p_prefix_iri) && p_prefix_iri.length > nl_best_prefix_iri) {
+			// save prefix id as best
+			s_best_prefix_id = s_prefix_id;
+
+			// update best iri length
+			nl_best_prefix_iri = p_prefix_iri.length;
+		}
+	}
+
+	// found a prefix
+	if(nl_best_prefix_iri) {
+		return s_best_prefix_id+':'+p_iri.substr(nl_best_prefix_iri);
+	}
+
+	// no prefix found; default to full iri
+	return '>'+p_iri;
+};
+
+function GenericTerm() {}
+Object.assign(GenericTerm.prototype, {
+	isGraphyTerm: true,
+	valueOf() {
+		return this.concise();
+	},
+	equals(h_other) {
+		return (h_other.termType === this.termType && h_other.value === this.value);
+	},
+});
+
+
+function NamedNode(s_iri) {
+	this.value = s_iri;
+} NamedNode.prototype = Object.assign(
+	Object.create(GenericTerm.prototype), {
+		termType: 'NamedNode',
+		isNamedNode: true,
+		concise(h_prefixes={}) {
+			return concise(this.value, h_prefixes);
+		},
+		terse(h_prefixes={}) {
+			let p_iri = this.value;
+			let sct = concise(p_iri, h_prefixes);
+			if('>' === sct[0]) return '<'+p_iri+'>';
+			return sct;
+		},
+		verbose() {
+			return '<'+this.value+'>';
+		},
+		toObject() {
+			return {
+				termType: 'NamedNode',
+				value: this.value,
+			};
+		},
+	});
+
+const HP_NN_XSD_STRING = new NamedNode('http://www.w3.org/2001/XMLSchema#string');
+const HP_NN_RDFS_LANG_STRING = new NamedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#langString');
+function Literal(s_value, z_datatype_or_lang) {
+	this.value = s_value;
+	if(z_datatype_or_lang) {
+		if('string' === typeof z_datatype_or_lang) {
+			this.language = z_datatype_or_lang.toLowerCase();
+			this.datatype = HP_NN_RDFS_LANG_STRING;
+		}
+		else {
+			this.datatype = z_datatype_or_lang;
+		}
+	}
+} Literal.prototype = Object.assign(
+	Object.create(GenericTerm.prototype), {
+		datatype: HP_NN_XSD_STRING,
+		language: '',
+		termType: 'Literal',
+		isLiteral: true,
+		equals(h_other) {
+			return 'Literal' === h_other.termType && h_other.value === this.value
+				&& this.datatype.equals(h_other.datatype) && h_other.language === this.language;
+		},
+		verbose() {
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: (this.datatype !== HP_NN_XSD_STRING
+						? '^^<'+this.datatype.value+'>'
+						: ''));
+		},
+		concise(h_prefixes) {
+			if(this.language) {
+				return '@'+this.language+'"'+this.value;
+			}
+			else if(this.hasOwnProperty('datatype')) {
+				return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+			}
+			else {
+				return '"'+this.value;
+			}
+		},
+		terse(h_prefixes={}) {
+			let p_datatype = this.datatype.value;
+
+			// concise datatype node
+			let sct_datatype = concise(p_datatype, h_prefixes);
+
+			// turn into terse
+			let st_datatype = '>' === sct_datatype[0]? '<'+p_datatype+'>': sct_datatype;
+
+			// stringify literal
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: (this.datatype !== HP_NN_XSD_STRING
+						? '^^'+st_datatype
+						: ''));
+		},
+		toObject() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: this.language,
+				datatype: Object.assign({}, this.datatype),
+			};
+		},
+	});
+
+
+@> literal(s_type, g_config)
+	@.let b_boolean = 'boolean' === s_type;
+	@.let s_arg = (b_boolean? 'b': 'x')+'_value';
+	@.let s_type_caps = s_type.toUpperCase();
+	@.let s_type_proper = s_type_caps.slice(0, 1)+s_type.slice(1);
+	const HP_NN_XSD_@{s_type_caps} = new NamedNode('http://www.w3.org/2001/XMLSchema#@{s_type}');
+	function Literal_@{s_type_proper}(@{s_arg}) {
+		@- b_boolean
+			this.boolean = @{s_arg};
+		@:
+			this.number = +@{s_arg};
+		@;
+		this.value = @{s_arg}+'';
+	} Literal_@{s_type_proper}.prototype = Object.assign(
+		Object.create(Literal.prototype), {
+			datatype: HP_NN_XSD_@{s_type_caps},
+			@- b_boolean
+				isBoolean: true,
+			@:
+				isNumeric: true,
+				is@{s_type_proper}: true,
+			@;
+			concise(h_prefixes={}) {
+				return '^'+HP_NN_XSD_@{s_type_caps}.concise(h_prefixes)+'"'+this.value;
+			},
+			terse() {
+				return @{g_config.terse};
+			},
+		});
+@;
+
+
+@.{
+	let h_literals = {
+		integer: {
+			terse: /* syntax: js */ `this.value`,
+		},
+		double: {
+			terse: /* syntax: js */ `this.number.toExponential()`,
+		},
+		decimal: {
+			terse: /* syntax: js */ `this.value+(Number.isInteger(this.number)? '.0': '')`,
+		},
+		boolean: {
+			terse: /* syntax: js */ `this.value+''`,
+		},
+	};
+}
+
+@*{
+	for(let s_type in h_literals) {
+		yield literal(s_type, h_literals[s_type])+'\n';
+	}
+}
+
+
+function BlankNode(s_value) {
+	this.value = s_value;
+} BlankNode.prototype = Object.assign(
+	Object.create(GenericTerm.prototype), {
+		termType: 'BlankNode',
+		isBlankNode: true,
+		concise() {
+			return '_'+this.value;
+		},
+		terse() {
+			return '_:'+this.value;
+		},
+		verbose() {
+			return '_:'+this.value;
+		},
+		toObject() {
+			return {
+				termType: 'BlankNode',
+				value: this.value,
+			};
+		},
+	});
+
+function DefaultGraph() {}
+DefaultGraph.prototype = Object.assign(
+	Object.create(GenericTerm.prototype), {
+		value: '',
+		termType: 'DefaultGraph',
+		isDefaultGraph: true,
+		concise() {
+			return '*';
+		},
+		terse() {
+			return '';
+		},
+		verbose() {
+			return '';
+		},
+		toObject() {
+			return {
+				termType: 'DefaultGraph',
+				value: '',
+			};
+		},
+	});
+
+function NoGraph() {}
+NoGraph.prototype = Object.assign(
+	Object.create(GenericTerm.prototype), {
+		value: '',
+		termType: 'NoGraph',
+		concise() {
+			return '';
+		},
+		terse() {
+			return '';
+		},
+		verbose() {
+			return '';
+		},
+		toObject() {
+			return {
+				termType: 'NoGraph',
+				value: '',
+			};
+		},
+	});
+
+const H_DEFAULT_GRAPH = new DefaultGraph();
+function Quad(h_subject, h_predicate, h_object, h_graph=H_DEFAULT_GRAPH) {
+	this.subject = h_subject;
+	this.predicate = h_predicate;
+	this.object = h_object;
+	this.graph = h_graph;
+} Object.assign(Quad.prototype, {
+	equals(y_other) {
+		return this.object.equals(y_other.object)
+			&& this.subject.equals(y_other.subject)
+			&& this.predicate.equals(y_other.predicate)
+			&& this.graph.equals(y_other.graph);
+	},
+	valueOf() {
+		return this.verbose();
+	},
+	concise() {
+		return [
+			this.graph.concise(),
+			this.subject.concise(),
+			this.predicate.concise(),
+			this.object.concise(),
+		];
+	},
+	terse(h_prefixes) {
+		let b_graph = !this.graph.isDefaultGraph;
+		return (b_graph? '': this.graph.terse(h_prefixes)+' { ')
+			+this.subject.terse(h_prefixes)
+			+' '+this.predicate.terse(h_prefixes)
+			+' '+this.object.terse(h_prefixes)+' .'
+			+(b_graph? ' }': '');
+	},
+	verbose() {
+		return this.subject.verbose()
+			+' '+this.predicate.verbose()
+			+' '+this.object.verbose()
+			+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
+	},
+	toObject() {
+		return {
+			subject: this.subject.toObject(),
+			predicate: this.predicate.toObject(),
+			object: this.object.toObject(),
+			graph: this.graph.toObject(),
+		};
+	},
+});
+
+const H_NO_GRAPH = new NoGraph();
+function Triple(h_subject, h_predicate, h_object) {
+	this.subject = h_subject;
+	this.predicate = h_predicate;
+	this.object = h_object;
+	this.graph = H_NO_GRAPH;
+} Triple.prototype = Object.assign(
+	Object.create(Quad.prototype, {
+		equals(y_other) {
+			return this.object.equals(y_other.object)
+				&& this.subject.equals(y_other.subject)
+				&& this.predicate.equals(y_other.predicate);
+		},
+	}));
+
+
+const factory = module.exports = {
+	namedNode(s_iri) {
+		return new NamedNode(s_iri);
+	},
+
+	blankNode(z_label) {
+		// no label given, generate a UUID
+		if(!z_label) {
+			let dt_now = Date.now();
+			// eslint-disable-next-line no-undef
+			if('undefined' !== typeof performance) d += performance.now();
+			return new BlankNode(S_UUID_V4.replace(R_UUID_V4, (s) => {
+				let x_r = (dt_now + (Math.random()*16)) % 16 | 0;
+				dt_now = Math.floor(dt_now / 16);
+				return ('x' === s? x_r: ((x_r & 0x3) | 0x8)).toString(16);
+			}));
+		}
+		// label given
+		else if('string' === typeof z_label) {
+			return new BlankNode(z_label);
+		}
+		// parser or graph object given
+		else if('object' === typeof z_label) {
+			return new BlankNode(z_label.next_label());
+		}
+
+		throw new TypeError('unexpected type for `label` parameter');
+	},
+
+	literal(s_value, z_datatype_or_lang) {
+		return new Literal(s_value, z_datatype_or_lang);
+	},
+
+	@*{
+		for(let s_type in h_literals) {
+			yield /* syntax: js */ `${s_type}(w_value) {
+				return new Literal_${s_type.slice(0, 1).toUpperCase()}${s_type.slice(1)}(w_value);
+			},\n`;
+		}
+	}
+
+	defaultGraph() {
+		return new DefaultGraph();
+	},
+
+	term(h_term) {
+		switch(h_term.termType) {
+			case 'NamedNode': return new NamedNode(h_term.value);
+			case 'BlankNode': return new BlankNode(h_term.value);
+			case 'Literal': return new Literal(h_term.value, h_term.language
+				? h_term.language
+				: (h_term.datatype
+					? new NamedNode(h_term.datatype.value)
+					: null));
+			case 'DefaultGraph': return new DefaultGraph();
+			default: {
+				throw new TypeError(`invalid termType: ${h_term.termType}`);
+			}
+		}
+	},
+
+	triple(h_subject, h_predicate, h_object) {
+		return new Triple(h_subject, h_predicate, h_object);
+	},
+
+	quad(h_subject, h_predicate, h_object, h_graph) {
+		return new Quad(h_subject, h_predicate, h_object, h_graph || H_DEFAULT_GRAPH);
+	},
+
+	// construct a term object from a concise term string
+	ct(s_ct, h_prefixes) {
+		switch(s_ct[0]) {
+			// iri
+			case '>': return factory.namedNode(s_ct.slice(1));
+
+			// blank node
+			case '_': return factory.blankNode(s_ct.slice(1));
+
+			// datatyped literal
+			case '^': {
+				// find literal's contents delimiter
+				let i_contents = s_ct.indexOf('"');
+
+				// extract datatype
+				let s_datatype = s_ct.slice(1, i_contents);
+
+				// make term
+				return factory.literal(s_ct.slice(i_contents+1), factory.ct(s_datatype, h_prefixes));
+			}
+
+			// languaged literal
+			case '@': {
+				// find literal's contents delimiter
+				let i_contents = s_ct.indexOf('"');
+
+				// extract language
+				let s_language = s_ct.slice(1, i_contents);
+
+				// make term
+				return factory.literal(s_ct.slice(i_contents+1), s_language);
+			}
+
+			// simple literal
+			case '"': {
+				// make term
+				return factory.literal(s_ct.slice(1));
+			}
+
+			// default graph
+			case '*': {
+				if('*' === s_ct) return factory.defaultGraph();
+			}
+
+			// prefixed name
+			default: return this.ct_prefixed_node(s_ct, h_prefixes);
+		}
+	},
+
+	// construct a term object from a concise term string for nodes
+	ct_prefixed_node(s_ct, h_prefixes={}) {
+		// find prefix delimiter
+		let i_colon = s_ct.indexOf(':');
+
+		// prefix id
+		let s_prefix_id = s_ct.slice(0, i_colon);
+
+		// suffix
+		let s_suffix = s_ct.slice(i_colon+1);
+
+		// find prefix in hash
+		if(s_prefix_id in h_prefixes) {
+			return factory.namedNode(h_prefixes[s_prefix_id]+s_suffix);
+		}
+		// prefix not exists
+		else {
+			throw new Error(`no such prefix ${s_prefix_id} found in hash`);
+		}
+	},
+};

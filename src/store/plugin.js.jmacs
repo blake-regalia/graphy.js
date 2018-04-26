@@ -1,0 +1,20 @@
+
+Object.assign(global, require('./symbols.js'));
+
+class PluginActor {
+	constructor(k_dict, k_plugin, f_action) {
+		Object.assign(this, {
+			dict: k_dict,
+			plugin: k_plugin,
+			action: f_action,
+		});
+	}
+
+	test(i_term, hp_role) {
+		this.plugin.test(i_term, hp_role, this.dict);
+	}
+}
+
+module.exports = {
+	PluginActor,
+};

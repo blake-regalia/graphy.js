@@ -1,0 +1,25 @@
+{
+  "name": "@graphy/base",
+  "version": "3.0.0",
+  "author": {
+    "name": "Blake Regalia",
+    "email": "blake.regalia@gmail.com"
+  },
+  "main": "index.js",
+  "keywords": [
+    "rdf",
+    "rdfjs",
+    "linked-data",
+    "semantic-web",
+    "turtle",
+    "ttl",
+    "trig",
+    "n-triples",
+    "nt",
+    "n-quads",
+    "nq"
+  ],
+  "repository": "blake-regalia/graphy.js",
+  "license": "ISC",
+  "dependencies": {}
+}

@@ -1,0 +1,951 @@
+
+/* globals
+	HP_ROLE_HOP
+	HP_ROLE_NODE
+	HP_ROLE_SUBJECT
+	HP_ROLE_PREDICATE
+	HP_ROLE_INVERSE_PREDICATE
+	HP_ROLE_OBJECT
+	HP_ROLE_OBJECT_NODE
+	HP_ROLE_LITERAL
+	HP_ROLE_ROOT
+	HP_ROLE_LEAF
+*/
+Object.assign(global, require('./symbols.js'));
+
+@def each(s_name)
+	for(let i_@{s_name}=0, n_@{s_name}s=a_@{s_name}s.length; i_@{s_name}<n_@{s_name}s; i_@{s_name}++)
+@end
+
+
+@> cannot(s_fix)
+	@{s_fix}(s_arg) {
+		return this.cannot('@{s_fix}', s_arg);
+	}
+@;
+
+
+@> alias(s_src, s_dst, s_append)
+	@{s_dst}(...a_args) {
+		return this.@{s_src}(...a_args@{s_append? ', '+s_append: ''});
+	}
+@;
+
+@> empty(s_method, s_class)
+	@{s_method}() {
+		return new @{s_class}_Empty();
+	}
+@;
+
+@>> proper(s)
+	@{s[0].toUpperCase() + s.slice(1)}
+@;
+
+@> return_fix(s_role_small)
+	return new Fix_@{proper(s_role_small)}(k_graph, k_pattern);
+@;
+
+
+
+@> fix_node(s_name, s_role_small='')
+	@$ s_role = 'HP_ROLE_'+(s_role_small || s_name).toUpperCase();
+	@{s_name}(s_ct=null) {
+		return this.fix_node(s_ct, @{s_role});
+	}
+@;
+
+@> hop(b_role_object)
+	@{fix_node('hop')}
+@;
+
+@> node()
+	@{fix_node('node')}
+@;
+
+@> subject()
+	@{fix_node('subject')}
+@;
+
+@> object()
+	object(s_ct=null) {
+		let k_graph = this.graph;
+		let k_pattern = this.pattern;
+
+		// no term; single result only
+		if(!s_ct) {
+			k_pattern.append_all(HP_ROLE_OBJECT, true);
+			return new Fix_Object(k_graph, k_pattern);
+		}
+
+		// literal
+		let s_ct_0 = s_ct[0];
+		if('"' === s_ct_0 || '^' === s_ct_0 || '@' === s_ct_0) {
+			return this.literal(s_ct);
+		}
+
+		// object node
+		return this.objectNode(s_ct);
+	}
+@;
+
+@> objectNode()
+	@{fix_node('objectNode', 'object_node')}
+@;
+
+@> literal()
+	literal(s_ct=null) {
+		let k_graph = this.graph;
+		let k_pattern = this.pattern;
+
+		// no term; single result only
+		if(!s_ct) {
+			k_pattern.append_all(HP_ROLE_LITERAL, true);
+			return new Fix_Object(k_graph, k_pattern);
+		}
+
+		// turn ct string into literal
+		let ab_word = k_graph.encode_ct_literal_to_word(s_ct);
+
+		// search for term
+		let i_term = k_graph.find(ab_word, HP_ROLE_LITERAL);
+
+		// found term
+		if(i_term) {
+			k_pattern.append_id(i_term, HP_ROLE_LITERAL);
+			return new Fix_Object(k_graph, k_pattern);
+		}
+
+		// no such node in set
+		return new Fix_Object_Empty(k_graph, null, {ct:s_ct});
+	}
+@;
+
+@> root()
+	@{fix_node('root')}
+@;
+
+@> leaf()
+	@{fix_node('leaf')}
+@;
+
+
+@> out()
+	@{fix_node('out', 'predicate')}
+@;
+
+@> qry_in()
+	@{fix_node('in', 'inverse_predicate')}
+@;
+
+
+@> find(s_role)
+	// search for term
+	let i_term = k_graph.find(ab_word, HP_ROLE_@{s_role.toUpperCase()});
+
+	// found term
+	if(i_term)
+@;
+
+
+@> terms_fix(s_role, _then)
+	let k_graph = this.graph;
+	let k_pattern = this.pattern;
+
+	// there is a list of terms
+	if(a_cts) {
+		// prep list of ids
+		let a_ids = [];
+
+		// each term
+		@{each('ct')} {
+			// turn string into word
+			let ab_word = k_graph.encode_ct_node_to_word(a_cts[i_ct]);
+
+			@{_then}
+		}
+
+		// push id list to pattern
+		k_pattern.append_ids(a_ids, HP_ROLE_@{s_role.toUpperCase()});
+	}
+	// no list of terms; take any from range
+	else {
+		// append all @{s_role}s to path
+		k_pattern.append_all(HP_ROLE_@{s_role.toUpperCase()});
+	}
+
+	@{return_fix(s_role)}
+@;
+
+
+@> hops(b_role_object)
+	hops(a_cts=null) {
+		@{terms_fix(b_role_object? 'object': 'subject', `
+			${find('hop')} {
+				a_ids.push(i_item_h);
+			}
+		`)}
+
+		@{return_fix('hop')}
+	}
+@;
+
+@> subjects()
+	subjects(a_cts=null) {
+		@{terms_fix('subject', `
+			${find('hop')} {
+				a_ids.push(i_item_d);
+			}
+			else {
+				${find('subject')} {
+					a_ids.push(i_item_s);
+				}
+			}
+		`)}
+	}
+@;
+
+@> objects()
+	objects(a_cts=null) {
+		let k_graph = this.graph;
+		let k_pattern = this.pattern;
+
+		// there is a list
+		if(a_cts) {
+			// prep list of ids to capture
+			let a_ids = [];
+
+			// each ct node
+			@{each('ct')} {
+				let s_ct = a_cts[i_ct];
+
+				// literal
+				let s_ct_0 = s_ct[0];
+				if('"' === s_ct_0 || '^' === s_ct_0 || '@' === s_ct_0) {
+					// turn string into word
+					let ab_word = k_graph.encode_ct_literal_to_word(s_ct);
+
+					@{find('literal')} {
+						a_ids.push(i_item_l);
+					}
+				}
+				// node
+				else {
+					// turn string into word
+					let ab_word = k_graph.encode_ct_node_to_word(s_ct);
+
+					@{find('object_node')} {
+						a_ids.push(i_term);
+					}
+				}
+			}
+
+			// push id list to pattern's pattern
+			k_pattern.append_ids(a_ids, HP_ROLE_OBJECT);
+		}
+		// no list!
+		else {
+			// add all to path
+			k_pattern.append_all(HP_ROLE_OBJECT);
+		}
+
+		@{return_fix('object')}
+	}
+@;
+
+@> objectNodes()
+	objectNodes(a_cts=null) {
+		let k_graph = this.graph;
+		let k_pattern = this.pattern;
+
+		// there is a list
+		if(a_cts) {
+			// prep list of ids to capture
+			let a_ids = [];
+
+			// each tt node
+			@{each('ct')} {
+				// turn string into word
+				let ab_word = k_graph.encode_tt_node_to_word(s_ct);
+
+				@{find('object_node')} a_ids.push(i_term);
+			}
+
+			// push id list to pattern's pattern
+			k_pattern.append_ids(a_ids, HP_ROLE_OBJECT);
+		}
+		// no list!
+		else {
+			// add all to path
+			k_pattern.append_all(HP_ROLE_OBJECT);
+		}
+
+		// chaining, return a bag of objects
+		return new Fix_Object(k_graph, k_pattern);
+	}
+@;
+
+
+@> literals()
+	literals(a_tts) {
+		let k_graph = this.graph;
+		let k_pattern = this.pattern;
+
+		// there is a list
+		if(a_tts) {
+			throw 'multiple literals not yet supported';
+		}
+		// no list!
+		else {
+			k_pattern.append_all(HP_ROLE_LITERAL);
+			return new Fix_Object(k_graph, k_pattern);
+		}
+	}
+@;
+
+@> leafs()
+	leafs() {
+		
+	}
+@;
+
+@> roots()
+	roots() {
+		
+	}
+@;
+
+@> collection()
+	collection() {
+		k_pattern.append_all(HP_ROLE_HOP);
+		
+	}
+@;
+
+@> collections()
+	collections() {
+
+	}
+@;
+
+
+
+@> outs()
+	outs(z_edges) {
+		let k_graph = this.graph;
+		let k_pattern = this.pattern;
+
+		// list of tt_string predicates
+		if(Array.isArray(z_edges)) {
+			// build list of predicate ids
+			let a_ids = [];
+
+			// each predicate
+			z_edges.forEach((s_tt) => {
+				// turn string into word
+				let ab_word = k_graph.encode_tt_node_to_word(s_tt);
+
+				@{find('predicate')} a_ids.push(i_term);
+			});
+
+			// at least 1 predicate found
+			if(a_ids.length) {
+				// append list of ids to path
+				k_pattern.append_ids(a_ids, HP_ROLE_PREDICATE);
+				return new Fix_NormalEdge(k_graph, k_pattern);
+			}
+			// no predicates found
+			else {
+				return new Fix_NormalEdge_Empty(k_graph, null, {
+					tts: z_edges,
+				});
+			}
+		}
+		// term set
+		else if(z_edges instanceof TermSet) {
+			// append list of ids to path
+			k_pattern.append_ids(z_edges.terms.map(h => h.id), HP_ROLE_PREDICATE);
+			return new Fix_NormalEdge(this.graph, k_pattern);
+		}
+		// all outgoing edges
+		else {
+			k_pattern.append_all(HP_ROLE_PREDICATE);
+			return new Fix_NormalEdge(this.graph, k_pattern);
+		}
+	}
+@;
+
+
+
+
+@> ins()
+	ins() {
+		let k_pattern = this.pattern;
+		k_pattern.append_all(HP_ROLE_PREDICATE);
+		return new Fix_InverseEdge(this.graph, k_pattern);
+	}
+@;
+
+
+@> fork()
+	fork(z_forks, b_optimize_fork_first) {
+		let k_pattern = this.pattern;
+
+		let h_subject = k_pattern.end();
+
+		// optimize query by first matching presence of all fork edges
+		if(b_optimize_fork_first) {
+			h_subject.fork_first = 1;
+		}
+
+		// create forks array
+		let a_forks = h_subject.forks = [];
+
+		// ref graph
+		let k_graph = this.graph;
+
+		// fork is array
+		if(Array.isArray(z_forks)) {
+			throw 'fork array';
+		}
+		// fork is hash
+		else {
+			// each fork
+			for(let s_fork_edge in z_forks) {
+				let f_fork = z_forks[s_fork_edge];
+
+				// predicate is ct compatible
+				let m_concise = R_CONCISE_TERM.exec(s_fork_edge);
+				if(m_concise) {
+					// inverse predicate
+					let b_inverse = !!m_concise[1];
+
+					// turtle syntax
+					let s_ttl = m_concise[2];
+
+					// transform full iri into ct string
+					if('<' === s_ttl[0]) s_ttl = '>'+s_ttl.slice(1, -1);
+
+					// turn string into word
+					let ab_word = k_graph.encode_ct_node_to_word(s_ttl);
+
+					@{find('predicate')} {
+						// create new fork path starting with edge
+						let k_pattern_frag = new PatternBuilder();
+						k_pattern_frag.append_id(i_term, b_inverse? HP_ROLE_INVERSE_PREDICATE: HP_ROLE_PREDICATE);
+
+						// fork is a ct string target
+						if('string' === f_fork) {
+							let s_fork_0 = f_fork[0];
+
+							// literal
+							if('"' === s_fork_0 || '@' === s_fork_0 || '^' === s_fork_0) {
+								f_fork = e => e.literal(f_fork);
+							}
+							// node
+							else {
+								f_fork = e => e.node(f_fork);
+							}
+						}
+
+						// fire fork callback
+						let dc_fix = b_inverse? Fix_InverseEdge: Fix_NormalEdge;
+						f_fork(new dc_fix(k_graph, k_pattern_frag));
+
+						// save fork descriptor
+						a_forks.push(k_pattern_frag);
+					}
+					else {
+						debugger;
+
+						// no such predicate, no need to call fork; all done here!
+						return new Void(k_graph, this.pattern);
+					}
+				}
+				// path string
+				else {
+					debugger;
+					throw new Error('path parsing not yet implemented');
+				}
+			}
+		}
+
+		// chain
+		return this;
+	}
+@;
+
+const {
+	Selection,
+	FailedSelection,
+} = require('./selection.js');
+
+const {
+	Match_Id,
+	Match_Ids,
+	Match_Role,
+} = require('./match.js');
+
+const {
+	PluginActor,
+} = require('./plugin.js');
+
+const R_CONCISE_TERM = /^(\^?)([^/|*+?!()]+)$/;
+
+let c_patterns = 0;
+class PatternBuilder {
+	constructor(a_pattern) {
+		this.pattern = a_pattern || [];
+		this.count = 0;
+		this.gpid = c_patterns++;
+	}
+
+	get length() {
+		return this.pattern.length;
+	}
+
+	copy() {
+		return new PatternBuilder(this.pattern.slice());
+	}
+
+	peek(i_peek=0) {
+		return this.pattern[i_peek];
+	}
+
+	shift() {
+		return this.pattern.shift();
+	}
+
+	end() {
+		return this.pattern[this.pattern.length-1];
+	}
+
+	append_id(n_id, hp_role) {
+		return this.pattern.push(
+			new Match_Id(this.gpid+'.'+(this.count++), hp_role, n_id)
+		);
+	}
+
+	append_ids(a_ids, hp_role, b_single=false) {
+		return this.pattern.push(
+			new Match_Ids(this.gpid+'.'+(this.count++), hp_role, a_ids, b_single? 1: Infinity)
+		);
+	}
+
+	// append_range(hp_range, hp_role, b_single=false) {
+	// 	return this.pattern.push(
+	// 		new Match_Range(this.gpid+'.'+(this.count++), hp_role, hp_range, b_single? 1: Infinity)
+	// 	);
+	// }
+
+	append_all(hp_role, b_single=false) {
+		return this.pattern.push(
+			new Match_Role(this.gpid+'.'+(this.count++), hp_role, b_single? 1: Infinity)
+		);
+	}
+
+	fields() {
+		let a_fields = [];
+		let a_pattern = this.pattern;
+		for(let i_pattern=0, n_pattern=a_pattern.length; i_pattern<n_pattern; i_pattern++) {
+			let h_step = a_pattern[i_pattern];
+			if(h_step.bind) {
+				a_fields.push(new Field_Bound(h_step.bind));
+			}
+			if(h_step.save) {
+				a_fields.push(new Field_Saved(h_step.save));
+			}
+		}
+		return a_fields;
+	}
+}
+
+
+class Field {
+	constructor(s_name) {
+		this.name = s_name;
+	}
+}
+
+class Field_Bound extends Field {
+	constructor(s_name) {
+		super(s_name);
+		this.isBound = true;
+	}
+}
+
+class Field_Saved extends Field {
+	constructor(s_name) {
+		super(s_name);
+		this.isSaved = true;
+	}
+}
+
+class Fix {
+	constructor(k_store, k_pattern, h_failure=null) {
+		this.store = k_store;
+		this.pattern = k_pattern;
+		this.failure = h_failure;
+	}
+
+	fix_node(s_ct=null, hp_role) {
+		let k_store = this.store;
+		let k_pattern = this.pattern;
+		let [dc_fix, dc_fix_empty] = H_ROLE_TO_FIX[hp_role];
+
+		// no term; single result only
+		if(!s_ct) {
+			k_pattern.append_all(hp_role, true);
+
+			return new dc_fix(k_store, k_pattern);
+		}
+
+		// turn ct string into word
+		let ab_word = k_store.encode_ct_node_to_word(s_ct);
+
+		// search for term
+		let i_term = k_store.find(ab_word, hp_role);
+
+		// found term
+		if(i_term) {
+			k_pattern.append_id(i_term, hp_role);
+			return new dc_fix(k_store, k_pattern);
+		}
+
+		// no such term in set
+		return new dc_fix_empty(k_store, null, {
+			ct: s_ct
+		});
+	}
+
+	bind(s_name) {
+		if('data' === s_name) throw `cannot use the reserved name 'data' to bind a term`;
+		let k_pattern = this.pattern;
+
+		// empty
+		if(!k_pattern.length) return this;
+
+		// save binding
+		k_pattern.end().bind = s_name;
+
+		// chain
+		return this;
+	}
+
+	gather() {
+		if('data' === s_name) throw `cannot use the reserved name 'data' to bind a term`;
+
+		// empty
+		if(!k_pattern.length) return this;
+
+		// save gather
+		k_pattern.end().gather = s_gather;
+
+		// chain
+		return this;
+	}
+
+	join(s_name) {
+		// save join intent
+		this.pattern.end().join = s_name;
+
+		// chain
+		return this;
+	}
+
+	map(f_map) {
+		// save transformation
+		this.pattern.end().transform = f_map;
+
+		// chain
+		return this;
+	}
+
+	filter(f_filter) {
+		let k_pattern = this.pattern;
+
+		// empty
+		if(!k_pattern.length) return this;
+
+		// save binding
+		k_pattern.end().filter = f_filter;
+
+		// chain
+		return this;
+	}
+
+	data(s_register_id, f_action) {
+		let k_store = this.store;
+		let k_pattern = this.pattern;
+
+		// data plugin registerd
+		let k_plugin = k_store.plugins.registry[s_register_id];
+		if(k_plugin) {
+			// save action
+			k_pattern.end().data = new PluginActor(k_store, k_plugin, f_action);
+		}
+		// no such data plugin registered
+		else {
+			throw `no data plugin is registered under the alias "${s_register_id}"`;
+		}
+
+		// chain
+		return this;
+	}
+
+	pipe(f_builder) {
+		// call builder with new empty pattern and selection
+		return f_builder(this.exit());
+	}
+
+	exit() {
+		// exit only allowed on a node / literal
+		if(this instanceof Fix_NormalEdge || this instanceof Fix_InverseEdge) {
+			throw 'error: not allowed to exit pattern builder on an edge. pattern must terminate on a node or literal';
+		}
+		// one of the targets does not exist in the graph
+		if(this.failure) {
+			return new FailedSelection(this.store, this.failure);
+		}
+
+		// enable query to take place
+		return new Selection(this.store, this.pattern);
+	}
+
+	cannot(s_fix, s_arg) {
+		throw new Error(`cannot '.${s_fix}("${s_arg}")' on a ${this.constructor.name}`);
+	}
+
+	@{cannot('out')}
+	@{cannot('outs')}
+	@{cannot('in')}
+	@{cannot('ins')}
+	@{cannot('hop')}
+	@{cannot('hops')}
+	@{cannot('node')}
+	@{cannot('nodes')}
+	@{cannot('subject')}
+	@{cannot('subjects')}
+	@{cannot('object')}
+	@{cannot('objects')}
+	@{cannot('literal')}
+	@{cannot('literals')}
+	@{cannot('objectNode')}
+	@{cannot('objectNodes')}
+	@{cannot('leaf')}
+	@{cannot('leafs')}
+	@{cannot('root')}
+	@{cannot('roots')}
+	@{cannot('collection')}
+	@{cannot('collections')}
+
+	@{cannot('fork')}
+	@{cannot('all')}
+}
+
+
+
+
+
+//
+class Fix_Open extends Fix {
+	constructor(k_store) {
+		super(k_store, new PatternBuilder());
+	}
+
+	@{hop()}
+
+	@{node()}
+
+	@{subject()}
+
+	@{object()}
+
+	@{objectNode()}
+
+	@{literal()}
+
+	@{leaf()}
+
+	@{collection()}
+
+
+	@{subjects()}
+
+	@{objects()}
+	
+	@{objectNodes()}
+
+	@{literals()}
+	
+	@{leafs()}
+	
+	@{collections()}
+}
+
+class Fix_Subject extends Fix {
+	@{out()}
+	
+	@{outs()}
+
+
+	@{fork()}
+}
+
+class Fix_Subject_Empty extends Fix_Subject {
+	@{empty('out', 'Fix_NormalEdge')}
+
+	@{empty('outs', 'Fix_NormalEdge')}
+
+
+	fork() { return this; }
+}
+
+class Fix_Hop extends Fix_Subject {
+	@{qry_in()}
+
+	@{ins()}
+}
+
+class Fix_Hop_Empty extends Fix_Subject_Empty {
+	@{empty('in', 'Fix_InverseEdge')}
+
+	@{empty('ins', 'Fix_InverseEdge')}
+}
+
+class Fix_Node extends Fix_Hop {}
+
+class Fix_Node_Empty extends Fix_Hop_Empty {}
+
+
+class Fix_NormalEdge extends Fix {
+	@{hop()}
+	
+	@{object()}
+	
+	@{objectNode()}
+	
+	node(...a_args) {
+		return this.objectNode(...a_args);
+	}
+
+	@{literal()}
+	
+	@{leaf()}
+	
+	@{collection()}
+
+
+	@{hops()}
+
+	@{objects()}
+
+	@{objectNodes()}
+
+	@{literals()}
+
+	@{leafs()}
+
+	@{collections()}
+
+
+	all() {
+		let k_pattern = this.pattern;
+		k_pattern.append_all(HP_ROLE_OBJECT);
+		return new Fix_Object(this.store, this.pattern);
+	}
+}
+
+
+class Fix_NormalEdge_Empty {
+	@{empty('hop', 'Fix_Subject')}
+	
+	@{empty('hops', 'Fix_Subject')}
+	
+	@{empty('object', 'Fix_Object')}
+	
+	@{empty('objects', 'Fix_Object')}
+	
+	@{empty('objectNode', 'Fix_Object')}
+	
+	@{empty('objectNodes', 'Fix_Object')}
+	
+	@{empty('literal', 'Fix_Object')}
+	
+	@{empty('literal', 'Fix_Object')}
+	
+	@{empty('leaf', 'Fix_Object')}
+	
+	@{empty('leafs', 'Fix_Object')}
+	
+	@{empty('collection', 'Fix_Object')}
+	
+	@{empty('collections', 'Fix_Object')}
+	
+	@{empty('all', 'Fix_Object')}
+}
+
+
+class Fix_InverseEdge extends Fix {
+	@{subject()}
+	
+	@{subjects()}
+	
+	@{hop(true)}
+	
+	@{hops(true)}
+
+	@{root()}
+
+	@{roots()}
+}
+
+class Fix_InverseEdge_Empty extends Fix_InverseEdge {
+	@{empty('subject', 'Fix_Subject')}
+	
+	@{empty('subjects', 'Fix_Subject')}
+	
+	@{empty('hop', 'Fix_Subject')}
+	
+	@{empty('hops', 'Fix_Subject')}
+
+	@{empty('root', 'Fix_Subject')}
+	
+	@{empty('roots', 'Fix_Subject')}
+}
+
+
+class Fix_Object extends Fix {
+	@{qry_in()}
+	
+	@{ins()}
+
+	@{fork(true)}
+}
+
+class Fix_Object_Empty extends Fix_Object {
+	@{empty('invert', 'Fix_InverseEdge')}
+}
+
+
+
+@> role_to_fix(s_role_small, s_class='')
+	@//@object-literal
+	@. s_class = s_class || proper(s_role_small);
+	[HP_ROLE_@{s_role_small.toUpperCase()}]: [Fix_@{s_class}, Fix_@{s_class}_Empty],
+@;
+
+@//@
+const H_ROLE_TO_FIX = {
+	@{role_to_fix('hop')}
+	@{role_to_fix('node')}
+	@{role_to_fix('subject')}
+	@{role_to_fix('predicate', 'NormalEdge')}
+	@{role_to_fix('inverse_predicate', 'InverseEdge')}
+	@{role_to_fix('object')}
+	@{role_to_fix('literal', 'Object')}
+};
+
+
+module.exports = Fix_Open;
+
+

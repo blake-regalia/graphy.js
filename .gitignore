@@ -12,6 +12,7 @@ coverage
 .git-*
 
 # compiled distributions
+build
 dist
 dist.es6
 

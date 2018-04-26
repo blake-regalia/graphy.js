@@ -1,9 +1,15 @@
 # graphy.js 🍌
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
-A **[faster-than-lightning](#benchmark-results)**, asynchronous, streaming RDF deserializer. It implements the [RDFJS Representation Interfaces](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces) and natively parses Turtle, TriG, N-Triples, and N-Quads.
+A **[faster-than-lightning](#benchmark-results)**, asynchronous, streaming RDF serializer, deserializer and parser (i.e., deserializing with or without token validation depending on user's needs). It implements the [RDFJS Representation Interfaces](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces) and natively parses Turtle, TriG, N-Triples, and N-Quads.
 
-> A future release is aiming to provide a query-like JavaScript API for traversing RDF graphs. It is currently under development. JSON-LD support has also been suspended until the expand algorithm is re-implemented.
+# Features
+ - Deserialize RDF to memory faster than any JavaScript library.
+ - Parse text formats Turtle, TriG, N-Triples and N-Quads to the full specification (with validation enabled).
+ - Serialize from your JavaScript data structure to RDF using [RDFJS objects](https://github.com/rdfjs/representation-task-force/blob/master/interface-spec.md#data-interfaces) or [Concise Term strings](#concise-terms)
+ - Query an RDF dataset using the [graph traversal query API](#gtcha)
+ - Perform union, intersection, subtraction, and symmetric difference between [Sets of quads/triples](#set).
+ - Canonicalize and hash a Set of quads/triples, which may include blank nodes, to check if they are equivalent.
 
 # Contents
  - [Introduction & Example Usage](#intro)
@@ -466,7 +472,13 @@ An abstract class that represents an RDF term by implementing the [RDFJS Term in
 **Methods:** (implementing RDFJS Term interface)
  - `.equals(other: Term)` -- tests if this term is equal to `other`
    - **returns** a `boolean`
- - `.toCanonical()` -- produces an [N-Triples canonical form](https://www.w3.org/TR/n-triples/#canonical-ntriples) of the term
+ - `.concise([prefixes: hash])` -- generates a [Concise](#concise-term) string representation of this term, using the optional `prefixes` if provided.
+   - **returns** a `string`
+ - `.terse([prefixes: hash])` -- generates a [Terse](#terse-term) string representation of this term, using the optional `prefixes` if provided.
+   - **returns** a `string`
+ - `.verbose()` -- generates a [Verbose](#verbose-term) string representation of this term, which also abides the [N-Triples canonical form](https://www.w3.org/TR/n-triples/#canonical-ntriples).
+   - **returns** a `string`
+ - `.toCanonical()` -- alias for `.verbose()`
    - **returns** a `string`
 
 **Methods:**
@@ -492,6 +504,7 @@ A class that represents an RDF named node by implementing the [RDFJS NamedNode i
  - `.value` : `string` -- the IRI of this named node
 
 **Properties:**
+ - `.isNode` : `boolean` = `true` -- the preferred and fastest way to test for (NamedNode | BlankNode) term types
  - `.isNamedNode` : `boolean` = `true` -- the preferred and fastest way to test for NamedNode term types
 
 **Methods:**
@@ -508,6 +521,7 @@ A class that represents an RDF blank node by implementing the [RDFJS BlankNode i
  - `.value` : `string` -- the label of this blank node (i.e., without leading `'_:'`)
 
 **Properties:**
+ - `.isNode` : `boolean` = `true` -- the preferred and fastest way to test for (NamedNode | BlankNode) term types
  - `.isBlankNode` : `boolean` = `true` -- the preferred and fastest way to test for BlankNode term types
 
 **Methods:**
@@ -559,13 +573,14 @@ A class that represents an RDF literal that was obtained by deserializing a synt
 **Properties:**
  - `.number` : `number` -- the parsed number value obtained via `parseInt`
  - `.isNumeric` : `boolean` = `true`
+ - `.isInteger` : `boolean` = `true`
 
 ----
 <a name="decimalliteral" />
 ### **DecimalLiteral** extends Literal
 A class that represents an RDF literal that was obtained by deserializing a syntactic decimal.
 
-> Only available in Turtle and TriG
+> Only emitted when parsing/deserializing Turtle and TriG
 
 **Properties:** (inherited from / overriding Literal)
  - ... [those inherited from Literal](#literal)
@@ -574,13 +589,14 @@ A class that represents an RDF literal that was obtained by deserializing a synt
 **Properties:**
  - `.number` : `number` -- the parsed number value obtained via `parseFloat`
  - `.isNumeric` : `boolean` = `true`
+ - `.isDecimal` : `boolean` = `true`
 
 ----
 <a name="doubleliteral" />
 ### **DoubleLiteral** extends Literal
 A class that represents an RDF literal that was obtained by deserializing a syntactic double.
 
-> Only available in Turtle and TriG
+> Only emitted when parsing/deserializing Turtle and TriG
 
 **Properties:** (inherited from / overriding Literal)
  - ... [those inherited from Literal](#literal)
@@ -589,6 +605,7 @@ A class that represents an RDF literal that was obtained by deserializing a synt
 **Properties:**
  - `.number` : `number` -- the parsed number value obtained via `parseFloat`
  - `.isNumeric` : `boolean` = `true`
+ - `.isDouble` : `boolean` = `true`
 
 *Example:*
 
@@ -608,7 +625,7 @@ graphy.ttl.parse('<a> <b> 0.42e+2 .', {
 ### **BooleanLiteral** extends Literal
 A class that represents an RDF literal that was obtained by deserializing a syntactic boolean.
 
-> Only available in Turtle and TriG
+> Only emitted when parsing/deserializing Turtle and TriG
 
 **Properties:** (inherited from / overriding Literal)
  - ... [those inherited from Literal](#literal)

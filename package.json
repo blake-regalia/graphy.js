@@ -27,8 +27,9 @@
   ],
   "repository": "blake-regalia/graphy.js",
   "devDependencies": {
-    "Builder": "^2.0.0",
+    "Builder": "^2.4.0",
     "JSONStream": "^1.3.1",
+    "eslint": "^4.19.1",
     "event-stream": "^3.3.4",
     "gulp": "^3.9.1",
     "gulp-beautify": "^2.0.1",
@@ -45,6 +46,8 @@
     "isparta": "^4.0.0",
     "jmacs": "^0.3.2",
     "lazypipe": "^1.0.1",
+    "lerna": "^2.9.0",
+    "node-jq": "^1.2.0",
     "through2": "^2.0.3"
   },
   "scripts": {
@@ -52,7 +55,9 @@
   },
   "license": "ISC",
   "dependencies": {
+    "bkit": "^1.0.0",
     "buffer": "^5.0.5",
+    "colors": "^1.2.1",
     "performance-now": "^2.1.0",
     "progress": "^2.0.0",
     "worker": "^0.3.1"
