@@ -1,8 +1,8 @@
-@macro commit(what, to, where)
+@> commit(what, to, where)
 	let nl_@{what} = ab_@{what}.length;
 	commit(ab_@{what}, nl_@{what}, @{to? to: 'ab_chunk'}, @{where? where: 'i_write'});
 	@{where? where: 'i_write'} += nl_@{what};
-@end
+@;
 
 const events = require('events');
 const stream = require('stream');

@@ -27,8 +27,17 @@
 
 		// parse @{s_format} input
 		parse(...a_args) {
-			if(1 === a_args.length) a_args[0].validate = true;
-			else a_args[1].validate = true;
+			if(1 === a_args.length) {
+				a_args[0].validate = true;
+			}
+			else {
+				a_args = [
+					a_args[0] || null,
+					Object.assign(a_args[1] || {}, {
+						validate: true,
+					}),
+				];
+			}
 			return @{s_format}.deserializer(...a_args);
 		},
 	};
@@ -95,6 +104,7 @@ const H_SPARQL_RESULT_TYPES = {
 
 @.{
 	let h_standalones = {
+		bat: {},
 		set: {},
 		viz: {},
 		store: {},

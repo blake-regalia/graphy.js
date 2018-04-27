@@ -217,16 +217,16 @@ class TestCase {
 // run test on given manifest and pipe to given output stream
 module.exports = function test(p_manifest, pm_format, ds_output) {
 	// create report
-	let ks_report = graphy.ttl.serializer({
+	let kw_report = graphy.ttl.writer({
 		// user-defined prefixes
 		prefixes: H_PREFIXES,
 	});
 
 	// pipe to output
-	ks_report.pipe(ds_output);
+	kw_report.pipe(ds_output);
 
 	// commit software info
-	ks_report.add({
+	kw_report.add({
 		['>'+P_GRAPHY]: {
 			a: ['earl:Software', 'earl:TestSubject', 'earl:Project'],
 			'doap:name': '"graphy.js',
@@ -236,29 +236,33 @@ module.exports = function test(p_manifest, pm_format, ds_output) {
 	});
 
 	// commit author info
-	ks_report.add(H_AUTHORS);
+	kw_report.add(H_AUTHORS);
 
 	// for committing each test outcome
 	let commit_outcome = (k_test_case, s_outcome) => {
-		ks_report.add({
+		kw_report.add({
 			['>'+k_test_case.id.value]: {
 				a: ['earl:TestCriterion', 'earl:TestCase'],
 				'dc:title': k_test_case.name,
 				'dc:description': k_test_case.comment,
 				'mf:action': k_test_case.action,
 				'mf:result': k_test_case.result,
-				'earl:assertions': graphy.collection([{
-					'rdf:type': 'earl:Assertion',
-					'earl:assertedBy': Object.keys(H_AUTHORS),
-					'earl:test': k_test_case.id,
-					'earl:subject': '>'+P_GRAPHY,
-					'earl:mode': 'earl:automatic',
-					'earl:result': {
-						a: 'earl:TestResult',
-						'earl:outcome': 'earl:'+s_outcome,
-						'dc:date': new Date(),
-					},
-				}]),
+				'earl:assertions': [
+					[ // an rdf collection
+						{
+							'rdf:type': 'earl:Assertion',
+							'earl:assertedBy': Object.keys(H_AUTHORS),
+							'earl:test': k_test_case.id,
+							'earl:subject': '>'+P_GRAPHY,
+							'earl:mode': 'earl:automatic',
+							'earl:result': {
+								a: 'earl:TestResult',
+								'earl:outcome': 'earl:'+s_outcome,
+								'dc:date': new Date(),
+							},
+						},
+					],
+				],
 			},
 		});
 	};
@@ -269,12 +273,9 @@ module.exports = function test(p_manifest, pm_format, ds_output) {
 		.pipe(graphy.ttl.deserializer({
 			// base is resource url
 			base: p_manifest,
-
-			// user-defined prefixes
-			prefixes: H_PREFIXES,
 		}))
 		// pipe into a new store
-		.pipe(graphy.store({
+		.pipe(graphy.bat.store({
 			// user-defined prefixes
 			prefixes: H_PREFIXES,
 
@@ -282,9 +283,8 @@ module.exports = function test(p_manifest, pm_format, ds_output) {
 			async ready(g) {
 				// extract test cases from manifest
 				let a_test_cases = await g.pattern()
-					.object('mf:Manifest').in('rdf:type')
-					.subject()
-					.fork({
+					.subjects().fork({
+						a: 'mf:Manifest',
 						'rdfs:label': e => e.literal().bind('label'),
 						'mf:entries': e => e.collection().bind('test_cases'),
 						'mf:entries/rdf:rest*/rdf:first': e => e.objects().gather().bind('test_cases'),
@@ -339,7 +339,7 @@ module.exports = function test(p_manifest, pm_format, ds_output) {
 				}
 
 				// all done!
-				ks_report.end();
+				kw_report.end();
 			},
 		}));
 };

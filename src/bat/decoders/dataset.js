@@ -46,10 +46,6 @@ const H_USE_TO_CODE = {
 
 
 class dataset {
-	constructor() {
-
-	}
-
 	produce(i_term, hp_role) {
 		return this.dictionary[H_ROLE_TO_PRODUCTION[hp_role]](i_term, hp_role);
 	}

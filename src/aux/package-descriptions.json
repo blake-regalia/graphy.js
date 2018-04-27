@@ -27,6 +27,10 @@
 		"name": "@graphy/serializer",
 		"description": ""
 	},
+	"bat": {
+		"name": "@graphy/bat",
+		"description": "Binary Application Triples"
+	},
 	"nq-deserializer": {
 		"name": "@graphy/nq-deserializer",
 		"description": ""

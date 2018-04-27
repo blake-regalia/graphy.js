@@ -346,15 +346,41 @@
 @;
 
 @> export_module()
-	module.exports = function(z_input, g_config) {
-		// duplex mode
-		if(1 === arguments.length) {
-			// shift arguments
-			g_config = z_input; z_input = null;
+	module.exports = function(...a_args) {
+		let g_config = {};
+
+		// at least one argument
+		if(a_args.length) {
+			let z_arg_0 = a_args[0];
+
+			// config struct
+			if(z_arg_0 && 'object' === typeof z_arg_0 && Object === z_arg_0.constructor) {
+				g_config = z_arg_0;
+
+				// more args; invalid
+				if(a_args.length > 1) {
+					throw new TypeError(`unexpected argument(s) after config struct: ${a_args.slice(1)}`);
+				}
+			}
+			// input arg
+			else {
+				g_config.input = z_arg_0;
+
+				// more args
+				if(a_args.length > 1) {
+					// copy onto struct
+					Object.assign(g_config, a_args[1]);
+
+					// more args
+					if(a_args.length > 2) {
+						throw new TypeError(`unexpected argument(s) after input and config struct: ${a_args.slice(2)}`);
+					}
+				}
+			}
 		}
 
 		// create parser, return operator if it wants to
-		return (new Parser(z_input, g_config)).operator;
+		return (new Parser(g_config)).operator;
 	};
 @;
 

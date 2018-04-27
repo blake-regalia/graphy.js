@@ -6,7 +6,7 @@ const worker = require('worker').scopify(require, () => {
 	require('./encoder.js');
 }, 'undefined' !== typeof arguments && arguments);
 
-const graphy = require('../../main/graphy.js');
+// const graphy = require('../../main/graphy.js');
 const bat = require('../bat.js');
 const creator = require('../creator.js');
 
@@ -482,45 +482,46 @@ class loader {
 		k_stream.onblob = (dfb_input) => {
 			console.timeEnd('blob');
 
-			// split
-			graphy.splitter(pm_format, k_stream, {
-				// where to make splits
-				targets: k_group.divisions(dfb_input.size),
+			throw new Erorr('deprecated');
+			// // split
+			// graphy.splitter(pm_format, k_stream, {
+			// 	// where to make splits
+			// 	targets: k_group.divisions(dfb_input.size),
 
-				// if any prefix changes, final map is not valid for whole document
-				prefix_change() {
-					b_prefix_change = true;
-				},
+			// 	// if any prefix changes, final map is not valid for whole document
+			// 	prefix_change() {
+			// 		b_prefix_change = true;
+			// 	},
 
-				// each fragment
-				fragment(h_fragment) {
-					let {
-						byte_start: i_byte_start,
-						byte_end: i_byte_end,
-						state: h_state,
-					} = h_fragment;
+			// 	// each fragment
+			// 	fragment(h_fragment) {
+			// 		let {
+			// 			byte_start: i_byte_start,
+			// 			byte_end: i_byte_end,
+			// 			state: h_state,
+			// 		} = h_fragment;
 
-					// mk new stream
-					let k_stream_fragment = worker.stream();
+			// 		// mk new stream
+			// 		let k_stream_fragment = worker.stream();
 
-					setTimeout(() => {
-						// start parse task on fragment
-						k_split_load.push([
-							k_stream_fragment.other_port,
-							h_state,
-						], [k_stream_fragment.other_port]);
+			// 		setTimeout(() => {
+			// 			// start parse task on fragment
+			// 			k_split_load.push([
+			// 				k_stream_fragment.other_port,
+			// 				h_state,
+			// 			], [k_stream_fragment.other_port]);
 
-						// send blob
-						k_stream_fragment.blob(dfb_input.slice(i_byte_start, i_byte_end < 0? dfb_input.size: i_byte_end));
-					}, 0);
-				},
+			// 			// send blob
+			// 			k_stream_fragment.blob(dfb_input.slice(i_byte_start, i_byte_end < 0? dfb_input.size: i_byte_end));
+			// 		}, 0);
+			// 	},
 
-				// eof
-				end: (h_prefixes) => {
-					console.timeEnd('parse');
-					// debugger;
-				},
-			});
+			// 	// eof
+			// 	end: (h_prefixes) => {
+			// 		console.timeEnd('parse');
+			// 		// debugger;
+			// 	},
+			// });
 		};
 	}
 
@@ -531,45 +532,72 @@ class loader {
 			let k_creator = new creator();
 			let c_triples = 0;
 
-			// parse
-			graphy.deserializer(pm_format, ds_input, {
-				// each triple
-				data: (h_triple) => {
-					k_creator.save_triple(h_triple);
+			throw new Error('deprecated');
+			// // parse
+			// graphy.deserializer(pm_format, ds_input, {
+			// 	// each triple
+			// 	data: (h_triple) => {
+			// 		k_creator.save_triple(h_triple);
 
-					c_triples += 1;
-				},
+			// 		c_triples += 1;
+			// 	},
 
-				// end-of-segment
-				eos: () => {
-					k_notify.emit('progress', {
-						bytes: ds_input.bytesRead,
-						triples: c_triples,
-					});
-				},
+			// 	// end-of-segment
+			// 	eos: () => {
+			// 		k_notify.emit('progress', {
+			// 			bytes: ds_input.bytesRead,
+			// 			triples: c_triples,
+			// 		});
+			// 	},
 
-				// eof
-				end: async (h_prefixes) => {
-					k_notify.emit('progress', {
-						bytes: ds_input.bytesRead,
-						triples: c_triples,
-					});
+			// 	// eof
+			// 	end: async (h_prefixes) => {
+			// 		k_notify.emit('progress', {
+			// 			bytes: ds_input.bytesRead,
+			// 			triples: c_triples,
+			// 		});
 
-					let t_all = performance_now() - t_start;
-					console.info(`total: ${t_all}`);
+			// 		let t_all = performance_now() - t_start;
+			// 		console.info(`total: ${t_all}`);
 
-					// process terms
-					await this.process_terms(k_creator);
+			// 		// process terms
+			// 		await this.process_terms(k_creator);
 
-					// process triples
-					await this.process_triples(k_creator);
+			// 		// process triples
+			// 		await this.process_triples(k_creator);
 
-					// close output
-					this.close_output();
+			// 		// close output
+			// 		this.close_output();
 
-					// done here
-					fk_load();
-				},
+			// 		// done here
+			// 		fk_load();
+			// 	},
+			// });
+		});
+	}
+
+	load_async(ds_input) {
+		let k_creator = new creator();
+
+		ds_input.on('data', (a_quad) => {
+			k_creator.save_triple_ct(a_quad);
+		});
+
+		return new Promise((fk_load) => {
+			ds_input.on('end', async() => {
+				debugger;
+
+				// process terms
+				await this.process_terms(k_creator);
+
+				// process triples
+				await this.process_triples(k_creator);
+
+				// close output
+				this.close_output();
+
+				// done here
+				fk_load();
 			});
 		});
 	}
@@ -1105,6 +1133,18 @@ worker.dedicated({
 			// k_loader.load_split(pm_format, worker.stream(z_stream_handle));
 			k_loader.load_sync(pm_format, ds_file, this);
 		});
+	},
+
+	async load_object_stream(ds_input) {
+		console.log('load object stream');
+
+		let k_loader = new loader({
+			workers: worker.group('./encoder.js'),
+		});
+
+		await k_loader.load_async(ds_input);
+
+		return k_loader.output;
 	},
 
 	load_url(pm_format, p_object) {

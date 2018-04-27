@@ -6,7 +6,7 @@ const performance_now = require('performance-now');
 
 const bat = require('../bat.js');
 const creator = require('../creator.js');
-const graphy = require('../../main/graphy.js');
+// const graphy = require('../../main/graphy.js');
 
 const encoder_chapter = require('../encoders/chapter-front-coded.js');
 
@@ -548,30 +548,31 @@ worker.dedicated({
 		return new Promise((f_resolve) => {
 			let k_stream = worker.stream(d_port_input);
 
-			// parse
-			graphy.deserializer(pm_format, k_stream, {
-				state: h_state,
+			throw new Error('deprecated');
+			// // parse
+			// graphy.deserializer(pm_format, k_stream, {
+			// 	state: h_state,
 
-				// each triple
-				data: (h_triple) => {
-					k_creator.save_triple(h_triple);
-				},
+			// 	// each triple
+			// 	data: (h_triple) => {
+			// 		k_creator.save_triple(h_triple);
+			// 	},
 
-				// eof
-				end: (h_prefixes) => {
-					let t_all = performance_now() - t_start;
-					console.info(`total: ${t_all}`);
+			// 	// eof
+			// 	end: (h_prefixes) => {
+			// 		let t_all = performance_now() - t_start;
+			// 		console.info(`total: ${t_all}`);
 
-					// debugger;
-					f_resolve(k_creator.export());
-				},
-			});
+			// 		// debugger;
+			// 		f_resolve(k_creator.export());
+			// 	},
+			// });
 		});
 	},
 
-	merge_terms_triples(h_creator_a, h_creator_b) {
-		return new creator(h_creator_a)
-			.import(h_creator_b)
+	merge_terms_triples(g_creator_a, g_creator_b) {
+		return new creator(g_creator_a)
+			.import(g_creator_b)
 			.export();
 	},
 });

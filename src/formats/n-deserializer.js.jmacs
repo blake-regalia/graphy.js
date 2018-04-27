@@ -175,7 +175,10 @@ const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
 @;
 
 
-function Parser(z_input, g_config) {
+function Parser(g_config) {
+	let {
+		input: z_input,
+	} = g_config;
 
 	// members
 	Object.assign(this, {

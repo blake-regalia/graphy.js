@@ -295,14 +295,14 @@ class creator {
 		}
 	}
 
-	save_triple(h_triple) {
+	save_triple(g_quad) {
 		// ref all positions of triple
 		let {
-			subject: h_subject,
-			predicate: h_predicate,
-			object: h_object,
-		} = h_triple;
-
+			subject: g_subject,
+			predicate: g_predicate,
+			object: g_object,
+		} = g_quad;
+debugger;
 		let i_s;
 
 		// subject is named node
@@ -342,6 +342,76 @@ class creator {
 		// object is blank node
 		else {
 			i_o = this.save_blank_node(h_object.value, bat.XM_NODE_OBJECT);
+		}
+
+		// save triple using utis
+		this.save_spo(i_s, i_p, i_o);
+	}
+
+	save_triple_ct(a_quad) {
+		// ref all positions of triple
+		let [
+			sct_subject,
+			sct_predicate,
+			sct_object,
+		] = a_quad;
+
+		let i_s;
+
+		// subject is named node
+		if('>' === sct_subject[0]) {
+			i_s = this.save_named_node(sct_subject.slice(1), bat.XM_NODE_SUBJECT);
+		}
+		// subject is blank node
+		else {
+			i_s = this.save_blank_node(sct_subject.slice(1), bat.XM_NODE_SUBJECT);
+		}
+
+		// predicate is always named node
+		let i_p = this.save_named_node(sct_predicate.slice(1), bat.XM_NODE_PREDICATE);
+
+		let i_o;
+
+		// object is blank node
+		switch(sct_object[0]) {
+			// object is named node
+			case '>': {
+				i_o = this.save_named_node(sct_object.slice(1), bat.XM_NODE_OBJECT);
+				break;
+			}
+
+			// object is languaged literal
+			case '@': {
+				let i_contents = sct_object.indexOf('"');
+				i_o = this.save_language_literal(sct_object.slice(i_contents+1), sct_object.slice(1, i_contents));
+				break;
+			}
+
+			// object is datatyped literal
+			case '^': {
+				let i_contents = sct_object.indexOf('"');
+				let p_datatype = sct_object.slice(2, i_contents);
+				let s_contents = sct_object.slice(i_contents+1);
+				debugger;
+				i_o = this.save_datatyped_literal(s_contents, p_datatype);
+				break;
+			}
+
+			// object is plain literal
+			case '"': {
+				i_o = this.save_plain_literal(sct_object.slice(1));
+				break;
+			}
+
+			// object is blank node
+			case '_': {
+				i_o = this.save_blank_node(sct_object.slice(1), bat.XM_NODE_OBJECT);
+				break;
+			}
+
+			default: {
+				throw new Error(`invalid concise term string: "${sct_object}"`);
+			}
 		}
 
 		// save triple using utis

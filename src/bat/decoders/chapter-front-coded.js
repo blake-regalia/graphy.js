@@ -1,12 +1,13 @@
+const bkit = require('bkit');
+
 const interfaces = require('./interfaces.js');
-const bus = require('../../main/bus.js');
 
 
 class chapter_front_coded extends interfaces.chapter {
 	constructor(at_payload, s_chapter, k_dictionary) {
 		super();
 
-		let kbd_header = new bus.buffer_decoder(at_payload);
+		let kbd_header = new bkit.buffer_decoder(at_payload);
 
 		// block k
 		let n_block_k = kbd_header.vuint();
@@ -62,7 +63,7 @@ class chapter_front_coded extends interfaces.chapter {
 			i_contents += 1;
 
 			// skip words until arriving at target
-			let kbd_contents = new bus.buffer_decoder(at_contents);
+			let kbd_contents = new bkit.buffer_decoder(at_contents);
 			kbd_contents.read = i_contents;
 			do {
 				// skip over previous word
@@ -249,7 +250,7 @@ class chapter_front_coded extends interfaces.chapter {
 		}
 
 		// decode buffer
-		let kbd_contents = new bus.buffer_decoder(at_contents);
+		let kbd_contents = new bkit.buffer_decoder(at_contents);
 
 		// start scanning at first front-coded word
 		jump_search:
@@ -447,7 +448,7 @@ class chapter_front_coded extends interfaces.chapter {
 		i_contents = at_contents.indexOf(0, i_contents) + 1;
 
 		// decode buffer
-		let kbd_contents = new bus.buffer_decoder(at_contents);
+		let kbd_contents = new bkit.buffer_decoder(at_contents);
 
 		// start scanning at first front-coded word
 		let nl_code = 0;
@@ -629,7 +630,7 @@ class chapter_front_coded extends interfaces.chapter {
 		i_contents = at_contents.indexOf(0, i_contents) + 1;
 
 		//
-		let kbd_contents = new bus.buffer_decoder(at_contents);
+		let kbd_contents = new bkit.buffer_decoder(at_contents);
 
 		// start scanning at first front-coded word
 		let nl_code = 0;

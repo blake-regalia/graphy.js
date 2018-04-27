@@ -1,9 +1,7 @@
+const factory = require('@graphy/factory');
+
 const bat = require('../bat.js');
-
 const interfaces = require('./interfaces.js');
-
-
-const graphy = require('../../main/graphy.js');
 
 const D_TEXT_ENCODER = new TextEncoder();
 const D_TEXT_DECODER = new TextDecoder();
@@ -345,7 +343,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 
 
 	word_to_node_absolute(at_word) {
-		return graphy.namedNode(D_TEXT_DECODER.decode(at_word));
+		return factory.namedNode(D_TEXT_DECODER.decode(at_word));
 	}
 
 	word_to_node_prefixed(at_word) {
@@ -356,11 +354,11 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 		let s_suffix = D_TEXT_DECODER.decode(at_word.subarry(n_prefix_key_bytes));
 
 		// produce named node from reconstructed iri
-		return graphy.namedNode(this.prefixes[s_prefix_id]+s_suffix);
+		return factory.namedNode(this.prefixes[s_prefix_id]+s_suffix);
 	}
 
 	word_to_literal_plain(at_word) {
-		return graphy.literal(at_word);
+		return factory.literal(at_word);
 	}
 
 	word_to_literal_languaged(at_word) {
@@ -371,7 +369,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 		let i_content = s_word.indexOf('"');
 
 		// initialize literal with content
-		return graphy.literal(s_word.slice(i_content+1), s_word.slice(0, i_content));
+		return factory.literal(s_word.slice(i_content+1), s_word.slice(0, i_content));
 	}
 
 	word_to_literal_datatyped_absolute(at_word) {
@@ -382,7 +380,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 		let i_content = s_word.indexOf('"');
 
 		// initialize literal with content
-		return graphy.literal(s_word.slice(i_content+1), graphy.namedNode(s_word.slice(0, i_content)));
+		return factory.literal(s_word.slice(i_content+1), factory.namedNode(s_word.slice(0, i_content)));
 	}
 
 	word_to_literal_datatyped_prefixed(at_word) {
@@ -392,7 +390,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 		let s_contents = D_TEXT_DECODER.decode(at_word.slice(n_prefix_key_bytes));
 
 		// initialize literal with content
-		return graphy.literal(s_contents, this.node_prefixed(at_prefix));
+		return factory.literal(s_contents, this.node_prefixed(at_prefix));
 	}
 
 

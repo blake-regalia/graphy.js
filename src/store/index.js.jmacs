@@ -2,7 +2,6 @@ const stream = require('stream');
 
 const pattern = require('./pattern.js');
 
-
 class graph {
 	constructor(k_store) {
 		Object.assign(this, {
@@ -27,8 +26,23 @@ class store extends stream.Writable {
 			ready: g_config.ready || null,
 		});
 
+		// create graph in memory
+		let k_creator = bat.creator();
+
 		// on end of stream
-		this.on('end', () => {
+		this.on('finish', async() => {
+			let k_graph = await k_creator.end();
+			debugger;
+
+			// process terms
+			await this.process_terms(k_creator);
+
+			// process triples
+			await this.process_triples(k_creator);
+
+			// close output
+			this.close_output();
+
 			let k_graph = new graph(this);
 
 			if(this.ready) {
@@ -38,10 +52,9 @@ class store extends stream.Writable {
 	}
 
 	_write(g_quad, s_obj_mode, fk_write) {
-		debugger;
-		fk_write(g_quad);
+		this.creator.add(g_quad);
+		fk_write();
 	}
-
 }
 
 module.exports = function(...a_args) {

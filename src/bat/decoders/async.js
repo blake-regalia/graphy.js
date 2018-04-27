@@ -1,6 +1,6 @@
 const frag = require('frag');
+const bkit = require('bkit');
 
-const bus = require('../../main/bus.js');
 const bat = require('../bat.js');
 
 const {
@@ -20,7 +20,7 @@ const NB_HEAD_INCREMENT = 256;
 
 async function decode_head(at_init, fe_decode) {
 	// prep decoder
-	let kbd_init = new bus.buffer_decoder(at_init);
+	let kbd_init = new bkit.buffer_decoder(at_init);
 
 	// decode head of section
 	let p_container;
@@ -123,7 +123,7 @@ async function expand(kav_head, kbd_head, fe_expand) {
 	let at_head = await kav_head.fetch(0, nb_head);
 
 	// update buffer decoder
-	this.kdd = new bus.buffer_decoder(at_head);
+	this.kdd = new bkit.buffer_decoder(at_head);
 }
 
 // 	// initialize
@@ -139,9 +139,9 @@ async function expand(kav_head, kbd_head, fe_expand) {
 // let kav_heads = kav_.fresh();
 
 class async_dataset {
-	constructor(h_create) {
+	constructor(g_create) {
 		Object.assign(this, {
-			kav: h_create.kav,
+			kav: g_create.kav,
 			structs: [],
 		});
 	}
@@ -568,7 +568,7 @@ class async_chapter_contents_pfc extends bat_struct.chapter {
 			i_read += i_block? 1: 0;
 
 			// skip words until arriving at target
-			let kbd_contents = new bus.buffer_decoder(at_block);
+			let kbd_contents = new bkit.buffer_decoder(at_block);
 			kbd_contents.read = i_read;
 			do {
 				// skip over previous word

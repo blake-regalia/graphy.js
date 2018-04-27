@@ -285,14 +285,32 @@ const F_DOT_SEGMENTS = (s_rel_iri) => {
 	@$ STARTING_STATE = 'block';
 @;
 
-function Parser(z_input, g_config) {
-	let h_state = g_config.state || {};
+function Parser(g_config={}) {
+	let {
+		// input medium
+		input: z_input=null,
 
-	// track index for anonymous blank node labels
-	let i_anon = h_state.blank_node_index || 0;
+		// a state to inherit
+		state: g_state={},
 
-	//
-	let f_data = g_config.data || function(){};
+		// 'end' event
+		end: fk_end=null,
+
+		// 'data' event
+		data: f_data=this.write_object,
+	} = g_config;
+
+	// inherit state from creator
+	let {
+		// index for anonymous blank node labels
+		blank_node_index: i_anon=0,
+
+		// prefix map
+		prefixes: h_prefixes={},
+
+		// blank node label map
+		labels: h_labels={},
+	} = g_state;
 
 	// members
 	Object.assign(this, {
@@ -322,30 +340,30 @@ function Parser(z_input, g_config) {
 		grace: null,
 
 		// events
-		ready: g_config.ready || false,
+		ready: g_config.ready || null,
 		data: f_data,
-		base: g_config.base || false,
-		prefix: g_config.prefix || false,
+		base: g_config.base || null,
+		prefix: g_config.prefix || null,
 		@- TRIG
-			graph_open: g_config.graph_open || false,
-			graph_close: g_config.graph_close || false,
+			graph_open: g_config.graph_open || null,
+			graph_close: g_config.graph_close || null,
 		@;
 
 		// for restoring the original event callback when resuming paused stream
 		restore_data: f_data,
-		restore_prefix: g_config.prefix,
+		restore_prefix: g_config.prefix || null,
 
 		// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
 		queue_event: [],
 
 		// map of current prefix ids => iris
-		prefixes: h_state.prefixes || {},
+		prefixes: h_prefixes,
 
 		// queue of nested subject, predicate, state for blanknodes and collections
 		nested: [],
 
 		// hash to keep track of all blank node labels in use
-		labels: h_state.labels || {},
+		labels: h_labels,
 
 		// finds the next non-conflicting blank node label
 		next_label() {
@@ -362,7 +380,7 @@ function Parser(z_input, g_config) {
 		},
 
 		// what to do when reach eos
-		eos: false,
+		eos: null,
 
 		// which state to go to after end of statement
 		after_end_of_statement: this.post_object,
@@ -527,8 +545,8 @@ function Parser(z_input, g_config) {
 		if(1 !== b_no_callback) {
 			this.operator.emit('end');
 			// call end event listener
-			if(g_config.end) {
-				g_config.end(this.prefixes);
+			if(fk_end) {
+				fk_end(this.prefixes);
 			}
 			// otherwise log a warning
 			else {
@@ -540,7 +558,61 @@ function Parser(z_input, g_config) {
 	// duplex
 	if(null === z_input) {
 		// create transform
-		let d_transform = new require('stream').Transform();
+		let d_transform = this.output = new require('stream').Transform({
+			// do not decode strings into buffers
+			decodeStrings: false,
+
+			// allow objects to be output
+			readableObjectMode: true,
+
+			// once there's no more data to consume, invoke eof
+			flush: (f_done) => {
+				// now that stream has ended, clean up remainder
+				eof(1);
+
+				@// empty buffer
+				@{write_buffer()}
+
+				// call end event listener
+				if(fk_end) {
+					fk_end(d_transform, this.prefixes);
+				}
+
+				// close write stream (EOF-signaling)
+				d_transform.push(null);
+
+				// close read stream
+				f_done();
+			},
+
+			// on data event
+			transform: (s_chunk, s_encoding, fk_chunk) => {
+				// stream is paused
+				if(this.n < 0) {
+					throw new Error('stream received new data while it was supposed to be paused!');
+				}
+
+				// concatenate current chunk to previous chunk
+				let s = this.s = this.pre + s_chunk;
+
+				// cache chunk length
+				this.n = s.length;
+
+				// consume whitespace (and incidentally reset chunk index)
+				@{whitespace('0')}
+
+				this.safe_parse();
+
+				@// write buffer to output
+				@{write_buffer()}
+
+				// user wants progress updates
+				if(g_config.progress) g_config.progress(s_chunk.length);
+
+				// done transforming this chunk
+				fk_chunk();
+			},
+		});
 
 		// prep buffer to build string before flush
 		let a_buffer = [];
@@ -549,67 +621,22 @@ function Parser(z_input, g_config) {
 		this.data_event = this.data = (h_statement) => {
 
 			// synchronously transform data
-			f_data(h_statement, a_buffer);
+			f_data.apply(this, [h_statement, a_buffer]);
 
 			// // also emit data event
 			// this.emit('data', h_statement);
 		};
 
-		// user wants to be notified when input is readable
-		if(this.ready) {
-			// notify once and never again
-			d_transform.once('pipe', () => {
+		// notify once and never again
+		d_transform.once('pipe', (ds_input) => {
+			// ensure stream is encoding in utf8
+			ds_input.setEncoding('utf8');
+
+			// user wants to be notified when input is readable
+			if(this.ready) {
 				this.ready();
-			});
-		}
-
-		// once there's no more data to consume, invoke eof
-		d_transform._flush = (f_done) => {
-			// now that stream has ended, clean up remainder
-			eof(1);
-
-			@// empty buffer
-			@{write_buffer()}
-
-			// call end event listener
-			if(g_config.end) {
-				g_config.end(d_transform, this.prefixes);
 			}
-
-			// close write stream (EOF-signaling)
-			d_transform.push(null);
-
-			// close read stream
-			f_done();
-		};
-
-		// on data event
-		d_transform._transform = (s_chunk, s_encoding, f_okay_chunk) => {
-			// stream is paused
-			if(this.n < 0) {
-				throw new Error('stream received new data while it was supposed to be paused!');
-			}
-
-			// concatenate current chunk to previous chunk
-			let s = this.s = this.pre + s_chunk;
-
-			// cache chunk length
-			this.n = s.length;
-
-			// consume whitespace (and incidentally reset chunk index)
-			@{whitespace('0')}
-
-			this.safe_parse();
-
-			@// write buffer to output
-			@{write_buffer()}
-
-			// user wants progress updates
-			if(g_config.progress) g_config.progress(s_chunk.length);
-
-			// done transforming this chunk
-			f_okay_chunk();
-		};
+		});
 
 		// graceful error
 		this.grace = (e_parse) => {
@@ -732,6 +759,10 @@ function Parser(z_input, g_config) {
 }
 
 Object.assign(Parser.prototype, {
+
+	write_object(g_quad) {
+		this.output.push(g_quad);
+	},
 
 	// begin parsing, keep applying until no more stack bail-outs
 	safe_parse() {
