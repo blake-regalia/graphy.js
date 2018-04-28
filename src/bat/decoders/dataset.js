@@ -1,5 +1,6 @@
+const bkit = require('bkit');
 
-const bat = require('./bat.js');
+const bat = require('../bat.js');
 
 /* globals
 HP_ROLE_HOP
@@ -46,6 +47,12 @@ const H_USE_TO_CODE = {
 
 
 class dataset {
+	constructor(at_payload) {
+		let kbd = new bkit.buffer_decoder(at_payload);
+
+		debugger;
+	}
+
 	produce(i_term, hp_role) {
 		return this.dictionary[H_ROLE_TO_PRODUCTION[hp_role]](i_term, hp_role);
 	}
@@ -65,7 +72,7 @@ class dataset {
 
 
 module.exports = {
-	structures: {
+	decoders: {
 		[bat.PE_DATASET]: dataset,
 	},
 };

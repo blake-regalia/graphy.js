@@ -31,15 +31,26 @@ Object.keys(H_FORMATS_GENERALIZED).forEach((s_format) => {
 		...A_FORMAT_MODES.map(s_mode => `${pd_packages}/${s_format}-${s_mode}/index.js`));
 });
 
+const eslint = () => /* syntax: bash */ `
+	eslint --fix --color --rule 'no-debugger: off' $@
+	eslint_exit=$?
+	# do not fail on warnings
+	if [ $eslint_exit -eq 2 ]; then
+		exit 0
+	fi
+	exit $eslint_exit
+`;
+
 const H_LINKS = {
 	factory: [],
-	bat: [],
-	set: [],
+	store: [],
+	set: ['factory'],
+	bat: ['factory', 'store'],
 	viz: [],
-	serializer: [],
+	serializer: ['factory'],
 	writer: [],
 	'ttl-deserializer': ['factory'],
-	// 'ttl-serializer': ['factory', 'serializer', 'writer'],
+	'ttl-serializer': ['factory', 'serializer', 'writer'],
 	'nt-deserializer': ['factory'],
 	'nq-deserializer': ['factory'],
 	get graphy() {
@@ -78,15 +89,16 @@ module.exports = () => ({
 
 	bat: [
 		...dir_struct([
-			'store',
-			'main',
-			'index',
 			'bat',
+			'builder',
 			'creator',
+			'dataset',
+			'index',
+			'main',
+			'serializer',
 			{
 				decoders: [
-					'async',
-					'bat',
+					// 'async',
 					'chapter-front-coded',
 					'dataset',
 					'dictionary-thirteen-chapter',
@@ -97,7 +109,6 @@ module.exports = () => ({
 				],
 				workers: [
 					'encoder',
-					'serializer',
 				],
 			},
 		]).map(s => `${pd_packages}/bat/${s}.js`),
@@ -110,8 +121,8 @@ module.exports = () => ({
 			s_self_dir,
 		],
 		run: /* syntax: bash */ `
-			jmacs $1 > $@ \
-				&& eslint --fix --rule 'no-debugger: off' $@
+			jmacs $1 > $@
+			${eslint()}
 		`,
 	},
 
@@ -123,6 +134,7 @@ module.exports = () => ({
 		],
 		run: /* syntax: bash */ `
 			cp $1 $@
+			${eslint()}
 		`,
 	},
 
@@ -144,6 +156,7 @@ module.exports = () => ({
 		],
 		run: /* syntax: bash */ `
 			cp $1 $@
+			${eslint()}
 		`,
 	},
 
@@ -219,7 +232,7 @@ module.exports = () => ({
 		run: /* syntax: bash */ `
 			npx jmacs -g "{FORMAT:'\${format[1]}'}" $1 \
 				| npx js-beautify -t - > $@
-			eslint --fix -o /dev/null $@
+			${eslint()}
 		`,
 	},
 
@@ -236,9 +249,7 @@ module.exports = () => ({
 			run: /* syntax: bash */ `
 				npx jmacs $1 \
 					| npx js-beautify -t - > $@
-				eslint --fix --rule 'no-debugger: off' -o /dev/null $@
-				cd $(dirname $@)
-				npm link
+				${eslint()}
 			`,
 		},
 	}), {}),
@@ -252,9 +263,7 @@ module.exports = () => ({
 		],
 		run: /* syntax: bash */ `
 			npx jmacs $1 | npx js-beautify -t - > $@
-			# eslint --fix --rule 'no-debugger: off' -o /dev/null $@
-			cd $(dirname $@)
-			npm link
+			${eslint()}
 		`,
 	},
 

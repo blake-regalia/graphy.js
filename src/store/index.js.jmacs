@@ -2,7 +2,7 @@ const stream = require('stream');
 
 const pattern = require('./pattern.js');
 
-class graph {
+class store_sync {
 	constructor(k_store) {
 		Object.assign(this, {
 			store: k_store,
@@ -14,117 +14,8 @@ class graph {
 	}
 }
 
-class store extends stream.Writable {
-	constructor(g_config={}) {
-		super({
-			objectMode: true,
-		});
-
-		Object.assign(this, {
-			prefixes: g_config.prefixes || {},
-
-			ready: g_config.ready || null,
-		});
-
-		// create graph in memory
-		let k_creator = bat.creator();
-
-		// on end of stream
-		this.on('finish', async() => {
-			let k_graph = await k_creator.end();
-			debugger;
-
-			// process terms
-			await this.process_terms(k_creator);
-
-			// process triples
-			await this.process_triples(k_creator);
-
-			// close output
-			this.close_output();
-
-			let k_graph = new graph(this);
-
-			if(this.ready) {
-				this.ready(k_graph);
-			}
-		});
-	}
-
-	_write(g_quad, s_obj_mode, fk_write) {
-		this.creator.add(g_quad);
-		fk_write();
-	}
-}
-
-module.exports = function(...a_args) {
-	// single arg
-	if(1 === a_args.length) {
-		let z_arg_0 = a_args[0];
-
-		// struct
-		if('object' === typeof z_arg_0 && Object === z_arg_0.constructor) {
-			return new store(z_arg_0);
-		}
-
-		throw new TypeError(`unexpected argument type: ${z_arg_0}`);
-	}
-
-	throw new Error(`not yet implemented`);
+module.exports = {
+	sync(k_store) {
+		return new store_sync(k_store);
+	},
 };
-
-// class store extends stream.Writable {
-// 	constructor(g_options={}) {
-// 		super();
-// 		Object.assign(this, {
-// 			prefixes: g_options.prefixes || {},
-// 		});
-// 	}
-
-// 	load(z_arg_0, z_arg_1) {
-// 		// first arg is mime type
-// 		if('string' === z_arg_0) {
-// 			// next arg is struct
-// 			if('object' === typeof z_arg_1) {
-// 				let pm_input = z_arg_0;
-
-// 				// ref options
-// 				let g_options = z_arg_1;
-
-// 				// // mime type
-// 				// let pm_input = g_options.mime;
-
-// 				// no type
-// 				if(!pm_input) throw new Error('must specify a MIME type');
-
-// 				// fetch deserializer
-// 				let k_deserializer = graphy.deserializer(pm_input);
-
-// 				// mime type not supported
-// 				if(!k_deserializer) throw new Error(`MIME type not supported: '${pm_input}'`);
-
-// 				// proceed
-// 				this.deserializer = k_deserializer;
-// 			}
-// 			// next arg is callback
-// 			else if('function' === z_arg_1) {
-// 				// become consumable
-// 				this.on('pipe', (ds_input) => {
-// 					ds_input.unpipe(this);
-// 					ds_input.pipe(this.deserializer);
-// 				});
-// 			}
-// 			// invalid
-// 			else {
-// 				throw new RangeError(`invalid argument: ${z_arg_1}`);
-// 			}
-// 		}
-// 		// // first arg is struct
-// 		// else if('object' === typeof z_arg_0) {
-
-// 		// }
-
-// 		let k_graph = new graph(this);
-// 	}
-// }
-

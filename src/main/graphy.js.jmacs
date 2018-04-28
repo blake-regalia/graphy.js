@@ -50,15 +50,15 @@
 }
 
 
-// SPARQL Results package
-const sparql_results = {
-	// deserialize sparql_results input
-	get deserializer() {
-		// memoize
-		delete sparql_results.deserializer;
-		// return (sparql_results.deserializer = require('../sparql-results/deserializer.js'));
-	},
-};
+// // SPARQL Results package
+// const sparql_results = {
+// 	// deserialize sparql_results input
+// 	get deserializer() {
+// 		// memoize
+// 		delete sparql_results.deserializer;
+// 		return (sparql_results.deserializer = require('../sparql-results/deserializer.js'));
+// 	},
+// };
 
 
 const H_MIMES = {
@@ -66,7 +66,7 @@ const H_MIMES = {
 	'application/trig': trig,
 	'application/n-triples': nt,
 	'application/n-quads': nq,
-	'application/sparql-results+json': sparql_results,
+	// 'application/sparql-results+json': sparql_results,
 };
 
 const H_SPARQL_RESULT_TYPES = {
@@ -142,8 +142,8 @@ const graphy = module.exports = Object.assign({
 			yield `${s_format},\n`;
 		}
 	}
-	sparql_results,
-	sparqlResults: sparql_results,
+	// sparql_results,
+	// sparqlResults: sparql_results,
 
 	/*
 	* access to flavor by mime

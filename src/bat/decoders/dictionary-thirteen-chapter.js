@@ -1,10 +1,9 @@
+const bkit = require('bkit');
 const factory = require('@graphy/factory');
 
 const bat = require('../bat.js');
 const interfaces = require('./interfaces.js');
 
-const D_TEXT_ENCODER = new TextEncoder();
-const D_TEXT_DECODER = new TextDecoder();
 const R_COMPRESS = bat.R_COMPRESS;
 
 const {
@@ -343,7 +342,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 
 
 	word_to_node_absolute(at_word) {
-		return factory.namedNode(D_TEXT_DECODER.decode(at_word));
+		return factory.namedNode(bkit.decode_utf_8(at_word));
 	}
 
 	word_to_node_prefixed(at_word) {
@@ -351,7 +350,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 
 		// decompose prefixed name's word from dictionary
 		let s_prefix_id = bat.key_space.from(at_word.subarray(0, n_prefix_key_bytes));
-		let s_suffix = D_TEXT_DECODER.decode(at_word.subarry(n_prefix_key_bytes));
+		let s_suffix = bkit.decode_utf_8(at_word.subarry(n_prefix_key_bytes));
 
 		// produce named node from reconstructed iri
 		return factory.namedNode(this.prefixes[s_prefix_id]+s_suffix);
@@ -363,7 +362,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 
 	word_to_literal_languaged(at_word) {
 		// extract content
-		let s_word = D_TEXT_DECODER.decode(at_word);
+		let s_word = bkit.decode_utf_8(at_word);
 
 		// find start of content
 		let i_content = s_word.indexOf('"');
@@ -374,7 +373,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 
 	word_to_literal_datatyped_absolute(at_word) {
 		// extract content
-		let s_word = D_TEXT_DECODER.decode(at_word);
+		let s_word = bkit.decode_utf_8(at_word);
 
 		// find start of content
 		let i_content = s_word.indexOf('"');
@@ -387,7 +386,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 		let n_prefix_key_bytes = this.prefix_key_bytes;
 
 		let at_prefix = at_word.slice(0, n_prefix_key_bytes);
-		let s_contents = D_TEXT_DECODER.decode(at_word.slice(n_prefix_key_bytes));
+		let s_contents = bkit.decode_utf_8(at_word.slice(n_prefix_key_bytes));
 
 		// initialize literal with content
 		return factory.literal(s_contents, this.node_prefixed(at_prefix));
@@ -515,7 +514,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 			// cannot be compressed
 			if(!m_compress) {
 				// use iriref
-				return {word:D_TEXT_ENCODER.encode(p_iri), prefixed:false};
+				return {word:bkit.encode_utf_8(p_iri), prefixed:false};
 			}
 			// try finding compressed prefix id
 			else {
@@ -530,7 +529,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 				// found the prefix
 				else {
 					// construct word using prefix
-					return {word:D_TEXT_ENCODER.encode(s_prefix_id+m_compress[2]), prefixed:true};
+					return {word:bkit.encode_utf_8(s_prefix_id+m_compress[2]), prefixed:true};
 				}
 			}
 		}
@@ -561,7 +560,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 				// cannot be compressed
 				if(!m_compress) {
 					// use iriref
-					return {word:D_TEXT_ENCODER.encode(p_iri), prefixed:false};
+					return {word:bkit.encode_utf_8(p_iri), prefixed:false};
 				}
 				// try finding compressed prefix id
 				else {
@@ -576,14 +575,14 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 					// found the prefix
 					else {
 						// construct word using prefix
-						return {word:D_TEXT_ENCODER.encode(s_prefix_code+m_compress[2]), prefixed:true};
+						return {word:bkit.encode_utf_8(s_prefix_code+m_compress[2]), prefixed:true};
 					}
 				}
 			}
 			// prefix mapping does exist
 			else {
 				// construct word using prefix
-				return {word:D_TEXT_ENCODER.encode(s_prefix_id+s_suffix), prefixed:true};
+				return {word:bkit.encode_utf_8(s_prefix_id+s_suffix), prefixed:true};
 			}
 		}
 	}
@@ -595,7 +594,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 		// plain literal
 		if(!i_content) {
 			return {
-				word: D_TEXT_ENCODER.encode(s_ct.slice(1)),
+				word: bkit.encode_utf_8(s_ct.slice(1)),
 				chapter: S_TERM_LP,
 			};
 		}
@@ -611,7 +610,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 			if('@' === s_chr) {
 				let s_language = s_ct.slice(1, i_content).toLowerCase();
 				return {
-					word: D_TEXT_ENCODER.encode(s_language+s_ct.slice(i_content)),
+					word: bkit.encode_utf_8(s_language+s_ct.slice(i_content)),
 					chapter: S_TERM_LL,
 				};
 			}
@@ -626,7 +625,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 				let {word:at_datatype, prefixed:b_datatype_prefixed} = h_datatype;
 
 				// encode contents
-				let at_contents = D_TEXT_ENCODER.encode(s_ct.slice(i_content));
+				let at_contents = bkit.encode_utf_8(s_ct.slice(i_content));
 
 				// combine into word
 				let n_datatype_bytes = at_datatype.length;
@@ -641,7 +640,7 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 			}
 			// invalid ct_string
 			else {
-				throw `invalid ct_string for literal: ${s_ct}`;
+				throw new Error(`invalid ct_string for literal: ${s_ct}`);
 			}
 		}
 	}
@@ -651,8 +650,8 @@ class dictionary_thirteen_chapter extends interfaces.dictionary {
 
 
 module.exports = {
-	structures: {
-		'http://bat-rdf.link/structure/dictionary/thirteen-chapter/1.0': dictionary_thirteen_chapter,
+	decoders: {
+		[bat.PE_DICTIONARY_PP12OC]: dictionary_thirteen_chapter,
 	},
 };
 

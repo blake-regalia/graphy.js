@@ -55,7 +55,7 @@
   },
   "license": "ISC",
   "dependencies": {
-    "bkit": "^1.0.0",
+    "bkit": "^1.1.0",
     "buffer": "^5.0.5",
     "colors": "^1.2.1",
     "performance-now": "^2.1.0",

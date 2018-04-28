@@ -62,17 +62,17 @@ const R_COMPRESS = /^(.*?)([^/#]*)$/;
 const P_IRI_BAT_ENCODING = 'http://bat-rdf.link/encoding/';
 const PE_DATASET = P_IRI_BAT_ENCODING + 'dataset/partial-graph/1.0#';
 const PE_DICTIONARY = P_IRI_BAT_ENCODING + 'dictionary/twelve-section/1.0#';
+const PE_DICTIONARY_PP12OC = P_IRI_BAT_ENCODING + 'dictionary/pointers-prefixes-12-optional-chapters/1.0#';
 const PE_TRIPLES_BITMAP = P_IRI_BAT_ENCODING + 'triples/bitmap/1.0#';
 const PE_TRIPLES_WAVELET = P_IRI_BAT_ENCODING + 'triples/wavelet/1.0#';
 
-const PE_CHAPTER = P_IRI_BAT_ENCODING + 'chapter/indices-contents/1.0#';
+const PE_CHAPTER_IC = P_IRI_BAT_ENCODING + 'chapter/indices-contents/1.0#';
 
-// const PE_CHAPTER_FRONT_CODED = 
-
-const PE_CHAPTER_INDICES = P_IRI_BAT_ENCODING + 'chapter-indices/direct/1.0#';
-const PE_CHAPTER_CONTENTS = P_IRI_BAT_ENCODING + 'chapter-contents/front-coded/1.0#';
+const PE_CHAPTER_INDICES_DIRECT = P_IRI_BAT_ENCODING + 'chapter-indices/direct/1.0#';
+const PE_CHAPTER_CONTENTS_PFC = P_IRI_BAT_ENCODING + 'chapter-contents/pointers-front-coded/1.0#';
 
 
+const R_IRI_ENCODING = /^(.*)#(.*)$/;
 
 const S_PREFIXES = 'prefixes';
 const S_TERM_HA = 'hops_absolute';
@@ -134,6 +134,7 @@ const H_CONSTANTS = {
 	X_CODE_CHAPTER_LITERALS_DATATYPED_PREFIXED,
 
 	R_COMPRESS,
+	R_IRI_ENCODING,
 
 	XM_NODE_SUBJECT,
 	XM_NODE_OBJECT,
@@ -143,12 +144,13 @@ const H_CONSTANTS = {
 
 
 	PE_DATASET,
-	PE_DICTIONARY,
+	PE_DICTIONARY_PP12OC,
 	PE_TRIPLES_BITMAP,
 
-	PE_CHAPTER,
+	PE_CHAPTER_IC,
+	PE_CHAPTER_INDICES_DIRECT,
+	PE_CHAPTER_CONTENTS_PFC,
 
-	// PE_CHAPTER_FRONT_CODED,
 
 	S_PREFIXES,
 	S_TERM_HA,
@@ -259,6 +261,32 @@ const H_CONSTANTS = {
 // 	}
 // }
 
+
+
+class container_decoder {
+	constructor(kbd) {
+		this.buffer_decoder = kbd;
+	}
+
+	child() {
+		let kbd = this.buffer_decoder;
+
+		let [, p_encoding, s_label] = R_IRI_ENCODING.exec(kbd.ntu8_string());
+		let n_payload_bytes = kbd.vuint();
+		let at_payload = kbd.sub(n_payload_bytes);
+
+		return {
+			encoding: p_encoding,
+			label: s_label,
+			payload: at_payload,
+		};
+	}
+
+	finished() {
+		debugger;
+		// return this.buffer_decoder.
+	}
+}
 
 
 class plain_map {
@@ -523,7 +551,7 @@ class key_space {
 	}
 
 	exceeded_range() {
-		throw 'exceeded 32-bit range';
+		throw new Error('exceeded 32-bit range');
 	}
 }
 
@@ -587,7 +615,7 @@ class readable_blob extends events.EventEmitter {
 
 		let i_read = this.read_index;
 		let b_eof = false;
-		function next() {
+		let next = () => {
 			let i_end = i_read + this.chunk_size;  // always fetch current chunk_size value
 			if(i_end >= nl_input) {
 				i_end = nl_input;
@@ -598,7 +626,7 @@ class readable_blob extends events.EventEmitter {
 			i_read = i_end;
 
 			dfr_reader.readAsArrayBuffer(dfb_slice);
-		}
+		};
 
 		next();
 	}
@@ -634,6 +662,8 @@ module.exports = Object.assign(H_CONSTANTS, {
 
 	key_space,
 	readable_blob,
+
+	container_decoder,
 
 	// classify nodes into hops, subjects, predicates, objects, and datatypes
 	classify_nodes(h_nodes) {

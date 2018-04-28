@@ -94,7 +94,7 @@ async function autoload(kav, i_section=0, nb_load=NB_HEAD_INIT) {
 	return auto(h_create);
 }
 
-async function auto(h_create) {
+function auto(h_create) {
 	// encoding
 	let p_encoding = h_create.encoing;
 
@@ -117,13 +117,13 @@ async function expand(kav_head, kbd_head, fe_expand) {
 	}
 
 	// expand head
-	let nb_head = Math.min(nb_head + NB_HEAD_INCREMENT, kav_head.bytes);
+	let nb_head = Math.min(nb_decoder + NB_HEAD_INCREMENT, kav_head.bytes);
 
 	// expand head
 	let at_head = await kav_head.fetch(0, nb_head);
 
 	// update buffer decoder
-	this.kdd = new bkit.buffer_decoder(at_head);
+	this.kbd = new bkit.buffer_decoder(at_head);
 }
 
 // 	// initialize
@@ -191,7 +191,7 @@ class async_dataset {
 }
 
 Object.assign(async_dataset.prototype, {
-	ENCODING: bat.P_ENCODING_DATASET,
+	ENCODING: bat.PE_DATASET,
 });
 
 

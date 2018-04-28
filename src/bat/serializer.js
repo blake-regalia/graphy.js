@@ -1,16 +1,14 @@
-
 const bkit = require('bkit');
 const performance_now = require('performance-now');
 
 const worker = require('worker').scopify(require, () => {
-	require('./encoder.js');
+	require('./workers/encoder.js');
 }, 'undefined' !== typeof arguments && arguments);
 
-// const graphy = require('../../main/graphy.js');
-const bat = require('../bat.js');
-const creator = require('../creator.js');
+const bat = require('./bat.js');
+const creator = require('./creator.js');
 
-const encoder_chapter = require('../encoders/chapter-front-coded.js');
+const encoder_chapter = require('./encoders/chapter-front-coded.js');
 
 const {
 	S_PREFIXES,
@@ -54,20 +52,21 @@ const H_CHAPTERS_PREFIXED = {
 	o: S_TERM_OP,
 };
 
-class loader {
-	constructor(h_config) {
-		let {
-			resolve: f_resolve,
-			workers: k_group,
-		} = h_config;
-
+class serializer {
+	constructor(k_creator) {
 		Object.assign(this, {
-			resolve: f_resolve,
+			creator: k_creator,
 
 			nodes_prefixed: [],
 			literals_datatyped_prefixed: [],
 
-			workers: k_group,
+			workers: worker.group('./workers/encoder.js', null, {
+				// inspect: {
+				// 	range: [9230, 9242],
+				// 	brk: true,
+				// },
+			}),
+
 			front_coder_config: H_CONFIG_DEFAULT_FRONT_CODER,
 
 			uti_map: null,
@@ -80,6 +79,15 @@ class loader {
 		});
 
 		this.worker_count = this.workers.worker_count;
+	}
+
+	async buffer() {
+		await this.process_terms();
+		await this.process_triples();
+
+		this.close_output();
+
+		return Buffer.concat(this.output);
 	}
 
 	front_coder() {
@@ -175,11 +183,13 @@ class loader {
 		return a_data;
 	}
 
-	list_prefixed_items(k_creator) {
+	list_prefixed_items() {
 		let {
+			creator: k_creator,
 			nodes_prefixed: a_nodes,
 			literals_datatyped_prefixed: a_datatypes,
 		} = this;
+
 		let h_prefix_groups = k_creator.prefix_groups;
 
 		// turn hash into list and create item count
@@ -293,16 +303,33 @@ class loader {
 		// return this.balance_word_list(k_word_writer.close());
 	}
 
-	balance_nodes_absolute(h_nodes_absolute) {
-		return [];
+	balance_nodes_absolute() {
+		let {
+			nodes: {
+				absolute_count: n_nodes_absolute,
+				absolute: h_nodes_absolute,
+			},
+		} = this.creator;
+
+		if(n_nodes_absolute) {
+			debugger;
+			throw new Error(`absolute iris not yet implemented`);
+		}
+		else {
+			return [];
+		}
 		// return this.workers.balance(h_nodes_absolute);
 	}
 
-	balance_literals_plain(k_creator) {
+	balance_literals_plain() {
 		let {
-			plain: h_literals,
-			plain_count: n_literals,
-		} = k_creator.literals;
+			creator: {
+				literals: {
+					plain: h_literals,
+					plain_count: n_literals,
+				},
+			},
+		} = this;
 
 		// no plain literals
 		if(!n_literals) return [];
@@ -335,13 +362,15 @@ class loader {
 		return a_data;
 	}
 
-	balance_literals_languaged(k_creator) {
+	balance_literals_languaged() {
 		let {
-			literals: {
-				languaged_count: n_literals,
-				languaged: h_literals,
+			creator: {
+				literals: {
+					languaged_count: n_literals,
+					languaged: h_literals,
+				},
 			},
-		} = k_creator;
+		} = this;
 
 		// divide set of literals into list of buffers
 		let a_data = [];
@@ -379,12 +408,14 @@ class loader {
 		return a_data;
 	}
 
-	balance_literals_datatyped_absolute(k_creator) {
+	balance_literals_datatyped_absolute() {
 		let {
-			literals: {
-				datatyped_absolute: h_literals_absolute,
+			creator: {
+				literals: {
+					datatyped_absolute: h_literals_absolute,
+				},
 			},
-		} = k_creator;
+		} = this;
 
 		// divide literals into buffers
 		let a_list = [];
@@ -457,151 +488,6 @@ class loader {
 		});
 	}
 
-	load_split(pm_format, k_stream, fc_terms, fk_terms) {
-		console.time('parse');
-		console.time('blob');
-		console.time('load');
-		let k_group = this.workers;
-
-		let b_prefix_change = false;
-
-		// latent dispatch task stream
-		let k_split_load = k_group
-			.latent({
-				task: 'parse_save',
-				args: [pm_format],
-			})
-			.reduce({
-				task: 'merge_terms_triples',
-			}, (h_creator) => {
-				console.timeEnd('load');
-				debugger;
-			});
-
-		// 
-		k_stream.onblob = (dfb_input) => {
-			console.timeEnd('blob');
-
-			throw new Erorr('deprecated');
-			// // split
-			// graphy.splitter(pm_format, k_stream, {
-			// 	// where to make splits
-			// 	targets: k_group.divisions(dfb_input.size),
-
-			// 	// if any prefix changes, final map is not valid for whole document
-			// 	prefix_change() {
-			// 		b_prefix_change = true;
-			// 	},
-
-			// 	// each fragment
-			// 	fragment(h_fragment) {
-			// 		let {
-			// 			byte_start: i_byte_start,
-			// 			byte_end: i_byte_end,
-			// 			state: h_state,
-			// 		} = h_fragment;
-
-			// 		// mk new stream
-			// 		let k_stream_fragment = worker.stream();
-
-			// 		setTimeout(() => {
-			// 			// start parse task on fragment
-			// 			k_split_load.push([
-			// 				k_stream_fragment.other_port,
-			// 				h_state,
-			// 			], [k_stream_fragment.other_port]);
-
-			// 			// send blob
-			// 			k_stream_fragment.blob(dfb_input.slice(i_byte_start, i_byte_end < 0? dfb_input.size: i_byte_end));
-			// 		}, 0);
-			// 	},
-
-			// 	// eof
-			// 	end: (h_prefixes) => {
-			// 		console.timeEnd('parse');
-			// 		// debugger;
-			// 	},
-			// });
-		};
-	}
-
-	load_sync(pm_format, ds_input, k_notify, fc_terms, fk_terms) {
-		return new Promise((fk_load) => {
-			let t_start = performance_now();
-
-			let k_creator = new creator();
-			let c_triples = 0;
-
-			throw new Error('deprecated');
-			// // parse
-			// graphy.deserializer(pm_format, ds_input, {
-			// 	// each triple
-			// 	data: (h_triple) => {
-			// 		k_creator.save_triple(h_triple);
-
-			// 		c_triples += 1;
-			// 	},
-
-			// 	// end-of-segment
-			// 	eos: () => {
-			// 		k_notify.emit('progress', {
-			// 			bytes: ds_input.bytesRead,
-			// 			triples: c_triples,
-			// 		});
-			// 	},
-
-			// 	// eof
-			// 	end: async (h_prefixes) => {
-			// 		k_notify.emit('progress', {
-			// 			bytes: ds_input.bytesRead,
-			// 			triples: c_triples,
-			// 		});
-
-			// 		let t_all = performance_now() - t_start;
-			// 		console.info(`total: ${t_all}`);
-
-			// 		// process terms
-			// 		await this.process_terms(k_creator);
-
-			// 		// process triples
-			// 		await this.process_triples(k_creator);
-
-			// 		// close output
-			// 		this.close_output();
-
-			// 		// done here
-			// 		fk_load();
-			// 	},
-			// });
-		});
-	}
-
-	load_async(ds_input) {
-		let k_creator = new creator();
-
-		ds_input.on('data', (a_quad) => {
-			k_creator.save_triple_ct(a_quad);
-		});
-
-		return new Promise((fk_load) => {
-			ds_input.on('end', async() => {
-				debugger;
-
-				// process terms
-				await this.process_terms(k_creator);
-
-				// process triples
-				await this.process_triples(k_creator);
-
-				// close output
-				this.close_output();
-
-				// done here
-				fk_load();
-			});
-		});
-	}
-
 	update_uti_map(h_map, h_update, n_offset) {
 		for(let s_key in h_update) {
 			h_map[s_key] = h_update[s_key] + n_offset;
@@ -654,41 +540,22 @@ class loader {
 		this.output.push(...a_chapters);
 	}
 
-	process_terms(k_creator) {
-		let k_group = this.workers;
-
+	process_terms() {
 		let {
-			nodes: {
-			// 	blank_count: n_nodes_blank,
-			// 	blank: h_nodes_blank,
-
-			// 	absolute_count: n_nodes_absolute,
-				absolute: h_nodes_absolute,
-
-			// 	prefixed_count: n_nodes_prefixed,
-			// 	prefixed: a_nodes_prefixed,
+			creator: {
+				uti: i_uti,
 			},
-			// literals: {
-			// 	plain_count: n_literals_plain,
-			// 	plain: h_literals_plain,
-
-			// 	languaged_count: n_literals_languaged,
-			// 	languaged: h_literals_languaged,
-
-			// 	datatyped_count: n_literals_datatyped,
-			// 	datatyped: h_literals_datatyped,
-			// },
-			uti: i_uti,
-		} = k_creator;
+			workers: k_group,
+		} = this;
 
 		this.uti_map = bkit.new_uint_array(i_uti, i_uti);
 
 		let h_utis = this.utis;
 
-		this.list_prefixed_items(k_creator);
+		this.list_prefixed_items();
 
 		k_group
-			.data(this.balance_nodes_absolute(h_nodes_absolute))
+			.data(this.balance_nodes_absolute())
 
 			// sort, concat then encode absolute nodes
 			.map('classify_sort_concat_encode', [i_uti])
@@ -841,17 +708,17 @@ class loader {
 		[
 			{
 				chapter: S_TERM_LP,
-				use: this.balance_literals_plain(k_creator),
+				use: this.balance_literals_plain(),
 				// data: this.balance_word_buffer(h_literals.plain),
 			},
 			{
 				chapter: S_TERM_LL,
-				use: this.balance_literals_languaged(k_creator),
+				use: this.balance_literals_languaged(),
 				// data: this.balance_word_buffer(h_literals.languaged),
 			},
 			{
 				chapter: S_TERM_LDA,
-				use: this.balance_literals_datatyped_absolute(k_creator),
+				use: this.balance_literals_datatyped_absolute(),
 				// data: this.balance_word_buffer(h_literals.datatyped_absolute),
 			},
 			{
@@ -952,39 +819,38 @@ class loader {
 		// });
 	}
 
-	process_triples(k_creator) {
+	process_triples() {
 		let {
+			creator: {
+				triples_count: c_triples,
+				pairs_count: c_pairs,
+				subjects_count: c_subjects,
+				triples_spo: h_spo_uti,
+			},
 			uti_map: at_utis,
 			utis: h_utis,
 		} = this;
 
-		let {
-			triples_count: n_triples,
-			pairs_count: n_pairs,
-			subjects_count: n_subjects,
-		} = k_creator;
 
 		let i_term_adj_sp_o = 0;
 		let i_write_adj_sp_o = 0;
-		let at_adj_sp_o = bkit.new_uint_array(h_utis.literals_datatyped_prefixed, n_triples);
-		let kbs_sp_o = new bkit.bitsequence_writer(n_triples);
+		let at_adj_sp_o = bkit.new_uint_array(h_utis.literals_datatyped_prefixed, c_triples);
+		let kbs_sp_o = new bkit.bitsequence_writer(c_triples);
 
 		// let i_write_idx_sp_o = 0;
-		// let at_idx_sp_o = bat.new_uint_array(n_triples+n_pairs, n_pairs);
+		// let at_idx_sp_o = bat.new_uint_array(c_triples+c_pairs, c_pairs);
 
 
 		let i_term_adj_s_p = 0;
 		let i_write_adj_s_p = 0;
-		let at_adj_s_p = bkit.new_uint_array(h_utis.predicates_prefixed, n_pairs);
-		let kbs_s_p = new bkit.bitsequence_writer(n_pairs);
+		let at_adj_s_p = bkit.new_uint_array(h_utis.predicates_prefixed, c_pairs);
+		let kbs_s_p = new bkit.bitsequence_writer(c_pairs);
 
 		// let i_write_idx_s_p = 0;
-		// let at_idx_s_p = bat.new_uint_array(n_pairs, n_subjects);
-
-		let h_spo_uti = k_creator.triples_spo;
+		// let at_idx_s_p = bat.new_uint_array(c_pairs, c_subjects);
 
 		// convert hash into sorted list
-		let a_ss = new Array(n_subjects);
+		let a_ss = new Array(c_subjects);
 		for(let si_s in h_spo_uti) {
 			a_ss[at_utis[+si_s]] = h_spo_uti[si_s];
 		}
@@ -992,7 +858,7 @@ class loader {
 // debugger;
 
 		// each subject
-		for(let i_s=2; i_s<n_subjects+2; i_s++) {
+		for(let i_s=2; i_s<c_subjects+2; i_s++) {
 			let h_po_uti = a_ss[i_s];
 
 			// convert hash into list
@@ -1078,85 +944,4 @@ class loader {
 	}
 }
 
-
-worker.dedicated({
-
-	load_file(pm_format, p_file, p_output=null) {
-		return new Promise(async (fk_load) => {
-			let k_loader = new loader({
-				workers: worker.group('./encoder.js', null, {
-					// inspect: {
-					// 	range: [9230, 9242],
-					// 	brk: true,
-					// },
-				}),
-			});
-
-			await k_loader.load_sync(pm_format, require('fs').createReadStream(p_file), this);
-
-			const fs = require('fs');
-			// open file for output
-			fs.open(p_output, 'w', (e_open, ifd_output) => {
-				// write each output buffer to file
-				require('async').eachSeries(k_loader.output, (at_out, fk_write) => {
-					fs.write(ifd_output, at_out, () => {
-						fk_write();
-					});
-				}, () => {
-					// close file
-					fs.close(ifd_output, (e_close) => {
-						if(e_close) throw e_close;
-
-						fk_load();
-					});
-				});
-			});
-
-			// }
-			// // save blob
-			// else {
-			// 	let dfb_output = new Blob(k_loader.output, {type:'application/octet-stream'});
-			// 	let pu_output = URL.createObjectURL(dfb_output);
-
-			// 	fk_load(pu_output);
-			// }
-		});
-	},
-
-	load_stream(pm_format, ds_file) {
-		return new Promise((f_resolve) => {
-			let k_loader = new loader({
-				resolve: f_resolve,
-				workers: worker.group('./encoder.js'),
-			});
-
-			// k_loader.load_split(pm_format, worker.stream(z_stream_handle));
-			k_loader.load_sync(pm_format, ds_file, this);
-		});
-	},
-
-	async load_object_stream(ds_input) {
-		console.log('load object stream');
-
-		let k_loader = new loader({
-			workers: worker.group('./encoder.js'),
-		});
-
-		await k_loader.load_async(ds_input);
-
-		return k_loader.output;
-	},
-
-	load_url(pm_format, p_object) {
-		return new Promise((f_resolve) => {
-			let k_loader = new loader({
-				resolve: f_resolve,
-				workers: worker.group('./encoder.js'),
-			});
-
-			// k_loader.load_split(pm_format, worker.stream(z_stream_handle));
-			k_loader.load_sync(pm_format, worker.stream(z_stream_handle), this);
-		});
-	},
-
-});
+module.exports = serializer;

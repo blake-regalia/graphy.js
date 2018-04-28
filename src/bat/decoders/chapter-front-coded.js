@@ -1,9 +1,10 @@
 const bkit = require('bkit');
 
+const bat = require('../bat.js');
 const interfaces = require('./interfaces.js');
 
 
-class chapter_front_coded extends interfaces.chapter {
+class chapter_contents_pfc extends interfaces.chapter {
 	constructor(at_payload, s_chapter, k_dictionary) {
 		super();
 
@@ -709,7 +710,7 @@ class chapter_front_coded extends interfaces.chapter {
 }
 
 module.exports = {
-	structures: {
-		'http://bat-rdf.link/structure/chapter/front-coded/1.0': chapter_front_coded,
+	decoders: {
+		[bat.PE_CHAPTER_CONTENTS_PFC]: chapter_contents_pfc,
 	},
 };

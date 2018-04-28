@@ -6,7 +6,6 @@ const performance_now = require('performance-now');
 
 const bat = require('../bat.js');
 const creator = require('../creator.js');
-// const graphy = require('../../main/graphy.js');
 
 const encoder_chapter = require('../encoders/chapter-front-coded.js');
 

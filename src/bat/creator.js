@@ -302,46 +302,47 @@ class creator {
 			predicate: g_predicate,
 			object: g_object,
 		} = g_quad;
-debugger;
+
 		let i_s;
 
 		// subject is named node
-		if(h_subject.isNamedNode) {
-			i_s = this.save_named_node(h_subject.value, bat.XM_NODE_SUBJECT);
+		if(g_subject.isNamedNode) {
+			i_s = this.save_named_node(g_subject.value, bat.XM_NODE_SUBJECT);
 		}
 		// subject is blank node
 		else {
-			i_s = this.save_blank_node(h_subject.value, bat.XM_NODE_SUBJECT);
+			i_s = this.save_blank_node(g_subject.value, bat.XM_NODE_SUBJECT);
 		}
 
 		// predicate is always named node
-		let i_p = this.save_named_node(h_predicate.value, bat.XM_NODE_PREDICATE);
+		let i_p = this.save_named_node(g_predicate.value, bat.XM_NODE_PREDICATE);
 
+		// prep object id
 		let i_o;
 
 		// object is literal
-		if(h_object.isLiteral) {
+		if(g_object.isLiteral) {
 			// ... a language literal
-			if(h_object.language) {
-				i_o = this.save_language_literal(h_object.value, h_object.language);
+			if(g_object.language) {
+				i_o = this.save_language_literal(g_object.value, g_object.language);
 			}
 			// ... a datatyped literal
-			else if(h_object.hasOwnProperty('datatype')) {
+			else if(g_object.hasOwnProperty('datatype')) {
 				// datatype is always a named node
-				i_o = this.save_datatyped_literal(h_object.value, h_object.datatype.value);
+				i_o = this.save_datatyped_literal(g_object.value, g_object.datatype.value);
 			}
 			// ... a plain literal
 			else {
-				i_o = this.save_plain_literal(h_object.value);
+				i_o = this.save_plain_literal(g_object.value);
 			}
 		}
 		// object is named node
-		else if(h_object.isNamedNode) {
-			i_o = this.save_named_node(h_object.value, bat.XM_NODE_OBJECT);
+		else if(g_object.isNamedNode) {
+			i_o = this.save_named_node(g_object.value, bat.XM_NODE_OBJECT);
 		}
 		// object is blank node
 		else {
-			i_o = this.save_blank_node(h_object.value, bat.XM_NODE_OBJECT);
+			i_o = this.save_blank_node(g_object.value, bat.XM_NODE_OBJECT);
 		}
 
 		// save triple using utis

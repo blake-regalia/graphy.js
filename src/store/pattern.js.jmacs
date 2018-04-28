@@ -13,6 +13,9 @@
 */
 Object.assign(global, require('./symbols.js'));
 
+class Void {
+}
+
 @def each(s_name)
 	for(let i_@{s_name}=0, n_@{s_name}s=a_@{s_name}s.length; i_@{s_name}<n_@{s_name}s; i_@{s_name}++)
 @end
@@ -49,8 +52,8 @@ Object.assign(global, require('./symbols.js'));
 
 @> fix_node(s_name, s_role_small='')
 	@$ s_role = 'HP_ROLE_'+(s_role_small || s_name).toUpperCase();
-	@{s_name}(s_ct=null) {
-		return this.fix_node(s_ct, @{s_role});
+	@{s_name}(sct_node=null) {
+		return this.fix_node(sct_node, @{s_role});
 	}
 @;
 
@@ -67,24 +70,24 @@ Object.assign(global, require('./symbols.js'));
 @;
 
 @> object()
-	object(s_ct=null) {
+	object(sct_object=null) {
 		let k_graph = this.graph;
 		let k_pattern = this.pattern;
 
 		// no term; single result only
-		if(!s_ct) {
+		if(!sct_object) {
 			k_pattern.append_all(HP_ROLE_OBJECT, true);
 			return new Fix_Object(k_graph, k_pattern);
 		}
 
 		// literal
-		let s_ct_0 = s_ct[0];
-		if('"' === s_ct_0 || '^' === s_ct_0 || '@' === s_ct_0) {
-			return this.literal(s_ct);
+		let sct_object_0 = sct_object[0];
+		if('"' === sct_object_0 || '^' === sct_object_0 || '@' === sct_object_0) {
+			return this.literal(sct_object);
 		}
 
 		// object node
-		return this.objectNode(s_ct);
+		return this.objectNode(sct_object);
 	}
 @;
 
@@ -93,18 +96,18 @@ Object.assign(global, require('./symbols.js'));
 @;
 
 @> literal()
-	literal(s_ct=null) {
+	literal(sct_literal=null) {
 		let k_graph = this.graph;
 		let k_pattern = this.pattern;
 
 		// no term; single result only
-		if(!s_ct) {
+		if(!sct_literal) {
 			k_pattern.append_all(HP_ROLE_LITERAL, true);
 			return new Fix_Object(k_graph, k_pattern);
 		}
 
 		// turn ct string into literal
-		let ab_word = k_graph.encode_ct_literal_to_word(s_ct);
+		let ab_word = k_graph.encode_ct_literal_to_word(sct_literal);
 
 		// search for term
 		let i_term = k_graph.find(ab_word, HP_ROLE_LITERAL);
@@ -116,7 +119,7 @@ Object.assign(global, require('./symbols.js'));
 		}
 
 		// no such node in set
-		return new Fix_Object_Empty(k_graph, null, {ct:s_ct});
+		return new Fix_Object_Empty(k_graph, null, {ct:sct_literal});
 	}
 @;
 
@@ -133,21 +136,21 @@ Object.assign(global, require('./symbols.js'));
 	@{fix_node('out', 'predicate')}
 @;
 
-@> qry_in()
-	@{fix_node('in', 'inverse_predicate')}
+@> inv()
+	@{fix_node('inv', 'inverse_predicate')}
 @;
 
 
-@> find(s_role)
+@> find(s_role, s_suffix='')
 	// search for term
-	let i_term = k_graph.find(ab_word, HP_ROLE_@{s_role.toUpperCase()});
+	let i_term@{s_suffix} = k_graph.find(ab_word, HP_ROLE_@{s_role.toUpperCase()});
 
 	// found term
-	if(i_term)
+	if(i_term@{s_suffix})
 @;
 
 
-@> terms_fix(s_role, _then)
+@> terms_fix(s_role, _then, b_dont_fix=false)
 	let k_graph = this.graph;
 	let k_pattern = this.pattern;
 
@@ -173,7 +176,9 @@ Object.assign(global, require('./symbols.js'));
 		k_pattern.append_all(HP_ROLE_@{s_role.toUpperCase()});
 	}
 
-	@{return_fix(s_role)}
+	@- !b_dont_fix
+		@{return_fix(s_role)}
+	@;
 @;
 
 
@@ -181,9 +186,9 @@ Object.assign(global, require('./symbols.js'));
 	hops(a_cts=null) {
 		@{terms_fix(b_role_object? 'object': 'subject', `
 			${find('hop')} {
-				a_ids.push(i_item_h);
+				a_ids.push(i_term);
 			}
-		`)}
+		`, true)}
 
 		@{return_fix('hop')}
 	}
@@ -192,12 +197,12 @@ Object.assign(global, require('./symbols.js'));
 @> subjects()
 	subjects(a_cts=null) {
 		@{terms_fix('subject', `
-			${find('hop')} {
-				a_ids.push(i_item_d);
+			${find('hop', '_h')} {
+				a_ids.push(i_term_h);
 			}
 			else {
-				${find('subject')} {
-					a_ids.push(i_item_s);
+				${find('subject', '_s')} {
+					a_ids.push(i_term_s);
 				}
 			}
 		`)}
@@ -216,22 +221,22 @@ Object.assign(global, require('./symbols.js'));
 
 			// each ct node
 			@{each('ct')} {
-				let s_ct = a_cts[i_ct];
+				let sct_object = a_cts[i_ct];
 
 				// literal
-				let s_ct_0 = s_ct[0];
-				if('"' === s_ct_0 || '^' === s_ct_0 || '@' === s_ct_0) {
+				let sct_object_0 = sct_object[0];
+				if('"' === sct_object_0 || '^' === sct_object_0 || '@' === sct_object_0) {
 					// turn string into word
-					let ab_word = k_graph.encode_ct_literal_to_word(s_ct);
+					let ab_word = k_graph.encode_ct_literal_to_word(sct_object);
 
 					@{find('literal')} {
-						a_ids.push(i_item_l);
+						a_ids.push(i_term);
 					}
 				}
 				// node
 				else {
 					// turn string into word
-					let ab_word = k_graph.encode_ct_node_to_word(s_ct);
+					let ab_word = k_graph.encode_ct_node_to_word(sct_object);
 
 					@{find('object_node')} {
 						a_ids.push(i_term);
@@ -264,8 +269,10 @@ Object.assign(global, require('./symbols.js'));
 
 			// each tt node
 			@{each('ct')} {
+				let sct_node = a_cts[i_ct];
+
 				// turn string into word
-				let ab_word = k_graph.encode_tt_node_to_word(s_ct);
+				let ab_word = k_graph.encode_tt_node_to_word(sct_node);
 
 				@{find('object_node')} a_ids.push(i_term);
 			}
@@ -292,7 +299,7 @@ Object.assign(global, require('./symbols.js'));
 
 		// there is a list
 		if(a_tts) {
-			throw 'multiple literals not yet supported';
+			throw new Error('multiple literals not yet supported');
 		}
 		// no list!
 		else {
@@ -316,7 +323,7 @@ Object.assign(global, require('./symbols.js'));
 
 @> collection()
 	collection() {
-		k_pattern.append_all(HP_ROLE_HOP);
+		// k_pattern.append_all(HP_ROLE_HOP);
 		
 	}
 @;
@@ -360,12 +367,12 @@ Object.assign(global, require('./symbols.js'));
 				});
 			}
 		}
-		// term set
-		else if(z_edges instanceof TermSet) {
-			// append list of ids to path
-			k_pattern.append_ids(z_edges.terms.map(h => h.id), HP_ROLE_PREDICATE);
-			return new Fix_NormalEdge(this.graph, k_pattern);
-		}
+	//	// term set
+	//	else if(z_edges instanceof TermSet) {
+	//		// append list of ids to path
+	//		k_pattern.append_ids(z_edges.terms.map(h => h.id), HP_ROLE_PREDICATE);
+	//		return new Fix_NormalEdge(this.graph, k_pattern);
+	//	}
 		// all outgoing edges
 		else {
 			k_pattern.append_all(HP_ROLE_PREDICATE);
@@ -377,8 +384,8 @@ Object.assign(global, require('./symbols.js'));
 
 
 
-@> ins()
-	ins() {
+@> invs()
+	invs() {
 		let k_pattern = this.pattern;
 		k_pattern.append_all(HP_ROLE_PREDICATE);
 		return new Fix_InverseEdge(this.graph, k_pattern);
@@ -405,7 +412,7 @@ Object.assign(global, require('./symbols.js'));
 
 		// fork is array
 		if(Array.isArray(z_forks)) {
-			throw 'fork array';
+			throw new Error('fork array');
 		}
 		// fork is hash
 		else {
@@ -587,20 +594,20 @@ class Fix {
 		this.failure = h_failure;
 	}
 
-	fix_node(s_ct=null, hp_role) {
+	fix_node(sct_node=null, hp_role) {
 		let k_store = this.store;
 		let k_pattern = this.pattern;
 		let [dc_fix, dc_fix_empty] = H_ROLE_TO_FIX[hp_role];
 
 		// no term; single result only
-		if(!s_ct) {
+		if(!sct_node) {
 			k_pattern.append_all(hp_role, true);
 
 			return new dc_fix(k_store, k_pattern);
 		}
 
 		// turn ct string into word
-		let ab_word = k_store.encode_ct_node_to_word(s_ct);
+		let ab_word = k_store.encode_ct_node_to_word(sct_node);
 
 		// search for term
 		let i_term = k_store.find(ab_word, hp_role);
@@ -613,12 +620,12 @@ class Fix {
 
 		// no such term in set
 		return new dc_fix_empty(k_store, null, {
-			ct: s_ct
+			ct: sct_node
 		});
 	}
 
 	bind(s_name) {
-		if('data' === s_name) throw `cannot use the reserved name 'data' to bind a term`;
+		if('data' === s_name) throw new Error(`cannot use the reserved name 'data' to bind a term`);
 		let k_pattern = this.pattern;
 
 		// empty
@@ -631,8 +638,9 @@ class Fix {
 		return this;
 	}
 
-	gather() {
-		if('data' === s_name) throw `cannot use the reserved name 'data' to bind a term`;
+	gather(s_gather) {
+		if('data' === s_gather) throw new Error(`cannot use the reserved name 'data' to bind a term`);
+		let k_pattern = this.pattern;
 
 		// empty
 		if(!k_pattern.length) return this;
@@ -685,7 +693,7 @@ class Fix {
 		}
 		// no such data plugin registered
 		else {
-			throw `no data plugin is registered under the alias "${s_register_id}"`;
+			throw new Error(`no data plugin is registered under the alias "${s_register_id}"`);
 		}
 
 		// chain
@@ -700,7 +708,7 @@ class Fix {
 	exit() {
 		// exit only allowed on a node / literal
 		if(this instanceof Fix_NormalEdge || this instanceof Fix_InverseEdge) {
-			throw 'error: not allowed to exit pattern builder on an edge. pattern must terminate on a node or literal';
+			throw new Error('error: not allowed to exit pattern builder on an edge. pattern must terminate on a node or literal');
 		}
 		// one of the targets does not exist in the graph
 		if(this.failure) {
@@ -717,8 +725,8 @@ class Fix {
 
 	@{cannot('out')}
 	@{cannot('outs')}
-	@{cannot('in')}
-	@{cannot('ins')}
+	@{cannot('inv')}
+	@{cannot('invs')}
 	@{cannot('hop')}
 	@{cannot('hops')}
 	@{cannot('node')}
@@ -801,15 +809,15 @@ class Fix_Subject_Empty extends Fix_Subject {
 }
 
 class Fix_Hop extends Fix_Subject {
-	@{qry_in()}
+	@{inv()}
 
-	@{ins()}
+	@{invs()}
 }
 
 class Fix_Hop_Empty extends Fix_Subject_Empty {
-	@{empty('in', 'Fix_InverseEdge')}
+	@{empty('inv', 'Fix_InverseEdge')}
 
-	@{empty('ins', 'Fix_InverseEdge')}
+	@{empty('invs', 'Fix_InverseEdge')}
 }
 
 class Fix_Node extends Fix_Hop {}
@@ -871,7 +879,7 @@ class Fix_NormalEdge_Empty {
 	
 	@{empty('literal', 'Fix_Object')}
 	
-	@{empty('literal', 'Fix_Object')}
+	@{empty('literals', 'Fix_Object')}
 	
 	@{empty('leaf', 'Fix_Object')}
 	
@@ -915,9 +923,9 @@ class Fix_InverseEdge_Empty extends Fix_InverseEdge {
 
 
 class Fix_Object extends Fix {
-	@{qry_in()}
+	@{inv()}
 	
-	@{ins()}
+	@{invs()}
 
 	@{fork(true)}
 }
