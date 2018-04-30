@@ -9,27 +9,6 @@ const X_TOKEN_CONTENTS = bkit.encode_utf_8('"');
 const X_TOKEN_LANGUAGE = bkit.encode_utf_8('@');
 const X_TOKEN_DATATYPE = bkit.encode_utf_8('^');
 
-const X_CODE_HEADER = 0x01;
-const X_CODE_DICTIONARY = 0x02;
-const X_CODE_CHAPTER_PREFIXES = 0x10;
-const X_CODE_CHAPTER_HOPS = 0x11;
-const X_CODE_CHAPTER_HOPS_ABSOLUTE = 0x12;
-const X_CODE_CHAPTER_HOPS_PREFIXED = 0x13;
-const X_CODE_CHAPTER_SUBJECTS = 0x14;
-const X_CODE_CHAPTER_SUBJECTS_ABSOLUTE = 0x15;
-const X_CODE_CHAPTER_SUBJECTS_PREFIXED = 0x16;
-const X_CODE_CHAPTER_PREDICATES = 0x17;
-const X_CODE_CHAPTER_PREDICATES_ABSOLUTE = 0x18;
-const X_CODE_CHAPTER_PREDICATES_PREFIXED = 0x19;
-const X_CODE_CHAPTER_OBJECTS = 0x1a;
-const X_CODE_CHAPTER_OBJECTS_ABSOLUTE = 0x1b;
-const X_CODE_CHAPTER_OBJECTS_PREFIXED = 0x1c;
-const X_CODE_CHAPTER_LITERALS = 0x1d;
-const X_CODE_CHAPTER_LITERALS_PLAIN = 0x1e;
-const X_CODE_CHAPTER_LITERALS_LANGUAGED = 0x1f;
-const X_CODE_CHAPTER_LITERALS_DATATYPED = 0x20;
-const X_CODE_CHAPTER_LITERALS_DATATYPED_ABSOLUTE = 0x21;
-const X_CODE_CHAPTER_LITERALS_DATATYPED_PREFIXED = 0x22;
 
 const S_TOKEN_ABSOLUTE_IRI = String.fromCharCode(X_TOKEN_ABSOLUTE_IRI);
 const S_TOKEN_BLANK_NODE = String.fromCharCode(X_TOKEN_BLANK_NODE);
@@ -59,18 +38,26 @@ const R_COMPRESS = /^(.*?)([^/#]*)$/;
 // 'bate:encodings'
 // 'bate:triples/'
 
-const P_IRI_BAT_ENCODING = 'http://bat-rdf.link/encoding/';
-const PE_DATASET = P_IRI_BAT_ENCODING + 'dataset/partial-graph/1.0#';
-const PE_DICTIONARY = P_IRI_BAT_ENCODING + 'dictionary/twelve-section/1.0#';
-const PE_DICTIONARY_PP12OC = P_IRI_BAT_ENCODING + 'dictionary/pointers-prefixes-12-optional-chapters/1.0#';
-const PE_TRIPLES_BITMAP = P_IRI_BAT_ENCODING + 'triples/bitmap/1.0#';
-const PE_TRIPLES_WAVELET = P_IRI_BAT_ENCODING + 'triples/wavelet/1.0#';
 
-const PE_CHAPTER_IC = P_IRI_BAT_ENCODING + 'chapter/indices-contents/1.0#';
+@.{
+	const P_IRI_BAT_ENCODING = 'http://bat-rdf.link/encoding/1.0/';
 
-const PE_CHAPTER_INDICES_DIRECT = P_IRI_BAT_ENCODING + 'chapter-indices/direct/1.0#';
-const PE_CHAPTER_CONTENTS_PFC = P_IRI_BAT_ENCODING + 'chapter-contents/pointers-front-coded/1.0#';
+	const H_BAT_ENCODINGS = [
+		'dataset-pg',
+		'dictionary-pp12oc',
+		'triples-bitmap',
+		'triples-wavelet',
+		'chapter-difcc',
+	].reduce((h, s) => Object.assign(h, {
+		['PE_'+s.replace(/-/g, '_').toUpperCase()]: `${P_IRI_BAT_ENCODING}${s}`,
+	}), {});
+}
 
+@*{
+	for(let si_const in H_BAT_ENCODINGS) {
+		yield `const ${si_const} = '${H_BAT_ENCODINGS[si_const]}';\n`;
+	}
+}
 
 const R_IRI_ENCODING = /^(.*)#(.*)$/;
 
@@ -111,28 +98,6 @@ const H_CONSTANTS = {
 	X_TOKEN_LANGUAGE,
 	X_TOKEN_DATATYPE,
 
-	X_CODE_HEADER,
-	X_CODE_DICTIONARY,
-	X_CODE_CHAPTER_PREFIXES,
-	X_CODE_CHAPTER_HOPS,
-	X_CODE_CHAPTER_HOPS_ABSOLUTE,
-	X_CODE_CHAPTER_HOPS_PREFIXED,
-	X_CODE_CHAPTER_SUBJECTS,
-	X_CODE_CHAPTER_SUBJECTS_ABSOLUTE,
-	X_CODE_CHAPTER_SUBJECTS_PREFIXED,
-	X_CODE_CHAPTER_PREDICATES,
-	X_CODE_CHAPTER_PREDICATES_ABSOLUTE,
-	X_CODE_CHAPTER_PREDICATES_PREFIXED,
-	X_CODE_CHAPTER_OBJECTS,
-	X_CODE_CHAPTER_OBJECTS_ABSOLUTE,
-	X_CODE_CHAPTER_OBJECTS_PREFIXED,
-	X_CODE_CHAPTER_LITERALS,
-	X_CODE_CHAPTER_LITERALS_PLAIN,
-	X_CODE_CHAPTER_LITERALS_LANGUAGED,
-	X_CODE_CHAPTER_LITERALS_DATATYPED,
-	X_CODE_CHAPTER_LITERALS_DATATYPED_ABSOLUTE,
-	X_CODE_CHAPTER_LITERALS_DATATYPED_PREFIXED,
-
 	R_COMPRESS,
 	R_IRI_ENCODING,
 
@@ -143,14 +108,11 @@ const H_CONSTANTS = {
 	XM_NODE_HOP,
 
 
-	PE_DATASET,
-	PE_DICTIONARY_PP12OC,
-	PE_TRIPLES_BITMAP,
-
-	PE_CHAPTER_IC,
-	PE_CHAPTER_INDICES_DIRECT,
-	PE_CHAPTER_CONTENTS_PFC,
-
+	@*{
+		for(let si_const in H_BAT_ENCODINGS) {
+			yield `${si_const},\n`;
+		}
+	}
 
 	S_PREFIXES,
 	S_TERM_HA,
@@ -262,29 +224,54 @@ const H_CONSTANTS = {
 // }
 
 
+class decoders {
+	constructor(h_decoders=null) {
+		// no decoder map given
+		if(!h_decoders) {
+			// default to builtins
+			h_decoders = {
+				[PE_DATASET_PG]: require('./decoders/dataset.js'),
+				[PE_DICTIONARY_PP12OC]: require('./decoders/dictionary-pp12oc.js'),
+				[PE_CHAPTER_DIFCC]: require('./decoders/chapter-difcc.js'),
+			};
+		}
 
-class container_decoder {
-	constructor(kbd) {
-		this.buffer_decoder = kbd;
+		Object.assign(this, {
+			decoders: h_decoders,
+		});
 	}
 
-	child() {
-		let kbd = this.buffer_decoder;
+	auto(kbd) {
+		let a_decode = this.auto_what(kbd);
 
-		let [, p_encoding, s_label] = R_IRI_ENCODING.exec(kbd.ntu8_string());
+		if(a_decode) return a_decode[0];
+		return null;
+	}
+
+	auto_what(kbd) {
+		// no container could fit in less than 4 bytes
+		if(kbd.read > kbd.contents.length - 4) return null;
+
+		// container encoding URI
+		let pe_payload = kbd.ntu8_string();
+
+		// payload size in bytes
 		let n_payload_bytes = kbd.vuint();
+
+		// payload
 		let at_payload = kbd.sub(n_payload_bytes);
 
-		return {
-			encoding: p_encoding,
-			label: s_label,
-			payload: at_payload,
-		};
-	}
+		// find decoder by URI
+		let h_decoders = this.decoders;
+		if(!(pe_payload in h_decoders)) {
+			throw new Error(`no decoder for ${pe_payload}`);
+		}
 
-	finished() {
-		debugger;
-		// return this.buffer_decoder.
+		// create buffer decoder on payload
+		let kbd_child = new bkit.buffer_decoder(at_payload);
+
+		// instantiate decoder
+		return [new h_decoders[pe_payload](kbd_child, this), pe_payload];
 	}
 }
 
@@ -663,7 +650,7 @@ module.exports = Object.assign(H_CONSTANTS, {
 	key_space,
 	readable_blob,
 
-	container_decoder,
+	decoders,
 
 	// classify nodes into hops, subjects, predicates, objects, and datatypes
 	classify_nodes(h_nodes) {

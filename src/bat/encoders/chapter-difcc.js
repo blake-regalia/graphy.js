@@ -1,6 +1,7 @@
+const bat = require('../bat.js');
 const bkit = require('bkit');
 
-class chapter_front_coded {
+class chapter_difcc {
 	constructor(h_opt={}) {
 		let {
 			offset: i_offset=0,
@@ -18,7 +19,7 @@ class chapter_front_coded {
 		});
 	}
 
-	close(p_encoding) {
+	close(s_label) {
 		let {
 			block_size: n_block_size,
 			contents: k_contents,
@@ -26,39 +27,52 @@ class chapter_front_coded {
 			word_count: n_words,
 		} = this;
 
+		// deduce max index value
 		let nl_contents = k_contents.write;
+
+		// add zero-offset to beginning
+		a_block_indices.unshift(0);
+
+		// close indices
 		let at_block_indices = bkit.uint_array(nl_contents).from(a_block_indices);
 
-		let nl_block_indices = at_block_indices.byteLength;
-		let n_byte_estimate = 1 + (4*4) + nl_block_indices + nl_contents;
+		let nb_header_estimate = bat.PE_CHAPTER_DIFCC.length + 1 + (4 * 4);
 
-		let kbe = new bkit.buffer_encoder({size:n_byte_estimate});
+		// payload section
+		let kbe_payload = new bkit.buffer_encoder({size:64});
 
-		// chapter encoding
-		kbe.ntu8_string(p_encoding);
+		// chapter label
+		kbe_payload.ntu8_string(s_label);
 
 		// block size k
-		kbe.vuint(Math.log2(n_block_size, 2));
+		kbe_payload.vuint(Math.log2(n_block_size, 2));
 
-		// word count
-		kbe.vuint(n_words);
-
-		// // block indices length
-		// kbe.vuint(nl_block_indices);
-
-		// // block indices
-		// kbe.array(at_block_indices);
+		// number of words
+		kbe_payload.vuint(n_words);
 
 		// block indices
-		kbe.typed_array(at_block_indices);
-
-		// contents length
-		kbe.vuint(nl_contents);
+		kbe_payload.typed_array(at_block_indices);
 
 		// contents
-		kbe.buffer.append(k_contents.close());
+		kbe_payload.buffer.append(k_contents.close());
 
-		return kbe.close();
+		// payload section
+		let at_payload = kbe_payload.close();
+
+		// container
+		let kbe_container = new bkit.buffer_encoder({size:nb_header_estimate+at_payload.length});
+
+		// chapter encoding
+		kbe_container.ntu8_string(bat.PE_CHAPTER_DIFCC);
+
+		// payload byte count
+		kbe_container.vuint(at_payload.byteLength);
+
+		// payload contents
+		kbe_container.buffer.append(at_payload);
+
+		// container
+		return kbe_container.close();
 	}
 
 	export() {
@@ -480,4 +494,4 @@ class chapter_front_coded {
 	}
 }
 
-module.exports = chapter_front_coded;
+module.exports = chapter_difcc;

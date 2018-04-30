@@ -1,34 +1,130 @@
 const bkit = require('bkit');
 
-const bat = require('../bat.js');
 const interfaces = require('./interfaces.js');
 
-
-class chapter_contents_pfc extends interfaces.chapter {
-	constructor(at_payload, s_chapter, k_dictionary) {
+class chapter_difcc extends interfaces.chapter {
+	constructor(kbd) {
 		super();
 
-		let kbd_header = new bkit.buffer_decoder(at_payload);
+		// section label
+		let s_label = kbd.ntu8_string();
 
 		// block k
-		let n_block_k = kbd_header.vuint();
+		let n_block_k = kbd.vuint();
 
 		// word count
-		let n_words = kbd_header.vuint();
+		let n_words = kbd.vuint();
 
 		// indices
-		let at_indices = kbd_header.typed_array();
+		let at_indices = kbd.typed_array();
 
-		// contents (from remainder)
-		let at_contents = new Uint8Array(kbd_header.sub());
+		// contents (remainder of data)
+		let at_contents = kbd.sub();
 
 		Object.assign(this, {
+			label: s_label,
 			offset: 1,
 			block_k: n_block_k,
 			word_count: n_words,
 			indices: at_indices,
 			contents: at_contents,
 		});
+	}
+
+	*each() {
+		// temporary cheat
+		for(let i_word=0; i_word<this.word_count; i_word++) {
+			yield this.produce(i_word + this.offset);
+		}
+
+
+		// let {
+		// 	block_k: n_block_k,
+		// 	word_count: n_words,
+		// 	indices: at_indices,
+		// 	contents: at_contents,
+		// } = this;
+
+		// let i_block = 0;
+		// let i_contents = 0;
+
+		// //
+		// let n_block_size = 1 << n_block_k;
+		// let a_block_idx = new Array(n_block_size);
+		// let a_shares = new Array(n_block_size);
+		// a_block_idx[0] = i_contents;
+		// a_shares[0] = 0;
+		// let i_block_idx = 0;
+
+		// // each block
+		// let nl_indices = at_indices.length;
+		// for(let i_block=0; i_block<nl_indices; i_block++) {
+		// 	// head word
+		// 	let nl_word = at_contents.indexOf(0, i_contents) - i_contents;
+
+		// 	// yield head
+		// 	yield at_contents.slice(i_contents, i_contents + nl_word);
+
+		// 	// no more words; head was the last
+		// 	if(++i_word >= n_words) break;
+
+		// 	// last word contained in this block
+		// 	if((n_words - i_word) < n_block_size) {
+		// 		debugger;
+		// 		// artificially decrease block size to break on last word
+		// 		n_block_size = n_words - i_word + 1;
+		// 	}
+
+		// 	// head word shares no characters
+		// 	let n_share = 0;
+
+		// 	// skip over null char
+		// 	i_contents += 1;
+
+		// 	let i_block_idx = 0;
+
+		// 	// skip words until arriving at target
+		// 	let kbd_contents = new bkit.buffer_decoder(at_contents);
+		// 	kbd_contents.read = i_contents;
+		// 	do {
+		// 		// skip over previous word
+		// 		kbd_contents.read += nl_word;
+
+		// 		// save share chars value
+		// 		a_shares[++i_block_idx] = n_share = kbd_contents.vuint();
+
+		// 		// length of upcoming word
+		// 		nl_word = kbd_contents.vuint();
+
+		// 		// save index of word
+		// 		a_block_idx[i_block_idx] = kbd_contents.read;
+
+		// 		// prep to construct word
+		// 		let at_word = new Uint8Array(n_share + nl_word);
+
+		// 		// copy known part from current word
+		// 		at_word.set(at_contents.subarray(i_contents, i_contents+nl_word), n_share);
+
+		// 		// while needing to borrow from neighbor
+		// 		while(n_share > 0) {
+		// 			// check previous word's share value
+		// 			let n_prev_share = a_shares[--i_block_idx];
+
+		// 			// not interested!
+		// 			if(n_prev_share >= n_share) continue;
+
+		// 			// jump back to start of word content
+		// 			i_contents = a_block_idx[i_block_idx];
+
+		// 			// borrow from word
+		// 			at_word.set(at_contents.subarray(i_contents, i_contents+(n_share-n_prev_share)), n_prev_share);
+
+		// 			// adjust number of characters needed
+		// 			n_share = n_prev_share;
+		// 		}
+
+		// 	} while(++i_word < n_block_size);
+		// }
 	}
 
 	produce(i_term) {
@@ -709,8 +805,4 @@ class chapter_contents_pfc extends interfaces.chapter {
 	}
 }
 
-module.exports = {
-	decoders: {
-		[bat.PE_CHAPTER_CONTENTS_PFC]: chapter_contents_pfc,
-	},
-};
+module.exports = chapter_difcc;

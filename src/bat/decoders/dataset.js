@@ -1,7 +1,3 @@
-const bkit = require('bkit');
-
-const bat = require('../bat.js');
-
 /* globals
 HP_ROLE_HOP
 HP_ROLE_NODE
@@ -47,10 +43,16 @@ const H_USE_TO_CODE = {
 
 
 class dataset {
-	constructor(at_payload) {
-		let kbd = new bkit.buffer_decoder(at_payload);
+	constructor(kbd, k_decoders) {
+		let a_sections = [];
+		let k_child;
+		while((k_child = k_decoders.auto(kbd))) {
+			a_sections.push(k_child);
+		}
 
-		debugger;
+		Object.assign(this, {
+			sections: a_sections,
+		});
 	}
 
 	produce(i_term, hp_role) {
@@ -71,8 +73,4 @@ class dataset {
 }
 
 
-module.exports = {
-	decoders: {
-		[bat.PE_DATASET]: dataset,
-	},
-};
+module.exports = dataset;

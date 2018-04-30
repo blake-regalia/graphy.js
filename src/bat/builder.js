@@ -478,7 +478,7 @@ class builder {
 		k_stream.onblob = (dfb_input) => {
 			console.timeEnd('blob');
 
-			throw new Erorr('deprecated');
+			throw new Error('deprecated');
 			// // split
 			// graphy.splitter(pm_format, k_stream, {
 			// 	// where to make splits

@@ -8,14 +8,13 @@ const worker = require('worker').scopify(require, () => {
 const bat = require('./bat.js');
 const creator = require('./creator.js');
 
-const encoder_chapter = require('./encoders/chapter-front-coded.js');
+const encoder_chapter = require('./encoders/chapter-difcc.js');
 
 const {
 	S_PREFIXES,
 	S_TERM_HA, S_TERM_SA, S_TERM_PA, S_TERM_OA,
 	S_TERM_HP, S_TERM_SP, S_TERM_PP, S_TERM_OP,
 	S_TERM_LP, S_TERM_LL, S_TERM_LDA, S_TERM_LDP,
-	PE_CHAPTER,
 } = bat;
 
 const F_SORT_COUNT_DESC = (h_a, h_b) => {
@@ -297,7 +296,7 @@ class serializer {
 		k_chapter.add_nt_word_list(at_contents, n_prefixes);
 
 		// commit chapter
-		this.push_chapter(k_chapter.close(PE_CHAPTER+S_PREFIXES));
+		this.push_chapter(k_chapter.close(S_PREFIXES));
 
 		// // divide and return prefix word list for front coding
 		// return this.balance_word_list(k_word_writer.close());
@@ -513,28 +512,43 @@ class serializer {
 	}
 
 	commit_dictionary() {
-		let c_bytes = 0;
 		let a_chapters = this.chapters;
-		let n_chapters = a_chapters.length;
-		for(let i_chapter=0; i_chapter<n_chapters; i_chapter++) {
-			c_bytes += a_chapters[i_chapter].length;
-		}
+		let nl_chapters = a_chapters.length;
 
-		let n_byte_estimate = 1 + 4*2;
+		// info section
+		let kbe_info = new bkit.buffer_encoder({size:64});
 
-		let kbe = new bkit.buffer_encoder({size:n_byte_estimate});
-
-		// dictionary code
-		kbe.ntu8_string(bat.PE_DICTIONARY);
+		// dictionary type
+		kbe_info.ntu8_string('terms');
 
 		// chapter count
-		kbe.vuint(n_chapters);
+		kbe_info.vuint(nl_chapters);
 
-		// chapter length
-		kbe.vuint(c_bytes);
+		// info section
+		let at_info = kbe_info.close();
+
+		// byte count of info section
+		let cb_payload = at_info.byteLength;
+
+		// add sum of chapter byte counts
+		for(let i_chapter=0; i_chapter<nl_chapters; i_chapter++) {
+			cb_payload += a_chapters[i_chapter].length;
+		}
+
+		// header section
+		let kbe_header = new bkit.buffer_encoder({size:64});
+
+		// dictionary encoding
+		kbe_header.ntu8_string(bat.PE_DICTIONARY_PP12OC);
+
+		// payload byte length
+		kbe_header.vuint(cb_payload);
 
 		// dictionary header
-		this.output.push(kbe.close());
+		this.output.push(kbe_header.close());
+
+		// info section
+		this.output.push(at_info);
 
 		// chapters
 		this.output.push(...a_chapters);
@@ -567,7 +581,7 @@ class serializer {
 					h_utis.hops_absolute = 2;
 					h_utis.predicates_absolute = 2;
 
-					// unlock uti map and absolute nodes
+					// unlock uti map and first absolute node chapters
 					k_group.unlock([
 						'uti_'+S_TERM_HA,
 						'uti_'+S_TERM_PA,
@@ -577,13 +591,19 @@ class serializer {
 
 					k_group.wait('uti_'+S_TERM_HP, () => {
 						h_utis.subjects_absolute = h_utis.hops_prefixed;
-						k_group.unlock(['uti_'+S_TERM_SA, S_TERM_SA]);
+						k_group.unlock(['uti_'+S_TERM_SA]);
 					});
+
+					// as soon as the prefixed chapter is ready, unlock the next absolute chapter
+					k_group.wait(S_TERM_HP, S_TERM_SA);
 
 					k_group.wait('uti_'+S_TERM_SP, () => {
 						h_utis.objects_absolute = h_utis.subjects_prefixed;
-						k_group.unlock(['uti_'+S_TERM_OA, S_TERM_OA]);
+						k_group.unlock(['uti_'+S_TERM_OA]);
 					});
+
+					// as soon as the prefixed chapter is ready, unlock the next absolute chapter
+					k_group.wait(S_TERM_SP, S_TERM_OA);
 				}
 				// yes absolute nodes
 				else {
@@ -618,7 +638,7 @@ class serializer {
 								let s_chapter = H_CHAPTERS_ABSOLUTE[s_key];
 
 								// push this chapter to dictionary
-								this.push_chapter(k_chapter.close(PE_CHAPTER+s_chapter));
+								this.push_chapter(k_chapter.close(s_chapter));
 
 								// absolute nodes section done
 								k_group.unlock(s_chapter);
@@ -687,12 +707,12 @@ class serializer {
 							.series((h_fragment_nodes_prefixed) => {
 								k_chapter.import(h_fragment_nodes_prefixed);
 							}, () => {
-								// wait for absolute version to complete
+								// wait for unlock events on absolute chapter
 								k_group.wait(H_CHAPTERS_ABSOLUTE[s_key], () => {
 									let s_chapter = H_CHAPTERS_PREFIXED[s_key];
 
 									// push this chapter to dictionary
-									this.push_chapter(k_chapter.close(PE_CHAPTER+s_chapter));
+									this.push_chapter(k_chapter.close(s_chapter));
 
 									// prefixed nodes section done
 									k_group.unlock(s_chapter);
@@ -739,7 +759,7 @@ class serializer {
 			// advance dependency for next ref
 			s_literals_dependency = s_chapter;
 
-			let b_debug = 'literals_languaged' === s_chapter;
+			let b_debug = false; //'literals_languaged' === s_chapter;
 
 			return (a_data? k_group.data(a_data): k_group.use(a_use))
 
@@ -789,7 +809,7 @@ class serializer {
 								// wait for dependency to be done
 								k_group.wait(s_dependency, () => {
 									// push chapter to dictionary
-									this.push_chapter(k_chapter.close(PE_CHAPTER+s_chapter));
+									this.push_chapter(k_chapter.close(s_chapter));
 
 									// chapter done
 									k_group.unlock(s_chapter);
@@ -912,35 +932,52 @@ class serializer {
 		// create section header
 		let kbe_header = new bkit.buffer_encoder({size:512});
 
-		// encoding scheme
-		kbe_header.ntu8_string(bat.PE_TRIPLES_BITMAP+'spo');
+		// create info section
+		let kbe_info = new bkit.buffer_encoder({size:512});
 
-		// payload size
-		let nl_payload = at_adj_s_p.length + at_bs_s_p.length + at_adj_sp_o.length + at_bs_sp_o.length;
-		kbe_header.vuint(nl_payload);
+		// index type
+		kbe_info.ntu8_string('spo');
+
+		// end of info section
+		let at_info = kbe_info.close();
+
+		// encoding scheme
+		kbe_header.ntu8_string(bat.PE_TRIPLES_BITMAP);
+
+		// payload byte count
+		kbe_header.vuint(at_info.byteLength
+			+ at_adj_s_p.length
+			+ at_bs_s_p.length
+			+ at_adj_sp_o.length
+			+ at_bs_sp_o.length);
 
 		// add section to output
-		this.output.push(...[
+		this.output.push(
 			kbe_header.close(),
+			at_info,
 			at_adj_s_p, at_bs_s_p,
 			at_adj_sp_o, at_bs_sp_o,
-		]);
+		);
 	}
 
 	close_output() {
-		let a_output = this.output;
-
-		// count bytes
-		let c_bytes = 0;
-		a_output.forEach(at => c_bytes += at.byteLength);
+		// count payload byte length
+		let cb_payload = 0;
+		for(let at_section of this.output) {
+			cb_payload += at_section.byteLength;
+		}
 
 		// encode header
 		let kbe_header = new bkit.buffer_encoder({size:512});
-		kbe_header.ntu8_string(bat.PE_DATASET);
-		kbe_header.vuint(c_bytes);
 
-		// push to front
-		a_output.unshift(kbe_header.close());
+		// dataset encoding
+		kbe_header.ntu8_string(bat.PE_DATASET_PG);
+
+		// payload byte length
+		kbe_header.vuint(cb_payload);
+
+		// push dataset header to front
+		this.output.unshift(kbe_header.close());
 	}
 }
 

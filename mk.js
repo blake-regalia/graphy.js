@@ -59,6 +59,7 @@ const H_LINKS = {
 };
 
 const dir_struct = (a_files) => {
+	debugger;
 	let a_paths = [];
 	for(let z_file of a_files) {
 		if('string' === typeof z_file) {
@@ -74,7 +75,7 @@ const dir_struct = (a_files) => {
 	return a_paths;
 };
 
-module.exports = () => ({
+module.exports = {
 	'&format': /(\w+)-((?:de)?serializer)/,
 
 	'&dedicated': /(store)/,
@@ -92,20 +93,19 @@ module.exports = () => ({
 			'bat',
 			'builder',
 			'creator',
-			'dataset',
 			'index',
-			'main',
+			// 'main',
 			'serializer',
 			{
 				decoders: [
 					// 'async',
-					'chapter-front-coded',
+					'chapter-difcc',
+					'dictionary-pp12oc',
 					'dataset',
-					'dictionary-thirteen-chapter',
 					'interfaces',
 				],
 				encoders: [
-					'chapter-front-coded',
+					'chapter-difcc',
 				],
 				workers: [
 					'encoder',
@@ -114,17 +114,27 @@ module.exports = () => ({
 		]).map(s => `${pd_packages}/bat/${s}.js`),
 	],
 
-	[`${pd_packages}/bat/decoders/interfaces.js`]: {
-		case: true,
-		deps: [
-			'src/bat/decoders/interfaces.js.jmacs',
-			s_self_dir,
-		],
-		run: /* syntax: bash */ `
-			jmacs $1 > $@
-			${eslint()}
-		`,
-	},
+	...dir_struct([
+		'bat',
+		{
+			decoders: [
+				'dictionary-pp12oc',
+				'interfaces',
+			],
+		}
+	]).reduce((h, s) => (Object.assign(h, {
+		[`${pd_packages}/bat/${s}.js`]: {
+			case: true,
+			deps: [
+				`src/bat/${s}.js.jmacs`,
+				s_self_dir,
+			],
+			run: /* syntax: bash */ `
+				jmacs $1 > $@
+				${eslint()}
+			`,
+		},
+	})), {}),
 
 	[`${pd_packages}/bat/:file.js`]: {
 		case: true,
@@ -267,4 +277,4 @@ module.exports = () => ({
 		`,
 	},
 
-});
+};

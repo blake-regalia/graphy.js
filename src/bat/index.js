@@ -1,6 +1,8 @@
 const stream = require('stream');
 
-const dataset = require('./dataset.js');
+const bkit = require('bkit');
+
+const bat = require('./bat.js');
 const creator = require('./creator.js');
 const serializer = require('./serializer.js');
 
@@ -19,15 +21,40 @@ class bat_store extends stream.Writable {
 			ready: g_config.ready,
 		});
 
-		this.on('finish', async () => {
+		this.on('finish', async() => {
 			let k_serializer = new serializer(k_creator);
 
-			let at_dataset = await k_serializer.buffer();
+			let at_serialized = await k_serializer.buffer();
 
-			let k_dataset = new dataset(at_dataset);
+			// create buffer decoder to read serialized data
+			let kbd = new bkit.buffer_decoder(at_serialized);
 
+			// instantiate bat decoders
+			let k_decoders = new bat.decoders();
+
+			// dataset contained
+			let k_dataset;
+
+			// read
+			let a_decode;
+			while((a_decode = k_decoders.auto_what(kbd))) {
+				let [k_item, pe_item] = a_decode;
+				if(bat.PE_DATASET_PG === pe_item) {
+					// already loaded a dataset
+					if(k_dataset) {
+						throw new Error('multiple datasets contained ');
+					}
+					else {
+						k_dataset = k_item;
+					}
+				}
+				else {
+					throw new Error(`root container encoding <${pe_item}> was not expected`);
+				}
+			}
+
+			// prepare store on dataset
 			debugger;
-			k_dataset
 		});
 	}
 
