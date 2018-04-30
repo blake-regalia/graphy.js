@@ -938,6 +938,12 @@ class serializer {
 		// index type
 		kbe_info.ntu8_string('spo');
 
+		// number of pairs
+		kbe_info.vuint(c_pairs);
+
+		// number of triples
+		kbe_info.vuint(c_triples);
+
 		// end of info section
 		let at_info = kbe_info.close();
 

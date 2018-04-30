@@ -233,6 +233,7 @@ class decoders {
 				[PE_DATASET_PG]: require('./decoders/dataset.js'),
 				[PE_DICTIONARY_PP12OC]: require('./decoders/dictionary-pp12oc.js'),
 				[PE_CHAPTER_DIFCC]: require('./decoders/chapter-difcc.js'),
+				[PE_TRIPLES_BITMAP]: require('./decoders/triples-bitmap.js'),
 			};
 		}
 

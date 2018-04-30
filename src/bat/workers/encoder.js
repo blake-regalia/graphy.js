@@ -7,7 +7,7 @@ const performance_now = require('performance-now');
 const bat = require('../bat.js');
 const creator = require('../creator.js');
 
-const encoder_chapter = require('../encoders/chapter-front-coded.js');
+const encoder_chapter = require('../encoders/chapter-difcc.js');
 
 const F_SORT_BUFFER = (ab_a, ab_b) => {
 	let nl_a = ab_a.length;

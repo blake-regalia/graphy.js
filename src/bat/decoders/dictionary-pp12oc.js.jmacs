@@ -50,6 +50,17 @@ class dictionary_pp12oc extends interfaces.dictionary {
 			throw new Error(`expecting '${S_PREFIXES}' as first chapter, fond '${k_chapter_prefixes.label}' instead`);
 		}
 
+		// instead of using prefix in chapter-mode, use as hash
+		let h_prefixes = {};
+		let i_prefix = 1;
+		for(let at_prefix_iri of k_chapter_prefixes.each()) {
+			h_prefixes[i_prefix++] = bkit.decode_utf_8(at_prefix_iri);
+		}
+
+		// create data view constructor ref
+		let n_prefixes = k_chapter_prefixes.word_count;
+		let dc_prefix_view = bkit.uint_array(n_prefixes);
+
 		// word index that chapters will start at
 		let i_start = k_chapter_prefixes.word_count + 1;
 
@@ -62,9 +73,7 @@ class dictionary_pp12oc extends interfaces.dictionary {
 		};
 
 		// chapter objects
-		let h_chapters = {
-			[S_PREFIXES]: k_chapter_prefixes,
-		};
+		let h_chapters = {};
 
 		// chapter index
 		let i_chapter = 0;
@@ -121,21 +130,6 @@ debugger;
 			// next chapter
 			i_chapter += 1;
 		}
-
-
-		// instead of using prefix in chapter-mode, use as hash
-		let h_prefixes = {};
-		let i_prefix = 1;
-		for(let at_prefix_iri of k_chapter_prefixes.each()) {
-			h_prefixes[i_prefix++] = bkit.decode_utf_8(at_prefix_iri);
-		}
-
-		// create data view constructor ref
-		let n_prefixes = k_chapter_prefixes.word_count;
-		let dc_prefix_view = bkit.uint_array(n_prefixes);
-
-		// free prefix chapter
-		delete h_chapters.prefixes;
 
 		// save fields
 		Object.assign(this, {
