@@ -103,6 +103,7 @@ module.exports = {
 					'dictionary-pp12oc',
 					'dataset',
 					'interfaces',
+					'triples-bitmap',
 				],
 				encoders: [
 					'chapter-difcc',
