@@ -1,10 +1,10 @@
-@include 'store.jmacs'
+@import 'common.jmacs'
 
 
-@def return_empty_gen()
+@> return_empty_gen()
 	// empty generator
 	return function*(){};
-@end
+@;
 
 
 class Match {
@@ -37,27 +37,35 @@ class Match {
 }
 
 
-@def stage_id(s_stage, s_params='')
+@> stage_id(s_stage, s_params='')
 	let {
 		id: i_@{s_stage},
 		bind: s_bind,
 		join: s_join,
 	} = this;
 
-	@let s_params = ''
-	@let s_yields = ''
-	@if 'a' === s_stage
-		@let s_params = ''
-	@elseif 'b' === s_stage
-		@let s_params = ', i_a'
-		@let s_yields = 'offset: c_off_b,'
-	@elseif 'c' === s_stage
-		@let s_params = ', i_a, c_off_b'
-	@end
+	@.{
+		let s_yields = '';
+		switch(s_stage) {
+			case 'a': {
+				s_params = '';
+				break;
+			}
+			case 'b': {
+				s_params = ', i_a';
+				s_yields = 'offset: c_off_b,';
+				break;
+			}
+			case 'c': {
+				s_params = ', i_a, c_off_b';
+				break;
+			}
+		}
+	}
 
 	// mk entity generator
 	return function*(h_row_old@{s_params}) {
-		@if true
+		@- true
 			// assume not bound
 			let h_row_new = h_row_old;
 
@@ -74,7 +82,7 @@ class Match {
 				row: h_row_new,
 				@{s_yields}
 			};
-		@end
+		@;
 
 
 		// entity will be joined
@@ -82,7 +90,7 @@ class Match {
 			debugger;
 		}
 	};
-@end
+@;
 
 class Match_Id extends Match {
 	constructor(i_index, hp_role, i_id) {
@@ -175,7 +183,7 @@ class Match_Id extends Match {
 }
 
 
-@def stage_ids(s_generator, s_iterator, s_yield=false)
+@> stage_ids(s_generator, s_iterator, s_yield=false)
 	let {
 		bind: s_bind,
 		join: s_join,
@@ -219,15 +227,15 @@ class Match_Id extends Match {
 				}
 
 				// yield
-				@if yield
+				@- yield
 					yield {
 						id: i_term,
 						row: h_row_new,
 						@{true === s_yield? '': s_yield}
 					};
-				@else
+				@:
 					yield i_term;
-				@end
+				@;
 
 				// increment counter; collected max samples
 				if(++c_terms === n_sample) break;
@@ -240,7 +248,7 @@ class Match_Id extends Match {
 		// validate cardinality
 		this.validate_cardinality(c_terms);
 	};
-@end
+@;
 
 class Match_Ids extends Match {
 	constructor(i_index, hp_role, a_ids, n_sample=Infinity) {
@@ -319,18 +327,21 @@ class Match_Ids extends Match {
 	}
 }
 
-
-@def stage_role(s_stage)
-	@let s_params = ''
-	@let s_iterate = 'i_term'
-	@if 'a' === s_stage
-
-	@elseif 'b' === s_stage
-		@set s_iterate = '{id:i_term, offset:c_off_b}'
-		@set s_params = ', i_a'
-	@elseif 'c' === s_stage
-		@set s_params = ', i_a, c_off_b'
-	@end
+@> stage_role(s_stage)
+	@.{
+		let s_params = '';
+		let s_iterate = 'i_term';
+		switch(s_stage) {
+			case 'b': {
+				s_iterate = '{id:i_term, offset:c_off_b}';
+				s_params = ', i_a';
+				break;
+			}
+			case 'c': {
+				s_params = ', i_a, c_off_b';
+			}
+		}
+	}
 
 	let {
 		role: hp_role,
@@ -431,7 +442,7 @@ class Match_Ids extends Match {
 		// validate cardinality
 		this.validate_cardinality(c_terms);
 	}
-@end
+@;
 
 class Match_Role extends Match {
 	constructor(i_index, hp_role, n_sample=Infinity) {

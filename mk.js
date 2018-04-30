@@ -15,8 +15,8 @@ const A_FORMAT_MODES = [
 const A_FILES_STORE = [
 	'index',
 	'pattern',
-	'selection',
-	'match',
+	// 'selection',
+	// 'match',
 	'plugin',
 	'symbols',
 ];
@@ -84,6 +84,13 @@ module.exports = {
 
 	// all tasks
 	all: 'formats standalones bat store',
+
+	// copy eslint from authority
+	eslint: {
+		run: /* syntax: bash */ `
+			cp ~/dev/.eslintrc.yaml .
+		`,
+	},
 
 	// all formats x modes
 	formats: a_format_build_targets,
