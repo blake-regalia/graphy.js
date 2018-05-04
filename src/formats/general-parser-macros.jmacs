@@ -1,4 +1,4 @@
-/* eslint-disable */
+@// /* global BINARY */
 
 @// control variables
 
@@ -105,7 +105,7 @@
 			@- N
 				this.restore_data(h_event@{transform? ', d_transform': ''});
 			@:
-				this[h_event.event].call(this, h_event.data@{transform? ', d_transform': ''});
+				this[h_event.event](h_event.data@{transform? ', d_transform': ''});
 			@;
 
 			// callback paused stream
@@ -181,7 +181,7 @@
 	let z_label_state = this.labels[s_label];
 	if(z_label_state) {
 		// label was used previously by document and has no conflict
-		if(1 === z_label_state) {}
+		if(1 === z_label_state) {}  // eslint-disable-line no-empty
 		// label is in use by invention, this would cause a conflict
 		else if(2 === z_label_state) {
 			// so create a redirect mapping for this actual label & use it instead
@@ -383,6 +383,3 @@
 		return (new Parser(g_config)).operator;
 	};
 @;
-
-
-/* whitespace */

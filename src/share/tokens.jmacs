@@ -1,0 +1,54 @@
+
+@>> MK_R_RANGE_PN_CHARS_BASE()
+	@//@regex
+	A-Z
+	a-z
+	\u00c0-\u00d6
+	\u00d8-\u00f6
+	\u00f8-\u02ff
+	\u0370-\u037d
+	\u037f-\u1fff
+	\u200c-\u200d
+	\u2070-\u218f
+	\u2c00-\u2fef
+	\u3001-\ud7ff
+	\uf900-\ufdcf
+	\ufdf0-\ufffd
+	\u10000-\uefffF
+@;
+
+@>> MK_R_RANGE_PN_CHARS_U()
+	@//@regex
+	_
+	@{MK_R_RANGE_PN_CHARS_BASE()}
+@;
+
+@>> MK_R_RANGE_PN_CHARS()
+	@//@regex
+	-
+	0-9
+	@{MK_R_RANGE_PN_CHARS_U()}
+	\u00b7
+	\u0300-\u036f
+	\u203f-\u2040
+@;
+
+@>> MK_RT_VALID_BLANK_NODE_LABEL()
+	@//@regex
+	^
+	(?:
+		[
+			0-9
+			@{MK_R_RANGE_PN_CHARS_U()}
+		]
+		(?:
+			[
+				.
+				@{MK_R_RANGE_PN_CHARS()}
+			]*
+			@{MK_R_RANGE_PN_CHARS()}
+		)?
+	)
+	$
+@;
+

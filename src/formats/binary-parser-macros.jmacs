@@ -18,8 +18,8 @@
 @;
 
 @// change state
-@> goto(method)
-	return this.@{method}(a, n, i);
+@> goto(s_method)
+	return this.@{s_method}(a, n, i);
 @;
 
 
@@ -43,7 +43,7 @@
 			@// count how many braces need to be closed
 			@$ c_braces += 1;
 
-			@- bytes_needed == 1
+			@- 1 === bytes_needed
 				// single byte needed
 				if(i < n) {
 			@:
@@ -60,7 +60,7 @@
 
 			// string is within buffer
 			if(-1 !== i_null) {
-				@{crc(n? n: 16)}
+				@{crc(n || 16)}
 				// decode string from buffer
 				let @{string_var} = @{utf8_string()};
 		@;
@@ -93,7 +93,7 @@
 		@// for all braces that need to be closed
 		@*{
 			for(let i_brace=0; i_brace<c_braces; i_brace++) {
-				yield `} // brace #${c_brace - i_brace}\n`;
+				yield `} // brace #${c_braces - i_brace}\n`;
 			}
 
 			// reset brace counter
@@ -114,6 +114,3 @@
 		@{bail(name)}
 	},
 @;
-
-
-/* whitespace */

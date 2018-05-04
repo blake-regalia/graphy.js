@@ -11,34 +11,35 @@
 @> format(s_format)
 	// @{s_format} package
 	const @{s_format} = {
-		// serialize @{s_format} output
-		get serializer() {
+		// parse @{s_format} output
+		get parser() {
 			// memoize
-			delete @{s_format}.serializer;
-			return @{s_format}.serializer = require('@graphy/@{s_format}-serializer');
+			delete @{s_format}.parser;
+			return @{s_format}.parser = require('@graphy/@{s_format}-parser');
 		},
 
-		// deserialize @{s_format} input
-		get deserializer() {
+		// write @{s_format} input
+		get writer() {
 			// memoize
-			delete @{s_format}.deserializer;
-			return @{s_format}.deserializer = require('@graphy/@{s_format}-deserializer');
+			delete @{s_format}.writer;
+			return @{s_format}.writer = require('@graphy/@{s_format}-writer');
 		},
 
 		// parse @{s_format} input
 		parse(...a_args) {
-			if(1 === a_args.length) {
-				a_args[0].validate = true;
-			}
-			else {
-				a_args = [
-					a_args[0] || null,
-					Object.assign(a_args[1] || {}, {
-						validate: true,
-					}),
-				];
-			}
-			return @{s_format}.deserializer(...a_args);
+			return @{s_format}.parser(...a_args);
+			// if(1 === a_args.length) {
+			// 	a_args[0].validate = true;
+			// }
+			// else {
+			// 	a_args = [
+			// 		a_args[0] || null,
+			// 		Object.assign(a_args[1] || {}, {
+			// 			validate: true,
+			// 		}),
+			// 	];
+			// }
+			// return @{s_format}.deserializer(...a_args);
 		},
 	};
 @;
@@ -108,7 +109,6 @@ const H_SPARQL_RESULT_TYPES = {
 		set: {},
 		viz: {},
 		store: {},
-		writer: {},
 	};
 }
 
@@ -148,24 +148,24 @@ const graphy = module.exports = Object.assign({
 	/*
 	* access to flavor by mime
 	*/
-	serializer(pm_format, ...a_args) {
+	parser(pm_format, ...a_args) {
 		let k_format = H_MIMES[pm_format];
 		if(!k_format) return null;
-		let dc_serializer = k_format.serializer;
+		let dc_parser = k_format.parser;
 		if(a_args.length) {
-			return dc_serializer(...a_args);
+			return dc_parser(...a_args);
 		}
-		return dc_serializer;
+		return dc_parser;
 	},
 
-	deserializer(pm_format, ...a_args) {
+	writer(pm_format, ...a_args) {
 		let k_format = H_MIMES[pm_format];
 		if(!k_format) return null;
-		let dc_deserializer = k_format.deserializer;
+		let dc_writer = k_format.writer;
 		if(a_args.length) {
-			return dc_deserializer(...a_args);
+			return dc_writer(...a_args);
 		}
-		return dc_deserializer;
+		return dc_writer;
 	},
 
 	parse(pm_format, ...a_args) {

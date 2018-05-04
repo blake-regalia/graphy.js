@@ -1,66 +1,42 @@
 {
-  "name": "graphy",
-  "version": "2.0.0",
+  "name": "@graphy/super-repo",
+  "version": "3.0.0",
   "description": "A faster-than-lightning, asynchronous, streaming RDF deserializer that implements the RDFJS Representation Interfaces and natively parses Turtle, TriG, N-Triples, and N-Quads.",
+  "keywords": [
+    "linked-data",
+    "n-quads",
+    "n-triples",
+    "nq",
+    "nt",
+    "rdf",
+    "rdfjs",
+    "semantic-web",
+    "trig",
+    "ttl",
+    "turtle"
+  ],
+  "license": "ISC",
   "author": {
     "name": "Blake Regalia",
     "email": "blake.regalia@gmail.com"
   },
-  "files": [
-    "dist",
-    "dist.es6",
-    "es6.js"
-  ],
-  "main": "./dist/main/graphy.js",
-  "keywords": [
-    "rdf",
-    "rdfjs",
-    "linked-data",
-    "semantic-web",
-    "turtle",
-    "ttl",
-    "trig",
-    "n-triples",
-    "nt",
-    "n-quads",
-    "nq"
-  ],
   "repository": "blake-regalia/graphy.js",
-  "devDependencies": {
-    "Builder": "^2.4.0",
-    "JSONStream": "^1.3.1",
-    "eslint": "^4.19.1",
-    "eslint-plugin-jmacs": "^1.0.5",
-    "event-stream": "^3.3.4",
-    "gulp": "^3.9.1",
-    "gulp-beautify": "^2.0.1",
-    "gulp-clone": "^1.0.0",
-    "gulp-debug": "^3.1.0",
-    "gulp-istanbul": "^1.1.1",
-    "gulp-mocha": "^4.1.0",
-    "gulp-plumber": "^1.1.0",
-    "gulp-rename": "^1.2.2",
-    "gulp-soda": "^0.5.2",
-    "gulp-sourcemaps": "^2.4.1",
-    "gulp-tap": "^0.1.3",
-    "gulp-util": "^3.0.8",
-    "isparta": "^4.0.0",
-    "jmacs": "^1.0.5",
-    "lazypipe": "^1.0.1",
-    "lerna": "^2.9.0",
-    "node-jq": "^1.2.0",
-    "through2": "^2.0.3"
-  },
   "scripts": {
     "test": "gulp && gulp test"
   },
-  "license": "ISC",
   "dependencies": {
-    "bkit": "^1.1.0",
-    "buffer": "^5.0.5",
-    "colors": "^1.2.1",
+    "bkit": "^1.1.3",
+    "buffer": "^5.1.0",
+    "colors": "^1.2.3",
     "performance-now": "^2.1.0",
     "progress": "^2.0.0",
-    "worker": "^0.3.7"
+    "worker": "^0.3.8"
+  },
+  "devDependencies": {
+    "eslint": "^4.19.1",
+    "eslint-plugin-jmacs": "^1.0.9",
+    "jmacs": "^1.0.9",
+    "mkjs-cli": "0.1.0",
+    "sort-package-json": "^1.13.0"
   }
 }

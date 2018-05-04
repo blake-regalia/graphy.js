@@ -1,28 +1,190 @@
+@import '../share/iris.jmacs'
+@import '../share/writer.jmacs'
+@import '../share/tokens.jmacs'
+
+const stream = require('stream');
+
 const factory = require('@graphy/factory');
 
+const RT_VALID_BLANK_NODE_LABEL = /@{MK_RT_VALID_BLANK_NODE_LABEL()}/;
 
-class QuadsWriter {
-	constructor(k_out) {
-		this.out = k_out;
+class Serializer {
+	constructor(dc_writer, g_config) {
+		let k_writer = new dc_writer(this, g_config);
+
+		Object.assign(this, {
+			writer: k_writer,
+
+			// map for rewriting blank node labels
+			labels: {},
+
+			// anonymous blank node index
+			blank_node_index: 0,
+		});
 	}
 
-	// create a triples writer for the given graph
-	graph(s_graph) {
-		let k_out = this.out;
-		return new TriplesWriter(this, k_out.ct_node(s_graph), k_out);
+	write(s_data) {
+		this.writer.push(s_data);
 	}
 
-	// create a subject writer using the default graph
-	subject(s_subject) {
-		let k_triples = new TriplesWriter(this, '', this.out);
-		return k_triples.subject(s_subject);
+	end() {
+		this.writer.push(null);
+	}
+}
+
+
+@// for concise-term strings
+@> intercept_blank_nodes(s_var)
+	@//@
+	// blank node; use label
+	if('_' === @{s_var}[0]) return this.ct_blank_node(@{s_var}.slice(1));
+@;
+
+
+class Serializer_N3 extends Serializer {
+	// express a blank node in either terse or verbose syntax
+	ct_blank_node(s_label) {
+		// valid label (and not reserved mapping range)
+		if(RT_VALID_BLANK_NODE_LABEL.test(s_label) && !s_label.startsWith('_g')) {
+			return '_:'+s_label;
+		}
+		// invalid label; use map
+		else {
+			let h_labels = this.labels;
+
+			// already mapped; fetch label
+			if(s_label in h_labels) {
+				return '_:_g'+h_labels[s_label];
+			}
+			// not yet mapped; save mapping and return label
+			else {
+				return '_:_g'+(h_labels[s_label] = this.blank_node_index++);
+			}
+		}
+	}
+}
+
+class Serializer_N3_Verbose extends Serializer_N3 {
+	// serialize a term verbosely
+	term(k_term) {
+		// support verbose serialization method
+		if(k_term.verbose) return k_term.verbose();
+
+		// convert to graphy type then verbosify
+		return factory.term(k_term).verbose();
+	}
+	
+	// serialize a node verbosely
+	ct_node(sct_node) {
+		@{intercept_blank_nodes('sct_node')}
+
+		// construct node and verbosify
+		return factory.ct_node(sct_node, this.writer.prefixes).verbose();
 	}
 
-	// add quads to output
+	// serialize a term verbosely
+	ct_term(sct_term) {
+		@{intercept_blank_nodes('sct_term')}
+
+		// construct term and verbosify
+		return factory.ct(sct_term, this.writer.prefixes).verbose();
+	}
+}
+
+class Serializer_N3_Terse extends Serializer_N3 {
+	// serialize prefixes
+	serialize_prefixes() {
+		let h_prefixes = this.writer.prefixes;
+
+		// build prefixes string
+		let s_prefixes = '';
+		for(let s_prefix_id in h_prefixes) {
+			s_prefixes += `@prefix ${s_prefix_id}: <${h_prefixes[s_prefix_id]}> .\n`;
+		}
+
+		// push to output
+		this.write(s_prefixes+'\n');
+	}
+
+	// serialize a term tersely
+	term(k_term) {
+		// support terse serialization method
+		if(k_term.terse) return k_term.terse(this.writer.prefixes);
+
+		// convert to graphy type then tersify
+		return factory.term(k_term).terse(this.writer.prefixes);
+	}
+
+	// serialize a node tersely
+	ct_node(sct_node) {
+		@{intercept_blank_nodes('sct_node')}
+
+		// ref prefix map
+		let h_prefixes = this.writer.prefixes;
+
+		// construct node and tersify
+		return factory.ct_node(sct_node, h_prefixes).terse(h_prefixes);
+	}
+
+	// serialize a term tersely
+	ct_term(sct_term) {
+		@{intercept_blank_nodes('sct_term')}
+
+		// ref prefix map
+		let h_prefixes = this.writer.prefixes;
+
+		// construct term and tersify
+		return factory.ct(sct_term, h_prefixes).terse(h_prefixes);
+	}
+}
+
+
+let KT_XSD_DATETIME = factory.namedNode('@{P_IRI_XSD}dateTime');
+
+const HM_COERCIONS_DEFAULT = new Map([
+	[Date, dt => factory.literal(dt.toISOString(), KT_XSD_DATETIME)],
+	[Number, x => factory.number(x)],
+]);
+
+class CTWriter extends stream.Readable {
+	constructor(k_serializer, g_config={}) {
+		super();
+
+		// coercions
+		let hm_coercions = HM_COERCIONS_DEFAULT;
+		if(g_config.coercions) {
+			hm_coercions = new Map(HM_COERCIONS_DEFAULT);
+			for(let [dc_type, f_transform] of g_config.coercions) {
+				hm_coercions.set(dc_type, f_transform);
+			}
+		}
+
+		Object.assign(this, {
+			serializer: k_serializer,
+			prefixes: g_config.prefixes || {},
+			coercions: hm_coercions,
+		});
+	}
+
+	_read() {}
+
+	end() {
+		this.serializer.close();
+	}
+}
+
+class CTWriter_Quads extends CTWriter {
+	// create a graph writer
+	graph(sct_node) {
+		let k_serializer = this.serializer;
+		return new SubWriter_Triples(k_serializer, this, k_serializer.ct_node(sct_node));
+	}
+
+	// add triples to output
 	add(h_quads) {
 		// each entry in quads hash
 		for(let s_graph in h_quads) {
-			// graph is key
+			// [graph] => triples
 			let z_triples = h_quads[s_graph];
 
 			// create triples writer and then write to it
@@ -30,31 +192,24 @@ class QuadsWriter {
 				this.graph(s_graph).add(z_triples, 0);
 			}
 			catch(e_write) {
-				throw new Error(`while writing graph '${s_graph}':\n${e_write.message}`);
+				throw new Error(`...while writing graph '${s_graph}':\n${e_write.message}\n${e_write.stack}`);
 			}
 		}
 	}
 }
 
-class Writer {
-	constructor(k_parent, s_term, k_out) {
-		Object.assign(this, {
-			out: k_out,
-			parent: k_parent,
-			term: s_term,
-		});
-	}
-}
 
-class TriplesWriter extends Writer {
+@> subwriter_triples()
+	@//@class
+
 	// create a subject writer
-	subject(s_subject) {
-		let k_out = this.out;
-		return new PairsWriter(this, k_out.ct_node(s_subject), k_out);
+	subject(sct_node) {
+		let k_serializer = this.serializer;
+		return new SubWriter_Pairs(k_serializer, this, k_serializer.ct_node(sct_node));
 	}
 
 	// add triples to output
-	add(h_triples, x_mask=4) {
+	add(h_triples, xm_mode=@{XM_MODE_GRAPH}) {
 		// each entry in triples hash
 		for(let s_subject in h_triples) {
 			// [subject] => pairs
@@ -62,28 +217,47 @@ class TriplesWriter extends Writer {
 
 			// create pairs writer and then write to it
 			try {
-				this.subject(s_subject).add(z_pairs, x_mask);
+				this.subject(s_subject).add(z_pairs, xm_mode);
 			}
 			catch(e_write) {
-				throw new Error(`while writing subject '${s_subject}':\n${e_write.message}`);
+				throw new Error(`...while writing subject '${s_subject}':\n${e_write.message}\n${e_write.stack}`);
 			}
 
 			// same graph now
-			x_mask |= 4;
+			xm_mode |= @{XM_MODE_GRAPH};
 		}
 	}
+@;
+@//@
+
+class CTWriter_Triples extends CTWriter {
+	@{subwriter_triples()}
 }
 
 
-class PairsWriter extends Writer {
-	// create a predicate writer
-	predicate(s_ct) {
-		let k_out = this.out;
-		return new ObjectsWriter(this, k_out.ct_node(s_ct), k_out);
+class SubWriter {
+	constructor(k_serializer, k_parent, p_term) {
+		Object.assign(this, {
+			serializer: k_serializer,
+			parent: k_parent,
+			term: p_term,
+		});
+	}
+}
+
+class SubWriter_Triples {
+	@{subwriter_triples()}
+}
+
+class SubWriter_Pairs extends SubWriter {
+	// create an objects writer
+	predicate(sct_node) {
+		let k_serializer = this.serializer;
+		return new SubWriter_Objects(k_serializer, this, k_serializer.ct_node(sct_node));
 	}
 
-	// add triple using this subject
-	add(h_pairs, x_mask=0) {
+	// add predicate/object pairs using this subject
+	add(h_pairs, xm_mode=0) {
 		// each item in add pairs
 		for(let s_predicate in h_pairs) {
 			// [predicate] => objects
@@ -91,233 +265,202 @@ class PairsWriter extends Writer {
 
 			// create objects writer and then write to it
 			try {
-				this.predicate(s_predicate).add(w_objects, x_mask);
+				this.predicate(s_predicate).add(w_objects, xm_mode);
 			}
 			catch(e_write) {
-				throw new Error(`while writing predicate '${s_predicate}':\n${e_write.message}`);
+				throw new Error(`...while writing predicate '${s_predicate}':\n${e_write.message}\n${e_write.stack}`);
 			}
 
-			// debugger;
-
 			// same subject now
-			x_mask |= 2;
+			xm_mode |= @{XM_MODE_SUBJECT};
 		}
 	}
 }
 
-
-class ObjectsWriter extends Writer {
-
+class SubWriter_Objects extends SubWriter {
+	// transcode array to concise-term structs
 	transcode_collection(a_collection) {
 		// empty collection
 		if(!a_collection.length) {
 			return {
-				'>http://www.w3.org/1999/02/22-rdf-syntax-ns#first': '>http://www.w3.org/1999/02/22-rdf-syntax-ns#nil',
+				'>@{P_IRI_RDF}first': '>@{P_IRI_RDF}nil',
 			};
 		}
 		// non-empty collection
 		else {
 			return {
 				// first item
-				'>http://www.w3.org/1999/02/22-rdf-syntax-ns#first': a_collection[0],
+				'>@{P_IRI_RDF}first': a_collection[0],
 
 				// rest of items
-				'>http://www.w3.org/1999/02/22-rdf-syntax-ns#rest': 1 === a_collection.length
-					? '>http://www.w3.org/1999/02/22-rdf-syntax-ns#nil'
+				'>@{P_IRI_RDF}rest': 1 === a_collection.length
+					? '>@{P_IRI_RDF}nil'
 					: this.transcode_collection(a_collection.slice(1)),
 			};
 		}
 	}
 
-	serialize(z_objects, x_mask=0, n_nest_level=1) {
-		let k_out = this.out;
-		let hm_coercions = k_out.coercions;
+	// for nested blank node objects
+	pair(p_predicate, z_objects, xm_mode, n_nest_level) {
+		// serialize object
+		let p_object = this.objects(z_objects, xm_mode, n_nest_level+1);
 
-		// bad type
-		if(!z_objects) {
-			throw new Error(`bad/empty RDF object: [${typeof z_object}] ${z_objects && z_objects.constructor? z_objects.constructor: z_objects} "${z_objects}"`);
-		}
-		// t3 string
-		else if('string' === typeof z_objects) {
-			return k_out.ct_term(z_objects);
-		}
-		// an array
-		else if(Array.isArray(z_objects)) {
-			// apply to each object
-			z_objects.forEach((z) => {
-				// item is an array
-				if(Array.isArray(z)) {
-					// write RDF colletion
-					this.add(this.transcode_collection(z));
-				}
-				// other
-				else {
-					// recurse
-					this.add(z, x_mask);
+		// make pair
+		return this.serializer.pair(p_predicate, p_object, xm_mode, n_nest_level);
+	}
 
-					// now they share same graph, subject & predicate
-					x_mask |= 7;
-				}
-			});
+	// write objects
+	objects(z_objects, xm_mode=0, n_nest_level=1) {
+		let k_serializer = this.serializer;
+		let k_writer = k_serializer.writer;
+		let hm_coercions = k_serializer.coercions;
 
-			return;
-		}
-		// blank node
-		else if(Object === z_objects.constructor) {
-			// blank node nesting
-			if(k_out.nested_blank_nodes) {
-				// same graph/subject
-				x_mask &= 6;
+		// deduce object value type
+		switch(typeof z_objects) {
+			// concise-term string
+			case 'string': return k_serializer.ct_term(z_objects);
 
-				// outer mask
-				let x_outer_mask = x_mask;
+			// numeric type
+			case 'number': return k_serializer.term(factory.number(z_objects));
 
-				//
-				const serialize_pair = (s_predicate, z, x) => {
-					// serialize object
-					let s_object_ = this.serialize(z, x, n_nest_level+1);
+			// boolean type
+			case 'boolean': return k_serializer.term(factory.boolean(z_objects));
 
-					// make pair
-					return k_out.pair(s_predicate, s_object_, x, n_nest_level);
-				};
+			// object
+			case 'object': {
+				// null; reject
+				if(null === z_objects) throw new Error('Refusing to serialize null value');
 
-				// open blank node
-				let s_pairs = k_out.nest_open(n_nest_level);
+				// array, list of objects
+				if(Array.isArray(z_objects)) {
+					// each object
+					for(let z_item of z_objects) {
+						// item is an array; write RDF collection
+						if(Array.isArray(z_item)) {
+							this.add(this.transcode_collection(z_item));
+						}
+						// non-array
+						else {
+							// recurse on item
+							this.add(z_item, xm_mode);
 
-				// each pair
-				for(let s_predicate in z_objects) {
-					// [predicate] => object
-					let z_object = z_objects[s_predicate];
-
-					// object list
-					if(Array.isArray(z_object)) {
-						// each item in list
-						for(let z_alternates of z_object) {
-							s_pairs += serialize_pair(s_predicate, z_alternates, x_mask);
-
-							// now they share same predicate
-							x_mask |= 1;
-						};
+							// now they share same graph, subject & predicate
+							xm_mode |= @{XM_MODE_GRAPH | XM_MODE_SUBJECT | XM_MODE_PREDICATE};
+						}
 					}
-					// regular object
+
+					return;
+				}
+				// plain object, blank node
+				else if(Object === z_objects.constructor) {
+					// serializer supports blank node nesting
+					if(k_serializer.blank_node_nesting) {
+						// same graph/subject
+						xm_mode &= @{XM_MODE_GRAPH | XM_MODE_SUBJECT};
+
+						// outer mask
+						let xm_outer = xm_mode;
+
+						// open blank node block
+						let p_block = k_serializer.nest_open(n_nest_level);
+
+						debugger;
+
+						// each pair
+						for(let sct_predicate in z_objects) {
+							// [predicate] => object
+							let z_nested_objects = z_objects[sct_predicate];
+
+							// object list
+							if(Array.isArray(z_nested_objects)) {
+								// each item in list
+								for(let z_alternates of z_nested_objects) {
+									p_block += this.pair(sct_predicate, z_alternates, xm_mode, n_nest_level);
+
+									// now they share same predicate
+									xm_mode |= @{XM_MODE_PREDICATE};
+								};
+							}
+							// regular object
+							else {
+								p_block += this.pair(sct_predicate, z_nested_objects, xm_mode, n_nest_level);
+							}
+						}
+
+						// close blank node
+						p_block += k_serializer.nest_close(n_nest_level);
+
+						// complex nesting; just return as string
+						if(n_nest_level > 1) {
+							return p_block;
+						}
+						// top tier nest; serialize it
+						else {
+							// output that serialization
+							k_serializer.data(this, p_block, xm_outer);
+						}
+
+						return;
+					}
+					// must create name for anonymous blank node
 					else {
-						s_pairs += serialize_pair(s_predicate, z_object, x_mask);
+						debugger;
+
+						// make blank node label
+						let s_blank_node = '_:g'+(k_serializer.blank_node_index++);
+
+						// create node
+						let k_blank_node = this.parent.parent.subject(s_blank_node);
+
+						// add pairs normally (same graph tho!)
+						k_blank_node.add(z_objects, xm_mode & @{XM_MODE_GRAPH});
+
+						// then continue with outer triple where blank node is object
+						return s_blank_node;
 					}
 				}
+				// coercable instance
+				else if(hm_coercions.has(z_objects.constructor)) {
+					// convert javascript object to term object
+					let k_term = hm_coercions.get(z_objects.constructor).apply(k_serializer, [z_objects, k_serializer]);
 
-				// close blank node
-				s_pairs += k_out.nest_close(n_nest_level);
-
-				// complex nesting; just return as string
-				if(n_nest_level > 1) {
-					return s_pairs;
+					return k_writer.term(k_term);
 				}
-				// top tier nest; serialize it
-				else {
-					// output that serialization
-					k_out.data(this, s_pairs, x_outer_mask);
+				// RDFJS term
+				else if(z_objects.termType) {
+					return k_writer.term(z_objects);
 				}
-
-				return;
 			}
-			// must create name for anonymous blank node
-			else {
-				// make blank node label
-				let sct_blank_node = '_g'+(k_out.blank_node_index++);
 
-				// create node
-				let k_blank_node = this.parent.parent.subject(sct_blank_node);
-
-				// add pairs normally (same graph tho!)
-				k_blank_node.add(z_objects, x_mask & 4);
-
-				// then continue with outer triple where blank node is object
-				return factory.blankNode(sct_blank_node.slice(1));
+			// fallthrough: other
+			default: {
+				throw new Error(`Bad type for RDF object: [${typeof z_object}] ${z_objects.constructor}`);
 			}
-		}
-		// coercable instance
-		else if(hm_coercions.has(z_objects.constructor)) {
-			let h_term = hm_coercions.get(z_objects.constructor).call(k_out, z_objects, k_out);
-			return k_out.from_term(h_term);
-		}
-		// RDFJS term
-		else if(z_objects.termType) {
-			return k_out.from_term(z_objects);
-		}
-		// bad type
-		else {
-			throw new Error(`bad type for RDF object: [${typeof z_object}] ${z_objects.constructor}`);
 		}
 	}
 
-	// add object
-	add(z_objects, x_mask=0) {
+	// add object using current [graph], subject, predicate
+	add(z_objects, xm_mode=0) {
 		// attempt to serialize object
-		let s_object = this.serialize(z_objects, x_mask);
+		let s_object = this.objects(z_objects, xm_mode);
 
 		// serialization emits normal event
 		if(s_object) {
 			// emit data with mask
-			this.out.data(this, s_object, x_mask);
+			this.serializer.serialize_object(this, s_object, xm_mode);
 		}
 	}
 }
 
-const HM_DEFAULT_COERCE = new Map();
-HM_DEFAULT_COERCE.set(Date, dt => factory.literal(dt.toISOString(), factory.namedNode('http://www.w3.org/2001/XMLSchema#dateTime')));
 
-class Out_Data_Quads {
-	constructor(g_config) {
-		let hm_coercions = HM_DEFAULT_COERCE;
-		if(g_config.coercions) {
-			hm_coercions = new Map(HM_DEFAULT_COERCE);
-			for(let [dc_type, f_transform] of g_config.coercions) {
-				hm_coercions.set(dc_type, f_transform);
-			}
-		}
+module.exports = {
+	quads: CTWriter_Quads,
+	triples: CTWriter_Triples,
 
-		Object.assign(this, {
-			prefixes: g_config.prefixes,
-			writer: new QuadsWriter(this),
-			buffer: [],
-			coercions: hm_coercions,
-			blank_node_index: 0,
-		});
-	}
-
-	ct_node(sct_node) {
-		return factory.ct(sct_node, this.prefixes);
-	}
-
-	ct_term(sct_term) {
-		return factory.ct(sct_term, this.prefixes);
-	}
-
-	from_term(...a_args) {
-		return factory.term(...a_args);
-	}
-
-	data(k_pair, g_obj, x_mask) {
-		let k_triple = k_pair.parent;
-		this.buffer.push(factory.quad(k_triple.term, k_pair.term, g_obj, k_triple.parent.term));
-	}
-
-	* quads() {
-		yield* this.buffer;
-	}
-
-	add(...a_args) {
-		return this.writer.add(...a_args);
-	}
-
-	graph(...a_args) {
-		return this.writer.graph(...a_args);
-	}
-}
-
-module.exports = Object.assign(function(g_config) {
-	return new Out_Data_Quads(g_config);
-}, {
-	quads: QuadsWriter,
-	triples: TriplesWriter,
-});
+	serializer: {
+		n3: {
+			verbose: Serializer_N3_Verbose,
+			terse: Serializer_N3_Terse,
+		},
+	},
+};

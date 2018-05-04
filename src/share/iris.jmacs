@@ -1,0 +1,4 @@
+
+@$ P_IRI_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+@$ P_IRI_RDFS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+@$ P_IRI_XSD = 'http://www.w3.org/2001/XMLSchema#';

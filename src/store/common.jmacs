@@ -129,18 +129,6 @@
 	for(let i_@{s_name}=0, n_@{s_name}s=a_@{s_name}s.length; i_@{s_name}<n_@{s_name}s; i_@{s_name}++)
 @;
 
-@> each_old(what, ref, name)
-	for(let i_@{what}=0, n_@{what}s=a_@{what}s.length; i_@{what}<n_@{what}s; i_@{what}++) {
-		@- ref
-			@- ref == 'i' && !name
-				throw 'you need to name the each value something explicitly to avoid variable name collision';
-			@:
-				let @{ref}_@{name? name: what} = a_@{what}s[i_@{what}];
-			@;
-		@;
-@;
-
-
 @> end_each()
 	@- close_each_abc
 		@{close_each_abc}

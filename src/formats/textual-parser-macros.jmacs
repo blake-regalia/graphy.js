@@ -1,3 +1,4 @@
+@// /* global TRIPLES, QUADS */
 
 @// import parser macros
 @import 'general-parser-macros.jmacs'
@@ -144,7 +145,7 @@
 		let {@{CHUNK}, n, i} = this;
 
 		// start labeled loop, run while there are characters
-		@{name}: while(i < n) {
+		@{name}: while(i < n) {  // eslint-disable-line no-unmodified-loop-condition
 @;
 
 
@@ -187,7 +188,7 @@
 	this.pre = @{use_field_chunk?'this.':''}@{CHUNK}.slice(i);
 
 	// if we're not parsing a stream, then this is an error
-	this.eos && this.eos();
+	if(this.eos) this.eos();
 	return;
 @;
 
@@ -273,26 +274,28 @@
 @;
 
 // try something else
-@> else_if_call(method, match, local)
+@> else_if_call(s_method, s_match, b_local)
 	@// increment number of else branches we'll need to close
 	@$ c_braces += 1;
 
 	// c_braces: @{c_braces}
 
+	@.let s_no_shadow = s_method.replace(/[^a-z0-9]/gi, '_');
+
 	@// when previous match fails
 	} else {
 		// try match
-		let aw_valid = @{method}(s, i);
+		let aw_valid_@{s_no_shadow} = @{s_method}(s, i);
 
-		if(!aw_valid) return;
+		if(!aw_valid_@{s_no_shadow}) return;
 
-		let [@{match}, i@{match}] = aw_valid;
+		let [@{s_match}, i@{s_match}] = aw_valid_@{s_no_shadow};
 
 		@// test
-		if(@{match}) {
+		if(@{s_match}) {
 
 			// advance index
-			@{local? '': 'this.'}i = i@{match};
+			@{b_local? '': 'this.'}i = i@{s_match};
 @;
 
 
@@ -368,11 +371,7 @@
 @// extract uri from absolute / relative iri refs
 @> iriref(term, match, object, set_base, has_escapes, not_this)
 	// ref iri
-	let s_iri = @{match}[1]
-		@- has_escapes
-			.@{replace_unicode(true)};
-		@;
-	;
+	let s_iri = @{match}[1]@{has_escapes? `.${replace_unicode(true)}`: ''};
 
 	// absolute iri
 	if(!this.base_url || RT_IRI_ABSOLUTE.test(s_iri)) {
@@ -400,7 +399,7 @@
 				}
 				break;
 			// empty
-			case undefined:
+			case undefined:  // eslint-disable-line no-undefined
 				// identity
 				@{not_this? '': 'this.'}@{term} = @{object?'this.named_node(':''}this.base_url@{object?')':''};
 				break;
@@ -408,7 +407,7 @@
 			case '.':
 				// prepend so it is relative to root
 				s_iri = '/'+s_iri;
-			// relative to path
+			// fallthrough: relative to path
 			default:
 				@{not_this? '': 'this.'}@{term} = @{object?'this.named_node(':''}this.base_url_root + F_DOT_SEGMENTS(this.base_url_path + s_iri)@{object?')':''};
 		}
@@ -455,7 +454,7 @@
 		+s_literal
 			.@{replace_unicode()}
 			.replace(R_ESCAPES, '$1$2') // no need to escape anything other than reserved characters
-			@- 'long' == version
+			@- 'long' === version
 				.replace(/[\t\n"\r\f\u0008]/g, (s) => {
 					return H_SPECIAL_ESCAPES[s];
 				})
@@ -469,7 +468,7 @@
 @> set_string_literal(match, version)
 	// set literal value
 	h_literal@{literal_value()} = 
-	@- 'no-escape' == version
+	@- 'no-escape' === version
 		@{match}[1];
 	@:
 		this.unescape_literal_@{'long'===version? 'long': 'short'}(@{match}[1]);
@@ -497,13 +496,14 @@
 
 
 @> this_defer_errors()
+	@//@object-literal
 	// error event
 	_error: g_config.error || ((e_parse) => {
 		if(this.grace) {
 			this.grace(e_parse);
 		}
 
-		throw `parse error: ${e_parse}`;
+		throw new Error(`parse error: ${e_parse}`);
 	}),
 
 	// parse_error (not meant to be an event callback)

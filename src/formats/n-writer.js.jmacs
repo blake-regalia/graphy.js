@@ -6,15 +6,15 @@
 @$ NQ = 'nq' === FORMAT;
 @$ QUADS = NQ;
 
-const serializer = require('../main/serializer.js');
+const writer = require('@graphy/writer');
 
 @// possible mode types for this file are:
 @// NT: N-Triples
 @// NQ: N-Quads
 
-class @{FORMAT}_serializer extends serializer.human {
+class @{FORMAT}_serializer extends writer.serializer.n3 {
 	constructor(h_config) {
-		super(h_config, serializer.triples);
+		super(h_config, writer.triples);
 
 		// ct methods
 		this.ct_node = this.ct_node_verbose;

@@ -227,7 +227,7 @@ class Match_Id extends Match {
 				}
 
 				// yield
-				@- yield
+				@- s_yield
 					yield {
 						id: i_term,
 						row: h_row_new,
@@ -305,7 +305,8 @@ class Match_Ids extends Match {
 			}
 		}
 
-		return this[](k_graph, k_triples, as_ids, k_data);
+		debugger;
+		// return this[](k_graph, k_triples, as_ids, k_data);
 	}
 
 	stabe_b(k_graph, k_triples, as_ids, k_data) {
@@ -339,7 +340,9 @@ class Match_Ids extends Match {
 			}
 			case 'c': {
 				s_params = ', i_a, c_off_b';
+				break;
 			}
+			default: break;
 		}
 	}
 

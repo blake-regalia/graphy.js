@@ -1,5 +1,5 @@
-
 const crypto = require('crypto');
+const stream = require('stream');
 
 const factory = require('@graphy/factory');
 
@@ -383,13 +383,25 @@ class Canonicalizer_ct {
 	}
 }
 
-class QuadSet {
-	constructor(h_quad_tree={[$_KEYS]:0, [$_QUADS]:0}) {
+class QuadSet extends stream.Writable {
+	constructor(h_quad_tree=null, g_config={}) {
+		super({
+			// expect quads as input
+			objectMode: true,
+
+			// on write method
+			write(g_quad, s_encoding, fk_write) {
+				this.add(g_quad);
+				fk_write();
+			},
+		});
+
 		Object.assign(this, {
-			quad_tree: h_quad_tree,
+			quad_tree: h_quad_tree || {[$_KEYS]:0, [$_QUADS]:0},
 			digest: null,
 			root_blanks: {},
 			leaf_blanks: {},
+			debug: g_config.debug || false,
 		});
 	}
 

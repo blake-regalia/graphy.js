@@ -1,7 +1,10 @@
-/*eslint indent:0*/
+/* eslint-env mocha */
+/* eslint indent: 0, padded-blocks: 0, no-undefined: 0 */
 const assert = require('assert');
 const deq = assert.deepEqual;
 const eq = assert.strictEqual;
+
+const stream = require('stream');
 
 const graphy = require('../../dist/main/graphy.js');
 const parse_ttl = graphy.ttl.deserializer;
@@ -21,7 +24,7 @@ const P_IRI_XSD_DOUBLE = P_IRI_XSD+'double';
 
 const P_RDF_LANGSTRING = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString';
 
-const R_WANTS_PREFIX = /^\s*[(:_\[]/;
+const R_WANTS_PREFIX = /^\s*[(:_[]/;
 const S_AUTO_PREFIX = '@prefix : <#>.\n';
 
 
@@ -101,7 +104,7 @@ const survive = (s_test, s_ttl, a_pattern) => {
 	}
 	let a_ttl = s_ttl.split('');
 	it(s_test, (f_done) => {
-		(new require('stream').Readable({
+		(new stream.Readable({
 			read() {
 				this.push(a_ttl.shift() || null);
 			},
@@ -533,7 +536,7 @@ describe('ttl parser:', () => {
 			`, [
 				['#a', '#b', {value:''}],
 				['#a', '#b', {value:'c'}],
-				['#a', '#b', {value: `"c,\n'`}],
+				['#a', '#b', {value:`"c,\n'`}],
 			]);
 
 		allow('double quotes', `
@@ -543,7 +546,7 @@ describe('ttl parser:', () => {
 			`, [
 				['#a', '#b', {value:''}],
 				['#a', '#b', {value:'c'}],
-				['#a', '#b', {value: `'c,\n"`}],
+				['#a', '#b', {value:`'c,\n"`}],
 			]);
 
 		allow('long single quotes', `
@@ -555,7 +558,7 @@ describe('ttl parser:', () => {
 				['#a', '#b', {value:''}],
 				['#a', '#b', {value:'\r'}],
 				['#a', '#b', {value:'c'}],
-				['#a', '#b', {value: `"c,''\n'\n`}],
+				['#a', '#b', {value:`"c,''\n'\n`}],
 			]);
 
 		allow('long double quotes', `
@@ -565,7 +568,7 @@ describe('ttl parser:', () => {
 			`, [
 				['#a', '#b', {value:''}],
 				['#a', '#b', {value:'c'}],
-				['#a', '#b', {value: `'c,""\n"\n`}],
+				['#a', '#b', {value:`'c,""\n"\n`}],
 			]);
 
 		allow('escapes & unicode', `

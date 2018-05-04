@@ -1,3 +1,4 @@
+const G_PACKAGE_JSON_BASE = require('./src/aux/base-package.json');
 
 const H_FORMATS_GENERALIZED = {
 	nt: 'n',
@@ -7,15 +8,15 @@ const H_FORMATS_GENERALIZED = {
 };
 
 const A_FORMAT_MODES = [
-	'serializer',
-	'deserializer',
+	'parser',
+	'writer',
 ];
 
 
 const A_FILES_STORE = [
 	'index',
 	'pattern',
-	// 'selection',
+	'selection',
 	// 'match',
 	'plugin',
 	'symbols',
@@ -28,7 +29,10 @@ let pd_packages = `${pd_build}/packages`;
 let a_format_build_targets = [];
 Object.keys(H_FORMATS_GENERALIZED).forEach((s_format) => {
 	a_format_build_targets.push(
-		...A_FORMAT_MODES.map(s_mode => `${pd_packages}/${s_format}-${s_mode}/index.js`));
+		...A_FORMAT_MODES.reduce((a, s_mode) => a.push(...[
+			'index.js',
+			'package.json',
+		].map(s_file => `${pd_packages}/${s_format}-${s_mode}/${s_file}`)) && a, []));
 });
 
 const eslint = () => /* syntax: bash */ `
@@ -43,23 +47,18 @@ const eslint = () => /* syntax: bash */ `
 
 const H_LINKS = {
 	factory: [],
-	store: [],
+	// store: [],
 	set: ['factory'],
-	bat: ['factory', 'store'],
+	// bat: ['factory', 'store'],
 	viz: [],
-	serializer: ['factory'],
-	writer: [],
-	'ttl-deserializer': ['factory'],
-	'ttl-serializer': ['factory', 'serializer', 'writer'],
-	'nt-deserializer': ['factory'],
-	'nq-deserializer': ['factory'],
-	get graphy() {
-		return Object.keys(H_LINKS).filter(s => ('graphy' !== s));
-	},
+	writer: ['factory'],
+	'ttl-parser': ['factory'],
+	'ttl-writer': ['factory', 'writer'],
+	'nt-parser': ['factory'],
+	'nq-parser': ['factory'],
 };
 
 const dir_struct = (a_files) => {
-	debugger;
 	let a_paths = [];
 	for(let z_file of a_files) {
 		if('string' === typeof z_file) {
@@ -76,14 +75,19 @@ const dir_struct = (a_files) => {
 };
 
 module.exports = {
-	'&format': /(\w+)-((?:de)?serializer)/,
+	'&format': /(\w+)-(parser|writer)/,
 
 	'&dedicated': /(store)/,
 
 	'&file_subdir': /([^/]+)(?:\/(.+))?/,
 
 	// all tasks
-	all: 'formats standalones bat store',
+	all: [
+		'formats',
+		'standalones',
+		// 'bat',
+		// 'store',
+	],
 
 	// copy eslint from authority
 	eslint: {
@@ -120,6 +124,7 @@ module.exports = {
 				],
 			},
 		]).map(s => `${pd_packages}/bat/${s}.js`),
+		`${pd_packages}/bat/package.json`,
 	],
 
 	...dir_struct([
@@ -129,7 +134,7 @@ module.exports = {
 				'dictionary-pp12oc',
 				'interfaces',
 			],
-		}
+		},
 	]).reduce((h, s) => (Object.assign(h, {
 		[`${pd_packages}/bat/${s}.js`]: {
 			case: true,
@@ -143,6 +148,64 @@ module.exports = {
 			`,
 		},
 	})), {}),
+
+
+	// package's package.json file
+	[`${pd_packages}/:package/package.json`]: {
+		case: true,
+		deps: [
+			'src/aux/base-package.json',
+			'src/aux/package-extras.js',
+			s_self_dir,
+		],
+		run: /* syntax: bash */ `
+			cat $1| npx lambduh "json => {\
+				${/* syntax: js */`
+					// final dependencies
+					let h_deps = {};
+
+					// package extras
+					let h_package = require('${__dirname}/$2')['$package'];
+					if(h_package.dependencies) {
+						// source root dependencies
+						let h_root_deps = ${JSON.stringify(G_PACKAGE_JSON_BASE.dependencies).replace(/"/g, '\\"')};
+
+						// add dependencies from package extras
+						for(let s_dep of h_package.dependencies) {
+							h_deps[s_dep] = h_root_deps[s_dep];
+						}
+
+						// do not overwrite package.json with this key/value
+						delete h_package.dependencies;
+					}
+
+					// source links
+					let h_links = ${JSON.stringify(H_LINKS).replace(/"/g, '\\"')};
+
+					// add dependencies from graphy links
+					if('$package' in h_links) {
+						for(let s_link of h_links['$package']) {
+							h_deps['@graphy/'+s_link] = '^${G_PACKAGE_JSON_BASE.version}';
+						}
+					}
+					// graphy package
+					else if('$package' === 'graphy') {
+						for(let s_dep in h_links) {
+							h_deps['@graphy/'+s_dep] = '^${G_PACKAGE_JSON_BASE.version}';
+						}
+					}
+
+					// update package.json
+					return Object.assign(json, h_package, {
+						dependencies: h_deps,
+					});
+				`.trim()} }" > $@
+
+			# sort its package.json
+			npx sort-package-json $@
+		`,
+	},
+
 
 	[`${pd_packages}/bat/:file.js`]: {
 		case: true,
@@ -178,7 +241,7 @@ module.exports = {
 		`,
 	},
 
-	'ttl-deserializer': `${pd_packages}/ttl-deserializer/index.js`,
+	// 'ttl-deserializer': `${pd_packages}/ttl-deserializer/index.js`,
 
 	// link: {
 	// 	phony: true,
@@ -198,17 +261,34 @@ module.exports = {
 
 	link: 'link/graphy',
 
-	'link/:package': {
+	'link/graphy': {
+		deps: Object.keys(H_LINKS).map(s_dep => `link-sub/${s_dep}`),
+		run: /* syntax: bash */ `
+			cd build/packages/graphy
+			${Object.keys(H_LINKS).map(s_dep => /* syntax: bash */ `
+				npm link @graphy/${s_dep}
+			`).join('')}
+
+			# then link self
+			npm link
+		`,
+	},
+
+	'link-sub/:package': {
 		phony: true,
 		deps: [
 			h => H_LINKS[h.package].map(s_dep => `link/${s_dep}`).join(' '),
 		],
 		run: h => /* syntax: bash */ `
 			cd build/packages/$package
-			npm link
+
+			# first, link to dependencies
 			${H_LINKS[h.package].map(s_dep => /* syntax: bash */ `
 				npm link @graphy/${s_dep}
 			`).join('')}
+
+			# then link self
+			npm link
 		`,
 	},
 
@@ -218,21 +298,16 @@ module.exports = {
 		'factory',
 		'set',
 		'viz',
-		'serializer',
 		'writer',
-	].map(s => `${pd_packages}/${s}/index.js`),
+	].reduce((a, s_package) => a.push(...[
+		'index.js',
+		'package.json',
+	].map(s_file => `${pd_packages}/${s_package}/${s_file}`)) && a, []),
 
 	// build dir for package
 	[`${pd_packages}/:package`]: {
-		deps: [
-			'src/aux/base-package.json',
-			'src/aux/package-descriptions.json',
-		],
 		run: /* syntax: bash */ `
 			mkdir -p $@
-			cat $1| npx lambduh "json => \
-				Object.assign(json, $(cat $2 | npx lambduh "json => json['$package']")) \
-				&& json" > $@/package.json
 		`,
 	},
 
@@ -248,8 +323,7 @@ module.exports = {
 			s_self_dir,
 		],
 		run: /* syntax: bash */ `
-			npx jmacs -g "{FORMAT:'\${format[1]}'}" $1 \
-				| npx js-beautify -t - > $@
+			npx jmacs -g "{FORMAT:'\${format[1]}'}" $1 > $@
 			${eslint()}
 		`,
 	},
@@ -265,8 +339,7 @@ module.exports = {
 			],
 
 			run: /* syntax: bash */ `
-				npx jmacs $1 \
-					| npx js-beautify -t - > $@
+				npx jmacs $1 > $@
 				${eslint()}
 			`,
 		},
@@ -280,7 +353,7 @@ module.exports = {
 			s_self_dir,
 		],
 		run: /* syntax: bash */ `
-			npx jmacs $1 | npx js-beautify -t - > $@
+			npx jmacs $1 > $@
 			${eslint()}
 		`,
 	},

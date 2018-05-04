@@ -1,7 +1,142 @@
+@import '../share/iris.jmacs'
+
+// const DC_URL = require('../isomorphic/locals.js').URL;
+const DC_URL = require('url').URL;
+
+const RT_IRI_DIRTY = /[\u0000-\u0020<>"{}|^`\\]/;
+const R_IRI_ESCAPES = /([\u0000-\u0020<>"{}|^`\\])/g;
+
+@>> MK_RANGE_PN_HIGH(b_extend=false)
+	@// #x00B7
+	@- b_extend
+		@//@regex
+		{-\u00b6
+		\u00b8-\u00bf
+	@//@
+	@:
+		@//@regex
+		{-\u00bf
+	@;
+
+	@//@regex
+	\u00d7\u00f7
+
+	@//@
+	@- !b_extend
+		\u0300-\u306f
+	@;
+
+	@//@regex
+	\u037e
+	\u2000-\u200b
+
+	@- b_extend
+		\u200e-\u203e
+		\u2041-\u206f
+	@:
+		\u200e-\u206f
+	@;
+
+	@//@regex
+	\u2190-\u2bff
+	\u2ff0-\u3000
+	\ud800-\uf8ff
+	\ufdd0-\ufddf
+	\ufffe\uffff
+@;
+
+@>> MK_RT_AVOID_PNAME_LOCAL()
+	@//@regex
+	^
+	(?:
+		\\
+		| [						@// * first character *
+			\u0000-\/ 			@// 0-:
+			;-@					@// A-Z
+			[-^					@// _
+			`					@// a-z
+			@{MK_RANGE_PN_HIGH()}
+		] .+
+		| (?:
+			.+?					@// * acceptable preceeding characters *
+			(?:					@// * middle characters *
+				\\
+				| [
+					\u0000-,
+					\/;-@
+					[-^
+					`
+					@{MK_RANGE_PN_HIGH(true)}
+				]
+			)
+			.+					@// * at least one final character *
+		)
+		| (?:
+			.+?					@// * acceptable preceeding characters *
+			(?:					@// * final character *
+				\\
+				| [
+					\u0000-, 	@// -
+					.\/			@// 0-:
+					;-@			@// A-Z
+					[-^			@// _
+					`			@// a-z
+					@{MK_RANGE_PN_HIGH(true)}
+				]
+			)
+		)
+	)
+	$
+@;
+
+@>> MK_RT_AVOID_PNAME_NS()
+	@//@regex
+	^
+	(?:
+		[
+			\u0000-@ 			@// A-Z
+			[-`					@// a-z
+			@{MK_RANGE_PN_HIGH()}
+		] .+
+		| (?:
+			.+?					@// * acceptable preceeding characters *
+			[
+				\u0000-, 	@// -.
+				\/			@// 0-9
+				:-@			@// A-Z
+				[-^			@// _
+				`			@// a-z
+				@{MK_RANGE_PN_HIGH(true)}
+			]
+			.*
+		)
+		| .+ \. 				@// * ends with a full stop character *
+	)
+	$
+@;
+
+
+
+const RT_AVOID_PNAME_NS = /@{MK_RT_AVOID_PNAME_NS()}/;
+const RT_AVOID_PNAME_LOCAL = /@{MK_RT_AVOID_PNAME_LOCAL()}/;
+
+const RT_BOOLEAN_TRUE = /^([Tt](rue)?|TRUE)$/;
+const RT_BOOLEAN_FALSE = /^([Ff](alse)?|FALSE)$/;
+
+const F_REPLACE_IRI_ESCAPE = (s_fragment, s_char) => {
+	let x_code = s_char.codePointAt(0);
+	if(x_code <= 0xffff) {
+		return `\\u${x_code.toString(16).padStart(4, '0')}`
+	}
+	else {
+		return `\\U${x_code.toString(16).padStart(8, '0')}`
+	}
+};
 
 const S_UUID_V4 = 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx';
 const R_UUID_V4 = /[xy]/g;
 
+// attempt to turn an iri into a prefixed name
 const concise = (p_iri, h_prefixes) => {
 	// best prefix id
 	let s_best_prefix_id = '';
@@ -32,6 +167,27 @@ const concise = (p_iri, h_prefixes) => {
 	return '>'+p_iri;
 };
 
+// take a dirty iri and clean it up
+const clean_iri = (p_iri_dirty) => {
+	// clean iri
+	let p_iri = p_iri_dirty;
+
+	// try parsing as URI
+	try {
+		p_iri = (new DC_URL(p_iri_dirty)).toString();
+	}
+	// not a URI
+	catch(e_parse) {
+		// illegal characters
+		if(RT_IRI_DIRTY.test(p_iri_dirty)) {
+			// escape them
+			p_iri = p_iri_dirty.replace(R_IRI_ESCAPES, F_REPLACE_IRI_ESCAPE)
+		}
+	}
+
+	return p_iri;
+};
+
 function GenericTerm() {}
 Object.assign(GenericTerm.prototype, {
 	isGraphyTerm: true,
@@ -39,7 +195,8 @@ Object.assign(GenericTerm.prototype, {
 		return this.concise();
 	},
 	equals(h_other) {
-		return (h_other.termType === this.termType && h_other.value === this.value);
+		return this === h_other
+			|| (h_other.termType === this.termType && h_other.value === this.value);
 	},
 });
 
@@ -54,13 +211,28 @@ function NamedNode(s_iri) {
 			return concise(this.value, h_prefixes);
 		},
 		terse(h_prefixes={}) {
-			let p_iri = this.value;
-			let sct = concise(p_iri, h_prefixes);
-			if('>' === sct[0]) return '<'+p_iri+'>';
-			return sct;
+			let p_iri = clean_iri(this.value);
+
+			// try finding prefix to compress
+			let sct_node = concise(p_iri, h_prefixes);
+
+			// none of the prefixes contain this iri; use full iriref
+			if('>' === sct_node[0]) return '<'+p_iri+'>';
+
+			let i_colon = sct_node.indexOf(':');
+
+			// avoid using prefixed name; use full iriref
+			if(RT_AVOID_PNAME_LOCAL.test(sct_node.slice(i_colon+1))
+				|| RT_AVOID_PNAME_NS.test(sct_node.slice(0, i_colon))
+			) {
+				return '<'+p_iri+'>';
+			}
+
+			// use terse prefixed name
+			return sct_node;
 		},
 		verbose() {
-			return '<'+this.value+'>';
+			return '<'+clean_iri(this.value)+'>';
 		},
 		toObject() {
 			return {
@@ -70,14 +242,15 @@ function NamedNode(s_iri) {
 		},
 	});
 
-const HP_NN_XSD_STRING = new NamedNode('http://www.w3.org/2001/XMLSchema#string');
-const HP_NN_RDFS_LANG_STRING = new NamedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#langString');
+const KT_RDF_TYPE = new NamedNode('@{P_IRI_RDF}type');
+const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
+const KT_RDFS_LANG_STRING = new NamedNode('@{P_IRI_RDFS}langString');
 function Literal(s_value, z_datatype_or_lang) {
 	this.value = s_value;
 	if(z_datatype_or_lang) {
 		if('string' === typeof z_datatype_or_lang) {
 			this.language = z_datatype_or_lang.toLowerCase();
-			this.datatype = HP_NN_RDFS_LANG_STRING;
+			this.datatype = KT_RDFS_LANG_STRING;
 		}
 		else {
 			this.datatype = z_datatype_or_lang;
@@ -85,20 +258,21 @@ function Literal(s_value, z_datatype_or_lang) {
 	}
 } Literal.prototype = Object.assign(
 	Object.create(GenericTerm.prototype), {
-		datatype: HP_NN_XSD_STRING,
+		datatype: KT_XSD_STRING,
 		language: '',
 		termType: 'Literal',
 		isLiteral: true,
 		equals(h_other) {
-			return 'Literal' === h_other.termType && h_other.value === this.value
-				&& this.datatype.equals(h_other.datatype) && h_other.language === this.language;
+			return this === h_other
+				|| ('Literal' === h_other.termType && h_other.value === this.value
+					&& this.datatype.equals(h_other.datatype) && h_other.language === this.language);
 		},
 		verbose() {
 			return JSON.stringify(this.value)
 				+ (this.language
 					? '@'+this.language
-					: (this.datatype !== HP_NN_XSD_STRING
-						? '^^<'+this.datatype.value+'>'
+					: (this.datatype !== KT_XSD_STRING
+						? '^^'+this.datatype.verbose()
 						: ''));
 		},
 		concise(h_prefixes) {
@@ -113,19 +287,14 @@ function Literal(s_value, z_datatype_or_lang) {
 			}
 		},
 		terse(h_prefixes={}) {
-			let p_datatype = this.datatype.value;
-
-			// concise datatype node
-			let sct_datatype = concise(p_datatype, h_prefixes);
-
 			// turn into terse
-			let st_datatype = '>' === sct_datatype[0]? '<'+p_datatype+'>': sct_datatype;
+			let st_datatype = this.datatype.terse(h_prefixes);
 
 			// stringify literal
 			return JSON.stringify(this.value)
 				+ (this.language
 					? '@'+this.language
-					: (this.datatype !== HP_NN_XSD_STRING
+					: (this.datatype.equals(KT_XSD_STRING)
 						? '^^'+st_datatype
 						: ''));
 		},
@@ -145,17 +314,17 @@ function Literal(s_value, z_datatype_or_lang) {
 	@.let s_arg = (b_boolean? 'b': 'x')+'_value';
 	@.let s_type_caps = s_type.toUpperCase();
 	@.let s_type_proper = s_type_caps.slice(0, 1)+s_type.slice(1);
-	const HP_NN_XSD_@{s_type_caps} = new NamedNode('http://www.w3.org/2001/XMLSchema#@{s_type}');
+	const KT_XSD_@{s_type_caps} = new NamedNode('@{P_IRI_XSD}@{s_type}');
 	function Literal_@{s_type_proper}(@{s_arg}) {
 		@- b_boolean
 			this.boolean = @{s_arg};
 		@:
-			this.number = +@{s_arg};
+			this.number = @{s_arg};
 		@;
 		this.value = @{s_arg}+'';
 	} Literal_@{s_type_proper}.prototype = Object.assign(
 		Object.create(Literal.prototype), {
-			datatype: HP_NN_XSD_@{s_type_caps},
+			datatype: KT_XSD_@{s_type_caps},
 			@- b_boolean
 				isBoolean: true,
 			@:
@@ -163,28 +332,189 @@ function Literal(s_value, z_datatype_or_lang) {
 				is@{s_type_proper}: true,
 			@;
 			concise(h_prefixes={}) {
-				return '^'+HP_NN_XSD_@{s_type_caps}.concise(h_prefixes)+'"'+this.value;
+				return '^'+KT_XSD_@{s_type_caps}.concise(h_prefixes)+'"'+this.value;
 			},
 			terse() {
-				return @{g_config.terse};
+				@{g_config.terse}
 			},
 		});
 @;
 
 
+class Literal_PositiveInfinity extends Literal_Double {
+	constructor() {
+		super(Infinity);
+		this.value = 'INF';
+	}
+
+	terse() {
+		return 'INF';
+	}
+}
+
+class Literal_NegativeInfinity extends Literal_Double {
+	constructor() {
+		super(-Infinity);
+		this.value = '-INF';
+	}
+
+	terse() {
+		return '-INF';
+	}
+}
+
+class Literal_NaN extends Literal_Double {
+	constructor() {
+		super(NaN);
+		this.value = 'NAN';
+	}
+
+	terse() {
+		return 'NAN';
+	}
+}
+
+
 @.{
 	let h_literals = {
 		integer: {
-			terse: /* syntax: js */ `this.value`,
+			construct: s_arg => /* syntax: js */ `
+				// a number was given
+				if('number' === typeof ${s_arg}) {
+					// not a finite number
+					if(!Number.isFinite(${s_arg})) {
+						throw new Error('XSD integer cannot encode +/-infinity. Try using double');
+					}
+					// NaN
+					else if(Number.isNaN(${s_arg})) {
+						throw new Error('XSD integer cannot encode NaN. Try using double');
+					}
+					// fine
+					else {
+						return new Literal_Integer(${s_arg});
+					}
+				}
+			`,
+			terse: /* syntax: js */ `
+				return this.value.includes('e')
+					? \`"\${this.value}"^^<${P_IRI_XSD}integer>\`
+					: this.value;
+			`,
 		},
 		double: {
-			terse: /* syntax: js */ `this.number.toExponential()`,
+			construct: s_arg => /* syntax: js */ `
+				// a number was given
+				if('number' === typeof ${s_arg}) {
+					// not a finite number
+					if(!Number.isFinite(${s_arg})) {
+						return ${s_arg} > 0
+							? new Literal_PositiveInfinity()
+							: new Literal_NegativeInfinity();
+					}
+					// NaN
+					else if(Number.isNaN(${s_arg})) {
+						return new Literal_NaN();
+					}
+					// fine
+					else {
+						return new Literal_Double(${s_arg});
+					}
+				}
+				// non-number
+				else {
+					let x_value = +${s_arg};
+
+					// failed to parse
+					if(Number.isNaN(x_value)) {
+						throw new Error(\`Invalid decimal string: \${${s_arg}}\`);
+					}
+					// fine
+					else {
+						return new Literal_Double(${s_arg});
+					}
+				}
+			`,
+			terse: /* syntax: js */ `
+				return this.number.toExponential();
+			`,
 		},
 		decimal: {
-			terse: /* syntax: js */ `this.value+(Number.isInteger(this.number)? '.0': '')`,
+			construct: s_arg => /* syntax: js */ `
+				// a number was given
+				if('number' === typeof ${s_arg}) {
+					// not a finite number
+					if(!Number.isFinite(${s_arg})) {
+						throw new Error('XSD decimal cannot encode +/-infinity. Try using double');
+					}
+					// NaN
+					else if(Number.isNaN(${s_arg})) {
+						throw new Error('XSD decimal cannot encode NaN. Try using double');
+					}
+				}
+				// non-number
+				else {
+					let x_value = +${s_arg};
+
+					// failed to parse
+					if(Number.isNaN(x_value)) {
+						throw new Error(\`Invalid decimal string: \${${s_arg}}\`);
+					}
+				}
+			`,
+			terse: /* syntax: js */ `
+				return this.value.includes('e')
+					? \`"\${this.value}"^^<${P_IRI_XSD}decimal>\`
+					: this.value+(Number.isInteger(this.number)? '.0': '');
+			`,
 		},
 		boolean: {
-			terse: /* syntax: js */ `this.value+''`,
+			construct: s_arg => /* syntax: js */ `
+				// deduce arg type
+				switch(typeof ${s_arg}) {
+					// boolean
+					case 'boolean': return new Literal_Boolean(${s_arg});
+
+					// number
+					case 'number': {
+						// 1
+						if(1 === ${s_arg}) {
+							return new Literal_Boolean(true);
+						}
+						// 0
+						else if(0 === ${s_arg}) {
+							return new Literal_Boolean(false);
+						}
+						// invalid
+						else {
+							throw new RangeError(\`Boolean value '${s_arg}' must be either a '1' or '0' if using numbers\`);
+						}
+					}
+
+					// string
+					case 'string': {
+						// truthy value
+						if(RT_BOOLEAN_TRUE.test(${s_arg})) {
+							return new Literal_Boolean(true);
+						}
+						// falsy value
+						else if(RT_BOOLEAN_FALSE.test(${s_arg})) {
+							return new Literal_Boolean(false);
+						}
+						// failed to parse
+						else {
+							throw new Error(\`Invalid boolean string: \${${s_arg}}\`);
+						}
+					}
+
+					// other
+					default: {
+						throw new RangeError(\`Invalid type for boolean: '\${typeof ${s_arg}}'\`);
+					}
+				}
+			`,
+			terse: /* syntax: js */ `
+				return this.value+'';
+			`,
 		},
 	};
 }
@@ -272,10 +602,11 @@ function Quad(h_subject, h_predicate, h_object, h_graph=H_DEFAULT_GRAPH) {
 	this.graph = h_graph;
 } Object.assign(Quad.prototype, {
 	equals(y_other) {
-		return this.object.equals(y_other.object)
-			&& this.subject.equals(y_other.subject)
-			&& this.predicate.equals(y_other.predicate)
-			&& this.graph.equals(y_other.graph);
+		return this === y_other
+			|| (this.object.equals(y_other.object)
+				&& this.subject.equals(y_other.subject)
+				&& this.predicate.equals(y_other.predicate)
+				&& this.graph.equals(y_other.graph));
 	},
 	valueOf() {
 		return this.verbose();
@@ -321,16 +652,55 @@ function Triple(h_subject, h_predicate, h_object) {
 } Triple.prototype = Object.assign(
 	Object.create(Quad.prototype, {
 		equals(y_other) {
-			return this.object.equals(y_other.object)
-				&& this.subject.equals(y_other.subject)
-				&& this.predicate.equals(y_other.predicate);
+			return this === y_other
+				|| (this.object.equals(y_other.object)
+					&& this.subject.equals(y_other.subject)
+					&& this.predicate.equals(y_other.predicate));
 		},
 	}));
 
 
 const factory = module.exports = {
-	namedNode(s_iri) {
-		return new NamedNode(s_iri);
+	concise,
+
+	unfiltered: {
+		get namedNode() {
+			return factory.namedNode;
+		},
+		get blankNode() {
+			return factory.blankNode;
+		},
+		get literal() {
+			return factory.literal;
+		},
+		@*{
+			for(let s_type in h_literals) {
+				yield /* syntax: js */ `
+					${s_type}(w) {
+						return new Literal_${s_type[0].toUpperCase()+s_type.slice(1)}(w);
+					},
+				`;
+			}
+		}
+	},
+
+	number(x) {
+		// not finite or not a number
+		if(!Number.isFinite(x) || Number.isNaN(x)) {
+			return factory.double(x);
+		}
+		// integer
+		else if(Number.isInteger(x)) {
+			return factory.integer(x);
+		}
+		// non-integer
+		else {
+			return factory.decimal(x);
+		}
+	},
+
+	namedNode(p_iri) {
+		return new NamedNode(p_iri);
 	},
 
 	blankNode(z_label) {
@@ -363,8 +733,9 @@ const factory = module.exports = {
 
 	@*{
 		for(let s_type in h_literals) {
+			let g_config = h_literals[s_type];
 			yield /* syntax: js */ `${s_type}(w_value) {
-				return new Literal_${s_type.slice(0, 1).toUpperCase()}${s_type.slice(1)}(w_value);
+				${g_config.construct('w_value')}
 			},\n`;
 		}
 	}
@@ -397,65 +768,91 @@ const factory = module.exports = {
 		return new Quad(h_subject, h_predicate, h_object, h_graph || H_DEFAULT_GRAPH);
 	},
 
+	from_quad(g_quad) {
+		return new Quad(
+			factory.term(g_quad.subject),
+			factory.term(g_quad.predicate),
+			factory.term(g_quad.object),
+			factory.term(g_quad.graph),
+		);
+	},
+
 	// construct a term object from a concise term string
-	ct(s_ct, h_prefixes) {
-		switch(s_ct[0]) {
-			// iri
-			case '>': return factory.namedNode(s_ct.slice(1));
-
-			// blank node
-			case '_': return factory.blankNode(s_ct.slice(1));
-
+	ct(sct_term, h_prefixes={}) {
+		// deduce term type
+		switch(sct_term[0]) {
 			// datatyped literal
 			case '^': {
 				// find literal's contents delimiter
-				let i_contents = s_ct.indexOf('"');
+				let i_contents = sct_term.indexOf('"');
 
 				// extract datatype
-				let s_datatype = s_ct.slice(1, i_contents);
+				let s_datatype = sct_term.slice(1, i_contents);
 
 				// make term
-				return factory.literal(s_ct.slice(i_contents+1), factory.ct(s_datatype, h_prefixes));
+				return factory.literal(sct_term.slice(i_contents+1), factory.ct(s_datatype, h_prefixes));
 			}
 
 			// languaged literal
 			case '@': {
 				// find literal's contents delimiter
-				let i_contents = s_ct.indexOf('"');
+				let i_contents = sct_term.indexOf('"');
 
 				// extract language
-				let s_language = s_ct.slice(1, i_contents);
+				let s_language = sct_term.slice(1, i_contents);
 
 				// make term
-				return factory.literal(s_ct.slice(i_contents+1), s_language);
+				return factory.literal(sct_term.slice(i_contents+1), s_language);
 			}
 
 			// simple literal
 			case '"': {
 				// make term
-				return factory.literal(s_ct.slice(1));
-			}
-
-			// default graph
-			case '*': {
-				if('*' === s_ct) return factory.defaultGraph();
+				return factory.literal(sct_term.slice(1));
 			}
 
 			// prefixed name
-			default: return this.ct_prefixed_node(s_ct, h_prefixes);
+			default: return this.ct_node(sct_term, h_prefixes);
 		}
 	},
 
 	// construct a term object from a concise term string for nodes
-	ct_prefixed_node(s_ct, h_prefixes={}) {
+	ct_node(sct_node, h_prefixes={}) {
+		// rdf:type shortcut
+		if('a' === sct_node) return KT_RDF_TYPE;
+
+		// default graph
+		if('*' === sct_node) return factory.defaultGraph();
+
+		// deduce term type
+		switch(sct_node[0]) {
+			// iri
+			case '>': return factory.namedNode(sct_node.slice(1));
+
+			// blank node
+			case '_': return factory.blankNode(sct_node.slice(1));
+
+			// invalid concise-term string
+			case '<': throw new Error(`Whoops! It looks like this concise-term string starts with a '<' character. Remember to use '>' if you are trying to make an absolute IRI reference.\nInvalid concise-term string '${sct_node}'`);
+
+			// prefixed name
+			default: return this.ct_prefixed_node(sct_node, h_prefixes);
+		}
+	},
+
+	// construct a term object from a concise term string for prefixed nodes
+	ct_prefixed_node(sct_node, h_prefixes={}) {
 		// find prefix delimiter
-		let i_colon = s_ct.indexOf(':');
+		let i_colon = sct_node.indexOf(':');
+
+		// no delimter; invalid concise-term string for node
+		if(-1 === i_colon) throw new Error(`A relative or prefixed node must include a ':' character. \nInvalid concise-term string for node: '${sct_node}'`);
 
 		// prefix id
-		let s_prefix_id = s_ct.slice(0, i_colon);
+		let s_prefix_id = sct_node.slice(0, i_colon);
 
 		// suffix
-		let s_suffix = s_ct.slice(i_colon+1);
+		let s_suffix = sct_node.slice(i_colon+1);
 
 		// find prefix in hash
 		if(s_prefix_id in h_prefixes) {
@@ -463,7 +860,7 @@ const factory = module.exports = {
 		}
 		// prefix not exists
 		else {
-			throw new Error(`no such prefix ${s_prefix_id} found in hash`);
+			throw new Error(`Prefix not defined: '${s_prefix_id}'`);
 		}
 	},
 };

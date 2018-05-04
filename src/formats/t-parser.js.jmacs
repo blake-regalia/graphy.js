@@ -9,7 +9,8 @@
 @// import parser macros
 @import 'textual-parser-macros.jmacs'
 
-const EventEmitter = require('events');
+const stream = require('stream');
+const events = require('events');
 
 @{constants()}
 
@@ -118,14 +119,14 @@ const R_STRING_LITERAL_SINGLE_QUOTE_ESCAPELESS = /'([^'\\]*)'\s*/y;
 const R_STRING_LITERAL_LONG_QUOTE = /"""((?:(?:""?)?(?:[^"\\]|\\.))*)"""\s*/y;
 const R_STRING_LITERAL_LONG_SINGLE_QUOTE = /'''((?:(?:''?)?(?:[^'\\]|\\.))*)'''\s*/y;
 
-const R_NUMERIC_LITERAL = /([+\-]?(?:[0-9]+(\.[0-9]+)?|(\.[0-9]+))(\.?[eE][+\-]?[0-9]+)?)(?:\s+|(?=\.[^0-9]|[;,)\]]))/y;
+const R_NUMERIC_LITERAL = /([+-]?(?:[0-9]+(\.[0-9]+)?|(\.[0-9]+))(\.?[eE][+-]?[0-9]+)?)(?:\s+|(?=\.[^0-9]|[;,)\]]))/y;
 // const R_NUMERIC_LITERAL_EOF = /([+\-]?(?:[0-9]+([.]?[0-9]*)|([.][0-9]+))([eE][+\-]?[0-9]+)?)(?:\s*\.\s*)/y;
 const R_BOOLEAN_LITERAL = /(?:(true|TRUE)|false|FALSE)\s*/y;
 const R_A = /a(?:\s+|(?=[<[#]))/y;
 
 const R_DOUBLE_CARET = /\^\^/y;
 const R_WS = /\s*/y;
-const R_LANGTAG = /@([A-Za-z]+(?:-[A-Za-z0-9\-]+)*)(?:\s+|(?=[.;,\])#]))/y;
+const R_LANGTAG = /@([A-Za-z]+(?:-[A-Za-z0-9-]+)*)(?:\s+|(?=[.;,\])#]))/y;
 
 // const R_PREFIX = /@?prefix\s*([^#:]*):\s*<([^>]+)>\s*\.?\s*/iy;
 const R_PREFIX_KEYWORD = /(?:(@prefix)|[pP][rR][eE][fF][iI][xX])\s*/y;
@@ -145,7 +146,7 @@ const R_COMMENT = /(#[^\n]*\n\s*)+/y;
 
 const RT_IRI_ABSOLUTE = /^[A-Za-z][A-Za-z0-9.\-+]*:/;
 const R_URI = /^(\/[^?#]+#?)/;
-const R_BASE_IRI = /^((([A-Za-z0-9.\-+]*:\/)?\/[^\/>]*)?(\/(?:[^\/>]*\/)*)?[^>]*)$/;
+const R_BASE_IRI = /^((([A-Za-z0-9.\-+]*:\/)?\/[^/>]*)?(\/(?:[^/>]*\/)*)?[^>]*)$/;
 @// /<(								# 1: uri
 @// 	( 							# 2: root
 @// 		([A-Za-z0-9.\-+]*:\/)?	# 3: scheme
@@ -225,12 +226,12 @@ const match_prefixed_name = (s, i) => {
 
 @// will only be used by TriG
 @> emit_graph_open()
-	this.graph_open && this.graph_open(this.graph);
+	if(this.graph_open) this.graph_open(this.graph);
 @;
 
 @// will only be used by TriG
 @> emit_graph_close()
-	this.graph_close && this.graph_close(this.graph);
+	if(this.graph_close) this.graph_close(this.graph);
 @;
 
 
@@ -445,12 +446,12 @@ function Parser(g_config={}) {
 			let a_queue = this.queue_event;
 
 			// drain event queue
-			while (a_queue.length) {
+			while(a_queue.length) {
 				// remove event from front of queue
 				let h_event = a_queue.shift();
 
 				// make event callback
-				this[h_event.event].call(this, h_event.data);
+				this[h_event.event](h_event.data);
 
 				// callback paused stream
 				if(this.n < 0) {
@@ -525,7 +526,7 @@ function Parser(g_config={}) {
 			// still unparsed characters
 			if(i < this.n) {
 				// not EOF
-				if(!(i === this.n - 1 && s[i] === '\0')) {
+				if(!(i === this.n - 1 && '\0' === s[i])) {
 					// throw parse error
 					return this.parse_error(this.state.name);
 				}
@@ -558,7 +559,7 @@ function Parser(g_config={}) {
 	// duplex
 	if(null === z_input) {
 		// create transform
-		let d_transform = this.output = new require('stream').Transform({
+		let d_transform = this.output = new stream.Transform({
 			// do not decode strings into buffers
 			decodeStrings: false,
 
@@ -705,7 +706,7 @@ function Parser(g_config={}) {
 		@{stream_control('z_input')}
 
 		// event emitter
-		this.operator = new EventEmitter();
+		this.operator = new events();
 		this.emit = this.operator.emit.bind(this);
 	}
 	// string
@@ -732,7 +733,7 @@ function Parser(g_config={}) {
 		}
 
 		// event emitter
-		this.operator = new EventEmitter();
+		this.operator = new events();
 		this.emit = this.operator.emit.bind(this);
 
 		// compute chunk length
@@ -767,7 +768,7 @@ Object.assign(Parser.prototype, {
 	// begin parsing, keep applying until no more stack bail-outs
 	safe_parse() {
 		let f_sync = this.state();
-		while ('function' === typeof f_sync) {
+		while('function' === typeof f_sync) {
 			f_sync = f_sync.apply(this);
 		}
 
@@ -1331,7 +1332,7 @@ Object.assign(Parser.prototype, {
 		// ')' end of collection
 		@{else_if_char(')')}
 			// do something
-			throw `end of collection`;
+			throw new Error('end of collection');
 
 		// comment
 		@{else_if_match('R_COMMENT', false, true)}
@@ -1351,7 +1352,7 @@ Object.assign(Parser.prototype, {
 			@{iriref('base_url', 'm_iriref_e_base', false, true)}
 
 			// emit base event
-			this.base && this.base(this.base_url);
+			if(this.base) this.base(this.base_url);
 
 			@// handle full stop
 			@{full_stop()}
@@ -1365,7 +1366,7 @@ Object.assign(Parser.prototype, {
 			@{iriref('base_url', 'm_iriref_base', false, true, true)}
 
 			// emit base event
-			this.base && this.base(this.base_url);
+			if(this.base) this.base(this.base_url);
 
 			@// handle full stop
 			@{full_stop()}

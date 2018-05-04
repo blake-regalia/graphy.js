@@ -1,64 +1,27 @@
+@import './symbols.jmacs'
 
-const HP_RANGE_ALL = Symbol('range:all');
-const HP_RANGE_HOPS = Symbol('range:hops');
-const HP_RANGE_NODES = Symbol('range:nodes');
-const HP_RANGE_LITERALS = Symbol('range:literals');
-const HP_RANGE_SUBJECTS = Symbol('range:subjects');
-const HP_RANGE_OBJECTS = Symbol('range:objects');
-
-const HP_ROLE_HOP = Symbol('role:hop');
-const HP_ROLE_NODE = Symbol('role:node');
-const HP_ROLE_SUBJECT = Symbol('role:subject');
-const HP_ROLE_PREDICATE = Symbol('role:predicate');
-const HP_ROLE_INVERSE_PREDICATE = Symbol('role:inverse-predicate');
-const HP_ROLE_OBJECT = Symbol('role:object');
-const HP_ROLE_OBJECT_NODE = Symbol('role:object-node');
-const HP_ROLE_LITERAL = Symbol('role:literal');
-const HP_ROLE_ROOT = Symbol('role:root');
-const HP_ROLE_LEAF = Symbol('role:root');
-
-const HP_USE_SPO = Symbol('use:SPO');
-const HP_USE_POS = Symbol('use:POS');
-const HP_USE_OSP = Symbol('use:OSP');
-
-const HP_INVALIDATE_ROW = Symbol('invalidated');
-
-const AXM_USE = [
-	HP_USE_SPO,  // Ks Kp Ko : 0 0 0
-	HP_USE_SPO,  // Ks Kp Vo : 0 0 1
-	HP_USE_OSP,  // Ks Vp Ko : 0 1 0
-	HP_USE_SPO,  // Ks Vp Vo : 0 1 1
-	HP_USE_POS,  // Vs Kp Ko : 1 0 0
-	HP_USE_POS,  // Vs Kp Vo : 1 0 1
-	HP_USE_OSP,  // Vs Vp Ko : 1 1 0
-	HP_USE_SPO,  // Vs Vp Vo : 1 1 1
-];
-
+@*{
+	for(let [s_symbol, s_type, s_instance, b_sog] of symbols()) {
+		yield /* syntax: js */ `${b_sog? '\n': ''}
+			const ${s_symbol} = Symbol('${s_type}:${s_instance}');`;
+	}
+}
 
 module.exports = {
-	HP_RANGE_ALL,
-	HP_RANGE_HOPS,
-	HP_RANGE_NODES,
-	HP_RANGE_LITERALS,
-	HP_RANGE_SUBJECTS,
-	HP_RANGE_OBJECTS,
+	@{import_symbols()}
 
-	HP_ROLE_HOP,
-	HP_ROLE_NODE,
-	HP_ROLE_SUBJECT,
-	HP_ROLE_PREDICATE,
-	HP_ROLE_INVERSE_PREDICATE,
-	HP_ROLE_OBJECT,
-	HP_ROLE_OBJECT_NODE,
-	HP_ROLE_LITERAL,
-	HP_ROLE_ROOT,
-	HP_ROLE_LEAF,
-
-	HP_USE_SPO,
-	HP_USE_POS,
-	HP_USE_OSP,
-
-	HP_INVALIDATE_ROW,
-
-	AXM_USE,
+	AXM_USE: [
+		@*{
+			yield* [
+				'spo',  // Ks Kp Ko : 0 0 0
+				'spo',  // Ks Kp Vo : 0 0 1
+				'osp',  // Ks Vp Ko : 0 1 0
+				'spo',  // Ks Vp Vo : 0 1 1
+				'pos',  // Vs Kp Ko : 1 0 0
+				'pos',  // Vs Kp Vo : 1 0 1
+				'osp',  // Vs Vp Ko : 1 1 0
+				'spo',  // Vs Vp Vo : 1 1 1
+			].map(s => `$_USE_${s.toUpperCase()},\n`);
+		}
+	],
 };

@@ -1,30 +1,34 @@
-@import 'common.jmacs'
+@import './common.jmacs'
+@import './symbols.jmacs'
 
+const {
+	@{import_symbols()}
+} = require('./symbols.js');
 
 @> iterate_a(no_row)
 	// iterate a
 	@- no_row
-		for(let i_a of f_a()) {
+		for(let i_a of f_a())
 	@:
-		for(let {id:i_a, row:h_row_a} of f_a(h_row__)) {
+		for(let {id:i_a, row:h_row_a} of f_a(h_row__))
 	@;
 @;
 
 @> iterate_b(no_row)
 	// iterate b
 	@- no_row
-		for(let {id: i_b, offset: c_off_b} of f_b(i_a)) {
+		for(let {id: i_b, offset: c_off_b} of f_b(i_a))
 	@:
-		for(let {id: i_b, offset: c_off_b, row: h_row_b} of f_b(i_a, h_row_a)) {
+		for(let {id: i_b, offset: c_off_b, row: h_row_b} of f_b(i_a, h_row_a))
 	@;
 @;
 
 @> iterate_c(no_row)
 	// iterate c
 	@- no_row
-		for(let i_c of f_c(i_a, c_off_b)) {
+		for(let i_c of f_c(i_a, c_off_b))
 	@:
-		for(let {id:i_c, row:h_row_c} of f_c(i_a, c_off_b, h_row_b)) {
+		for(let {id:i_c, row:h_row_c} of f_c(i_a, c_off_b, h_row_b))
 	@;
 @;
 
@@ -62,7 +66,7 @@
 
 	// mk iteration generators
 	@{gen_a('rows')}
-	@{gen_a('rows')}
+	@{gen_b('rows')}
 
 	// bidirectional set intersection
 	if(!h_a.range && !h_b.range && h_c.range && k_pattern.length >= 2 && !k_pattern.peek(0).range && !k_pattern.peek(1).range) {
@@ -108,14 +112,13 @@
 						let h_survivors = this.fork(k_pattern, h_row_c, h_sim_c);
 						if(h_survivors.size) {
 							for(let i_tail in h_survivors) {
-								let a_survivors = h_survivors[i_tail];
-								@{each('survivor', 'a')}
+								for(let w_survivor of h_survivors[i_tail]) {
 									@- b_yield
-										yield a_survivor;
+										yield w_survivor;
 									@:
-										a_heads.push(a_survivor);
+										a_heads.push(w_survivor);
 									@;
-								@{end_each()}
+								}
 							}
 						}
 					}
@@ -133,7 +136,7 @@
 						// simulate pattern head for next triple
 						let h_sim_c = {
 							id: i_c,
-							role: HP_ROLE_HOP,
+							role: $_ROLE_HOP,
 						};
 
 						// proceed on c
@@ -329,13 +332,13 @@
 			if(f_filter) {
 				// filter entities
 				let a_entity_ids_cleaned = [];
-				@{each('entity_id', 'i', 'b')}
+				for(let i_b of a_entity_ids) {
 					// entity passes filter test
 					if(f_filter(k_graph[s_tream](i_b))) {
 						// preserve entity in set
 						a_entity_ids_cleaned.push(i_b);
 					}
-				@{end_each()}
+				}
 
 				// reassign id set
 				a_entity_ids = a_entity_ids_cleaned;
@@ -348,13 +351,13 @@
 				// filter entities
 				if(f_evaluate) {
 					let a_entity_ids_cleaned = [];
-					@{each('entity_id', 'i', 'b')}
+					for(let i_b of a_entity_ids) {
 						// entity passes plugin test
 						if(h_checker.evaluate(f_action, i_b)) {
 							// preserve entity in set
 							a_entity_ids_cleaned.push(i_b);
 						}
-					@{end_each()}
+					}
 
 					// reassign id set
 					a_entity_ids = a_entity_ids_cleaned;
@@ -426,7 +429,7 @@
 								h_row_b = Object.create(h_row_a);
 
 								// store bound
-								h_row_b[s_bind] = k_graph.produce(i_b, hp_role);
+								h_row_b[s_bind] = k_graph.produce(i_b, $_role);
 							}
 
 							// yield
@@ -450,8 +453,8 @@
 		}
 		// Vp
 		else {
-			let hp_entity_role = h_entity.role;
-			let hp_entity_range = h_entity.range;
+			let $_entity_role = h_entity.role;
+			let $_entity_range = h_entity.range;
 
 			// yes data
 			let f_evaluate;
@@ -497,7 +500,7 @@
 			@;
 
 			// Vp[all]
-			if(HP_RANGE_ALL === hp_entity_range) {
+			if($_RANGE_ALL === $_entity_range) {
 				// mk entity generator
 				return function*(i_a, h_row_a) {
 					for(let {id: i_b, offset: c_off_b} of k_triples.each_b(i_a)) {
@@ -536,7 +539,7 @@
 				};
 			}
 			// V*[custom]
-			else if(HP_RANGE_CUSTOM === hp_entity_range) {
+			else if($_RANGE_CUSTOM === $_entity_range) {
 				let i_start = h_entity.start;
 				let i_stop = h_entity.stop;
 
@@ -699,13 +702,13 @@
 			if(f_filter) {
 				// filter entities
 				let a_entity_ids_cleaned = [];
-				@{each('entity_id', 'i', 'c')}
+				for(let i_c of a_entity_ids) {
 					// entity passes filter test
 					if(f_filter(k_graph[s_tream](i_c))) {
 						// preserve entity in set
 						a_entity_ids_cleaned.push(i_c);
 					}
-				@{end_each()}
+				}
 
 				// reassign id set
 				a_entity_ids = a_entity_ids_cleaned;
@@ -721,13 +724,13 @@
 				// filter entities
 				if(f_evaluate) {
 					let a_entity_ids_cleaned = [];
-					@{each('entity_id', 'i', 'b')}
+					for(let i_c of a_entity_ids) {
 						// entity passes plugin test
 						if(f_evaluate(i_c)) {
 							// preserve entity in set
 							a_entity_ids_cleaned.push(i_c);
 						}
-					@{end_each()}
+					}
 
 					// reassign id set
 					a_entity_ids = a_entity_ids_cleaned;
@@ -819,8 +822,8 @@
 		}
 		// V*
 		else {
-			let hp_entity_role = h_entity.role;
-			let hp_entity_range = h_entity.range;
+			let $_entity_role = h_entity.role;
+			let $_entity_range = h_entity.range;
 			let b_single = h_entity.single;
 
 			let i_start = 1;
@@ -830,9 +833,9 @@
 			let i_high_range = k_graph.range_l;
 
 			// V*[all]
-			if(HP_RANGE_ALL === hp_entity_range) {
+			if($_RANGE_ALL === $_entity_range) {
 				// for subjects
-				if(HP_ROLE_SUBJECT === hp_entity_role) {
+				if($_ROLE_SUBJECT === $_entity_role) {
 					i_stop = k_graph.range_s;
 				}
 				// for objects
@@ -841,24 +844,24 @@
 				}
 			}
 			// V*[hops]
-			else if(HP_RANGE_HOPS === hp_entity_range) {
+			else if($_RANGE_HOPS === $_entity_range) {
 				i_stop = k_graph.range_d;
 			}
 			// V*[literals]
-			else if(HP_RANGE_LITERALS === hp_entity_range) {
+			else if($_RANGE_LITERALS === $_entity_range) {
 				i_start = k_graph.range_o;
 				i_stop = i_high_range;
 			}
 			// V*[subjects]
-			else if(HP_RANGE_SUBJECTS === hp_entity_range) {
+			else if($_RANGE_SUBJECTS === $_entity_range) {
 				i_stop = k_graph.range_s;
 			}
 			// V*[objects]
-			else if(HP_RANGE_OBJECTS === hp_entity_range) {
+			else if($_RANGE_OBJECTS === $_entity_range) {
 				i_stop = k_graph.range_o;
 			}
 			// V*[custom]
-			else if(HP_RANGE_CUSTOM === hp_entity_range) {
+			else if($_RANGE_CUSTOM === $_entity_range) {
 				i_start = h_entity.start;
 				i_stop = h_entity.stop;
 			}
@@ -1014,7 +1017,7 @@
 // debugger;
 
 						// make sure roles are compatible
-						if(h_join.role !== hp_entity_role) {
+						if(h_join.role !== $_entity_role) {
 							throw 'incompatible join roles';
 						}
 
@@ -1024,7 +1027,7 @@
 							// invalidate all rows that were not joined
 							for(let i_c of as_join) {
 								// debugger;
-								h_join.yields[i_c][HP_INVALIDATE_ROW] = 1;
+								h_join.yields[i_c][$_ROW_INVALIDATE] = 1;
 							}
 						}
 					}
@@ -1039,7 +1042,7 @@
 
 						h_joins[s_join] = {
 							yields: h_yields,
-							role: hp_entity_role,
+							role: $_entity_role,
 							index: h_entity.index,
 						};
 					}
@@ -1074,7 +1077,7 @@ class Selection {
 
 
 		// body is normal direction
-		if(HP_ROLE_PREDICATE === km_edge.role) {
+		if($_ROLE_PREDICATE === km_edge.role) {
 			// Vs
 			if(km_head instanceof Match_Role) xm_triple_pattern |= 4;
 
@@ -1110,10 +1113,10 @@ class Selection {
 
 
 		// determine which index to use
-		let hp_use = AXM_USE[xm_triple_pattern];
+		let $_use = AXM_USE[xm_triple_pattern];
 
 		// fetch appropriate index
-		let k_triples = k_dataset.triples(hp_use);
+		let k_triples = k_dataset.triples($_use);
 
 		// fetch a/b/c code
 		let s_code = k_triples.code();
@@ -1147,9 +1150,8 @@ class Selection {
 		// each result head
 		for(let i_head in h_results) {
 			// concatenate rows from this result head
-			let a_results = h_results[i_head];
-			@{each('result')} {
-				a_rows.push(a_results[i_result]);
+			for(let w_result of h_results[i_head]) {
+				a_rows.push(w_result);
 			}
 		}
 
@@ -1230,9 +1232,9 @@ class Selection {
 				// term position
 				let s_term;
 				switch(h_head.role) {
-					case HP_ROLE_HOP:
-					case HP_ROLE_SUBJECT: s_term = 's'; break;
-					case HP_ROLE_OBJECT: s_term = 'o'; break;
+					case $_ROLE_HOP:
+					case $_ROLE_SUBJECT: s_term = 's'; break;
+					case $_ROLE_OBJECT: s_term = 'o'; break;
 					default: {
 						throw 'cannot determine term position';
 					}

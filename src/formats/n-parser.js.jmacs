@@ -9,7 +9,8 @@
 @// import parser macros
 @import 'textual-parser-macros.jmacs'
 
-const EventEmitter = require('events');
+const events = require('events');
+const stream = require('stream');
 
 @{constants()}
 
@@ -160,7 +161,7 @@ const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
 	let i = R_CLEAN.lastIndex;
 
 	// match @{STATEMENT_TYPE}s
-	while(true) {
+	for(;;) {
 		@{if_match(STATEMENT_REGEX+'_ESCAPELESS_SP', 'm_statement_e_sp', true)}
 			@{match_body('m_statement_e_sp')}
 			
@@ -229,7 +230,7 @@ function Parser(g_config) {
 			}
 			// event emitter
 			else {
-				this.emit('end');
+				this.operator.emit('end');
 			}
 		}
 	};
@@ -238,7 +239,53 @@ function Parser(g_config) {
 	// duplex
 	if(null === z_input) {
 		// create transform
-		let d_transform = new require('stream').Transform();
+		let d_transform = this.operator = new stream.Transform({
+			// do not decode strings into buffers
+			decodeStrings: false,
+
+			// allow objects to be output
+			readableObjectMode: true,
+
+			// once there's no more data to consume, invoke eof
+			flush: (f_done) => {
+				// now that stream has ended, clean up remainder
+				eof(1);
+
+				@// empty buffer
+				@{write_buffer()}
+
+				// call end event listener
+				if(g_config.end) {
+					g_config.end(d_transform, this.prefixes);
+				}
+
+				// close write stream (EOF-signaling)
+				d_transform.push(null);
+
+				// close read stream
+				f_done();
+			},
+
+			// on data event
+			transform: (s_chunk, s_encoding, fk_chunk) => {
+				// stream is paused
+				if(this.n < 0) {
+					throw new Error('stream received new data while it was supposed to be paused!');
+				}
+
+				@// parse chunk (avoiding a call to `this.statement` saves time for large files)
+				@{parse_n()}
+
+				@// write buffer to output
+				@{write_buffer()}
+
+				// user wants progress updates
+				if(g_config.progress) g_config.progress(s_chunk.length);
+
+				// done transforming this chunk
+				fk_chunk();
+			},
+		});
 
 		// prep buffer to build string before flush
 		let a_buffer = [];
@@ -252,123 +299,119 @@ function Parser(g_config) {
 			// this.emit('data', h_statement);
 		};
 
+		// notify once and never again
+		d_transform.once('pipe', (ds_input) => {
+			// ensure stream is encoding in utf8
+			ds_input.setEncoding('utf8');
+
+			// user wants to be notified when input is readable
+			if(this.ready) {
+				this.ready();
+			}
+		});
+
 		// user wants to be notified when input is readable
 		if(g_config.ready) d_transform.on('readable', g_config.ready);
-
-		// once there's no more data to consume, invoke eof
-		d_transform._flush = (f_done) => {
-			// now that stream has ended, clean up remainder
-			eof(1);
-
-			@// empty the buffer
-			@{write_buffer()}
-
-			// call end event listener
-			if(g_config.end) {
-				// allow 'end' callback to write to output stream
-				g_config.end(d_transform);
-			}
-
-			// close write stream (EOF-signaling)
-			d_transform.push(null);
-
-			// close read stream
-			f_done();
-		};
-
-		// on data event
-		d_transform._transform = (s_chunk, s_encoding, f_okay_chunk) => {
-			@// parse chunk (avoiding a call to `this.statement` saves time for large files)
-			@{parse_n()}
-
-			@// write buffer to output
-			@{write_buffer()}
-
-			// user wants progress updates
-			if(g_config.progress) g_config.progress(s_chunk.length);
-
-			// done transforming this chunk
-			f_okay_chunk();
-		};
 
 		@// make stream controls for a transform
 		@{stream_control('d_transform', true)}
 
-		// public operator
-		this.operator = d_transform;
-
 		// // event emitter
 		// this.emit = d_transform.emit.bind(d_transform);
 	}
-	// stream
-	else if(z_input.setEncoding) {
-		// set encoding on stream
-		z_input.setEncoding('utf8');
+	// stream or string
+	else {
+		let d_readable = this.operator = new stream.Readable({
+			// emits quads
+			objectMode: true,
 
-		// no data event callback
-		if(!g_config.data) {
-			// bind data event call to event emitter
-			this.data = function(h_statement) {
-				this.emit('data', h_statement);
-			};
-		}
-
-		// user wants to be notified when input is readable
-		if(g_config.ready) z_input.on('readable', g_config.ready);
-
-		// once stream closes, invoke eof
-		z_input.on('end', eof);
-
-		// on data event
-		z_input.on('data', (s_chunk) => {
-			@// parse chunk
-			@{parse_n()};
-
-			// user wants progress updates
-			if(g_config.progress) g_config.progress(s_chunk.length);
+			// we will emit data when we're ready
+			read() {}
 		});
 
-		@// make stream controls
-		@{stream_control('z_input')}
+		if(z_input.setEncoding) {
+			// set encoding on stream
+			z_input.setEncoding('utf8');
 
-		// event emitter
-		this.operator = new EventEmitter();
-		this.emit = this.operator.emit.bind(this);
-	}
-	// string
-	else if('string' === typeof z_input) {
-		// set entire string as input
-		this.pre = z_input;
+			// no data event callback
+			if(!g_config.data) {
+				// bind data event call to event emitter
+				this.data = function(g_quad) {
+					d_readable.emit('data', g_quad);
+				};
+			}
 
-		// no data event callback
-		if(!g_config.data) {
-			// bind data event call to event emitter
-			this.data = function(h_statement) {
-				this.emit('data', h_statement);
-			};
+			// user wants to be notified when input is readable
+			if(g_config.ready) z_input.on('readable', g_config.ready);
+
+			// once stream closes, invoke eof
+			z_input.on('end', eof);
+
+			// on data event
+			z_input.on('data', (s_chunk) => {
+				@// parse chunk
+				@{parse_n()};
+
+				// user wants progress updates
+				if(g_config.progress) g_config.progress(s_chunk.length);
+			});
+
+			@// make stream controls
+			@{stream_control('z_input')}
 		}
+		// string
+		else if('string' === typeof z_input) {
+			// set entire string as input
+			this.pre = z_input;
 
-		// event emitter
-		this.operator = new EventEmitter();
-		this.emit = this.operator.emit.bind(this);
+			// no data event callback
+			if(!g_config.data) {
+				// bind data event call to event emitter
+				this.data = function(g_quad) {
+					d_readable.emit('data', g_quad);
+				};
 
-		@// emulate stream controls
-		@{stream_control()}
+				// ready
+				d_readable.emit('readable');
 
-		// parse all at once
-		this.statement('\n');
+				d_readable._read = () => {
+					d_readable._read = function(){};
 
-		// reached eof
-		if(g_config.async) {
-			setImmediate(eof);
+					@// emulate stream controls
+					@{stream_control()}
+
+					// parse all at once
+					this.statement('\n');
+
+					// reached eof
+					if(g_config.async) {
+						setImmediate(eof);
+					}
+					else {
+						eof();
+					}
+				};
+			}
+			else {
+				@// emulate stream controls
+				@{stream_control()}
+
+				// parse all at once
+				this.statement('\n');
+
+				// reached eof
+				if(g_config.async) {
+					setImmediate(eof);
+				}
+				else {
+					eof();
+				}
+			}
 		}
+		// invalid arg
 		else {
-			eof();
+			throw new TypeError('[graphy] invalid argument for input parameter: '+z_input);
 		}
-	}
-	// invalid arg
-	else {
-		throw new TypeError('[graphy] invalid argument for input parameter: '+z_input);
 	}
 }
 

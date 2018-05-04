@@ -4,8 +4,89 @@ const DC_URL = require('url').URL;
 
 const factory = require('@graphy/factory');
 
-const R_NAMED_NODE_CHARS_INVALID = /[\0- <>"{}|^`\\]/g;
-const R_INVALID_PREFIXED_NAME = /^\.|(?:[\u0000-,/;-@[-^`{-\u00bf\u00d7\u00f7\u0300-\u306f\u037e\u2000-\u200b\u200e-\u206f\u2190-\u2bff\u2ff0-\u3000\ud800-\uf8ff\ufdd0-\ufddf\uffff])/;
+@>> R_RANGE_PN_HIGH(b_extend=false)
+	@- b_extend
+		@//@regex
+		{-\u00b6
+		\u00b8-\u00bf
+	@//@
+	@:
+		@//@regex
+		{-\u00bf
+	@;
+
+	@//@regex
+	\u00d7\u00f7
+
+	@//@
+	@- !b_extend
+		\u0300-\u306f
+	@;
+
+	@//@regex
+	\u037e
+	\u2000-\u200b
+
+	@- b_extend
+		\u200e-\u203e
+		\u2041-\u206f
+	@:
+		\u200e-\u206f
+	@;
+
+	@//@regex
+	\u2190-\u2bff
+	\u2ff0-\u3000
+	\ud800-\uf8ff
+	\ufdd0-\ufddf
+	\uffff
+@;
+
+@>> RT_AVOID_PREFIXED_NAME()
+	@//@regex
+	^
+	(?:
+		\\
+		| [						@// * first character *
+			\u0000-\/ 			@// 0-:
+			;-@					@// A-Z
+			[-^					@// _
+			`					@// a-z
+			@{R_RANGE_PN_HIGH()}
+		]
+		| (?:
+			.+?					@// * acceptable preceeding characters *
+			(?:					@// * middle characters *
+				\\
+				| [
+					\u0000-,
+					\/;-@
+					[-^
+					`
+					@{R_RANGE_PN_HIGH(true)}
+				]
+			)
+			.					@// * at least one final character *
+		)
+		| (?:
+			.+?					@// * acceptable preceeding characters *
+			(?:					@// * final character *
+				\\
+				| [
+					\u0000-, 			@// -
+					.\/					@// 0-:
+					;-@					@// A-Z
+					[-^					@// _
+					`					@// a-z
+					@{R_RANGE_PN_HIGH(true)}
+				]
+			)
+		)
+	)
+	$
+@;
+
+const RT_AVOID_PREFIXED_NAME = /@{RT_AVOID_PREFIXED_NAME()}/;
 
 const HM_DEFAULT_COERCE = new Map();
 HM_DEFAULT_COERCE.set(Date, dt => factory.literal(dt.toISOString(), factory.namedNode('http://www.w3.org/2001/XMLSchema#dateTime')));
@@ -158,7 +239,7 @@ class HumanReadableSerializer extends stream.Readable {
 		if(!(s_prefix in h_prefixes)) throw new Error(`prefix not mapped '${s_prefix}'`);
 
 		// suffix cannot be used safely with prefixed name
-		if(R_INVALID_PREFIXED_NAME.test(s_suffix)) {
+		if(RT_AVOID_PREFIXED_NAME.test(s_suffix)) {
 			// join prefix iri with suffix
 			return `<${h_prefixes[s_prefix]}${s_suffix}>`;
 		}

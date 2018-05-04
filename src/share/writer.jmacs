@@ -1,0 +1,3 @@
+@$ XM_MODE_PREDICATE  = 1 << 0;
+@$ XM_MODE_SUBJECT    = 1 << 1;
+@$ XM_MODE_GRAPH      = 1 << 2;

@@ -1,0 +1,75 @@
+
+@$ H_SYMBOLS = {
+	range: [
+		'all',
+		'hops',
+		'nodes',
+		'literals',
+		'subjects',
+		'objects',
+	],
+	role: [
+		'hop',
+		'node',
+		'subject',
+		'predicate',
+		'inverse-predicate',
+		'object',
+		'object-node',
+		'literal',
+		'root',
+		'leaf',
+	],
+	use: [
+		'SPO',
+		'POS',
+		'OSP',
+	],
+	row: [
+		'invalidated',	
+	],
+};
+
+@> import_symbols(h_spec=null)
+	@*{
+		for(let [s_symbol, s_type, s_instance, b_sog] of symbols()) {
+			yield /* syntax: js */ `${b_sog? '\n': ''}${s_symbol},\n`;
+		}
+	}
+@;
+
+@.{
+	function* symbols(h_spec=null) {
+		// start of new group flag
+		let b_sog = false;
+
+		// each type
+		for(let s_type in H_SYMBOLS) {
+			// spec given and this group isn't in it
+			if(h_spec && !(s_type in h_spec)) continue;
+
+			// each instance of this type
+			let a_instances = H_SYMBOLS[s_type];
+			for(let s_instance of a_instances) {
+				// spec given and this isn't in it
+				if(h_spec && !h_spec[s_type].includes(s_instance)) continue;
+
+				// payload
+				yield [
+					'$_'+s_type.toUpperCase()
+						+'_'+s_instance.toUpperCase().replace(/[^a-z0-9_$]/gi, '_'),
+					s_type,
+					s_instance,
+					b_sog,
+				];
+
+				// no longer start-of-group
+				b_sog = false;
+			}
+
+			// now a new group will start
+			b_sog = true;
+		}
+	}
+}
+	
