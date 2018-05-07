@@ -3,7 +3,7 @@ const fs = require('fs');
 const assert = require('assert');
 const stream = require('stream');
 
-const graphy = require('../../build/packages/graphy/index.js');
+const graphy = require('graphy');
 const async = require('async');
 const request = require('request');
 require('colors');
@@ -29,7 +29,7 @@ const h_answers = {};
 
 function test_eval(s_test_id) {
 	let k_set = graphy.set();
-	return parse({
+	return graphy.ttl.parse({
 		// set default base
 		prepend: `@base <${P_PATH}${s_test_id.slice(1)}.ttl> .\n`,
 
@@ -49,7 +49,7 @@ function test_eval(s_test_id) {
 
 function test_positive_syntax(s_test_id) {
 	let w_result = true;
-	return parse({
+	return graphy.ttl.parse({
 		data() {},
 		error(e_parse) {
 			w_result = e_parse;
@@ -62,7 +62,7 @@ function test_positive_syntax(s_test_id) {
 
 function test_negative_syntax(s_test_id) {
 	let w_result = true;
-	let ds_transform = parse({
+	let ds_transform = graphy.ttl.parse({
 		debug: ('#turtle-syntax-bad-esc-01' === s_test_id),
 		validate: true,
 		data() {},
@@ -86,7 +86,7 @@ function validate(s_test_id) {
 	};
 	d_reader.on('finish', () => {
 		let k_set = graphy.set();
-		graphy.nt.deserializer(s_nt, {
+		graphy.nt.parser(s_nt, {
 			data(h_triple) {
 				k_set.add(h_triple);
 			},
@@ -97,8 +97,6 @@ function validate(s_test_id) {
 	return d_reader;
 }
 
-
-const parse = (...a_args) => graphy.deserializer('text/turtle', ...a_args);
 
 const q_tests = async.queue(function(h_task, f_okay) {
 	let s_test_id = h_task.data.subject.value;
@@ -116,7 +114,7 @@ q_tests.drain = function() {
 	console.log('\n=== results ===\n');
 
 	// generate EARL report
-	let k_serializer = graphy.ttl.serializer({
+	let k_writer = graphy.ttl.writer({
 		prefixes: {
 			rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
 			rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
@@ -131,12 +129,15 @@ q_tests.drain = function() {
 		},
 	});
 
-	k_serializer.pipe(fs.createWriteStream('earl-report.ttl'));
+	k_writer.pipe(fs.createWriteStream('earl-report.ttl'));
 
-	k_serializer.add({
-
+	k_writer.add({
+		'>for': {
+			'>future': '"use',
+		},
 	});
 
+	k_writer.end();
 
 	for(let s_test_id in h_tests) {
 		let z_result = h_results[s_test_id];
@@ -191,7 +192,7 @@ class TestCase {
 }
 
 request(P_PATH+'manifest.ttl')
-	.pipe(parse({
+	.pipe(graphy.ttl.parser({
 		data(g_quad) {
 			let {
 				subject: g_subject,
@@ -237,6 +238,6 @@ request(P_PATH+'manifest.ttl')
 		},
 	}));
 
-const loader = require('./loader.js');
-let ds_output = fs.createWriteStream('./turtle-earl-report.ttl');
-loader('https://www.w3.org/2013/TurtleTests/manifest.ttl', 'text/turtle', ds_output);
+// const loader = require('./loader.js');
+// let ds_output = fs.createWriteStream('./turtle-earl-report.ttl');
+// loader('https://www.w3.org/2013/TurtleTests/manifest.ttl', 'text/turtle', ds_output);

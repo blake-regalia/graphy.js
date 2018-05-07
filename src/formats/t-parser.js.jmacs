@@ -9,6 +9,8 @@
 @// import parser macros
 @import 'textual-parser-macros.jmacs'
 
+@import '../share/iris.jmacs'
+
 const stream = require('stream');
 const events = require('events');
 
@@ -180,20 +182,12 @@ const R_CHAR_KET = /\]\s*/y
 
 const R_CHAR_STOP = /\.\s*/y;
 
-const P_IRI_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
-const HP_NN_RDF_TYPE = factory.namedNode(P_IRI_RDF+'type');
-const HP_NN_RDF_FIRST = factory.namedNode(P_IRI_RDF+'first');
-const HP_NN_RDF_REST = factory.namedNode(P_IRI_RDF+'rest');
-const HP_NN_RDF_NIL = factory.namedNode(P_IRI_RDF+'nil');
+const KT_RDF_LANG_STRING = factory.namedNode('@{P_IRI_RDF}langString');
+const KT_RDF_TYPE = factory.namedNode('@{P_IRI_RDF}type');
+const KT_RDF_FIRST = factory.namedNode('@{P_IRI_RDF}first');
+const KT_RDF_REST = factory.namedNode('@{P_IRI_RDF}rest');
+const KT_RDF_NIL = factory.namedNode('@{P_IRI_RDF}nil');
 
-const P_IRI_XSD = 'http://www.w3.org/2001/XMLSchema#';
-const HP_NN_XSD_BOOLEAN = factory.namedNode(P_IRI_XSD+'boolean');
-const HP_NN_XSD_INTEGER = factory.namedNode(P_IRI_XSD+'integer');
-const HP_NN_XSD_DECIMAL = factory.namedNode(P_IRI_XSD+'decimal');
-const HP_NN_XSD_DOUBLE = factory.namedNode(P_IRI_XSD+'double');
-
-const P_IRI_RDFS = 'http://www.w3.org/2000/01/rdf-schema#';
-const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
 
 const H_DEFAULT_GRAPH = factory.defaultGraph();
 
@@ -334,7 +328,7 @@ function Parser(g_config={}) {
 
 		// current data
 		subject: null,
-		predicate: HP_NN_RDF_FIRST,
+		predicate: KT_RDF_FIRST,
 		object: null,
 		graph: H_DEFAULT_GRAPH,
 
@@ -397,7 +391,7 @@ function Parser(g_config={}) {
 
 		// term constructors
 		blank_node: s_label => factory.blankNode(s_label),
-		anonymous_blank_node: s_label => Object.assign(factory.blankNode(s_label), {isAnonymous:true}),
+		anonymous_blank_node: s_label => factory.blankNode(s_label, true),
 		named_node: s_iri => factory.namedNode(s_iri),
 
 		unescape_literal_short: (s_literal) => {
@@ -559,7 +553,7 @@ function Parser(g_config={}) {
 	// duplex
 	if(null === z_input) {
 		// create transform
-		let d_transform = this.output = new stream.Transform({
+		let ds_transform = this.output = new stream.Transform({
 			// do not decode strings into buffers
 			decodeStrings: false,
 
@@ -576,11 +570,11 @@ function Parser(g_config={}) {
 
 				// call end event listener
 				if(fk_end) {
-					fk_end(d_transform, this.prefixes);
+					fk_end(ds_transform, this.prefixes);
 				}
 
 				// close write stream (EOF-signaling)
-				d_transform.push(null);
+				ds_transform.push(null);
 
 				// close read stream
 				f_done();
@@ -629,9 +623,11 @@ function Parser(g_config={}) {
 		};
 
 		// notify once and never again
-		d_transform.once('pipe', (ds_input) => {
-			// ensure stream is encoding in utf8
-			ds_input.setEncoding('utf8');
+		ds_transform.once('pipe', (ds_input) => {
+			if(ds_input.setEncoding) {
+				// ensure stream is encoding in utf8
+				ds_input.setEncoding('utf8');
+			}
 
 			// user wants to be notified when input is readable
 			if(this.ready) {
@@ -641,14 +637,14 @@ function Parser(g_config={}) {
 
 		// graceful error
 		this.grace = (e_parse) => {
-			d_transform.emit('error', e_parse);
+			ds_transform.emit('error', e_parse);
 		};
 
 		@// make stream controls for a transform
-		@{stream_control('d_transform', true)}
+		@{stream_control('ds_transform', true)}
 
 		// public operator
-		this.operator = d_transform;
+		this.operator = ds_transform;
 	}
 	// stream
 	else if(z_input.setEncoding) {
@@ -711,6 +707,8 @@ function Parser(g_config={}) {
 	}
 	// string
 	else if('string' === typeof z_input) {
+		if(g_config.debug) debugger;
+
 		// concatenate previous chunk
 		let s = this.s = this.pre+z_input;
 
@@ -1041,7 +1039,7 @@ Object.assign(Parser.prototype, {
 		// 'a'
 		@{else_if_match('R_A')}
 			// make predicate key
-			this.predicate = HP_NN_RDF_TYPE;
+			this.predicate = KT_RDF_TYPE;
 
 			// object-list state
 			@{goto('object_list')}
@@ -1230,7 +1228,7 @@ Object.assign(Parser.prototype, {
 			@{else_if_match('R_LANGTAG', 'm_langtag')}
 				// set literal language type
 				this.object@{literal_language()} = m_langtag[1].toLowerCase();
-				this.object@{literal_datatype()} = HP_NN_RDFS_LANG_STRING;
+				this.object@{literal_datatype()} = KT_RDF_LANG_STRING;
 
 			// next token definitely datatype or langtag, we are just being interrupted by eos
 			@{else_retry()}
@@ -1512,7 +1510,7 @@ Object.assign(Parser.prototype, {
 			// no items in collection subject
 			if(null === this.subject) {
 				// prepare subject
-				this.subject = HP_NN_RDF_NIL;
+				this.subject = KT_RDF_NIL;
 
 				// state was never pushed to stack, jump to post_subject state
 				@{goto('post_blank_subject')}
@@ -1520,7 +1518,7 @@ Object.assign(Parser.prototype, {
 			// otherwise, there must be items in collection
 
 			// commit collection end
-			this.object = HP_NN_RDF_NIL;
+			this.object = KT_RDF_NIL;
 			@{emit_statement()}
 
 			// restore state from stack
@@ -1557,7 +1555,7 @@ Object.assign(Parser.prototype, {
 			// first item in list
 			if(null === this.subject) {
 				this.subject = this.anonymous_blank_node(s_pointer_label);
-				this.predicate = HP_NN_RDF_FIRST;
+				this.predicate = KT_RDF_FIRST;
 			}
 			// not first item in list
 			else {
@@ -1567,12 +1565,12 @@ Object.assign(Parser.prototype, {
 
 				// setup for object literal
 				this.subject = kt_blank_node;
-				this.predicate = HP_NN_RDF_FIRST;
+				this.predicate = KT_RDF_FIRST;
 			}
 
 			// how to resume collection subject state after object literal
 			this.after_end_of_statement = function() {
-				this.predicate = HP_NN_RDF_REST;
+				this.predicate = KT_RDF_REST;
 				this.after_end_of_statement = this.post_object;
 				return this.collection_subject();
 			};
@@ -1601,13 +1599,13 @@ Object.assign(Parser.prototype, {
 
 			// subject needs to be set
 			this.subject = kt_blank_node || this.anonymous_blank_node(s_pointer_label);
-			this.predicate = HP_NN_RDF_FIRST;
+			this.predicate = KT_RDF_FIRST;
 			let s_label = this.next_label();
 			kt_blank_node = this.object = this.anonymous_blank_node(s_label);
 			@{emit_statement()}
 
 			// when resume
-			this.predicate = HP_NN_RDF_REST;
+			this.predicate = KT_RDF_REST;
 
 			// push state
 			@{push_state('collection_subject')}
@@ -1628,11 +1626,11 @@ Object.assign(Parser.prototype, {
 
 			// add this list as an item to the outer list
 			this.subject = kt_blank_node;
-			this.predicate = HP_NN_RDF_REST;
+			this.predicate = KT_RDF_REST;
 			@{push_state('collection_object')}
 
 			// prepare next triple
-			this.predicate = HP_NN_RDF_FIRST;
+			this.predicate = KT_RDF_FIRST;
 
 			// flowing
 			continue;
@@ -1688,11 +1686,11 @@ Object.assign(Parser.prototype, {
 
 		// emit statement that is item
 		this.subject = kt_blank_node_outer || this.anonymous_blank_node(s_pointer_label);
-		this.predicate = HP_NN_RDF_FIRST;
+		this.predicate = KT_RDF_FIRST;
 		@{emit_statement()}
 
 		// prepare next predicate
-		this.predicate = HP_NN_RDF_REST;
+		this.predicate = KT_RDF_REST;
 
 	@{end_method('collection_subject')}
 
@@ -1708,7 +1706,7 @@ Object.assign(Parser.prototype, {
 			@{whitespace('i+1')}
 
 			// make & emit collection's tail "pointer"
-			this.object = HP_NN_RDF_NIL;
+			this.object = KT_RDF_NIL;
 			@{emit_statement()}
 
 			// restore previous state
@@ -1744,10 +1742,10 @@ Object.assign(Parser.prototype, {
 
 			// prepare statement that is item
 			this.subject = kt_blank_node;
-			this.predicate = HP_NN_RDF_FIRST;
+			this.predicate = KT_RDF_FIRST;
 
 			this.after_end_of_statement = function() {
-				this.predicate = HP_NN_RDF_REST;
+				this.predicate = KT_RDF_REST;
 				this.after_end_of_statement = this.post_object;
 				return this.collection_object();
 			};
@@ -1773,18 +1771,18 @@ Object.assign(Parser.prototype, {
 
 			// setup state to resume and push
 			this.subject = kt_blank_node;
-			this.predicate = HP_NN_RDF_REST;
+			this.predicate = KT_RDF_REST;
 			@{push_state('collection_object')}
 
 			// enter blank node
-			this.predicate = HP_NN_RDF_FIRST;
+			this.predicate = KT_RDF_FIRST;
 			let s_label = this.next_label();
 			kt_blank_node = this.object = this.anonymous_blank_node(s_label);
 			@{emit_statement()}
 
 			// prepare next triple
 			this.subject = kt_blank_node;
-			this.predicate = HP_NN_RDF_FIRST;
+			this.predicate = KT_RDF_FIRST;
 
 			// goto parsing pairs state
 			@{goto('pairs')}
@@ -1804,11 +1802,11 @@ Object.assign(Parser.prototype, {
 
 			// add this list as an item to the outer list
 			this.subject = kt_blank_node;
-			this.predicate = HP_NN_RDF_REST;
+			this.predicate = KT_RDF_REST;
 			@{push_state('collection_object')}
 
 			// prepare next triple
-			this.predicate = HP_NN_RDF_FIRST;
+			this.predicate = KT_RDF_FIRST;
 
 			// flowing
 			continue;
@@ -1856,12 +1854,12 @@ Object.assign(Parser.prototype, {
 
 		// emit statement that is item
 		this.subject = kt_blank_node_outer;
-		this.predicate = HP_NN_RDF_FIRST;
+		this.predicate = KT_RDF_FIRST;
 		this.object = w_object;
 		@{emit_statement()}
 
 		// prepare next predicate
-		this.predicate = HP_NN_RDF_REST;
+		this.predicate = KT_RDF_REST;
 
 	@{end_method('collection_object')}
 

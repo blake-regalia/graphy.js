@@ -25,6 +25,7 @@
     "test": "gulp && gulp test"
   },
   "dependencies": {
+    "async": "^2.6.0",
     "bkit": "^1.1.3",
     "buffer": "^5.1.0",
     "colors": "^1.2.3",
@@ -37,6 +38,7 @@
     "eslint-plugin-jmacs": "^1.0.9",
     "jmacs": "^1.0.9",
     "mkjs-cli": "0.1.0",
+    "request": "^2.85.0",
     "sort-package-json": "^1.13.0"
   }
 }

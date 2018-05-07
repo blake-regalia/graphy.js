@@ -1,6 +1,7 @@
 const assert = require('assert');
 const request = require('request');
-const graphy = require('../../build/packages/graphy/index.js');
+
+const graphy = require('graphy');
 
 const H_AUTHORS = {
 	'>http://blake-regalia.com/#me': {
@@ -241,6 +242,7 @@ module.exports = function test(p_manifest, pm_format, ds_output) {
 	// for committing each test outcome
 	let commit_outcome = (k_test_case, s_outcome) => {
 		kw_report.add({
+			[graphy.comment()]: 'This RDF file was programtically generated using graphy.js: https://github.com/blake-regalia/graphy.js',
 			['>'+k_test_case.id.value]: {
 				a: ['earl:TestCriterion', 'earl:TestCase'],
 				'dc:title': k_test_case.name,
@@ -270,7 +272,7 @@ module.exports = function test(p_manifest, pm_format, ds_output) {
 	// fetch manifest file
 	request(p_manifest)
 		// deserialize
-		.pipe(graphy.ttl.deserializer({
+		.pipe(graphy.ttl.parser({
 			// base is resource url
 			base: p_manifest,
 		}))
@@ -314,13 +316,10 @@ module.exports = function test(p_manifest, pm_format, ds_output) {
 					let k_test_case = new TestCase(p_manifest, pm_format, h_test_case);
 
 					// load test case
-					k_test_case.run().then(() => {
-						// log to console
-						console.log(`${'✓'.green} ${k_test_case.id.value}`);
-
-						// write to report
-						commit_outcome(k_test_case, 'passed');
-					}).catch((z_reason) => {
+					try {
+						await k_test_case.run();
+					}
+					catch(z_reason) {
 						// case label
 						let s_case = `${'˟'.red} ${k_test_case.id.value}`;
 
@@ -335,7 +334,16 @@ module.exports = function test(p_manifest, pm_format, ds_output) {
 
 						// write to report
 						commit_outcome(k_test_case, 'failed');
-					});
+
+						// next test case
+						continue;
+					}
+
+					// log success to console
+					console.log(`${'✓'.green} ${k_test_case.id.value}`);
+
+					// write to report
+					commit_outcome(k_test_case, 'passed');
 				}
 
 				// all done!

@@ -6,8 +6,8 @@ const eq = assert.strictEqual;
 
 const stream = require('stream');
 
-const graphy = require('../../dist/main/graphy.js');
-const parse_ttl = graphy.ttl.deserializer;
+const graphy = require('graphy');
+const parse_ttl = graphy.ttl.parser;
 
 
 
@@ -33,11 +33,13 @@ const as_triple = function(a_this) {
 	let s_predicate = a_this[1];
 	let z_object = a_this[2];
 	return {
-		subject: {
-			value: ' ' === s_subject[0]
-				? s_subject.substr(1)
-				: s_subject,
-		},
+		subject: /^[ _]/.test(s_subject)
+			? {
+				value: s_subject.slice(1),
+				isAnonymous: ' ' === s_subject[0],
+			} : {
+				value: s_subject,
+			},
 		predicate: {
 			value: '->' === s_predicate
 				? P_IRI_RDF_FIRST
@@ -47,10 +49,12 @@ const as_triple = function(a_this) {
 		},
 		object: 'string' === typeof z_object
 			? (' ' === z_object[0]
-				? {value:z_object.substr(1)}
-				: ('.' === z_object
-					? {value:P_IRI_RDF_NIL}
-					: {value:z_object}))
+				? {value:z_object.slice(1), isAnonymous:true}
+				: ('_' === z_object[0]
+					? {value:z_object.slice(1), isAnonymous:false}
+					: ('.' === z_object
+						? {value:P_IRI_RDF_NIL}
+						: {value:z_object})))
 			: ('number' === typeof z_object
 				? {value:z_object+''}
 				: z_object),
@@ -272,8 +276,8 @@ describe('ttl parser:', () => {
 			_:a :b _:c .
 			_:c :d _:e .
 			`, [
-				[' a', '#b', ' c'],
-				[' c', '#d', ' e'],
+				['_a', '#b', '_c'],
+				['_c', '#d', '_e'],
 			]);
 
 		allow('anonymous', `
@@ -281,8 +285,8 @@ describe('ttl parser:', () => {
 			_:c :d [] .
 			[] :e [] .
 			`, [
-				[' g0', '#b', ' c'],
-				[' c', '#d', ' g1'],
+				[' g0', '#b', '_c'],
+				['_c', '#d', ' g1'],
 				[' g2', '#e', ' g3'],
 			]);
 
@@ -372,11 +376,11 @@ describe('ttl parser:', () => {
 		allow('labeled blank node items (and with label conflicts)', ''
 			+':a :b (_:g0 _:b0 _:g1).', [
 			['#a', '#b', ' g0'],
-				[' g0', '->', ' g1'],
+				[' g0', '->', '_g1'],
 				[' g0', '>>', ' g2'],
-				[' g2', '->', ' b0'],
+				[' g2', '->', '_b0'],
 				[' g2', '>>', ' g3'],
-				[' g3', '->', ' g4'],
+				[' g3', '->', '_g4'],
 				[' g3', '>>', '.'],
 		]);
 
@@ -791,9 +795,9 @@ describe('ttl parser:', () => {
 		allow('should parse statements with blank nodes in lists',
 			'<a> <b> (_:x _:y).', [
 				['a', 'b', ' g0'],
-				[' g0', '->', ' x'],
+				[' g0', '->', '_x'],
 				[' g0', '>>', ' g1'],
-				[' g1', '->', ' y'],
+				[' g1', '->', '_y'],
 				[' g1', '>>', '.'],
 		]);
 

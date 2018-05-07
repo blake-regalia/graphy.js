@@ -103,9 +103,9 @@
 
 			// make event callback
 			@- N
-				this.restore_data(h_event@{transform? ', d_transform': ''});
+				this.restore_data(h_event@{transform? ', ds_transform': ''});
 			@:
-				this[h_event.event](h_event.data@{transform? ', d_transform': ''});
+				this[h_event.event](h_event.data@{transform? ', ds_transform': ''});
 			@;
 
 			// callback paused stream
@@ -169,7 +169,7 @@
 @// joins output buffer to string, writes that to stream and resets list
 @> write_buffer()
 	if(a_buffer.length) {
-		d_transform.push(a_buffer.join('')+'', 'utf8');
+		ds_transform.push(a_buffer.join('')+'', 'utf8');
 		a_buffer.length = 0;
 	}
 @;
@@ -243,9 +243,9 @@
 @> validators()
 	@//@object-literal
 	{
-		blank_node(s_value, b_named) {
+		blank_node(s_value) {
 			if(!RT_BLANK_NODE_VALID.test(s_value)) return this._error(`invalid blank node label: "${s_value}"`);
-			return factory.blankNode(s_value, b_named);
+			return factory.blankNode(s_value);
 		},
 
 		named_node(s_iri) {
@@ -314,7 +314,7 @@
 
 @// create a class for each of the term types that the object of a triple can be
 @> term_types(from_this)
-	const factory = require('@graphy/factory');
+	const factory = require('@graphy/factory').unfiltered;
 
 	@// make Quad constructor
 	@- T

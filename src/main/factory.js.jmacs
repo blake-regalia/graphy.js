@@ -136,13 +136,23 @@ const F_REPLACE_IRI_ESCAPE = (s_fragment, s_char) => {
 const S_UUID_V4 = 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx';
 const R_UUID_V4 = /[xy]/g;
 
+const uuid_v4 = () => {
+	let dt_now = Date.now();
+	if('undefined' !== typeof performance) dt_now += performance.now();
+	return S_UUID_V4.replace(R_UUID_V4, (s) => {
+		let x_r = (dt_now + (Math.random()*16)) % 16 | 0;
+		dt_now = Math.floor(dt_now / 16);
+		return ('x' === s? x_r: ((x_r & 0x3) | 0x8)).toString(16);
+	});
+};
+
 // attempt to turn an iri into a prefixed name
 const concise = (p_iri, h_prefixes) => {
 	// best prefix id
 	let s_best_prefix_id = '';
 
 	// length of longest matching iri
-	let nl_best_prefix_iri = 0;
+	let nl_best_prefix_iri = -1;
 
 	// each prefix in hash
 	for(let s_prefix_id in h_prefixes) {
@@ -159,8 +169,8 @@ const concise = (p_iri, h_prefixes) => {
 	}
 
 	// found a prefix
-	if(nl_best_prefix_iri) {
-		return s_best_prefix_id+':'+p_iri.substr(nl_best_prefix_iri);
+	if(-1 !== nl_best_prefix_iri) {
+		return s_best_prefix_id+':'+p_iri.slice(nl_best_prefix_iri);
 	}
 
 	// no prefix found; default to full iri
@@ -243,14 +253,16 @@ function NamedNode(s_iri) {
 	});
 
 const KT_RDF_TYPE = new NamedNode('@{P_IRI_RDF}type');
+const KT_XSD_DATE = new NamedNode('@{P_IRI_RDF}date');
+const KT_XSD_DATETIME = new NamedNode('@{P_IRI_RDF}dateTime');
 const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
-const KT_RDFS_LANG_STRING = new NamedNode('@{P_IRI_RDFS}langString');
+const KT_RDF_LANG_STRING = new NamedNode('@{P_IRI_RDF}langString');
 function Literal(s_value, z_datatype_or_lang) {
 	this.value = s_value;
 	if(z_datatype_or_lang) {
 		if('string' === typeof z_datatype_or_lang) {
 			this.language = z_datatype_or_lang.toLowerCase();
-			this.datatype = KT_RDFS_LANG_STRING;
+			this.datatype = KT_RDF_LANG_STRING;
 		}
 		else {
 			this.datatype = z_datatype_or_lang;
@@ -526,8 +538,9 @@ class Literal_NaN extends Literal_Double {
 }
 
 
-function BlankNode(s_value) {
+function BlankNode(s_value, b_anonymous=false) {
 	this.value = s_value;
+	this.isAnonymous = b_anonymous;
 } BlankNode.prototype = Object.assign(
 	Object.create(GenericTerm.prototype), {
 		termType: 'BlankNode',
@@ -594,8 +607,8 @@ NoGraph.prototype = Object.assign(
 		},
 	});
 
-const H_DEFAULT_GRAPH = new DefaultGraph();
-function Quad(h_subject, h_predicate, h_object, h_graph=H_DEFAULT_GRAPH) {
+const KT_DEFAULT_GRAPH = new DefaultGraph();
+function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 	this.subject = h_subject;
 	this.predicate = h_predicate;
 	this.object = h_object;
@@ -664,14 +677,20 @@ const factory = module.exports = {
 	concise,
 
 	unfiltered: {
-		get namedNode() {
-			return factory.namedNode;
+		namedNode(p_iri) {
+			return new NamedNode(p_iri);
 		},
-		get blankNode() {
-			return factory.blankNode;
+		blankNode(s_label, b_anonymous) {
+			return new BlankNode(s_label, b_anonymous);
 		},
-		get literal() {
-			return factory.literal;
+		literal(s_value, w_datatype_or_lang) {
+			return new Literal(s_value, w_datatype_or_lang);
+		},
+		defaultGraph() {
+			return new DefaultGraph();
+		},
+		quad(kt_subject, kt_predicate, kt_object, kt_graph) {
+			return new Quad(kt_subject, kt_predicate, kt_object, kt_graph || KT_DEFAULT_GRAPH);
 		},
 		@*{
 			for(let s_type in h_literals) {
@@ -699,6 +718,14 @@ const factory = module.exports = {
 		}
 	},
 
+	date(dt) {
+		return factory.literal(dt.toISOString().replace(/T.+$/, 'Z'), KT_XSD_DATE);
+	},
+
+	dateTime(dt) {
+		return factory.literal(dt.toISOString(), KT_XSD_DATETIME);
+	},
+
 	namedNode(p_iri) {
 		return new NamedNode(p_iri);
 	},
@@ -706,14 +733,8 @@ const factory = module.exports = {
 	blankNode(z_label) {
 		// no label given, generate a UUID
 		if(!z_label) {
-			let dt_now = Date.now();
 			// eslint-disable-next-line no-undef
-			if('undefined' !== typeof performance) d += performance.now();
-			return new BlankNode(S_UUID_V4.replace(R_UUID_V4, (s) => {
-				let x_r = (dt_now + (Math.random()*16)) % 16 | 0;
-				dt_now = Math.floor(dt_now / 16);
-				return ('x' === s? x_r: ((x_r & 0x3) | 0x8)).toString(16);
-			}));
+			return new BlankNode(uuid_v4(), true);
 		}
 		// label given
 		else if('string' === typeof z_label) {
@@ -721,14 +742,14 @@ const factory = module.exports = {
 		}
 		// parser or graph object given
 		else if('object' === typeof z_label) {
-			return new BlankNode(z_label.next_label());
+			return new BlankNode(z_label.next_label(), true);
 		}
 
 		throw new TypeError('unexpected type for `label` parameter');
 	},
 
-	literal(s_value, z_datatype_or_lang) {
-		return new Literal(s_value, z_datatype_or_lang);
+	literal(s_value, w_datatype_or_lang) {
+		return new Literal(s_value, w_datatype_or_lang);
 	},
 
 	@*{
@@ -765,7 +786,7 @@ const factory = module.exports = {
 	},
 
 	quad(h_subject, h_predicate, h_object, h_graph) {
-		return new Quad(h_subject, h_predicate, h_object, h_graph || H_DEFAULT_GRAPH);
+		return new Quad(h_subject, h_predicate, h_object, h_graph || KT_DEFAULT_GRAPH);
 	},
 
 	from_quad(g_quad) {
@@ -834,6 +855,7 @@ const factory = module.exports = {
 
 			// invalid concise-term string
 			case '<': throw new Error(`Whoops! It looks like this concise-term string starts with a '<' character. Remember to use '>' if you are trying to make an absolute IRI reference.\nInvalid concise-term string '${sct_node}'`);
+			case '`': throw new Error(`The backtick character '\`' is reserved for concise-struct key directives and should not be used in the object position.\nInvalid concise-term string '${sct_node}'`);
 
 			// prefixed name
 			default: return this.ct_prefixed_node(sct_node, h_prefixes);
@@ -862,5 +884,15 @@ const factory = module.exports = {
 		else {
 			throw new Error(`Prefix not defined: '${s_prefix_id}'`);
 		}
+	},
+
+	// create a `concise-term struct`-compatible comment directive
+	comment(g_config={}) {
+		return `\`#[${uuid_v4()}]${JSON.stringify(g_config)}`;
+	},
+
+	// create a `concise-term struct`-compatible blank-line directive
+	newlines() {
+		return `\`_[${uuid_v4()}]`;
 	},
 };
