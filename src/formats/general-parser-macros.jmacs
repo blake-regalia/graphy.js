@@ -103,9 +103,9 @@
 
 			// make event callback
 			@- N
-				this.restore_data(h_event@{transform? ', ds_transform': ''});
+				this.restore_data(h_event@{transform? ', ds_output': ''});
 			@:
-				this[h_event.event](h_event.data@{transform? ', ds_transform': ''});
+				this[h_event.event](h_event.data@{transform? ', ds_output': ''});
 			@;
 
 			// callback paused stream
@@ -169,7 +169,7 @@
 @// joins output buffer to string, writes that to stream and resets list
 @> write_buffer()
 	if(a_buffer.length) {
-		ds_transform.push(a_buffer.join('')+'', 'utf8');
+		ds_output.push(a_buffer.join('')+'', 'utf8');
 		a_buffer.length = 0;
 	}
 @;

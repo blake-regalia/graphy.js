@@ -253,10 +253,11 @@ function NamedNode(s_iri) {
 	});
 
 const KT_RDF_TYPE = new NamedNode('@{P_IRI_RDF}type');
-const KT_XSD_DATE = new NamedNode('@{P_IRI_RDF}date');
-const KT_XSD_DATETIME = new NamedNode('@{P_IRI_RDF}dateTime');
-const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 const KT_RDF_LANG_STRING = new NamedNode('@{P_IRI_RDF}langString');
+
+const KT_XSD_DATE = new NamedNode('@{P_IRI_XSD}date');
+const KT_XSD_DATETIME = new NamedNode('@{P_IRI_XSD}dateTime');
+const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 function Literal(s_value, z_datatype_or_lang) {
 	this.value = s_value;
 	if(z_datatype_or_lang) {
@@ -283,7 +284,7 @@ function Literal(s_value, z_datatype_or_lang) {
 			return JSON.stringify(this.value)
 				+ (this.language
 					? '@'+this.language
-					: (this.datatype !== KT_XSD_STRING
+					: (!this.datatype.equals(KT_XSD_STRING)
 						? '^^'+this.datatype.verbose()
 						: ''));
 		},
@@ -306,7 +307,7 @@ function Literal(s_value, z_datatype_or_lang) {
 			return JSON.stringify(this.value)
 				+ (this.language
 					? '@'+this.language
-					: (this.datatype.equals(KT_XSD_STRING)
+					: (!this.datatype.equals(KT_XSD_STRING)
 						? '^^'+st_datatype
 						: ''));
 		},
@@ -401,10 +402,19 @@ class Literal_NaN extends Literal_Double {
 					else if(Number.isNaN(${s_arg})) {
 						throw new Error('XSD integer cannot encode NaN. Try using double');
 					}
-					// fine
-					else {
-						return new Literal_Integer(${s_arg});
+
+					return new Literal_Integer(${s_arg});
+				}
+				// non-number
+				else {
+					let x_value = +${s_arg};
+
+					// failed to parse
+					if(Number.isNaN(x_value) || !Number.isInteger(x_value)) {
+						throw new Error(\`Invalid integer string: \${${s_arg}}\`);
 					}
+
+					return new Literal_Integer(x_value);
 				}
 			`,
 			terse: /* syntax: js */ `
@@ -427,10 +437,8 @@ class Literal_NaN extends Literal_Double {
 					else if(Number.isNaN(${s_arg})) {
 						return new Literal_NaN();
 					}
-					// fine
-					else {
-						return new Literal_Double(${s_arg});
-					}
+
+					return new Literal_Double(${s_arg});
 				}
 				// non-number
 				else {
@@ -440,10 +448,8 @@ class Literal_NaN extends Literal_Double {
 					if(Number.isNaN(x_value)) {
 						throw new Error(\`Invalid decimal string: \${${s_arg}}\`);
 					}
-					// fine
-					else {
-						return new Literal_Double(${s_arg});
-					}
+
+					return new Literal_Double(${s_arg});
 				}
 			`,
 			terse: /* syntax: js */ `
@@ -462,6 +468,8 @@ class Literal_NaN extends Literal_Double {
 					else if(Number.isNaN(${s_arg})) {
 						throw new Error('XSD decimal cannot encode NaN. Try using double');
 					}
+
+					return new Literal_Decimal(${s_arg});
 				}
 				// non-number
 				else {
@@ -471,6 +479,8 @@ class Literal_NaN extends Literal_Double {
 					if(Number.isNaN(x_value)) {
 						throw new Error(\`Invalid decimal string: \${${s_arg}}\`);
 					}
+
+					return new Literal_Decimal(x_value);
 				}
 			`,
 			terse: /* syntax: js */ `
@@ -496,10 +506,9 @@ class Literal_NaN extends Literal_Double {
 						else if(0 === ${s_arg}) {
 							return new Literal_Boolean(false);
 						}
+
 						// invalid
-						else {
-							throw new RangeError(\`Boolean value '${s_arg}' must be either a '1' or '0' if using numbers\`);
-						}
+						throw new RangeError(\`Boolean value '${s_arg}' must be either a '1' or '0' if using numbers\`);
 					}
 
 					// string
@@ -512,10 +521,9 @@ class Literal_NaN extends Literal_Double {
 						else if(RT_BOOLEAN_FALSE.test(${s_arg})) {
 							return new Literal_Boolean(false);
 						}
+
 						// failed to parse
-						else {
-							throw new Error(\`Invalid boolean string: \${${s_arg}}\`);
-						}
+						throw new Error(\`Invalid boolean string: \${${s_arg}}\`);
 					}
 
 					// other

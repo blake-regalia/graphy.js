@@ -7,7 +7,6 @@ const stream = require('stream');
 const factory = require('@graphy/factory');
 
 const RT_VALID_BLANK_NODE_LABEL = /@{MK_RT_VALID_BLANK_NODE_LABEL()}/;
-const R_SYMBOL_JSON = /^Symbol\((\{.+\})\)$/;
 
 class Serializer {
 	constructor(dc_writer, g_config) {
@@ -188,6 +187,7 @@ const R_DIRECTIVE_CONTENTS = /^`.\[.+\](.*)$/;
 				if(this.serializer.newlines) {
 					return this.serializer.newlines(w_value, xm_mode);
 				}
+				break;
 			}
 			// other
 			default: {
@@ -201,8 +201,6 @@ const R_DIRECTIVE_CONTENTS = /^`.\[.+\](.*)$/;
 @;
 @//@
 
-
-let KT_XSD_DATETIME = factory.namedNode('@{P_IRI_XSD}dateTime');
 
 const HM_COERCIONS_DEFAULT = new Map([
 	[Date, dt => factory.dateTime(dt)],
@@ -396,8 +394,8 @@ class SubWriter_Objects extends SubWriter {
 	// write objects
 	objects(z_objects, xm_mode=0, n_nest_level=1) {
 		let k_serializer = this.serializer;
-		let k_writer = k_serializer.writer;
-		let hm_coercions = k_serializer.coercions;
+		// let k_writer = k_serializer.writer;
+		let hm_coercions = k_serializer.writer.coercions;
 
 		// deduce object value type
 		switch(typeof z_objects) {
@@ -493,11 +491,11 @@ class SubWriter_Objects extends SubWriter {
 					// convert javascript object to term object
 					let k_term = hm_coercions.get(z_objects.constructor).apply(k_serializer, [z_objects, k_serializer]);
 
-					return this.serialize(k_writer.term(k_term), xm_mode);
+					return this.serialize(k_serializer.term(k_term), xm_mode);
 				}
 				// RDFJS term
 				else if(z_objects.termType) {
-					return this.serialize(k_writer.term(z_objects), xm_mode);
+					return this.serialize(k_serializer.term(z_objects), xm_mode);
 				}
 			}
 

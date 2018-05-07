@@ -538,7 +538,8 @@ function Parser(g_config={}) {
 
 		// our duty to notify listener
 		if(1 !== b_no_callback) {
-			this.operator.emit('end');
+			this.output.push(null);
+
 			// call end event listener
 			if(fk_end) {
 				fk_end(this.prefixes);
@@ -550,10 +551,13 @@ function Parser(g_config={}) {
 		}
 	};
 
+	// output stream
+	let ds_output;
+
 	// duplex
 	if(null === z_input) {
 		// create transform
-		let ds_transform = this.output = new stream.Transform({
+		ds_output = this.output = new stream.Transform({
 			// do not decode strings into buffers
 			decodeStrings: false,
 
@@ -570,11 +574,11 @@ function Parser(g_config={}) {
 
 				// call end event listener
 				if(fk_end) {
-					fk_end(ds_transform, this.prefixes);
+					fk_end(ds_output, this.prefixes);
 				}
 
 				// close write stream (EOF-signaling)
-				ds_transform.push(null);
+				ds_output.push(null);
 
 				// close read stream
 				f_done();
@@ -623,7 +627,7 @@ function Parser(g_config={}) {
 		};
 
 		// notify once and never again
-		ds_transform.once('pipe', (ds_input) => {
+		ds_output.once('pipe', (ds_input) => {
 			if(ds_input.setEncoding) {
 				// ensure stream is encoding in utf8
 				ds_input.setEncoding('utf8');
@@ -634,127 +638,128 @@ function Parser(g_config={}) {
 				this.ready();
 			}
 		});
-
-		// graceful error
-		this.grace = (e_parse) => {
-			ds_transform.emit('error', e_parse);
-		};
-
-		@// make stream controls for a transform
-		@{stream_control('ds_transform', true)}
-
-		// public operator
-		this.operator = ds_transform;
 	}
-	// stream
-	else if(z_input.setEncoding) {
-		// set encoding on stream
-		z_input.setEncoding('utf8');
+	// stream or string input
+	else {
+		// create readable output
+		ds_output = this.output = new stream.Readable({
+			// outputs quad objets
+			objectMode: true,
+		});
 
-		// no data event callback
-		if(!f_data) {
-			// bind data event call to event emitter
-			this.data = function(h_statement) {
-				this.emit('data', h_statement);
-			};
-		}
+		// input is stream
+		if(z_input.setEncoding) {
+			// set encoding on stream
+			z_input.setEncoding('utf8');
 
-		// eos notifications
-		if(g_config.eos) {
-			this.eos = () => g_config.eos(z_input);
-		}
-
-		// once stream closes, invoke eof
-		z_input.on('end', eof);
-
-		// begin
-		z_input.on('data', (s_chunk, n_bytes) => {
-// console.log('S <== [chunk]');
-			// stream is paused
-			if(this.n < 0) {
-				throw new Error('stream received new data while it was supposed to be paused!');
+			// no data event callback
+			if(!f_data) {
+				// bind data event call to event emitter
+				this.data = function(h_statement) {
+					this.emit('data', h_statement);
+				};
 			}
 
-			// user wants to be notified when input is readable
-			if(this.ready) {
-				this.ready();
-
-				// do not notify again
-				this.ready = false;
+			// eos notifications
+			if(g_config.eos) {
+				this.eos = () => g_config.eos(z_input);
 			}
 
-			// concatenate current chunk to previous chunk
-			let s = this.s = this.pre + s_chunk;
+			// once stream closes, invoke eof
+			z_input.on('end', eof);
 
-			// cache chunk length
+			// begin
+			z_input.on('data', (s_chunk, n_bytes) => {
+	// console.log('S <== [chunk]');
+				// stream is paused
+				if(this.n < 0) {
+					throw new Error('stream received new data while it was supposed to be paused!');
+				}
+
+				// user wants to be notified when input is readable
+				if(this.ready) {
+					this.ready();
+
+					// do not notify again
+					this.ready = false;
+				}
+
+				// concatenate current chunk to previous chunk
+				let s = this.s = this.pre + s_chunk;
+
+				// cache chunk length
+				this.n = s.length;
+
+				// consume whitespace (and incidentally reset chunk index)
+				@{whitespace('0')}
+
+				this.safe_parse();
+
+				// user wants progress updates
+				if(g_config.progress) g_config.progress(s_chunk.length);
+			});
+		}
+		// string
+		else if('string' === typeof z_input) {
+			if(g_config.debug) debugger;
+
+			// concatenate previous chunk
+			let s = this.s = this.pre+z_input;
+
+			// eos means we've reached eof
+			if(g_config.async) {
+				this.eos = function() {
+					setTimeout(eof);
+				}
+			}
+			else {
+				this.eos = eof;
+			}
+
+			// no data event callback
+			if(!f_data) {
+				// bind data event call to event emitter
+				this.data = function(g_quad) {
+					ds_output.push(g_quad);
+				};
+			}
+
+			// compute chunk length
 			this.n = s.length;
 
-			// consume whitespace (and incidentally reset chunk index)
+			// reset index
+			this.i = 0;
+
+			// consume whitespace
 			@{whitespace('0')}
+
+			@// emulate stream controls
+			@{stream_control()}
+
+			// user wants to be notified when input is readable
+			if(g_config.ready) g_config.ready();
 
 			this.safe_parse();
 
-			// user wants progress updates
-			if(g_config.progress) g_config.progress(s_chunk.length);
-		});
-
-		@// make stream controls
-		@{stream_control('z_input')}
-
-		// event emitter
-		this.operator = new events();
-		this.emit = this.operator.emit.bind(this);
-	}
-	// string
-	else if('string' === typeof z_input) {
-		if(g_config.debug) debugger;
-
-		// concatenate previous chunk
-		let s = this.s = this.pre+z_input;
-
-		// eos means we've reached eof
-		if(g_config.async) {
-			this.eos = function() {
-				setTimeout(eof);
-			}
+			this.operator = ds_output;
+			return;
 		}
+		// invalid arg
 		else {
-			this.eos = eof;
+			throw new TypeError('[graphy] invalid argument for input parameter: '+z_input);
 		}
-
-		// no data event callback
-		if(!f_data) {
-			// bind data event call to event emitter
-			this.data = function(h_statement) {
-				this.emit('data', h_statement);
-			};
-		}
-
-		// event emitter
-		this.operator = new events();
-		this.emit = this.operator.emit.bind(this);
-
-		// compute chunk length
-		this.n = s.length;
-
-		// reset index
-		this.i = 0;
-
-		// consume whitespace
-		@{whitespace('0')}
-
-		@// emulate stream controls
-		@{stream_control()}
-
-		// user wants to be notified when input is readable
-		if(g_config.ready) g_config.ready();
-
-		this.safe_parse();
 	}
-	// invalid arg
-	else {
-		throw new TypeError('[graphy] invalid argument for input parameter: '+z_input);
-	}
+
+	// graceful error
+	this.grace = (e_parse) => {
+		ds_output.emit('error', e_parse);
+	};
+
+	@// make stream controls for a transform
+	@{stream_control('ds_output', true)}
+
+	// public operator
+	this.operator = ds_output;
 }
 
 Object.assign(Parser.prototype, {

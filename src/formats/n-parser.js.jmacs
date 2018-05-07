@@ -239,7 +239,7 @@ function Parser(g_config) {
 	// duplex
 	if(null === z_input) {
 		// create transform
-		let ds_transform = this.operator = new stream.Transform({
+		let ds_output = this.operator = new stream.Transform({
 			// do not decode strings into buffers
 			decodeStrings: false,
 
@@ -256,11 +256,11 @@ function Parser(g_config) {
 
 				// call end event listener
 				if(g_config.end) {
-					g_config.end(ds_transform, this.prefixes);
+					g_config.end(ds_output, this.prefixes);
 				}
 
 				// close write stream (EOF-signaling)
-				ds_transform.push(null);
+				ds_output.push(null);
 
 				// close read stream
 				f_done();
@@ -300,7 +300,7 @@ function Parser(g_config) {
 		};
 
 		// notify once and never again
-		ds_transform.once('pipe', (ds_input) => {
+		ds_output.once('pipe', (ds_input) => {
 			// ensure stream is encoding in utf8
 			ds_input.setEncoding('utf8');
 
@@ -311,13 +311,13 @@ function Parser(g_config) {
 		});
 
 		// user wants to be notified when input is readable
-		if(g_config.ready) ds_transform.on('readable', g_config.ready);
+		if(g_config.ready) ds_output.on('readable', g_config.ready);
 
 		@// make stream controls for a transform
-		@{stream_control('ds_transform', true)}
+		@{stream_control('ds_output', true)}
 
 		// // event emitter
-		// this.emit = ds_transform.emit.bind(ds_transform);
+		// this.emit = ds_output.emit.bind(ds_output);
 	}
 	// stream or string
 	else {

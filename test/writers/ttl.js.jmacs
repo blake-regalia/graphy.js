@@ -6,10 +6,15 @@ const deq = assert.deepEqual;
 
 const graphy = require('graphy');
 
-const write = (h_triples, snt_verify) => new Promise((fk_test) => {
+const ST_PREFIXES = /* syntax: turtle */ `
+	@prefix : <> .
+	@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+`;
+
+const write = (h_triples, st_verify) => new Promise((fk_test) => {
 	let k_set_expected = graphy.set();
 
-	graphy.nt.parser({input:snt_verify})
+	graphy.ttl.parser({input:ST_PREFIXES+st_verify})
 		.pipe(k_set_expected)
 		.on('finish', () => {
 			let k_set_actual = graphy.set(null, {debug:true});
@@ -22,15 +27,15 @@ const write = (h_triples, snt_verify) => new Promise((fk_test) => {
 				trailling: true,
 			});
 
-			k_writer.pipe(process.stdout);
+			// k_writer.pipe(process.stdout);
 
-			// k_writer
-			// 	.pipe(graphy.ttl.parser())
-			// 	.pipe(k_set_actual)
-			// 	.on('finish', () => {
-			// 		eq(k_set_actual.canonicalize(), k_set_expected.canonicalize());
-			// 		fk_test();
-			// 	});
+			k_writer
+				.pipe(graphy.ttl.parser())
+				.pipe(k_set_actual)
+				.on('finish', () => {
+					eq(k_set_actual.canonicalize(), k_set_expected.canonicalize());
+					fk_test();
+				});
 
 			k_writer.add(h_triples);
 			k_writer.end();
@@ -116,6 +121,25 @@ let h_tests = {
 				<a> <b> <c> .
 			`,
 		},
+
+		'coercions': (() => {
+			let dt_now = new Date();
+			return {
+				write: {
+					':coerce': {
+						':integer': 42,
+						':decimal': 4.2,
+						':dateTime': dt_now,
+					},
+				},
+				expect: `
+					:coerce :integer 42 ;
+						:decimal 4.2 ;
+						:dateTime "${dt_now.toISOString()}"^^xsd:dateTime ;
+					.
+				`,
+			};
+		})(),
 	},
 };
 

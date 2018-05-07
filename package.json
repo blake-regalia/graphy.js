@@ -22,7 +22,7 @@
   },
   "repository": "blake-regalia/graphy.js",
   "scripts": {
-    "test": "gulp && gulp test"
+    "test": "npx mkjs-cli test"
   },
   "dependencies": {
     "async": "^2.6.0",
@@ -35,9 +35,9 @@
   },
   "devDependencies": {
     "eslint": "^4.19.1",
-    "eslint-plugin-jmacs": "^1.0.9",
-    "jmacs": "^1.0.9",
-    "mkjs-cli": "0.1.0",
+    "eslint-plugin-jmacs": "^1.0.11",
+    "jmacs": "^1.0.11",
+    "mkjs-cli": "^0.1.0",
     "request": "^2.85.0",
     "sort-package-json": "^1.13.0"
   }
