@@ -442,6 +442,12 @@ class Literal_NaN extends Literal_Double {
 				}
 				// non-number
 				else {
+					// null
+					if(null === ${s_arg}) {
+						throw new Error('Refusing to serialize null value as xsd:double');
+					}
+
+					// parse to number
 					let x_value = +${s_arg};
 
 					// failed to parse
@@ -449,7 +455,7 @@ class Literal_NaN extends Literal_Double {
 						throw new Error(\`Invalid decimal string: \${${s_arg}}\`);
 					}
 
-					return new Literal_Double(${s_arg});
+					return new Literal_Double(x_value);
 				}
 			`,
 			terse: /* syntax: js */ `
@@ -473,6 +479,7 @@ class Literal_NaN extends Literal_Double {
 				}
 				// non-number
 				else {
+					// parse to number
 					let x_value = +${s_arg};
 
 					// failed to parse
