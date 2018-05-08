@@ -192,7 +192,7 @@ let h_tests = {
                 },
             },
             expect: `
-				<a> <b> <c> .
+				:a :b :c .
 			`,
         },
 

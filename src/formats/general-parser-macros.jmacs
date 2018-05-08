@@ -43,11 +43,11 @@
 
 		@// for Turtle and TriG
 		@- T
-			// save original prefix event callback
-			this.restore_prefix = this.prefix;
+			// save original event state
+			this.restore_event = this.event;
 
-			// set up callback to capture prefix events that happen while pausing
-			this.prefix = F_QUEUE_PREFIX;
+			// change to queue
+			this.event = this.queue;
 		@;
 	};
 
@@ -62,8 +62,7 @@
 		this.error = this.end = this.parse_error =
 		this.data = this.restore_data =
 		@- T
-			this.restore_prefix = this.prefix =
-			this.base =
+			this.restore_event = this.event =
 		@;
 			function(){};
 

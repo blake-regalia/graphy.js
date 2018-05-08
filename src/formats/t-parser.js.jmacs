@@ -229,14 +229,6 @@ const match_prefixed_name = (s, i) => {
 @;
 
 
-// queue prefix events instead of emitting them
-const F_QUEUE_PREFIX = function(s_prefix_id, p_prefix_iri) {
-	this.queue_event.push({
-		event: 'restore_prefix',
-		args: [s_prefix_id, p_prefix_iri],
-	});
-};
-
 // instead of putting this in a macro to be unrolled at every IRI resolution,
 // ... spare the monstrosity from the source and make it a function
 const F_DOT_SEGMENTS = (s_rel_iri) => {
@@ -343,12 +335,11 @@ function Parser(g_config={}) {
 		graph: H_DEFAULT_GRAPH,
 
 		// event routing
+		event: this.emit,
 		data: this.emit_data,
-		prefix: this.emit_prefix,
 
 		// for restoring the original event callback when resuming paused stream
 		restore_data: this.emit_data,
-		restore_prefix: this.emit_prefix,
 
 		// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
 		queue_event: [],
@@ -653,8 +644,40 @@ function Parser(g_config={}) {
 
 		// manual read mode
 		const read_manual = (nb_read) => {
-			debugger;
-			throw new Error('not implemented');
+			// rather than emitting data/other events, queue them
+			this.data = F_QUEUE_DATA;
+			this.event = this.queue;
+
+			// subscribe to readable events on input
+			z_input.on('readable', () => {
+				// buffer has 
+				// read chunk from input stream while there is data to read
+				let s_chunk = z_input.read();
+
+				// notify that data will begin
+				if(!b_init) {
+					ds_output.emit('ready');
+
+					// do not notify again
+					b_init = true;
+				}
+
+				// concatenate current chunk to previous chunk
+				let s = this.s = this.pre + s_chunk;
+
+				// cache chunk length
+				this.n = s.length;
+
+				// consume whitespace (and incidentally reset chunk index)
+				@{whitespace('0')}
+
+				this.safe_parse();
+
+				// progress updates
+				ds_output.emit('progress', s_chunk.length);
+
+				// return 
+			});
 		};
 
 		// create readable output
@@ -677,17 +700,18 @@ function Parser(g_config={}) {
 					}
 
 					// manual reads
-					case false: {
+					case false:
+					case null: {
 						// switch to manual read mode
 						ds_output._read = read_manual;
 
 						// forward request to handler
-						ds_output._read(nb_read);
-						break;
+						return ds_output._read(nb_read);
 					}
 
 					// no mechanism for consuming
 					default: {
+						debugger;
 						// do not start reading input, do not parse, do not emit
 					}
 				}
@@ -789,8 +813,15 @@ Object.assign(Parser.prototype, {
 		}
 	},
 
-	emit_prefix(s_id, p_iri) {
-		this.output.emit('prefix', s_id, p_iri);
+	emit(s_event, ...a_args) {
+		this.output.emit(s_event, ...a_args);
+	},
+
+	queue(s_event, ...a_args) {
+		this.queue_event.push({
+			event: s_event,
+			args: a_args,
+		});
 	},
 
 	emit_data(g_quad) {
@@ -1463,7 +1494,7 @@ Object.assign(Parser.prototype, {
 			}
 
 			// emit prefix event
-			this.prefix(s_prefix_id, p_prefix_iri);
+			this.event('prefix', s_prefix_id, p_prefix_iri);
 
 			@// handle full stop
 			@{full_stop()}
@@ -1495,7 +1526,7 @@ Object.assign(Parser.prototype, {
 			}
 
 			// emit prefix event
-			this.prefix(s_prefix_id, p_prefix_iri);
+			this.event('prefix', s_prefix_id, p_prefix_iri);
 
 			@// handle full stop
 			@{full_stop()}
