@@ -407,9 +407,10 @@ class Literal_NaN extends Literal_Double {
 				}
 				// non-number
 				else {
+					// parse to number
 					let x_value = +${s_arg};
 
-					// failed to parse
+					// failed to parse or not an integer
 					if(Number.isNaN(x_value) || !Number.isInteger(x_value)) {
 						throw new Error(\`Invalid integer string: \${${s_arg}}\`);
 					}

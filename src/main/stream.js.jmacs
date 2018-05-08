@@ -1,0 +1,27 @@
+const stream = require('stream');
+
+@> until()
+	until(s_event) {
+		return new Promise((fk_until, fe_until) => {
+			this.on(s_event, fk_until);
+		});
+	}
+@;
+
+class Readable extends stream.Readable {
+	@{until()}
+}
+
+class Writable extends stream.Writable {
+	@{until()}
+}
+
+class Transform extends stream.Transform {
+	@{until()}
+}
+
+module.exports = {
+	Readable,
+	Writable,
+	Transform,
+};

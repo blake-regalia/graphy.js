@@ -1,10 +1,11 @@
-/* eslint-env mocha */
-/* eslint indent: 0, padded-blocks: 0, no-undefined: 0 */
+/* eslint indent: 0, padded-blocks: 0 */
 const assert = require('assert');
 const deq = assert.deepEqual;
 const eq = assert.strictEqual;
 
 const stream = require('stream');
+
+const expect = require('chai').expect;
 
 const graphy = require('graphy');
 const parse_ttl = graphy.ttl.parser;
@@ -63,18 +64,22 @@ const as_triple = function(a_this) {
 };
 
 const allow = function(s_test, s_ttl, a_pattern) {
-	let a_quads = [];
-	it(s_test, () => {
+	it(s_test, (fk_done) => {
 		if(R_WANTS_PREFIX.test(s_ttl)) {
 			s_ttl = S_AUTO_PREFIX + s_ttl;
 		}
+
+		let a_quads = [];
 		parse_ttl(s_ttl, {
-			data: a_quads.push.bind(a_quads),
+			data(g_quad) {
+				a_quads.push(g_quad);
+			},
 			error(e_parse) {
-				assert.ifError(e_parse);
+				assert.fail(e_parse);
 			},
 			end() {
 				deq(a_quads, a_pattern.map(as_triple));
+				fk_done();
 			},
 		});
 	});
@@ -89,11 +94,11 @@ const err = (s_test, s_ttl, s_err_char, s_err_state) => {
 		parse_ttl(s_ttl, {
 			data() {},
 			error(e_parse) {
-				assert.notStrictEqual(e_parse, undefined);
+				expect(e_parse).to.be.an('error');
 				let s_match = 'failed to parse a valid token starting at '+('string' === typeof s_err_char? '"'+s_err_char+'"': '<<EOF>>');
-				assert.notStrictEqual(-1, e_parse.indexOf(s_match));
+				expect(e_parse.message).to.have.string(s_match);
 				if(s_err_state) {
-					assert.strictEqual(/expected (\w+)/.exec(e_parse)[1], s_err_state);
+					expect(/expected (\w+)/.exec(e_parse)[1]).to.equal(s_err_state);
 				}
 			},
 			end() {},

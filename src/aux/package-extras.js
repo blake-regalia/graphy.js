@@ -7,6 +7,10 @@ module.exports = {
 		name: '@graphy/factory',
 		description: 'Create instances of Terms and Triples/Quads. Implements @RDFJS DataFactory',
 	},
+	stream: {
+		name: '@graphy/stream',
+		description: 'Provides isomorphic stream interface for node.js / browser and adds `.until`, a promisified version of the `.on` event listener',
+	},
 	store: {
 		name: '@graphy/store',
 		description: 'Query an RDF graph using patterns and paths',

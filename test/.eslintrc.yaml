@@ -1,0 +1,14 @@
+---
+  env:
+    mocha: true
+  plugins:
+    - 'chai-friendly'
+    - 'chai-expect'
+  rules:
+    no-unused-expressions: off
+    chai-friendly/no-unused-expressions: warn
+    chai-expect/missing-assertion: error
+    chai-expect/terminating-properties: warn
+    no-unused-vars:
+      - warn
+      - varsIgnorePattern: 'should|expect'

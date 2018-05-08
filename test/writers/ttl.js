@@ -11,34 +11,33 @@ const ST_PREFIXES = /* syntax: turtle */ `
 	@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 `;
 
-const write = (h_triples, st_verify) => new Promise((fk_test) => {
+const write = async(h_triples, st_verify) => {
     let k_set_expected = graphy.set();
 
-    graphy.ttl.parser({input:ST_PREFIXES+st_verify})
+    await graphy.ttl.parser({input:ST_PREFIXES+st_verify})
         .pipe(k_set_expected)
-        .on('finish', () => {
-            let k_set_actual = graphy.set(null, {debug:true});
+        .until('finish');
 
-            let k_writer = graphy.ttl.writer({
-                prefixes: {'':''},
-                indent: '    ',
-                trailling: true,
-            });
+    let k_set_actual = graphy.set(null, {debug:true});
 
-            // k_writer.pipe(process.stdout);
+    let k_writer = graphy.ttl.writer({
+        prefixes: {'':''},
+        indent: '    ',
+        trailling: true,
+    });
 
-            k_writer
-                .pipe(graphy.ttl.parser())
-                .pipe(k_set_actual)
-                .on('finish', () => {
-                    eq(k_set_actual.canonicalize(), k_set_expected.canonicalize());
-                    fk_test();
-                });
+    // write triples and then end
+    k_writer.add(h_triples);
+    k_writer.end();
 
-            k_writer.add(h_triples);
-            k_writer.end();
-        });
-});
+    // pipe to parser and actual
+    await k_writer
+        .pipe(graphy.ttl.parser())
+        .pipe(k_set_actual)
+        .until('finish');
+
+    eq(k_set_actual.canonicalize(), k_set_expected.canonicalize());
+};
 
 const comment = () => graphy.comment({
     width: 100,
@@ -198,9 +197,10 @@ let h_tests = {
         },
 
         'prefixed names': {
-            write: {':a':{':b':':c'}},
+            write: {':a':{':b':[':c', ':-1']}},
             expect: `
-				<a> <b> <c> .
+				:a :b :c, <-1> ;
+				.
 			`,
         },
 

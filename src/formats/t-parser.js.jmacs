@@ -5,14 +5,14 @@
 @$ TTL = 'ttl' === FORMAT;
 @$ TRIG = 'trig' === FORMAT;
 @$ QUADS = TRIG;
+@$ BINARY = false;
 
 @// import parser macros
 @import 'textual-parser-macros.jmacs'
 
 @import '../share/iris.jmacs'
 
-const stream = require('stream');
-const events = require('events');
+const stream = require('@graphy/stream');
 
 @{constants()}
 
@@ -280,6 +280,22 @@ const F_DOT_SEGMENTS = (s_rel_iri) => {
 	@$ STARTING_STATE = 'block';
 @;
 
+@$ A_PARSE_EVENTS = [
+	'error',
+	'ready',
+	'base',
+	'prefix',
+	'progress',
+	...(QUADS
+		? [
+			'graph_open',
+			'graph_close',
+		]: []),
+	'eof',
+	'end',
+	'data',  // attach data listener last
+];
+
 function Parser(g_config={}) {
 	let {
 		// input medium
@@ -287,12 +303,6 @@ function Parser(g_config={}) {
 
 		// a state to inherit
 		state: g_state={},
-
-		// 'end' event
-		end: fk_end=null,
-
-		// 'data' event
-		data: f_data=this.write_object,
 	} = g_config;
 
 	// inherit state from creator
@@ -332,21 +342,13 @@ function Parser(g_config={}) {
 		object: null,
 		graph: H_DEFAULT_GRAPH,
 
-		grace: null,
-
-		// events
-		ready: g_config.ready || null,
-		data: f_data,
-		base: g_config.base || null,
-		prefix: g_config.prefix || null,
-		@- TRIG
-			graph_open: g_config.graph_open || null,
-			graph_close: g_config.graph_close || null,
-		@;
+		// event routing
+		data: this.emit_data,
+		prefix: this.emit_prefix,
 
 		// for restoring the original event callback when resuming paused stream
-		restore_data: f_data,
-		restore_prefix: g_config.prefix || null,
+		restore_data: this.emit_data,
+		restore_prefix: this.emit_prefix,
 
 		// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
 		queue_event: [],
@@ -521,7 +523,7 @@ function Parser(g_config={}) {
 			if(i < this.n) {
 				// not EOF
 				if(!(i === this.n - 1 && '\0' === s[i])) {
-					// throw parse error
+					// bad input; parse error
 					return this.parse_error(this.state.name);
 				}
 			}
@@ -530,55 +532,34 @@ function Parser(g_config={}) {
 		// make buffer's alloc eligible for gc
 		this.s = null;
 
-		// final progress update
-		if(g_config.progress) {
-			// no additional bytes were read
-			g_config.progress(0);
-		}
+		// final progress update: no additional bytes were read
+		ds_output.emit('progress', 0);
 
-		// our duty to notify listener
-		if(1 !== b_no_callback) {
-			this.output.push(null);
+		// call end event listener
+		ds_output.emit('eof', this.prefixes);
 
-			// call end event listener
-			if(fk_end) {
-				fk_end(this.prefixes);
-			}
-			// otherwise log a warning
-			else {
-				console.warn('[graphy] reached end of file, but no `end` event listener to call');
-			}
-		}
+		// close write stream (EOF-signaling)
+		this.output.push(null);
+
 	};
 
 	// output stream
 	let ds_output;
 
-	// duplex
+	// no input given, it will be written/piped in later
 	if(null === z_input) {
 		// create transform
 		ds_output = this.output = new stream.Transform({
 			// do not decode strings into buffers
 			decodeStrings: false,
 
-			// allow objects to be output
+			// output quad objects on readable side
 			readableObjectMode: true,
 
 			// once there's no more data to consume, invoke eof
 			flush: (f_done) => {
 				// now that stream has ended, clean up remainder
 				eof(1);
-
-				@// empty buffer
-				@{write_buffer()}
-
-				// call end event listener
-				if(fk_end) {
-					fk_end(ds_output, this.prefixes);
-				}
-
-				// close write stream (EOF-signaling)
-				ds_output.push(null);
 
 				// close read stream
 				f_done();
@@ -602,105 +583,138 @@ function Parser(g_config={}) {
 
 				this.safe_parse();
 
-				@// write buffer to output
-				@{write_buffer()}
-
 				// user wants progress updates
-				if(g_config.progress) g_config.progress(s_chunk.length);
+				ds_output.emit('progress', s_chunk.length);
 
 				// done transforming this chunk
 				fk_chunk();
 			},
 		});
 
-		// prep buffer to build string before flush
-		let a_buffer = [];
-
-		// transform
-		this.data_event = this.data = (h_statement) => {
-
-			// synchronously transform data
-			f_data.apply(this, [h_statement, a_buffer]);
-
-			// // also emit data event
-			// this.emit('data', h_statement);
-		};
+		// bind events to output stream
+		this.bind(ds_output, g_config);
 
 		// notify once and never again
 		ds_output.once('pipe', (ds_input) => {
+			// input stream has encoding option
 			if(ds_input.setEncoding) {
 				// ensure stream is encoding in utf8
 				ds_input.setEncoding('utf8');
 			}
 
-			// user wants to be notified when input is readable
-			if(this.ready) {
-				this.ready();
-			}
+			// notify that data will begin
+			ds_output.emit('ready');
 		});
 	}
 	// stream or string input
 	else {
-		// create readable output
-		ds_output = this.output = new stream.Readable({
-			// outputs quad objets
-			objectMode: true,
-		});
-
 		// input is stream
 		if(z_input.setEncoding) {
-			// set encoding on stream
+			// whether or not data has been received before
+			let b_init = false;
+
+			// begin flowing mode on output stream
+			const begin_flow = () => {
+				// switch input to flowing mode
+				z_input.on('data', (s_chunk, n_bytes) => {
+					// stream is paused
+					if(this.n < 0) {
+						return this._error('stream received new data while it was supposed to be paused!');
+					}
+
+					// notify that data will begin
+					if(!b_init) {
+						ds_output.emit('ready');
+
+						// do not notify again
+						b_init = true;
+					}
+
+					// concatenate current chunk to previous chunk
+					let s = this.s = this.pre + s_chunk;
+
+					// cache chunk length
+					this.n = s.length;
+
+					// consume whitespace (and incidentally reset chunk index)
+					@{whitespace('0')}
+
+					this.safe_parse();
+
+					// progress updates
+					ds_output.emit('progress', s_chunk.length);
+				});
+			};
+
+			// manual read mode
+			const read_manual = (nb_read) => {
+				debugger;
+				throw new Error('not implemented');
+			};
+
+			// create readable output
+			ds_output = this.output = new stream.Readable({
+				// outputs quad objets
+				objectMode: true,
+
+				// this will only happen if consumer uses stream in non-folowing mode
+				read(nb_read) {
+					// which flowing mode
+					switch(ds_output.readableFlowing) {
+						// in flowing mode (#pipe, #'data', or #resume)
+						case true: {
+							// ignore read requests
+							ds_output._read = () => {};
+
+							// begin flowing
+							begin_flow();
+							break;
+						}
+
+						// manual reads
+						case false: {
+							// switch to manual read mode
+							ds_output._read = read_manual;
+
+							// forward request to handler
+							ds_output._read(nb_read);
+							break;
+						}
+
+						// no mechanism for consuming
+						default: {
+							// do not start reading input, do not parse, do not emit
+						}
+					}
+				},
+			});
+
+			// bind events to output stream
+			this.bind(ds_output, g_config);
+
+			// set encoding on input stream
 			z_input.setEncoding('utf8');
-
-			// no data event callback
-			if(!f_data) {
-				// bind data event call to event emitter
-				this.data = function(h_statement) {
-					this.emit('data', h_statement);
-				};
-			}
-
-			// eos notifications
-			if(g_config.eos) {
-				this.eos = () => g_config.eos(z_input);
-			}
 
 			// once stream closes, invoke eof
 			z_input.on('end', eof);
-
-			// begin
-			z_input.on('data', (s_chunk, n_bytes) => {
-	// console.log('S <== [chunk]');
-				// stream is paused
-				if(this.n < 0) {
-					throw new Error('stream received new data while it was supposed to be paused!');
-				}
-
-				// user wants to be notified when input is readable
-				if(this.ready) {
-					this.ready();
-
-					// do not notify again
-					this.ready = false;
-				}
-
-				// concatenate current chunk to previous chunk
-				let s = this.s = this.pre + s_chunk;
-
-				// cache chunk length
-				this.n = s.length;
-
-				// consume whitespace (and incidentally reset chunk index)
-				@{whitespace('0')}
-
-				this.safe_parse();
-
-				// user wants progress updates
-				if(g_config.progress) g_config.progress(s_chunk.length);
-			});
 		}
 		// string
 		else if('string' === typeof z_input) {
+			// create readable output
+			ds_output = this.output = new stream.Readable({
+				// outputs quad objets
+				objectMode: true,
+
+				// once data event is attached
+				read: () => {
+					// consume entire string
+					this.safe_parse();
+
+					// remove this handler
+					ds_output._read = () => {};
+				},
+			});
+
 			if(g_config.debug) debugger;
 
 			// concatenate previous chunk
@@ -716,14 +730,6 @@ function Parser(g_config={}) {
 				this.eos = eof;
 			}
 
-			// no data event callback
-			if(!f_data) {
-				// bind data event call to event emitter
-				this.data = function(g_quad) {
-					ds_output.push(g_quad);
-				};
-			}
-
 			// compute chunk length
 			this.n = s.length;
 
@@ -736,12 +742,12 @@ function Parser(g_config={}) {
 			@// emulate stream controls
 			@{stream_control()}
 
-			// user wants to be notified when input is readable
-			if(g_config.ready) g_config.ready();
+			// bind events to output stream
+			this.bind(ds_output, g_config);
 
-			this.safe_parse();
+			// ready to parse
+			ds_output.emit('ready');
 
-			this.operator = ds_output;
 			return;
 		}
 		// invalid arg
@@ -750,21 +756,35 @@ function Parser(g_config={}) {
 		}
 	}
 
-	// graceful error
-	this.grace = (e_parse) => {
-		ds_output.emit('error', e_parse);
-	};
-
 	@// make stream controls for a transform
 	@{stream_control('ds_output', true)}
-
-	// public operator
-	this.operator = ds_output;
 }
 
 Object.assign(Parser.prototype, {
 
-	write_object(g_quad) {
+	_error(s_message) {
+		this.output.emit('error', new Error(s_message));
+	},
+
+	@> bind(s_event)
+		@//@
+		if(g_config.@{s_event}) ds_output.on('@{s_event}', g_config.@{s_event});
+	@;
+	@//@object-literal
+
+	bind(ds_output, g_config) {
+		@*{
+			for(let s_event of A_PARSE_EVENTS) {
+				yield '\n'+bind(s_event);
+			}
+		}
+	},
+
+	emit_prefix(s_id, p_iri) {
+		this.output.emit('prefix', s_id, p_iri);
+	},
+
+	emit_data(g_quad) {
 		this.output.push(g_quad);
 	},
 
@@ -1334,8 +1354,8 @@ Object.assign(Parser.prototype, {
 
 		// ')' end of collection
 		@{else_if_char(')')}
-			// do something
-			throw new Error('end of collection');
+			// should not be here
+			return this.parse_error('unexpected end of collection');
 
 		// comment
 		@{else_if_match('R_COMMENT', false, true)}
@@ -1434,9 +1454,7 @@ Object.assign(Parser.prototype, {
 			}
 
 			// emit prefix event
-			if(this.prefix) {
-				this.prefix(s_prefix_id, p_prefix_iri);
-			}
+			this.prefix(s_prefix_id, p_prefix_iri);
 
 			@// handle full stop
 			@{full_stop()}
@@ -1468,9 +1486,7 @@ Object.assign(Parser.prototype, {
 			}
 
 			// emit prefix event
-			if(this.prefix) {
-				this.prefix(s_prefix_id, p_prefix_iri);
-			}
+			this.prefix(s_prefix_id, p_prefix_iri);
 
 			@// handle full stop
 			@{full_stop()}

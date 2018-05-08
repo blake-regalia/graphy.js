@@ -43,14 +43,11 @@
 
 		@// for Turtle and TriG
 		@- T
-			// consumer is subscribed to prefix events
-			if(this.prefix) {
-				// save original prefix event callback
-				this.restore_prefix = this.prefix;
+			// save original prefix event callback
+			this.restore_prefix = this.prefix;
 
-				// set up callback to capture prefix events that happen while pausing
-				this.prefix = F_QUEUE_PREFIX;
-			}
+			// set up callback to capture prefix events that happen while pausing
+			this.prefix = F_QUEUE_PREFIX;
 		@;
 	};
 
@@ -164,15 +161,6 @@
 	};
 @;
 
-
-
-@// joins output buffer to string, writes that to stream and resets list
-@> write_buffer()
-	if(a_buffer.length) {
-		ds_output.push(a_buffer.join('')+'', 'utf8');
-		a_buffer.length = 0;
-	}
-@;
 
 
 @// ensure there are no conflicting blank node labels
@@ -379,7 +367,7 @@
 			}
 		}
 
-		// create parser, return operator if it wants to
-		return (new Parser(g_config)).operator;
+		// create parser, return output stream
+		return (new Parser(g_config)).output;
 	};
 @;

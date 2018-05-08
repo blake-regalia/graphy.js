@@ -47,15 +47,16 @@ const eslint = () => /* syntax: bash */ `
 
 const H_LINKS = {
 	factory: [],
+	stream: [],
 	// store: [],
-	set: ['factory'],
+	set: ['factory', 'stream'],
 	// bat: ['factory', 'store'],
 	viz: [],
-	writer: ['factory'],
-	'ttl-parser': ['factory'],
-	'ttl-writer': ['factory', 'writer'],
-	'nt-parser': ['factory'],
-	'nq-parser': ['factory'],
+	writer: ['factory', 'stream'],
+	'ttl-parser': ['factory', 'stream'],
+	'ttl-writer': ['factory', 'writer', 'stream'],
+	'nt-parser': ['factory', 'stream'],
+	'nq-parser': ['factory', 'stream'],
 };
 
 const dir_struct = (a_files) => {
@@ -88,6 +89,18 @@ module.exports = {
 		// 'bat',
 		// 'store',
 	],
+
+	// test
+	test: {
+		phony: true,
+		deps: [
+			'all',
+			'link',
+		],
+		run: /* syntax: bash */ `
+			mocha test/parsers/ttl.js
+		`,
+	},
 
 	// copy eslint from authority
 	eslint: {
@@ -241,25 +254,14 @@ module.exports = {
 		`,
 	},
 
-	// 'ttl-deserializer': `${pd_packages}/ttl-deserializer/index.js`,
-
-	// link: {
-	// 	phony: true,
-	// 	run: /* syntax: bash */ `
-	// 		${/* eslint-disable indent */
-	// 			Object.keys(H_LINKS).map(s_package => /* syntax: bash */ `
-	// 				pushd ${pd_packages}/${s_package}
-	// 					npm link
-	// 					${H_LINKS[s_package].map(s_dep => /* syntax: bash */ `
-	// 						npm link @graphy/${s_dep}
-	// 					`).join('')}
-	// 				popd
-	// 			`).join('')
-	// 		}
-	// 	`,
-	// },
-
-	link: 'link/graphy',
+	link: {
+		phony: true,
+		deps: ['link/graphy'],
+		run: /* syntax: bash */ `
+			# for testing
+			npm link graphy
+		`,
+	},
 
 	'link/graphy': {
 		deps: Object.keys(H_LINKS).map(s_dep => `link-sub/${s_dep}`),
@@ -268,6 +270,9 @@ module.exports = {
 			${Object.keys(H_LINKS).map(s_dep => /* syntax: bash */ `
 				npm link @graphy/${s_dep}
 			`).join('')}
+
+			# remove package lock
+			rm package-lock.json
 
 			# then link self
 			npm link
@@ -287,6 +292,9 @@ module.exports = {
 				npm link @graphy/${s_dep}
 			`).join('')}
 
+			# remove package lock
+			rm package-lock.json
+
 			# then link self
 			npm link
 		`,
@@ -297,6 +305,7 @@ module.exports = {
 		'graphy',
 		'factory',
 		'set',
+		'stream',
 		'viz',
 		'writer',
 	].reduce((a, s_package) => a.push(...[

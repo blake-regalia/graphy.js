@@ -49,8 +49,6 @@
 	};
 @;
 
-/* whitespace */
-
 
 @// control variables
 
@@ -332,7 +330,6 @@
 @// emit a statement event to listener using current subject/predicate/object
 @> emit_statement()
 	this.data(Quad(this));
-	// this.operator.emit('data', Quad(this));
 @;
 
 
@@ -497,14 +494,6 @@
 
 @> this_defer_errors()
 	@//@object-literal
-	// error event
-	_error: g_config.error || ((e_parse) => {
-		if(this.grace) {
-			this.grace(e_parse);
-		}
-
-		throw new Error(`parse error: ${e_parse}`);
-	}),
 
 	// parse_error (not meant to be an event callback)
 	parse_error(s_expected, b_eof) {

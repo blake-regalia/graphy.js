@@ -1,6 +1,6 @@
 const crypto = require('crypto');
-const stream = require('stream');
 
+const stream = require('@graphy/stream');
 const factory = require('@graphy/factory');
 
 
