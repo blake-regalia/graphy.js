@@ -280,21 +280,21 @@ const F_DOT_SEGMENTS = (s_rel_iri) => {
 	@$ STARTING_STATE = 'block';
 @;
 
-@$ A_PARSE_EVENTS = [
-	'error',
-	'ready',
-	'base',
-	'prefix',
-	'progress',
+@$ H_PARSE_EVENTS = {
+	error: {},
+	ready: {once:true},
+	base: {},
+	prefix: {},
+	progress: {},
 	...(QUADS
-		? [
-			'graph_open',
-			'graph_close',
-		]: []),
-	'eof',
-	'end',
-	'data',  // attach data listener last
-];
+		? {
+			graph_open: {},
+			graph_close: {},
+		}: {}),
+	eof: {once:true},
+	end: {once:true},
+	data: {},  // attach data listener last
+};
 
 function Parser(g_config={}) {
 	let {
@@ -540,7 +540,6 @@ function Parser(g_config={}) {
 
 		// close write stream (EOF-signaling)
 		this.output.push(null);
-
 	};
 
 	// output stream
@@ -548,6 +547,8 @@ function Parser(g_config={}) {
 
 	// no input given, it will be written/piped in later
 	if(null === z_input) {
+		let b_init = false;
+
 		// create transform
 		ds_output = this.output = new stream.Transform({
 			// do not decode strings into buffers
@@ -567,6 +568,15 @@ function Parser(g_config={}) {
 
 			// on data event
 			transform: (s_chunk, s_encoding, fk_chunk) => {
+				// first transform
+				if(!b_init) {
+					// notify that data will begin
+					ds_output.emit('ready');
+
+					// do not emit 'ready' event again
+					b_init = false;
+				}
+
 				// stream is paused
 				if(this.n < 0) {
 					throw new Error('stream received new data while it was supposed to be paused!');
@@ -601,159 +611,158 @@ function Parser(g_config={}) {
 				// ensure stream is encoding in utf8
 				ds_input.setEncoding('utf8');
 			}
-
-			// notify that data will begin
-			ds_output.emit('ready');
 		});
 	}
-	// stream or string input
-	else {
-		// input is stream
-		if(z_input.setEncoding) {
-			// whether or not data has been received before
-			let b_init = false;
+	// input is stream
+	else if(z_input.setEncoding) {
+		// whether or not data has been received before
+		let b_init = false;
 
-			// begin flowing mode on output stream
-			const begin_flow = () => {
-				// switch input to flowing mode
-				z_input.on('data', (s_chunk, n_bytes) => {
-					// stream is paused
-					if(this.n < 0) {
-						return this._error('stream received new data while it was supposed to be paused!');
-					}
-
-					// notify that data will begin
-					if(!b_init) {
-						ds_output.emit('ready');
-
-						// do not notify again
-						b_init = true;
-					}
-
-					// concatenate current chunk to previous chunk
-					let s = this.s = this.pre + s_chunk;
-
-					// cache chunk length
-					this.n = s.length;
-
-					// consume whitespace (and incidentally reset chunk index)
-					@{whitespace('0')}
-
-					this.safe_parse();
-
-					// progress updates
-					ds_output.emit('progress', s_chunk.length);
-				});
-			};
-
-			// manual read mode
-			const read_manual = (nb_read) => {
-				debugger;
-				throw new Error('not implemented');
-			};
-
-			// create readable output
-			ds_output = this.output = new stream.Readable({
-				// outputs quad objets
-				objectMode: true,
-
-				// this will only happen if consumer uses stream in non-folowing mode
-				read(nb_read) {
-					// which flowing mode
-					switch(ds_output.readableFlowing) {
-						// in flowing mode (#pipe, #'data', or #resume)
-						case true: {
-							// ignore read requests
-							ds_output._read = () => {};
-
-							// begin flowing
-							begin_flow();
-							break;
-						}
-
-						// manual reads
-						case false: {
-							// switch to manual read mode
-							ds_output._read = read_manual;
-
-							// forward request to handler
-							ds_output._read(nb_read);
-							break;
-						}
-
-						// no mechanism for consuming
-						default: {
-							// do not start reading input, do not parse, do not emit
-						}
-					}
-				},
-			});
-
-			// bind events to output stream
-			this.bind(ds_output, g_config);
-
-			// set encoding on input stream
-			z_input.setEncoding('utf8');
-
-			// once stream closes, invoke eof
-			z_input.on('end', eof);
-		}
-		// string
-		else if('string' === typeof z_input) {
-			// create readable output
-			ds_output = this.output = new stream.Readable({
-				// outputs quad objets
-				objectMode: true,
-
-				// once data event is attached
-				read: () => {
-					// consume entire string
-					this.safe_parse();
-
-					// remove this handler
-					ds_output._read = () => {};
-				},
-			});
-
-			if(g_config.debug) debugger;
-
-			// concatenate previous chunk
-			let s = this.s = this.pre+z_input;
-
-			// eos means we've reached eof
-			if(g_config.async) {
-				this.eos = function() {
-					setTimeout(eof);
+		// begin flowing mode on output stream
+		const begin_flow = () => {
+			// switch input to flowing mode
+			z_input.on('data', (s_chunk, n_bytes) => {
+				// stream is paused
+				if(this.n < 0) {
+					return this._error('stream received new data while it was supposed to be paused!');
 				}
-			}
-			else {
-				this.eos = eof;
-			}
 
-			// compute chunk length
-			this.n = s.length;
+				// notify that data will begin
+				if(!b_init) {
+					ds_output.emit('ready');
 
-			// reset index
-			this.i = 0;
+					// do not notify again
+					b_init = true;
+				}
 
-			// consume whitespace
-			@{whitespace('0')}
+				// concatenate current chunk to previous chunk
+				let s = this.s = this.pre + s_chunk;
 
-			@// emulate stream controls
-			@{stream_control()}
+				// cache chunk length
+				this.n = s.length;
 
-			// bind events to output stream
-			this.bind(ds_output, g_config);
+				// consume whitespace (and incidentally reset chunk index)
+				@{whitespace('0')}
 
-			// ready to parse
-			ds_output.emit('ready');
+				this.safe_parse();
 
-			return;
+				// progress updates
+				ds_output.emit('progress', s_chunk.length);
+			});
+		};
+
+		// manual read mode
+		const read_manual = (nb_read) => {
+			debugger;
+			throw new Error('not implemented');
+		};
+
+		// create readable output
+		ds_output = this.output = new stream.Readable({
+			// outputs quad objets
+			objectMode: true,
+
+			// this will only happen if consumer uses stream in non-folowing mode
+			read(nb_read) {
+				// which flowing mode
+				switch(ds_output.readableFlowing) {
+					// in flowing mode (#pipe, #'data', or #resume)
+					case true: {
+						// ignore read requests
+						ds_output._read = () => {};
+
+						// begin flowing
+						begin_flow();
+						break;
+					}
+
+					// manual reads
+					case false: {
+						// switch to manual read mode
+						ds_output._read = read_manual;
+
+						// forward request to handler
+						ds_output._read(nb_read);
+						break;
+					}
+
+					// no mechanism for consuming
+					default: {
+						// do not start reading input, do not parse, do not emit
+					}
+				}
+			},
+		});
+
+		// bind events to output stream
+		this.bind(ds_output, g_config);
+
+		// set encoding on input stream
+		z_input.setEncoding('utf8');
+
+		// once stream closes, invoke eof
+		z_input.on('end', eof);
+
+		// capture error on input
+		z_input.on('error', (e_input) => {
+			ds_output.emit('error', `error on input stream: ${e_input.message}\n${e_input.stack}`);
+		});
+	}
+	// string
+	else if('string' === typeof z_input) {
+		// create readable output
+		ds_output = this.output = new stream.Readable({
+			// outputs quad objets
+			objectMode: true,
+
+			// once data event is attached
+			read: () => {
+				// consume entire string
+				this.safe_parse();
+
+				// remove this handler
+				ds_output._read = () => {};
+			},
+		});
+
+		if(g_config.debug) debugger;
+
+		// concatenate previous chunk
+		let s = this.s = this.pre+z_input;
+
+		// eos means we've reached eof
+		if(g_config.async) {
+			this.eos = function() {
+				setTimeout(eof, 0);
+			};
 		}
-		// invalid arg
 		else {
-			throw new TypeError('[graphy] invalid argument for input parameter: '+z_input);
+			this.eos = eof;
 		}
+
+		// compute chunk length
+		this.n = s.length;
+
+		// reset index
+		this.i = 0;
+
+		// consume whitespace
+		@{whitespace('0')}
+
+		@// emulate stream controls
+		@{stream_control()}
+
+		// bind events to output stream
+		this.bind(ds_output, g_config);
+
+		// ready to parse
+		ds_output.emit('ready');
+
+		return;
+	}
+	// invalid arg
+	else {
+		throw new TypeError('[graphy] invalid argument for input parameter: '+z_input);
 	}
 
 	@// make stream controls for a transform
@@ -766,16 +775,16 @@ Object.assign(Parser.prototype, {
 		this.output.emit('error', new Error(s_message));
 	},
 
-	@> bind(s_event)
+	@> bind(s_event, {once:b_once})
 		@//@
-		if(g_config.@{s_event}) ds_output.on('@{s_event}', g_config.@{s_event});
+		if(g_config.@{s_event}) ds_output.@{b_once? 'once': 'on'}('@{s_event}', g_config.@{s_event});
 	@;
 	@//@object-literal
 
 	bind(ds_output, g_config) {
 		@*{
-			for(let s_event of A_PARSE_EVENTS) {
-				yield '\n'+bind(s_event);
+			for(let s_event in H_PARSE_EVENTS) {
+				yield '\n'+bind(s_event, H_PARSE_EVENTS[s_event]);
 			}
 		}
 	},

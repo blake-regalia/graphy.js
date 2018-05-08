@@ -405,7 +405,7 @@ class QuadSet extends stream.Writable {
 		});
 	}
 
-	*quads() {
+	* quads() {
 		let h_quads = this.quad_tree;
 		for(let s_graph in h_quads) {
 			let h_subjects = h_quads[s_graph];
@@ -429,7 +429,7 @@ class QuadSet extends stream.Writable {
 		}
 	}
 
-	*ct_quads() {
+	* ct_quads() {
 		let h_quads = this.quad_tree;
 		for(let sct_graph in h_quads) {
 			let h_subjects = h_quads[sct_graph];
@@ -445,27 +445,27 @@ class QuadSet extends stream.Writable {
 		}
 	}
 
-	*graphs() {
+	* graphs() {
 		for(let s_graph in this.quad_tree) {
 			yield s_graph;
 		}
 	}
 
-	*subjects(s_graph) {
+	* subjects(s_graph) {
 		let h_subjects = this.quad_tree[s_graph];
 		for(let s_subject in h_subjects) {
 			yield s_subject;
 		}
 	}
 
-	*predicates(s_graph, s_subject) {
+	* predicates(s_graph, s_subject) {
 		let h_predicates = this.quad_tree[s_graph][s_subject];
 		for(let s_predicate in h_predicates) {
 			yield s_predicate;
 		}
 	}
 
-	*objects(s_graph, s_subject, s_predicate) {
+	* objects(s_graph, s_subject, s_predicate) {
 		yield* this.quad_tree[s_graph][s_subject][s_predicate];
 	}
 
