@@ -2,8 +2,12 @@
 const assert = require('assert');
 const deq = assert.deepEqual;
 
-const graphy = require('../../dist/main/graphy.js');
-const parse_nt = graphy.nt.parse;
+const nt_read = require('@graphy/format.nt.read');
+
+
+const R_WANTS_PREFIX = /^\s*[(:_[]/;
+const S_AUTO_PREFIX = '@prefix : <#>.\n';
+
 
 
 const as_triple = function(a_this) {
@@ -24,7 +28,7 @@ const allow = function(s_test, s_nt, a_pattern) {
 		if(R_WANTS_PREFIX.test(s_nt)) {
 			s_nt = S_AUTO_PREFIX + s_nt;
 		}
-		parse_nt(s_nt, {
+		nt_read(s_nt, {
 			data: a_quads.push.bind(a_quads),
 			error(e_parse) {
 				assert.ifError(e_parse);
@@ -42,7 +46,7 @@ const err = (s_test, s_nt, s_err_char, s_err_state) => {
 		if(R_WANTS_PREFIX.test(s_nt)) {
 			s_nt = S_AUTO_PREFIX + s_nt;
 		}
-		parse_nt(s_nt, {
+		nt_read(s_nt, {
 			data() {},
 			error(e_parse) {
 				assert.notStrictEqual(e_parse, undefined);
@@ -68,7 +72,7 @@ const survive = (s_test, s_nt, a_pattern) => {
 			read() {
 				this.push(a_nt.shift() || null);
 			},
-		})).pipe(parse_nt({
+		})).pipe(nt_read({
 			error(e_parse) {
 				throw e_parse;
 			},
@@ -94,9 +98,9 @@ describe('nt parser:', () => {
 			<#l> <#m> "n" .
 		`, [
 			['#a', '#b', '#c'],
-			['#d', '#e', {value: 'f', datatype: '#g'}],
-			['#h', '#i', {value: 'j', language: 'k'}],
-			['#l', '#m', {value: 'n'}],
+			['#d', '#e', {value:'f', datatype:'#g'}],
+			['#h', '#i', {value:'j', language:'k'}],
+			['#l', '#m', {value:'n'}],
 		]);
 	});
 });

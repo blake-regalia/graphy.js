@@ -1,0 +1,279 @@
+@// for counting if/else braces in regex matching
+@$ c_braces = 0;
+
+@>> R_CHAR_HEX()
+	[0-9A-F-af]
+@;
+
+@>> R_UNICODE_4()
+	@//@regex
+	\\u(@{R_CHAR_HEX()}{4})
+@;
+
+@>> R_UNICODE_8()
+	@//@regex
+	\\U(@{R_CHAR_HEX()}{8})
+@;
+
+@>> R_ESCAPES()
+	@//@regex
+	(\\[\\])|\\([^tbnrfuU\\])
+@;
+
+@> F_REPLACE_UNICODE_ANY()
+	(s_, s_8, s_4) => String.fromCodePoint(parseInt(s_8 || s_4, 16))
+@;
+
+@> H_ESCAPES_JSON()
+	{
+
+	}
+@;
+
+
+
+@>> PN_CHARS_BASE()
+	@//@regex
+	A-Za-z\xc0-\xd6\xd8-\xf6\xf8-\u{02ff}\u{0370}-\u{037d}\u{037f}-\u{1fff}\u{200c}-\u{200d}\u{2070}-\u{218f}\u{2c00}-\u{2fef}\u{3001}-\u{d7ff}\u{f900}-\u{fdcf}\u{fdf0}-\u{fffd}\u{10000}-\u{effff}
+@;
+
+@>> PN_CHARS_U()
+	@//@regex
+	@{PN_CHARS_BASE()}_
+@;
+
+@>> PN_CHARS()
+	@//@regex
+	@{PN_CHARS_U()}\-0-9\xb7\u{0300}-\u{036f}\u{203f}-\u{2040}
+@;
+
+@>> PN_CHARS_FS()
+	@//@regex
+	([@{PN_CHARS()}.]*[@{PN_CHARS()}])?
+@;
+
+@>> PN_PREFIX()
+	@//@regex
+	[@{PN_CHARS_BASE()}]@{PN_CHARS_FS()}
+@;
+
+@>> PLX()
+	@//@regex
+	%[A-Fa-f0-9]{2}|\\[_~.\-!$&'()*+,;=/?#@%]
+@;
+
+@>> PN_LOCAL()
+	@//@regex
+	([@{PN_CHARS_U()}:0-9]|@{PLX()})(([@{PN_CHARS()}.:]|@{PLX()})*([@{PN_CHARS()}:]|@{PLX()}))?
+@;
+
+@>> UCHAR(s_ins='')
+	@//@regex
+	\\u[@{s_ins}A-Fa-f0-9]{4}|\\U[@{s_ins}A-Fa-f0-9]{8}
+@;
+
+@>> RT_NAMED_NODE_VALID()
+	@//@regex
+	^([^\0- <>"{}|^`\\]|@{UCHAR()})*$
+@;
+
+
+
+@// unescape a string literal
+@> unescape_literal(sv_literal, b_whitespace=false)
+	JSON.parse('"'
+		+@{sv_literal}
+			.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)
+			.replace(R_ESCAPES, '$1$2') // no need to escape anything other than reserved characters
+			@- b_whitespace
+				.replace(/[\t\n"\r\f\u0008]/g, s => H_ESCAPES_JSON[s])
+			@:
+				.replace(/"/g, '\\"') // escape all quotes ;)
+			@;
+		+'"')
+@;
+
+
+@// test the current character
+@> if_char(a, b)
+	if(`@{a}` === @{b?'x || `':'x'}@{b?b:''}@{b?'` === x':''}) {
+@;
+
+@// else, test the current character
+@> else_if_char(a, b)
+	} else @{if_char(a, b)}
+@;
+
+@// else, test the current character without use of intermediate variable
+@> else_if_char_only(a)
+	} else if (`@{a}` === s[i]) {
+@;
+
+
+@// test regex
+@> if_test(regex, local)
+	@// count how many else branches we'll need to close
+	@$ c_braces += 0;
+
+	// prepare sticky regex index
+	@{regex}.lastIndex = i;
+
+	if(@{regex}.test(s)) {
+
+	// advance index
+	@{local? '': 'this.'}i = @{regex}.lastIndex;
+@;
+
+@// try next test
+@> else_if_test(regex, local)
+	@// count how many else branches we'll need to close
+	@$ c_braces += 1;
+
+	@// whern previous test fails
+	} else {
+		@// try next test
+		@{if_test(regex, local)}
+@;
+
+
+
+@// exec regex and store match
+@> if_match(s_regex, sv_match, b_local=false)
+	@// count how many else branches we'll need to close
+	@$ c_braces += 0;
+
+	// prepare sticky regex index
+	@{s_regex}.lastIndex = i;
+
+	@// store the match
+	@- sv_match
+		// execute regex
+		let @{sv_match} = @{s_regex}.exec(s);
+
+		// regex was a match
+		if(@{sv_match}) {
+	@// no need to store the match
+	@:
+		if(@{s_regex}.exec(s)) {
+	@;
+
+	// advance index
+	@{b_local? '': 'this.'}i = @{s_regex}.lastIndex;
+@;
+
+@// try next match
+@> else_if_match(s_regex, sv_match, b_local)
+	@// increment number of else branches we'll need to close
+	@$ c_braces += 1;
+
+	@// when previous match fails
+	} else {
+		@// try next match
+		@{if_match(s_regex, sv_match, b_local)}
+@;
+
+// try something else
+@> else_if_call(s_method, sv_match, b_local)
+	@// increment number of else branches we'll need to close
+	@$ c_braces += 1;
+
+	@.let s_no_shadow = s_method.replace(/[^a-z0-9]/gi, '_');
+
+	@// when previous match fails
+	} else {
+		// try match
+		let aw_valid_@{s_no_shadow} = @{s_method}(s, i);
+
+		if(!aw_valid_@{s_no_shadow}) return;
+
+		let [@{sv_match}, i@{sv_match}] = aw_valid_@{s_no_shadow};
+
+		@// test
+		if(@{sv_match}) {
+
+			// advance index
+			@{b_local? '': 'this.'}i = i@{sv_match};
+@;
+
+
+@// close all preceeding else branches
+@> end_else()
+ 	@// close last branch
+	}
+
+	@// for all other branches
+	@*{
+		for(let i_brace=0; i_brace<c_braces; i_brace++) {
+			yield `} // brace #${c_braces-i_brace}\n`;
+		}
+	}
+
+	@// reset match counter
+	@$ c_braces = 0;
+@;
+
+
+@// all matches failed, pause reader
+@> else_retry()
+	// match counter: @{c_braces}
+	} else {
+		// break loop to retry on next chunk if eos
+		break;
+
+	@// close all preceeding else branches
+	@{end_else()}
+@;
+
+
+@// wraps reader with simplified interface function to export
+@> normalize_reader_config(g_config={})
+	// at least one argument
+	if(a_args.length) {
+		let z_arg_0 = a_args[0];
+
+		// config struct
+		if(z_arg_0 && 'object' === typeof z_arg_0 && Object === z_arg_0.constructor) {
+			g_config = z_arg_0;
+
+			// more args; invalid
+			if(a_args.length > 1) {
+				throw new TypeError(`unexpected argument(s) after config struct: ${a_args.slice(1)}`);
+			}
+		}
+		// input arg
+		else {
+			// string
+			if('string' === typeof z_arg_0) {
+				@- g_config.string
+					g_config.input = @{g_config.string('z_arg_0')};
+				@:
+					g_config.input = {string:z_arg_0};
+				@;
+			}
+			// node stream
+			else if('function' === typeof z_arg_0.setEncoding) {
+				g_config.input = {stream:z_arg_0};
+			}
+			// null
+			else if(null === z_arg_0) {
+				g_config.input = null;
+			}
+			// unknown
+			else {
+				throw new TypeError(`unexpected input type: ${z_arg_0}`);
+			}
+
+			// more args
+			if(a_args.length > 1) {
+				// copy onto struct
+				Object.assign(g_config, a_args[1]);
+
+				// more args
+				if(a_args.length > 2) {
+					throw new TypeError(`unexpected argument(s) after input and config struct: ${a_args.slice(2)}`);
+				}
+			}
+		}
+	}
+@;
+

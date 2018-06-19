@@ -1,0 +1,476 @@
+@import 'interface.jmacs'
+@. /* global g_interface,
+	XC_TERMTYPE_GRAPH_DEFAULT,
+	XC_TERMTYPE_NODE_NAMED,
+	XC_TERMTYPE_NODE_BLANK,
+	XC_TERMTYPE_LITERAL_SIMPLE,
+	XC_TERMTYPE_LITERAL_DATATYPED,
+	XC_TERMTYPE_LITERAL_LANGUAGED,
+ */
+
+const assert = require('assert');
+const path = require('path');
+const stream = require('stream');
+
+const bkit = require('bkit');
+const factory = require('@graphy/factory').raw;
+
+process.chdir(__dirname);
+
+const parser_wasm = require(path.resolve(__dirname, './parser.js'));
+const decode_utf_8 = bkit.decode_utf_8;
+
+@> decode_content(s_term)
+	decode_utf_8(at_data.subarray(ib_@{s_term}_bgn, ib_@{s_term}_end))
+@;
+
+class Parser {
+	constructor(g_config={}) {
+		let {
+			// input medium
+			input: z_input=null,
+
+			// a state to inherit
+			state: g_state={},
+		} = g_config;
+
+		// inherit state from creator
+		let {
+			// index for anonymous blank node labels
+			blank_node_index: i_anon=0,
+
+			// prefix map
+			prefixes: h_prefixes={},
+
+			// blank node label map
+			labels: h_labels={},
+		} = g_state;
+
+		// output stream
+		let ds_output;
+		let fk_data;
+
+		// 'relaxed' by default
+		let xc_validate = g_config.validate? 1: 0;
+
+		// load wasm module instance
+		parser_wasm().then((y_module) => {
+			const AT_HEAP_U8 = y_module.HEAPU8;
+
+			let at_data;
+			let p_base = '';
+
+			// config maks
+			let xm_config = 0;
+
+			// input buffer if provided
+			let at_input = new Uint8Array(0);
+
+			// input is a string; utf-8 encode
+			if('string' === typeof z_input) {
+				at_data = bkit.encode_utf_8(z_input);
+			}
+			// input is an object
+			else if('object' === typeof z_input) {
+				// buffer
+				if(z_input instanceof Uint8Array) {
+					at_data = z_input;
+				}
+				// input is stream
+				else if(z_input.setEncoding) {
+					let b_init = false;
+
+					// remainder
+					let at_pre = new Uint8Array();
+					let nb_pre = 0;
+
+					// begin flowing mode on output stream
+					const begin_flow = () => {
+
+						// (at_actual) => {
+						// 	for(let i_byte=0; i_byte<at_actual.length; i_byte++) {
+						// 		let at_sim = at_actual.subarray(i_byte, i_byte+1);
+
+						// switch input to flowing mode
+						z_input.on('data', (at_chunk) => {
+							// // notify that data will begin
+							// if(!b_init) {
+							// 	ds_output.emit('ready');
+
+							// 	// do not notify again
+							// 	b_init = true;
+							// }
+
+							// allocate memory
+							let nb_chunk = at_chunk.length;
+							let nb_view = nb_pre + nb_chunk;
+							let ip_view = y_module._malloc(nb_view+1);
+
+							// copy remainder into wasm memory
+							if(nb_pre) AT_HEAP_U8.set(at_pre, ip_view);
+
+							// copy chunk into wasm memory
+							AT_HEAP_U8.set(at_chunk, ip_view+nb_pre);
+
+							// append eos delimiter
+							AT_HEAP_U8[ip_view+nb_view] = 0;
+
+							// update local view
+							at_data = AT_HEAP_U8.subarray(ip_view, ip_view+nb_view);
+
+							// parse chunk
+							let ipa_returns = y_module.ccall('parse_n', 'number', [
+								'number',
+								'number',
+							], [
+								ip_view,
+								nb_view,
+							]);
+
+							let [
+								ib_parse,
+								ipa_events,
+								nl_events,
+							] = y_module.HEAPU32.subarray(ipa_returns >> 2, (ipa_returns >> 2) + 3);
+
+							// nothing was parsed
+							if(!ib_parse) {
+								let s_parsed = bkit.decode_utf_8(at_data);
+								// debugger;
+							}
+
+							// consume events
+							let AT_HEAP_U32 = y_module.HEAPU32;
+							let nb_events = nl_events * 5 * 4 * 3;
+							let ib_end = (ipa_events + nb_events) >> 2;
+							for(let ib_evt=ipa_events>>2; ib_evt<ib_end; ib_evt++) {
+								let ib4_read = (ipa_events + ib_evt) >> 2;
+
+								let xc_subject_type = AT_HEAP_U32[ib4_read];
+								let ib_subject_bgn = AT_HEAP_U32[ib4_read+1];
+								let ib_subject_end = AT_HEAP_U32[ib4_read+2];
+
+								let s_subject = @{decode_content('subject')};
+								let k_subject;
+								if(@{XC_TERMTYPE_NODE_NAMED} === xc_subject_type) {
+									k_subject = factory.namedNode(s_subject);
+								}
+								else {
+									k_subject = factory.blankNode(s_subject);
+								}
+
+								let ib_predicate_bgn = AT_HEAP_U32[ib4_read+6];
+								let ib_predicate_end = AT_HEAP_U32[ib4_read+7];
+								let s_predicate = @{decode_content('predicate')};
+								let k_predicate = factory.namedNode(s_predicate);
+
+								let xc_object_type = AT_HEAP_U32[ib4_read+10];
+								let ib_object_bgn = AT_HEAP_U32[ib4_read+11];
+								let ib_object_end = AT_HEAP_U32[ib4_read+12];
+								let s_object = @{decode_content('object')};
+								let k_object;
+								if(@{XC_TERMTYPE_NODE_NAMED} === xc_object_type) {
+									k_object = factory.namedNode(s_object);
+								}
+								else if(@{XC_TERMTYPE_LITERAL_SIMPLE} === xc_object_type) {
+									k_object = factory.literal(s_object);
+								}
+								else if(@{XC_TERMTYPE_NODE_BLANK} === xc_object_type) {
+									k_object = factory.blankNode(s_object);
+								}
+								else {
+									let ib_suppl_bgn = AT_HEAP_U32[ib4_read+13];
+									let ib_suppl_end = AT_HEAP_U32[ib4_read+14];
+									let s_suppl = @{decode_content('suppl')};
+
+									if(@{XC_TERMTYPE_LITERAL_DATATYPED} === xc_object_type) {
+										let k_datatype = factory.namedNode(s_suppl);
+										k_object = factory.literal(s_object, k_datatype);
+									}
+									else {
+										k_object = factory.literal(s_object, s_suppl);
+									}
+								}
+
+								// ds_output.push(factory.quad(k_subject, k_predicate, k_object));
+								fk_data(factory.quad(k_subject, k_predicate, k_object));
+							}
+
+							// keep remainder
+							at_pre = at_data.slice(ib_parse);
+							nb_pre = at_pre.length;
+
+							// // progress updates
+							// ds_output.emit('progress', ib_parse);
+						});
+					};
+
+					// manual read mode
+					const read_manual = (nb_read) => {
+						debugger;
+
+						// rather than emitting data/other events, queue them
+						this.data = F_QUEUE_DATA;
+						this.event = this.queue;
+
+						// subscribe to readable events on input
+						z_input.on('readable', () => {
+							// buffer has
+							// read chunk from input stream while there is data to read
+							let s_chunk = z_input.read();
+
+							// notify that data will begin
+							if(!b_init) {
+								ds_output.emit('ready');
+
+								// do not notify again
+								b_init = true;
+							}
+
+
+							// progress updates
+							ds_output.emit('progress', s_chunk.length);
+
+							// return
+						});
+					};
+
+					// create readable output
+					ds_output = new stream.Readable({
+						// outputs quad objets
+						objectMode: true,
+
+						// this will only happen if consumer uses stream in non-folowing mode
+						read(nb_read) {
+							// which flowing mode
+							switch(ds_output.readableFlowing) {
+								// in flowing mode (#pipe, #'data', or #resume)
+								case true: {
+									// ignore read requests
+									ds_output._read = () => {};
+
+									// begin flowing
+									begin_flow();
+									break;
+								}
+
+								// manual reads
+								case false:
+								case null: {
+									// switch to manual read mode
+									ds_output._read = read_manual;
+
+									// forward request to handler
+									return ds_output._read(nb_read);
+								}
+
+								// no mechanism for consuming
+								default: {
+									debugger;
+									// do not start reading input, do not parse, do not emit
+								}
+							}
+						},
+					});
+
+					// when stream ends
+					z_input.on('end', () => {
+						debugger;
+						// check remainder
+						if(nb_pre) {
+							debugger;
+						}
+
+						// check state
+						let xc_valid = y_module.ccall('parse_eof', 'number');
+
+						// invalid state to end at
+						if(!xc_valid) {
+							ds_output.emit('error', new Error(`encountered unexpected EOF`));
+						}
+
+						// close output
+						ds_output.push(null);
+
+						// eof
+						g_config.end();
+					});
+
+					// data event
+					if(g_config.data) {
+						fk_data = g_config.data;
+						process.nextTick(() => {
+							begin_flow();
+						});
+					}
+					else {
+						ds_output.on('data', g_config.data);
+						fk_data = ds_output.push;
+					}
+				}
+				// other
+				else {
+					throw new TypeError(`unrecognized input type: ${z_input}`);
+				}
+			}
+			// other
+			else {
+				throw new TypeError(`invalid input type: ${typeof z_input}`);
+			}
+
+
+			// bind event listeners
+			// if(g_config.data) ds_output.on('data', g_config.data);
+			if(g_config.end) ds_output.on('end', g_config.end);
+
+
+			let a_call_types = [
+				'string',
+				'number',
+				@{Object.keys(g_interface.events).map(() => `'number',`).join('\n')}
+			];
+
+			// locality terms
+			let k_graph = factory.defaultGraph();
+			let k_subject;
+			let k_predicate;
+
+			let a_call_values = [
+				p_base,
+				xm_config,
+
+				// parse error
+				y_module.addFunction((xc_error, ips_message, ib_cursor) => {
+					let ib_bgn = Math.max(0, ib_cursor - 32);
+					let ib_end = Math.min(at_data.length, ib_cursor + 32);
+					let s_excerpt = bkit.decode_utf_8(at_data.subarray(ib_bgn, ib_end));
+					let s_print = `parsing error ${xc_error}:\n`
+						+`\`${s_excerpt.replace(/\t/g, ' ').replace(/\n/g, ' ')}\`\n`
+						+`${' '.repeat(ib_cursor-ib_bgn+1)}^\n`
+						+`${y_module.Pointer_stringify(ips_message).replace(/\n/g, '\\n')}`;
+					console.error(s_print);
+					debugger;
+					k_subject;
+					k_predicate;
+				}, 'iii'),
+
+				// graph
+				y_module.addFunction((xc_graph, ib_graph_bgn, ib_graph_end) => {
+					// graph value
+					let p_graph = @{decode_content('graph')};
+					debugger;
+				}, 'iiii'),
+
+				// subject
+				y_module.addFunction((xc_subject, ib_subject_bgn, ib_subject_end) => {
+					// subject value
+					let s_subject = @{decode_content('subject')};
+
+					// subject is named node
+					if(@{XC_TERMTYPE_NODE_NAMED} === xc_subject) {
+						k_subject = factory.namedNode(s_subject);
+					}
+					// blank node
+					else {
+						k_subject = factory.blankNode(s_subject);
+					}
+				}, 'iiii'),
+
+				// predicate
+				y_module.addFunction((ib_predicate_bgn, ib_predicate_end) => {
+					k_predicate = factory.namedNode(@{decode_content('predicate')});
+				}, 'iii'),
+
+				// object
+				y_module.addFunction((xc_object, ib_object_bgn, ib_object_end, ib_datatype_bgn, ib_datatype_end, ib_language_bgn, ib_language_end) => {
+					let s_object = @{decode_content('object')};
+
+					// prep term
+					let k_object;
+
+					// object type
+					switch(xc_object) {
+						// simple literal
+						case @{XC_TERMTYPE_LITERAL_SIMPLE}: {
+							k_object = factory.literal(s_object);
+							break;
+						}
+
+						// named node
+						case @{XC_TERMTYPE_NODE_NAMED}: {
+							k_object = factory.namedNode(s_object);
+							break;
+						}
+
+						// datatyped literal
+						case @{XC_TERMTYPE_LITERAL_DATATYPED}: {
+							let k_datatype = factory.namedNode(@{decode_content('datatype')});
+							k_object = factory.literal(s_object, k_datatype);
+							break;
+						}
+
+						// languaged literal
+						case @{XC_TERMTYPE_LITERAL_LANGUAGED}: {
+							k_object = factory.literal(s_object, @{decode_content('language')});
+							break;
+						}
+
+						// blank node
+						case @{XC_TERMTYPE_NODE_BLANK}: {
+							k_object = factory.blankNode(s_object);
+							break;
+						}
+
+						// invalid
+						default: {
+							assert.fail(`term-type code '${xc_object}' not handled`);
+						}
+					}
+// debugger;
+					// emit data
+					fk_data(factory.quad(k_subject, k_predicate, k_object));
+				}, 'iiiiiiii'),
+
+			];
+
+			y_module.ccall('register_callbacks', 'number', a_call_types, a_call_values);
+		});
+	}
+}
+
+module.exports = function(...a_args) {
+	let g_config = {};
+
+	// at least one argument
+	if(a_args.length) {
+		let z_arg_0 = a_args[0];
+
+		// config struct
+		if(z_arg_0 && 'object' === typeof z_arg_0 && Object === z_arg_0.constructor) {
+			g_config = z_arg_0;
+
+			// more args; invalid
+			if(a_args.length > 1) {
+				throw new TypeError(`unexpected argument(s) after config struct: ${a_args.slice(1)}`);
+			}
+		}
+		// input arg
+		else {
+			g_config.input = z_arg_0;
+
+			// more args
+			if(a_args.length > 1) {
+				// copy onto struct
+				Object.assign(g_config, a_args[1]);
+
+				// more args
+				if(a_args.length > 2) {
+					throw new TypeError(`unexpected argument(s) after input and config struct: ${a_args.slice(2)}`);
+				}
+			}
+		}
+	}
+
+	// create parser, return output stream
+	return (new Parser(g_config)).output;
+};

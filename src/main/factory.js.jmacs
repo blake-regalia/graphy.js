@@ -688,36 +688,38 @@ function Triple(h_subject, h_predicate, h_object) {
 		},
 	}));
 
+let g_raw = {
+	namedNode(p_iri) {
+		return new NamedNode(p_iri);
+	},
+	blankNode(s_label, b_anonymous) {
+		return new BlankNode(s_label, b_anonymous);
+	},
+	literal(s_value, w_datatype_or_lang) {
+		return new Literal(s_value, w_datatype_or_lang);
+	},
+	defaultGraph() {
+		return new DefaultGraph();
+	},
+	quad(kt_subject, kt_predicate, kt_object, kt_graph) {
+		return new Quad(kt_subject, kt_predicate, kt_object, kt_graph || KT_DEFAULT_GRAPH);
+	},
+	@*{
+		for(let s_type in h_literals) {
+			yield /* syntax: js */ `
+				${s_type}(w) {
+					return new Literal_${s_type[0].toUpperCase()+s_type.slice(1)}(w);
+				},
+			`;
+		}
+	}
+};
 
 const factory = module.exports = {
 	concise,
 
-	unfiltered: {
-		namedNode(p_iri) {
-			return new NamedNode(p_iri);
-		},
-		blankNode(s_label, b_anonymous) {
-			return new BlankNode(s_label, b_anonymous);
-		},
-		literal(s_value, w_datatype_or_lang) {
-			return new Literal(s_value, w_datatype_or_lang);
-		},
-		defaultGraph() {
-			return new DefaultGraph();
-		},
-		quad(kt_subject, kt_predicate, kt_object, kt_graph) {
-			return new Quad(kt_subject, kt_predicate, kt_object, kt_graph || KT_DEFAULT_GRAPH);
-		},
-		@*{
-			for(let s_type in h_literals) {
-				yield /* syntax: js */ `
-					${s_type}(w) {
-						return new Literal_${s_type[0].toUpperCase()+s_type.slice(1)}(w);
-					},
-				`;
-			}
-		}
-	},
+	raw: g_raw,
+	unfiltered: g_raw,
 
 	number(x) {
 		// not finite or not a number

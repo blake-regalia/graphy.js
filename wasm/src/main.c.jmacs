@@ -1,0 +1,863 @@
+@//@syntax:c
+
+@import 'interface.jmacs'
+
+#include <assert.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <signal.h>
+
+#include <emscripten/emscripten.h>
+
+typedef uint8_t (*fe_parse)(
+	uint8_t xc_error,
+	char* ips_message,
+	size_t ib_error_cursor
+	);
+
+@*{
+	for(let s_typedef of a_typedefs) {
+		yield s_typedef;
+	}
+}
+
+typedef struct {
+	fe_parse err_parse;
+	@*{
+		for(let [si_event, g_event] of Object.entries(g_interface.events)) {
+			yield /* syntax: c */ `
+				${g_event.type} on_${si_event};
+				`.trim()+'\n\t';
+		}
+	}
+} CallbackInfo;
+
+CallbackInfo g_info;
+uint8_t* s_base;
+
+
+@> parse_error({
+	code: s_code,
+	message: s_msg,
+	args: a_args,
+	cursor: s_cursor='ib_parse',
+})
+	xc_error = @{s_code};
+	ips_error_msg = (char*) malloc(256);
+	sprintf(ips_error_msg, "@{s_msg}", @{a_args.join(', ')});
+	ib_error_cursor = @{s_cursor};
+	return (StateType) parse_error;
+@;
+
+@.{
+	// const parse_error_unexpected = ({
+	// 	state: s_state,
+	// 	expected: a_tokens,
+	// 	cursor: s_index_cursor='ib_read',
+	// }) => /* syntax: c */ `
+	// 	if('\0' == ips_view[${s_index_cursor}]) {
+	// 		${parse_error({
+	// 			code: 'XC_ERR_UNEXPECTED',
+	// 			message: `expected`,
+	// 		})}
+	// 	}
+	// 	else {
+	// 		${parse_error({
+	// 			code: 'XC_ERR_UNEXPECTED',
+	// 			message: `expected \`${a_tokens.map(s => s.replace(/"/g, '\\"')).join('` | `')}\` in state '${s_state}' but instead encountered \`%c\``,
+	// 			args: [`ips_view[${s_index_cursor}]`],
+	// 			cursor: s_index_cursor,
+	// 		})}
+	// `;
+
+	const parse_error_unexpected = ({
+		state: s_state,
+		expected: a_tokens,
+		cursor: s_index_cursor='ib_read',
+	}) => parse_error({
+		code: 'XC_ERR_UNEXPECTED',
+		message: `expected \`${a_tokens.map(s => s.replace(/"/g, '\\"')).join('` | `')}\` in state '${s_state}' but instead encountered \`%c\` at line %d`,
+		args: [`ips_view[${s_index_cursor}]`, 'i_line'],
+		cursor: s_index_cursor,
+	});
+}
+
+const uint8_t XC_ERR_INVALID_IRI = 1;
+const uint8_t XC_ERR_UNEXPECTED = 2;
+
+const uint8_t XC_TERMTYPE_GRAPH_DEFAULT = @{XC_TERMTYPE_GRAPH_DEFAULT};
+const uint8_t XC_TERMTYPE_NODE_NAMED = @{XC_TERMTYPE_NODE_NAMED};
+const uint8_t XC_TERMTYPE_NODE_BLANK = @{XC_TERMTYPE_NODE_BLANK};
+const uint8_t XC_TERMTYPE_LITERAL_SIMPLE = @{XC_TERMTYPE_LITERAL_SIMPLE};
+const uint8_t XC_TERMTYPE_LITERAL_DATATYPED = @{XC_TERMTYPE_LITERAL_DATATYPED};
+const uint8_t XC_TERMTYPE_LITERAL_LANGUAGED = @{XC_TERMTYPE_LITERAL_LANGUAGED};
+
+uint8_t* ips_view;
+size_t i_line = 1;
+size_t nb_view = 0;
+size_t ib_parse = 0;
+
+uint8_t xc_error;
+char* ips_error_msg;
+size_t ib_error_cursor;
+
+uint8_t xc_graph_type = XC_TERMTYPE_GRAPH_DEFAULT;
+size_t ib_graph_bgn;
+size_t ib_graph_end;
+bool b_graph_new;
+
+uint8_t xc_subject_type;
+size_t ib_subject_bgn;
+size_t ib_subject_end;
+bool b_subject_new;
+
+size_t ib_predicate_bgn;
+size_t ib_predicate_end;
+bool b_predicate_new;
+
+uint8_t xc_object_type;
+size_t ib_object_bgn;
+size_t ib_object_end;
+
+size_t ib_datatype_bgn;
+size_t ib_datatype_end;
+
+size_t ib_language_bgn;
+size_t ib_language_end;
+
+typedef struct {
+	uint8_t type;
+	size_t bgn;
+	size_t end;
+	size_t supl_bgn;
+	size_t supl_end;
+} Refd;
+
+Refd a_events[1024];
+size_t i_event;
+
+typedef void (*StateType)(void);
+typedef StateType (*ParseState)(void);
+
+ParseState f_state;
+
+
+
+StateType parse_n_subject();
+
+
+StateType parse_error() {
+	g_info.err_parse(xc_error, ips_error_msg, ib_error_cursor);
+
+	return (StateType) parse_error;
+}
+
+static inline bool eat_ws_or_fail(size_t* ib_read) {
+	for(;;) {
+		switch(ips_view[*ib_read]) {
+			case ' ': {
+				*ib_read += 1;
+				continue;
+			}
+
+			case '\n': {
+				*ib_read += 1;
+				i_line += 1;
+				continue;
+			}
+
+			case '\t':
+			case '\r': {
+				*ib_read += 1;
+				continue;
+			}
+
+			case '\0': {
+				return true;
+			}
+
+			default: {
+				return false;
+			}
+		}
+	}
+}
+
+@> eat_ws(s_state, s_cursor='ib_parse')
+	// eat whitespace, reached eos
+	if(eat_ws_or_fail(&@{s_cursor})) {
+		return (StateType) @{s_state};
+	}
+@;
+
+@> parse_node_named({
+	term: s_term,
+	state: s_state=null,
+	event: s_event=null,
+	next: s_next,
+	cursor: s_cursor='ib_parse',
+	locality: b_term_locality=false,
+	dependency: s_dependency=null,
+	typed: b_typed=false,
+})
+	@. s_state = s_state || `parse_n_${s_term}`;
+	@. s_state_suffix = s_state? s_state.replace(/^parse_\w_/, ''): s_term;
+	size_t ib_node = @{s_cursor};
+
+	// iri content start
+	size_t ib_value = ++ib_node;
+	uint8_t x_char = ips_view[ib_node];
+
+	// scan; each char
+	for(;;) {
+		// end of iri
+		if('>' == x_char) {
+			@// term locality
+			@- b_term_locality
+				// term is same type & length as previous
+				if(@{s_dependency? `!b_${s_dependency}_new && `: ''}
+					@{b_typed? `xc_${s_term}_type == XC_TERMTYPE_NODE_NAMED && `: ''}
+					(ib_@{s_term}_end - ib_@{s_term}_bgn) == (ib_node - ib_value)
+				) {
+					// prep flag to validate term locality
+					bool b_locality = true;
+
+					// scan in reverse
+					size_t nb_value = ib_node - ib_value;
+					for(size_t c_char=1; c_char<=nb_value; c_char+=1) {
+						// char mismatch; invalidate locality
+						if(ips_view[ib_@{s_term}_end-c_char] != ips_view[ib_node-c_char]) {
+							b_locality = false;
+							break;
+						}
+					}
+
+					// terms are identical
+					if(b_locality) {
+						// update locality for childrens' sake
+						b_@{s_term}_new = false;
+
+						// advance index
+						ib_parse = ib_node + 1;
+
+						// advance to next state
+						return (StateType) @{s_next};	
+					}
+				}
+
+				// update locality for childrens' sake
+				b_@{s_term}_new = true;
+			@;
+
+			// save term
+			@- b_typed
+				xc_@{s_term}_type = XC_TERMTYPE_NODE_NAMED;
+			@;
+			ib_@{s_term}_bgn = ib_value;
+			ib_@{s_term}_end = ib_node;
+
+			@- b_term_locality
+				// // emit term update
+				@// g_info.on_@{s_term}(@{g_interface.events[s_term].args});
+				a_events[i_event++] = (Refd) {
+					XC_TERMTYPE_NODE_NAMED,
+					ib_value,
+					ib_node,
+					0, 0
+				};
+			@+ s_event
+				a_events[i_event++] = (Refd) {
+					@{s_event}
+				};
+			@;
+
+			// advance index
+			ib_parse = ib_node + 1;
+
+			// advance to next state
+			return (StateType) @{s_next};
+		}
+		// surrogate lead
+		else if(x_char & 0x80) {
+			// surrogate triple
+			if(x_char & 0xe0) {
+				ib_node += 2;
+			}
+			// surrogate quad
+			else if(x_char & 0xf0) {
+				ib_node += 3;
+			}
+			// surrogate pair
+			else {
+				ib_node += 1;
+			}
+
+			// went past eos boundary
+			if(ib_node >= nb_view) {
+				return (StateType) @{s_state};
+			}
+		}
+		// eos
+		else if('\0' == x_char) {
+			return (StateType) @{s_state};
+		}
+
+		x_char = ips_view[++ib_node];
+	}
+@;
+
+@> parse_node_blank({
+	term: s_term,
+	next: s_next,
+	cursor: s_cursor='ib_parse',
+})
+	@. s_state_suffix = s_term;
+
+	size_t ib_node = @{s_cursor};
+
+	if(':' != ips_view[++ib_node]) {
+		// eos
+		if('\0' == ips_view[ib_node]) {
+			return (StateType) parse_n_@{s_term};
+		}
+
+		@{parse_error_unexpected({
+			state: s_state_suffix,
+			expected: [':'],
+			cursor: s_cursor,
+		})}
+	}
+
+	// label begin
+	size_t ib_label = ++ib_node;
+	uint8_t x_char = ips_view[ib_node];
+
+	// scan
+	for(;;) {
+		switch(x_char) {
+			// whitespace
+			case ' ':
+			case '\t':
+			case '\r': {
+				// save term
+				xc_@{s_term}_type = XC_TERMTYPE_NODE_BLANK;
+				ib_@{s_term}_bgn = ib_label;
+
+				@- 'object' == s_term
+					// previous character was statement terminator
+					if('.' == ips_view[ib_node-1]) {
+						// shift token end index backwards
+						ib_@{s_term}_end = ib_node - 1;
+
+						// next state will be subject
+						return (StateType) parse_n_subject;
+					}
+				@;
+
+				ib_@{s_term}_end = ib_node;
+
+				// next state
+				return (StateType) @{s_next};
+			}
+
+			// eos
+			case '\0': {
+				return (StateType) parse_n_@{s_term};
+			}
+		}
+
+		x_char = ips_view[++ib_node];
+	}
+@;
+
+StateType parse_n_post_object() {
+	@{eat_ws('parse_n_post_object')}
+
+	uint8_t x_char = ips_view[ib_parse];
+
+	// statement terminator
+	if('.' == x_char) {
+		// // emit object
+		// g_info.on_object(
+		// 	// object term
+		// 	xc_object_type, ib_object_bgn, ib_object_end,
+
+		// 	// object datatype
+		// 	ib_datatype_bgn, ib_datatype_end,
+
+		// 	// object language
+		// 	ib_language_bgn, ib_language_end);
+
+		// advance index
+		ib_parse += 1;
+
+		// next state
+		return (StateType) parse_n_subject;
+	}
+	else {
+		@{parse_error_unexpected({
+			state: 'post_object',
+			expected: ['.'],
+			cursor: 'ib_parse',
+		})}
+	}
+}
+
+@>post_literal()
+	@//@{eat_ws('parse_n_post_literal')}
+
+	// size_t ib_read = ib_parse;
+	x_char = ips_view[++ib_read];
+
+	switch(x_char) {
+		// language tag
+		case '@': {
+			// language tag candidate
+			size_t ib_tag = ++ib_read;
+
+			x_char = ips_view[ib_read];
+
+			// scan; each char
+			for(;;) {
+				switch(x_char) {
+					// whitespace
+					case ' ':
+					case '\t': {
+						// emit object
+						a_events[i_event++] = (Refd) {
+							// object term
+							XC_TERMTYPE_LITERAL_LANGUAGED, ib_object_bgn, ib_object_end,
+
+							// object language
+							ib_tag, ib_read
+						};
+
+						// advance index
+						ib_parse = ib_read + 1;
+
+						// next state
+						return (StateType) parse_n_post_object;
+					}
+
+					// statement terminator
+					case '.': {
+						// emit object
+						a_events[i_event++] = (Refd) {
+							// object term
+							XC_TERMTYPE_LITERAL_LANGUAGED, ib_object_bgn, ib_object_end,
+
+							// object language
+							ib_tag, ib_read
+						};
+
+						// advance index
+						ib_parse = ib_read + 1;
+
+						// next state
+						return (StateType) parse_n_subject;
+					}
+
+					// invalid newline
+					case '\r':
+					case '\n': {
+						@{parse_error_unexpected({
+							state: 'object',
+							expected: ['.'],
+						})}
+					}
+
+					// eos
+					case '\0': {
+						return (StateType) parse_n_object;
+					}
+				}
+
+				x_char = ips_view[++ib_read];
+			}
+		}
+
+		// datatype
+		case '^': {
+			// unexpected char
+			if('^' != ips_view[++ib_read]) {
+				// eos
+				if('\0' == ips_view[ib_read]) {
+					return (StateType) parse_n_object;
+				}
+
+				@{parse_error_unexpected({
+					state: 'object',
+					expected: ['^^'],
+				})}
+			}
+
+			// unexpected char
+			if('<' != ips_view[++ib_read]) {
+				// eos
+				if('\0' == ips_view[ib_read]) {
+					return (StateType) parse_n_object;
+				}
+
+				@{parse_error_unexpected({
+					state: 'object',
+					expected: ['<'],
+				})}
+			}
+
+			@{parse_node_named({
+				term: 'datatype',
+				state: 'parse_n_object',
+				next: 'parse_n_post_object',
+				cursor: 'ib_read',
+				event: /* syntax: c */ gobble `
+					// object value
+					XC_TERMTYPE_LITERAL_DATATYPED, ib_object_bgn, ib_object_end,
+
+					// datatype
+					ib_datatype_bgn, ib_datatype_end
+					`.trim(),
+			})}
+		}
+
+		// simple literal
+		case '.': {
+			// emit object
+			a_events[i_event++] = (Refd) {
+				// object term
+				XC_TERMTYPE_LITERAL_SIMPLE, ib_object_bgn, ib_object_end,
+
+				0, 0
+			};
+
+			// advance index
+			ib_parse = ib_read + 1;
+
+			// next state
+			return (StateType) parse_n_subject;
+		}
+
+		// eos
+		case '\0': {
+			return (StateType) parse_n_object;
+		}
+
+		// invalid
+		default: {
+			@{parse_error_unexpected({
+				state: 'object',
+				expected: ['@', '^^', '.', '#'],
+			})}
+		}
+	}
+@;
+
+StateType parse_n_object() {
+	@{eat_ws('parse_n_object')}
+	
+	switch(ips_view[ib_parse]) {
+		// literal
+		case '"': {
+			size_t ib_value = ib_parse + 1;
+			size_t ib_read = ib_value;
+			size_t x_char = ips_view[ib_read];
+
+			// scan
+			for(;;) {
+				// end of literal
+				if('"' == x_char) {
+					// save term value
+					ib_object_bgn = ib_value;
+					ib_object_end = ib_read;
+
+					// // advance index
+					// ib_read += 1;
+
+					// // next state
+					// return (StateType) parse_n_post_literal;
+
+					@{post_literal()}
+				}
+				// escape
+				else if('\\' == x_char) {
+					// skip next character
+					ib_read += 1;
+
+					// went past eos boundary
+					if(ib_read >= nb_view) {
+						return (StateType) parse_n_object;
+					}
+				}
+				// surrogate lead
+				else if(x_char & 0x80) {
+					// surrogate triple
+					if(x_char & 0xe0) {
+						ib_read += 2;
+					}
+					// surrogate quad
+					else if(x_char & 0xf0) {
+						ib_read += 3;
+					}
+					// surrogate pair
+					else {
+						ib_read += 1;
+					}
+
+					// went past eos boundary
+					if(ib_read >= nb_view) {
+						return (StateType) parse_n_object;
+					}
+				}
+				// eos
+				else if('\0' == x_char) {
+					return (StateType) parse_n_object;
+				}
+				// newline
+				else if('\n' == x_char) {
+					@{parse_error_unexpected({
+						state: 'object',
+						expected: ['"'],
+					})}
+				}
+
+				// next char
+				x_char = ips_view[++ib_read];
+			}
+		}
+
+		// iri
+		case '<': {
+			// set object term type
+			xc_object_type = XC_TERMTYPE_NODE_NAMED;
+
+			@{parse_node_named({
+				term: 'object',
+				next: 'parse_n_post_object',
+				typed: true,
+				event: /* syntax: c */ gobble `
+					// object value
+					XC_TERMTYPE_NODE_NAMED, ib_object_bgn, ib_object_end,
+
+					// datatype
+					0, 0
+					`.trim(),
+			})}
+		}
+
+		// blank
+		case '_': {
+			// set object term type
+			xc_object_type = XC_TERMTYPE_NODE_BLANK;
+
+			@{parse_node_blank({
+				term: 'object',
+				next: 'parse_n_post_object',
+			})}
+		}
+
+		// invalid
+		default: {
+			@{parse_error_unexpected({
+				state: 'object',
+				expected: ['"', '<', '_:'],
+				cursor: 'ib_parse',
+			})}
+		}
+	}
+}
+
+StateType parse_n_predicate() {
+	@{eat_ws('parse_n_predicate')}
+
+	if('<' != ips_view[ib_parse]) {
+		@{parse_error_unexpected({
+			state: 'predicate',
+			expected: ['<'],
+			cursor: 'ib_parse',
+		})}
+	}
+
+	@{parse_node_named({
+		term: 'predicate',
+		next: 'parse_n_object',
+		locality: false,
+		event: /* syntax: c */ gobble `
+			XC_TERMTYPE_NODE_NAMED,
+			ib_value,
+			ib_node,
+			0, 0
+			`.trim(),
+		dependency: 'subject',
+	})}
+}
+
+StateType parse_n_subject() {
+	@{eat_ws('parse_n_subject')}
+
+	_front:
+	switch(ips_view[ib_parse]) {
+		// iri
+		case '<': {
+			@{parse_node_named({
+				term: 'subject',
+				next: 'parse_n_predicate',
+				locality: false,
+				event: /* syntax: c */ gobble `
+					XC_TERMTYPE_NODE_NAMED,
+					ib_value,
+					ib_node,
+					0, 0
+					`.trim(),
+				typed: true,
+			})}
+		}
+
+		// blank
+		case '_': {
+			@{parse_node_blank({
+				term: 'subject',
+				next: 'parse_n_predicate',
+			})}
+		}
+
+		// comment
+		case '#': {
+			size_t ib_read = ib_parse + 1;
+			uint8_t x_char = ips_view[ib_read];
+
+			// eat until eol
+			for(;;) {
+				// eol
+				if('\n' == x_char) {
+					// advance line count
+					i_line += 1;
+
+					// skip comment
+					ib_parse = ++ib_read;
+
+					// try again
+					goto _front;
+				}
+				// eos
+				else if('\0' == x_char) {
+					return (StateType) parse_n_subject;
+				}
+
+				// next char
+				x_char = ips_view[++ib_read];
+			}
+		}
+
+		// eos (only because of comment jumping)
+		case '\0': {
+			return (StateType) parse_n_subject;
+		}
+
+		// other
+		default: {
+			@{parse_error_unexpected({
+				state: 'subject',
+				expected: ['<', '_:', '#'],
+				cursor: 'ib_parse',
+			})}
+		}
+	}
+}
+
+unsigned int* parse_n(uint8_t* _ips_view, size_t _nb_data) {
+	ips_view = _ips_view;
+	nb_view = _nb_data;
+	ib_parse = 0;
+
+	// a_events = malloc(sizeof(*a_events) * 1024);
+	i_event = 0;
+
+	// prevent false locality from old buffer
+	xc_subject_type = 0;
+	b_subject_new = true;
+
+	for(;;) {
+		ParseState f_next = (ParseState)(*f_state)();
+
+		// no change of state, eos encountered
+		if(f_next == f_state) {
+			break;
+		}
+
+		// advance
+		f_state = f_next;
+	}
+
+	// todo: check exceeded maximum token length (parse head did not change)
+
+	// // nothing was parsed
+	// if(!ib_parse) {
+	// 	xc_error = XC_ERR_UNEXPECTED;
+	// 	ips_error_msg = (char*) malloc(256);
+	// 	if((StateType) parse_n_subject == (StateType) f_state) {
+	// 		sprintf(ips_error_msg, "subject");
+	// 	}
+	// 	else if((StateType) parse_n_predicate == (StateType) f_state) {
+	// 		sprintf(ips_error_msg, "predicate");
+	// 	}
+	// 	else if((StateType) parse_n_object == (StateType) f_state) {
+	// 		sprintf(ips_error_msg, "object");
+	// 	}
+	// 	ib_error_cursor = ib_parse;
+	// 	parse_error();
+	// }
+
+	static unsigned int a_returns[3];
+	a_returns[0] = ib_parse;
+	a_returns[1] = (unsigned int) &a_events;
+	a_returns[2] = i_event;
+	// {ib_parse, a_events, i_event};
+
+
+	// free view
+	free(ips_view);
+
+	// position of furthest parsed token
+	// return ib_parse;
+	return a_returns;
+}
+
+uint8_t parse_eof() {
+	return eat_ws_or_fail(&ib_parse) && f_state == parse_n_subject;
+}
+
+int register_callbacks(
+	const char* p_base,
+	const uint8_t xm_config,
+	fe_parse err_parse,
+	@{
+		Object.entries(g_interface.events)
+			.map(([si_event, g_event]) => /* syntax: c */ `
+				${g_event.type} on_${si_event}`.trim())
+			.join(',\n\t')
+	}
+) {
+	f_state = parse_n_subject;
+
+	// base URI given; set base node
+	if(strlen(p_base)) {
+		s_base = (uint8_t*) p_base;
+	}
+	// otherwise; default base
+	else {
+		s_base = NULL;
+	}
+
+	g_info.err_parse = err_parse;
+	@*{
+		for(let [si_event, g_event] of Object.entries(g_interface.events)) {
+			yield /* syntax: c */ `
+				g_info.on_${si_event} = on_${si_event};
+				`.trim()+'\n\t';
+		}
+	}
+
+	return 0;
+}

@@ -301,7 +301,7 @@
 
 @// create a class for each of the term types that the object of a triple can be
 @> term_types(from_this)
-	const factory = require('@graphy/factory').unfiltered;
+	const factory = require('@graphy/factory').raw;
 
 	@// make Quad constructor
 	@- T

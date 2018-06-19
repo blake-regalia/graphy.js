@@ -1,16 +1,43 @@
 const G_PACKAGE_JSON_BASE = require('./src/aux/base-package.json');
 
-const H_FORMATS_GENERALIZED = {
-	nt: 'n',
-	nq: 'n',
-	ttl: 't',
-	trig: 't',
+const dir_struct = (a_files) => {
+	let a_paths = [];
+	for(let z_file of a_files) {
+		if('string' === typeof z_file) {
+			a_paths.push(z_file);
+		}
+		else {
+			for(let s_dir in z_file) {
+				a_paths.push(...dir_struct(z_file[s_dir]).map(s => `${s_dir}/${s}`));
+			}
+		}
+	}
+
+	return a_paths;
 };
 
-const A_FORMAT_MODES = [
-	'parser',
-	'writer',
-];
+const H_FORMATS_GENERALIZED = {
+	nt: 'n',
+	// nq: 'n',
+	ttl: 't',
+	// trig: 't',
+};
+
+const H_FORMAT_MODES = {
+	read: dir_struct([
+		'main.js',
+		'package.json',
+	]),
+	turbo: dir_struct([
+		'main.js',
+		'worker.js',
+		'package.json',
+	]),
+	write: dir_struct([
+		'main.js',
+		'package.json',
+	]),
+};
 
 
 const A_FILES_STORE = [
@@ -27,13 +54,18 @@ let pd_build = 'build';
 let pd_packages = `${pd_build}/packages`;
 
 let a_format_build_targets = [];
-Object.keys(H_FORMATS_GENERALIZED).forEach((s_format) => {
-	a_format_build_targets.push(
-		...A_FORMAT_MODES.reduce((a, s_mode) => a.push(...[
-			'index.js',
-			'package.json',
-		].map(s_file => `${pd_packages}/${s_format}-${s_mode}/${s_file}`)) && a, []));
-});
+for(let s_format of Object.keys(H_FORMATS_GENERALIZED)) {
+	for(let [s_mode, a_files] of Object.entries(H_FORMAT_MODES)) {
+		for(let s_file of a_files) {
+			a_format_build_targets.push(`${pd_packages}/format.${s_format}.${s_mode}/${s_file}`);
+		}
+	}
+	// a_format_build_targets.push(
+	// 	...Object.entries(A_FORMAT_MODES)
+	// 		.reduce((a, [s_mode, a_paths]) => a.push(
+	// 			...a_paths.map(s_file => `${pd_packages}/format.${s_format}.${s_mode}/${s_file}`))
+	// 				&& a, []));
+}
 
 const eslint = () => /* syntax: bash */ `
 	eslint --fix --color --rule 'no-debugger: off' $@
@@ -53,30 +85,16 @@ const H_LINKS = {
 	// bat: ['factory', 'store'],
 	viz: [],
 	writer: ['factory', 'stream'],
-	'ttl-parser': ['factory', 'stream'],
-	'ttl-writer': ['factory', 'writer', 'stream'],
-	'nt-parser': ['factory', 'stream'],
-	'nq-parser': ['factory', 'stream'],
+	'format.nt.read': ['factory', 'stream'],
+	'format.nt.turbo': ['format.nt.read', 'stream'],
+	// 'format.nq.read': ['factory', 'stream'],
+	'format.ttl.read': ['factory', 'stream'],
+	'format.ttl.write': ['factory', 'writer', 'stream'],
 };
 
-const dir_struct = (a_files) => {
-	let a_paths = [];
-	for(let z_file of a_files) {
-		if('string' === typeof z_file) {
-			a_paths.push(z_file);
-		}
-		else {
-			for(let s_dir in z_file) {
-				a_paths.push(...dir_struct(z_file[s_dir]).map(s => `${s_dir}/${s}`));
-			}
-		}
-	}
-
-	return a_paths;
-};
 
 module.exports = {
-	'&format': /(\w+)-(parser|writer)/,
+	'&format': /format\.(\w+)\.(\w+)/,
 
 	'&dedicated': /(store)/,
 
@@ -178,7 +196,17 @@ module.exports = {
 					let h_deps = {};
 
 					// package extras
-					let h_package = require('${__dirname}/$2')['$package'];
+					let h_package_tree = require('${__dirname}/$2');
+					let a_words = '$package'.split(/\\./g);
+					let h_package = h_package_tree;
+					for(let s_word of a_words) h_package = h_package[s_word];
+
+					// no name, use default
+					if(!h_package.name) {
+						h_package.name = '@graphy/$package';
+					}
+
+					// dependencies
 					if(h_package.dependencies) {
 						// source root dependencies
 						let h_root_deps = ${JSON.stringify(G_PACKAGE_JSON_BASE.dependencies).replace(/"/g, '\\"')};
@@ -321,10 +349,10 @@ module.exports = {
 	},
 
 	// an RDF file format
-	[`${pd_packages}/(&format)/index.js`]: {
+	[`${pd_packages}/(&format)/:file.js`]: {
 		case: true,
 		deps: [
-			h => `src/formats/${H_FORMATS_GENERALIZED[h.format[1]]}-${h.format[2]}.js.jmacs`,
+			h => `src/formats/${H_FORMATS_GENERALIZED[h.format[1]]}/${h.format[2]}/${h.file}.js.jmacs`,
 			...[
 				'textual-parser-macros',
 				'general-parser-macros',
@@ -336,6 +364,18 @@ module.exports = {
 			${eslint()}
 		`,
 	},
+
+	// // format commons
+	// [`${pd_packages}/format.common.parser.text/index.js`]: {
+	// 	deps: [
+	// 		'src/formats/common.parser.text.js.jmacs',
+	// 		s_self_dir,
+	// 	],
+	// 	run: /* syntax: bash */ `
+	// 		npx jmacs $1 > $@
+	// 		${eslint()}
+	// 	`,
+	// },
 
 	// store
 	store: A_FILES_STORE.map(s => `${pd_packages}/store/${s}.js`),

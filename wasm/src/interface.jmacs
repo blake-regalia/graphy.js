@@ -1,0 +1,156 @@
+@.{
+
+const mk_enum = (nl_enums) => {
+	let a_values = [];
+	for(let i_value=1; i_value<=nl_enums; i_value++) {
+		a_values.push(i_value);
+	}
+	return a_values;
+}
+
+const [
+	XC_TERMTYPE_GRAPH_DEFAULT,
+	XC_TERMTYPE_NODE_NAMED,
+	XC_TERMTYPE_NODE_BLANK,
+	XC_TERMTYPE_LITERAL_SIMPLE,
+	XC_TERMTYPE_LITERAL_DATATYPED,
+	XC_TERMTYPE_LITERAL_LANGUAGED,
+] = mk_enum(0xff);
+
+
+const gobble = (a_strings, ...a_interps) => {
+	let s_output = a_strings[0];
+	for(let i_part=1, nl_parts=a_strings.length; i_part<nl_parts; i_part++) {
+		s_output += a_interps[i_part-1] + a_strings[i_part];
+	}
+
+	let [, s_indent] = /^\n(\s*)/.exec(s_output);
+
+	return s_output.replace(new RegExp(`\\n${s_indent}`, 'g'), '\n');
+};
+
+const indent = (s_str, s_indent) => {
+	return s_str.replace(/\n/g, `\n${s_indent}`);
+};
+
+
+
+const {
+	SI_TYPE='type',
+	SI_INDEX_BYTE='index_byte',
+	SI_CONTENT='content',
+	SI_CONTENT_TYPED='term_node_named',
+} = {};
+
+let g_interface = {
+	types: {
+		[SI_TYPE]: {
+			src: s => `uint8_t xc_${s}`,
+		},
+
+		[SI_INDEX_BYTE]: {
+			src: s => `size_t ib_${s}`,
+		},
+
+		[SI_CONTENT]: {
+			components: {
+				bgn: SI_INDEX_BYTE,
+				end: SI_INDEX_BYTE,
+			},
+		},
+
+		[SI_CONTENT_TYPED]: {
+			components: {
+				type: SI_TYPE,
+				bgn: SI_INDEX_BYTE,
+				end: SI_INDEX_BYTE,
+			},
+		},
+	},
+	events: {
+		graph: {
+			params: {
+				graph: SI_CONTENT_TYPED,
+			},
+		},
+
+		subject: {
+			params: {
+				subject: SI_CONTENT_TYPED,
+			},
+		},
+
+		predicate: {
+			params: {
+				predicate: SI_CONTENT,
+			},
+		},
+
+		object: {
+			params: {
+				object_term: SI_CONTENT_TYPED,
+				object_datatype: SI_CONTENT,
+				object_language: SI_CONTENT,
+			},
+		},
+	},
+};
+
+
+const R_SRC_SIG_LABEL = /^(.+?)\s+([^\s]+)$/;
+
+const type_info = (si_type, s_label, g_out) => {
+	// ref type def
+	let g_type = g_interface.types[si_type];
+
+	// component-based
+	if(g_type.components) {
+		// each component
+		for(let [si_component, si_component_type] of Object.entries(g_type.components)) {
+			// recurse on type
+			type_info(si_component_type, `${s_label}_${si_component}`, g_out);
+		}
+	}
+	// source
+	else {
+		// gen src then extract sig and label
+		let s_src = g_type.src(s_label);
+		let [, s_type_sig, s_type_label] = R_SRC_SIG_LABEL.exec(s_src);
+
+		// outputs
+		g_out.args.push(s_type_label);
+		g_out.param_types.push(s_type_sig);
+	}
+
+	return g_out;
+};
+
+let a_typedefs = [];
+let i_callback_type = 65;
+let h_callback_types = {};
+for(let [si_event, g_event] of Object.entries(g_interface.events)) {
+	Object.assign(g_event, {
+		args: [],
+		param_types: [],
+	});
+
+	// each param
+	for(let [si_param, si_type] of Object.entries(g_event.params)) {
+		type_info(si_type, si_param, g_event);
+	}
+
+	let si_param_types = g_event.param_types.join(', ');
+	if(!(si_param_types in h_callback_types)) {
+		let si_callback = h_callback_types[si_param_types] = String.fromCharCode(i_callback_type++);
+
+		a_typedefs.push(/* syntax: c */ gobble `
+			typedef uint8_t (*fk_${si_callback})(
+				${si_param_types}
+			);
+			`);
+	}
+
+	g_event.type = `fk_${h_callback_types[si_param_types]}`;
+}
+
+}

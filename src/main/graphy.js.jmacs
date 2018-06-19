@@ -12,35 +12,42 @@
 	// @{s_format} package
 	const @{s_format} = {
 		// parse @{s_format} output
-		get parser() {
+		get parse() {
 			// memoize
-			delete @{s_format}.parser;
-			return @{s_format}.parser = require('@graphy/@{s_format}-parser');
+			delete @{s_format}.parse;
+			return @{s_format}.parse = require('@graphy/format.@{s_format}.parse');
+		},
+
+		// turbo @{s_format} output
+		get turbo() {
+			// memoize
+			delete @{s_format}.turbo;
+			return @{s_format}.turbo = require('@graphy/format.@{s_format}.turbo');
 		},
 
 		// write @{s_format} input
-		get writer() {
+		get write() {
 			// memoize
-			delete @{s_format}.writer;
-			return @{s_format}.writer = require('@graphy/@{s_format}-writer');
+			delete @{s_format}.write;
+			return @{s_format}.write = require('@graphy/format.@{s_format}.write');
 		},
 
-		// parse @{s_format} input
-		parse(...a_args) {
-			return @{s_format}.parser(...a_args);
-			// if(1 === a_args.length) {
-			// 	a_args[0].validate = true;
-			// }
-			// else {
-			// 	a_args = [
-			// 		a_args[0] || null,
-			// 		Object.assign(a_args[1] || {}, {
-			// 			validate: true,
-			// 		}),
-			// 	];
-			// }
-			// return @{s_format}.deserializer(...a_args);
-		},
+		// // parse @{s_format} input
+		// parse(...a_args) {
+		// 	return @{s_format}.parser(...a_args);
+		// 	// if(1 === a_args.length) {
+		// 	// 	a_args[0].validate = true;
+		// 	// }
+		// 	// else {
+		// 	// 	a_args = [
+		// 	// 		a_args[0] || null,
+		// 	// 		Object.assign(a_args[1] || {}, {
+		// 	// 			validate: true,
+		// 	// 		}),
+		// 	// 	];
+		// 	// }
+		// 	// return @{s_format}.deserializer(...a_args);
+		// },
 	};
 @;
 
@@ -118,6 +125,14 @@ const graphy = module.exports = Object.assign({
 	* API:
 	**/
 
+	format: {
+		@*{
+			for(let s_format in h_formats) {
+				yield /* syntax: js */ `${s_format},\n`;
+			}
+		}
+	},
+
 	// load triple data from arbitrary parser into memory
 	get load() {
 		// memoize
@@ -148,17 +163,8 @@ const graphy = module.exports = Object.assign({
 	/*
 	* access to flavor by mime
 	*/
-	parser(pm_format, ...a_args) {
-		let k_format = H_MIMES[pm_format];
-		if(!k_format) return null;
-		let dc_parser = k_format.parser;
-		if(a_args.length) {
-			return dc_parser(...a_args);
-		}
-		return dc_parser;
-	},
 
-	writer(pm_format, ...a_args) {
+	write(pm_format, ...a_args) {
 		let k_format = H_MIMES[pm_format];
 		if(!k_format) return null;
 		let dc_writer = k_format.writer;

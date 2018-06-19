@@ -1,23 +1,34 @@
+@import '../../../share/iris.jmacs'
+
 @./* global FORMAT */
 @//@
 
-@$ N = true;
 @$ NT = 'nt' === FORMAT;
 @$ NQ = 'nq' === FORMAT;
 @$ QUADS = NQ;
 
 @// import parser macros
-@import 'textual-parser-macros.jmacs'
+@import '../../common.parse.textual.jmacs'
 
-const events = require('events');
 const stream = require('stream');
+const factory = require('@graphy/factory').raw;
 
-@{constants()}
+const KT_DEFAULT_GRAPH = factory.defaultGraph();
+const KT_RDFS_LANG_STRING = factory.namedNode('@{P_IRI_RDFS}langString');
+
+const R_ESCAPES = /@{R_ESCAPES()}/g;
+const R_UNICODE_8 = /@{R_UNICODE_8()}/g;
+const R_UNICODE_ANY = /@{R_UNICODE_4()}|@{R_UNICODE_8()}/g;
+
+const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
 
 const R_CLEAN = /\s*(?:#[^\n]*\n\s*)*\s*/y;
 const R_LITERAL_ESCAPELESS = /^"([^\\"]*)"(?:\^\^<([^\\>]*)>|@([^ \t.]+)|)?$/;
 const R_LITERAL = /^"(.*)"(?:\^\^<(.*)>|@([^ \t.]+)|)?$/;
-const R_HAS_ESCAPES = /[\\]/;
+const RT_HAS_ESCAPES = /[\\]/;
+
+const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
+const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 
 @- QUADS
 	@$ STATEMENT_REGEX = 'R_QUAD';
@@ -30,16 +41,8 @@ const R_HAS_ESCAPES = /[\\]/;
 @;
 
 
-@// make prototype function for each rdf object term type
-@{term_types()}
-
-const H_DEFAULT_GRAPH = factory.defaultGraph();
-
-const P_IRI_RDFS = 'http://www.w3.org/2000/01/rdf-schema#';
-const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
-
 @> unescape_iri(term)
-	R_HAS_ESCAPES.test(@{term})? @{term}.@{replace_unicode(true)}: @{term}
+	RT_HAS_ESCAPES.test(@{term})? @{term}.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY): @{term}
 @;
 
 @> clean()
@@ -51,12 +54,12 @@ const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
 	let i = R_CLEAN.lastIndex;
 @;
 
-@> match_body(match, escape_subject, escape_predicate)
+@> match_body(sv_match, escape_subject, escape_predicate)
 	// prep object term
 	let w_object;
 
 	// determine object term type
-	let s_object = @{match}[4];
+	let s_object = @{sv_match}[4];
 
 	let x = s_object[0];
 
@@ -66,16 +69,16 @@ const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
 		let m_literal_e = R_LITERAL_ESCAPELESS.exec(s_object);
 		if(m_literal_e) {
 			// literal has no escapes
-			w_object = factory.literal(m_literal_e[1]);
+			w_object = this.literal(m_literal_e[1]);
 
 			// set datatype if present
 			if(m_literal_e[2]) {
-				w_object.datatype = factory.namedNode(m_literal_e[2]);
+				w_object.datatype = this.namedNode(m_literal_e[2]);
 			}
 			// otherwise, set langtag if present
 			else if(m_literal_e[3]) {
 				w_object.language = m_literal_e[3].toLowerCase();
-				w_object.datatype = HP_NN_RDFS_LANG_STRING;
+				w_object.datatype = KT_RDFS_LANG_STRING;
 			}
 		}
 		// escapes in string and/or datatype
@@ -88,22 +91,22 @@ const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
 				let s_literal = m_literal[1];
 
 				// string literal has escapes
-				if(R_HAS_ESCAPES.test(s_literal)) {
-					w_object = factory.literal(this.clean_literal(s_literal));
+				if(RT_HAS_ESCAPES.test(s_literal)) {
+					w_object = this.literal(@{unescape_literal('s_literal')});
 				}
 				// no escapes
 				else {
-					w_object = factory.literal(s_literal);
+					w_object = this.literal(s_literal);
 				}
 
 				// set datatype if present
 				if(m_literal[2]) {
-					w_object.datatype = factory.namedNode(@{unescape_iri('m_literal[2]')});
+					w_object.datatype = this.namedNode(@{unescape_iri('m_literal[2]')});
 				}
 				// otherwise, set langtag if present
 				else if(m_literal[3]) {
 					w_object.language = m_literal[3].toLowerCase();
-					w_object.datatype = HP_NN_RDFS_LANG_STRING;
+					w_object.datatype = KT_RDFS_LANG_STRING;
 				}
 			}
 			else {
@@ -115,7 +118,7 @@ const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
 	// object term type is iri; make iri
 	else if('<' === x) {
 		let p_object = s_object.slice(1, -1);
-		w_object = factory.namedNode(@{unescape_iri('p_object')});
+		w_object = this.namedNode(@{unescape_iri('p_object')});
 	}
 	// object term type is blank node; make blank node
 	else {
@@ -124,31 +127,31 @@ const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
 	}
 
 	// emit data event
-	fk_data(Quad(
-		@{match}[1]? factory.namedNode(
+	fk_data(factory.quad(
+		@{sv_match}[1]? this.namedNode(
 			@- escape_subject
-				@{unescape_iri(match+'[1]')}
+				@{unescape_iri(sv_match+'[1]')}
 			@:
-				@{match}[1]
+				@{sv_match}[1]
 			@;
-			): factory.blankNode(@{match}[2]),
-		factory.namedNode(
+			): factory.blankNode(@{sv_match}[2]),
+		this.namedNode(
 			@- escape_predicate
-				@{unescape_iri(match+'[3]')}
+				@{unescape_iri(sv_match+'[3]')}
 			@:
-				@{match}[3]
+				@{sv_match}[3]
 			@;
 			),
 		w_object,
 		@- QUADS
-			@{match}[5]
-				? factory.namedNode(@{unescape_iri(match+'[5]')})
-				: (@{match}[6]
-					? factory.blankNode(@{match}[6])
-					: H_DEFAULT_GRAPH)
+			@{sv_match}[5]
+				? this.namedNode(@{unescape_iri(sv_match+'[5]')})
+				: (@{sv_match}[6]
+					? factory.blankNode(@{sv_match}[6])
+					: KT_DEFAULT_GRAPH)
 		@:
 			@//@
-			H_DEFAULT_GRAPH
+			KT_DEFAULT_GRAPH
 		@;
 		@//@arguments
 	)
@@ -177,11 +180,14 @@ const HP_NN_RDFS_LANG_STRING = factory.namedNode(P_IRI_RDFS+'langString');
 @;
 
 
-class Parser {
+class reader {
 	constructor(g_config) {
 		let {
 			// input medium
-			input: z_input,
+			input: g_input,
+
+			// validate iris
+			validate: b_validate=false,
 		} = g_config;
 
 		// fields
@@ -196,11 +202,35 @@ class Parser {
 			pre: g_config.prepend || '',
 		});
 
+		// validation
+		Object.assign(this, b_validate
+			? {
+				namedNode(s_iri) {
+					if(!RT_NAMED_NODE_VALID.test(s_iri)) return this._error(`invalid IRI: "${s_iri}"`);
+					return factory.namedNode(s_iri);
+				},
+
+				literal(s_literal) {
+					if(RT_ESCAPES_INVALID.test(s_literal)) return this._error(`invalid literal: "${s_literal}"`);
+					try {
+						return @{unescape_literal('s_literal')};
+					}
+					catch(e_parse) {
+						return this._error(`invalid string literal: "${s_literal}"`);
+					}
+				},
+			}
+			: {
+				namedNode: factory.namedNode,
+
+				literal: factory.literal,
+			});
+
 		// output stream
 		let ds_output;
 
 		// no input given, it will be written/piped in later
-		if(null === z_input) {
+		if(null === g_input) {
 			// whether or not data has been received before
 			let b_init = false;
 
@@ -267,7 +297,9 @@ class Parser {
 			});
 		}
 		// input is stream
-		else if(z_input.setEncoding) {
+		else if(g_input.stream) {
+			let ds_input = g_input.stream;
+
 			// whether or not data has been received before
 			let b_init = false;
 
@@ -279,7 +311,7 @@ class Parser {
 			// begin flowing mode on output stream
 			const begin_flow = () => {
 				// switch input to flowing mode
-				z_input.on('data', (s_chunk) => {
+				ds_input.on('data', (s_chunk) => {
 					// // stream is paused
 					// if(this.n < 0) {
 					// 	return this.error('stream received new data while it was supposed to be paused!');
@@ -325,9 +357,9 @@ class Parser {
 				this.event = this.queue;
 
 				// subscribe to readable events on input
-				z_input.on('readable', () => {
+				ds_input.on('readable', () => {
 					// read chunk from input stream while there is data to read
-					let s_chunk = z_input.read();
+					let s_chunk = ds_input.read();
 
 					// notify that data will begin
 					if(!b_init) {
@@ -392,10 +424,30 @@ class Parser {
 			});
 
 			// internal link
-			ds_output._graphy_parser = this;
+			ds_output._graphy_reader = this;
 
+			// inline data callback
 			if(g_config.data) {
 				fk_data = g_config.data;
+
+				// on new event listener
+				ds_output.on('newListener', function fk_add_listener(s_event) {
+					// a data listener was added
+					if('data' === s_event) {
+						// hold onto inline callback
+						let fk_hoc = fk_data;
+
+						// combine listeners
+						fk_data = (g_quad) => {
+							fk_hoc(g_quad);
+							ds_output.push(g_quad);
+						};
+
+						// don't do this again
+						ds_output.removeListener('newListener', fk_add_listener);
+					}
+				});
+
 				delete g_config.data;
 				begin_flow();
 			}
@@ -407,18 +459,20 @@ class Parser {
 			this.bind(g_config);
 
 			// set encoding on input stream
-			z_input.setEncoding('utf8');
+			ds_input.setEncoding('utf8');
 
 			// once stream closes, invoke eof
-			z_input.on('end', () => this.eof());
+			ds_input.on('end', () => this.eof());
 
 			// capture error on input
-			z_input.on('error', (e_input) => {
+			ds_input.on('error', (e_input) => {
 				ds_output.emit('error', `error on input stream: ${e_input.message}\n${e_input.stack}`);
 			});
 		}
 		// string
-		else if('string' === typeof z_input) {
+		else if(g_input.string) {
+			let s_input = g_input.string;
+
 			// create readable output
 			ds_output = this.output = new stream.Readable({
 				// outputs quad objets
@@ -436,13 +490,13 @@ class Parser {
 					// debugger;
 					this.pre = this.s = null;
 					ds_output.push(null);
-					g_config.eot();
+					g_config.end();
 				},
 			});
 
 			// concatenate previous chunk
 			// let s = this.s = this.pre+z_input;
-			this.pre += z_input;
+			this.pre += s_input;
 
 			// eos means we've reached eof
 			if(g_config.async) {
@@ -478,7 +532,7 @@ class Parser {
 		}
 		// invalid arg
 		else {
-			throw new TypeError('invalid argument for input parameter: '+z_input);
+			throw new TypeError('invalid input: '+('object' === typeof g_input? JSON.stringify(g_input): g_input));
 		}
 	}
 
@@ -540,10 +594,6 @@ class Parser {
 		}
 	}
 
-	clean_literal(s_literal) {
-		@{unescape('s_literal', '', 's_literal')}
-	}
-
 	safe_parse() {
 		let s = this.pre;
 		let i = this.i;
@@ -555,4 +605,11 @@ class Parser {
 }
 
 
-@{export_module()}
+const read = module.exports = function(...a_args) {
+	let g_config = {};
+
+	@{normalize_reader_config('g_config')}
+
+	// create reader, return output stream
+	return (new reader(g_config)).output;
+};

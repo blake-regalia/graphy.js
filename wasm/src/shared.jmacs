@@ -1,0 +1,280 @@
+@.{
+
+const {
+	XC_SERD_LITERAL=1,
+	XC_SERD_URI=2,
+	XC_SERD_BLANK=4,
+} = {};
+
+const {
+	SI_STATEMENT_FLAGS='statement_flags',
+	SI_SERD_TYPE='serd_type',
+	SI_SERD_STATUS='serd_status',
+	SI_SERD_ERROR='serd_error',
+	SI_SERD_NODE='serd_node',
+	SI_TYPED_SERD_NODE='typed_serd_node',
+	SI_SERD_OBJECT='serd_object',
+	SI_FORMATTED_STRING='formatted_string',
+} = {};
+
+const S_SIGNATURE_SERD_NODE = 'const SerdNode*';
+
+const FG_TYPED_SERD_NODE = s => ({
+	[`nb_${s}`]: [/* syntax: c */ `size_t`, 'n_bytes'],
+	[`ip_${s}`]: [/* syntax: c */ `const uint8_t*`, 'buf'],
+});
+
+const FG_SERD_NODE = s => ({
+	[`xc_${s}`]: [/* syntax: c */ `SerdType`, 'type'],
+	...FG_TYPED_SERD_NODE(s),
+});
+
+const FS_SERD_NODE_VALUE = s => /* syntax: js */ `
+	let at_${s} = y_module.HEAPU8.subarray(ip_${s}, ip_${s}+nb_${s});
+	let s_${s} = bkit.decode_utf_8(at_${s});
+`;
+
+const g_interface = {
+	types: {
+		[SI_STATEMENT_FLAGS]: {
+			alias: 'SerdStatementFlags',
+
+			cast: ['uint8_t', 'xm'],
+
+			map: s => ({
+				[`xm_${s}`]: [/* syntax: c */ `uint8_t`, 'flags'],
+			}),
+		},
+
+		[SI_SERD_TYPE]: {
+			alias: 'SerdType',
+
+			cast: ['uint8_t', 'xc'],
+
+			map: s => ({
+				[`xc_${s}`]: [/* syntax: c */ `uint8_t`, 'type']
+			}),
+		},
+
+		[SI_SERD_STATUS]: {
+			alias: 'SerdStatus',
+
+			cast: ['uint8_t', 'xc'],
+
+			map: s => ({
+				[`xc_${s}`]: [/* syntax: c */ `uint8_t`, 'status']
+			}),
+		},
+
+		[SI_SERD_NODE]: {
+			alias: S_SIGNATURE_SERD_NODE,
+
+			map: FG_SERD_NODE,
+
+			transform: FS_SERD_NODE_VALUE,
+
+			// 	if(XC_TYPE_URI === xc_${s}) {
+			// 		return factory.namedNode(s_value);
+			// 	}
+			// 	else if(XC_TYPE_BLANK_NODE === xc_) {
+			// 		return factory.blankNode(s_value);
+			// 	}
+			// 	else {
+			// 		throw new Error(\`unexpected serd node type value: \${xc_}\`);
+			// 	}
+			// `,
+		},
+
+		[SI_TYPED_SERD_NODE]: {
+			alias: S_SIGNATURE_SERD_NODE,
+
+			map: FG_TYPED_SERD_NODE,
+
+			// transform: FS_SERD_NODE_VALUE,
+		},
+
+		[SI_SERD_OBJECT]: {
+			components: {
+				term: SI_SERD_NODE,
+
+				datatype: SI_TYPED_SERD_NODE,
+
+				language: SI_TYPED_SERD_NODE,
+			},
+
+			// 	if(XC_TYPE_URI === xc_) {
+			// 		return factory.namedNode(s_value);
+			// 	}
+			// 	else if(XC_TYPE_BLANK_NODE === xc_) {
+			// 		return factory.blankNode(s_value);
+			// 	}
+			// 	else {
+			// 		throw new Error(\`unexpected serd node type value: \${xc_}\`);
+			// 	}
+			// `,
+		},
+
+		[SI_SERD_ERROR]: {
+			alias: 'const SerdError*',
+
+			map: s => ({
+				[`xc_${s}`]: [/* syntax: c */ `uint8_t`, 'status'],
+				[`i_line_${s}`]: [/* syntax: c */ `unsigned int`, 'line'],
+				[`i_col_${s}`]: [/* syntax: c */ `unsigned int`, 'col'],
+				// [`ips_fmt_${s}`]: ['char*', 'fmt'],
+				// [`ipva_${s}`]: ['va_list*', 'args'],
+				[`ips_msg_${s}`]: [/* syntax: c */ `char*`, s_struct => [
+						/* syntax: c */ `
+							const char* s_${s_struct};
+							vsprintf(s_${s_struct}, ${s_struct}->fmt, ${s_struct}->args);
+						`,
+						`s_${s_struct}`,
+					],
+				],
+			}),
+
+			// transform: s => /* syntax: js */ `
+			// 	let 
+			// `,
+		},
+	},
+
+	errors: {
+		invalid_pname: {
+			params: {
+				token: SI_SERD_NODE,
+			},
+
+			body: /* syntax: js */ `
+				debugger;
+				this.emit('error', new Error(\`invalid prefixed name: '\${s_token}'\`));
+			`,
+		},
+
+		prefix_undefined: {
+			params: {
+				token: SI_SERD_NODE,
+			},
+
+			body: /* syntax: js */ `
+				debugger;
+				this.emit('error', new Error(\`no such prefix defined: '\${s_token}'\`));
+			`,
+		},
+
+		internal_expand: {
+			params: {
+				code: SI_SERD_STATUS,
+			},
+
+			body: 'debugger;',
+		},
+
+		internal_non_node: {
+			params: {
+				type: SI_SERD_TYPE,
+			},
+			body: 'debugger;',
+		},
+
+		parse: {
+			params: {
+				parse: SI_SERD_ERROR,
+			},
+			body: 'y_module; debugger;',
+		},
+	},
+
+	events: {
+		base: {
+			params: {
+				base_uri: SI_SERD_NODE,
+			},
+
+			body: /* syntax: js */ `
+				this.emit('base', s_base_uri);
+			`,
+		},
+
+		prefix: {
+			params: {
+				prefix_id: SI_SERD_NODE,
+				prefix_uri: SI_SERD_NODE
+			},
+
+			body: /* syntax: js */ `
+				this.emit('prefix', s_prefix_id, s_prefix_uri);
+			`,
+		},
+
+		statement: {
+			params: {
+				flags: SI_STATEMENT_FLAGS,
+				graph: SI_SERD_NODE,
+				subject: SI_SERD_NODE,
+				predicate: SI_SERD_NODE,
+				object_term: SI_SERD_NODE,
+				object_datatype: SI_SERD_NODE,
+				object_language: SI_SERD_NODE,
+			},
+
+			body: /* syntax: js */ `
+				let k_graph = factory.defaultGraph();
+
+				// non-zero graph value
+				if(xc_graph) {
+					// named node
+					if(${XC_SERD_URI} === xc_graph) {
+						k_graph = factory.namedNode(s_graph);
+					}
+					// blank node
+					else {
+						k_graph = factory.blankNode(s_graph);
+					}
+				}
+
+				let k_subject = (${XC_SERD_URI} === xc_subject)
+					? factory.namedNode(s_subject)
+					: factory.blankNode(s_subject);
+
+				let k_predicate = factory.namedNode(s_predicate);
+
+				let k_object;
+				switch(xc_object_term) {
+					case ${XC_SERD_URI}: {
+						k_object = factory.namedNode(s_object_term);
+						break;
+					}
+
+					case ${XC_SERD_BLANK}: {
+						k_object = factory.blankNode(s_object_term);
+						break;
+					}
+
+					default: {
+						if(nb_object_datatype) {
+							${FS_SERD_NODE_VALUE('object_datatype')}
+							let k_datatype = factory.namedNode(s_object_datatype);
+							k_object = factory.literal(s_object_term, k_datatype);
+						}
+						else if(nb_object_language) {
+							${FS_SERD_NODE_VALUE('object_language')}
+							k_object = factory.literal(s_object_term, s_object_language);
+						}
+						else {
+							k_object = factory.literal(s_object_term);
+						}
+					}
+				}
+
+				let k_quad = factory.quad(k_subject, k_predicate, k_object, k_graph);
+				this.push(k_quad);
+			`,
+		},
+	},
+};
+
+
+
+}
+

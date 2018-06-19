@@ -1,27 +1,47 @@
+@import '../../../share/iris.jmacs'
 @./* global FORMAT */
 @//@
 
-@$ T = true;
 @$ TTL = 'ttl' === FORMAT;
 @$ TRIG = 'trig' === FORMAT;
 @$ QUADS = TRIG;
-@$ BINARY = false;
+
 
 @// import parser macros
-@import 'textual-parser-macros.jmacs'
+@import '../../common.parse.textual.jmacs'
 
-@import '../share/iris.jmacs'
 
-const parser_text = require('@graphy/format.common.parser.text')
 const stream = require('@graphy/stream');
+const factory = require('@graphy/factory').raw;
+const quad = (k) => factory.quad(k.subject, k.predicate, k.object, k.graph);
 
-@{constants()}
 
-@// make prototype function for each rdf term type
-@{term_types()}
+const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
+const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
+const RT_PREFIXED_NAME_LOCAL_NAME_VALID = /^@{PN_LOCAL()}$/u;
+
+const RT_BLANK_NODE_VALID = /^[@{PN_CHARS_U()}0-9]@{PN_CHARS_FS()}$/u;
+const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
+
+const R_ESCAPES = /@{R_ESCAPES()}/g;
+const R_UNICODE_8 = /@{R_UNICODE_8()}/g;
+const R_UNICODE_ANY = /@{R_UNICODE_4()}|@{R_UNICODE_8()}/g;
+
+const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
+
 
 const R_IRIREF_ESCAPELESS = /<([^\\>]*)>\s*/y;
 const R_IRIREF = /<([^>]*)>\s*/y;
+
+
+const H_ESCAPES_JSON = {
+	'\t': '\\t',
+	'\u0008': '\\b',
+	'\n': '\\n',
+	'\r': '\\r',
+	'\f': '\\f',
+	'"': '\\"',
+};
 
 @>> R_CHAR(s_delims='')
 	@//@regex
@@ -111,7 +131,7 @@ const R_PN_LOCAL_ESCAPES = /\\(.)/g;
 @// blank node labels have different lookahead characters
 @- TTL
 	const R_BLANK_NODE_LABEL = /_:(.(?:[^\s:<;,)\]#]*[^\s:<.;,)\]#])?)(?:\s+|(?=[<;,)\]#]))/y;
-@+ TRIG
+@:
 	const R_BLANK_NODE_LABEL = /_:(.(?:[^\s:<;,)\]#}]*[^\s:<;,)\]#}])?)(?:\s+|(?=[<;,)\]#}]))/y;
 @;
 
@@ -149,17 +169,20 @@ const R_COMMENT = /(#[^\n]*\n\s*)+/y;
 
 const RT_IRI_ABSOLUTE = /^[A-Za-z][A-Za-z0-9.\-+]*:/;
 const R_URI = /^(\/[^?#]+#?)/;
-const R_BASE_IRI = /^((([A-Za-z0-9.\-+]*:\/)?\/[^/>]*)?(\/(?:[^/>]*\/)*)?[^>]*)$/;
-@// /<(								# 1: uri
-@// 	( 							# 2: root
-@// 		([A-Za-z0-9.\-+]*:\/)?	# 3: scheme
-@// 		(?:\/[^\/>]*)?			# [authority]
-@// 	)?
-@// 	(							# 4: path
-@// 		\/(?:[^\/>]*\/)*
-@// 	)?
-@// 	[^>]*						# [rest]
-@// )>/
+@>> R_BASE_IRI()
+	@//@regex
+	^(								@// 1: uri
+		(							@// 2: root
+			([A-Za-z0-9.\-+]*:\/)?	@// 3: scheme
+			\/[^/>]*				@// [authority]
+		)?
+		(							@// 4: path
+			\/(?:[^/>]*\/)*
+		)?
+		[^>]*						@// [rest]
+	)$
+@;
+const R_BASE_IRI = /@{R_BASE_IRI()}/;
 const R_QUERYSTRING = /(\/[^/?#]*[?#].*)$/;
 
 const R_ANONYMOUS_BLANK_NODE = /\[\]\s*/y;
@@ -192,21 +215,13 @@ const KT_RDF_NIL = factory.namedNode('@{P_IRI_RDF}nil');
 
 const H_DEFAULT_GRAPH = factory.defaultGraph();
 
-const H_SPECIAL_ESCAPES = {
-	'\t': '\\t',
-	'\u0008': '\\b',
-	'\n': '\\n',
-	'\r': '\\r',
-	'\f': '\\f',
-	'"': '\\"',
-};
 
 const unescape_literal_short = (s_literal) => {
-	@{unescape('short')}
+	@{unescape_literal('s_literal', false)}
 };
 
 const unescape_literal_long = (s_literal) => {
-	@{unescape('long')}
+	@{unescape_literal('s_literal', true)}
 };
 
 const match_prefixed_name_escapeless = (s, i) => {
@@ -229,6 +244,224 @@ const match_prefixed_name = (s, i) => {
 	if(this.graph_close) this.graph_close(this.graph);
 @;
 
+
+@// consume whitespace
+@> whitespace(offset, local)
+	R_WS.lastIndex = @{offset};
+	R_WS.exec(s);
+	@{!local? 'this.': ''}i = R_WS.lastIndex;
+@;
+
+
+@// assert the prefix found in prefixed name is valid
+@> valid_prefix(match)
+	// check valid prefix
+	let s_prefix_id = @{match}[1] || '';
+
+	// invalid prefix
+	if(!this.prefixes.hasOwnProperty(s_prefix_id)) return this._error(`no such prefix "${s_prefix_id}"`);
+@;
+
+
+@// extract uri from absolute / relative iri refs
+@> iriref(sv_term, sv_match, b_object, b_set_base, b_has_escapes, b_not_this=false)
+	@.{
+		let sv_set = (b_not_this? '': 'this.')+sv_term;
+		let set = b_object
+			? s => `${sv_set} = this.named_node(${s});`
+			: s => `${sv_set} = ${s};`;
+	}
+	// ref iri
+	let s_iri = @{sv_match}[1]@{b_has_escapes? `.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)`: ''};
+
+	// absolute iri
+	if(!this.base_url || RT_IRI_ABSOLUTE.test(s_iri)) {
+		// set @{sv_term}
+		@{set(/* syntax: js */ `s_iri`)}
+	}
+	// relative iri
+	else {
+		// make @{sv_term}
+		switch(s_iri[0]) {
+			case '#':
+				@{set(/* syntax: js */ `this.base_url + s_iri`)}
+				break;
+			case '?':
+				@{set(/* syntax: js */ `this.base_url.replace(/(\\?.*)?$/, s_iri)`)}
+				break;
+			case '/':
+				// relative to scheme
+				if('/' === s_iri[1]) {
+					@{set(/* syntax: js */ `this.base_url_scheme + F_DOT_SEGMENTS(s_iri.substr(1))`)}
+				}
+				// relative to root
+				else {
+					@{set(/* syntax: js */ `this.base_url_root + F_DOT_SEGMENTS(s_iri)`)}
+				}
+				break;
+			// empty
+			case undefined:  // eslint-disable-line no-undefined
+				// identity
+				@{set(/* syntax: js */ `this.base_url`)}
+				break;
+			// dot segment
+			case '.':
+				// prepend so it is relative to root
+				s_iri = '/'+s_iri;
+			// fallthrough: relative to path
+			default:
+				@{set(/* syntax: js */ `this.base_url_root + F_DOT_SEGMENTS(this.base_url_path + s_iri)`)}
+		}
+	}
+
+	@// update the base iri
+	@- b_set_base
+		let m_base_iri = R_BASE_IRI.exec(this.base_url);
+		this.@{sv_term} = m_base_iri[1];
+		this.@{sv_term}_root = m_base_iri[2] || '';
+		this.@{sv_term}_scheme = m_base_iri[3] || '';
+		this.@{sv_term}_path = m_base_iri[4] || ''; 
+	@;
+@;
+
+
+@// set object value and datatype for numeric literal
+@> numeric_literal()
+	// it has exponent term, xsd:double
+	if(m_numeric_literal[4]) {
+		this.object = factory.double(m_numeric_literal[1]);
+	}
+	// contains decimal point, xsd:decimal
+	else if(m_numeric_literal[2] || m_numeric_literal[3]) {
+		this.object = factory.decimal(m_numeric_literal[1]);
+	}
+	// otherwise, it is an integer
+	else {
+		this.object = factory.integer(m_numeric_literal[1]);
+	}
+@;
+
+@// set object value and datatype for boolean literal
+@> boolean_literal()
+	// make literal
+	this.object = factory.boolean(m_boolean_literal[1]? true: false);
+@;
+
+
+@// save current state to stack
+@> push_state(state)
+	this.nested.push([this.subject, this.predicate, '@{state}']);
+@;
+
+@// restore previous state from stack
+@> pop_state()
+	let s_resume_state;
+	[this.subject, this.predicate, s_resume_state] = this.nested.pop();
+	return this[s_resume_state]();
+@;
+
+@// change state
+@> goto(s_method)
+	return this.@{s_method}();
+@;
+
+@// declare a parse state
+@> method(name, extern)
+	// parse state for @{name}
+	@- extern
+		@{name}: () => {
+	@:
+		@{name}() {
+	@;
+		// destruct chunk, length, and index
+		let {s, n, i} = this;
+
+		// start labeled loop, run while there are characters
+		@{name}: while(i < n) {  // eslint-disable-line no-unmodified-loop-condition
+@;
+
+@// end parse state method
+@> end_method(name, max_token)
+		}
+
+		// ran out of characters
+		@{resume_state(name, false, max_token)}
+	}
+@;
+
+@// set resume state & stop parsing in this stack
+@> resume_state(s_state, b_use_field_chunk=false, s_max_token=null)
+	// update index value
+	this.i = i;
+
+	// not yet eos
+	if(i < this.n) {
+		// expected token was not found
+		if(0 === i) {
+			// we've exceeded the maximum token length
+			if(this.n > this.@{s_max_token || 'max_token_length'}) {
+				return this.parse_error('@{s_state}');
+			}
+		}
+	}
+
+	// save state before pausing
+	this.state = this.@{s_state};
+
+	// consumer is pausing
+	if(this.n < 0) {
+		// go async
+		return;
+	}
+
+	// store what is unparsed
+	this.pre = @{b_use_field_chunk? 'this.' :''}s.slice(i);
+
+	// if we're not parsing a stream, then this is an error
+	if(this.eos) this.eos();
+	return;
+@;
+
+@// emit a statement event to listener using current subject/predicate/object
+@> emit_statement()
+	this.data(quad(this));
+@;
+
+@// extract name from suffix
+@> suffix(term)
+	// escape local escapes
+	let s_suffix = @{term}[2]
+		.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)
+		.replace(R_PN_LOCAL_ESCAPES, '$1');
+@;
+
+
+@// set the object value of a string literal
+@> set_string_literal(match, version)
+	// set literal value
+	h_literal.value = 
+	@- 'no-escape' === version
+		@{match}[1];
+	@:
+		this.unescape_literal_@{'long'===version? 'long': 'short'}(@{match}[1]);
+	@;
+@;
+
+@> full_stop()
+	if(this.expecting_full_stop) {
+		// change state
+		@{goto('full_stop')}
+	}
+@;
+
+@// emit statement and return control to whatever function asked for it
+@> end_of_statement()
+	// at this point, a new statement has been parsed
+	@{emit_statement()}
+
+	// goto next parsing state; bail out of stack
+	return this.after_end_of_statement;
+@;
 
 // instead of putting this in a macro to be unrolled at every IRI resolution,
 // ... spare the monstrosity from the source and make it a function
@@ -268,15 +501,13 @@ const F_DOT_SEGMENTS = (s_rel_iri) => {
 
 
 @- TTL
-	@$ STARTING_STATE = 'statement';
+	@$ S_STATE_PRIMARY = 'statement';
 @:
-	@$ STARTING_STATE = 'block';
+	@$ S_STATE_PRIMARY = 'block';
 @;
 
-class Parser extends parser_text {
+class reader {
 	constructor(g_config={}) {
-		super(g_config);
-
 		// impl-specific configs
 		let {
 			// a state to inherit
@@ -300,8 +531,8 @@ class Parser extends parser_text {
 		Object.assign(this, {
 			debug: g_config.debug || false,
 
-			// current parser state
-			state: this.@{STARTING_STATE},
+			// current reader state
+			state: this.@{S_STATE_PRIMARY},
 
 			// map of current prefix ids => iris
 			prefixes: h_prefixes,
@@ -363,38 +594,157 @@ class Parser extends parser_text {
 
 			// maximum length of a string (overrides max_token_length): defaults to 64 kibibytes
 			max_string_length: g_config.max_string_length || 65536,
-
-			@// error handling
-			@{this_defer_errors()}
-
-			// term constructors
-			blank_node: s_label => factory.blankNode(s_label),
-			anonymous_blank_node: s_label => factory.blankNode(s_label, true),
-			named_node: s_iri => factory.namedNode(s_iri),
-
-			unescape_literal_short: (s_literal) => {
-				try {
-					return unescape_literal_short(s_literal);
-				}
-				catch(e_parse) {
-					return this._error(`invalid string literal: "${s_literal}"`);
-				}
-			},
-			unescape_literal_long: (s_literal) => {
-				try {
-					return unescape_literal_long(s_literal);
-				}
-				catch(e_parse) {
-					return this._error(`invalid string literal: "${s_literal}"`);
-				}
-			},
 		});
 
-		// validate
-		if(g_config.validate) {
-			Object.assign(this, @{validators()});
-		}
 
+@// ensure there are no conflicting blank node labels
+@> no_label_conflict()
+	// not first time use of label
+	let z_label_state = this.labels[s_label];
+	if(z_label_state) {
+		// label was used previously by document and has no conflict
+		if(1 === z_label_state) {}  // eslint-disable-line no-empty
+		// label is in use by invention, this would cause a conflict
+		else if(2 === z_label_state) {
+			// so create a redirect mapping for this actual label & use it instead
+			s_label = this.labels[s_label] = this.next_label();
+		}
+		// label already has a redirect mapping
+		else {
+			// use redirected label
+			s_label = this.labels[s_label];
+		}
+	}
+	// first time use of label
+	else {
+		// store label in hash so we avoid future collisions
+		this.labels[s_label] = 1;
+	}
+@;
+
+		// term constructors
+		Object.assign(this, g_config.validate
+			? {
+				blank_node(s_label) {
+					// test valid blank node label
+					if(!RT_BLANK_NODE_VALID.test(s_label)) return this._error(`invalid blank node label: "${s_label}"`);
+
+					@// check for conflicts
+					@{no_label_conflict()}
+
+					// make term
+					return factory.blankNode(s_label);
+				},
+
+				named_node(s_iri) {
+					if(!RT_NAMED_NODE_VALID.test(s_iri)) return this._error(`invalid IRI: "${s_iri}"`);
+					return factory.namedNode(s_iri);
+				},
+
+				unescape_literal_long(s_literal) {
+					if(RT_ESCAPES_INVALID.test(s_literal)) return this._error(`invalid literal: "${s_literal}"`);
+					try {
+						return unescape_literal_long(s_literal);
+					}
+					catch(e_parse) {
+						return this._error(`invalid string literal: "${s_literal}"`);
+					}
+				},
+
+				unescape_literal_short(s_literal) {
+					if(RT_ESCAPES_INVALID.test(s_literal)) return this._error(`invalid literal: "${s_literal}"`);
+					try {
+						return unescape_literal_short(s_literal);
+					}
+					catch(e_parse) {
+						return this._error(`invalid string literal: "${s_literal}"`);
+					}
+				},
+
+				match_prefixed_name_escapeless(s, i) {
+					let [m_prefixed_name_e, im_prefixed_name_e] = match_prefixed_name_escapeless(s, i);
+					if(m_prefixed_name_e) {
+						// invalid namespace
+						if(!RT_PREFIXED_NAME_NAMESPACE_VALID.test(m_prefixed_name_e[1])) {
+							this._error(`invalid prefixed name namespace: "${m_prefixed_name_e[1]}:"`);
+							return;
+						}
+						// invalid local name
+						else if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name_e[2])) {
+							this._error(`invalid prefixed name local name: "${m_prefixed_name_e[2]}:"`);
+							return;
+						}
+					}
+
+					return [m_prefixed_name_e, im_prefixed_name_e];
+				},
+
+				match_prefixed_name(s, i) {
+					let [m_prefixed_name, im_prefixed_name] = match_prefixed_name(s, i);
+					if(m_prefixed_name) {
+						// invalid namespace
+						if(!RT_PREFIXED_NAME_NAMESPACE_VALID.test(m_prefixed_name[1])) {
+							this._error(`invalid prefixed name namespace: "${m_prefixed_name[1]}:"`);
+							return;
+						}
+						// invalid local name
+						else if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name[2])) {
+							this._error(`invalid prefixed name local name: "${m_prefixed_name[2]}:"`);
+							return;
+						}
+					}
+
+					return [m_prefixed_name, im_prefixed_name];
+				},
+			}
+			: {
+				// term constructors
+				blank_node(s_label) {
+					@// check for conflicts
+					@{no_label_conflict()}
+
+					// make term
+					return factory.blankNode(s_label);
+				},
+				anonymous_blank_node: s_label => factory.blankNode(s_label, true),
+				named_node: s_iri => factory.namedNode(s_iri),
+
+				unescape_literal_short(s_literal){
+					// try {
+						return unescape_literal_short(s_literal);
+					// }
+					// catch(e_parse) {
+					// 	return this._error(`invalid string literal: "${s_literal}"`);
+					// }
+				},
+				unescape_literal_long(s_literal) {
+					// try {
+						return unescape_literal_long(s_literal);
+					// }
+					// catch(e_parse) {
+					// 	return this._error(`invalid string literal: "${s_literal}"`);
+					// }
+				},
+
+				match_prefixed_name_escapeless,
+				match_prefixed_name,
+			});
+
+	}
+
+	// parse_error (not meant to be an event callback)
+	parse_error(s_expected, b_eof) {
+		@- T
+			let i = this.i;
+			let i_off = Math.min(i, Math.abs(i-15));
+		@:
+			let i = 0;
+			let i_off = 0;
+		@;
+		let s = this.s;
+		this._error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
+			+` ${' '.repeat(i-i_off)}^\n`
+			+`expected ${s_expected} ${b_eof? 'but encountered <<EOF>>': ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
 	}
 
 	// end of file
@@ -438,7 +788,7 @@ class Parser extends parser_text {
 		}
 
 		// invalid parsing state
-		if(this.@{STARTING_STATE} !== this.state) {
+		if(this.@{S_STATE_PRIMARY} !== this.state) {
 			// already eof'ed
 			if(this.eofed) return this.parse_error(this.state.name, true);
 
@@ -472,7 +822,7 @@ class Parser extends parser_text {
 			}
 
 			// still invalid parsing state
-			if(this.@{STARTING_STATE} !== this.state) {
+			if(this.@{S_STATE_PRIMARY} !== this.state) {
 				return this.parse_error(this.state.name, true);
 			}
 		}
@@ -508,17 +858,18 @@ class Parser extends parser_text {
 		let ds_output = this.output;
 
 		// final progress update: no additional bytes were read
-		this.output.emit('progress', 0);
+		ds_output.emit('progress', 0);
 
 		// call end event listener
-		this.output.emit('eof', this.prefixes);
+		ds_output.emit('eof', this.prefixes);
 
 		// close write stream (EOF-signaling)
-		this.output.push(null);
+		ds_output.push(null);
 	};
-}
 
-@$ H_PARSE_EVENTS_LOCAL = {
+
+
+@$ H_PARSE_EVENTS = {
 	base: {},
 	prefix: {},
 	...(QUADS
@@ -526,25 +877,25 @@ class Parser extends parser_text {
 			graph_open: {},
 			graph_close: {},
 		}: {}),
+	error: {},
+	read: {once:true},
+	progress: {},
+	eof: {once:true},
+	end: {once:true},
+	data: {},  // attach data listener last
 };
-
-Object.assign(Parser.prototype, {
 
 	// bind event listeners to output stream
 	bind(g_config) {
 		let ds_output = this.output;
 		@*{
-			for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS_LOCAL)) {
+			for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
 				yield /* syntax: js */ `
 					if(g_config.${s_event}) ds_output.${g_event.once? 'once': 'on'}('${s_event}', g_config.${s_event});
 					`.trim()+'\n';
 			}
 		}
-	},
-
-	match_prefixed_name_escapeless,
-
-	match_prefixed_name,
+	}
 
 	// a resume-only state to handle eos interupting ';'
 	post_pair() {
@@ -554,7 +905,7 @@ Object.assign(Parser.prototype, {
 			@{whitespace('this.i+1')}
 		}
 		@{goto('pairs')}
-	},
+	}
 
 	// after a blank node subject (either property-list or colleciton)
 	post_blank_subject() {
@@ -564,7 +915,7 @@ Object.assign(Parser.prototype, {
 			@{goto('statement')}
 		}
 		@{goto('pairs')}
-	},
+	}
 
 	@// regexes are faster than character[0] switching in this context
 	@{method('statement')}
@@ -594,9 +945,6 @@ Object.assign(Parser.prototype, {
 			@{else_if_match('R_BLANK_NODE_LABEL', 'm_blank_node_label_subject')}
 				// extract label
 				let s_label = m_blank_node_label_subject[1];
-
-				@// ensure there are no conflicting blank node labels
-				@{no_label_conflict()}
 
 				// make subject key
 				this.subject = this.blank_node(s_label);
@@ -637,7 +985,7 @@ Object.assign(Parser.prototype, {
 				// prefix with interupt (e.g., a comment)
 				@{else_if_match('R_PREFIX_KEYWORD', 'm_prefix_keyword')}
 					// save whether or not to expect a full stop
-					this.expect_full_stop = m_prefix_keyword[1]? true: false;
+					this.expecting_full_stop = m_prefix_keyword[1]? true: false;
 
 					// goto prefix state
 					@{goto('prefix_id')}
@@ -645,7 +993,7 @@ Object.assign(Parser.prototype, {
 				// base with interupt (e.g., a comment)
 				@{else_if_match('R_BASE_KEYWORD', 'm_base_keyword')}
 					// save whether or not to expect a full stop
-					this.expect_full_stop = m_base_keyword[1]? true: false;
+					this.expecting_full_stop = m_base_keyword[1]? true: false;
 
 					// goto base state
 					@{goto('base_iri')}
@@ -744,9 +1092,6 @@ Object.assign(Parser.prototype, {
 
 			@{else_if_match('R_GRAPH_LABELED_BLANK_NODE', 'm_graph_labeled_blank_node')}
 				let s_label = m_graph_labeled_blank_node[1];
-
-				@// ensure there are no conflicting blank node labels
-				@{no_label_conflict()}
 
 				this.graph = this.blank_node(s_label);
 
@@ -898,9 +1243,6 @@ Object.assign(Parser.prototype, {
 			// ref blank node label
 			let s_label = m_blank_node_label_object[1];
 
-			@// ensure there are no conflicting blank node labels
-			@{no_label_conflict()}
-
 			// make object
 			this.object = this.blank_node(s_label);
 
@@ -996,8 +1338,8 @@ Object.assign(Parser.prototype, {
 			// '@' language tag
 			@{else_if_match('R_LANGTAG', 'm_langtag')}
 				// set literal language type
-				this.object@{literal_language()} = m_langtag[1].toLowerCase();
-				this.object@{literal_datatype()} = KT_RDF_LANG_STRING;
+				this.object.language = m_langtag[1].toLowerCase();
+				this.object.language = KT_RDF_LANG_STRING;
 
 			// next token definitely datatype or langtag, we are just being interrupted by eos
 			@{else_retry()}
@@ -1020,14 +1362,14 @@ Object.assign(Parser.prototype, {
 			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, false, true)}
 
 			// set literal datatype
-			this.object@{literal_datatype()} = this.named_node(p_datatype);
+			this.object.datatype = this.named_node(p_datatype);
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_datatype')}
 			@{valid_prefix('m_prefixed_named_e_datatype')}
 
 			// set literal datatype
-			this.object@{literal_datatype()} = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_datatype[2]);
+			this.object.datatype = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_datatype[2]);
 
 		// iriref
 		@{else_if_match('R_IRIREF', 'm_iriref_datatype')}
@@ -1040,7 +1382,7 @@ Object.assign(Parser.prototype, {
 			@{suffix('m_prefixed_named_datatype')}
 
 			// set literal datatype
-			this.object@{literal_datatype()} = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
+			this.object.datatype = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
 
 		// not iriref, not prefixed name
 		@{else_retry()}
@@ -1087,9 +1429,9 @@ Object.assign(Parser.prototype, {
 				return this.parse_error('end_of_property_list');
 			}
 			@- TTL
-				@{goto(STARTING_STATE)}
+				@{goto(S_STATE_PRIMARY)}
 			@:
-				return (H_DEFAULT_GRAPH === this.graph)? this.@{STARTING_STATE}(): this.statement();
+				return (H_DEFAULT_GRAPH === this.graph)? this.@{S_STATE_PRIMARY}(): this.statement();
 			@;
 
 		// ']' end of property-object pairs
@@ -1125,7 +1467,7 @@ Object.assign(Parser.prototype, {
 			@{full_stop()}
 
 			// goto prefix iri state
-			@{goto(STARTING_STATE)}
+			@{goto(S_STATE_PRIMARY)}
 
 		// prefix id
 		@{else_if_match('R_IRIREF', 'm_iriref_base')}
@@ -1139,7 +1481,7 @@ Object.assign(Parser.prototype, {
 			@{full_stop()}
 
 			// goto prefix iri state
-			@{goto(STARTING_STATE)}
+			@{goto(S_STATE_PRIMARY)}
 
 		// for poorly-placed comments
 		@{else_if_match('R_COMMENT', false, true)}
@@ -1204,7 +1546,7 @@ Object.assign(Parser.prototype, {
 			@{full_stop()}
 
 			// goto statement state
-			@{goto(STARTING_STATE)}
+			@{goto(S_STATE_PRIMARY)}
 
 		// prefix iri
 		@{else_if_match('R_IRIREF', 'm_iriref_prefix')}
@@ -1236,7 +1578,7 @@ Object.assign(Parser.prototype, {
 			@{full_stop()}
 
 			// goto statement state
-			@{goto(STARTING_STATE)}
+			@{goto(S_STATE_PRIMARY)}
 
 		// for poorly-placed comments
 		@{else_if_match('R_COMMENT', false, true)}
@@ -1251,7 +1593,7 @@ Object.assign(Parser.prototype, {
 	@{method('full_stop')}
 		@{if_match('R_CHAR_STOP')}
 			// resume statement
-			@{goto(STARTING_STATE)}
+			@{goto(S_STATE_PRIMARY)}
 
 		// poorly-placed comment
 		@{else_if_match('R_COMMENT', false, true)}
@@ -1404,9 +1746,6 @@ Object.assign(Parser.prototype, {
 		@{else_if_match('R_BLANK_NODE_LABEL', 'm_blank_node_label_object', true)}
 			// ref blank node label
 			let s_label = m_blank_node_label_object[1];
-
-			@// ensure there are no conflicting blank node labels
-			@{no_label_conflict()}
 
 			// make object
 			this.object = this.blank_node(s_label);
@@ -1581,9 +1920,6 @@ Object.assign(Parser.prototype, {
 			// ref blank node label
 			let s_label = m_blank_node_label_object[1];
 
-			@// ensure there are no conflicting blank node labels
-			@{no_label_conflict()}
-
 			// make object
 			this.object = this.blank_node(s_label);
 
@@ -1630,7 +1966,12 @@ Object.assign(Parser.prototype, {
 
 	@//@object-literal
 }
-	@//@arguments
-);
 
-@{export_module()}
+module.exports = function(...a_args) {
+	let g_config = {};
+
+	@{normalize_reader_config('g_config')}
+
+	// create reader, return output stream
+	return (new reader(g_config)).output;
+};

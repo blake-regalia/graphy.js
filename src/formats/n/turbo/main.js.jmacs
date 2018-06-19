@@ -1,0 +1,149 @@
+@// import parser macros
+@import '../../common.parse.textual.jmacs'
+
+const worker = require('worker');
+const read = require('@graphy/format.nt.read');
+// const parse = require('../format.nt.parser');
+
+const R_METHOD = /^\s*([^(\s]+)\s*\(/;
+
+const turbo_read_file = async(g_config) => {
+	// lazy requires
+	const fs = require('fs');
+	const NL_CPUS = require('os').cpus().length;
+
+	// destructure config
+	let {
+		// input medium
+		input: g_input,
+
+		// how to map onto workers
+		map: f_map,
+
+		// reduce function
+		reduce: f_reduce,
+	} = g_config;
+
+	// input file path
+	let p_input = g_input.file;
+
+	// stat file
+	let {
+		ino: ni_inode,
+		size: nb_input,
+		mode: xm_mode,
+		mtimeMs: x_mtime,
+	} = fs.statSync(p_input);
+
+	// make relevant stat info struct
+	let g_stat = {
+		ino: ni_inode,
+		size: nb_input,
+		mode: xm_mode,
+		mtimeMs: x_mtime,
+	};
+
+	// divide document by ranges
+	let a_ranges = [];
+	let ib_prev = 0;
+
+	// each cpu
+	for(let i_cpu=1; i_cpu<=NL_CPUS; i_cpu++) {
+		// byte position to end this range
+		let ib_curr = Math.floor((i_cpu / NL_CPUS) * nb_input);
+
+		// add range
+		a_ranges.push([
+			ib_prev,
+			ib_curr,
+		]);
+
+		// advance byte position
+		ib_prev = ib_curr;
+	}
+
+	// check map is a function
+	if('function' !== typeof f_map) {
+		throw new Error(`turbo mode requires a 'map' function that returns a reader config object incuding inline event callback struct that includes handlers for 'data', 'error' and 'end'`);
+	}
+
+	// check reduce is a function
+	if('function' !== typeof f_reduce) {
+		throw new Error(`turbo mode requires a 'reduce' function that accepts two arguments and returns their merged result. this function may also be async`);
+	}
+
+	// worker script
+	let sf_worker = f_map.toString();
+
+	// method type of function
+	let m_method = R_METHOD.exec(sf_worker);
+	if(m_method && 'function' !== m_method[1]) {
+		sf_worker = 'function '+sf_worker;
+	}
+
+		// // check events
+		// if(!g_config.data || !g_config.error || !g_config.end) {
+		// 	let a_supplied = Object.keys(g_config).filter(s => s in ['data', 'error', 'end']);
+		// 	throw new Error(`turbo mode requires supplying the inline event callbacks 'data', 'error' and 'end'; however only the following were supplied: ${a_supplied}`);
+		// }
+
+	// worker group
+	let k_group = worker.group('./worker.js', {
+		// inspect: {
+		// 	brk: true,
+		// 	range: [9230, 9238],
+		// },
+	});
+
+	// remainder text
+	let a_remainders = a_ranges.map(s => '');
+
+	// deploy
+	let z_merged = await k_group
+		.use(a_ranges)
+		.map('read_file', [p_input, g_stat, sf_worker], {
+			remainder(i_subset, {head:s_head, tail:s_tail}) {
+				a_remainders[i_subset] = s_head + s_tail;
+			},
+		})
+		.reduce('merge');
+
+	return new Promise((fk_read) => {
+		// generate read config
+		let g_read = f_map((z_remainder) => {
+			// final result
+			let z_result = f_reduce(z_merged, z_remainder);
+
+			// resolve
+			fk_read(z_result);
+		});
+
+		// input string
+		g_read.input = {string:a_remainders.join('')};
+
+		// read remainder
+		read(g_read);
+	});
+};
+
+
+// multithreaded parsing
+const turbo = module.exports = (...a_args) => {
+	let g_config = {};
+
+	@{normalize_reader_config('g_config', {
+		string: s => /* syntax: js */ `worker.browser? {url:${s}}: {file:${s}}`,
+	})}
+
+	// input
+	let g_input = g_config.input;
+
+	// file input
+	if(g_input.file) {
+		return turbo_read_file(g_config);
+	}
+	// unnacceptable input medium
+	else {
+		throw new Error(`turbo mode only performs better when it can read source data in parallel; try using the 'file' or 'url' input option instead of '${g_input? Object.keys(g_input): 'null'}'`);
+	};
+};

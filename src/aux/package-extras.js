@@ -4,66 +4,85 @@ module.exports = {
 		description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
 	},
 	factory: {
-		name: '@graphy/factory',
 		description: 'Create instances of Terms and Triples/Quads. Implements @RDFJS DataFactory',
 	},
 	stream: {
-		name: '@graphy/stream',
 		description: 'Provides isomorphic stream interface for node.js / browser and adds `.until`, a promisified version of the `.on` event listener',
 	},
 	store: {
-		name: '@graphy/store',
 		description: 'Query an RDF graph using patterns and paths',
 	},
 	writer: {
-		name: '@graphy/writer',
 		description: 'Produce quads using nestable concise term string objects',
 	},
 	set: {
-		name: '@graphy/set',
 		description: 'Create a mathematical set of triples for comparison and operations such as union, intersection, difference, etc.',
 	},
 	viz: {
-		name: '@graphy/viz',
 		description: 'Create graphviz visualizations of triples and quads',
 	},
 	bat: {
-		name: '@graphy/bat',
 		description: 'Binary Application Triples',
 		dependencies: [
 			'bkit',
 		],
 	},
-	'nq-parser': {
-		name: '@graphy/nq-parser',
-		description: 'RDF N-Quads parser',
-	},
-	'nq-writer': {
-		name: '@graphy/nq-writer',
-		description: 'RDF N-Quads writer',
-	},
-	'nt-parser': {
-		name: '@graphy/nt-parser',
-		description: 'RDF N-Triples parser',
-	},
-	'nt-writer': {
-		name: '@graphy/nt-writer',
-		description: 'RDF N-Triples writer',
-	},
-	'trig-parser': {
-		name: '@graphy/trig-parser',
-		description: 'RDF TriG parser',
-	},
-	'trig-writer': {
-		name: '@graphy/trig-writer',
-		description: 'RDF TriG writer',
-	},
-	'ttl-parser': {
-		name: '@graphy/ttl-parser',
-		description: 'RDF Turtle parser',
-	},
-	'ttl-writer': {
-		name: '@graphy/ttl-writer',
-		description: 'RDF Turtle writer',
+	format: {
+		// common: {
+		// 	parser: {
+		// 		text: {
+		// 			description: 'Abstract parser class for text-based formats',
+		// 		},
+		// 	},
+		// },
+		nt: {
+			read: {
+				main: 'main.js',
+				description: 'RDF N-Triples parser (single-threaded)',
+			},
+			turbo: {
+				main: 'main.js',
+				description: 'Multi-threaded RDF N-Triples parser',
+				dependencies: [
+					'worker',
+				],
+			},
+			write: {
+				description: 'RDF N-Triples writer',
+			},
+		},
+		ttl: {
+			read: {
+				description: 'RDF Turtle parser (single-threaded)',
+			},
+			turbo: {
+				description: 'Multi-threaded RDF Turtle parser',
+			},
+			write: {
+				description: 'RDF Turtle writer',
+			},
+		},
+		nq: {
+			read: {
+				description: 'RDF N-Quads parser',
+			},
+			turbo: {
+				description: 'Multi-threaded RDF N-Quads parser',
+			},
+			write: {
+				description: 'RDF N-Quads writer',
+			},
+		},
+		trig: {
+			read: {
+				description: 'RDF TriG parser',
+			},
+			turbo: {
+				description: 'Multi-threaded RDF Trig parser',
+			},
+			write: {
+				description: 'RDF TriG writer',
+			},
+		},
 	},
 };

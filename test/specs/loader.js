@@ -22,8 +22,6 @@ const H_PREFIXES = {
 	foaf: 'http://xmlns.com/foaf/0.1/',
 	xsd: 'http://www.w3.org/2001/XMLSchema#',
 	mf: 'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#',
-	test: 'http://www.w3.org/2013/TurtleTests/',
-	manifest: 'http://www.w3.org/2013/TurtleTests/manifest.ttl#',
 };
 
 // accepted test types
@@ -94,7 +92,7 @@ class TestCase {
 			// fetch test action
 			request(this.action.value)
 				// pipe to deserializer
-				.pipe(graphy.deserialize(this.format, h_test_type));
+				.pipe(graphy.parse(this.format, h_test_type));
 		});
 	}
 
@@ -122,7 +120,7 @@ class TestCase {
 				})
 
 				// parse result as N-Triples
-				.pipe(graphy.nt.deserializer({
+				.pipe(graphy.format.nt.parse({
 					// each triple in result file
 					data(h_triple) {
 						// add to expected set
@@ -216,9 +214,13 @@ class TestCase {
 
 
 // run test on given manifest and pipe to given output stream
-module.exports = function test(p_manifest, pm_format, ds_output) {
+module.exports = function test({
+	manifest: p_manifest,
+	mime: pm_format,
+	output: ds_output,
+}) {
 	// create report
-	let kw_report = graphy.ttl.writer({
+	let kw_report = graphy.format.ttl.write({
 		// user-defined prefixes
 		prefixes: H_PREFIXES,
 	});
@@ -272,12 +274,12 @@ module.exports = function test(p_manifest, pm_format, ds_output) {
 	// fetch manifest file
 	request(p_manifest)
 		// deserialize
-		.pipe(graphy.ttl.parser({
+		.pipe(graphy.format.ttl.parse({
 			// base is resource url
 			base: p_manifest,
 		}))
 		// pipe into a new store
-		.pipe(graphy.bat.store({
+		.pipe(graphy.format.bat.store({
 			// user-defined prefixes
 			prefixes: H_PREFIXES,
 

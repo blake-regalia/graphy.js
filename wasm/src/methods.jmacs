@@ -1,0 +1,431 @@
+@.{
+
+const [
+	XM_CONFIG_STRICT,
+	XM_CONFIG_STREAM,
+] = [...(function *() {
+	for(let i_enum=0; i_enum<8; i_enum++) {
+		yield 1 << i_enum;
+	}
+})()];
+
+const gobble = (a_strings, ...a_interps) => {
+	let s_output = a_strings[0];
+	for(let i_part=1, nl_parts=a_strings.length; i_part<nl_parts; i_part++) {
+		s_output += a_interps[i_part-1] + a_strings[i_part];
+	}
+
+	let [, s_indent] = /^\n(\s*)/.exec(s_output);
+
+	return s_output.replace(new RegExp(`\\n${s_indent}`, 'g'), '\n');
+};
+
+const indent = (s_str, s_indent) => {
+	return s_str.replace(/\n/g, `\n${s_indent}`);
+};
+
+const {
+	XC_SERD_LITERAL=1,
+	XC_SERD_URI=2,
+	XC_SERD_BLANK=4,
+} = {};
+
+const {
+	SI_TERM='term',
+	SI_TERM_NODE='term_node',
+	SI_TERM_NODE_NAMED='term_node_named',
+} = {};
+
+const FS_SERD_NODE_VALUE = s => /* syntax: js */ gobble `
+	let at_${s} = AT_HEAP_U8.subarray(ip_${s}, ip_${s}+nb_${s});
+	let s_${s} = bkit.decode_utf_8(at_${s});`;
+
+const FS_C_STRING_VALUE = s => /* syntax: js */ gobble `
+	let at_${s} = AT_HEAP_U8.subarray(ips_${s}, AT_HEAP_U8.indexOf(0, ips_${s}));
+	let s_${s} = bkit.decode_utf_8(at_${s})`;
+
+const g_interface = {
+	types: {
+		[SI_TERM]: {
+			base: s => `SerdType xc_${s}`,
+			args: s => ({
+				 [`xc_${s}`]: `(uint8_t) (uint8_t) xc_${s}`,
+			}),
+		},
+
+		[SI_SERD_STATUS]: {
+			base: s => `SerdStatus xm_${s}`,
+			args: s => ({
+				[`xc_${s}`]: `(uint8_t) (uint8_t) xm_${s}`,
+			}),
+		},
+
+		[SI_SERD_STATEMENT_FLAGS]: {
+			base: s => `SerdStatementFlags xm_${s}`,
+			args: s => ({
+				[`xm_${s}`]: `(uint8_t) (uint8_t) xm_${s}`,
+			}),
+		},
+
+		[SI_SERD_NODE]: {
+			base: s => `const SerdNode* ig_${s}`,
+			args: s => ({
+				[`xc_${s}`]: `(uint8_t) ig_${s}->type`,
+				[`nb_${s}`]: `(size_t) ig_${s}->n_bytes`,
+				[`ip_${s}`]: `(const uint8_t*) ig_${s}->buf`,
+			}),
+		},
+
+		[SI_SERD_ERROR]: {
+			base: s => `const SerdError* ig_${s}`,
+			args: s => ({
+				[`xc_${s}`]: `(uint8_t) ig_${s}->status`,
+				[`i_line_${s}`]: `(unsigned int) ig_${s}->line`,
+				[`i_col_${s}`]: `(unsigned int) ig_${s}->col`,
+				[`ips_msg_${s}`]: [`(char*) s_${s}`, /* syntax: c */ gobble `
+					char s_${s}[128];
+					vsprintf(s_${s}, ig_${s}->fmt, *ig_${s}->args);
+				`],
+				[`ib_read_${s}`]: `(size_t) k_reader->source.read_head`,
+			}),
+		},
+	},
+
+	categories: {
+		errors: {
+			get type_label() {
+				return `fe_${this.name}`;
+			},
+			get wrapper_label() {
+				return `err_${this.name}`;
+			},
+			get body() {
+				return /* syntax: js */ gobble `
+					debugger;
+					this.emit('error', new Error(${this.message}));
+				`;
+			},
+			set body(z) {
+				Object.defineProperty(this, 'body', {
+					configurable: true,
+					enumerable: true,
+					writable: true,
+					value: z,
+				});
+			},
+			returns: 'uint8_t',
+		},
+
+		events: {
+			get type_label() {
+				return `fk_${this.name}`;
+			},
+			get wrapper_label() {
+				return `on_${this.name}`;
+			},
+			returns: 'uint8_t',
+		},
+	},
+
+	methods: {
+		errors: {
+			invalid_pname: {
+				params: {
+					token: SI_SERD_NODE,
+				},
+
+				message: 'invalid prefixed named ${s_token}',
+			},
+
+			prefix_undefined: {
+				params: {
+					token: SI_SERD_NODE,
+				},
+
+				message: 'no such prefix defined: ${s_token}',
+			},
+
+			internal_expand: {
+				params: {
+					code: SI_SERD_STATUS,
+				},
+
+				message: 'failed to expand CURIE: ${xc_code}',
+			},
+
+			internal_non_node: {
+				params: {
+					type: SI_SERD_TYPE,
+				},
+
+				dest: 'debugger;',
+			},
+
+			parse: {
+				params: {
+					error: SI_SERD_ERROR,
+				},
+
+				dest: /* syntax: js */ `
+					${FS_C_STRING_VALUE('msg_error')}
+					debugger;
+					at_data;
+					y_module;
+					this.emit('error', new Error(\`parse error @\${i_line_error}:\${i_col_error}: \${s_msg_error}\`));
+				`,
+			},
+		},
+
+		events: {
+			base: {
+				params: {
+					base_uri: SI_SERD_NODE,
+				},
+
+				src: /* syntax: c */ gobble `
+					serd_env_set_base_uri(ig_info->env, ig_base_uri);
+				`,
+
+				dest: /* syntax: js */ gobble `
+					${FS_SERD_NODE_VALUE('base_uri')}
+					this.emit('base', s_base_uri);
+				`,
+			},
+
+			prefix: {
+				params: {
+					prefix_id: SI_SERD_NODE,
+					prefix_uri: SI_SERD_NODE
+				},
+
+				src: /* syntax: c */ gobble `
+					serd_env_set_prefix(ig_info->env, ig_prefix_id, ig_prefix_uri);
+				`,
+
+				dest: /* syntax: js */ gobble `
+					${FS_SERD_NODE_VALUE('prefix_id')}
+					${FS_SERD_NODE_VALUE('prefix_uri')}
+					this.emit('prefix', s_prefix_id, s_prefix_uri);
+				`,
+			},
+
+			statement: {
+				params: {
+					flags: SI_SERD_STATEMENT_FLAGS,
+					graph: SI_TERM_NODE,
+					subject: SI_TERM_NODE,
+					predicate: SI_TERM_NODE_NAMED,
+					object_term: SI_TERM,
+					object_datatype: SI_TERM_NODE_NAMED,
+					object_language: SI_STRING,
+				},
+
+				src: /* syntax: c */ gobble `
+					ig_graph = expand(ig_info, ig_graph);
+					ig_subject = expand(ig_info, ig_subject);
+					ig_predicate = expand(ig_info, ig_predicate);
+
+					// object term is a literal
+					if(SERD_LITERAL == ig_object_term->type) {
+						// datatyped; expand IRI
+						if(SERD_NOTHING != ig_object_datatype->type) {
+							ig_object_datatype = expand(ig_info, ig_object_datatype);
+						}
+					}
+					// object term is not a literal
+					else {
+						ig_object_term = expand(ig_info, ig_object_term);
+					}
+				`,
+
+				dest: /* syntax: js */ gobble `
+					let k_graph = factory.defaultGraph();
+
+					// non-zero graph value
+					if(xc_graph) {
+						${FS_SERD_NODE_VALUE('graph')}
+
+						// named node
+						if(${XC_SERD_URI} === xc_graph) {
+							k_graph = factory.namedNode(s_graph);
+						}
+						// blank node
+						else {
+							k_graph = factory.blankNode(s_graph);
+						}
+					}
+
+					${FS_SERD_NODE_VALUE('subject')}
+					let k_subject = (${XC_SERD_URI} === xc_subject)
+						? factory.namedNode(s_subject)
+						: factory.blankNode(s_subject);
+
+					${FS_SERD_NODE_VALUE('predicate')}
+					let k_predicate = factory.namedNode(s_predicate);
+
+					${FS_SERD_NODE_VALUE('object_term')}
+					let k_object;
+					switch(xc_object_term) {
+						case ${XC_SERD_URI}: {
+							k_object = factory.namedNode(s_object_term);
+							break;
+						}
+
+						case ${XC_SERD_BLANK}: {
+							k_object = factory.blankNode(s_object_term);
+							break;
+						}
+
+						default: {
+							if(nb_object_datatype) {
+								${FS_SERD_NODE_VALUE('object_datatype')}
+								let k_datatype = factory.namedNode(s_object_datatype);
+								k_object = factory.literal(s_object_term, k_datatype);
+							}
+							else if(nb_object_language) {
+								${FS_SERD_NODE_VALUE('object_language')}
+								k_object = factory.literal(s_object_term, s_object_language);
+							}
+							else {
+								k_object = factory.literal(s_object_term);
+							}
+						}
+					}
+
+					let k_quad = factory.quad(k_subject, k_predicate, k_object, k_graph);
+					this.push(k_quad);
+				`,
+			},
+		},
+	},
+};
+
+
+const R_BASE_SIG_LABEL = /^(.+?)\s+([^\s]+)$/;
+const R_ARG_CALL_EXPR = /^\(([^)]+)\)\s*(.+)$/;
+
+const type_info = (si_type, si_param) => {
+	// outputs
+	let a_args = [];
+	let a_body = [];
+
+	// ref type def
+	let g_type = g_interface.types[si_type];
+
+	// mk base and args
+	let s_base = g_type.base(si_param);
+	let h_args = g_type.args(si_param);
+
+	// extract sig and label
+	let [, s_type_sig, s_type_label] = R_BASE_SIG_LABEL.exec(s_base);
+
+	// extract arg sigs and call/method
+	for(let [si_arg, z_arg_long] of Object.entries(h_args)) {
+		// assume simple call expr
+		let s_arg_bundle = z_arg_long;
+
+		// simple call expr
+		if('string' !== typeof z_arg_long) {
+			// call needs supplementary statements
+			if(Array.isArray(z_arg_long)) {
+				// bundle is 1st element
+				s_arg_bundle = z_arg_long[0];
+
+				// body is 2nd element
+				a_body.push(z_arg_long[1]);
+			}
+			// invalid type
+			else {
+				throw new TypeError(`invalid arg spec type: ${z_arg_long}`);
+			}
+		}
+
+		// extract sig and expr
+		let [, s_arg_sig, s_arg_expr] = R_ARG_CALL_EXPR.exec(s_arg_bundle);
+
+		// add to output
+		a_args.push({
+			sig: s_arg_sig,
+			expr: s_arg_expr,
+			out: si_arg,
+		});
+	}
+
+	// info struct
+	return {
+		sig: s_type_sig,
+		label: s_type_label,
+		args: a_args,
+		body: a_body.join('\n'),
+	};
+};
+
+const method_info = (g_method) => {
+	let a_params = [];
+	let a_args = [];
+	let a_body = [];
+
+	// params
+	for(let [si_param, si_type] of Object.entries(g_method.params)) {
+		let g_type_info = type_info(si_type, si_param);
+
+		// build params
+		a_params.push(`${g_type_info.sig} ${g_type_info.label}`);
+
+		// build body
+		a_body.push(g_type_info.body);
+
+		// accumulate args
+		a_args.push(...g_type_info.args);
+	}
+
+	return Object.assign(g_method, {
+ 		typedef: /* syntax: c */ `typedef ${g_method.returns} (*${g_method.type_label})`
+ 			+`(${a_args.map(g => g.sig).join(', ')});`,
+
+ 		params: a_params,
+
+ 		body: a_body.filter(s => !!s.trim()).join('\n'),
+
+ 		exprs: a_args.map(g => g.expr),
+
+ 		args: a_args.map(g => g.out).join(', '),
+
+ 		// js_params: a_args.
+
+ 		wasm_types: a_args.map(g => 'i').join(''),
+	});
+};
+
+
+const H_CATEGORIES = {};
+
+// each method category
+for(let [si_category, h_methods] of Object.entries(g_interface.methods)) {
+	// output methods for this category
+	let h_category_methods = {};
+
+	// each method in category def
+	for(let [si_method, g_method] of Object.entries(h_methods)) {
+		let g_incarnate = Object.create(g_interface.categories[si_category]);
+
+		// create method info and save it to hash
+		h_category_methods[si_method] = method_info(Object.assign(g_incarnate, {
+			name: si_method,
+		}, g_method));
+	}
+
+	// save methods to category hash
+	H_CATEGORIES[si_category] = h_category_methods;
+}
+
+}
+
+
+@$ a_callbacks = [...(function *() {
+	for(let [si_category, h_methods] of Object.entries(H_CATEGORIES)) {
+		for(let [si_method, g_method] of Object.entries(h_methods)) {
+			yield [g_method, si_method, si_category];
+		}
+	}
+})()];
