@@ -5,7 +5,7 @@
     "name": "Blake Regalia",
     "email": "blake.regalia@gmail.com"
   },
-  "main": "index.js",
+  "main": "main.js",
   "keywords": [
     "rdf",
     "rdfjs",

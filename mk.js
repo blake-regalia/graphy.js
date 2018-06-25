@@ -41,7 +41,7 @@ const H_FORMAT_MODES = {
 
 
 const A_FILES_STORE = [
-	'index',
+	'main',
 	'pattern',
 	'selection',
 	// 'match',
@@ -135,7 +135,7 @@ module.exports = {
 			'bat',
 			'builder',
 			'creator',
-			'index',
+			'main',
 			// 'main',
 			'serializer',
 			{
@@ -300,11 +300,17 @@ module.exports = {
 			`).join('')}
 
 			# remove package lock
-			rm package-lock.json
+			rm -f package-lock.json
 
 			# then link self
 			npm link
 		`,
+
+		stderr: {
+			warn: [
+				/^npm notice/,
+			],
+		},
 	},
 
 	'link-sub/:package': {
@@ -337,7 +343,7 @@ module.exports = {
 		'viz',
 		'writer',
 	].reduce((a, s_package) => a.push(...[
-		'index.js',
+		'main.js',
 		'package.json',
 	].map(s_file => `${pd_packages}/${s_package}/${s_file}`)) && a, []),
 
@@ -395,7 +401,7 @@ module.exports = {
 	}), {}),
 
 	// mains
-	[`${pd_packages}/:package/index.js`]: {
+	[`${pd_packages}/:package/main.js`]: {
 		case: true,
 		deps: [
 			`src/main/$package.js.jmacs`,

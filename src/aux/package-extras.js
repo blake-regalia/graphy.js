@@ -37,11 +37,9 @@ module.exports = {
 		// },
 		nt: {
 			read: {
-				main: 'main.js',
 				description: 'RDF N-Triples parser (single-threaded)',
 			},
 			turbo: {
-				main: 'main.js',
 				description: 'Multi-threaded RDF N-Triples parser',
 				dependencies: [
 					'worker',
