@@ -184,7 +184,8 @@ worker.dedicated({
 		// return c_triples;
 	},
 
-	merge(c_triples_a, c_triples_b) {
-		return c_triples_a + c_triples_b;
+	merge(z_a, z_b, sf_reduce) {
+		let f_reduce = eval(`(${sf_reduce})`);
+		return f_reduce(z_a, z_b);
 	},
 });

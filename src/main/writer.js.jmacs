@@ -232,6 +232,19 @@ class CTWriter extends stream.Readable {
 	end() {
 		this.serializer.close();
 	}
+	
+	add_prefixes(h_prefixes, b_overwrite=false) {
+		// each user-defined prefix
+		for(let s_prefix_id in h_prefixes) {
+			// mapping exists and cannot overwrite
+			if(!b_overwrite && (s_prefix_id in this.prefixes)) {
+				throw new Error(`prefix already defined: '${s_prefix_id}'. to accept overwriting, pass a 'true' boolean argument the overwrite parameter`);
+			}
+
+			// set prefix
+			this.prefixes[s_prefix_id] = h_prefixes[s_prefix_id];
+		}
+	}
 
 	@{writer_directive()}
 }

@@ -6,6 +6,14 @@ const factory = require('@graphy/factory');
 
 const $_KEYS = Symbol('key-count');
 const $_QUADS = Symbol('quad-count');
+const $_WEAK = Symbol('has-weak-keys');
+
+const XM_WEAK_HERE = 1;
+const XM_WEAK_BELOW = 2;
+
+// use JSON-friendly keys
+// const $_KEYS = '{KEYS}';
+// const $_QUADS = '{QUADS}';
 
 class Issuer {
 	constructor(s_prefix='_:c14n') {
@@ -383,7 +391,53 @@ class Canonicalizer_ct {
 	}
 }
 
+const harden_triples = (h_triples) => {
+	// check each triple
+	for(let s_subject in h_triples) {
+		// prep ref for its pairs
+		let h_pairs = h_triples[s_subject];
+
+		// subject is own property
+		if(h_triples.hasOwnProperty(s_subject)) {
+			h_pairs = h_triples[s_subject];
+		}
+		// proto property
+		else {
+			// make own property
+			h_pairs = h_triples[s_subject] = h_triples[s_subject];
+		}
+
+		// has weak keys or weak children; harden
+		if(h_pairs[$_WEAK]) {
+			harden_pairs(harden_pairs);
+		}
+	}
+};
+
+const harden_pairs = (h_pairs) => {
+	// check each pair
+	for(let s_predicate in h_pairs) {
+		// proto property; harden (copy)
+		if(!h_pairs.hasOwnProperty(s_predicate)) {
+			h_pairs[s_predicate] = h_pairs[s_predicate];
+		}
+	}
+};
+
 class QuadSet extends stream.Writable {
+	static from(h_quad_tree, g_config={}) {
+		// JSON import
+		if(h_quad_tree['{KEYS}']) {
+			h_quad_tree[$_KEYS] = h_quad_tree['{KEYS}'];
+			h_quad_tree[$_QUADS] = h_quad_tree['{QUADS}'];
+			delete h_quad_tree['{KEYS}'];
+			delete h_quad_tree['{QUADS}'];
+		}
+
+		// 
+		return new QuadSet(h_quad_tree, g_config);
+	}
+
 	constructor(h_quad_tree=null, g_config={}) {
 		super({
 			// expect quads as input
@@ -403,6 +457,48 @@ class QuadSet extends stream.Writable {
 			leaf_blanks: {},
 			debug: g_config.debug || false,
 		});
+	}
+
+	export() {
+		let h_quads = this.quad_tree;
+
+		// weak
+		if(h_quads[$_WEAK]) {
+			debugger;
+			this.harden();
+		}
+
+		h_quads['{KEYS}'] = h_quads[$_KEYS];
+		h_quads['{QUADS}'] = h_quads[$_QUADS];
+		delete h_quads[$_KEYS];
+		delete h_quads[$_QUADS];
+		return h_quads;
+	}
+
+	harden() {
+		// ref quads
+		let h_quads = this.quad_tree;
+
+		// check each quad
+		for(let s_graph in h_quads) {
+			// prep ref for its triples
+			let h_triples;
+
+			// graph is own property
+			if(h_quads.hasOwnProperty(s_graph)) {
+				h_triples = h_quads[s_graph];
+			}
+			// proto property
+			else {
+				// make own property
+				h_triples = h_quads[s_graph] = h_quads[s_graph];
+			}
+
+			// has weak keys or weak children; harden
+			if(h_triples[$_WEAK]) {
+				harden_triples(h_triples);
+			}
+		}
 	}
 
 	* quads() {
@@ -629,6 +725,9 @@ class QuadSet extends stream.Writable {
 		// prep quads union
 		let h_quads_u = Object.create(h_quads_a);
 
+		// weak keys
+		h_quads_u[$_WEAK] = 1;
+
 		// each graph in a
 		for(let p_graph in h_quads_a) {
 			// graph is also in b
@@ -645,6 +744,9 @@ class QuadSet extends stream.Writable {
 				// prep triples union and save it to quads union
 				let h_triples_u = h_quads_u[p_graph] = Object.create(h_triples_a);
 
+				// weak keys
+				h_triples_u[$_WEAK] = 1;
+
 				// each subject in a
 				for(let p_subject in h_triples_a) {
 					// subject is also in b
@@ -660,6 +762,9 @@ class QuadSet extends stream.Writable {
 
 						// prep pairs union and save it to triples union
 						let h_pairs_u = h_triples_u[p_subject] = Object.create(h_pairs_a);
+
+						// weak keys
+						h_pairs_u[$_WEAK] = 1;
 
 						// each predicate in a
 						for(let p_predicate in h_pairs_a) {
@@ -995,6 +1100,10 @@ class QuadSet extends stream.Writable {
 			.union(k_other.minus_subset(k_i));
 	}
 
+	distinct_subjects() {
+		return this.quad_tree[$_KEYS];
+	}
+
 	// count how many quads match the given selector
 	count(a_terms=[]) {
 		// no terms; return quad count
@@ -1011,7 +1120,7 @@ class QuadSet extends stream.Writable {
 				if('concise' in z) return z.concise();
 
 				// foreign term; make graphy
-				return factory.term(z).concsie();
+				return factory.term(z).concise();
 			}
 
 			// null

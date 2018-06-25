@@ -72,13 +72,22 @@ const turbo_read_file = async(g_config) => {
 		throw new Error(`turbo mode requires a 'reduce' function that accepts two arguments and returns their merged result. this function may also be async`);
 	}
 
-	// worker script
-	let sf_worker = f_map.toString();
+	// worker map script
+	let sf_map = f_map.toString();
 
 	// method type of function
-	let m_method = R_METHOD.exec(sf_worker);
-	if(m_method && 'function' !== m_method[1]) {
-		sf_worker = 'function '+sf_worker;
+	let m_method_map = R_METHOD.exec(sf_map);
+	if(m_method_map && 'function' !== m_method_map[1]) {
+		sf_map = 'function '+sf_map;
+	}
+
+	// worker reduce script
+	let sf_reduce = f_reduce.toString();
+
+	// method type of function
+	let m_method_reduce = R_METHOD.exec(sf_reduce);
+	if(m_method_reduce && 'function' !== m_method_reduce[1]) {
+		sf_reduce = 'function '+sf_reduce;
 	}
 
 		// // check events
@@ -89,10 +98,10 @@ const turbo_read_file = async(g_config) => {
 
 	// worker group
 	let k_group = worker.group('./worker.js', {
-		// inspect: {
-		// 	brk: true,
-		// 	range: [9230, 9238],
-		// },
+		inspect: {
+			brk: true,
+			range: [9230, 9238],
+		},
 	});
 
 	// remainder text
@@ -101,12 +110,15 @@ const turbo_read_file = async(g_config) => {
 	// deploy
 	let z_merged = await k_group
 		.use(a_ranges)
-		.map('read_file', [p_input, g_stat, sf_worker], {
+		.map('read_file', [p_input, g_stat, sf_map], {
 			remainder(i_subset, {head:s_head, tail:s_tail}) {
 				a_remainders[i_subset] = s_head + s_tail;
 			},
 		})
-		.reduce('merge');
+		.reduce('merge', [sf_reduce]);
+debugger;
+	// done with workers
+	k_group.kill();
 
 	return new Promise((fk_read) => {
 		// generate read config
