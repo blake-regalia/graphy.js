@@ -1,44 +1,44 @@
 /* globals
-HP_ROLE_HOP
-HP_ROLE_NODE
-HP_ROLE_SUBJECT
-HP_ROLE_PREDICATE
-HP_ROLE_INVERSE_PREDICATE
-HP_ROLE_OBJECT
-HP_ROLE_LITERAL
+$_ROLE_HOP
+$_ROLE_NODE
+$_ROLE_SUBJECT
+$_ROLE_PREDICATE
+$_ROLE_INVERSE_PREDICATE
+$_ROLE_OBJECT
+$_ROLE_LITERAL
 
-HP_USE_SPO
-HP_USE_POS
-HP_USE_OSP
+$_USE_SPO
+$_USE_POS
+$_USE_OSP
 */
 
-Object.assign(global, require('../../store/symbols.js'));
+Object.assign(global, require('../../query/symbols.js'));
 
 
 const H_ROLE_TO_PRODUCTION = {
-	[HP_ROLE_HOP]: 'produce_hop',
-	[HP_ROLE_NODE]: 'produce_node',
-	[HP_ROLE_SUBJECT]: 'produce_subject',
-	[HP_ROLE_PREDICATE]: 'produce_predicate',
-	[HP_ROLE_INVERSE_PREDICATE]: 'produce_predicate',
-	[HP_ROLE_OBJECT]: 'produce_object',
-	[HP_ROLE_LITERAL]: 'produce_literal',
+	[$_ROLE_HOP]: 'produce_hop',
+	[$_ROLE_NODE]: 'produce_node',
+	[$_ROLE_SUBJECT]: 'produce_subject',
+	[$_ROLE_PREDICATE]: 'produce_predicate',
+	[$_ROLE_INVERSE_PREDICATE]: 'produce_predicate',
+	[$_ROLE_OBJECT]: 'produce_object',
+	[$_ROLE_LITERAL]: 'produce_literal',
 };
 
 const H_ROLE_TO_FINDER = {
-	[HP_ROLE_HOP]: 'find_hop',
-	[HP_ROLE_NODE]: 'find_node',
-	[HP_ROLE_SUBJECT]: 'find_subject',
-	[HP_ROLE_PREDICATE]: 'find_predicate',
-	[HP_ROLE_INVERSE_PREDICATE]: 'find_predicate',
-	[HP_ROLE_OBJECT]: 'find_object',
-	[HP_ROLE_LITERAL]: 'find_literal',
+	[$_ROLE_HOP]: 'find_hop',
+	[$_ROLE_NODE]: 'find_node',
+	[$_ROLE_SUBJECT]: 'find_subject',
+	[$_ROLE_PREDICATE]: 'find_predicate',
+	[$_ROLE_INVERSE_PREDICATE]: 'find_predicate',
+	[$_ROLE_OBJECT]: 'find_object',
+	[$_ROLE_LITERAL]: 'find_literal',
 };
 
 const H_USE_TO_CODE = {
-	[HP_USE_SPO]: 'spo',
-	[HP_USE_POS]: 'pos',
-	[HP_USE_OSP]: 'osp',
+	[$_USE_SPO]: 'spo',
+	[$_USE_POS]: 'pos',
+	[$_USE_OSP]: 'osp',
 };
 
 

@@ -3,6 +3,12 @@ module.exports = {
 		name: 'graphy',
 		description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
 	},
+	api: {
+
+		store: {
+			description: 'Query an RDF graph using patterns and paths',
+		},
+	},
 	factory: {
 		description: 'Create instances of Terms and Triples/Quads. Implements @RDFJS DataFactory',
 	},
@@ -10,7 +16,11 @@ module.exports = {
 		description: 'Provides isomorphic stream interface for node.js / browser and adds `.until`, a promisified version of the `.on` event listener',
 	},
 	store: {
-		description: 'Query an RDF graph using patterns and paths',
+		memory: {
+			create: {
+				description: 'Create a binary data structure to query RDF in memory',
+			},
+		},
 	},
 	writer: {
 		description: 'Produce quads using nestable concise term string objects',
@@ -27,7 +37,7 @@ module.exports = {
 			'bkit',
 		],
 	},
-	format: {
+	content: {
 		// common: {
 		// 	parser: {
 		// 		text: {

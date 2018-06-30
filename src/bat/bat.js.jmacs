@@ -260,7 +260,7 @@ class decoders {
 		let n_payload_bytes = kbd.vuint();
 
 		// payload
-		let at_payload = kbd.sub(n_payload_bytes);
+		let at_payload = kbd.grab(n_payload_bytes);
 
 		// find decoder by URI
 		let h_decoders = this.decoders;

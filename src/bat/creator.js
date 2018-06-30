@@ -648,7 +648,6 @@ class creator {
 		
 		return this;
 	}
-
 }
 
 

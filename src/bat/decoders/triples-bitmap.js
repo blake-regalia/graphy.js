@@ -12,7 +12,7 @@ class triples_bitmap {
 		let n_triples = kbd.vuint();
 
 		// pairs adjacency list
-		let at_adj_a_b = kbd.sub(n_pairs);
+		let at_adj_a_b = kbd.grab(n_pairs);
 
 		// pairs bitsequence
 		let at_bs_a_b = kbd.sub(Math.ceil(n_pairs / 8));

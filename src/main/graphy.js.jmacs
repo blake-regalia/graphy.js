@@ -1,6 +1,6 @@
 
 @.{
-	let h_formats = {
+	let h_content_types = {
 		ttl: {},
 		trig: {},
 		nt: {},
@@ -8,33 +8,33 @@
 	};
 }
 
-@> format(s_format)
-	// @{s_format} package
-	const @{s_format} = {
-		// parse @{s_format} output
-		get parse() {
+@> content(s_content)
+	// @{s_content} package
+	const @{s_content} = {
+		// read @{s_content} output
+		get read() {
 			// memoize
-			delete @{s_format}.parse;
-			return @{s_format}.parse = require('@graphy/format.@{s_format}.parse');
+			delete @{s_content}.read;
+			return @{s_content}.read = require('@graphy/content.@{s_content}.read');  // eslint-disable-line global-require
 		},
 
-		// turbo @{s_format} output
+		// turbo @{s_content} output
 		get turbo() {
 			// memoize
-			delete @{s_format}.turbo;
-			return @{s_format}.turbo = require('@graphy/format.@{s_format}.turbo');
+			delete @{s_content}.turbo;
+			return @{s_content}.turbo = require('@graphy/content.@{s_content}.turbo');  // eslint-disable-line global-require
 		},
 
-		// write @{s_format} input
+		// write @{s_content} input
 		get write() {
 			// memoize
-			delete @{s_format}.write;
-			return @{s_format}.write = require('@graphy/format.@{s_format}.write');
+			delete @{s_content}.write;
+			return @{s_content}.write = require('@graphy/content.@{s_content}.write');  // eslint-disable-line global-require
 		},
 
-		// // parse @{s_format} input
+		// // parse @{s_content} input
 		// parse(...a_args) {
-		// 	return @{s_format}.parser(...a_args);
+		// 	return @{s_content}.parser(...a_args);
 		// 	// if(1 === a_args.length) {
 		// 	// 	a_args[0].validate = true;
 		// 	// }
@@ -46,14 +46,14 @@
 		// 	// 		}),
 		// 	// 	];
 		// 	// }
-		// 	// return @{s_format}.deserializer(...a_args);
+		// 	// return @{s_content}.deserializer(...a_args);
 		// },
 	};
 @;
 
 @*{
-	for(let s_format in h_formats) {
-		yield format(s_format);
+	for(let s_content in h_content_types) {
+		yield content(s_content);
 	}
 }
 
@@ -115,7 +115,7 @@ const H_SPARQL_RESULT_TYPES = {
 		bat: {},
 		set: {},
 		viz: {},
-		store: {},
+		// store: {},
 	};
 }
 
@@ -125,10 +125,10 @@ const graphy = module.exports = Object.assign({
 	* API:
 	**/
 
-	format: {
+	content: {
 		@*{
-			for(let s_format in h_formats) {
-				yield /* syntax: js */ `${s_format},\n`;
+			for(let s_content in h_content_types) {
+				yield /* syntax: js */ `${s_content},\n`;
 			}
 		}
 	},
@@ -137,7 +137,7 @@ const graphy = module.exports = Object.assign({
 	get load() {
 		// memoize
 		delete graphy.load;
-		return (graphy.load = require('./rdf-loader.js'));
+		return (graphy.load = require('./rdf-loader.js'));  // eslint-disable-line global-require
 	},
 
 	// // 
@@ -149,12 +149,12 @@ const graphy = module.exports = Object.assign({
 	// bat: require('../bat/main.js'),
 
 	/**
-	* formats:
+	* content types:
 	**/
 
 	@*{
-		for(let s_format in h_formats) {
-			yield `${s_format},\n`;
+		for(let s_content in h_content_types) {
+			yield `${s_content},\n`;
 		}
 	}
 	// sparql_results,
@@ -167,21 +167,30 @@ const graphy = module.exports = Object.assign({
 	write(pm_format, ...a_args) {
 		let k_format = H_MIMES[pm_format];
 		if(!k_format) return null;
-		let dc_writer = k_format.writer;
+		let k_writer = k_format.write;
 		if(a_args.length) {
-			return dc_writer(...a_args);
+			return k_writer(...a_args);
 		}
-		return dc_writer;
+		return k_writer;
 	},
 
-	parse(pm_format, ...a_args) {
+	read(pm_format, ...a_args) {
 		let k_format = H_MIMES[pm_format];
 		if(!k_format) return null;
-		let dc_parser = k_format.parser;
+		let k_reader = k_format.read;
 		if(a_args.length) {
-			return dc_parser(...a_args);
+			return k_reader(...a_args);
 		}
-		return dc_parser;
+		return k_reader;
+	},
+
+	store: {
+		memory: {
+			get create() {
+				delete graphy.store.memory.create;
+				return (graphy.store.memory.create = require('@graphy/content.bat.create'));
+			},
+		},
 	},
 
 	@*{

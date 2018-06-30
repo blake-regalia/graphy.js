@@ -60,10 +60,12 @@ class serializer {
 			literals_datatyped_prefixed: [],
 
 			workers: worker.group('./workers/encoder.js', null, {
-				// inspect: {
-				// 	range: [9230, 9242],
-				// 	brk: true,
-				// },
+				inspect: process.execArgv.includes('--inspect-brk')
+					? {
+						range: [9230, 9242],
+						brk: true,
+					}
+					: false,
 			}),
 
 			front_coder_config: H_CONFIG_DEFAULT_FRONT_CODER,
@@ -86,7 +88,14 @@ class serializer {
 
 		this.close_output();
 
-		return Buffer.concat(this.output);
+		let a_buffers = [];
+		let cb_buffers = 0;
+		for(let at_buffer of this.output) {
+			let nb_buffer = at_buffer.byteLength;
+			a_buffers.push(Buffer.from(at_buffer.buffer, at_buffer.byteOffset, nb_buffer));
+			cb_buffers += nb_buffer;
+		}
+		return Buffer.concat(a_buffers, cb_buffers);
 	}
 
 	front_coder() {
@@ -850,7 +859,7 @@ class serializer {
 			uti_map: at_utis,
 			utis: h_utis,
 		} = this;
-
+debugger;
 
 		let i_term_adj_sp_o = 0;
 		let i_write_adj_sp_o = 0;

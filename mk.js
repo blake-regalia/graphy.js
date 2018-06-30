@@ -53,17 +53,17 @@ let s_self_dir = '$(dirname $@)';
 let pd_build = 'build';
 let pd_packages = `${pd_build}/packages`;
 
-let a_format_build_targets = [];
-for(let s_format of Object.keys(H_FORMATS_GENERALIZED)) {
+let a_content_build_targets = [];
+for(let s_content of Object.keys(H_FORMATS_GENERALIZED)) {
 	for(let [s_mode, a_files] of Object.entries(H_FORMAT_MODES)) {
 		for(let s_file of a_files) {
-			a_format_build_targets.push(`${pd_packages}/format.${s_format}.${s_mode}/${s_file}`);
+			a_content_build_targets.push(`${pd_packages}/content.${s_content}.${s_mode}/${s_file}`);
 		}
 	}
-	// a_format_build_targets.push(
+	// a_content_build_targets.push(
 	// 	...Object.entries(A_FORMAT_MODES)
 	// 		.reduce((a, [s_mode, a_paths]) => a.push(
-	// 			...a_paths.map(s_file => `${pd_packages}/format.${s_format}.${s_mode}/${s_file}`))
+	// 			...a_paths.map(s_file => `${pd_packages}/content.${s_content}.${s_mode}/${s_file}`))
 	// 				&& a, []));
 }
 
@@ -80,21 +80,22 @@ const eslint = () => /* syntax: bash */ `
 const H_LINKS = {
 	factory: [],
 	stream: [],
-	// store: [],
+	// query: [],
 	set: ['factory', 'stream'],
-	// bat: ['factory', 'store'],
-	viz: [],
+	bat: ['factory'],
+	// viz: [],
 	writer: ['factory', 'stream'],
-	'format.nt.read': ['factory', 'stream'],
-	'format.nt.turbo': ['format.nt.read', 'stream'],
-	// 'format.nq.read': ['factory', 'stream'],
-	'format.ttl.read': ['factory', 'stream'],
-	'format.ttl.write': ['factory', 'writer', 'stream'],
+	'content.nt.read': ['factory', 'stream'],
+	'content.nt.turbo': ['content.nt.read', 'stream'],
+	// 'content.nq.read': ['factory', 'stream'],
+	'content.ttl.read': ['factory', 'stream'],
+	'content.ttl.write': ['factory', 'writer', 'stream'],
+	'store.memory.create': ['content.bat.create'],
 };
 
 
 module.exports = {
-	'&format': /format\.(\w+)\.(\w+)/,
+	'&content': /content\.(\w+)\.(\w+)/,
 
 	'&dedicated': /(store)/,
 
@@ -102,10 +103,10 @@ module.exports = {
 
 	// all tasks
 	all: [
-		'formats',
+		'content',
 		'standalones',
-		// 'bat',
-		// 'store',
+		'bat',
+		// 'query',
 	],
 
 	// test
@@ -127,8 +128,8 @@ module.exports = {
 		`,
 	},
 
-	// all formats x modes
-	formats: a_format_build_targets,
+	// all content x modes
+	content: a_content_build_targets,
 
 	bat: [
 		...dir_struct([
@@ -136,7 +137,7 @@ module.exports = {
 			'builder',
 			'creator',
 			'main',
-			// 'main',
+			'loader',
 			'serializer',
 			{
 				decoders: [
@@ -354,27 +355,27 @@ module.exports = {
 		`,
 	},
 
-	// an RDF file format
-	[`${pd_packages}/(&format)/:file.js`]: {
+	// an RDF file content
+	[`${pd_packages}/(&content)/:file.js`]: {
 		case: true,
 		deps: [
-			h => `src/formats/${H_FORMATS_GENERALIZED[h.format[1]]}/${h.format[2]}/${h.file}.js.jmacs`,
+			h => `src/content/${H_FORMATS_GENERALIZED[h.content[1]]}/${h.content[2]}/${h.file}.js.jmacs`,
 			...[
 				'textual-parser-macros',
 				'general-parser-macros',
-			].map(s => `src/formats/${s}.jmacs`),
+			].map(s => `src/content/${s}.jmacs`),
 			s_self_dir,
 		],
 		run: /* syntax: bash */ `
-			npx jmacs -g "{FORMAT:'\${format[1]}'}" $1 > $@
+			npx jmacs -g "{FORMAT:'\${content[1]}'}" $1 > $@
 			${eslint()}
 		`,
 	},
 
-	// // format commons
-	// [`${pd_packages}/format.common.parser.text/index.js`]: {
+	// // content commons
+	// [`${pd_packages}/content.common.parser.text/index.js`]: {
 	// 	deps: [
-	// 		'src/formats/common.parser.text.js.jmacs',
+	// 		'src/content/common.parser.text.js.jmacs',
 	// 		s_self_dir,
 	// 	],
 	// 	run: /* syntax: bash */ `
@@ -383,13 +384,13 @@ module.exports = {
 	// 	`,
 	// },
 
-	// store
-	store: A_FILES_STORE.map(s => `${pd_packages}/store/${s}.js`),
+	// query
+	query: A_FILES_STORE.map(s => `${pd_packages}/query/${s}.js`),
 
 	...A_FILES_STORE.reduce((h_targets, s_file) => Object.assign(h_targets, {
-		[`${pd_packages}/store/${s_file}.js`]: {
+		[`${pd_packages}/query/${s_file}.js`]: {
 			deps: [
-				`src/store/${s_file}.js.jmacs`,
+				`src/query/${s_file}.js.jmacs`,
 				s_self_dir,
 			],
 

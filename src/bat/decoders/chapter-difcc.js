@@ -19,7 +19,7 @@ class chapter_difcc extends interfaces.chapter {
 		let at_indices = kbd.typed_array();
 
 		// contents (remainder of data)
-		let at_contents = kbd.sub();
+		let at_contents = kbd.grab();
 
 		Object.assign(this, {
 			label: s_label,
