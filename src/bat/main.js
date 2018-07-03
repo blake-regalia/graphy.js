@@ -40,7 +40,7 @@ class bat_store extends stream.Writable {
 			let a_decode;
 			while((a_decode = k_decoders.auto_what(kbd))) {
 				let [k_item, pe_item] = a_decode;
-				if(bat.PE_DATASET_PG === pe_item) {
+				if(bat.PE_DATASET_DQ === pe_item) {
 					// already loaded a dataset
 					if(k_dataset) {
 						throw new Error('multiple datasets contained ');

@@ -33,6 +33,8 @@ const F_SORT_VALUE = (h_a, h_b) => {
 	return h_a.value < h_b.value ? -1: 1;
 };
 
+const F_SORT_NUMERIC = (x_a, x_b) => x_a - x_b;
+
 const H_CONFIG_DEFAULT_FRONT_CODER = {
 	block_size_k: 4,
 };
@@ -548,7 +550,7 @@ class serializer {
 		let kbe_header = new bkit.buffer_encoder({size:64});
 
 		// dictionary encoding
-		kbe_header.ntu8_string(bat.PE_DICTIONARY_PP12OC);
+		kbe_header.ntu8_string(bat.PE_DATASET_DICTIONARY_PP12OC);
 
 		// payload byte length
 		kbe_header.vuint(cb_payload);
@@ -859,7 +861,7 @@ class serializer {
 			uti_map: at_utis,
 			utis: h_utis,
 		} = this;
-debugger;
+// debugger;
 
 		let i_term_adj_sp_o = 0;
 		let i_write_adj_sp_o = 0;
@@ -885,6 +887,8 @@ debugger;
 		}
 
 // debugger;
+
+		let h_index_op = {};
 
 		// each subject
 		for(let i_s=2; i_s<c_subjects+2; i_s++) {
@@ -920,8 +924,17 @@ debugger;
 
 				// each object
 				for(let i_o=0, n_o=a_o.length; i_o<n_o; i_o++) {
+					// term-id of object
+					let it_o = a_o[i_o];
+
 					// write to object adjacency list
-					at_adj_sp_o[i_write_adj_sp_o++] = a_o[i_o];
+					at_adj_sp_o[i_write_adj_sp_o++] = it_o;
+
+					// fetch/create list in op-index
+					let a_index_op_a = h_index_op[it_o] || (h_index_op[it_o] = []);
+
+					// push triple id to list
+					a_index_op_a.push(i_write_adj_sp_o);
 				}
 
 				// index end of object list & advance terminal index
@@ -934,45 +947,131 @@ debugger;
 			i_term_adj_s_p = i_write_adj_s_p;
 		}
 
-		// close bitsequences
-		let at_bs_s_p = kbs_s_p.close();
-		let at_bs_sp_o = kbs_sp_o.close();
+		{
+			// close bitsequences
+			let atu8_bs_s_p = kbs_s_p.close();
+			let atu8_bs_sp_o = kbs_sp_o.close();
 
-		// create section header
-		let kbe_header = new bkit.buffer_encoder({size:512});
+			// create section header
+			let kbe_header = new bkit.buffer_encoder({size:512});
 
-		// create info section
-		let kbe_info = new bkit.buffer_encoder({size:512});
+			// create info section
+			let kbe_payload = new bkit.buffer_encoder({size:512});
 
-		// index type
-		kbe_info.ntu8_string('spo');
+			// index type
+			kbe_payload.ntu8_string('spo');
 
-		// number of pairs
-		kbe_info.vuint(c_pairs);
+			// number of pairs
+			kbe_payload.vuint(c_pairs);
 
-		// number of triples
-		kbe_info.vuint(c_triples);
+			// number of triples
+			kbe_payload.vuint(c_triples);
 
-		// end of info section
-		let at_info = kbe_info.close();
+			// pairs adjacency list
+			kbe_payload.typed_array(at_adj_s_p);
 
-		// encoding scheme
-		kbe_header.ntu8_string(bat.PE_TRIPLES_BITMAP);
+			// triples adjacency list
+			kbe_payload.typed_array(at_adj_sp_o);
 
-		// payload byte count
-		kbe_header.vuint(at_info.byteLength
-			+ at_adj_s_p.length
-			+ at_bs_s_p.length
-			+ at_adj_sp_o.length
-			+ at_bs_sp_o.length);
+			// // pairs bitsequence
+			// kbe_payload.buffer.append(at_bs_s_p);
 
-		// add section to output
-		this.output.push(
-			kbe_header.close(),
-			at_info,
-			at_adj_s_p, at_bs_s_p,
-			at_adj_sp_o, at_bs_sp_o,
-		);
+			// // triples bitsequence
+			// kbe_payload.buffer.append(at_bs_sp_o);
+
+			// end of info section
+			let at_payload = kbe_payload.close();
+
+			// encoding scheme
+			kbe_header.ntu8_string(bat.PE_DATASET_QUADS_INDEX_BITMAP);
+
+			// payload byte count
+			kbe_header.vuint(at_payload.byteLength
+				+ atu8_bs_s_p.length
+				+ atu8_bs_sp_o.length);
+
+			// add section to output
+			this.output.push(
+				kbe_header.close(),
+				at_payload,
+				atu8_bs_s_p,
+				atu8_bs_sp_o,
+			);
+		}
+
+/* <OP-index> */
+		{
+			// convert op-index hash into sorted list
+			let a_op_keys = [];
+			for(let sit_o in h_index_op) {
+				a_op_keys.push(+sit_o);
+			}
+			a_op_keys.sort(F_SORT_NUMERIC);
+
+			let i_term_adj_o_p = 0;
+			let i_write_adj_o_p = 0;
+			let at_adj_o_p = bkit.new_uint_array(i_write_adj_sp_o, i_write_adj_sp_o);
+			let kbs_o_p = new bkit.bitsequence_writer(i_write_adj_sp_o);
+
+			// in order
+			for(let i_to=0, nl_op_keys=a_op_keys.length; i_to<nl_op_keys; i_to++) {
+				// list is already sorted
+				let a_op_list = h_index_op[a_op_keys[i_to]];
+
+				// copy values
+				at_adj_o_p.set(a_op_list, i_write_adj_o_p);
+
+				// update offset
+				i_write_adj_o_p += a_op_list.length;
+
+				// for(let i_o=0, nl_op=a_op_list.length; i_o<nl_op; i_o++) {
+				// 	at_adj_o_p[i_write_adj_o_p++] = a_op_list[i_o];
+				// }
+
+				// advance bitsequence
+				kbs_o_p.advance(i_write_adj_o_p-i_term_adj_o_p);
+
+				// update index
+				i_term_adj_o_p = i_write_adj_o_p;
+			}
+
+			// close OP-index bitsequence
+			let atu8_bs_o_p = kbs_o_p.close();
+
+			// create section header
+			let kbe_header = new bkit.buffer_encoder({size:512});
+
+			// create info section
+			let kbe_payload = new bkit.buffer_encoder({size:512});
+
+			// index type
+			kbe_payload.ntu8_string('op');
+
+			// number of triples
+			kbe_payload.vuint(c_triples);
+
+			// op-index adjacency list
+			kbe_payload.typed_array(at_adj_o_p);
+
+			// end of info section
+			let at_payload = kbe_payload.close();
+
+			// encoding scheme
+			kbe_header.ntu8_string(bat.PE_DATASET_QUADS_INDEX_ADJACENCY);
+
+			// payload byte count
+			kbe_header.vuint(at_payload.byteLength
+				+ atu8_bs_o_p.length);
+	debugger;
+			// add section to output
+			this.output.push(
+				kbe_header.close(),
+				at_payload,
+				atu8_bs_o_p,
+			);
+		}
+
+/* </OP-index> */
 	}
 
 	close_output() {
@@ -986,7 +1085,7 @@ debugger;
 		let kbe_header = new bkit.buffer_encoder({size:512});
 
 		// dataset encoding
-		kbe_header.ntu8_string(bat.PE_DATASET_PG);
+		kbe_header.ntu8_string(bat.PE_DATASET_DQ);
 
 		// payload byte length
 		kbe_header.vuint(cb_payload);

@@ -36,7 +36,7 @@ class chapter_difcc {
 		// close indices
 		let at_block_indices = bkit.uint_array(nl_contents).from(a_block_indices);
 
-		let nb_header_estimate = bat.PE_CHAPTER_DIFCC.length + 1 + (4 * 4);
+		let nb_header_estimate = bat.PE_DATASET_DICTIONARY_CHAPTER_DIFCC.length + 1 + (4 * 4);
 
 		// payload section
 		let kbe_payload = new bkit.buffer_encoder({size:64});
@@ -63,7 +63,7 @@ class chapter_difcc {
 		let kbe_container = new bkit.buffer_encoder({size:nb_header_estimate+at_payload.length});
 
 		// chapter encoding
-		kbe_container.ntu8_string(bat.PE_CHAPTER_DIFCC);
+		kbe_container.ntu8_string(bat.PE_DATASET_DICTIONARY_CHAPTER_DIFCC);
 
 		// payload byte count
 		kbe_container.vuint(at_payload.byteLength);

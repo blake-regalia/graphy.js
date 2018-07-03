@@ -421,10 +421,10 @@ class creator {
 
 
 	save_spo(i_s, i_p, i_o) {
-		let h_triples = this.triples_spo;
+		let h_spo = this.triples_spo;
 
-		if(i_s in h_triples) {
-			let h_pair = h_triples[i_s];
+		if(i_s in h_spo) {
+			let h_pair = h_spo[i_s];
 
 			if(i_p in h_pair) {
 				let as_list = h_pair[i_p];
@@ -443,7 +443,7 @@ class creator {
 			this.subjects_count += 1;
 			this.pairs_count += 1;
 			this.triples_count += 1;
-			h_triples[i_s] = {
+			h_spo[i_s] = {
 				[i_p]: new Set([i_o]),
 			};
 		}

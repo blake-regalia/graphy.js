@@ -146,7 +146,8 @@ module.exports = {
 					'dictionary-pp12oc',
 					'dataset',
 					'interfaces',
-					'triples-bitmap',
+					'index-bitmap',
+					'index-adjacency',
 				],
 				encoders: [
 					'chapter-difcc',
