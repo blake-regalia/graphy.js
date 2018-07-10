@@ -252,7 +252,7 @@ class CTWriter extends stream.Readable {
 		}
 
 		// push to output
-		this.write(s_prefixes+'\n');
+		this.serializer.write(s_prefixes+'\n');
 	}
 
 	@{writer_directive()}
