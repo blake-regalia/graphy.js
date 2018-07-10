@@ -234,6 +234,9 @@ class CTWriter extends stream.Readable {
 	}
 	
 	add_prefixes(h_prefixes, b_overwrite=false) {
+		// build prefixes string
+		let s_prefixes = '';
+
 		// each user-defined prefix
 		for(let s_prefix_id in h_prefixes) {
 			// mapping exists and cannot overwrite
@@ -243,7 +246,13 @@ class CTWriter extends stream.Readable {
 
 			// set prefix
 			this.prefixes[s_prefix_id] = h_prefixes[s_prefix_id];
+
+			// append to string
+			s_prefixes += `@prefix ${s_prefix_id}: <${h_prefixes[s_prefix_id]}> .\n`;
 		}
+
+		// push to output
+		this.write(s_prefixes+'\n');
 	}
 
 	@{writer_directive()}
