@@ -191,7 +191,7 @@ class async_dataset {
 }
 
 Object.assign(async_dataset.prototype, {
-	ENCODING: bat.PE_DATASET,
+	ENCODING: bat.PE_DATASET_DQ,
 });
 
 

@@ -214,9 +214,10 @@
 
 
 @// all matches failed, pause reader
-@> else_retry()
+@> else_retry(s_cleanup='')
 	// match counter: @{c_braces}
 	} else {
+		@{s_cleanup}
 		// break loop to retry on next chunk if eos
 		break;
 

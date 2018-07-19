@@ -11,8 +11,8 @@
 @import '../../common.parse.textual.jmacs'
 
 
-const stream = require('@graphy/stream');
-const factory = require('@graphy/factory').raw;
+const stream = require('@graphy/api.iso.stream');
+const factory = require('@graphy/api.data.factory').raw;
 const quad = (k) => factory.quad(k.subject, k.predicate, k.object, k.graph);
 
 
@@ -42,6 +42,65 @@ const H_ESCAPES_JSON = {
 	'\f': '\\f',
 	'"': '\\"',
 };
+
+
+@$ H_LOOKAHEADS = {
+	string: {
+		sub: 'terminal',
+		chars: ''
+			+'@'  // langtag
+			+'^'  // datatype
+			,
+	},
+	terminal: {
+		sub: 'object',
+		char: '.',
+	},
+	blank_node: {
+		sub: 'object',
+		chars: '<',
+	},
+	blank_node_graph: {
+		sub: 'blank_node',
+		chars: '}',
+	},
+	object: {
+		sub: 'comment',
+		chars: ''
+			+','  // object list
+			+';'  // predicate-object list
+			+'\\]'  // blank node property list
+			+')'  // collection
+			,
+	},
+	predicate: {
+		sub: 'tree',
+		chars: ''
+			+'['  // blank node property list
+			+'('  // collection
+			+'"\''  // string
+			,
+	},
+	tree: {
+		sub: 'comment',
+		chars: '<',  // node
+	},
+	comment: {
+		chars: '#',
+	},
+};
+
+@>> lookahead(s_key)
+	@//@regex
+	(?:\s+|(?=[@*{
+		let h_node;
+		do {
+			h_node = H_LOOKAHEADS[s_key];
+			yield h_node.chars;
+		} while(h_node.sub && (s_key=h_node.sub));
+	}]))
+@;
+
 
 @>> R_CHAR(s_delims='')
 	@//@regex
@@ -130,26 +189,27 @@ const R_PN_LOCAL_ESCAPES = /\\(.)/g;
 
 @// blank node labels have different lookahead characters
 @- TTL
-	const R_BLANK_NODE_LABEL = /_:(.(?:[^\s:<;,)\]#]*[^\s:<.;,)\]#])?)(?:\s+|(?=[<;,)\]#]))/y;
+	const R_BLANK_NODE_LABEL = /_:(.(?:[^\s:<;,)\]#]*[^\s:<.;,)\]#])?)@{lookahead('blank_node')}/y;
 @:
-	const R_BLANK_NODE_LABEL = /_:(.(?:[^\s:<;,)\]#}]*[^\s:<;,)\]#}])?)(?:\s+|(?=[<;,)\]#}]))/y;
+	const R_BLANK_NODE_LABEL = /_:(.(?:[^\s:<;,)\]#}]*[^\s:<;,)\]#}])?)@{lookahead('blank_node_graph')}/y;
 @;
 
-const R_STRING_LITERAL_QUOTE = /"((?:[^"\\]|\\.)*)"\s*/y;
-const R_STRING_LITERAL_QUOTE_ESCAPELESS = /"([^"\\]*)"\s*/y;
-const R_STRING_LITERAL_SINGLE_QUOTE = /'((?:[^'\\]|\\.)*)'\s*/y;
-const R_STRING_LITERAL_SINGLE_QUOTE_ESCAPELESS = /'([^'\\]*)'\s*/y;
+
+const R_STRING_LITERAL_QUOTE = /"((?:[^"\\]|\\.)*)"@{lookahead('string')}/y;
+const R_STRING_LITERAL_QUOTE_ESCAPELESS = /"([^"\\]*)"@{lookahead('string')}/y;
+const R_STRING_LITERAL_SINGLE_QUOTE = /'((?:[^'\\]|\\.)*)'@{lookahead('string')}/y;
+const R_STRING_LITERAL_SINGLE_QUOTE_ESCAPELESS = /'([^'\\]*)'@{lookahead('string')}/y;
 const R_STRING_LITERAL_LONG_QUOTE = /"""((?:(?:""?)?(?:[^"\\]|\\.))*)"""\s*/y;
 const R_STRING_LITERAL_LONG_SINGLE_QUOTE = /'''((?:(?:''?)?(?:[^'\\]|\\.))*)'''\s*/y;
 
-const R_NUMERIC_LITERAL = /([+-]?(?:[0-9]+(\.[0-9]+)?|(\.[0-9]+))(\.?[eE][+-]?[0-9]+)?)(?:\s+|(?=\.[^0-9]|[;,)\]]))/y;
+const R_NUMERIC_LITERAL = /([+-]?(?:[0-9]+(\.[0-9]+)?|(\.[0-9]+))(\.?[eE][+-]?[0-9]+)?)(?:\s+|(?=\.[^eE0-9]|[;,)\]]))/y;
 // const R_NUMERIC_LITERAL_EOF = /([+\-]?(?:[0-9]+([.]?[0-9]*)|([.][0-9]+))([eE][+\-]?[0-9]+)?)(?:\s*\.\s*)/y;
 const R_BOOLEAN_LITERAL = /(?:(true|TRUE)|false|FALSE)\s*/y;
-const R_A = /a(?:\s+|(?=[<[#]))/y;
+const R_A = /a@{lookahead('predicate')}/y;
 
 const R_DOUBLE_CARET = /\^\^/y;
 const R_WS = /\s*/y;
-const R_LANGTAG = /@([A-Za-z]+(?:-[A-Za-z0-9-]+)*)(?:\s+|(?=[.;,\])#]))/y;
+const R_LANGTAG = /@([A-Za-z]+(?:-[A-Za-z0-9-]+)*)@{lookahead('object')}/y;
 
 // const R_PREFIX = /@?prefix\s*([^#:]*):\s*<([^>]+)>\s*\.?\s*/iy;
 const R_PREFIX_KEYWORD = /(?:(@prefix)|[pP][rR][eE][fF][iI][xX])\s*/y;
@@ -186,7 +246,7 @@ const R_BASE_IRI = /@{R_BASE_IRI()}/;
 const R_QUERYSTRING = /(\/[^/?#]*[?#].*)$/;
 
 const R_ANONYMOUS_BLANK_NODE = /\[\]\s*/y;
-const R_CHAR_BLANK_NODE = /\[(?:\s+|(?=[<:#]))/y;
+const R_CHAR_BLANK_NODE = /\[(?:\s+|(?=[^\]]))/y;
 const R_CHAR_COLLECTION = /\(\s*/y;
 
 @- NEEDED
@@ -1605,11 +1665,11 @@ class reader {
 			@{if_match('R_STRING_LITERAL_LONG_QUOTE', 'm_string_literal_long_quote')}
 				@{set_string_literal('m_string_literal_long_quote', 'long')}
 
-			// `"` string literal quote
+			// `"` string literal quote escapeless
 			@{else_if_match('R_STRING_LITERAL_QUOTE_ESCAPELESS', 'm_string_literal_quote_escapeless')}
 				@{set_string_literal('m_string_literal_quote_escapeless', 'no-escape')}
 
-			// `"` string literal quote
+			// `"` string literal quote w/ escapes
 			@{else_if_match('R_STRING_LITERAL_QUOTE', 'm_string_literal_quote')}
 				@{set_string_literal('m_string_literal_quote', 'single-dirk')}
 
@@ -1620,11 +1680,11 @@ class reader {
 		@{else_if_match('R_STRING_LITERAL_LONG_SINGLE_QUOTE', 'm_string_literal_long_single_quote')}
 			@{set_string_literal('m_string_literal_long_single_quote', 'long')}
 
-		// `"` string literal quote
+		// `'` string literal quote escapeless
 		@{else_if_match('R_STRING_LITERAL_SINGLE_QUOTE_ESCAPELESS', 'm_string_literal_single_quote_escapeless')}
 			@{set_string_literal('m_string_literal_single_quote_escapeless', 'no-escape')}
 
-		// `'` string literal single quote
+		// `'` string literal single quote w/ escapes
 		@{else_if_match('R_STRING_LITERAL_SINGLE_QUOTE', 'm_string_literal_single_quote')}
 			@{set_string_literal('m_string_literal_single_quote', 'single-irk')}
 
@@ -1948,12 +2008,14 @@ class reader {
 		let s_pointer_label = this.next_label();
 
 		// very first collection object
+		let b_pushed = false;
 		if(null === this.subject) {
 			// set quasi subject (really for resume state)
 			this.subject = this.anonymous_blank_node(s_pointer_label);
 			@{push_state('pairs')}
 			// reset subject for later conditional branch
 			this.subject = null;
+			b_pushed = true;
 		}
 
 		// iriref
@@ -2079,8 +2141,10 @@ class reader {
 			continue;
 
 		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
-		@{else_retry()}
-
+		@{else_retry(/* syntax: js */ `
+			// ran out of characters after pushing state, pop it
+			if(b_pushed) this.nested.pop();
+		`)}
 
 		let kt_blank_node_outer;
 

@@ -63,8 +63,18 @@ class triples {
 	])}
 }
 
+class bitsequence {
+	@{implement('bitsequence', [
+		'rank',
+		'select',
+		'ranks',
+		'selects',
+	])}
+}
+
 module.exports = {
 	dictionary,
 	chapter,
 	triples,
+	bitsequence,
 };

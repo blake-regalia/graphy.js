@@ -38,6 +38,21 @@ const R_COMPRESS = /^(.*?)([^/#]*)$/;
 // 'bate:encodings'
 // 'bate:triples/'
 
+/*
+
+dataset
+	dictionary
+		chapter
+	quads
+		triples
+			bitmap
+		index
+			wavelet
+			adjacency-list
+			membership-matrix
+
+*/
+
 
 @.{
 	const P_IRI_BAT_ENCODING = 'http://bat-rdf.link/encoding/1.0/';
@@ -46,11 +61,13 @@ const R_COMPRESS = /^(.*?)([^/#]*)$/;
 		'dataset:dq',
 			'dataset.dictionary:pp12oc',
 				'dataset.dictionary.chapter:difcc',
-			'dataset.quads:bwam',  // bitmap, wavelet, adajacency list, matrix  (s, p, o, g)
-				'dataset.quads.index:bitmap',
-				'dataset.quads.index:wavelet',
-				'dataset.quads.index:adjacency',
-				'dataset.quads.index:matrix',
+			'dataset.quads:t3i',  // bitmap, wavelet, adajacency list, matrix  (s, p, o, g)
+				'dataset.quads.triples:rl',
+					'dataset.quads.triples.bitmap:ab',
+					'dataset.quads.triples.bitmap.bisequence:plain',
+				'dataset.quads.index:wavelet-tree',
+				'dataset.quads.index:adjacency-list',
+				'dataset.quads.index:membership-matrix',
 	].reduce((h, s) => Object.assign(h, {
 		['PE_'+s.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()]: `${P_IRI_BAT_ENCODING}${s}`,
 	}), {});
@@ -236,8 +253,8 @@ class decoders {
 				[PE_DATASET_DQ]: require('./decoders/dataset.js'),
 				[PE_DATASET_DICTIONARY_PP12OC]: require('./decoders/dictionary-pp12oc.js'),
 				[PE_DATASET_DICTIONARY_CHAPTER_DIFCC]: require('./decoders/chapter-difcc.js'),
-				[PE_DATASET_QUADS_INDEX_BITMAP]: require('./decoders/index-bitmap.js'),
-				[PE_DATASET_QUADS_INDEX_ADJACENCY]: require('./decoders/index-adjacency.js'),
+				[PE_DATASET_QUADS_TRIPLES_BITMAP_AB]: require('./decoders/triples-bitmap.js'),
+				[PE_DATASET_QUADS_INDEX_ADJACENCY_LIST]: require('./decoders/index-adjacency.js'),
 			};
 		}
 

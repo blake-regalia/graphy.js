@@ -6,9 +6,9 @@ const worker = require('worker').scopify(require, () => {
 }, 'undefined' !== typeof arguments && arguments);
 
 const bat = require('./bat.js');
-const creator = require('./creator.js');
 
 const encoder_chapter = require('./encoders/chapter-difcc.js');
+const encoder_bitmap = require('./encoders/bitmap-ab.js');
 
 const {
 	S_PREFIXES,
@@ -947,57 +947,65 @@ class serializer {
 			i_term_adj_s_p = i_write_adj_s_p;
 		}
 
+/* <SPO Triples> */
 		{
 			// close bitsequences
 			let atu8_bs_s_p = kbs_s_p.close();
 			let atu8_bs_sp_o = kbs_sp_o.close();
 
-			// create section header
+			// create roots
+			let ke_bitmap_roots = new encoder_bitmap({
+				key_count: c_pairs,
+				adjacency_list: at_adj_s_p,
+				bitsequence: atu8_bs_s_p,
+			});
+
+			// serialize roots
+			let atu8_bitmap_roots = ke_bitmap_roots.close();
+
+			// leafs
+			let ke_bitmap_leafs = new encoder_bitmap({
+				key_count: c_triples,
+				adjacency_list: at_adj_sp_o,
+				bitsequence: atu8_bs_sp_o,
+			});
+
+			// serialize leafs
+			let atu8_bitmap_leafs = ke_bitmap_leafs.close();
+
+
+			// estimate payload size
+			let nb_payload = atu8_bitmap_roots.byteLength + atu8_bitmap_leafs.byteLength;
+
+			// create payload
+			let kbw_payload = new bkit.buffer_writer({size:nb_payload});
+
+			// write to payload: roots
+			kbw_payload.append(atu8_bitmap_roots);
+
+			// write to payload: leafs
+			kbw_payload.append(atu8_bitmap_leafs);
+
+			// serialize payload
+			let at_payload = kbw_payload.close();
+
+
+			// create header
 			let kbe_header = new bkit.buffer_encoder({size:512});
 
-			// create info section
-			let kbe_payload = new bkit.buffer_encoder({size:512});
+			// write to header: encoding scheme
+			kbe_header.ntu8_string(bat.PE_DATASET_QUADS_TRIPLES_BITMAP);
 
-			// index type
-			kbe_payload.ntu8_string('spo');
-
-			// number of pairs
-			kbe_payload.vuint(c_pairs);
-
-			// number of triples
-			kbe_payload.vuint(c_triples);
-
-			// pairs adjacency list
-			kbe_payload.typed_array(at_adj_s_p);
-
-			// triples adjacency list
-			kbe_payload.typed_array(at_adj_sp_o);
-
-			// // pairs bitsequence
-			// kbe_payload.buffer.append(at_bs_s_p);
-
-			// // triples bitsequence
-			// kbe_payload.buffer.append(at_bs_sp_o);
-
-			// end of info section
-			let at_payload = kbe_payload.close();
-
-			// encoding scheme
-			kbe_header.ntu8_string(bat.PE_DATASET_QUADS_INDEX_BITMAP);
-
-			// payload byte count
-			kbe_header.vuint(at_payload.byteLength
-				+ atu8_bs_s_p.length
-				+ atu8_bs_sp_o.length);
+			// write to header: payload byte count
+			kbe_header.vuint(at_payload.byteLength);
 
 			// add section to output
 			this.output.push(
 				kbe_header.close(),
 				at_payload,
-				atu8_bs_s_p,
-				atu8_bs_sp_o,
 			);
 		}
+/* </SPO Triples> */
 
 /* <OP-index> */
 		{
@@ -1057,12 +1065,12 @@ class serializer {
 			let at_payload = kbe_payload.close();
 
 			// encoding scheme
-			kbe_header.ntu8_string(bat.PE_DATASET_QUADS_INDEX_ADJACENCY);
+			kbe_header.ntu8_string(bat.PE_DATASET_QUADS_INDEX_ADJACENCY_LIST);
 
 			// payload byte count
 			kbe_header.vuint(at_payload.byteLength
 				+ atu8_bs_o_p.length);
-	debugger;
+
 			// add section to output
 			this.output.push(
 				kbe_header.close(),

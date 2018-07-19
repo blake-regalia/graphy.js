@@ -11,7 +11,7 @@
 @import '../../common.parse.textual.jmacs'
 
 const stream = require('stream');
-const factory = require('@graphy/factory').raw;
+const factory = require('@graphy/api.data.factory').raw;
 
 const KT_DEFAULT_GRAPH = factory.defaultGraph();
 const KT_RDFS_LANG_STRING = factory.namedNode('@{P_IRI_RDFS}langString');

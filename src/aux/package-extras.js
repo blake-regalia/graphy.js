@@ -4,16 +4,32 @@ module.exports = {
 		description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
 	},
 	api: {
-
-		store: {
-			description: 'Query an RDF graph using patterns and paths',
+		class: {
+			writable: {
+				description: 'Produce quads using nestable concise term string objects',
+			},
 		},
-	},
-	factory: {
-		description: 'Create instances of Terms and Triples/Quads. Implements @RDFJS DataFactory',
-	},
-	stream: {
-		description: 'Provides isomorphic stream interface for node.js / browser and adds `.until`, a promisified version of the `.on` event listener',
+		data: {
+			factory: {
+				description: 'Create instances of Terms and Triples/Quads. Implements @RDFJS DataFactory',
+			},
+			set: {
+				description: 'Create a mathematical set of triples for comparison and operations such as union, intersection, difference, etc.',
+			},
+		},
+		iso: {
+			stream: {
+				description: 'Provides isomorphic stream interface for node.js / browser and adds `.until`, a promisified version of the `.on` event listener',
+			},
+		},
+		ui: {
+			viz: {
+				description: 'Create graphviz visualizations of triples and quads',
+			},
+		},
+		// store: {
+		// 	description: 'Query an RDF graph using patterns and paths',
+		// },
 	},
 	store: {
 		memory: {
@@ -21,15 +37,6 @@ module.exports = {
 				description: 'Create a binary data structure to query RDF in memory',
 			},
 		},
-	},
-	writer: {
-		description: 'Produce quads using nestable concise term string objects',
-	},
-	set: {
-		description: 'Create a mathematical set of triples for comparison and operations such as union, intersection, difference, etc.',
-	},
-	viz: {
-		description: 'Create graphviz visualizations of triples and quads',
 	},
 	bat: {
 		description: 'Binary Application Triples',
