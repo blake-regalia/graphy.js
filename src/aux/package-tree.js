@@ -28,4 +28,36 @@ module.exports = {
 			}),
 		},
 	},
+
+	content: {
+		bat: {
+			create: () => ({
+				dependencies: [
+					'bkit',
+				],
+				links: [
+					// 'content.bat.decoders',
+					'content.bat.primer',
+					'content.bat.serializer',
+				],
+				description: 'Create a compact RDF dataset according to the BAT format',
+			}),
+			decoders: () => ({
+				dependencies: [
+					'bkit',
+				],
+				description: 'Create a compact RDF dataset according to the BAT format',
+			}),
+			primer: () => ({
+				description: 'Intermediate data structures for creating a compact dataset',
+			}),
+			serializer: () => ({
+				dependencies: [
+					'bkit',
+					'worker',
+				],
+				description: 'Serialize an RDF dataset in the BAT format',
+			}),
+		},
+	},
 };

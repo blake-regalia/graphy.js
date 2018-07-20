@@ -8,6 +8,7 @@ const {
 } = require('./src/aux/content.js');
 
 const g_package_json_base = require('./src/aux/base-package.json');
+const g_package_json_super = require('./package.json');
 
 const s_semver = `^${g_package_json_base.version}`;
 
@@ -158,7 +159,10 @@ for(let [si_package, g_package] of Object.entries(h_packages)) {
 	});
 
 	// auto-default ref dependencies
-	let h_dependencies = g_json.dependencies = g_json.dependencies || g_package.dependencies || {};
+	let h_dependencies = g_json.dependencies = (g_package.dependencies || [])
+		.reduce((h_deps, si_dep) => ({
+			[si_dep]: g_package_json_super.dependencies[si_dep],
+		}), {});
 
 	// convert links to dependencies
 	for(let si_link of g_package.links) {
@@ -171,7 +175,7 @@ for(let [si_package, g_package] of Object.entries(h_packages)) {
 
 
 // recipe to make package.json file
-const package_json = h => ({
+const package_json = si_package => () => ({
 	deps: [
 		'src/aux/base-package.json',
 	],
@@ -181,7 +185,7 @@ const package_json = h => ({
 		cat $1| npx lambduh "g_base_package_json => {\
 			${/* syntax: js */`
 				// load package info
-				let g_package_json = ${JSON.stringify(h_packages[h.package].json)};
+				let g_package_json = ${JSON.stringify(h_packages[si_package].json)};
 
 				// update package.json
 				return Object.assign(g_base_package_json, g_package_json);
@@ -193,36 +197,125 @@ const package_json = h => ({
 });
 
 // create intra-library links for development & testing
-const package_node_modules = f_normalize => ({
+const package_node_modules = si_package => ({
 	'@graphy': {
-		':link': h_in => (h => ({
-			deps: [
-				...h_packages[h.link].links.map(s => `build/${s}/**`),
-			],
+		...h_packages[si_package].links.reduce((h, si_link) => Object.assign(h, {
+			[si_link]: () => ({
+				deps: [
+					`link.${si_link}`,
+					// ...h_packages[si_link].links.map(s => `build/${s}/**`),
+				],
 
-			run: /* syntax: bash */ `
-				cd build/packages/${h.package}
+				run: /* syntax: bash */ `
+					cd build/packages/${si_package}
 
-				# link to dep
-				npm link @graphy/${h.link}
-			`,
-		}))({...h_in, ...f_normalize(h_in)}),
+					# link to dep
+					npm link @graphy/${si_link}
+				`,
+			}),
+		}), {}),
 	},
+
+	// external dependencies
+	...(h_packages[si_package].dependencies || [])
+		.reduce((h_deps, si_dep) => Object.assign(h_deps, {
+			[si_dep]: () => ({
+				deps: [
+					`node_modules/${si_dep}`,
+					'package.json',
+				],
+				run: /* syntax: bash */ `
+					cd build/packages/${si_package}/node_modules
+					ln -sf "../../../../$1" ${si_dep}
+				`,
+			}),
+		}), {}),
 });
+
+
+
+// build bat output config
+let h_output_content_bat = {};
+{
+	const carry = (pd_src, h_recipe={}) => {
+		// scan directory
+		let a_files = fs.readdirSync(pd_src);
+
+		// each file
+		for(let s_file of a_files) {
+			let p_src = `${pd_src}/${s_file}`;
+
+			// *.js files
+			if(s_file.endsWith('.js')) {
+				h_recipe[s_file] = () => ({copy:p_src});
+			}
+			// *.jmacs files
+			else if(s_file.endsWith('.jmacs')) {
+				h_recipe[s_file.slice(0, -'.jmacs'.length)] = () => ({
+					deps: [p_src],
+					run: /* syntax: bash */ `
+						npx jmacs $1 > $@
+						${eslint()}
+					`,
+				});
+			}
+			// subdirectory
+			else if(fs.statSync(p_src).isDirectory()) {
+				// make subrecipe; put in this recipe
+				let h_subrecipe = h_recipe[s_file] = {};
+
+				// recurse
+				carry(p_src, h_subrecipe);
+			}
+		}
+	};
+
+
+	// package extension
+	let sx_package = '.js.jmacs';
+
+	// bat content root directory
+	let a_files = fs.readdirSync('src/content/bat');
+
+	// each file
+	for(let s_file of a_files) {
+		// package file
+		if(s_file.endsWith(sx_package)) {
+			let s_verb = s_file.slice(0, -sx_package.length);
+
+			// package id
+			let si_package = `content.bat.${s_verb}`;
+
+			// make recipe
+			let h_recipe = h_output_content_bat[si_package] = {
+				'package.json': package_json(si_package),
+
+				node_modules: package_node_modules(si_package),
+
+				'main.js': () => ({
+					deps: [
+						`src/content/bat/${s_verb}.js.jmacs`,
+					],
+
+					run: /* syntax: bash */ `
+						npx jmacs $1 > $@
+						${eslint()}
+					`,
+				}),
+			};
+
+			// it has a 'carry' dir; add to recipe
+			if(a_files.includes(s_verb)) {
+				carry(`src/content/bat/${s_verb}`, h_recipe);
+			}
+		}
+	}
+}
+
 
 // emk struct
 module.exports = {
 	defs: {
-		bat_js: files({
-			under: 'src/bat',
-			filter: s_path => s_path.endsWith('.js'),
-		}),
-
-		bat_jmacs: files({
-			under: 'src/bat',
-			filter: s_path => s_path.endsWith('.jmacs'),
-		}),
-
 		// contet sub enum
 		content_sub: a_content_subs,
 
@@ -230,25 +323,49 @@ module.exports = {
 		package: Object.keys(h_packages),
 
 		// non-content-sub packages
-		package_ncs: Object.keys(h_packages).filter(s => !a_content_subs.includes(s)),
+		package_ncs: Object.keys(h_packages).filter(s => !a_content_subs.includes(s) && !s.startsWith('content.')),
 	},
 
 	tasks: {
 		// all tasks
 		all: [
-			// 'build/**',
-			// 'link.*',
 			'link_to.*',
 		],
 
 		link: {
-			':package': h => ({
-				deps: h_packages[h.package].links
-					.map(s_dep => `build/packages/${h.package}/node_modules/@graphy/${s_dep}`),
+			':package': [si_package => ({
+				[si_package]: () => ({
+					deps: [
+						`build/packages/${si_package}/**`,
+
+						// ...h_packages[si_package].links
+						// 	.map(si_link => `link.${si_link}`),
+					],
+
+					run: /* syntax: bash */ `
+						# enter package directory
+						cd build/packages/${si_package}
+
+						# remove package lock
+						rm -f package-lock.json
+
+						# then link self
+						npm link
+					`,
+				}),
+			})],
+
+			graphy: () => ({
+				deps: [
+					`build/packages/graphy/**`,
+
+					...Object.keys(h_packages)
+						.map(s_dep => `link.${s_dep}`),
+				],
 
 				run: /* syntax: bash */ `
 					# enter package directory
-					cd build/packages/${h.package}
+					cd build/packages/graphy
 
 					# remove package lock
 					rm -f package-lock.json
@@ -259,9 +376,14 @@ module.exports = {
 			}),
 		},
 
+
 		link_to: {
 			':package': h => ({
 				deps: [`node_modules/@graphy/${h.package}`],
+			}),
+
+			graphy: () => ({
+				deps: [`node_modules/graphy`],
 			}),
 		},
 
@@ -285,52 +407,119 @@ module.exports = {
 
 		build: {
 			packages: {
-				':content_sub': {
-					'package.json': h => package_json({package:h.content_sub}),
+				// bat
+				...h_output_content_bat,
 
-					node_modules: package_node_modules(h => ({package:h.content_sub})),
+				// content subs
+				':content_sub': [si_package => ({
+					[si_package]: {
+						'package.json': package_json(si_package),
 
-					'main.js': h_in => (h => ({
+						node_modules: package_node_modules(si_package),
+
+						'main.js': (({split:a_split}) => () => ({
+							deps: [
+								`src/content/${h_packages[si_package].super}/${a_split[2]}/main.js.jmacs`,
+								...[
+									'textual-parser-macros',
+									'general-parser-macros',
+								].map(s => `src/content/${s}.jmacs`),
+							],
+
+							run: /* syntax: bash */ `
+								npx jmacs -g "{FORMAT:'${a_split[1]}'}" $1 > $@
+								${eslint()}
+							`,
+						}))({
+							split: si_package.split(/\./g),
+						}),
+					},
+				})],
+
+				// all non-content-sub packages
+				':package_ncs': [si_package => ({
+					[si_package]: ({
+						'package.json': package_json(si_package),
+
+						node_modules: package_node_modules(si_package),
+
+						'main.js': () => ({
+							deps: [`src/${si_package.replace(/\./g, '/')}.js.jmacs`],
+
+							run: /* syntax: bash */ `
+								npx jmacs $1 > $@
+								${eslint()}
+							`,
+						}),
+					}),
+				})],
+
+				// the super module
+				graphy: {
+					'package.json': () => ({
 						deps: [
-							`src/content/${h.package.super}/${h.split[2]}/main.js.jmacs`,
-							...[
-								'textual-parser-macros',
-								'general-parser-macros',
-							].map(s => `src/content/${s}.jmacs`),
+							'src/aux/base-package.json',
 						],
 
-						run: /* syntax: bash */ `
-							npx jmacs -g "{FORMAT:'${h.split[1]}'}" $1 > $@
-							${eslint()}
+						run: /* syntax: js */ `
+							cat $1 | npx lambduh "g_base_package_json => { \
+								${/* eslint-disable indent */
+									/* syntax: js */`
+									// load package info
+									let g_package_json = ${JSON.stringify({
+										name: 'graphy',
+										dependencies: {
+											...g_package_json_super.dependencies,
+											...Object.keys(h_packages).reduce((h, si_link) => Object.assign(h, {
+												[`@graphy/${si_link}`]: g_package_json_base.version,
+											}), {}),
+										},
+										description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
+									})};
+
+									// update package.json
+									return Object.assign(g_base_package_json, g_package_json);
+								`.trim().replace(/(["`])/g, '\\$1')
+								/* eslint-enable */} }" > $@
+
+							# sort its package.json
+							npx sort-package-json $@
 						`,
-					}))({
-						package: h_packages[h_in.content_sub],
-						split: h_in.content_sub.split('.'),
 					}),
-				},
 
-				':package_ncs': {
-					'package.json': h => package_json({package:h.package_ncs}),
+					node_modules: {
+						'@graphy': {
+							':package': h => ({
+								deps: [
+									`link.${h.package}`,
+								],
 
-					'main.js': h => ({
-						deps: [`src/${h.package_ncs.replace(/\./g, '/')}.js.jmacs`],
+								run: /* syntax: bash */ `
+									cd build/packages/graphy
+									npm link @graphy/${h.package}
+								`,
+							}),
+						},
+					},
+
+					'main.js': () => ({
+						deps: [`src/main/graphy.js.jmacs`],
 
 						run: /* syntax: bash */ `
 							npx jmacs $1 > $@
 							${eslint()}
 						`,
 					}),
-
-					node_modules: package_node_modules(h => ({package:h.package_ncs})),
 				},
+
 			},
 		},
 
+		// mono-repo testing
 		node_modules: {
 			'@graphy': {
 				':package': h => ({
 					deps: [
-						`build/packages/${h.package}/**`,
 						`link.${h.package}`,
 					],
 
@@ -339,6 +528,16 @@ module.exports = {
 					`,
 				}),
 			},
+
+			graphy: () => ({
+				deps: [
+					'link.graphy',
+				],
+
+				run: /* syntax: bash */ `
+					npm link graphy
+				`,
+			}),
 		},
 	},
 };

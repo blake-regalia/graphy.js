@@ -1,29 +1,29 @@
+@import './constants.jmacs'
+
 const stream = require('stream');
 
 const bkit = require('bkit');
 
-const bat = require('./bat.js');
-const creator = require('./creator.js');
-const serializer = require('./serializer.js');
+const decoders = require('@graphy/content.bat.decoders');
+const primer = require('@graphy/content.bat.primer');
+const serializer = require('@graphy/content.bat.serializer');
 
-// const store = require('@graphy/store');
-
-class bat_store extends stream.Writable {
+class creator extends stream.Writable {
 	constructor(g_config={}) {
 		super({
 			objectMode: true,
 		});
 
-		let k_creator = new creator();
+		let k_primer = new primer();
 
 		Object.assign(this, {
-			creator: k_creator,
+			primer: k_primer,
 			ready: g_config.ready,
 		});
 
 		this.on('finish', async() => {
 			debugger;
-			let k_serializer = new serializer(k_creator);
+			let k_serializer = new serializer(k_primer);
 
 			let at_serialized = await k_serializer.buffer();
 
@@ -31,7 +31,7 @@ class bat_store extends stream.Writable {
 			let kbd = new bkit.buffer_decoder(at_serialized);
 
 			// instantiate bat decoders
-			let k_decoders = new bat.decoders();
+			let k_decoders = new decoders();
 
 			// dataset contained
 			let k_dataset;
@@ -40,7 +40,7 @@ class bat_store extends stream.Writable {
 			let a_decode;
 			while((a_decode = k_decoders.auto_what(kbd))) {
 				let [k_item, pe_item] = a_decode;
-				if(bat.PE_DATASET_DQ === pe_item) {
+				if('@{H_BAT_ENCODINGS.PE_DATASET_DQ}' === pe_item) {
 					// already loaded a dataset
 					if(k_dataset) {
 						throw new Error('multiple datasets contained ');
@@ -60,23 +60,20 @@ class bat_store extends stream.Writable {
 	}
 
 	_write(g_quad, s_encoding, fk_write) {
-		this.creator.save_triple(g_quad);
+		this.primer.save_triple(g_quad);
 		fk_write();
 	}
 
 	_writev(a_quads, fk_write) {
-		let k_creator = this.creator;
+		let k_primer = this.primer;
 		for(let g_quad of a_quads) {
-			k_creator.save_triple(g_quad);
+			k_primer.save_triple(g_quad);
 		}
 
 		fk_write();
 	}
 }
 
-
-module.exports = {
-	store(...a_args) {
-		return new bat_store(...a_args);
-	},
+module.exports = function create(...a_args) {
+	return new creator(...a_args);
 };

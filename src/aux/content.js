@@ -3,12 +3,6 @@
 module.exports = {
 	// content packages
 	packages: {
-		// bat: {
-		// 	modes: [
-		// 		'create',
-		// 		'read',
-		// 	],
-		// },
 		nt: {
 			super: 'n',
 			description: 'RDF N-Triples',
@@ -33,14 +27,6 @@ module.exports = {
 
 	// content modes
 	modes: {
-		create: {
-			links: [],
-			files: [
-				'main.js',
-				'package.json',
-			],
-		},
-
 		read: {
 			description: s => `Single-threaded ${s} content reader`,
 			links: [

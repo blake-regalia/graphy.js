@@ -1,9 +1,10 @@
-const bat = require('./bat.js');
+@import './constants.jmacs'
 
+const R_COMPRESS = /@{R_COMPRESS()}/;
 
 const HP_DICTIONARY_SIZE = Symbol('size');
 
-class creator {
+class primer {
 	constructor(h_serialized=null) {
 		if(h_serialized) {
 			Object.assign(this, h_serialized);
@@ -60,7 +61,7 @@ class creator {
 		let h_prefix_groups = this.prefix_groups;
 
 		// determine best prefix
-		let m_compress = bat.R_COMPRESS.exec(p_iri);
+		let m_compress = R_COMPRESS.exec(p_iri);
 		if(m_compress) {
 			// destructure prefix fragments
 			let [, p_prefix_iri, s_suffix] = m_compress;
@@ -136,7 +137,7 @@ class creator {
 		let h_prefix_groups = this.prefix_groups;
 
 		// determine best prefix
-		let m_compress = bat.R_COMPRESS.exec(p_datatype_iri);
+		let m_compress = R_COMPRESS.exec(p_datatype_iri);
 		if(m_compress) {
 			// destructure prefix fragments
 			let [, p_prefix_iri, s_suffix] = m_compress;
@@ -307,15 +308,15 @@ class creator {
 
 		// subject is named node
 		if(g_subject.isNamedNode) {
-			i_s = this.save_named_node(g_subject.value, bat.XM_NODE_SUBJECT);
+			i_s = this.save_named_node(g_subject.value, @{XM_NODE_SUBJECT});
 		}
 		// subject is blank node
 		else {
-			i_s = this.save_blank_node(g_subject.value, bat.XM_NODE_SUBJECT);
+			i_s = this.save_blank_node(g_subject.value, @{XM_NODE_SUBJECT});
 		}
 
 		// predicate is always named node
-		let i_p = this.save_named_node(g_predicate.value, bat.XM_NODE_PREDICATE);
+		let i_p = this.save_named_node(g_predicate.value, @{XM_NODE_PREDICATE});
 
 		// prep object id
 		let i_o;
@@ -338,11 +339,11 @@ class creator {
 		}
 		// object is named node
 		else if(g_object.isNamedNode) {
-			i_o = this.save_named_node(g_object.value, bat.XM_NODE_OBJECT);
+			i_o = this.save_named_node(g_object.value, @{XM_NODE_OBJECT});
 		}
 		// object is blank node
 		else {
-			i_o = this.save_blank_node(g_object.value, bat.XM_NODE_OBJECT);
+			i_o = this.save_blank_node(g_object.value, @{XM_NODE_OBJECT});
 		}
 
 		// save triple using utis
@@ -361,15 +362,15 @@ class creator {
 
 		// subject is named node
 		if('>' === sct_subject[0]) {
-			i_s = this.save_named_node(sct_subject.slice(1), bat.XM_NODE_SUBJECT);
+			i_s = this.save_named_node(sct_subject.slice(1), @{XM_NODE_SUBJECT});
 		}
 		// subject is blank node
 		else {
-			i_s = this.save_blank_node(sct_subject.slice(1), bat.XM_NODE_SUBJECT);
+			i_s = this.save_blank_node(sct_subject.slice(1), @{XM_NODE_SUBJECT});
 		}
 
 		// predicate is always named node
-		let i_p = this.save_named_node(sct_predicate.slice(1), bat.XM_NODE_PREDICATE);
+		let i_p = this.save_named_node(sct_predicate.slice(1), @{XM_NODE_PREDICATE});
 
 		let i_o;
 
@@ -377,7 +378,7 @@ class creator {
 		switch(sct_object[0]) {
 			// object is named node
 			case '>': {
-				i_o = this.save_named_node(sct_object.slice(1), bat.XM_NODE_OBJECT);
+				i_o = this.save_named_node(sct_object.slice(1), @{XM_NODE_OBJECT});
 				break;
 			}
 
@@ -406,7 +407,7 @@ class creator {
 
 			// object is blank node
 			case '_': {
-				i_o = this.save_blank_node(sct_object.slice(1), bat.XM_NODE_OBJECT);
+				i_o = this.save_blank_node(sct_object.slice(1), @{XM_NODE_OBJECT});
 				break;
 			}
 
@@ -651,4 +652,9 @@ class creator {
 }
 
 
-module.exports = creator;
+
+module.exports = Object.assign(function create(...a_args) {
+	return new primer(...a_args);
+}, {
+	class: primer,
+});

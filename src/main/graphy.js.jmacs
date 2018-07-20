@@ -203,7 +203,7 @@ const graphy = module.exports = Object.assign({
 		return H_SPARQL_RESULT_TYPES[h_term.type](h_term);
 	},
 
-}, require('@graphy/factory'));
+}, require('@graphy/api.data.factory'));
 
 // export graphy to window object if in main thread of browser
 if('undefined' !== typeof window) window.graphy = graphy;
