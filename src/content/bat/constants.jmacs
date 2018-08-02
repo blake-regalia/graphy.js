@@ -27,7 +27,7 @@
 			'dataset.quads:t3i',  // bitmap, wavelet, adajacency list, matrix  (s, p, o, g)
 				'dataset.quads.triples:rl',
 					'dataset.quads.triples.bitmap:ab',
-					'dataset.quads.triples.bitmap.bisequence:plain',
+						'dataset.quads.triples.bitmap.bitsequence:plain',
 				'dataset.quads.index:wavelet-tree',
 				'dataset.quads.index:adjacency-list',
 				'dataset.quads.index:membership-matrix',

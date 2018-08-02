@@ -10,6 +10,8 @@ const {
 const g_package_json_base = require('./src/aux/base-package.json');
 const g_package_json_super = require('./package.json');
 
+// const h_schema_bat = require('./src/gen/bat-schema/default.js');
+
 const s_semver = `^${g_package_json_base.version}`;
 
 const dir_struct = (a_files) => {
@@ -196,6 +198,27 @@ const package_json = si_package => () => ({
 	`,
 });
 
+// recipe to make .npmrc file
+const npmrc = () => ({
+	deps: [
+		'.npmrc',
+	],
+
+	run: /* syntax: bash */ `
+		# write .npmrc file
+		echo "prefix = ../../../.npm-packages" >> $@
+	`,
+});
+
+// recipe to build jmacs file
+const jmacs = a_deps => ({
+	deps: a_deps,
+	run: /* syntax: bash */ `
+		npx jmacs $1 > $@
+		${eslint()}
+	`,
+});
+
 // create intra-library links for development & testing
 const package_node_modules = si_package => ({
 	'@graphy': {
@@ -251,13 +274,7 @@ let h_output_content_bat = {};
 			}
 			// *.jmacs files
 			else if(s_file.endsWith('.jmacs')) {
-				h_recipe[s_file.slice(0, -'.jmacs'.length)] = () => ({
-					deps: [p_src],
-					run: /* syntax: bash */ `
-						npx jmacs $1 > $@
-						${eslint()}
-					`,
-				});
+				h_recipe[s_file.slice(0, -'.jmacs'.length)] = () => jmacs([p_src]);
 			}
 			// subdirectory
 			else if(fs.statSync(p_src).isDirectory()) {
@@ -288,20 +305,13 @@ let h_output_content_bat = {};
 
 			// make recipe
 			let h_recipe = h_output_content_bat[si_package] = {
+				'.npmrc': npmrc,
+
 				'package.json': package_json(si_package),
 
 				node_modules: package_node_modules(si_package),
 
-				'main.js': () => ({
-					deps: [
-						`src/content/bat/${s_verb}.js.jmacs`,
-					],
-
-					run: /* syntax: bash */ `
-						npx jmacs $1 > $@
-						${eslint()}
-					`,
-				}),
+				'main.js': () => jmacs([`src/content/bat/${s_verb}.js.jmacs`]),
 			};
 
 			// it has a 'carry' dir; add to recipe
@@ -312,6 +322,13 @@ let h_output_content_bat = {};
 	}
 }
 
+const scoped_package = si_package => ({
+	'.npmrc': npmrc,
+
+	'package.json': package_json(si_package),
+
+	node_modules: package_node_modules(si_package),
+});
 
 // emk struct
 module.exports = {
@@ -323,7 +340,17 @@ module.exports = {
 		package: Object.keys(h_packages),
 
 		// non-content-sub packages
-		package_ncs: Object.keys(h_packages).filter(s => !a_content_subs.includes(s) && !s.startsWith('content.')),
+		package_ncs: Object.keys(h_packages)
+			.filter(s => !a_content_subs.includes(s)
+				&& !s.startsWith('content.')
+				&& !s.startsWith('schema.')),
+
+		// // bat schema file
+		// bat_schema_file: Object.keys(h_schema_bat).map(s => `schema.bat.${s}`),
+
+		bat_frame: [
+			'dictionary.concise-term.pp12oc.js',
+		],
 	},
 
 	tasks: {
@@ -332,51 +359,18 @@ module.exports = {
 			'link_to.*',
 		],
 
+		// link alias
 		link: {
-			':package': [si_package => ({
-				[si_package]: () => ({
-					deps: [
-						`build/packages/${si_package}/**`,
+			':package': h => ([
+				`.npm-packages/lib/node_modules/@graphy/${h.package}`,
+			]),
 
-						// ...h_packages[si_package].links
-						// 	.map(si_link => `link.${si_link}`),
-					],
-
-					run: /* syntax: bash */ `
-						# enter package directory
-						cd build/packages/${si_package}
-
-						# remove package lock
-						rm -f package-lock.json
-
-						# then link self
-						npm link
-					`,
-				}),
-			})],
-
-			graphy: () => ({
-				deps: [
-					`build/packages/graphy/**`,
-
-					...Object.keys(h_packages)
-						.map(s_dep => `link.${s_dep}`),
-				],
-
-				run: /* syntax: bash */ `
-					# enter package directory
-					cd build/packages/graphy
-
-					# remove package lock
-					rm -f package-lock.json
-
-					# then link self
-					npm link
-				`,
-			}),
+			graphy: () => ([
+				`.npm-packages/lib/node_modules/graphy`,
+			]),
 		},
 
-
+		// link-to alias
 		link_to: {
 			':package': h => ({
 				deps: [`node_modules/@graphy/${h.package}`],
@@ -387,6 +381,7 @@ module.exports = {
 			}),
 		},
 
+		// tests
 		test: {
 			':package': h => ({
 				deps: [
@@ -403,19 +398,48 @@ module.exports = {
 	},
 
 	outputs: {
+		// eslint config
 		'.eslintrc.yaml': () => ({copy:'~/dev/.eslintrc.yaml'}),
 
+		// package builds
 		build: {
 			packages: {
 				// bat
 				...h_output_content_bat,
 
+				// bat schema
+				'schema.bat.default': {
+					...scoped_package('schema.bat.default'),
+
+					decoders: {
+						':bat_frame': h => jmacs([
+							`src/gen/bat-schema/decoders/${h.bat_frame}.jmacs`,
+							'src/gen/bat-schema/schema.js.jmacs',
+						]),
+					},
+
+					// ':bat_schema_file': h => ({
+					// 	deps: [
+					// 		'src/gen/schema/output.js.jmacs',
+					// 		'link_to.api.data.factory',
+					// 		'link_to.content.ttl.write',
+					// 	],
+
+					// 	run: /* syntax: bash */ `
+					// 		npx jmacs $1 -g '${
+					// 			/* eslint-disable indent */
+					// 			JSON.stringify({
+					// 				iri: h_schema_bat[h.bat_schema_file],
+					// 			})
+					// 		/* eslint-enable */}' > $@
+					// 	`,
+					// }),
+				},
+
 				// content subs
 				':content_sub': [si_package => ({
 					[si_package]: {
-						'package.json': package_json(si_package),
-
-						node_modules: package_node_modules(si_package),
+						...scoped_package(si_package),
 
 						'main.js': (({split:a_split}) => () => ({
 							deps: [
@@ -439,29 +463,22 @@ module.exports = {
 				// all non-content-sub packages
 				':package_ncs': [si_package => ({
 					[si_package]: ({
-						'package.json': package_json(si_package),
+						...scoped_package(si_package),
 
-						node_modules: package_node_modules(si_package),
-
-						'main.js': () => ({
-							deps: [`src/${si_package.replace(/\./g, '/')}.js.jmacs`],
-
-							run: /* syntax: bash */ `
-								npx jmacs $1 > $@
-								${eslint()}
-							`,
-						}),
+						'main.js': () => jmacs([`src/${si_package.replace(/\./g, '/')}.js.jmacs`]),
 					}),
 				})],
 
 				// the super module
 				graphy: {
+					'.npmrc': npmrc,
+
 					'package.json': () => ({
 						deps: [
 							'src/aux/base-package.json',
 						],
 
-						run: /* syntax: js */ `
+						run: /* syntax: bash */ `
 							cat $1 | npx lambduh "g_base_package_json => { \
 								${/* eslint-disable indent */
 									/* syntax: js */`
@@ -502,16 +519,54 @@ module.exports = {
 						},
 					},
 
-					'main.js': () => ({
-						deps: [`src/main/graphy.js.jmacs`],
+					'main.js': () => jmacs([`src/main/graphy.js.jmacs`]),
+				},
+
+			},
+		},
+
+		// package linking
+		'.npm-packages': {
+			lib: {
+				node_modules: {
+					'@graphy': {
+						':package': h => ({
+							deps: [
+								`build/packages/${h.package}/**`,
+							],
+
+							run: /* syntax: bash */ `
+								# enter package directory
+								cd build/packages/${h.package}
+
+								# remove package lock
+								rm -f package-lock.json
+
+								# then link self
+								npm link
+							`,
+						}),
+					},
+
+					graphy: () => ({
+						deps: [
+							`build/packages/graphy/**`,
+
+							...Object.keys(h_packages).map(s_dep => `link.${s_dep}`),
+						],
 
 						run: /* syntax: bash */ `
-							npx jmacs $1 > $@
-							${eslint()}
+							# enter package directory
+							cd build/packages/graphy
+
+							# remove package lock
+							rm -f package-lock.json
+
+							# then link self
+							npm link
 						`,
 					}),
 				},
-
 			},
 		},
 

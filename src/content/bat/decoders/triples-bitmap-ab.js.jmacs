@@ -1,18 +1,27 @@
+@import '../constants.jmacs'
+
 const bkit = require('bkit');
-const bat_structure = require('@graphy/content.bat.structure');
 
-module.exports = class triples_bitmap_ab extends bat_structure.dataset.triples {
+module.exports = class triples_bitmap_ab {
+	static implements() {
+		return '@{H_BAT_ENCODINGS.PE_DATASET_QUADS_TRIPLES_BITMAP_AB}';
+	}
+
 	constructor(kbd, k_decoders) {
-		super();
-
 		// which order
 		let s_index = kbd.ntu8_string();
 
-		// pairs bitmap
-		let km_a_b = k_decoders.auto(kbd);
+		// adjacency list
+		let km_adj = kbd.typed_array();
 
-		// triples bitmap
-		let km_ab_c = k_decoders.auto(kbd);
+		// bitsequence
+		let km_bs = k_decoders.auto();
+
+		// // pairs bitmap
+		// let km_a_b = k_decoders.auto(kbd);
+
+		// // triples bitmap
+		// let km_ab_c = k_decoders.auto(kbd);
 
 		// // number of pairs
 		// let n_pairs = kbd.vuint();
@@ -37,13 +46,13 @@ module.exports = class triples_bitmap_ab extends bat_structure.dataset.triples {
 		// 	throw new Error('quad bitmap lengths do not match. fatal read error');
 		// }
 
-		Object.assign(this, {
-			pair_count: km_a_b.count_keys(),
-			triple_count: km_ab_c.count_keys(),
+		// Object.assign(this, {
+		// 	pair_count: km_a_b.count_keys(),
+		// 	triple_count: km_ab_c.count_keys(),
 
-			bm_a_b: km_a_b,
-			bm_ab_c: km_ab_c,
-		});
+		// 	bm_a_b: km_a_b,
+		// 	bm_ab_c: km_ab_c,
+		// });
 
 		debugger;
 	}

@@ -58,6 +58,18 @@ module.exports = {
 				],
 				description: 'Serialize an RDF dataset in the BAT format',
 			}),
+			decode: () => ({
+				description: 'Decode BAT data',
+			}),
+		},
+	},
+
+	schema: {
+		bat: {
+			default: () => ({
+				dependencies: ['bkit'],
+				description: 'Default BAT schema',
+			}),
 		},
 	},
 };

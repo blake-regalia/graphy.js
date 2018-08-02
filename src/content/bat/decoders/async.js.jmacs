@@ -1,3 +1,5 @@
+@import '../../constants.jmacs'
+
 const frag = require('frag');
 const bkit = require('bkit');
 
@@ -6,7 +8,10 @@ const bat = require('../bat.js');
 const {
 	PE_DATASET,
 	PE_DICTIONARY_PP12OC,
-} = bat;
+} = {
+	PE_DATASET: '@{H_BAT_ENCODINGS.PE_DATASET}',
+	PE_DATASET_PP12OC: '@{H_BAT_ENCODINGS.PE_DATASET_PP12OC}',
+};
 
 const bat_struct = bat.struct;
 

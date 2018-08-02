@@ -1,0 +1,32 @@
+@import '../schema.js.jmacs'
+
+let [D_TEXT_ENCODER, D_TEXT_DECODER]
+	= 'undefined' === typeof Buffer
+		? ('undefined' === typeof TextEncoder
+			? [new (require('util').TextEncoder)(), new (require('util').TextDecoder)()]  // eslint-disable-line global-require
+			: [new TextEncoder(), new TextDecoder()])
+		: [{encode:s => Buffer.from(s, 'utf-8')}, {decode:at => Buffer.from(at).toString('utf-8')}];
+
+module.exports = {
+	/* eslint-disable quotes, quote-props */
+	...@{
+		JSON.stringify(
+			bat_define('datatype', 'brd:ntu8-string', {
+				description: 'read a null-terminated utf8-encoded string',
+			}), null, '\t')},
+	/* eslint-enable */
+
+	decode() {
+		let {
+			contents: at_contents,
+			read: i_read,
+		} = this;
+
+		let i_end = at_contents.indexOf(0, i_read);
+		if(-1 === i_end) throw new RangeError('buffer decoder found no null-terminated utf8-encoded string');
+
+		let s_ntu8 = D_TEXT_DECODER.decode(at_contents.subarray(i_read, i_end));
+		this.read = i_end + 1;
+		return s_ntu8;
+	},
+};

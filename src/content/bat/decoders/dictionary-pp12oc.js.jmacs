@@ -1,17 +1,13 @@
-const bkit = require('bkit');
-const factory = require('@graphy/factory');
+@import '../constants.jmacs'
 
-const bat = require('../bat.js');
+const bkit = require('bkit');
+const factory = require('@graphy/api.data.factory');
+
 const interfaces = require('./interfaces.js');
 
-const R_COMPRESS = bat.R_COMPRESS;
+const R_COMPRESS = /@{R_COMPRESS()}/;
 
-const {
-	S_PREFIXES,
-	S_TERM_HA, S_TERM_SA, S_TERM_PA, S_TERM_OA,
-	S_TERM_HP, S_TERM_SP, S_TERM_PP, S_TERM_OP,
-	S_TERM_LP, S_TERM_LL, S_TERM_LDA, S_TERM_LDP,
-} = bat;
+@{TERM_KEYS()}
 
 const A_CHAPTERS = [
 	{label:S_TERM_HA, cue:null, start:2},
@@ -28,7 +24,7 @@ const A_CHAPTERS = [
 	{label:S_TERM_LDP, cue:S_TERM_LDA},
 ];
 
-class dictionary_pp12oc extends interfaces.dictionary {
+module.exports = dc_super => class dictionary_pp12oc extends dc_super {
 
 	constructor(kbd, k_decoders) {
 		super();
@@ -77,7 +73,7 @@ class dictionary_pp12oc extends interfaces.dictionary {
 
 		// chapter index
 		let i_chapter = 0;
-debugger;
+
 		// each chapter
 		let k_chapter;
 		while((k_chapter = k_decoders.auto(kbd))) {
@@ -673,8 +669,4 @@ debugger;
 		}
 	}
 
-
-}
-
-
-module.exports = dictionary_pp12oc;
+};

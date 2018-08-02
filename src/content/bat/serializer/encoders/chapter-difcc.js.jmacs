@@ -131,7 +131,7 @@ class chapter_difcc {
 				throw new Error(`block size mismatch: ${1 << n_block_size_k_import} != ${n_block_size}`);
 			}
 			if(i_offset_import !== n_words) {
-				throw new Error(`import's word offset @${i_offset_import} != this word count @${n_words}`);
+				throw new Error(`import's word offset @@${i_offset_import} != this word count @@${n_words}`);
 			}
 			if(h_defer_import) {
 				let n_deferments = h_defer_import.indices

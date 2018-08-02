@@ -1,0 +1,90 @@
+@import '../schema.js.jmacs'
+
+const X_ENCODING_TYPED_ARRAY_INT8 = 0x11;
+const X_ENCODING_TYPED_ARRAY_UINT8 = 0x21;
+const X_ENCODING_TYPED_ARRAY_UINT8_CLAMPED = 0x31;
+const X_ENCODING_TYPED_ARRAY_INT16 = 0x12;
+const X_ENCODING_TYPED_ARRAY_UINT16 = 0x22;
+const X_ENCODING_TYPED_ARRAY_INT32 = 0x14;
+const X_ENCODING_TYPED_ARRAY_UINT32 = 0x24;
+const X_ENCODING_TYPED_ARRAY_FLOAT32 = 0x44;
+const X_ENCODING_TYPED_ARRAY_FLOAT64 = 0x48;
+
+const H_ENCODING_TO_TYPED_ARRAY = {
+	[X_ENCODING_TYPED_ARRAY_INT8]: Int8Array,
+	[X_ENCODING_TYPED_ARRAY_UINT8]: Uint8Array,
+	[X_ENCODING_TYPED_ARRAY_UINT8_CLAMPED]: Uint8ClampedArray,
+	[X_ENCODING_TYPED_ARRAY_INT16]: Int16Array,
+	[X_ENCODING_TYPED_ARRAY_UINT16]: Uint16Array,
+	[X_ENCODING_TYPED_ARRAY_INT32]: Int32Array,
+	[X_ENCODING_TYPED_ARRAY_UINT32]: Uint32Array,
+	[X_ENCODING_TYPED_ARRAY_FLOAT32]: Float32Array,
+	[X_ENCODING_TYPED_ARRAY_FLOAT64]: Float64Array,
+};
+
+module.exports = {
+	/* eslint-disable quotes, quote-props */
+	...@{
+		JSON.stringify(
+			bat_define('datatype', 'brd:typed-array', {
+				description: 'extract typed array and intelligently conserve memory when contents are mem-aligning',
+				datatypes: {
+					vuint: 'brd:vuint',
+				},
+			}), null, '\t')},
+	/* eslint-enable */
+
+	decode(k_datatypes) {
+		let at_contents = this.contents;
+
+		// type of array
+		let x_type = at_contents[this.read++];
+
+		// number of elements in array
+		let nl_values = k_datatypes.vuint();
+
+		// offet of typed array's start
+		let ib_offset = at_contents.byteOffset + this.read;
+
+		// typed array class
+		let dc_typed_array = H_ENCODING_TO_TYPED_ARRAY[x_type];
+
+		// prep typed array instance
+		let at_values;
+
+		// not mem-aligned!
+		if(ib_offset % dc_typed_array.BYTES_PER_ELEMENT) {
+			// contents are referenced
+			if(this.referenced) {
+				throw new Error(`cannot safely extract typed array into new allocated memory segment since older array buffer is still referenced by previous call to 'buffer_decoder#sub'`);
+			}
+
+			// allocate new mem-aligned segment
+			let ab_contents = new ArrayBuffer(at_contents.byteLength - ib_offset);
+
+			// create byte-view over segment
+			let at8_contents = new Uint8Array(ab_contents);
+
+			// copy contents over
+			at8_contents.set(at_contents.subarray(ib_offset));
+
+			// discard ref to previous memory segment
+			this.contents = at8_contents;
+
+			// reset read head
+			this.read = 0;
+
+			// create typed array instance
+			at_values = new dc_typed_array(ab_contents, 0, nl_values);
+		}
+		else {
+			// create typed array instance
+			at_values = new dc_typed_array(at_contents.buffer, ib_offset, nl_values);
+		}
+
+		// increment read offset
+		this.read += at_values.byteLength;
+
+		return at_values;
+	},
+};

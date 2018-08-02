@@ -1,0 +1,33 @@
+
+@$ H_SYMBOLS = {
+	range: [
+		'all',
+		'hops',
+		'nodes',
+		'literals',
+		'subjects',
+		'objects',
+	],
+	role: [
+		'hop',
+		'node',
+		'subject',
+		'predicate',
+		'inverse-predicate',
+		'object',
+		'object-node',
+		'literal',
+		'root',
+		'leaf',
+	],
+	use: [
+		'SPO',
+		'POS',
+		'OSP',
+	],
+	row: [
+		'invalidated',	
+	],
+};
+
+

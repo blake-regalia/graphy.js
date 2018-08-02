@@ -1,0 +1,41 @@
+@import '../schema.js.jmacs'
+
+module.exports = {
+	/* eslint-disable quotes, quote-props */
+	...@{
+		JSON.stringify(
+			bat_define('protocol', 'brp:dataset.concise-term:dq', {
+				implements: 'bri:dataset.concise-term',
+				members: {
+					dictionary: 'bri:dictionary.concise-term',
+					quads: 'bri:quads.concise-term',
+				},
+			}), null, '\t')},
+	/* eslint-enable */
+
+	class: dc_super => class extends dc_super {
+		constructor(k_datatypes, k_members) {
+			super(k_datatypes, k_members);
+
+			this.dictionary = k_members.dictionary();
+
+			this.quads = k_members.quads();
+		}
+
+		produce(i_term, s_role) {
+			return this.dictionary.produce(i_term, s_role);
+		}
+
+		find(sct_word, s_role) {
+			return this.dictionary.find(sct_word, s_role);
+		}
+
+		// quads(s_role) {
+		// 	return this.quads.
+		// }
+
+		// range(s_role) {
+
+		// }
+	},
+};

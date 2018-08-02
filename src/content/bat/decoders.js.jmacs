@@ -9,11 +9,12 @@ class decoders {
 		if(!h_decoders) {
 			// default to builtins
 			h_decoders = {
-				'@{H_BAT_ENCODINGS.PE_DATASET_DQ}': require('./decoders/dataset.js'),
-				'@{H_BAT_ENCODINGS.PE_DATASET_DICTIONARY_PP12OC}': require('./decoders/dictionary-pp12oc.js'),
-				'@{H_BAT_ENCODINGS.PE_DATASET_DICTIONARY_CHAPTER_DIFCC}': require('./decoders/chapter-difcc.js'),
-				'@{H_BAT_ENCODINGS.PE_DATASET_QUADS_TRIPLES_BITMAP_AB}': require('./decoders/triples-bitmap.js'),
-				'@{H_BAT_ENCODINGS.PE_DATASET_QUADS_INDEX_ADJACENCY_LIST}': require('./decoders/index-adjacency.js'),
+				'@{H_BAT_ENCODINGS.PE_DATASET_DQ}': require('./dataset.js'),
+				'@{H_BAT_ENCODINGS.PE_DATASET_DICTIONARY_PP12OC}': require('./dictionary-pp12oc.js'),
+				'@{H_BAT_ENCODINGS.PE_DATASET_DICTIONARY_CHAPTER_DIFCC}': require('./chapter-difcc.js'),
+				'@{H_BAT_ENCODINGS.PE_DATASET_QUADS_TRIPLES_RL}': require('./triples-roots-leafs.js'),
+				'@{H_BAT_ENCODINGS.PE_DATASET_QUADS_TRIPLES_BITMAP_AB}': require('./triples-bitmap-ab.js'),
+				'@{H_BAT_ENCODINGS.PE_DATASET_QUADS_INDEX_ADJACENCY_LIST}': require('./index-adjacency.js'),
 			};
 		}
 

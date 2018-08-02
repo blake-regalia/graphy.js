@@ -1,22 +1,5 @@
 
-class bitmap_ab {
-	constructor(kbd, k_decoders) {
-		// number of keys
-		let nl_keys = kbd.vuint();
-
-		// adjacency list
-		let at_adj = kbd.typed_array();
-
-		// bitsequence
-		let k_bs = k_decoders.auto(kbd);
-
-		Object.assign(this, {
-			key_count: nl_keys,
-			adj: at_adj,
-			bs: k_bs,
-		});
-	}
-
+module.exports = dc_super => class bitmap_ab extends dc_super {
 	count_keys() {
 		return this.key_count;
 	}
@@ -58,4 +41,4 @@ class bitmap_ab {
 			yield at_adj[i_adj];
 		} while(++i_adj < i_adj_end);
 	}
-}
+};

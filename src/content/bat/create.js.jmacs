@@ -22,7 +22,6 @@ class creator extends stream.Writable {
 		});
 
 		this.on('finish', async() => {
-			debugger;
 			let k_serializer = new serializer(k_primer);
 
 			let at_serialized = await k_serializer.buffer();

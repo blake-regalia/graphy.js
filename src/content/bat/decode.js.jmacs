@@ -1,0 +1,311 @@
+const bkit = require('bkit');
+
+const factory = require('@graphy/api.data.factory');
+const HVT_SCHEMA_DEFAULT = require('@graphy/schema.bat.default');
+
+const p_base = 'https://bat-rdf.link/';
+const H_PREFIXES = {
+	bre: `${p_base}encoding/`,
+	brdt: `${p_base}datatype/`,
+	bri: `${p_base}interface/`,
+	brp: `${p_base}protocol/`,
+	rdf: '',
+};
+
+const expand = sct => factory.ct(sct, H_PREFIXES).verbose();
+
+let pp_type = expand('rdf:type');
+let pi_datset = expand('bri:dataset');
+let pp_implements = expand('bat:implements');
+let pp_datatype = expand('bat:datatype');
+let pp_member = expand('bat:member');
+let pp_extends = expand('bat:extends');
+let pc_protocol = expand('bat:Protocol');
+let pc_datatype = expand('bat:Datatype');
+
+module.exports = function(at_data, hvt_schema=HVT_SCHEMA_DEFAULT) {
+	// create schema instance from descriptor
+	let k_schema = new schema(hvt_schema);
+
+	// create buffer decoder to read serialized data
+	let kbd = new bkit.buffer_decoder(at_data);
+
+	// fetch the root encoding
+	let p_root = kbd.ntu8_string();
+
+	// load root protocol as dataset
+	let kp_dataset = k_schema.select(protocol, pi_datset, p_root);
+
+	// load dataset
+	let k_dataset = kp_dataset.load();
+};
+
+class schema {
+	constructor(hvt_defs) {
+		Object.assign(this, {
+			defs: hvt_defs,
+			cache: {},
+		});
+	}
+
+	select(dc_type, p_subject, pi_select=null) {
+		// distinct subject/select id
+		let si_distinct = p_subject+'>'+pi_select;
+
+		// already loaded this subject
+		if(this.cache[si_distinct]) return this.cache[si_distinct];
+
+		// ref defs
+		let hvt_defs = this.defs;
+
+		// no such definition
+		if(!(p_subject in hvt_defs)) throw new Error(`<${p_subject}> was not found in schema descriptor.`);
+
+		// fetch def
+		let g_subject = this.defs[p_subject];
+
+		// create instance and save to cache
+		return this.cache[si_distinct] = new dc_type(g_subject, this, pi_select);
+	}
+
+	satisfy(pi_select) {
+		// make decision based on schema
+		for(let [svt_subject, g_def] of Object.entries(this.defs)) {
+			// just give the first match
+			if(pc_protocol === g_def[pp_type] && pi_select === g_def[pp_implements]) {
+				return svt_subject;
+			}
+		}
+
+		return null;
+	}
+
+	load_protocol(p_protocol) {
+		// already loaded this protocol
+		if(this.cache[p_protocol]) return this.cache[p_protocol];
+
+		// ref defs
+		let hvt_defs = this.defs;
+
+		// no such definition
+		if(!(p_protocol in hvt_defs)) throw new Error(`<${p_protocol}> was not found in schema descriptor.`);
+
+		// fetch protocol def
+		let g_protocol = this.defs[p_protocol];
+
+		// create instance and save to cache
+		return this.cache[p_protocol] = new protocol(g_protocol, this);
+	}
+
+	load_datatype(p_datatype) {
+		// already loaded this datatype
+		if(this.cache[p_datatype]) return this.cache[p_datatype];
+
+		// ref defs
+		let hvt_defs = this.defs;
+
+		// no such definition
+		if(!(p_datatype in hvt_defs)) throw new Error(`<${p_datatype}> was not found in schema descriptor.`);
+
+		// fetch datatype def
+		let g_datatype = this.defs[p_datatype];
+
+		// create instance and save to cache
+		return this.cache[p_datatype] = new datatype(g_datatype, this);
+	}
+}
+
+class implementation {
+	constructor(g_exports, k_schema, pc_type=null) {
+		let {
+			prefixes: h_prefixes,
+			subject: sct_subject,
+			properties: hct_properties,
+			class: f_class,
+		} = g_exports;
+
+		// missing prefixes hash
+		if(!h_prefixes) throw new Error('protocol descriptor missing required key "prefixes".');
+
+		// invalid subject type
+		if('object' !== typeof h_prefixes) throw new TypeError(`protocol descriptor has invalid type for "prefixes"; expected hash instead found: ${typeof h_prefixes}`);
+
+		// missing subject
+		if(!sct_subject) throw new Error('protocol descriptor missing required key "subject".');
+
+		// invalid subject type
+		if('string' !== typeof sct_subject) throw new TypeError(`protocol descriptor has invalid type for "subject"; expected string instead found: ${typeof sct_subject}`);
+
+		// expand subject iri
+		let p_subject = expand(sct_subject, h_prefixes);
+
+		// missing properties
+		if(!hct_properties) throw new Error(`protocol descriptor for <${p_subject}> missing required key "properties".`);
+
+		// invalid properties type
+		if('object' !== typeof hct_properties) throw new TypeError(`protocol descriptor for <${p_subject}> has invalid type for "properties"; expected struct instead found: ${typeof g_properties}`);
+
+		// missing class
+		if(!f_class) throw new Error(`protocol descriptor for <${p_subject}> missing required key "class".`);
+
+		// invalid class type
+		if('function' !== typeof f_class) throw new TypeError(`protocol descriptor for <${p_subject}> has invalid type for "class"; expected mix-in (a function that returns a class) instead found: ${typeof f_class}`);
+
+		// save fields
+		Object.assign(this, {
+			schema: k_schema,
+			subject: p_subject,
+			prefixes: h_prefixes,
+			properties: factory.expand_ct_hash(hct_properties, h_prefixes),
+			class_creator: f_class,
+			type: null,
+			class: null,
+		});
+
+		// assert type
+		if(pc_type) {
+			this.assert_type(pc_type);
+		}
+	}
+
+	assert_type(pc_type) {
+		let {
+			subject: p_subject,
+			properties: hvt_properties,
+		} = this;
+
+		// no type defined
+		if(!hvt_properties[pp_type]) throw new Error(`<${p_subject}> does not have any 'rdf:type' triples.`);
+
+		// is not of proper type
+		if(pc_type !== hvt_properties[pp_type]) throw new Error(`<${p_subject}> is not of type <${pc_type}>.`);
+
+		// save type association
+		this.type = pc_type;
+	}
+}
+
+class protocol extends implementation {
+	constructor(g_protocol, k_schema, pi_select) {
+		// assert type is protocol
+		super(g_protocol, k_schema, pc_protocol);
+
+		// destructure super's fields
+		let {
+			subject: p_subject,
+			properties: hvt_properties,
+		} = this;
+
+		// fetch set of interfaces it implements
+		let a_implements = hvt_properties[pp_implements];
+		
+		// select not found in set of interfaces it implements
+		if(!a_implements.includes(pi_select)) throw new Error(`<${p_subject}> does not implement <${pi_select}>.`);
+
+		// the superclass to extend (default)
+		let dc_super = frame;
+
+		// it extends some protocol(s)
+		if(hvt_properties[pp_extends]) {
+			// ref the protocol(s) it extends
+			let a_extends = hvt_properties[pp_extends];
+
+			// too many
+			if(a_extends.length > 1) throw new Error(`<${p_subject}> extends multiple protocols, cannot choose one to use for implementation`);
+
+			// fetch super
+			dc_super = k_schema.select(protocol, a_extends[0]);
+		}
+
+		// hash of datatypes
+		let h_datatypes = this.datatypes = {};
+
+		// descriptor has datatypes
+		if(hvt_properties[pp_datatype]) {
+			// each datatype; load instance and save to hash
+			for(let [si_method, p_datatype] of Object.entries(hvt_properties[pp_datatype])) {
+				h_datatypes[si_method] = k_schema.select(datatype, p_datatype);
+			}
+		}
+
+		// hash of members
+		let h_members = this.members = {};
+
+		// descriptor has members
+		if(hvt_properties[pp_member]) {
+			// each member; save interface iri to hash
+			for(let [si_method, pi_member] of Object.entries(hvt_properties[pp_member])) {
+				h_members[si_method] = pi_member;
+			}
+		}
+
+		// create class
+		this.class = this.class_creator(dc_super);
+	}
+
+	load(at_payload, a_args) {
+		let {
+			schema: k_schema,
+		} = this;
+
+		// create buffer decoder for contents
+		let kbd = new bkit.buffer_decoder(at_payload);
+
+		// create decoder for datatypes
+		let kd_datatypes = Object.create(kbd);
+
+		// apply each decoder method
+		for(let [si_method, k_datatype] of Object.entries(this.datatypes)) {
+			kd_datatypes[si_method] = k_datatype.decode;
+		}
+
+		// create decoder for members
+		let kd_members = new decoder_member();
+
+		// apply each decoder method
+		for(let [si_method, pi_member] of Object.entries(this.members)) {
+			kd_members[si_method] = (...a_member_args) => {
+				// fetch encoding of member
+				let p_member = kbd.ntu8_string();
+
+				// fetch payload size in bytes
+				let nb_payload = kbd.vuint();
+
+				// load instance to satisfy interface requirement
+				let k_member = k_schema.select(protocol, p_member, pi_member);
+
+				// load payload contents into member
+				k_member.load(kbd.grab(nb_payload), a_member_args);
+			};
+		}
+
+		// create frame
+		return new this.class(kd_datatypes, kd_members);
+	}
+}
+
+class datatype extends implementation {
+	constructor(g_datatype, k_schema) {
+		// assert type is datatype
+		super(g_datatype, k_schema, pc_datatype);
+
+		// destructure super's fields
+		let {
+			subject: p_subject,
+			properties: hvt_properties,
+		} = this;
+
+		// save fields
+		Object.assign(this, {
+			decode: g_datatype,
+		});
+	}
+}
+
+class frame {
+	constructor() {}
+}
+
+
+class decoder_member {}
+

@@ -1,0 +1,23 @@
+@import '../constants.jmacs'
+
+const bkit = require('bkit');
+
+module.exports = class triples_roots_leafs {
+	static implements() {
+		return '@{H_BAT_ENCODINGS.PE_DATASET_QUADS_TRIPLES_RL}';
+	}
+
+	constructor(kbd, k_decoders) {
+		// roots
+		let km_roots = k_decoders.auto(kbd);
+
+		// leafs
+		let km_leafs = k_decoders.auto(kbd);
+
+		Object.assign(this, {
+			roots: km_roots,
+			leafs: km_leafs,
+		});
+	}
+
+};
