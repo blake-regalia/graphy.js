@@ -30,7 +30,7 @@ module.exports = class bitsequence_plain {
 		let kbe_header = new bkit.buffer_encoder({size:512});
 
 		// encoding scheme
-		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_QUADS_TRIPLES_BITMAP_BITSEQUENCE_PLAIN}');
+		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_BITSEQUENCE_PLAIN}');
 
 		// payload byte count
 		kbe_header.vuint(at_payload.byteLength);

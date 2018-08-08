@@ -7,8 +7,9 @@ const worker = require('worker').scopify(require, () => {
 	require('./workers/encoder.js');
 }, 'undefined' !== typeof arguments && arguments);  // eslint-disable-line no-undef
 
-const encoder_chapter = require('./encoders/chapter-difcc.js');
+const encoder_chapter = require('./encoders/chapter-dfc.js');
 const encoder_bitmap = require('./encoders/bitmap-ab.js');
+const encoder_bitsequence = require('./encoders/bitsequence-plain.js');
 
 @{TERM_KEYS()}
 
@@ -772,9 +773,6 @@ class serializer {
 		// info section
 		let kbe_info = new bkit.buffer_encoder({size:64});
 
-		// dictionary type
-		kbe_info.ntu8_string('terms');
-
 		// chapter count
 		kbe_info.vuint(nl_chapters);
 
@@ -793,7 +791,7 @@ class serializer {
 		let kbe_header = new bkit.buffer_encoder({size:64});
 
 		// dictionary encoding
-		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_DICTIONARY_PP12OC}');
+		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DICTIONARY_CONCISE_TERM_PP12OC}');
 
 		// payload byte length
 		kbe_header.vuint(cb_payload);
@@ -1191,6 +1189,7 @@ class serializer {
 		}
 
 /* <SPO Triples> */
+		let at_triples;
 		{
 			// close bitsequences
 			let atu8_bs_s_p = kbs_s_p.close();
@@ -1237,20 +1236,28 @@ class serializer {
 			let kbe_header = new bkit.buffer_encoder({size:512});
 
 			// write to header: encoding scheme
-			kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_QUADS_TRIPLES_RL}');
+			kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_TRIPLES_RL}');
 
 			// write to header: payload byte count
 			kbe_header.vuint(at_payload.byteLength);
 
-			// add section to output
-			this.output.push(
-				kbe_header.close(),
-				at_payload,
-			);
+			// // add section to output
+			// this.output.push(
+			// 	kbe_header.close(),
+			// 	at_payload,
+			// );
+
+
+			// append payload to header
+			kbe_header.buffer.append(at_payload);
+
+			// save result to outer-scoped variable
+			at_triples = kbe_header.close();
 		}
 /* </SPO Triples> */
 
 /* <OP-index> */
+		let at_index;
 		{
 			// convert op-index hash into sorted list
 			let a_op_keys = [];
@@ -1289,6 +1296,14 @@ class serializer {
 			// close OP-index bitsequence
 			let atu8_bs_o_p = kbs_o_p.close();
 
+			// encode bitsequence
+			let ke_bs = new encoder_bitsequence({
+				raw: atu8_bs_o_p,
+			});
+
+			// close bitsequence
+			let at_bs = ke_bs.close();
+
 			// create section header
 			let kbe_header = new bkit.buffer_encoder({size:512});
 
@@ -1308,21 +1323,52 @@ class serializer {
 			let at_payload = kbe_payload.close();
 
 			// encoding scheme
-			kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_QUADS_INDEX_ADJACENCY_LIST}');
+			kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_OP_INDEX_ADJACENCY_LIST}');
 
 			// payload byte count
 			kbe_header.vuint(at_payload.byteLength
-				+ atu8_bs_o_p.length);
+				+ at_bs.byteLength);
 
-			// add section to output
-			this.output.push(
-				kbe_header.close(),
-				at_payload,
-				atu8_bs_o_p,
+			// // add section to output
+			// this.output.push(
+			// 	kbe_header.close(),
+			// 	at_payload,
+			// 	atu8_bs_o_p,
+			// );
+
+			// ref header buffer-writer
+			let kbw_header = kbe_header.buffer;
+
+			// append payload to header
+			kbw_header.append(at_payload);
+
+			// append bitsequence to header
+			kbw_header.append(at_bs);
+
+			// save result to outer-scoped variable
+			at_index = kbw_header.close();
+		}
+/* </OP-index> */
+
+/* <Quads> */
+		{
+			// create section header
+			let kbe_header = new bkit.buffer_encoder({size:512});
+
+			// encoding scheme
+			kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_QUADS_T3I}');
+
+			// payload byte count
+			kbe_header.vuint(at_triples.byteLength
+				+at_index.byteLength);
+
+			// add section and its payload to output
+			this.output.push(kbe_header.close(),
+				at_triples,
+				at_index,
 			);
 		}
-
-/* </OP-index> */
+/* </Quads> */
 	}
 
 	close_output() {
@@ -1336,7 +1382,7 @@ class serializer {
 		let kbe_header = new bkit.buffer_encoder({size:512});
 
 		// dataset encoding
-		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_DQ}');
+		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_CONCISE_TERM_DQ}');
 
 		// payload byte length
 		kbe_header.vuint(cb_payload);

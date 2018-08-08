@@ -54,7 +54,7 @@ const H_ESCAPES_JSON = {
 	},
 	terminal: {
 		sub: 'object',
-		char: '.',
+		chars: '.',
 	},
 	blank_node: {
 		sub: 'object',

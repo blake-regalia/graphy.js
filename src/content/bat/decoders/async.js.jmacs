@@ -1,4 +1,4 @@
-@import '../../constants.jmacs'
+@import '../constants.jmacs'
 
 const frag = require('frag');
 const bkit = require('bkit');

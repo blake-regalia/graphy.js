@@ -4,7 +4,7 @@ const stream = require('stream');
 
 const bkit = require('bkit');
 
-const decoders = require('@graphy/content.bat.decoders');
+// const decoders = require('@graphy/content.bat.decoders');
 const primer = require('@graphy/content.bat.primer');
 const serializer = require('@graphy/content.bat.serializer');
 
@@ -26,35 +26,7 @@ class creator extends stream.Writable {
 
 			let at_serialized = await k_serializer.buffer();
 
-			// create buffer decoder to read serialized data
-			let kbd = new bkit.buffer_decoder(at_serialized);
-
-			// instantiate bat decoders
-			let k_decoders = new decoders();
-
-			// dataset contained
-			let k_dataset;
-
-			// read
-			let a_decode;
-			while((a_decode = k_decoders.auto_what(kbd))) {
-				let [k_item, pe_item] = a_decode;
-				if('@{H_BAT_ENCODINGS.PE_DATASET_DQ}' === pe_item) {
-					// already loaded a dataset
-					if(k_dataset) {
-						throw new Error('multiple datasets contained ');
-					}
-					else {
-						k_dataset = k_item;
-					}
-				}
-				else {
-					throw new Error(`root container encoding <${pe_item}> was not expected`);
-				}
-			}
-
-			// prepare store on dataset
-			debugger;
+			this.ready(at_serialized);
 		});
 	}
 

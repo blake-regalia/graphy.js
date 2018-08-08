@@ -12,7 +12,7 @@ $_USE_POS
 $_USE_OSP
 */
 
-Object.assign(global, require('../../query/symbols.js'));
+Object.assign(global, require('../../store/memory/query/symbols.js'));
 
 
 const H_ROLE_TO_PRODUCTION = {

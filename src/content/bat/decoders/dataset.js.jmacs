@@ -1,4 +1,4 @@
-@import '../../../query/constants.jmacs'
+@import '../../../store/memory/query/constants.jmacs'
 
 /* globals
 $_ROLE_HOP

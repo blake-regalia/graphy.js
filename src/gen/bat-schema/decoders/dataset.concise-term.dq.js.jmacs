@@ -8,7 +8,7 @@ module.exports = {
 				implements: 'bri:dataset.concise-term',
 				members: {
 					dictionary: 'bri:dictionary.concise-term',
-					quads: 'bri:quads.concise-term',
+					quads: 'bri:quads',
 				},
 			}), null, '\t')},
 	/* eslint-enable */

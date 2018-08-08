@@ -1,5 +1,3 @@
-const stream = require('stream');
-
 const pattern = require('./pattern.js');
 
 class store_sync {

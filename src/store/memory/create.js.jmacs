@@ -1,0 +1,19 @@
+
+const bat_create = require('@graphy/content.bat.create');
+const bat_decode = require('@graphy/content.bat.decode');
+const bat_schema = require('@graphy/schema.bat.default');
+const gtar_query = require('@graphy/store.memory.query');
+
+module.exports = function(g_create) {
+	// return BAT creator (to be piped in events)
+	return bat_create({
+		// once all events are done and the serialized data is ready
+		ready(at_store) {
+			// decode dataset
+			let k_dataset = bat_decode(at_store, bat_schema);
+
+			// create store
+			return gtar_query(k_dataset);
+		},
+	});
+};

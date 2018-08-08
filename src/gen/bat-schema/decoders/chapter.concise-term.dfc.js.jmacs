@@ -1,5 +1,7 @@
 @import '../schema.js.jmacs'
 
+const bkit = require('bkit');
+
 module.exports = {
 	/* eslint-disable quotes, quote-props */
 	...@{
@@ -7,31 +9,31 @@ module.exports = {
 			bat_define('protocol', 'brp:chapter.concise-term:dfc', {
 				implements: 'bri:chapter.concise-term',
 				datatypes: {
-					string: 'bre:ntu8-string',
-					vuint: 'bre:vuint',
-					typed_array: 'bre:typed-array',
+					string: 'brdt:ntu8-string',
+					vuint: 'brdt:vuint',
+					typed_array: 'brdt:typed-array',
 				},
 			}), null, '\t')},
 	/* eslint-enable */
 
 	class: dc_super => class extends dc_super {
-		constructor(kbd, k_decoders) {
-			super();
+		constructor(kd_datatypes, kd_members) {
+			super(kd_datatypes, kd_members);
 
 			// section label
-			let s_label = k_decoders.string();
+			let s_label = kd_datatypes.string();
 
 			// block k
-			let n_block_k = k_decoders.vuint();
+			let n_block_k = kd_datatypes.vuint();
 
 			// word count
-			let n_words = k_decoders.vuint();
+			let n_words = kd_datatypes.vuint();
 
 			// indices
-			let at_indices = k_decoders.typed_array();
+			let at_indices = kd_datatypes.typed_array();
 
 			// contents (remainder of data)
-			let at_contents = kbd.grab();
+			let at_contents = kd_datatypes.grab();
 
 			Object.assign(this, {
 				label: s_label,
@@ -41,6 +43,13 @@ module.exports = {
 				indices: at_indices,
 				contents: at_contents,
 			});
+		}
+
+		* each() {
+			// temporary cheat
+			for(let i_word=0; i_word<this.word_count; i_word++) {
+				yield this.produce(i_word+this.offset);
+			}
 		}
 
 		produce(i_term) {

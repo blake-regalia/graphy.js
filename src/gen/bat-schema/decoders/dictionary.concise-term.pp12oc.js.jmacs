@@ -24,7 +24,7 @@ module.exports = {
 			bat_define('protocol', 'brp:dictionary.concise-term:pp12oc', {
 				implements: 'bri:dictionary.concise-term',
 				datatypes: {
-					vuint: 'bre:vuint',
+					vuint: 'brdt:vuint',
 				},
 				members: {
 					chapter: 'bri:chapter.concise-term',
@@ -33,18 +33,19 @@ module.exports = {
 	/* eslint-enable */
 
 	class: dc_super => class dictionary_pp12oc extends dc_super {
-		constructor(kbd, k_decoders) {
-			super(kbd);
+		constructor(kd_datatypes, kd_members) {
+			super(kd_datatypes, kd_members);
 
 			// number of chapters
-			let n_chapters = kbd.vuint();
+			let nl_chapters = kd_datatypes.vuint();
 
 			// prefixes chapter
-			let k_chapter_prefixes = kbd.chapter();
+			let k_chapter_prefixes = kd_members.chapter();
 
 			// instead of using prefix in chapter-mode, use as hash
 			let h_prefixes = {};
 			let i_prefix = 1;
+
 			for(let at_prefix_iri of k_chapter_prefixes.each()) {
 				h_prefixes[i_prefix++] = bkit.decode_utf_8(at_prefix_iri);
 			}
@@ -68,12 +69,9 @@ module.exports = {
 			// chapter objects
 			let h_chapters = {};
 
-			// chapter index
-			let i_chapter = 0;
-
 			// each chapter
-			let k_chapter;
-			while((k_chapter = kbd.chapter())) {
+			for(let i_chapter=0; i_chapter<12; i_chapter++) {
+				let k_chapter = kd_members.chapter();
 				let s_chapter = k_chapter.label;
 
 				// skipped chapters
@@ -119,9 +117,6 @@ module.exports = {
 
 				// set chapter's start range
 				k_chapter.offset = i_lo;
-
-				// next chapter
-				i_chapter += 1;
 			}
 
 			// save fields

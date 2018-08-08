@@ -26,22 +26,22 @@ module.exports = {
 	/* eslint-disable quotes, quote-props */
 	...@{
 		JSON.stringify(
-			bat_define('datatype', 'brd:typed-array', {
+			bat_define('datatype', 'brdt:typed-array', {
 				description: 'extract typed array and intelligently conserve memory when contents are mem-aligning',
 				datatypes: {
-					vuint: 'brd:vuint',
+					vuint: 'brdt:vuint',
 				},
 			}), null, '\t')},
 	/* eslint-enable */
 
-	decode(k_datatypes) {
+	decode(kd_datatypes) {
 		let at_contents = this.contents;
 
 		// type of array
 		let x_type = at_contents[this.read++];
 
 		// number of elements in array
-		let nl_values = k_datatypes.vuint();
+		let nl_values = kd_datatypes.vuint();
 
 		// offet of typed array's start
 		let ib_offset = at_contents.byteOffset + this.read;

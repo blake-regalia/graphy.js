@@ -11,7 +11,7 @@ module.exports = {
 	/* eslint-disable quotes, quote-props */
 	...@{
 		JSON.stringify(
-			bat_define('datatype', 'brd:ntu8-string', {
+			bat_define('datatype', 'brdt:ntu8-string', {
 				description: 'read a null-terminated utf8-encoded string',
 			}), null, '\t')},
 	/* eslint-enable */

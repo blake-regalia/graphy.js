@@ -1,0 +1,41 @@
+@import '../schema.js.jmacs'
+
+const bkit = require('bkit');
+
+module.exports = {
+	/* eslint-disable quotes, quote-props */
+	...@{
+		JSON.stringify(
+			bat_define('protocol', 'brp:bitmap:ab', {
+				implements: 'bri:bitmap',
+				datatypes:{ 
+					vuint: 'brdt:vuint',
+					typed_array: 'brdt:typed-array',
+				},
+				members: {
+					bitsequence: 'bri:bitsequence',
+				},
+			}), null, '\t')},
+	/* eslint-enable */
+
+	class: dc_super => class extends dc_super {
+		constructor(kd_datatypes, kd_members) {
+			super(kd_datatypes, kd_members);
+
+			// key count
+			let nl_keys = kd_datatypes.vuint();
+
+			// adjacency list
+			let at_adj = kd_datatypes.typed_array();
+
+			// bitsequence
+			let atu8_bs = kd_members.bitsequence();
+
+			Object.assign(this, {
+				key_count: nl_keys,
+				adj: at_adj,
+				bs: atu8_bs,
+			});
+		}
+	},
+};

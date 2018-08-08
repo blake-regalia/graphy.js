@@ -1,12 +1,14 @@
 @.{
-	const p_base = 'https://bat-rdf.link/';
+	const p_base = 'https://bat-rdf.link/v1.0/';
 
 	const h_prefixes = {
+		bat: `${p_base}ontology/`,
 		bre: `${p_base}encoding/`,
 		brdt: `${p_base}datatype/`,
 		bri: `${p_base}interface/`,
 		brp: `${p_base}protocol/`,
-		rdfjs: '',
+		rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+		rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
 	};
 
 
@@ -16,7 +18,7 @@
 		// implements
 		if(g_proto.implements) {
 			g_rdf = {...g_rdf,
-				'bat:implements': 'bri:dictionary.concise-term',
+				'bat:implements': g_proto.implements,
 			};
 		}
 
@@ -64,16 +66,18 @@
 
 		// object
 		return {
-			a: 'bat:protocol',
+			a: 'bat:Protocol',
 			...g_rdf,
 		};
 	};
 
 	const datatype_properties = (g_datatype) => {
+		let g_rdf = {};
+
 		// datatypes
-		if(g_proto.datatypes) {
+		if(g_datatype.datatypes) {
 			g_rdf = {...g_rdf,
-				'bat:datatype': Object.entries(g_proto.datatypes)
+				'bat:datatype': Object.entries(g_datatype.datatypes)
 					.map(([si_method, sct_encoding]) => ({
 						'bat:method': '"'+si_method,
 						'bat:encoding': sct_encoding,
@@ -81,6 +85,11 @@
 			};
 		}
 
+		// object
+		return {
+			a: 'bat:Datatype',
+			...g_rdf,
+		};
 	};
 
 	const bat_define = (s_type, sct_self, g_define) => {

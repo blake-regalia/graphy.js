@@ -1,0 +1,34 @@
+@import '../schema.js.jmacs'
+
+const bkit = require('bkit');
+
+module.exports = {
+	/* eslint-disable quotes, quote-props */
+	...@{
+		JSON.stringify(
+			bat_define('protocol', 'brp:quads:t3i', {
+				implements: 'bri:quads',
+				members: {
+					triples: 'bri:triples',
+					op_index: 'bri:op-index',
+				},
+			}), null, '\t')},
+	/* eslint-enable */
+
+	class: dc_super => class extends dc_super {
+		constructor(kd_datatypes, kd_members) {
+			super(kd_datatypes, kd_members);
+
+			// triples
+			let k_triples = kd_members.triples();
+
+			// OP index
+			let k_op_index = kd_members.op_index();
+
+			Object.assign(this, {
+				triples: k_triples,
+				op_index: k_op_index,
+			});
+		}
+	},
+};

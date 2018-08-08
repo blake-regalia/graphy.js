@@ -1,0 +1,29 @@
+@import '../schema.js.jmacs'
+
+const bkit = require('bkit');
+
+module.exports = {
+	/* eslint-disable quotes, quote-props */
+	...@{
+		JSON.stringify(
+			bat_define('protocol', 'brp:bitsequence:plain', {
+				implements: 'bri:bitsequence',
+				// datatypes: {
+				// 	raw: 'brdt:bytes',
+				// },
+			}), null, '\t')},
+	/* eslint-enable */
+
+	class: dc_super => class extends dc_super {
+		constructor(kd_datatypes, kd_members) {
+			super(kd_datatypes, kd_members);
+
+			// bytes
+			let atu8_bs = kd_datatypes.grab();
+
+			Object.assign(this, {
+				raw: atu8_bs,
+			});
+		}
+	},
+};

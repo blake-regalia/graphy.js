@@ -4,7 +4,7 @@ module.exports = {
 	/* eslint-disable quotes, quote-props */
 	...@{
 		JSON.stringify(
-			bat_define('datatype', 'brd:vuint', {}), null, '\t')},
+			bat_define('datatype', 'brdt:vuint', {}), null, '\t')},
 	/* eslint-enable */
 
 	decode() {

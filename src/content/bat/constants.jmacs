@@ -18,19 +18,19 @@
 @$ X_TOKEN_PREFIX_FOLLOWS = 0x03;
 
 
-@$ P_IRI_BAT_ENCODING = 'http://bat-rdf.link/encoding/1.0/';
+@$ P_IRI_BAT_ENCODING = 'https://bat-rdf.link/v1.0/protocol/';
 
 @$ H_BAT_ENCODINGS = [
-		'dataset:dq',
-			'dataset.dictionary:pp12oc',
-				'dataset.dictionary.chapter:difcc',
-			'dataset.quads:t3i',  // bitmap, wavelet, adajacency list, matrix  (s, p, o, g)
-				'dataset.quads.triples:rl',
-					'dataset.quads.triples.bitmap:ab',
-						'dataset.quads.triples.bitmap.bitsequence:plain',
-				'dataset.quads.index:wavelet-tree',
-				'dataset.quads.index:adjacency-list',
-				'dataset.quads.index:membership-matrix',
+		'dataset.concise-term:dq',
+			'dictionary.concise-term:pp12oc',
+				'chapter.concise-term:dfc',
+			'quads:t3i',  // bitmap, wavelet, adajacency list, matrix  (s, p, o, g)
+				'triples:rl',
+					'bitmap:ab',
+						'bitsequence:plain',
+				'index:wavelet-tree',
+				'op-index:adjacency-list',
+				'index:membership-matrix',
 	].reduce((h, s) => Object.assign(h, {
 		['PE_'+s.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()]: `${P_IRI_BAT_ENCODING}${s}`,
 	}), {});

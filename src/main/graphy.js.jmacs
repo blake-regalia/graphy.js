@@ -188,7 +188,7 @@ const graphy = module.exports = Object.assign({
 		memory: {
 			get create() {
 				delete graphy.store.memory.create;
-				return (graphy.store.memory.create = require('@graphy/content.bat.create'));
+				return (graphy.store.memory.create = require('@graphy/store.memory.create'));
 			},
 		},
 	},

@@ -317,10 +317,10 @@ class Match_Ids extends Match {
 			} of k_triples.each_b(i_a)`, 'offset: c_off_b,')}
 	}
 
-	// stage_c_ids(k_graph, k_triples, as_ids) {
-	// 	@{stage_ids('i_a', `
-	// 		let i_cof k_triples.each_c(i_a, c_off_b)`)}
-	// }
+	@// stage_c_ids(k_graph, k_triples, as_ids) {
+	@// 	@{stage_ids('i_a', `
+	@// 		let i_cof k_triples.each_c(i_a, c_off_b)`)}
+	@// }
 
 	stage_c_rows(k_graph, k_triples, as_ids) {
 		@{stage_ids('i_a, c_off_b', `

@@ -45,7 +45,7 @@ module.exports = class bitmap_ab {
 		let kbe_header = new bkit.buffer_encoder({size:512});
 
 		// encoding scheme
-		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_QUADS_TRIPLES_BITMAP_AB}');
+		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_BITMAP_AB}');
 
 		// payload byte count
 		kbe_header.vuint(at_payload.byteLength);
