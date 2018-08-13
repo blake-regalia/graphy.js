@@ -8,12 +8,15 @@ module.exports = function(g_create) {
 	// return BAT creator (to be piped in events)
 	return bat_create({
 		// once all events are done and the serialized data is ready
-		ready(at_store) {
-			// decode dataset
-			let k_dataset = bat_decode(at_store, bat_schema);
+		ready(at_dataset) {
+			// decode dataset from BLOB into an in-memory data structure
+			let k_dataset = bat_decode(at_dataset, bat_schema);
 
-			// create store
-			return gtar_query(k_dataset);
+			// create store (passing user config)
+			let k_store = gtar_query.sync(k_dataset, g_create);
+
+			debugger;
+			return k_store;
 		},
 	});
 };

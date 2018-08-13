@@ -1,10 +1,11 @@
+@import '../../share/channel.jmacs'
 @import '../../share/iris.jmacs'
 @import '../../share/writer.jmacs'
 @import '../../share/tokens.jmacs'
 
 const stream = require('stream');
 
-const factory = require('@graphy/api.data.factory');
+const factory = require('@@@{S_GRAPHY_CHANNEL}/api.data.factory');
 
 const RT_VALID_BLANK_NODE_LABEL = /@{MK_RT_VALID_BLANK_NODE_LABEL()}/;
 

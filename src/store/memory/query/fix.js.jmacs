@@ -1,0 +1,560 @@
+
+/*
+ROLES:
+ - term: an RDF unit, three of which compose a 'triple'
+ - node: a term that is either a NamedNode or a BlankNode
+ - literal: a term that is a Literal (equivalently: a term that is not a node)
+ - root: a node that ONLY appears in the subject position among all triples in the graph
+ - leaf: a term that ONLY appears in the object position among all triples in the graph
+ - subject: a node that appears AT LEAST ONCE in the subject position of some triples in the graph
+ - object: a term that appears AT LEAST ONCE in the object position of some triples in the graph
+ - hop: a node that appears in BOTH the subject and object positions of some triples in the graph
+ - objectNode: a node that appears AT LEAST ONCE in the object position of some triples in the graph
+ */
+
+
+/*
+Singularity vs Plurality
+
+For most query needs, the plural form of any step method is the preferred way to build and execute a query.
+However, when using the query API inline with your application, programming logic sometimes requires cardinality
+restriction as a way of sanitizing untrusted RDF such as from user input. For these circumstances, the singular
+form of a step method facilitates creating the desired cardinality restriction.
+
+Plural forms:
+ - .things() -- match all things of this role
+ - .things(Term) -- match only things of this role that match the given term
+ - .things(Array<Term>) -- match only things of this role that are included in the given list of terms
+
+Singular forms:
+ - .thing() -- asserts that exactly one thing belong to the set matched by the current path pattern
+ - .thing(Term) -- asserts that the exact term is the one and only indivudal in the set matched by the current path pattern
+ - .thing(Array<Term>) -- asserts that set matched by the current path pattern is a subset of the given list of terms
+
+Sampling:
+ - .things().sample(1)
+
+*/
+
+@.{
+	const A_ROLES = [
+		'node',
+		'literal',
+		'root',
+		'leaf',
+		'subject',
+		'object',
+		'hop',
+		'objectNode',
+	];
+
+	const H_METHODS = {
+		...A_ROLES.reduce((h_out, s_role) => ({
+			...h_out,
+			[s_role]: gc => fix_singular(s_role),
+			[s_role+'s']: gc => fix_plural(s_role),
+		}), {}),
+
+		// collection: gc => ,
+		// collections: gc => {},
+		out: gc => '/* out() */',
+		outs: gc => '/* outs() */',
+		inv: gc => '/* inv() */',
+		invs: gc => '/* invs() */',
+	};
+
+	const H_ROLE_TO_FIX = A_ROLES.reduce((h_out, s_role) => ({
+		...h_out,
+		[s_role]: `Fix_${s_role[0].toUpperCase()}${s_role.slice(1)}`,
+	}), {});
+}
+
+
+@> fix_singular(s_role)
+	@{s_role}(w_targets=null) {
+		return this.fix_singular(w_targets, '@{s_role}', @{H_ROLE_TO_FIX[s_role]});
+	}
+@;
+
+@> fix_plural(s_role)
+	@{s_role}s(w_targets=null) {
+		return this.fix_plural(w_targets, '@{s_role}', @{H_ROLE_TO_FIX[s_role]});
+	}
+@;
+
+
+@// adds methods that call a local error handler if invoked
+@> forbid(a_steps)
+	@*{
+		for(let s_step of a_steps) {
+			yield /* syntax: js */ `
+				${s_step}(s_arg) {
+					return this.illegal('${s_step}', s_arg);
+				}
+			`;
+		}
+	}
+@;
+
+
+@> steps(h_steps)
+	@*{
+		// each step key/value
+		for(let [s_step, gc_step] of Object.entries(h_steps)) {
+			// alias
+			if(gc_step.alias) {
+				let s_alias = gc_step.alias;
+
+				// singular
+				yield /* syntax: js */ `
+					${s_step}(...a_args) {
+						return this.${s_alias}(...a_args);
+					}
+				`;
+
+				// plural
+				yield /* syntax: js */ `
+					${s_step}s(...a_args) {
+						return this.${s_alias}s(...a_args);
+					}
+				`;
+			}
+			// normal
+			else {
+				// singular
+				yield H_METHODS[s_step](gc_step);
+
+				// plural
+				yield H_METHODS[s_step+'s'](gc_step);
+			}
+		}
+	}
+@;
+
+
+const factory = require('@graphy/api.data.factory');
+
+const {
+	Match_Term,
+	Match_Terms,
+	Match_Role,
+} = require('./match.js');
+
+
+class Error_NonExitableFix extends Error {
+	constructor() {
+		super(`Not allowed to call '.exit()' while pattern builder is fixed on an edge. Pattern must terminate on a node or literal`);
+	}
+}
+
+class Error_IllegalStep extends Error {
+	constructor(s_step, a_args, s_class) {
+		super(`Cannot take step '.${s_step}(${a_args.map(s => `"${s}"`).join(', ')})' on an instance of ${s_class}`);
+	}
+}
+
+class Error_NotYetImplemented extends Error {
+	constructor(s_description) {
+		super(`Oops! Sorry, that specific code path for "${s_description}" is not yet implemented!  >_<`);
+	}
+}
+
+
+let c_patterns = 0;
+
+/**
+ * internal class that holds and updates the state of a pattern being built
+ */
+class PatternBuilder {
+	constructor(a_pattern) {
+		this.pattern = a_pattern || [];
+		this.count = 0;
+		this.gpid = c_patterns++;
+	}
+
+	get length() {
+		return this.pattern.length;
+	}
+
+	clone() {
+		return new PatternBuilder(this.pattern.slice());
+	}
+
+	peek(i_peek=0) {
+		return this.pattern[i_peek];
+	}
+
+	shift() {
+		return this.pattern.shift();
+	}
+
+	end() {
+		return this.pattern[this.pattern.length-1];
+	}
+
+	append_term(abct_term, s_role, n_min, n_max) {
+		return this.pattern.push(
+			new Match_Term(this.gpid+'.'+(this.count++), s_role, n_min, n_max)
+		);
+	}
+
+	append_terms(a_terms, s_role, n_min, n_max) {
+		return this.pattern.push(
+			new Match_Terms(this.gpid+'.'+(this.count++), s_role, n_min, n_max)
+		);
+	}
+
+	append_role(s_role, n_min, n_max) {
+		return this.pattern.push(
+			new Match_Role(this.gpid+'.'+(this.count++), s_role, n_min, n_max)
+		);
+	}
+
+	// fields() {
+	// 	let a_fields = [];
+	// 	let a_pattern = this.pattern;
+	// 	for(let i_pattern=0, n_pattern=a_pattern.length; i_pattern<n_pattern; i_pattern++) {
+	// 		let h_step = a_pattern[i_pattern];
+	// 		if(h_step.bind) {
+	// 			a_fields.push(new Field_Bound(h_step.bind));
+	// 		}
+	// 		if(h_step.save) {
+	// 			a_fields.push(new Field_Saved(h_step.save));
+	// 		}
+	// 	}
+	// 	return a_fields;
+	// }
+}
+
+
+/**
+ * abstract class that represents a single position fix within the larger graph pattern
+ */
+class Fix {
+	constructor(k_store, k_pattern, h_failure=null) {
+		this.store = k_store;
+		this.pattern = k_pattern;
+		this.failure = h_failure;
+	}
+
+	fix_singular(z_target=null, s_role, dc_fix) {
+		let {
+			store: k_store,
+			pattern: k_pattern,
+		} = this;
+
+		// no target(s) given
+		if(null === z_target) {
+			// append a match role type and set cardinality to exactly 1
+			k_pattern.append_role(s_role, 1, 1);
+		}
+		// a ct_string was given as the target
+		else if('string' === z_target) {
+			let sct_node = z_target;
+
+			// turn ct_string into ct_word
+			let abct_word = k_store.encode_ct_node_to_word(sct_node);
+
+			// append a match term type w/ given role
+			k_pattern.append_term(abct_word, s_role);
+		}
+		// multiple targets
+		else if(Array.isArray(z_target)) {
+			throw new Error_NotYetImplemented('Singular role fixing on Arrays of targets');
+		}
+		// RDFJS term
+		else if(z_target.termType) {
+			// cast to graphy term
+			let k_term = ('function' === typeof z_target.concise)? z_target: factory.term(z_target);
+
+			// turn ct_string into ct_word
+			let abct_word = k_store.encode_ct_node_to_word(k_term.concise(k_store.prefixes));
+
+			// append a match term type w/ given role
+			k_pattern.append_term(abct_word, s_role);
+		}
+
+		// finally, return a new fix that embodies this specific role
+		return new dc_fix(k_store, k_pattern);
+	}
+
+	fix_plural(z_target=null, s_role, dc_fix) {
+		let {
+			store: k_store,
+			pattern: k_pattern,
+		} = this;
+
+		// no target(s) given
+		if(null === z_target) {
+			// append a match role type and set cardinality
+			k_pattern.append_role(s_role, 1, Infinity);
+		}
+		// a ct_string was given as the target
+		else if('string' === z_target) {
+			let sct_node = z_target;
+
+			// turn ct_string into ct_word
+			let abct_word = k_store.encode_ct_node_to_word(sct_node);
+
+			// append a match term type w/ given role
+			k_pattern.append_term(abct_word, s_role);
+		}
+		// multiple targets
+		else if(Array.isArray(z_target)) {
+			throw new Error_NotYetImplemented('Plural role fixing on Arrays of targets');
+		}
+		// RDFJS term
+		else if(z_target.termType) {
+			throw new Error_NotYetImplemented('Plural role fixing on RDFJS Terms');
+		}
+
+		// finally, return a new fix that embodies this specific role
+		return new dc_fix(k_store, k_pattern);
+	}
+
+	/**
+	 * bind the terms matched by the current fix to a key/value pair in the results objects
+	 * @param  {string} name - the name for this binding which will become the key in the results object
+	 * @return {this}
+	 */
+	bind(s_name) {
+		if('data' === s_name) throw new Error(`cannot use the reserved name 'data' to bind a term`);
+		let k_pattern = this.pattern;
+
+		// empty
+		if(!k_pattern.length) return this;
+
+		// save binding
+		k_pattern.end().bind = s_name;
+
+		// chain
+		return this;
+	}
+
+	join(s_name) {
+		// save join intent
+		this.pattern.end().join = s_name;
+
+		// chain
+		return this;
+	}
+
+	gather(s_gather) {
+		if('data' === s_gather) throw new Error(`cannot use the reserved name 'data' to bind a term`);
+		let k_pattern = this.pattern;
+
+		// empty
+		if(!k_pattern.length) return this;
+
+		// save gather
+		k_pattern.end().gather = s_gather;
+
+		// chain
+		return this;
+	}
+
+	map(f_map) {
+		// save transformation
+		this.pattern.end().transform = f_map;
+
+		// chain
+		return this;
+	}
+
+	filter(f_filter) {
+		let k_pattern = this.pattern;
+
+		// empty
+		if(!k_pattern.length) return this;
+
+		// save binding
+		k_pattern.end().filter = f_filter;
+
+		// chain
+		return this;
+	}
+
+	// data(s_register_id, f_action) {
+	// 	let k_store = this.store;
+	// 	let k_pattern = this.pattern;
+
+	// 	// data plugin registerd
+	// 	let k_plugin = k_store.plugins.registry[s_register_id];
+	// 	if(k_plugin) {
+	// 		// save action
+	// 		k_pattern.end().data = new PluginActor(k_store, k_plugin, f_action);
+	// 	}
+	// 	// no such data plugin registered
+	// 	else {
+	// 		throw new Error(`no data plugin is registered under the alias "${s_register_id}"`);
+	// 	}
+
+	// 	// chain
+	// 	return this;
+	// }
+
+	pipe(f_builder) {
+		// call builder with new empty pattern and selection
+		return f_builder(this.exit());
+	}
+
+	/**
+	 * exit the pattern builder at this position and create a selection
+	 * @throws {Error_NonExitableFix}
+	 * @return {Selection}
+	 */
+	exit() {
+		// exit only allowed on a node / literal
+		if(this instanceof Fix_OutgoingEdge || this instanceof Fix_InverseEdge) {
+			throw new Error_NonExitableFix();
+		}
+
+		// // one of the targets does not exist in the graph
+		// if(this.failure) {
+		// 	return new FailedSelection(this.store, this.failure);
+		// }
+
+		// enable query to take place
+		return new Selection(this.store, this.pattern);
+	}
+
+	/**
+	 * overridable error handler for when an illegal step is made in the pattern building call chain
+	 * @private
+	 * @param  {string} step - the name of the attempted step method
+	 * @param  {Array} args - the arguments that were used on the given step method
+	 * @throws {Error_IllegalStep}
+	 */
+	illegal(s_step, a_args) {
+		throw new Error_IllegalStep(s_step, a_args, this.constructor.name);
+	}
+
+	@{forbid([
+		'fork',
+		'all',
+		...[
+			...A_ROLES,
+			'out',
+			'inv',
+			'collection',
+		].reduce((a_out, s_method) => a_out.push(...[
+			s_method,
+			s_method+'s',
+		]) && a_out, []),
+	])}
+}
+
+
+/**
+ * represents the initial state of a pattern builder and all possible steps that can be taken from an empty pattern
+ */
+class Fix_Open extends Fix {
+	constructor(k_store) {
+		super(k_store, new PatternBuilder());
+	}
+
+	@{steps({
+		hop: {},
+		node: {},
+		subject: {},
+		object: {},
+		objectNode: {},
+		literal: {},
+		root: {},
+		leaf: {},
+		// collection: {},
+	})}
+}
+
+/**
+ * a fix on nodes
+ */
+class Fix_Node extends Fix {
+	@{steps({
+		out: {},
+		inv: {},
+	})}
+}
+
+/**
+ * a fix on subject nodes
+ */
+class Fix_Subject extends Fix {
+	@{steps({
+		out: {},
+	})}
+}
+
+/**
+ * a fix on roots
+ */
+class Fix_Root extends Fix_Subject {}
+
+/**
+ * a fix on hop nodes
+ */
+class Fix_Hop extends Fix_Subject {
+	@{steps({
+		inv: {},
+	})}
+}
+
+/**
+ * a fix on objects
+ */
+class Fix_Object extends Fix {
+	@{steps({
+		inv: {},
+	})}
+}
+
+/**
+ * a fix on object nodes
+ */
+class Fix_ObjectNode extends Fix_Object {}
+
+/**
+ * a fix on leafs
+ */
+class Fix_Leaf extends Fix_Object {}
+
+/**
+ * a fix on literals
+ */
+class Fix_Literal extends Fix_Object {}
+
+
+/**
+ * a fix on outgoing edges
+ */
+class Fix_OutgoingEdge extends Fix {
+	@{steps({
+		hop: {},
+		node: {alias:'objectNode'},
+		object: {},
+		objectNode: {},
+		literal: {},
+		leaf: {},
+		// collection: {},
+	})}
+}
+
+/**
+ * a fix on inverse edges
+ */
+class Fix_InverseEdge extends Fix {
+	@{steps({
+		node: {alias:'subject'},
+		subject: {},
+		hop: {},
+		root: {},
+	})}
+}
+
+
+
+module.exports = {
+	open(k_store) {
+		return new Fix_Open(k_store);
+	},
+};

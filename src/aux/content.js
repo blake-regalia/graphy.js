@@ -30,6 +30,7 @@ module.exports = {
 		read: {
 			description: s => `Single-threaded ${s} content reader`,
 			links: [
+				'api.iso.stream',
 				'api.data.factory',
 			],
 			files: [
@@ -53,7 +54,7 @@ module.exports = {
 		write: {
 			description: s => `${s} content writer`,
 			links: [
-				'api.data.factory',
+				'api.class.writable',
 			],
 			files: [
 				'main.js',

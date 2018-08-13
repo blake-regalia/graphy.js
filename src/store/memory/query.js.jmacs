@@ -1,19 +1,20 @@
-const pattern = require('./pattern.js');
+const fix = require('./fix.js');
 
 class store_sync {
-	constructor(k_store) {
+	constructor(k_dataset, gc_store) {
 		Object.assign(this, {
-			store: k_store,
+			dataset: k_dataset,
+			prefixes: gc_store.prefixes || {},
 		});
 	}
 
 	pattern() {
-		return new pattern(this.store);
+		return fix.open(this);
 	}
 }
 
 module.exports = {
-	sync(k_store) {
-		return new store_sync(k_store);
+	sync(k_dataset, gc_store) {
+		return new store_sync(k_dataset, gc_store);
 	},
 };

@@ -1,4 +1,4 @@
-@include 'store.jmacs'
+@//import 'store.jmacs'
 
 const F_SORT_NUMBERS = (x_a, x_b) => x_a - x_b;
 
@@ -35,6 +35,8 @@ class Triples {
 
 class ContiguousAdjacencyListTriples extends Triples {
 	constructor(k_graph, s_a, s_b, s_c, at_idx_a_b, at_adj_a_b, at_idx_ab_c, at_adj_ab_c) {
+		super();
+
 		Object.assign(this, {
 			graph: k_graph,
 			a:s_a, b:s_b, c:s_c,
@@ -329,7 +331,7 @@ class ContiguousAdjacencyListTriples extends Triples {
 			let h_groups_xc_a = a_groups_bc_a[i_b+''];
 
 			if(!h_groups_xc_a) {
-				throw 'no object defined at '+i_b;
+				throw new Error('no object defined at '+i_b);
 			}
 			let nl_xc_a = h_groups_xc_a.size;
 			delete h_groups_xc_a.size;

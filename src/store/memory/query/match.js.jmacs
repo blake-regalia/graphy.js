@@ -1,25 +1,65 @@
-@import 'common.jmacs'
 
 
-@> return_empty_gen()
-	// empty generator
-	return function*(){};
-@;
 
 
 class Match {
-	constructor(i_index, hp_role) {
+	constructor(i_index, s_role, n_min=0, n_max=Infinity) {
 		Object.assign(this, {
+			/**
+			 * unique match index to distinguish from other matches
+			 * @type {uint}
+			 */
 			index: i_index,
-			role: hp_role,
+
+			/**
+			 * the role this term fulfills
+			 * @type {GTAR_RoleString}
+			 */
+			role: s_role,
+
+			/**
+			 * minimum number of Terms that should be matched
+			 * @type {uint}
+			 */
+			cardinality_min: n_min,
+
+			/**
+			 * maximum number of Terms that should be matched
+			 * @type {uint|Infinity}
+			 */
+			cardinality_max: n_max,
+
+			/**
+			 * name of the key to write to on the results object
+			 * @type {string}
+			 */
 			bind: null,
+
+			/**
+			 * name of the key to compare against this match against for joining pattern results
+			 * @type {string}
+			 */
 			join: null,
+
+			/**
+			 * filter or select matches by an arbitrary data index
+			 * @type {GTAR_DataHandler}
+			 */
 			data: null,
+
+			/**
+			 * filter matches by a user-defined callback function
+			 * @type {function(term: RDFJS_Term)}
+			 */
 			filter: null,
+
+			/**
+			 * instead of binding the matched Term instance to the results, apply a user-defined transform function
+			 * @type {function(term: RDFJS_Term)}
+			 */
 			transform: null,
+
 			sample: Infinity,
-			cardinality_min: 0,
-			cardinality_max: Infinity,
 		});
 	}
 
@@ -34,448 +74,64 @@ class Match {
 			throw new Error(`cardinality restriction of having at most ${this.cardinality_max} was not met`);
 		}
 	}
-}
 
-
-@> stage_id(s_stage, s_params='')
-	let {
-		id: i_@{s_stage},
-		bind: s_bind,
-		join: s_join,
-	} = this;
-
-	@.{
-		let s_yields = '';
-		switch(s_stage) {
-			case 'a': {
-				s_params = '';
-				break;
-			}
-			case 'b': {
-				s_params = ', i_a';
-				s_yields = 'offset: c_off_b,';
-				break;
-			}
-			case 'c': {
-				s_params = ', i_a, c_off_b';
-				break;
-			}
-		}
-	}
-
-	// mk entity generator
-	return function*(h_row_old@{s_params}) {
-		@- true
-			// assume not bound
-			let h_row_new = h_row_old;
-
-			// entity is bound
-			if(s_bind) {
-				h_row_new = Object.create(h_row_old);
-
-				// store bound
-				h_row_new[s_bind] = k_graph.select(i_@{s_stage}, hp_role);
-			}
-
-			yield {
-				id: i_@{s_stage},
-				row: h_row_new,
-				@{s_yields}
-			};
-		@;
-
-
-		// entity will be joined
-		if(s_join) {
-			debugger;
-		}
-	};
-@;
-
-class Match_Id extends Match {
-	constructor(i_index, hp_role, i_id) {
-		super(i_index, hp_role);
-		this.id = i_id;
-	}
-
-	eval(k_graph, k_triples) {
-		let i_term = this.id;
-
-		// invalid cardinality
-		if(this.cardinality_max < 1 || this.cardinality_min > 1) {
-			throw new Error('invalid cardinality restriction');
-		}
-
-		// user bound a filter
-		if(this.filter) {
-			// filter rejects reconstructed term
-			if(!this.filter(k_graph.dict.produce(i_term, this.role))) {
-				@{return_empty_gen()}
-			}
-		}
-
-		// user bound a data handler
-		if(this.data) {
-			let k_data = this.data;
-
-			// test this entity
-			let h_status = k_data.test(i_term, this.role);
-
-			// dissaproval
-			if(h_status.rejected) {
-				@{return_empty_gen()}
-			}
-
-			// user saves value
-			if('save' in h_status) {
-				// ref save name
-				let s_save = h_status.save;
-
-				// 
-				k_data.instance;
-			}
-		}
-
-		return this[s_stage](k_graph, s_term);
-	}
-
-
-	stage_a_rows(k_graph, k_triples, s_term) {
-		@{stage_id('a')}
-	}
-
-	stage_b_rows(k_graph, k_triples) {
-		@{stage_id('b')}
-
-	}
-
-	stage_b_ids(k_graph, k_triples) {
-		let {
-			id: i_b,
-		} = this;
-
-		// mk entity generator
-		return function*(i_a, h_row_a) {
-			// search data table for given entity
-			let c_off_b = k_triples.rank_b(i_a, i_b);
-			if(c_off_b >= 0) {
-				yield {
-					id: i_b,
-					offset: c_off_b,
-				};
-			}
-		};
-	}
-
-	stage_c(k_graph, k_triples) {
-		let {
-			id: i_c,
-		} = this;
-
-		// mk entity generator
-		return function*(i_a, c_off_b, h_row_b) {
-			// search data table for given entity
-			if(k_triples.has_c(i_a, c_off_b, i_c)) {
-				yield i_c;
-			}
-		};
+	/**
+	 * @abstract
+	 */
+	match() {
+		throw new Error(`The '.match' method should be overriden by sub class: ${this.constructor.name}`);
 	}
 }
 
 
-@> stage_ids(s_generator, s_iterator, s_yield=false)
-	let {
-		bind: s_bind,
-		join: s_join,
-		sample: n_sample,
-	} = this;
-
-	// user wants to save data
-	let s_save = k_data.save;
-
-	// mk entity generator
-	return function*(h_row_old, @{s_generator}) {
-		// count number of terms matched
-		let c_terms = 0;
-
-		// search data table for given entities
-		for(@{s_iterator}) {
-			// found a target entity
-			if(as_ids.has(i_term)) {
-				// delete from search list
-				as_ids.remove(i_term);
-
-				// assume not bound
-				let h_row_new = h_row_old;
-
-				// bound
-				if(b_) {
-					// branch row
-					h_row_new = Object.create(h_row_old);
-
-					// binding
-					if(s_bind) {
-						// store binding
-						h_row_new[s_bind] = k_graph[s_term](i_term);
-					}
-
-					// data save
-					if(s_save) {
-						// 
-						h_row_new.data[s_save] = k_data.load(i_b);
-					}
-				}
-
-				// yield
-				@- s_yield
-					yield {
-						id: i_term,
-						row: h_row_new,
-						@{true === s_yield? '': s_yield}
-					};
-				@:
-					yield i_term;
-				@;
-
-				// increment counter; collected max samples
-				if(++c_terms === n_sample) break;
-
-				// found all ids; stop searching
-				if(!as_ids.size) break;
-			}
-		}
-
-		// validate cardinality
-		this.validate_cardinality(c_terms);
-	};
-@;
-
-class Match_Ids extends Match {
-	constructor(i_index, hp_role, a_ids, n_sample=Infinity) {
-		super(i_index, hp_role);
-		this.ids = as_ids;
-		this.sample = n_sample;
+class Match_Term extends Match {
+	constructor(i_index, s_role, sct_term, n_min, n_max) {
+		super(i_index, s_role, n_min, n_max);
+		this.term = sct_term;
 	}
 
-	eval(k_graph, k_triples) {
+	match(k_exec) {
 		let {
-			ids: as_ids,
+			term: sct_term,
+			role: s_role,
 		} = this;
 
-		// clone
-		as_ids = new Set(as_ids);
+		// resolve ct_string to term id
+		let i_term = k_exec.store.find(sct_term, s_role);
 
-		// user bound a filter
-		if(this.filter) {
-			let f_tiler = this.filter;
-
-			// each term in list
-			for(let i_term of as_ids) {
-				// entity passes filter test
-				if(!f_filter(k_graph[s_term](i_term))) {
-					as_ids.remove(i_term);
-				}
-			}
-
-			// empty
-			if(!as_ids.size) {
-				@{return_empty_gen()}
-			}
+		// no match
+		if(!i_term) {
+			return k_exec.fail(this.index, sct_term, s_role);
 		}
 
-		// user bound a data handler
-		let k_data = null;
-		if(this.data) {
-			k_data = this.data;
-
-			// plugin supports filtering
-			if(k_data.filters) {
-				// each term in list
-				for(let i_term of as_ids) {
-					// entity did not pass plugin test
-					if(!k_data.test(i_term)) {
-						as_ids.remove(i_term);
-					}
-				}
-
-				// empty
-				if(!as_ids.size) {
-					@{return_empty_gen()}
-				}
-			}
-		}
-
-		debugger;
-		// return this[](k_graph, k_triples, as_ids, k_data);
-	}
-
-	stabe_b(k_graph, k_triples, as_ids, k_data) {
-		@{stage_ids('i_a', `
-			let {
-				id: i_b,
-				offset: c_off_b
-			} of k_triples.each_b(i_a)`, 'offset: c_off_b,')}
-	}
-
-	@// stage_c_ids(k_graph, k_triples, as_ids) {
-	@// 	@{stage_ids('i_a', `
-	@// 		let i_cof k_triples.each_c(i_a, c_off_b)`)}
-	@// }
-
-	stage_c_rows(k_graph, k_triples, as_ids) {
-		@{stage_ids('i_a, c_off_b', `
-			let i_c of k_triples.each_c(i_a, c_off_b)`, true)}
+		
 	}
 }
 
-@> stage_role(s_stage)
-	@.{
-		let s_params = '';
-		let s_iterate = 'i_term';
-		switch(s_stage) {
-			case 'b': {
-				s_iterate = '{id:i_term, offset:c_off_b}';
-				s_params = ', i_a';
-				break;
-			}
-			case 'c': {
-				s_params = ', i_a, c_off_b';
-				break;
-			}
-			default: break;
-		}
+class Match_Terms extends Match {
+	constructor(i_index, s_role, a_terms, n_min, n_max) {
+		super(i_index, s_role, n_min, n_max);
+		this.terms = a_terms;
 	}
 
-	let {
-		role: hp_role,
-		bind: s_bind,
-		join: s_join,
-		gather: s_gather,
-		data: k_data,
-		filter: f_filter,
-		sample: n_sample,
-		transform: f_transform,
-	} = this;
-
-	// select each term
-	let b_select = s_gather || s_bind || f_filter;
-
-	// extend row
-	let b_extend = s_bind || (k_data && k_data.saves);
-
-	return function*(h_row_old@{s_params}) {
-		// count number of terms matched
-		let c_terms = 0;
-
-		// search for matching terms
-		for(let @{s_iterate} of k_triples.each_@{s_stage}(hp_role@{s_params})) {
-			// select term
-			let h_term = b_select? k_graph.select(i_term, hp_role): null;
-
-			// filter rejects reconstructed term; skip
-			if(f_filter && !f_filter(h_term)) continue;
-
-			// // data evaluate
-			// if(f_evaluate && !f_evaluate(i_term)) continue;
-
-			// assume not bound / saved
-			let h_row_new = h_row_old;
-
-			// gather
-			if(s_gather) {
-				// list exists
-				if(s_gather in h_row_new) {
-					h_row_new[s_gather].push(h_term);
-				}
-				// no list yet
-				else {
-					h_row_new[s_gather] = [h_term];
-				}
-			}
-			// extend
-			else if(b_extend) {
-				// branch row
-				h_row_new = Object.create(h_row_old);
-
-				// binding; store bound
-				if(s_bind) h_row_new[s_bind] = h_term;
-
-				// saving
-				if(s_save) {
-					// branch data
-					let h_data_new = h_row_new.data = Object.create(h_row_new.data);
-
-					// store saved
-					h_data_new[s_save] = k_instance.load(i_term);
-				}
-			}
-
-			// yield row
-			let h_yield = {
-				id: i_term,
-				row: h_row_new,
-			};
-
-			// joins
-			if(s_join) {
-				// there is a previous set
-				if(as_join) {
-					// entity does not exist in previous set
-					if(!as_join.has(i_term)) {
-						// skip it
-						continue;
-					}
-					// otherwise, remove entity from set
-					else {
-						as_join.delete(i_term);
-					}
-				}
-
-				// push entity to list
-				a_yields.push(h_yield);
-			}
-
-			// yield
-			yield h_yield;
-
-			// increment counter; collected max samples
-			if(++c_terms === n_sample) break;
-		}
-
-		// validate cardinality
-		this.validate_cardinality(c_terms);
+	match(k_exec) {
+		// resolve each ct_string to its term id
+		let a_terms = this.terms.map(sct => k_exec.resolve(sct));
 	}
-@;
+}
 
 class Match_Role extends Match {
-	constructor(i_index, hp_role, n_sample=Infinity) {
-		super(i_index, hp_role);
-		this.sample = n_sample;
+	constructor(i_index, s_role, n_min, n_max) {
+		super(i_index, s_role, n_min, n_max);
 	}
 
-	eval(k_graph, k_triples) {
-		let {
-			role: hp_role,
-			sample: n_sample,
-		} = this;
+	match(k_exec) {
 
-	}
-
-	stage_a() {
-		@{stage_role('a')}
-	}
-
-	stage_b() {
-		@{stage_role('b')}
-	}
-
-	stage_c() {
-		@{stage_role('c')}
 	}
 }
 
 module.exports = {
-	Match_Id,
-	Match_Ids,
+	Match_Term,
+	Match_Terms,
 	Match_Role,
 };

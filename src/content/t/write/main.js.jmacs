@@ -1,15 +1,16 @@
 @./* global FORMAT */
 
 @//@
+@import '../../../share/channel.jmacs'
 @import '../../../share/writer.jmacs'
 
-const writer = require('@graphy/writer');
+const writable = require('@@@{S_GRAPHY_CHANNEL}/api.class.writable');
 
 @$ QUADS = ('trig' === FORMAT);
 
-class serializer extends writer.serializer.n3.terse {
+class serializer extends writable.serializer.n3.terse {
 	constructor(g_config) {
-		super(writer.triples, g_config);
+		super(writable.triples, g_config);
 		
 		let s_indent = g_config.indent || '\t';
 

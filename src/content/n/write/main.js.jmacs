@@ -1,11 +1,13 @@
 @./* global FORMAT */
 @//@
 
-const writer = require('@graphy/writer');
+@import '../../../share/channel.jmacs'
 
-class serializer extends writer.serializer.n3 {
+const writable = require('@@@{S_GRAPHY_CHANNEL}/api.class.writable');
+
+class serializer extends writable.serializer.n3 {
 	constructor(h_config) {
-		super(h_config, writer.triples);
+		super(h_config, writable.triples);
 
 		// ct methods
 		this.ct_node = this.ct_node_verbose;

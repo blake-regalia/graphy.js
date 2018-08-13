@@ -1,8 +1,10 @@
+@import '../../../share/channel.jmacs'
+
 const fs = require('fs');
 const stream = require('stream');
 
 const worker = require('worker');
-const read = require('@graphy/format.nt.read');
+const read = require('@@@{S_GRAPHY_CHANNEL}/content.nt.read');
 
 worker.dedicated({
 	read_file(a_range, p_input, g_stat, sf_map) {

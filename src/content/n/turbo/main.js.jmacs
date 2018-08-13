@@ -1,8 +1,9 @@
 @// import parser macros
+@import '../../../share/channel.jmacs'
 @import '../../common.parse.textual.jmacs'
 
 const worker = require('worker');
-const read = require('@graphy/format.nt.read');
+const read = require('@@@{S_GRAPHY_CHANNEL}/content.nt.read');
 // const parse = require('../format.nt.parser');
 
 const R_METHOD = /^\s*([^(\s]+)\s*\(/;

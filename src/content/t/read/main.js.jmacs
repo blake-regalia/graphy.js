@@ -1,3 +1,4 @@
+@import '../../../share/channel.jmacs'
 @import '../../../share/iris.jmacs'
 @./* global FORMAT */
 @//@
@@ -11,8 +12,8 @@
 @import '../../common.parse.textual.jmacs'
 
 
-const stream = require('@graphy/api.iso.stream');
-const factory = require('@graphy/api.data.factory').raw;
+const stream = require('@@@{S_GRAPHY_CHANNEL}/api.iso.stream');
+const factory = require('@@@{S_GRAPHY_CHANNEL}/api.data.factory').raw;
 const quad = (k) => factory.quad(k.subject, k.predicate, k.object, k.graph);
 
 
