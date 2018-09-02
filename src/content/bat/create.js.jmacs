@@ -1,12 +1,9 @@
 @import './constants.jmacs'
+@import '../../share/channel.jmacs'
 
-const stream = require('stream');
-
-const bkit = require('bkit');
-
-// const decoders = require('@graphy/content.bat.decoders');
-const primer = require('@graphy/content.bat.primer');
-const serializer = require('@graphy/content.bat.serializer');
+const stream = require('@{channel('api.iso.stream')}');
+const primer = require('@{channel('content.bat.primer')}');
+const serializer = require('@{channel('content.bat.serializer')}');
 
 class creator extends stream.Writable {
 	constructor(g_config={}) {

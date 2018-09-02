@@ -1,3 +1,4 @@
+@import '../share/channel.jmacs'
 
 @.{
 	let h_content_types = {
@@ -15,21 +16,21 @@
 		get read() {
 			// memoize
 			delete @{s_content}.read;
-			return @{s_content}.read = require('@graphy/content.@{s_content}.read');  // eslint-disable-line global-require
+			return @{s_content}.read = require('@{channel(`content.${s_content}.read`)}');  // eslint-disable-line global-require
 		},
 
 		// turbo @{s_content} output
 		get turbo() {
 			// memoize
 			delete @{s_content}.turbo;
-			return @{s_content}.turbo = require('@graphy/content.@{s_content}.turbo');  // eslint-disable-line global-require
+			return @{s_content}.turbo = require('@{channel(`content.${s_content}.turbo`)}');  // eslint-disable-line global-require
 		},
 
 		// write @{s_content} input
 		get write() {
 			// memoize
 			delete @{s_content}.write;
-			return @{s_content}.write = require('@graphy/content.@{s_content}.write');  // eslint-disable-line global-require
+			return @{s_content}.write = require('@{channel(`content.${s_content}.write`)}');  // eslint-disable-line global-require
 		},
 
 		// // parse @{s_content} input
@@ -106,7 +107,7 @@ const H_SPARQL_RESULT_TYPES = {
 	get @{s_package}() {
 		// memoize
 		delete graphy.@{s_package};
-		return (graphy.@{s_package} = require('@graphy/@{s_package}'));
+		return (graphy.@{s_package} = require('@{channel(s_package)}'));
 	},
 @;
 
@@ -188,7 +189,7 @@ const graphy = module.exports = Object.assign({
 		memory: {
 			get create() {
 				delete graphy.store.memory.create;
-				return (graphy.store.memory.create = require('@graphy/store.memory.create'));
+				return (graphy.store.memory.create = require('@{channel('store.memory.create')}'));
 			},
 		},
 	},
@@ -203,7 +204,7 @@ const graphy = module.exports = Object.assign({
 		return H_SPARQL_RESULT_TYPES[h_term.type](h_term);
 	},
 
-}, require('@graphy/api.data.factory'));
+}, require('@{channel('api.data.factory')}'));
 
 // export graphy to window object if in main thread of browser
 if('undefined' !== typeof window) window.graphy = graphy;

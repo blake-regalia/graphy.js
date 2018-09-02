@@ -29,5 +29,18 @@ module.exports = {
 				leafs: k_leafs,
 			});
 		}
+
+		* each_a() {
+			yield* this.roots.each();
+		}
+
+		* fetch_b_values_a(i_a) {
+			yield* this.roots.fetch_values(i_a);
+		}
+
+		* fetch_c_ids_ab(i_a, c_off_b) {
+			let i_ab = this.roots.bs.select_1(i_a) + c_off_b;
+			yield* this.leafs.fetch_ids(i_ab);
+		}
 	},
 };

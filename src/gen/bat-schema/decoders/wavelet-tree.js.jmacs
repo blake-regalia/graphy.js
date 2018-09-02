@@ -1,0 +1,111 @@
+@import '../schema.js.jmacs'
+
+module.exports = {
+	/* eslint-disable quotes, quote-props */
+	...@{
+		JSON.stringify(
+			bat_define('protocol', 'brp:wavelet-tree', {
+				implements: 'bri:wavelet-tree',
+				datatypes: {
+					vuint: 'brdt:vuint',
+					string: 'brdt:ntu8-string',
+					typed_array: 'brdt:typed-array',
+				},
+				members: {
+					bitsequence: 'bri:bitsequence',
+				},
+			}), null, '\t')},
+	/* eslint-enable */
+
+	class: dc_super => class extends dc_super {
+		constructor(kd_datatypes, kd_members) {
+			super(kd_datatypes, kd_members);
+
+			// symbols typed array
+			let at_symbols = kd_datatypes.typed_array();
+
+			// 
+			let k_bs = kd_datatypes.bitsequence();
+
+			Object.assign(this, {
+				symbols: at_symbols,
+				bs: k_bs,
+			});
+		}
+
+
+	},
+};
+
+
+class WaveletTree {
+	constructor() {
+		Object.assign(this, {
+			width: 0,
+			height: 0,
+			topology: new Uint8Array(),
+			bs: null,
+		});
+	}
+
+	// binary search on symbols to find
+	locate(n_symbol) {
+		let at_symbols = this.symbols;
+
+		let i_lo = 0;
+		let i_hi = at_symbols.length;
+		let i_mid = i_hi << 1;
+		for(;;) {
+			let n_mid = at_symbols[i_mid];
+
+			if(n_symbol > n_mid) {
+				i_lo = i_mid + 1;
+			}
+			else if(n_symbol < n_mid) {
+				i_hi = i_mid;
+			}
+			// found symbol; return position
+			else {
+				return i_mid;
+			}
+		}
+	}
+
+	rank(n_symbol, i_hi) {
+		let k_bs = this.bs;
+		let n_height = this.height;
+		let nl_symbols = this.width;
+
+		let i_symbol = n_symbol;
+
+		let x_partition = nl_symbols / 2;
+		for(let i_level=0; i_level<n_height; i_level++) {
+			// 1: right child
+			if(i_symbol > x_partition) {
+				k_bs.rank_1(i_hi);
+				i_symbol -= x_partition;
+
+			}
+			// left child
+			else {
+				this.bs();
+			}
+		}
+
+		// let x_bit = Math.floor(n_symbol / (nl_symbols / (1 >> (n_level + 1)))) % 2;
+		// if(x_bit) this.bs.rank_1(i_hi);
+		// else this.bs.rank_0();
+	}
+
+	/*
+	01234567890123456789
+	abcdefghijklmnopqrstuvwxyz
+	00000000000001111111111111
+	00000001111110000000111111
+	00001110001110000111000111
+	00110010010010011001001001
+	0101010
+
+
+	 */
+}

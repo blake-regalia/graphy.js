@@ -6,7 +6,7 @@ const bkit = require('bkit');
 const worker = require('worker');
 // const performance_now = require('performance-now');
 
-const encoder_chapter = require('../encoders/chapter-difcc.js');
+const encoder_chapter = require('../encoders/chapter-dfc.js');
 
 const F_SORT_BUFFER = (ab_a, ab_b) => {
 	let nl_a = ab_a.length;

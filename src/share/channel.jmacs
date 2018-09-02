@@ -1,1 +1,5 @@
 @$ S_GRAPHY_CHANNEL = 'development' === process.env.NODE_ENV? 'graphy-dev': 'graphy';
+
+@>> channel(s_package)
+	@@@{S_GRAPHY_CHANNEL}@{s_package? `/${s_package}`: ''}
+@;

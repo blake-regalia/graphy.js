@@ -1,8 +1,9 @@
+@import '../../share/channel.jmacs'
 
-const bat_create = require('@graphy/content.bat.create');
-const bat_decode = require('@graphy/content.bat.decode');
-const bat_schema = require('@graphy/schema.bat.default');
-const gtar_query = require('@graphy/store.memory.query');
+const bat_create = require('@{channel('content.bat.create')}');
+const bat_decode = require('@{channel('content.bat.decode')}');
+const bat_schema = require('@{channel('schema.bat.default')}');
+const gtar_query = require('@{channel('store.memory.query')}');
 
 module.exports = function(g_create) {
 	// return BAT creator (to be piped in events)
@@ -15,8 +16,8 @@ module.exports = function(g_create) {
 			// create store (passing user config)
 			let k_store = gtar_query.sync(k_dataset, g_create);
 
-			debugger;
-			return k_store;
+			// callback
+			g_create.ready(k_store);
 		},
 	});
 };

@@ -10,10 +10,11 @@
 @// import parser macros
 @import 'textual-parser-macros.jmacs'
 
+@import '../share/channel.jmacs'
 @import '../share/iris.jmacs'
 
-const parser_text = require('@graphy/format.common.parser.text')
-const stream = require('@graphy/stream');
+const stream = require('@{channel('api.iso.stream')}');
+const parser_text = require('@{channel('format.common.parser.text')}')
 
 @{constants()}
 

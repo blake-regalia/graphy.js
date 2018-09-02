@@ -1,4 +1,5 @@
 @import '../../../share/iris.jmacs'
+@import '../../../share/channel.jmacs'
 
 @./* global FORMAT */
 @//@
@@ -10,8 +11,8 @@
 @// import parser macros
 @import '../../common.parse.textual.jmacs'
 
-const stream = require('stream');
-const factory = require('@graphy/api.data.factory').raw;
+const stream = require('@{channel('api.iso.stream')}');
+const factory = require('@{channel('api.data.factory')}').raw;
 
 const KT_DEFAULT_GRAPH = factory.defaultGraph();
 const KT_RDFS_LANG_STRING = factory.namedNode('@{P_IRI_RDFS}langString');

@@ -1,8 +1,10 @@
-const stream = require('stream');
+@import '../../share/channel.jmacs'
+
 // const DC_URL = require('../isomorphic/locals.js').URL;
 const DC_URL = require('url').URL;
 
-const factory = require('@graphy/factory');
+const stream = require('@{channel('api.iso.stream')}');
+const factory = require('@{channel('api.data.factory')}');
 
 @>> R_RANGE_PN_HIGH(b_extend=false)
 	@- b_extend

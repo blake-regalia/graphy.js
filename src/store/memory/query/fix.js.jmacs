@@ -36,6 +36,8 @@ Sampling:
 
 */
 
+@import '../../../share/channel.jmacs'
+
 @.{
 	const A_ROLES = [
 		'node',
@@ -46,6 +48,8 @@ Sampling:
 		'object',
 		'hop',
 		'objectNode',
+		'out',
+		'inv',
 	];
 
 	const H_METHODS = {
@@ -55,12 +59,20 @@ Sampling:
 			[s_role+'s']: gc => fix_plural(s_role),
 		}), {}),
 
-		// collection: gc => ,
-		// collections: gc => {},
-		out: gc => '/* out() */',
-		outs: gc => '/* outs() */',
-		inv: gc => '/* inv() */',
-		invs: gc => '/* invs() */',
+		// // collection: gc => ,
+		// // collections: gc => {},
+		// out: gc => /* syntax: js */ `
+		// 	out() {
+
+		// 	}
+		// `,
+		// outs: gc => /* syntax: js */ `
+		// 	outs() {
+		// 		debugger;
+		// 	}
+		// `,
+		// inv: gc => '/* inv() */',
+		// invs: gc => '/* invs() */',
 	};
 
 	const H_ROLE_TO_FIX = A_ROLES.reduce((h_out, s_role) => ({
@@ -132,13 +144,14 @@ Sampling:
 @;
 
 
-const factory = require('@graphy/api.data.factory');
+const factory = require('@{channel('api.data.factory')}');
 
 const {
 	Match_Term,
 	Match_Terms,
 	Match_Role,
 } = require('./match.js');
+const Selection = require('./selection.js');
 
 
 class Error_NonExitableFix extends Error {
@@ -158,6 +171,29 @@ class Error_NotYetImplemented extends Error {
 		super(`Oops! Sorry, that specific code path for "${s_description}" is not yet implemented!  >_<`);
 	}
 }
+
+
+
+class Field {
+	constructor(s_name) {
+		this.name = s_name;
+	}
+}
+
+class Field_Bound extends Field {
+	constructor(s_name) {
+		super(s_name);
+		this.isBound = true;
+	}
+}
+
+class Field_Saved extends Field {
+	constructor(s_name) {
+		super(s_name);
+		this.isSaved = true;
+	}
+}
+
 
 
 let c_patterns = 0;
@@ -210,20 +246,20 @@ class PatternBuilder {
 		);
 	}
 
-	// fields() {
-	// 	let a_fields = [];
-	// 	let a_pattern = this.pattern;
-	// 	for(let i_pattern=0, n_pattern=a_pattern.length; i_pattern<n_pattern; i_pattern++) {
-	// 		let h_step = a_pattern[i_pattern];
-	// 		if(h_step.bind) {
-	// 			a_fields.push(new Field_Bound(h_step.bind));
-	// 		}
-	// 		if(h_step.save) {
-	// 			a_fields.push(new Field_Saved(h_step.save));
-	// 		}
-	// 	}
-	// 	return a_fields;
-	// }
+	fields() {
+		let a_fields = [];
+		let a_pattern = this.pattern;
+		for(let i_pattern=0, n_pattern=a_pattern.length; i_pattern<n_pattern; i_pattern++) {
+			let h_step = a_pattern[i_pattern];
+			if(h_step.bind) {
+				a_fields.push(new Field_Bound(h_step.bind));
+			}
+			if(h_step.save) {
+				a_fields.push(new Field_Saved(h_step.save));
+			}
+		}
+		return a_fields;
+	}
 }
 
 
@@ -405,7 +441,7 @@ class Fix {
 	 */
 	exit() {
 		// exit only allowed on a node / literal
-		if(this instanceof Fix_OutgoingEdge || this instanceof Fix_InverseEdge) {
+		if(this instanceof Fix_Out || this instanceof Fix_Inv) {
 			throw new Error_NonExitableFix();
 		}
 
@@ -434,8 +470,8 @@ class Fix {
 		'all',
 		...[
 			...A_ROLES,
-			'out',
-			'inv',
+			// 'out',
+			// 'inv',
 			'collection',
 		].reduce((a_out, s_method) => a_out.push(...[
 			s_method,
@@ -527,7 +563,7 @@ class Fix_Literal extends Fix_Object {}
 /**
  * a fix on outgoing edges
  */
-class Fix_OutgoingEdge extends Fix {
+class Fix_Out extends Fix {
 	@{steps({
 		hop: {},
 		node: {alias:'objectNode'},
@@ -542,7 +578,7 @@ class Fix_OutgoingEdge extends Fix {
 /**
  * a fix on inverse edges
  */
-class Fix_InverseEdge extends Fix {
+class Fix_Inv extends Fix {
 	@{steps({
 		node: {alias:'subject'},
 		subject: {},

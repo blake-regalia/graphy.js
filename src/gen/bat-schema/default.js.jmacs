@@ -1,10 +1,11 @@
+@import '../../share/channel.jmacs'
 @.{
 	const fs = require('fs');
 	let a_decoders = fs.readdirSync(`${process.cwd()}/src/gen/bat-schema/decoders`);
 	let a_datatypes = fs.readdirSync(`${process.cwd()}/src/gen/bat-schema/datatypes`);
 }
 
-const factory = require('@graphy/api.data.factory');
+const factory = require('@{channel('api.data.factory')}');
 
 let h_schema = {};
 

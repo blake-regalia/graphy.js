@@ -3,9 +3,8 @@
 @import '../../share/writer.jmacs'
 @import '../../share/tokens.jmacs'
 
-const stream = require('stream');
-
-const factory = require('@@@{S_GRAPHY_CHANNEL}/api.data.factory');
+const stream = require('@{channel('api.iso.stream')}');
+const factory = require('@{channel('api.data.factory')}');
 
 const RT_VALID_BLANK_NODE_LABEL = /@{MK_RT_VALID_BLANK_NODE_LABEL()}/;
 
@@ -92,11 +91,6 @@ class Serializer_N3_Verbose extends Serializer_N3 {
 		return factory.ct(sct_term, this.writer.prefixes).verbose();
 	}
 
-	// 
-	collection() {
-
-	}
-
 	// // create comment
 	// comment(s_comment) {
 	// 	s_comment.split(/\n/g).forEach((s_line) => {
@@ -151,6 +145,16 @@ class Serializer_N3_Terse extends Serializer_N3 {
 		return factory.ct(sct_term, h_prefixes).terse(h_prefixes);
 	}
 
+	// serialize a collection tersely
+	nested_collection_item(z_item) {
+		// nested collection
+		if(Array.isArray(z_item)) {
+			return this.serialize_collection(z_item);
+		}
+		else {
+			return this.ct_term(z_item);
+		}
+	}
 }
 
 
@@ -384,7 +388,7 @@ class SubWriter_Objects extends SubWriter {
 	}
 
 	// transcode array to concise-term structs
-	transcode_collection(a_collection) {
+	transcode_collection(a_collection, xm_mode) {
 		// empty collection
 		if(!a_collection.length) {
 			return {
@@ -444,7 +448,14 @@ class SubWriter_Objects extends SubWriter {
 					for(let z_item of z_objects) {
 						// item is an array; write RDF collection
 						if(Array.isArray(z_item)) {
-							s_write += this.objects(this.transcode_collection(z_item), xm_mode);
+							// serializer can serialize collection
+							if(k_serializer.serialize_collection_object) {
+								s_write += k_serializer.serialize_collection_object(this, z_item, xm_mode);
+							}
+							// transcode collection
+							else {
+								s_write += this.objects(this.transcode_collection(z_item), xm_mode);
+							}
 						}
 						// non-array
 						else {
@@ -537,6 +548,7 @@ class SubWriter_Objects extends SubWriter {
 
 
 module.exports = {
+	comment: factory.comment,
 	quads: CTWriter_Quads,
 	triples: CTWriter_Triples,
 

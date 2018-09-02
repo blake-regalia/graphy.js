@@ -30,9 +30,9 @@ module.exports = {
 			return this.dictionary.find(sct_word, s_role);
 		}
 
-		// quads(s_role) {
-		// 	return this.quads.
-		// }
+		use(s_use) {
+			return this.quads.use(s_use);
+		}
 
 		// range(s_role) {
 

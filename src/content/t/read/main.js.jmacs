@@ -1070,7 +1070,7 @@ class reader {
 		}
 		// invalid arg
 		else {
-			throw new TypeError('invalid argument for input parameter: '+g_input);
+			throw new TypeError('invalid argument for input parameter: '+JSON.stringify(g_input));
 		}
 	}
 

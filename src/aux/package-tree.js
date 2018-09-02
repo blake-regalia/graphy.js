@@ -62,6 +62,15 @@ module.exports = {
 				description: 'Decode BAT data',
 			}),
 		},
+
+		sparql_results: {
+			read: () => ({
+				links: [
+					'api.data.factory',
+				],
+				description: 'Single-threaded SPARQL Query Results JSON Format (application/sparql-results+json) reader',
+			}),
+		},
 	},
 
 	schema: {

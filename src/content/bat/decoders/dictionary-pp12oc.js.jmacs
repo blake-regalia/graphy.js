@@ -1,7 +1,8 @@
 @import '../constants.jmacs'
+@import '../../../share/channel.jmacs'
 
 const bkit = require('bkit');
-const factory = require('@graphy/api.data.factory');
+const factory = require('@{channel('api.data.factory')}');
 
 const interfaces = require('./interfaces.js');
 
