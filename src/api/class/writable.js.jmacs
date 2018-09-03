@@ -397,9 +397,17 @@ class SubWriter_Objects extends SubWriter {
 		}
 		// non-empty collection
 		else {
+			let z_item = a_collection[0];
+			let w_first = z_item;
+
+			// item is nested collection; transcode
+			if(Array.isArray(z_item)) {
+				w_first = this.transcode_collection(z_item);
+			}
+
 			return {
 				// first item
-				'>@{P_IRI_RDF}first': a_collection[0],
+				'>@{P_IRI_RDF}first': w_first,
 
 				// rest of items
 				'>@{P_IRI_RDF}rest': 1 === a_collection.length
@@ -505,19 +513,17 @@ class SubWriter_Objects extends SubWriter {
 					}
 					// must create name for anonymous blank node
 					else {
-						debugger;
-
 						// make blank node label
-						let s_blank_node = '_:g'+(k_serializer.blank_node_index++);
+						let sct_blank_node = '_g'+(k_serializer.blank_node_index++);
 
 						// create node
-						let k_blank_node = this.parent.parent.subject(s_blank_node);
+						let k_blank_node = this.parent.parent.subject(sct_blank_node);
 
 						// add pairs normally (same graph tho!)
 						k_blank_node.add(z_objects, xm_mode & @{XM_MODE_GRAPH});
 
 						// then continue with outer triple where blank node is object
-						return this.serialize(s_blank_node, xm_mode);
+						return this.serialize(k_blank_node.term, xm_mode);
 					}
 				}
 				// coercable instance

@@ -46,7 +46,9 @@
 				.
 				@{MK_R_RANGE_PN_CHARS()}
 			]*
-			@{MK_R_RANGE_PN_CHARS()}
+			[
+				@{MK_R_RANGE_PN_CHARS()}
+			]
 		)?
 	)
 	$

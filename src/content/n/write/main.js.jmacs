@@ -3,42 +3,37 @@
 
 @import '../../../share/channel.jmacs'
 
+@$ QUADS = ('trig' === FORMAT);
+
 const writable = require('@@@{S_GRAPHY_CHANNEL}/api.class.writable');
 
-class serializer extends writable.serializer.n3 {
-	constructor(h_config) {
-		super(h_config, writable.triples);
-
-		// ct methods
-		this.ct_node = this.ct_node_verbose;
+class serializer extends writable.serializer.n3.verbose {
+	constructor(g_config) {
+		super(writable.triples, g_config);
 	}
 
 	get comment() {
 		return this.hash_comment;
 	}
 
-	blank_line() {
-		this.push('\n');
+	newlines(n_newlines=1) {
+		return '\n'.repeat(n_newlines);
 	}
 
-	from_term(h_term) {
-		return h_term.verbose();
-	}
-
-	data(k_leaf, s_object) {
-		@- 'nq' === FORMAT
+	serialize_object(k_leaf, s_object) {
+		@- QUADS
 			let k_parent = k_leaf.parent;
-			this.push(`${k_parent.term} ${k_leaf.term} ${s_object} ${k_parent.parent.term} .\n`);
+			return `${k_parent.term} ${k_leaf.term} ${s_object} ${k_parent.parent.term} .\n`;
 		@:
-			this.push(`${k_leaf.parent.term} ${k_leaf.term} ${s_object} .\n`);
+			return `${k_leaf.parent.term} ${k_leaf.term} ${s_object} .\n`;
 		@;
 	}
 
 	close() {
-		this.push(null);
+		this.end();
 	}
 };
 
 module.exports = function(g_config) {
-	return new serializer(g_config);
+	return (new serializer(g_config)).writer;
 };
