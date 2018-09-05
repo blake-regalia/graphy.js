@@ -197,8 +197,11 @@ class serializer extends writable.serializer.n3.terse {
 		let s_indent = this.indent;
 		return `${this.nest_open('(')}${
 			a_collection
-				.map(s => this.nested_collection_item(s))
-				.join(`\n@{QUADS? '${s_indent}':''}`+s_indent.repeat(this.nest_level+1))
+				.map(s => `\n@{QUADS? '${s_indent}':''}${
+					s_indent.repeat(this.nest_level+1)
+				}${
+					this.nested_collection_item(s)
+				}`)
 		}${this.nest_close(')')}`;
 	}
 

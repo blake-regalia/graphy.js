@@ -1259,6 +1259,7 @@ class serializer {
 /* <OP-index> */
 		let at_index;
 		{
+			debugger;
 			// convert op-index hash into sorted list
 			let a_op_keys = [];
 			for(let sit_o in h_index_op) {
@@ -1296,57 +1297,63 @@ class serializer {
 			// close OP-index bitsequence
 			let atu8_bs_o_p = kbs_o_p.close();
 
-			// encode bitsequence
-			let ke_bs = new encoder_bitsequence({
-				raw: atu8_bs_o_p,
+			// op-index
+			let ke_bitmap_o_p = new encoder_bitmap({
+				key_count: c_triples,
+				adjacency_list: at_adj_o_p,
+				bitsequence: atu8_bs_o_p,
 			});
 
-			// close bitsequence
-			let at_bs = ke_bs.close();
+			// // encode bitsequence
+			// let ke_bs = new encoder_bitsequence({
+			// 	raw: atu8_bs_o_p,
+			// });
 
-			// create section header
-			let kbe_header = new bkit.buffer_encoder({size:512});
+			// // close bitsequence
+			// let at_bs = ke_bs.close();
 
-			// create info section
-			let kbe_payload = new bkit.buffer_encoder({size:512});
+			// // create section header
+			// let kbe_header = new bkit.buffer_encoder({size:512});
 
-			// index type
-			kbe_payload.ntu8_string('op');
+			// // create info section
+			// let kbe_payload = new bkit.buffer_encoder({size:512});
 
-			// number of triples
-			kbe_payload.vuint(c_triples);
+			// // number of triples
+			// kbe_payload.vuint(c_triples);
 
-			// op-index adjacency list
-			kbe_payload.typed_array(at_adj_o_p);
+			// // op-index adjacency list
+			// kbe_payload.typed_array(at_adj_o_p);
 
-			// end of info section
-			let at_payload = kbe_payload.close();
+			// // end of info section
+			// let at_payload = kbe_payload.close();
 
-			// encoding scheme
-			kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_OP_INDEX_ADJACENCY_LIST}');
+			// // encoding scheme
+			// kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_BITMAP_AB}');
 
-			// payload byte count
-			kbe_header.vuint(at_payload.byteLength
-				+ at_bs.byteLength);
+			// // payload byte count
+			// kbe_header.vuint(at_payload.byteLength
+			// 	+ at_bs.byteLength);
 
-			// // add section to output
-			// this.output.push(
-			// 	kbe_header.close(),
-			// 	at_payload,
-			// 	atu8_bs_o_p,
-			// );
+			// // // add section to output
+			// // this.output.push(
+			// // 	kbe_header.close(),
+			// // 	at_payload,
+			// // 	atu8_bs_o_p,
+			// // );
 
-			// ref header buffer-writer
-			let kbw_header = kbe_header.buffer;
+			// // ref header buffer-writer
+			// let kbw_header = kbe_header.buffer;
 
-			// append payload to header
-			kbw_header.append(at_payload);
+			// // append payload to header
+			// kbw_header.append(at_payload);
 
-			// append bitsequence to header
-			kbw_header.append(at_bs);
+			// // append bitsequence to header
+			// kbw_header.append(at_bs);
 
-			// save result to outer-scoped variable
-			at_index = kbw_header.close();
+			// // save result to outer-scoped variable
+			// at_index = kbw_header.close();
+
+			at_index = ke_bitmap_o_p.close();
 		}
 /* </OP-index> */
 

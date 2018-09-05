@@ -388,7 +388,7 @@ class SubWriter_Objects extends SubWriter {
 	}
 
 	// transcode array to concise-term structs
-	transcode_collection(a_collection, xm_mode) {
+	transcode_collection(a_collection) {
 		// empty collection
 		if(!a_collection.length) {
 			return {

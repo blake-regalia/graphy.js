@@ -222,6 +222,10 @@ const jmacs_lint = a_deps => ({
 	deps: [
 		...a_deps,
 		...(a_deps.reduce((a_requires, p_dep) => {
+			// skip directories
+			if(fs.statSync(p_dep).isDirectory()) return a_requires;
+
+			// load script into jmacs
 			let g_compiled = jmacs.load(p_dep);
 
 			return [
@@ -366,7 +370,9 @@ module.exports = {
 		// non-content-sub packages
 		package_ncs: Object.keys(h_packages)
 			.filter(s => !a_content_subs.includes(s)
-				&& !s.startsWith('content.')
+				&& !s.startsWith('content.n')
+				&& !s.startsWith('content.t')
+				&& !s.startsWith('content.bat')
 				&& !s.startsWith('schema.')
 				&& !s.startsWith('store.memory.query')),
 
@@ -421,14 +427,14 @@ module.exports = {
 				`,
 			}),
 
-			[s_channel]: h => ({
+			[s_channel]: () => ({
 				deps: [`link_to.${s_channel}`],
 				run: /* syntax: bash */ `
-					cd build/${s_channel}/${h.package}
+					cd build/${s_channel}/${s_channel}
 
 					# defer README to GitHub
 					rm -rf README.md
-					cat <(echo "#@${s_channel}/${h.package}") ../../../src/aux/README-defer.md > README.md
+					cat <(echo "#@${s_channel}/${s_channel}") ../../../src/aux/README-defer.md > README.md
 				`,
 			}),
 		},
@@ -489,7 +495,11 @@ module.exports = {
 				'schema.bat.default': {
 					...scoped_package('schema.bat.default'),
 
-					'main.js': () => jmacs_lint([`src/gen/bat-schema/default.js.jmacs`]),
+					'main.js': () => jmacs_lint([
+						'src/gen/bat-schema/default.js.jmacs',
+						'src/gen/bat-schema/datatypes',  // directory
+						'src/gen/bat-schema/decoders',  // directory
+					]),
 
 					decoders: {
 						':bat_protocol': h => jmacs_lint([
