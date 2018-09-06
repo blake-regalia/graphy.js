@@ -195,14 +195,15 @@ class serializer extends writable.serializer.n3.terse {
 
 	serialize_collection(a_collection) {
 		let s_indent = this.indent;
-		return `${this.nest_open('(')}${
+		let n_indent = ++this.nest_level;
+		return `(${
 			a_collection
 				.map(s => `\n@{QUADS? '${s_indent}':''}${
-					s_indent.repeat(this.nest_level+1)
+					s_indent.repeat(n_indent)
 				}${
 					this.nested_collection_item(s)
-				}`)
-		}${this.nest_close(')')}`;
+				}`).join('')
+		}\n@{QUADS? '${s_indent}':''}${s_indent.repeat(--this.nest_level)})`;
 	}
 
 	serialize_collection_object(k_leaf, a_collection, xm_mode) {
