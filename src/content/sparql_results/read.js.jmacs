@@ -54,7 +54,7 @@ class reader {
 						let h_row_terms = {};
 
 						// each property in row
-						for(let s_key of h_row) {
+						for(let s_key in h_row) {
 							h_row_terms[s_key] = factory.from_sparql_result(h_row[s_key]);
 						}
 
