@@ -559,11 +559,11 @@ module.exports = {
 
 				// all non-content-sub packages
 				':package_ncs': [si_package => ({
-					[si_package]: ({
+					[si_package]: {
 						...scoped_package(si_package),
 
 						'main.js': () => jmacs_lint([`src/${si_package.replace(/\./g, '/')}.js.jmacs`]),
-					}),
+					},
 				})],
 
 				// the super module

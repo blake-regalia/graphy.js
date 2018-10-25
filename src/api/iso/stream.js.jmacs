@@ -9,6 +9,15 @@ const stream = require('stream');
 @;
 
 class Readable extends stream.Readable {
+	constructor(gc_readable={}) {
+		super(gc_readable);
+
+		// use iterator
+		if(gc_readable.iterator) {
+			throw new Error('readable stream iterator shortcut not yet implemented');
+		}
+	}
+
 	@{until()}
 }
 

@@ -1,10 +1,14 @@
 /* eslint-env mocha */
 /* eslint indent: 1 */
+@import '../../../src/share/channel.jmacs'
+
 const assert = require('assert');
 const eq = assert.strictEqual;
 const deq = assert.deepEqual;
 
-const graphy = require('graphy');
+const ttl_read = require('@{channel()}/content.ttl.read');
+const ttl_write = require('@{channel()}/content.ttl.write');
+const data_set = require('@{channel()}/api.data.set');
 
 const ST_PREFIXES = /* syntax: turtle */ `
 	@prefix : <> .
@@ -12,15 +16,15 @@ const ST_PREFIXES = /* syntax: turtle */ `
 `;
 
 const write = async(h_triples, st_verify) => {
-	let k_set_expected = graphy.set();
+	let k_set_expected = data_set();
 
-	await graphy.ttl.parser({input:ST_PREFIXES+st_verify})
+	await ttl_read({input:ST_PREFIXES+st_verify})
 		.pipe(k_set_expected)
 		.until('finish');
 
-	let k_set_actual = graphy.set(null, {debug:true});
+	let k_set_actual = data_set(null, {debug:true});
 
-	let k_writer = graphy.ttl.writer({
+	let k_writer = ttl_write({
 		prefixes: {
 			'': '',
 		},
@@ -34,14 +38,15 @@ const write = async(h_triples, st_verify) => {
 
 	// pipe to parser and actual
 	await k_writer
-		.pipe(graphy.ttl.parser())
+		.pipe(ttl_read())
 		.pipe(k_set_actual)
 		.until('finish');
 
-	eq(k_set_actual.canonicalize(), k_set_expected.canonicalize());
+	// compare canonicalized forms
+	eq(k_set_actual.canonicalize(), k_set_expected.canonicalize(), 'sets did not yield equivalent canonicalization');
 };
 
-const comment = () => graphy.comment({
+const comment = () => ttl_write.comment({
 	width: 100,
 	border: {
 		char: '*',
@@ -116,30 +121,41 @@ let h_tests = {
 					':b': [':c', ':-1'],
 				},
 			},
-			expect: `
+			expect: /* syntax: turtle */ `
 				:a :b :c, <-1> ;
 				.
 			`,
 		},
 
-		'coercions': (() => {
-			let dt_now = new Date();
-			return {
-				write: {
-					':coerce': {
-						':integer': 42,
-						':decimal': 4.2,
-						':dateTime': dt_now,
-					},
+		'coercions': (dt_now => ({
+			write: {
+				':coerce': {
+					':integer': 42,
+					':decimal': 4.2,
+					':dateTime': dt_now,
 				},
-				expect: `
-					:coerce :integer 42 ;
-						:decimal 4.2 ;
-						:dateTime "${dt_now.toISOString()}"^^xsd:dateTime ;
-					.
-				`,
-			};
-		})(),
+			},
+			expect: `
+				:coerce :integer 42 ;
+					:decimal 4.2 ;
+					:dateTime "${dt_now.toISOString()}"^^xsd:dateTime ;
+				.
+			`,
+		})(new Date())),
+	},
+
+	collections: {
+		long: (a_items => ({{
+			write: {
+				':a': {
+					':b': [a_items.map(s => `"${s}`)],
+				},
+			},
+			expect: /* syntax: turtle */ `
+				:a :b (${a_items.map(s => `"${s}" `)}) ;
+				.
+			`,
+		})('abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''))),
 	},
 };
 

@@ -151,6 +151,33 @@ class Serializer_N3_Terse extends Serializer_N3 {
 		if(Array.isArray(z_item)) {
 			return this.serialize_collection(z_item);
 		}
+		// blank node
+		else if('object' === typeof z_item) {
+			// open blank node block
+			let s_blank_node = this.nest_open();
+
+			// each pair
+			for(let s_key in z_item) {
+				// directive
+				if('`' === s_key[0]) {
+					s_blank_node += this.directive(s_key, z_item[s_key], 0);
+					continue;
+				}
+
+				// new subwriter for objects
+				let ksw_objects = new SubWriter_Objects(this, this.writer, this.ct_node(s_key));
+
+				// add this hash
+				s_blank_node += ksw_objects.objects(z_item[s_key], @{XM_MODE_SUBJECT});
+			}
+
+			// close blank node
+			s_blank_node += this.nest_close();
+
+			// return object string
+			return s_blank_node;
+		}
+		// concise-term string
 		else {
 			return this.ct_term(z_item);
 		}
