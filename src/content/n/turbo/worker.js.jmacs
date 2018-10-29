@@ -66,6 +66,9 @@ worker.dedicated({
 					// end of range
 					else if(nb_chunk <= 0) {
 						setImmediate(() => {
+							// close file descriptor
+							fs.closeSync(if_input);
+
 							// // no more parsing in this thread
 							// this.push(null);
 

@@ -1,7 +1,7 @@
 @import '../../share/channel.jmacs'
 @import '../../share/iris.jmacs'
 
-@import '../common.parse.textual.jmacs'
+@import '../text.read.jmacs'
 @./* global FORMAT */
 @//@
 

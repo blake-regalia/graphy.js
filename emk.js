@@ -236,8 +236,8 @@ const jmacs_lint = a_deps => ({
 		}, [])),
 	],
 	run: /* syntax: bash */ `
-		npx jmacs $1 > $@
-		${eslint()}
+		npx jmacs $1 > $@ \
+			&& ${eslint()}
 	`,
 });
 
@@ -535,26 +535,24 @@ module.exports = {
 
 				// content subs
 				':content_sub': [si_package => ({
-					[si_package]: {
+					[si_package]: (g_package => ({
 						...scoped_package(si_package),
 
-						'main.js': (({split:a_split}) => () => ({
-							deps: [
-								`src/content/${h_packages[si_package].super}/${a_split[2]}/main.js.jmacs`,
-								...[
-									'textual-parser-macros',
-									'general-parser-macros',
-								].map(s => `src/content/${s}.jmacs`),
-							],
+						...Object.entries(g_package.files).reduce((h_def, [s_file, a_deps]) => ({
+							...h_def,
+							[s_file]: () => ({
+								deps: [
+									`src/content/${g_package.super}/${si_package.split(/\./g)[2]}/${s_file}.jmacs`,
+									...a_deps.map(s_dep => path.join(`src/content/${g_package.super}/`, s_dep)),
+								],
 
-							run: /* syntax: bash */ `
-								npx jmacs -g "{FORMAT:'${a_split[1]}'}" $1 > $@
-								${eslint()}
-							`,
-						}))({
-							split: si_package.split(/\./g),
-						}),
-					},
+								run: /* syntax: bash */ `
+									npx jmacs -g "{FORMAT:'${si_package.split(/\./g)[1]}'}" $1 > $@ \
+									 && ${eslint()}
+								`,
+							}),
+						}), {}),
+					}))(h_packages[si_package]),
 				})],
 
 				// all non-content-sub packages

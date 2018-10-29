@@ -4,7 +4,7 @@ module.exports = {
 	api: {
 		class: {
 			writable: () => ({
-				links: ['api.data.factory'],
+				links: ['api.data.factory', 'api.iso.stream'],
 				description: 'Produce quads using nestable concise term string objects',
 			}),
 		},
@@ -13,7 +13,7 @@ module.exports = {
 				description: 'Create instances of Terms and Triples/Quads. Implements @RDFJS DataFactory',
 			}),
 			set: () => ({
-				links: ['api.iso.stream', 'api.data.factory'],
+				links: ['api.data.factory', 'api.iso.stream'],
 				description: 'Create a mathematical set of triples for comparison and operations such as union, intersection, difference, etc.',
 			}),
 		},

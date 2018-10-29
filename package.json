@@ -31,7 +31,7 @@
     "buffer": "^5.2.0",
     "performance-now": "^2.1.0",
     "progress": "^2.0.0",
-    "worker": "^0.3.11"
+    "worker": "^0.3.12"
   },
   "devDependencies": {
     "chai": "^4.1.2",

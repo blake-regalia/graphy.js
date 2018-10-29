@@ -9,7 +9,7 @@
 @$ QUADS = NQ;
 
 @// import parser macros
-@import '../../common.parse.textual.jmacs'
+@import '../../text.read.jmacs'
 
 const stream = require('@{channel('api.iso.stream')}');
 const factory = require('@{channel('api.data.factory')}').raw;
@@ -64,7 +64,7 @@ const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 
 	let x = s_object[0];
 
-	// objet term type is literal
+	// object term type is literal
 	if('"' === x) {
 		// no escapes in string nor datatype
 		let m_literal_e = R_LITERAL_ESCAPELESS.exec(s_object);
@@ -112,7 +112,7 @@ const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 			}
 			else {
 				this.s = s;
-				return this.parse_error('string literal');
+				return this.parse_error(`invalid string literal: ${s_object}`);
 			}
 		}
 	}
@@ -122,9 +122,12 @@ const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 		w_object = this.namedNode(@{unescape_iri('p_object')});
 	}
 	// object term type is blank node; make blank node
-	else {
-		// object term type is blank node; make blank node
+	else if('_' === x && ':' === s_object[1]) {
 		w_object = factory.blankNode(s_object.substr(2));
+	}
+	// other
+	else {
+		return this.parse_error(`invalid object: ${s_object}`);
 	}
 
 	// emit data event
@@ -165,7 +168,7 @@ const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 @> parse_n({
 	local: b_local=false,
 }={})
-	// match @{STATEMENT_TYPE}s
+	// match triples/quads
 	for(;;) {
 		@{if_match(STATEMENT_REGEX+'_ESCAPELESS_SP', 'm_statement_e_sp', true)}
 			@{match_body('m_statement_e_sp')}
@@ -214,7 +217,7 @@ class reader {
 				literal(s_literal) {
 					if(RT_ESCAPES_INVALID.test(s_literal)) return this._error(`invalid literal: "${s_literal}"`);
 					try {
-						return @{unescape_literal('s_literal')};
+						return factory.literal(s_literal);
 					}
 					catch(e_parse) {
 						return this._error(`invalid string literal: "${s_literal}"`);
@@ -313,19 +316,6 @@ class reader {
 			const begin_flow = () => {
 				// switch input to flowing mode
 				ds_input.on('data', (s_chunk) => {
-					// // stream is paused
-					// if(this.n < 0) {
-					// 	return this.error('stream received new data while it was supposed to be paused!');
-					// }
-
-					// // notify that data will begin
-					// if(!b_init) {
-					// 	ds_output.emit('ready');
-
-					// 	// do not notify again
-					// 	b_init = true;
-					// }
-// debugger;
 					// concatenate current chunk to previous chunk
 					let s = s_pre + s_chunk;
 
@@ -343,11 +333,11 @@ class reader {
 					@{parse_n({
 						local: true,
 					})}
-// debugger;
+
 					this.pre = s_pre;
 
-					// // progress updates
-					// ds_output.emit('progress', s_chunk.length);
+					// progress updates
+					ds_output.emit('progress', s_chunk.length);
 				});
 			};
 
@@ -540,7 +530,7 @@ class reader {
 	eof() {
 		// there is still unparsed data
 		if(this.pre.length) {
-			// append newline to end so we can match @{STATEMENT_TYPE} token
+			// append newline to end so we can match token
 			this.pre += '\n';
 			this.safe_parse();
 
@@ -570,6 +560,10 @@ class reader {
 		ds_output.push(null);
 	}
 
+	_error(s_message) {
+		throw new Error(s_message);
+	}
+
 	parse_error(s_state) {
 		throw new Error(`parsing error occurred in state: ${s_state}`);
 	}
@@ -580,7 +574,7 @@ class reader {
 	read: {once:true},
 	progress: {},
 	eof: {once:true},
-	end: {once:true},
+	end: {}, // {once:true},
 	data: {},  // attach data listener last
 };
 

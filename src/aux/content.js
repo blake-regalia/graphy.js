@@ -33,10 +33,9 @@ module.exports = {
 				'api.iso.stream',
 				'api.data.factory',
 			],
-			files: [
-				'main.js',
-				'package.json',
-			],
+			files: {
+				'main.js': ['../text.read.jmacs'],
+			},
 		},
 
 		turbo: {
@@ -44,11 +43,10 @@ module.exports = {
 			links: [
 				'api.data.factory',
 			],
-			files: [
-				'main.js',
-				'worker.js',
-				'package.json',
-			],
+			files: {
+				'main.js': [],
+				'worker.js': [],
+			},
 		},
 
 		write: {
@@ -56,10 +54,9 @@ module.exports = {
 			links: [
 				'api.class.writable',
 			],
-			files: [
-				'main.js',
-				'package.json',
-			],
+			files: {
+				'main.js': [],
+			},
 		},
 	},
 };
