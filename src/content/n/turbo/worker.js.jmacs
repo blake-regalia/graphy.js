@@ -34,7 +34,7 @@ worker.dedicated({
 		let nb_ideal = 1 << 16;
 		let ab_buffer = Buffer.allocUnsafe(nb_ideal);
 		let nb_buffer = nb_ideal;
-		let [ib_lower, ib_upper] = a_range;
+		let [ib_lower, ib_upper, b_debug] = a_range;
 
 		// 
 		let b_tardy = 0 !== a_range[0];
@@ -54,7 +54,6 @@ worker.dedicated({
 				highWaterMark: nb_ideal,
 
 				read(nb_request) {
-					// debugger;
 					// size of chunk to make
 					let nb_chunk = Math.min(nb_request, ib_upper - ib_read);
 
@@ -99,8 +98,8 @@ worker.dedicated({
 					// prepend overflow
 					let nb_view = nb_read;
 					if(nb_overflow) {
-						nb_view += ab_overflow;
-						ab_view = Buffer.concat([ab_overflow, ab_view], nb_overflow);
+						nb_view += ab_overflow.byteLength;
+						ab_view = Buffer.concat([ab_overflow, ab_view], nb_view);
 					}
 
 					// last character is surrogated

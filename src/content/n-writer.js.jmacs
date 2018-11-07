@@ -40,10 +40,6 @@ class @{FORMAT}_serializer extends writer.serializer.n3 {
 			this.push(`${k_leaf.parent.term} ${k_leaf.term} ${s_object} .\n`);
 		@;
 	}
-
-	close() {
-		this.push(null);
-	}
 };
 
 module.exports = function(h_config) {

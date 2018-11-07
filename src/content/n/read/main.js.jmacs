@@ -29,16 +29,75 @@ const R_LITERAL = /^"(.*)"(?:\^\^<(.*)>|@([^ \t.]+)|)?$/;
 const RT_HAS_ESCAPES = /[\\]/;
 
 const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
+const RT_BLANK_NODE_LABEL_VALID = /(?:@{PN_CHARS_U()}|[0-9])(?:(?:@{PN_CHARS()}|[.])*@{PN_CHARS()})?/;
 const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
+const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
+
+@>> R_NAMED_NODE(b_escapeless=false, b_open_cap=false)
+	@//@regex
+	@{b_open_cap? '(<': '<('}[^@{b_escapeless? '\\\\': ''}>]*)>
+@;
+
+@>> R_BLANK_NODE()
+	@//@regex
+	_:([^\x20\t<]+)
+@;
+
+@>> R_NODE(b_escapeless=false, b_open_cap=false)
+	@//@regex
+	@{R_NAMED_NODE(b_escapeless, b_open_cap)}
+	| @{R_BLANK_NODE()}
+@;
+
+@>> R_LITERAL(b_escapeless=false)
+	@//@regex
+	"(@{b_escapeless? '[^"\\\\]': '(?:[^"\\\\]|\\\\")'}*)"(?:\^\^@{R_NAMED_NODE(b_escapeless)}|@([^\x20\t.]+)|)
+@;
+
+@>> R_OBJECT(b_escapeless=false)
+	@//@regex
+	@{R_NODE(b_escapeless, true)}
+	| @{R_LITERAL(b_escapeless)}
+@;
+
+@>> R_COMMENT()
+	@//@regex
+	\.\s*(?:#[^\n]*\n\s*|\n\s*)+
+@;
+
+@>> R_TRIPLE(b_escapeless=false)
+	@//@regex
+	(?:@{R_NODE(b_escapeless)})
+	[\x20\t]* @{R_NAMED_NODE(b_escapeless)}
+	[\x20\t]* (?:@{R_OBJECT(b_escapeless)})
+	[\x20\t]* @{R_COMMENT()}
+@;
+
+@>> R_QUAD(b_escapeless=false)
+	@//@regex
+	(?:@{R_NODE(b_escapeless)})
+	[\x20\t]* @{R_NAMED_NODE(b_escapeless)}
+	[\x20\t]* (?:@{R_OBJECT(b_escapeless)})
+	[\x20\t]* (?:@{R_NAMED_NODE(b_escapeless)}|)
+	[\x20\t]* @{R_COMMENT()}
+@;
 
 @- QUADS
 	@$ STATEMENT_REGEX = 'R_QUAD';
-	const R_QUAD_ESCAPELESS_SP = /(?:<([^\\>]*)>|_:([^ \t<]+))[ \t]*<([^\\>]*)>[ \t]*(.*?)[ \t]*(?:<([^>]*)>|_:([^ \t<]+)|)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
-	const R_QUAD = /(?:<([^>]*)>|_:([^ \t<]+))[ \t]*<([^>]*)>[ \t]*(.*?)[ \t]*(?:<([^>]*)>|_:([^ \t<]+)|)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
+
+	const R_QUAD_ESCAPELESS_SP = /@{R_QUAD(true)}/y;
+	const R_QUAD = /@{R_QUAD()}/y;
+
+	// const R_QUAD_ESCAPELESS_SP = /(?:<([^\\>]*)>|_:([^ \t<]+))[ \t]*<([^\\>]*)>[ \t]*(?:<([^\\>]*)>|_:([^ \t<]+)|"[^"]*"())[ \t]*(?:<([^>]*)>|_:([^ \t<]+)|)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
+	// const R_QUAD = /(?:<([^>]*)>|_:([^ \t<]+))[ \t]*<([^>]*)>[ \t]*(.*?)[ \t]*(?:<([^>]*)>|_:([^ \t<]+)|)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
 @:
 	@$ STATEMENT_REGEX = 'R_TRIPLE';
-	const R_TRIPLE_ESCAPELESS_SP = /(?:<([^\\>]*)>|_:([^ \t<]+))[ \t]*<([^\\>]*)>[ \t]*(.*?)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
-	const R_TRIPLE = /(?:<([^>]*)>|_:([^ \t<]+))[ \t]*<([^>]*)>[ \t]*(.*?)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
+
+	const R_TRIPLE_ESCAPELESS_SP = /@{R_TRIPLE(true)}/y;
+	const R_TRIPLE = /@{R_TRIPLE()}/y;
+
+	// const R_TRIPLE_ESCAPELESS_SP = /(?:<([^\\>]*)>|_:([^ \t<]+))[ \t]*<([^\\>]*)>[ \t]*(.*?)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
+	// const R_TRIPLE = /(?:<([^>]*)>|_:([^ \t<]+))[ \t]*<([^>]*)>[ \t]*(.*?)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
 @;
 
 
@@ -55,110 +114,61 @@ const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 	let i = R_CLEAN.lastIndex;
 @;
 
-@> match_body(sv_match, escape_subject, escape_predicate)
+@.{
+	const ue_iri = (sv_iri, b_unescape=false) => b_unescape? unescape_iri(sv_iri): sv_iri;
+}
+
+@> match_body(sv_match, b_unescape=false)
 	// prep object term
 	let w_object;
 
-	// determine object term type
-	let s_object = @{sv_match}[4];
-
-	let x = s_object[0];
-
+	// object term type is named node
+	if(@{sv_match}[4]) {
+		let p_object = @{sv_match}[4].slice(1);
+		w_object = this.namedNode(@{ue_iri('p_object', b_unescape)});
+	}
+	// object term type is blank node
+	else if(@{sv_match}[5]) {
+		w_object = this.blankNode(@{ue_iri(sv_match+'[5]', b_unescape)});
+	}
 	// object term type is literal
-	if('"' === x) {
-		// no escapes in string nor datatype
-		let m_literal_e = R_LITERAL_ESCAPELESS.exec(s_object);
-		if(m_literal_e) {
-			// literal has no escapes
-			w_object = this.literal(m_literal_e[1]);
-
-			// set datatype if present
-			if(m_literal_e[2]) {
-				w_object.datatype = this.namedNode(m_literal_e[2]);
-			}
-			// otherwise, set langtag if present
-			else if(m_literal_e[3]) {
-				w_object.language = m_literal_e[3].toLowerCase();
-				w_object.datatype = KT_RDFS_LANG_STRING;
-			}
-		}
-		// escapes in string and/or datatype
-		else {
-			let m_literal = R_LITERAL.exec(s_object);
-
-			// objet term type is literal
-			if(m_literal) {
-				// ref literal value
-				let s_literal = m_literal[1];
-
-				// string literal has escapes
-				if(RT_HAS_ESCAPES.test(s_literal)) {
-					w_object = this.literal(@{unescape_literal('s_literal')});
-				}
-				// no escapes
-				else {
-					w_object = this.literal(s_literal);
-				}
-
-				// set datatype if present
-				if(m_literal[2]) {
-					w_object.datatype = this.namedNode(@{unescape_iri('m_literal[2]')});
-				}
-				// otherwise, set langtag if present
-				else if(m_literal[3]) {
-					w_object.language = m_literal[3].toLowerCase();
-					w_object.datatype = KT_RDFS_LANG_STRING;
-				}
-			}
-			else {
-				this.s = s;
-				return this.parse_error(`invalid string literal: ${s_object}`);
-			}
-		}
-	}
-	// object term type is iri; make iri
-	else if('<' === x) {
-		let p_object = s_object.slice(1, -1);
-		w_object = this.namedNode(@{unescape_iri('p_object')});
-	}
-	// object term type is blank node; make blank node
-	else if('_' === x && ':' === s_object[1]) {
-		w_object = factory.blankNode(s_object.substr(2));
-	}
-	// other
 	else {
-		return this.parse_error(`invalid object: ${s_object}`);
+		// contents
+		w_object = this.literal(@{sv_match}[6], @{b_unescape});
+
+		// set datatype if present
+		if(@{sv_match}[7]) {
+			w_object.datatype = this.namedNode(@{ue_iri(sv_match+'[7]', b_unescape)});
+		}
+		// otherwise, set language tag if present
+		else if(@{sv_match}[8]) {
+			w_object.language = @{sv_match}[8].toLowerCase();
+			w_object.datatype = KT_RDFS_LANG_STRING;
+		}
 	}
 
 	// emit data event
-	fk_data(factory.quad(
-		@{sv_match}[1]? this.namedNode(
-			@- escape_subject
-				@{unescape_iri(sv_match+'[1]')}
+	fk_data(
+		factory.quad(
+			@{sv_match}[2]
+				? this.blankNode(@{sv_match}[2])
+				: this.namedNode(@{ue_iri(sv_match+'[1]', b_unescape)}),
+			this.namedNode(@{ue_iri(sv_match+'[3]', b_unescape)}),
+			w_object,
+			@- QUADS
+				@{sv_match}[9]
+					? this.namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
+					: (@{sv_match[10]}
+						? this.blankNode(@{sv_match}[10])
+						: ('string' === typeof @{sv_match[9]}
+							? this.namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
+							: KT_DEFAULT_GRAPH))
 			@:
-				@{sv_match}[1]
+				@//@
+				KT_DEFAULT_GRAPH
 			@;
-			): factory.blankNode(@{sv_match}[2]),
-		this.namedNode(
-			@- escape_predicate
-				@{unescape_iri(sv_match+'[3]')}
-			@:
-				@{sv_match}[3]
-			@;
-			),
-		w_object,
-		@- QUADS
-			@{sv_match}[5]
-				? this.namedNode(@{unescape_iri(sv_match+'[5]')})
-				: (@{sv_match}[6]
-					? factory.blankNode(@{sv_match}[6])
-					: KT_DEFAULT_GRAPH)
-		@:
-			@//@
-			KT_DEFAULT_GRAPH
-		@;
-		@//@arguments
-	)
+			@//@arguments
+		)
 		@//@arguments
 	);
 @;
@@ -174,7 +184,7 @@ const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 			@{match_body('m_statement_e_sp')}
 			
 		@{else_if_match(STATEMENT_REGEX, 'm_statement', true)}
-			@{match_body('m_statement', true, true)}
+			@{match_body('m_statement', true)}
 
 		@{else_retry()}
 	} // end of while
@@ -214,10 +224,15 @@ class reader {
 					return factory.namedNode(s_iri);
 				},
 
-				literal(s_literal) {
-					if(RT_ESCAPES_INVALID.test(s_literal)) return this._error(`invalid literal: "${s_literal}"`);
+				blankNode(s_label) {
+					if(!RT_BLANK_NODE_LABEL_VALID.test(s_label)) return this._error(`invalid blank node label: "${s_label}"`);
+					return factory.blankNode(s_label);
+				},
+
+				literal(s_literal, b_unescape=false) {
+					if(!RT_LITERAL_CONTENTS_VALID.test(s_literal)) return this._error(`invalid literal: "${s_literal}"`);
 					try {
-						return factory.literal(s_literal);
+						return factory.literal(b_unescape? @{unescape_literal('s_literal')}: s_literal);
 					}
 					catch(e_parse) {
 						return this._error(`invalid string literal: "${s_literal}"`);
@@ -227,7 +242,9 @@ class reader {
 			: {
 				namedNode: factory.namedNode,
 
-				literal: factory.literal,
+				blankNode: factory.blankNode,
+
+				literal: (s_literal, b_unescape) => factory.literal(b_unescape? @{unescape_literal('s_literal')}: s_literal),
 			});
 
 		// output stream
@@ -318,9 +335,6 @@ class reader {
 				ds_input.on('data', (s_chunk) => {
 					// concatenate current chunk to previous chunk
 					let s = s_pre + s_chunk;
-
-					// cache chunk length
-					let n = s.length;
 
 					// remove whitespace & comments from beginning
 					R_CLEAN.lastIndex = 0;

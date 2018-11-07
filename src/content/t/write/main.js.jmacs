@@ -193,31 +193,29 @@ class serializer extends writable.serializer.n3.terse {
 		@;
 	}
 
-	serialize_collection(a_collection) {
+	async serialize_collection(a_collection) {
 		let s_indent = this.indent;
 		let n_indent = ++this.nest_level;
 		return `(${
-			a_collection
-				.map(s => `\n@{QUADS? '${s_indent}':''}${
+			(await Promise.all(a_collection
+				.map(async s => `\n@{QUADS? '${s_indent}':''}${
 					s_indent.repeat(n_indent+1)
 				}${
-					this.nested_collection_item(s)
-				}`).join('')
+					await this.nested_collection_item(s)
+				}`))).join('')
 		}\n@{QUADS? '${s_indent}':''}${s_indent.repeat(--this.nest_level+1)})`;
 	}
 
-	serialize_collection_object(k_leaf, a_collection, xm_mode) {
-		let s_object = this.serialize_collection(a_collection);
+	async serialize_collection_object(k_leaf, a_collection, xm_mode) {
+		let s_object = await this.serialize_collection(a_collection);
 		return this.serialize_object(k_leaf, s_object, xm_mode);
 	}
 
-	close() {
+	async close() {
 		// close previous statement
 		if(!this.new_subject) {
-			this.write((this.trailing? ' ;\n'+this.indent: '')+' .\n');
+			await this.write((this.trailing? ' ;\n'+this.indent: '')+' .\n');
 		}
-
-		this.end();
 	}
 };
 

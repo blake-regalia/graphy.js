@@ -59,6 +59,7 @@ const turbo_read_file = async(g_config) => {
 		a_ranges.push([
 			ib_prev,
 			ib_curr,
+			1 === i_cpu,
 		]);
 
 		// add empty remainder text
@@ -102,10 +103,10 @@ const turbo_read_file = async(g_config) => {
 
 	// worker group
 	let k_group = worker.group('./worker.js', {
-		// inspect: {
-		// 	brk: true,
-		// 	range: [9230, 9242],
-		// },
+		inspect: {
+			brk: true,
+			range: [9230, 9242],
+		},
 	});
 
 	// deploy
@@ -122,7 +123,6 @@ const turbo_read_file = async(g_config) => {
 	k_group.kill();
 
 	return new Promise((fk_read) => {
-		debugger;
 		// generate read config
 		let g_read = f_map((z_remainder) => {
 			// final result

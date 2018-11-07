@@ -197,8 +197,6 @@ class @{FORMAT}_serializer extends writer.serializer.n3.terse {
 		if(!this.new_subject) {
 			this.write((this.trailing? ' ;\n'+this.indent: '')+' .\n');
 		}
-
-		this.end();
 	}
 };
 

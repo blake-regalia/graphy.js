@@ -28,10 +28,6 @@ class serializer extends writable.serializer.n3.verbose {
 			return `${k_leaf.parent.term} ${k_leaf.term} ${s_object} .\n`;
 		@;
 	}
-
-	close() {
-		this.end();
-	}
 };
 
 module.exports = function(g_config) {
