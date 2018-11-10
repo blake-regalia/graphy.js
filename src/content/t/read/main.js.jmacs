@@ -2006,12 +2006,13 @@ class reader {
 
 
 		// otherwise, pre-emptively secure the next blank node label
-		let s_pointer_label = this.next_label();
+		let s_pointer_label;
 
 		// very first collection object
 		let b_pushed = false;
 		if(null === this.subject) {
 			// set quasi subject (really for resume state)
+			s_pointer_label = this.next_label();
 			this.subject = this.anonymous_blank_node(s_pointer_label);
 			@{push_state('pairs')}
 			// reset subject for later conditional branch
@@ -2035,12 +2036,14 @@ class reader {
 		@{else_if_char('"', "'")}
 			// first item in list
 			if(null === this.subject) {
+				s_pointer_label = this.next_label();
 				this.subject = this.anonymous_blank_node(s_pointer_label);
 				this.predicate = KT_RDF_FIRST;
 			}
 			// not first item in list
 			else {
 				// make nest list item
+				s_pointer_label = this.next_label();
 				let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
 				@{emit_statement()}
 
@@ -2072,6 +2075,7 @@ class reader {
 			@{whitespace('i+1')}
 
 			// this blank node is just the next item in the list
+			s_pointer_label = this.next_label();
 			let kt_blank_node;
 			if(null !== this.subject) {
 				kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
@@ -2102,6 +2106,7 @@ class reader {
 			@{whitespace('i+1', true)}
 
 			// commit list item pointer
+			s_pointer_label = this.next_label();
 			let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
 			@{emit_statement()}
 
@@ -2148,6 +2153,7 @@ class reader {
 		`)}
 
 		let kt_blank_node_outer;
+		if(!s_pointer_label) s_pointer_label = this.next_label();
 
 		// not the very first item of collection subject
 		if(this.subject !== null) {
@@ -2195,7 +2201,7 @@ class reader {
 
 
 		// otherwise, pre-emptively secure the next blank node label
-		let s_pointer_label = this.next_label();
+		let s_pointer_label;
 
 		// iriref
 		@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_object', true)}
@@ -2215,7 +2221,7 @@ class reader {
 			this.i = i;
 
 			// create blanknode to embed list
-			let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+			let kt_blank_node = this.object = this.anonymous_blank_node(this.next_label());
 
 			// emit statement that functions as collection's head "pointer"
 			@{emit_statement()}
@@ -2246,7 +2252,7 @@ class reader {
 			@{whitespace('i+1')}
 
 			// commit head of list pointer
-			let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+			let kt_blank_node = this.object = this.anonymous_blank_node(this.next_label());
 			@{emit_statement()}
 
 			// setup state to resume and push
@@ -2256,8 +2262,7 @@ class reader {
 
 			// enter blank node
 			this.predicate = KT_RDF_FIRST;
-			let s_label = this.next_label();
-			kt_blank_node = this.object = this.anonymous_blank_node(s_label);
+			kt_blank_node = this.object = this.anonymous_blank_node(this.next_label());
 			@{emit_statement()}
 
 			// prepare next triple
@@ -2272,6 +2277,7 @@ class reader {
 			@{whitespace('i+1', true)}
 
 			// commit list item pointer
+			s_pointer_label = this.next_label();
 			let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
 			if(null === this.subject) {
 				let a_recent = this.nested[this.nested.length-1];
@@ -2295,6 +2301,9 @@ class reader {
 		@{else_if_match('R_BLANK_NODE_LABEL', 'm_blank_node_label_object', true)}
 			// ref blank node label
 			let s_label = m_blank_node_label_object[1];
+
+			// make collection pointer label first
+			s_pointer_label = this.next_label();
 
 			// make object
 			this.object = this.blank_node(s_label);
@@ -2324,6 +2333,7 @@ class reader {
 		let w_object = this.object;
 
 		// create blanknode to embed list
+		if(!s_pointer_label) s_pointer_label = this.next_label();
 		let kt_blank_node_outer = this.object = this.anonymous_blank_node(s_pointer_label);
 
 		// emit statement that functions as collection's head "pointer"

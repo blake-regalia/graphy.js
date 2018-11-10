@@ -51,7 +51,7 @@ const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
 
 @>> R_LITERAL(b_escapeless=false)
 	@//@regex
-	"(@{b_escapeless? '[^"\\\\]': '(?:[^"\\\\]|\\\\")'}*)"(?:\^\^@{R_NAMED_NODE(b_escapeless)}|@([^\x20\t.]+)|)
+	"(@{b_escapeless? '[^"\\\\]': '(?:[^"\\\\]|\\\\.)'}*)"(?:\^\^@{R_NAMED_NODE(b_escapeless)}|@([^\x20\t.]+)|)
 @;
 
 @>> R_OBJECT(b_escapeless=false)
@@ -87,17 +87,11 @@ const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
 
 	const R_QUAD_ESCAPELESS_SP = /@{R_QUAD(true)}/y;
 	const R_QUAD = /@{R_QUAD()}/y;
-
-	// const R_QUAD_ESCAPELESS_SP = /(?:<([^\\>]*)>|_:([^ \t<]+))[ \t]*<([^\\>]*)>[ \t]*(?:<([^\\>]*)>|_:([^ \t<]+)|"[^"]*"())[ \t]*(?:<([^>]*)>|_:([^ \t<]+)|)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
-	// const R_QUAD = /(?:<([^>]*)>|_:([^ \t<]+))[ \t]*<([^>]*)>[ \t]*(.*?)[ \t]*(?:<([^>]*)>|_:([^ \t<]+)|)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
 @:
 	@$ STATEMENT_REGEX = 'R_TRIPLE';
 
 	const R_TRIPLE_ESCAPELESS_SP = /@{R_TRIPLE(true)}/y;
 	const R_TRIPLE = /@{R_TRIPLE()}/y;
-
-	// const R_TRIPLE_ESCAPELESS_SP = /(?:<([^\\>]*)>|_:([^ \t<]+))[ \t]*<([^\\>]*)>[ \t]*(.*?)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
-	// const R_TRIPLE = /(?:<([^>]*)>|_:([^ \t<]+))[ \t]*<([^>]*)>[ \t]*(.*?)[ \t]*\.\s*(?:#[^\n]*\n\s*|\n\s*)+/y;
 @;
 
 
@@ -190,7 +184,7 @@ const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
 	} // end of while
 
 	// update unparsed data string
-	@{b_local? 's_': 'this.'}pre = s.substr(i);
+	@{b_local? 's': 'this.s'} = s.substr(i);
 @;
 
 
@@ -198,22 +192,24 @@ class reader {
 	constructor(g_config) {
 		let {
 			// input medium
-			input: g_input,
+			input: g_input=null,
 
 			// validate iris
 			validate: b_validate=false,
+
+			// debug
+			debug: b_debug=false,
 		} = g_config;
 
 		// fields
 		Object.assign(this, {
-			// string buffer
-			s: '',
+			// string buffer, accept left-over string from previous data chunk
+			s: g_config.prepend || '',
 
 			// string buffer length
 			n: 0,
 
-			// left-over string from previous data chunk
-			pre: g_config.prepend || '',
+			debug: b_debug,
 		});
 
 		// validation
@@ -266,7 +262,7 @@ class reader {
 				// once there's no more data to consume, invoke eof
 				flush: (fk_flush) => {
 					// now that stream has ended, clean up remainder
-					this.eof(1);
+					this.eof(true);
 
 					// done flushing, close read stream
 					fk_flush();
@@ -289,7 +285,14 @@ class reader {
 					}
 
 					// concatenate current chunk to previous chunk
-					let s = this.s = this.pre + s_chunk;
+					let s = this.s += s_chunk;
+
+					// remove whitespace & comments from beginning
+					R_CLEAN.lastIndex = 0;
+					R_CLEAN.exec(s);
+
+					// update index and prepare to match statement
+					this.i = R_CLEAN.lastIndex;
 
 					// cache chunk length
 					this.n = s.length;
@@ -304,6 +307,9 @@ class reader {
 					fk_chunk();
 				},
 			});
+
+			// data event
+			this.data = g_quad => ds_output.push(g_quad);
 
 			// bind events to output stream
 			this.bind(g_config);
@@ -325,7 +331,7 @@ class reader {
 			let b_init = false;
 
 			// local
-			let s_pre = '';
+			let s = '';
 
 			let fk_data;
 
@@ -334,7 +340,7 @@ class reader {
 				// switch input to flowing mode
 				ds_input.on('data', (s_chunk) => {
 					// concatenate current chunk to previous chunk
-					let s = s_pre + s_chunk;
+					s += s_chunk;
 
 					// remove whitespace & comments from beginning
 					R_CLEAN.lastIndex = 0;
@@ -348,7 +354,7 @@ class reader {
 						local: true,
 					})}
 
-					this.pre = s_pre;
+					this.s = s;
 
 					// progress updates
 					ds_output.emit('progress', s_chunk.length);
@@ -375,7 +381,14 @@ class reader {
 					}
 
 					// concatenate current chunk to previous chunk
-					let s = this.s = this.pre + s_chunk;
+					s = this.s += s_chunk;
+
+					// remove whitespace & comments from beginning
+					R_CLEAN.lastIndex = 0;
+					R_CLEAN.exec(s);
+
+					// update index and prepare to match statement
+					this.i = R_CLEAN.lastIndex;
 
 					// cache chunk length
 					this.n = s.length;
@@ -493,15 +506,14 @@ class reader {
 
 					// eot
 					// debugger;
-					this.pre = this.s = null;
+					this.s = null;
 					ds_output.push(null);
 					g_config.end();
 				},
 			});
 
 			// concatenate previous chunk
-			// let s = this.s = this.pre+z_input;
-			this.pre += s_input;
+			this.s += s_input;
 
 			// eos means we've reached eof
 			if(g_config.async) {
@@ -514,14 +526,14 @@ class reader {
 			}
 
 			// compute chunk length
-			this.n = this.pre.length;
+			this.n = this.s.length;
 
 			// // reset index
 			// this.i = 0;
 
 			// remove whitespace & comments from beginning
 			R_CLEAN.lastIndex = 0;
-			R_CLEAN.exec(this.pre);
+			R_CLEAN.exec(this.s);
 
 			// update index and prepare to match statement
 			this.i = R_CLEAN.lastIndex;
@@ -541,25 +553,23 @@ class reader {
 		}
 	}
 
-	eof() {
+	eof(b_flushing=false) {
 		// there is still unparsed data
-		if(this.pre.length) {
+		if(this.s.length) {
 			// append newline to end so we can match token
-			this.pre += '\n';
+			this.s += '\n';
+			if(this.debug) debugger;
 			this.safe_parse();
 
 			// still unparsed characters
-			if(this.pre.length) {
-				// save string and index before calling parse error
-				this.s = this.pre;
-
+			if(this.s.length) {
 				// throw parse error
 				return this.parse_error('statement');
 			}
 		}
 
 		// make buffer's alloc eligible for gc
-		this.pre = this.s = null;
+		this.s = null;
 
 		// output stream
 		let ds_output = this.output;
@@ -571,7 +581,7 @@ class reader {
 		ds_output.emit('eof');
 
 		// close write stream (EOF-signaling)
-		ds_output.push(null);
+		if(!b_flushing) ds_output.push(null);
 	}
 
 	_error(s_message) {
@@ -579,7 +589,7 @@ class reader {
 	}
 
 	parse_error(s_state) {
-		throw new Error(`parsing error occurred in state: ${s_state}`);
+		throw new Error(`parsing error occurred in state: ${s_state}\n  ${this.s.substr(0, 50)}\n  ^ starting here`);
 	}
 
 
@@ -604,7 +614,8 @@ class reader {
 	}
 
 	safe_parse() {
-		let s = this.pre;
+		let s = this.s;
+		let n = this.n;
 		let i = this.i;
 		let fk_data = this.data;
 
