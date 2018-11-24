@@ -34,3 +34,9 @@ The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) conta
 			read -- @graphy/content.trig.read since v3.0.0
 			write -- @graphy/content.trig.write since v3.0.0
 ```
+
+----
+
+### Examples
+
+#### Covert a CSV document to a Turtle document

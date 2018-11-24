@@ -6,6 +6,10 @@ const stream = require('stream');
 const worker = require('worker');
 const read = require('@@@{S_GRAPHY_CHANNEL}/content.nt.read');
 
+const evalu = (s_script) => {
+	new Function(...a_imports, s_script);
+};
+
 worker.dedicated({
 	read_file(a_range, p_input, g_stat, sf_map) {
 		let k_worker = this;
@@ -151,7 +155,7 @@ worker.dedicated({
 				},
 			});
 
-			let f_config = eval(`(${sf_map})`);
+			let f_config = evalu(sf_map);
 			let g_config = f_config(fk_result);
 			g_config.input = {stream:ds_range};
 
@@ -189,7 +193,7 @@ worker.dedicated({
 	},
 
 	merge(z_a, z_b, sf_reduce) {
-		let f_reduce = eval(`(${sf_reduce})`);
+		let f_reduce = evalu(sf_reduce);
 		return f_reduce(z_a, z_b);
 	},
 });

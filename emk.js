@@ -12,8 +12,8 @@ const {
 
 // const h_schema_bat = require('./src/gen/bat-schema/default.js');
 
-const B_DEVELOPMENT = 'development' === process.env.NODE_ENV;
-const s_channel = B_DEVELOPMENT? 'graphy-dev': 'graphy';
+const B_DEVELOPMENT = 'graphy-dev' === process.env.GRAPHY_CHANNEL;
+const s_channel = process.env.GRAPHY_CHANNEL || 'graphy';
 
 const g_package_json_super = require('./package.json');
 const g_package_json_base = require(`./src/aux/base-package-${s_channel}.json`);

@@ -17,6 +17,9 @@ const turbo_read_file = async(g_config) => {
 		// input medium
 		input: g_input,
 
+		// imports
+		imports: f_imports,
+
 		// how to map onto workers
 		map: sf_map,
 

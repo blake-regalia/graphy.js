@@ -70,11 +70,19 @@
 // };
 
 
-const H_MIMES = {
+const H_CONTENT_MIMES = {
 	'text/turtle': ttl,
 	'application/trig': trig,
 	'application/n-triples': nt,
 	'application/n-quads': nq,
+	// 'application/sparql-results+json': sparql_results,
+};
+
+const H_CONTENT_TAGS = {
+	ttl,
+	trig,
+	nt,
+	nq,
 	// 'application/sparql-results+json': sparql_results,
 };
 
@@ -126,13 +134,23 @@ const graphy = module.exports = Object.assign({
 	* API:
 	**/
 
-	content: {
+	content: Object.assign(function(s_query) {
+		if(s_query in H_CONTENT_TAGS) {
+			return H_CONTENT_TAGS[s_query];
+		}
+		else if(s_query in H_CONTENT_MIMES) {
+			return H_CONTENT_MIMES[s_query];
+		}
+		else {
+			throw new Error(`no content handlers matched query for '${s_query}'`);
+		}
+	}, {
 		@*{
 			for(let s_content in h_content_types) {
 				yield /* syntax: js */ `${s_content},\n`;
 			}
 		}
-	},
+	}),
 
 	// load triple data from arbitrary parser into memory
 	get load() {
@@ -140,14 +158,6 @@ const graphy = module.exports = Object.assign({
 		delete graphy.load;
 		return (graphy.load = require('./rdf-loader.js'));  // eslint-disable-line global-require
 	},
-
-	// // 
-	// get bat() {
-	// 	// memoize
-	// 	delete graphy.bat;
-	// 	return graphy.bat = require('../bat/main.js');
-	// },
-	// bat: require('../bat/main.js'),
 
 	/**
 	* content types:
@@ -160,30 +170,6 @@ const graphy = module.exports = Object.assign({
 	}
 	// sparql_results,
 	// sparqlResults: sparql_results,
-
-	/*
-	* access to flavor by mime
-	*/
-
-	write(pm_format, ...a_args) {
-		let k_format = H_MIMES[pm_format];
-		if(!k_format) return null;
-		let k_writer = k_format.write;
-		if(a_args.length) {
-			return k_writer(...a_args);
-		}
-		return k_writer;
-	},
-
-	read(pm_format, ...a_args) {
-		let k_format = H_MIMES[pm_format];
-		if(!k_format) return null;
-		let k_reader = k_format.read;
-		if(a_args.length) {
-			return k_reader(...a_args);
-		}
-		return k_reader;
-	},
 
 	store: {
 		memory: {
