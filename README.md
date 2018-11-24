@@ -16,21 +16,21 @@ The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) conta
 
 ```
 @graphy/
-	api.
-		data.
-			factory -- @graphy/api.data.factory since v3.0.0
-			set -- @graphy/api.data.set since v3.0.0
-	content.
-		nt.
-			read -- @graphy/content.nt.read since v3.0.0
-			write -- @graphy/content.nt.write since v3.0.0
-		ttl.
-			read -- @graphy/content.ttl.read since v3.0.0
-			write -- @graphy/content.ttl.write since v3.0.0
-		nq.
-			read -- @graphy/content.nq.read since v3.0.0
-			write -- @graphy/content.nq.write since v3.0.0
-		trig.
-			read -- @graphy/content.trig.read since v3.0.0
-			write -- @graphy/content.trig.write since v3.0.0
+   api.
+      data.
+         factory -- @graphy/api.data.factory since v3.0.0
+         set -- @graphy/api.data.set since v3.0.0
+   content.
+      nt.
+         read -- @graphy/content.nt.read since v3.0.0
+         write -- @graphy/content.nt.write since v3.0.0
+      ttl.
+         read -- @graphy/content.ttl.read since v3.0.0
+         write -- @graphy/content.ttl.write since v3.0.0
+      nq.
+         read -- @graphy/content.nq.read since v3.0.0
+         write -- @graphy/content.nq.write since v3.0.0
+      trig.
+         read -- @graphy/content.trig.read since v3.0.0
+         write -- @graphy/content.trig.write since v3.0.0
 ```
