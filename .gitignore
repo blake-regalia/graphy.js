@@ -13,8 +13,6 @@ coverage
 
 # compiled distributions
 build
-dist
-dist.es6
 
 # dependencies
 node_modules
