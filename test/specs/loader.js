@@ -1,7 +1,11 @@
 const assert = require('assert');
-const request = require('request');
+const async = require('async');
 
-const graphy = require('graphy');
+const request = require('request');
+const chalk = require('chalk');
+
+const graphy = require(process.env.GRAPHY_CHANNEL || 'graphy');
+const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/api.data.factory`);
 
 const H_AUTHORS = {
 	'>http://blake-regalia.com/#me': {
@@ -24,25 +28,33 @@ const H_PREFIXES = {
 	mf: 'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#',
 };
 
+// eval
+const A_TEST_TYPES_EVAL = [
+	'rdft:TestTurtleEval',  // turtle
+	'rdft:TestTrigEval',  // trig
+];
+
+// negative syntax
+const A_TEST_TYPES_SYNTAX_NEGATIVE = [
+	'rdft:TestNTriplesNegativeSyntax',  // n-triples
+	'rdft:TestNQuadsNegativeSyntax',  // n-quads
+	'rdft:TestTurtleNegativeSyntax',  // turtle
+	'rdft:TestTrigNegativeSyntax',  // trig
+];
+
+// positive syntax
+const A_TEST_TYPES_SYNTAX_POSITIVE = [
+	'rdft:TestNTriplesPositiveSyntax',  // n-triples
+	'rdft:TestNQuadsPositiveSyntax',  // n-quads
+	'rdft:TestTurtlePositiveSyntax',  // turtle
+	'rdft:TestTrigPositiveSyntax',  // trig
+];
+
 // accepted test types
 const A_TEST_TYPES_ACCEPTED = [
-	// turtle
-	'rdft:TestTurtleEval',
-	'rdft:TestTurtleNegativeSyntax',
-	'rdft:TestTurtlePositiveSyntax',
-
-	// trig
-	'rdft:TestTrigEval',
-	'rdft:TestTrigNegativeSyntax',
-	'rdft:TestTrigPositiveSyntax',
-
-	// n-triples
-	'rdft:TestNTriplesNegativeSyntax',
-	'rdft:TestNTriplesPositiveSyntax',
-
-	// n-quads
-	'rdft:TestNQuadsNegativeSyntax',
-	'rdft:TestNQuadsPositiveSyntax',
+	...A_TEST_TYPES_EVAL,
+	...A_TEST_TYPES_SYNTAX_NEGATIVE,
+	...A_TEST_TYPES_SYNTAX_POSITIVE,
 ];
 
 // graphy iri
@@ -92,7 +104,7 @@ class TestCase {
 			// fetch test action
 			request(this.action.value)
 				// pipe to deserializer
-				.pipe(graphy.parse(this.format, h_test_type));
+				.pipe(graphy.content(this.format).read(h_test_type));
 		});
 	}
 
@@ -120,7 +132,7 @@ class TestCase {
 				})
 
 				// parse result as N-Triples
-				.pipe(graphy.format.nt.parse({
+				.pipe(graphy.content.nt.read({
 					// each triple in result file
 					data(h_triple) {
 						// add to expected set
@@ -220,7 +232,7 @@ module.exports = function test({
 	output: ds_output,
 }) {
 	// create report
-	let kw_report = graphy.format.ttl.write({
+	let kw_report = graphy.content.ttl.write({
 		// user-defined prefixes
 		prefixes: H_PREFIXES,
 	});
@@ -271,51 +283,123 @@ module.exports = function test({
 		});
 	};
 
+	const P_PATH = 'http://www.w3.org/2013/TurtleTests/';
+
+	const P_IRI_MF = 'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#';
+	const P_IRI_MF_ACTION = P_IRI_MF+'action';
+	const P_IRI_MF_RESULT = P_IRI_MF+'result';
+
+	const P_IRI_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+	const P_IRI_RDF_TYPE = P_IRI_RDF+'type';
+
+	const P_IRI_RDFS = 'http://www.w3.org/2000/01/rdf-schema#';
+	const P_IRI_RDFS_LABEL = P_IRI_RDFS;
+
+	const P_IRI_RDFT = 'http://www.w3.org/ns/rdftest#';
+	const P_IRI_RDFT_TEST_TURTLE_EVAL = P_IRI_RDFT+'TestTurtleEval';
+	const P_IRI_RDFT_TEST_TURTLE_POSITIVE_SYNTAX = P_IRI_RDFT+'TestTurtlePositiveSyntax';
+	const P_IRI_RDFT_TEST_TURTLE_NEGATIVE_SYNTAX = P_IRI_RDFT+'TestTurtleNegativeSyntax';
+
+	const h_tests = {};
+	const h_results = {};
+	const h_answers = {};
+
+	let a_test_cases = [];
+
+	const yq_tests = async.queue(function(h_task, f_okay) {
+		let s_test_id = h_task.data.subject.value;
+		request(P_PATH+h_task.data.object.value)
+			.pipe(h_task.pipe(s_test_id))
+			.on('finish', () => {
+				f_okay();
+			})
+			.on('error', (e_parse) => {
+				h_results[s_test_id] = null;
+			});
+	}, 12);
+
+	// set of quads
+	let y_set = graphy.api.data.set({
+		prefixes: H_PREFIXES,
+	});
+
 	// fetch manifest file
 	request(p_manifest)
 		// deserialize
-		.pipe(graphy.format.ttl.parse({
+		.pipe(graphy.content.ttl.read({
 			// base is resource url
-			base: p_manifest,
-		}))
-		// pipe into a new store
-		.pipe(graphy.format.bat.store({
-			// user-defined prefixes
-			prefixes: H_PREFIXES,
+			base_uri: p_manifest,
 
-			// once store is ready
-			async ready(g) {
-				// extract test cases from manifest
-				let a_test_cases = await g.pattern()
-					.subjects().fork({
-						a: 'mf:Manifest',
-						'rdfs:label': e => e.literal().bind('label'),
-						'mf:entries': e => e.collection().bind('test_cases'),
-						'mf:entries/rdf:rest*/rdf:first': e => e.objects().gather().bind('test_cases'),
-					})
-					.exit()
-					.rows();
+			// data events
+			data(y_quad) {
+				let {
+					subject: g_subject,
+					predicate: g_predicate,
+					object: g_object,
+				} = y_quad;
 
-				// each test case
-				for(let p_test_case of a_test_cases) {
-					// fetch test case
-					let h_test_case = await g.pattern()
-						.subject(p_test_case).bind('id')
-						.fork({
-							'rdft:approval': 'rdft:Approved',
-							'rdf:type': e => e.node(A_TEST_TYPES_ACCEPTED).bind('type'),
-							'mf:name': e => e.literal().bind('name'),
-							'rdfs:comment': e => e.literals().gather('comment')
-								.map(h => h.value.toLowerCase())
-								.save(),
-							'mf:action': e => e.node().bind('action'),
-							'mf:result?': e => e.node().bind('result'),
-						})
-						.exit()
-						.row();
+				// ref parts
+				let p_subject = g_subject.value;
+				let p_predicate = g_predicate.value;
+				let p_object = g_object.value;
+
+				// rdf:type
+				if(P_IRI_RDF_TYPE === p_predicate) {
+					// negative syntax
+					if(A_TEST_TYPES_SYNTAX_NEGATIVE.includes(p_object)) {
+						a_test_cases.push({
+							type: g_object,
+							subject: g_subject.concise(),
+						});
+					}
+					// positive syntax
+					else if(A_TEST_TYPES_SYNTAX_POSITIVE.includes(p_object)) {
+						a_test_cases.push({
+							type: g_object,
+							subject: g_subject.concise(),
+						});
+					}
+					// eval
+					else if(A_TEST_TYPES_EVAL.includes(p_object)) {
+						a_test_cases.push({
+							type: g_object,
+							subject: g_subject.concise(),
+						});
+					}
+				}
+
+				// add triple to set
+				y_set.add(y_quad);
+			},
+
+			// done
+			async end() {
+				let h_graph = y_set['*'];
+
+				for(let {type:yt_type, subject:s_subject} of a_test_cases) {
+					let h_pairs = h_graph[s_subject];
+
+					let h_concise = {};
+					for(let s_predicate of h_pairs) {
+						h_concise[factory.ct(s_predicate).concise(H_PREFIXES)] = factory.ct([...h_pairs[s_predicate]][0]);
+					}
+
+					let {
+						'mf:name': yt_name,
+						'rdfs:comment': yt_comment,
+						'mf:action': yt_action,
+					} = h_concise;
+
+					let yt_result = h_concise['mf:result'] || null;
 
 					// create test case instance
-					let k_test_case = new TestCase(p_manifest, pm_format, h_test_case);
+					let k_test_case = new TestCase(p_manifest, pm_format, {
+						id: s_subject.slice(1),
+						type: yt_type,
+						name: yt_name.value,
+						comment: yt_comment.value,
+						action: yt_action.value,
+					});
 
 					// load test case
 					try {
@@ -342,7 +426,7 @@ module.exports = function test({
 					}
 
 					// log success to console
-					console.log(`${'✓'.green} ${k_test_case.id.value}`);
+					console.log(`${chalk.green('✓')} ${k_test_case.id.value}`);
 
 					// write to report
 					commit_outcome(k_test_case, 'passed');
@@ -352,4 +436,78 @@ module.exports = function test({
 				kw_report.end();
 			},
 		}));
+
+		// // pipe into a new store
+		// .pipe(graphy.store.memory.create({
+		// 	// user-defined prefixes
+		// 	prefixes: H_PREFIXES,
+
+		// 	// once store is ready
+		// 	async ready(g) {
+		// 		// extract test cases from manifest
+		// 		let g_manifest = await g.pattern()
+		// 			.subjects().outs({
+		// 				a: 'mf:Manifest',
+		// 				'rdfs:label': e => e.literal().bind('label'),
+		// 				'mf:entries': e => e.collection().bind('test_cases'),
+		// 				// 'mf:entries/rdf:rest*/rdf:first': e => e.objects().gather().bind('test_cases'),
+		// 			})
+		// 			.exit()
+		// 			.row();
+
+		// 		// each test case
+		// 		for(let kt_test_case of g_manifest.test_cases) {
+		// 			// fetch test case
+		// 			let g_test_case = await g.pattern()
+		// 				.subject(kt_test_case).bind('id').outs({
+		// 					'rdft:approval': 'rdft:Approved',
+		// 					'rdf:type': e => e.node(A_TEST_TYPES_ACCEPTED).bind('type'),
+		// 					'mf:name': e => e.literal().bind('name'),
+		// 					'rdfs:comment': e => e.literals().gather('comments')
+		// 						.map(h => h.value.toLowerCase())
+		// 						.save(),
+		// 					'mf:action': e => e.node().bind('action'),
+		// 					'mf:result?': e => e.node().bind('result'),
+		// 				})
+		// 				.exit()
+		// 				.row();
+
+		// 			// create test case instance
+		// 			let k_test_case = new TestCase(p_manifest, pm_format, g_test_case);
+
+		// 			// load test case
+		// 			try {
+		// 				await k_test_case.run();
+		// 			}
+		// 			catch(z_reason) {
+		// 				// case label
+		// 				let s_case = `${'˟'.red} ${k_test_case.id.value}`;
+
+		// 				// actual vs. expected
+		// 				if(z_reason instanceof AssertionResult) {
+		// 					console.error(`${s_case}\n\t${z_reason.expected.red}\n\t${z_reason.actual.green}`);
+		// 				}
+		// 				// error message
+		// 				else {
+		// 					console.error(`${s_case}\n\t${z_reason.red}`);
+		// 				}
+
+		// 				// write to report
+		// 				commit_outcome(k_test_case, 'failed');
+
+		// 				// next test case
+		// 				continue;
+		// 			}
+
+		// 			// log success to console
+		// 			console.log(`${chalk.green('✓')} ${k_test_case.id.value}`);
+
+		// 			// write to report
+		// 			commit_outcome(k_test_case, 'passed');
+		// 		}
+
+		// 		// all done!
+		// 		kw_report.end();
+		// 	},
+		// }));
 };

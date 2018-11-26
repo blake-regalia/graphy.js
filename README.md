@@ -4,12 +4,12 @@
 ### Features
  - Read & write RDF document streams using objects that extend the [RDFJS Data Interface](http://rdf.js.org/), including support for: N-Triples, N-Quads, Turtle, and TriG.
  - [High-performance](#performance) textual RDF content readers.
- - Compute the union, intersection, or difference between two RDF graphs using the [Set package](/doc/api.data.set).
- - Compare two RDF graphs for equivalence using the [Set package](/doc/api.data.set), which implements the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
+ - Compute the union, intersection, or difference between two RDF graphs using the [Set package](/docs/api.data.set).
+ - Compare two RDF graphs for equivalence using the [Set package](/docs/api.data.set), which implements the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
 
 ### API Documentation
- - [Data Factory](/doc/api.data.factory) -- documentation for the `@graphy/api.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
- - [Textual Content Handlers](/doc/context.textual) -- covers all functionality exposed by packages prefixed with: `@graphy/content.nt.*`, `@graphy/content.nq.*`, `@graphy/content.ttl.*` and `@graphy/content.trig.*`.
+ - [Data Factory](/docs/api.data.factory) -- documentation for the `@graphy/api.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
+ - [Textual Content Handlers](/docs/context.textual) -- covers all functionality exposed by packages prefixed with: `@graphy/content.nt.*`, `@graphy/content.nq.*`, `@graphy/content.ttl.*` and `@graphy/content.trig.*`.
 
 ### Mono-Repo
 The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) contains source code for all of the packages published on npm under the `@graphy` org. Each package is namespaced according to its category, sub-category, and function. They are enumerated here for clarity:

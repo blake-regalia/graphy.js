@@ -7,9 +7,7 @@ const stream = require('stream');
 
 const expect = require('chai').expect;
 
-// const ttl_read = require(`@graphy${'development' === process.env.NODE_ENV? '-dev': ''}/content.ttl.read`);
-const ttl_read = require('@graphy-dev/content.ttl.read');
-
+const ttl_read = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/content.ttl.read`);
 
 
 const P_IRI_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
@@ -143,14 +141,13 @@ const survive = (s_test, s_ttl, a_pattern, b_debug=false) => {
 
 const allow = survive;
 
-describe('ttl parser:', () => {
+describe('ttl reader:', () => {
 
 	describe('empty:', () => {
 
 		allow('blank', '', []);
 
 		allow('whitespace', ' \t \n', []);
-
 	});
 
 
@@ -867,9 +864,5 @@ describe('ttl parser:', () => {
 				[' g1', '>>', '.'],
 				[' g0', 'c', 'd'],
 		]);
-
 	});
 });
-
-
-

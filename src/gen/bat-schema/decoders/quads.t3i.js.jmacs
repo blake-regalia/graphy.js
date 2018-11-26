@@ -157,7 +157,7 @@ module.exports = {
 				members: {
 					triples: 'bri:triples',
 					op_index: 'bri:bitmap',
-					ps_index: 'bri:wavelet',
+					ps_index: 'bri:wavelet-tree',
 				},
 			}), null, '\t')},
 	/* eslint-enable */

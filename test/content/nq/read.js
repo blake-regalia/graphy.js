@@ -128,7 +128,7 @@ const survive = (s_test, s_content, a_pattern, b_debug=false) => {
 
 const allow = survive;
 
-describe('nt reader:', () => {
+describe('nq reader:', () => {
 
 	describe('empty:', () => {
 
@@ -156,20 +156,18 @@ describe('nt reader:', () => {
 
 	describe('basics', () => {
 		it('works', () => {
-			allow('basic triples', `
-				<#a> <#b> <#c> . # comments
-				<#d> <#e> "f"^^<#g> .
-				<#h> <#i> "j"^^@k .
-				<#l> <#m> "n" .
+			allow('basic quads', `
+				<#a> <#b> <#c> <#z> . # comments
+				<#d> <#e> "f"^^<#g> <#z> .
+				<#h> <#i> "j"^^@k <#z> .
+				<#l> <#m> "n" <#z> .
 			`, [
-				['#a', '#b', '#c'],
-				['#d', '#e', {value:'f', datatype:'#g'}],
-				['#h', '#i', {value:'j', language:'k'}],
-				['#l', '#m', {value:'n'}],
+				['#a', '#b', '#c', '#z'],
+				['#d', '#e', {value:'f', datatype:'#g'}, '#z'],
+				['#h', '#i', {value:'j', language:'k'}, '#z'],
+				['#l', '#m', {value:'n'}, '#z'],
 			]);
-		});
 	});
-
 
 	describe('emits parsing error for:', () => {
 
@@ -264,4 +262,5 @@ describe('nt reader:', () => {
 	});
 
 });
+
 
