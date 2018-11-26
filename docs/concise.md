@@ -158,30 +158,7 @@ k_writer.end();
 @prefix demo: <http://ex.org/demo#> .
 @prefix : <http://ex.org/owl#> .
 
-dbr:Banana rdf:type dbo:Plant ;
-   rdfs:label "Banana"@en, "Banane"@fr, "Plátano"@es ;
-   demo:steps (
-      demo:Peel
-      demo:Slice
-      demo:distribute
-   ) .
-
-:HappyPerson rdf:type owl:Class ;
-   owl:equivalentClass [
-      rdf:type owl:Class ;
-      owl:intersectionOf (
-         [
-            rdf:type owl:Restriction ;
-            owl:onProperty :hasChild ;
-            owl:allValuesFrom :Happy
-         ]
-         [
-            rdf:type owl:Restriction ;
-            owl:onProperty :hasChild ;
-            owl:someValuesFrom :Happy
-         ]
-      )
-   ] .
+ .
 
 ```
 
