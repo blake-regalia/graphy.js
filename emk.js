@@ -218,7 +218,7 @@ const npmrc = () => ({
 });
 
 // recipe to build jmacs file
-const jmacs_lint = a_deps => ({
+const jmacs_lint = (a_deps=[]) => ({
 	deps: [
 		...a_deps,
 		...(a_deps.reduce((a_requires, p_dep) => {
@@ -384,12 +384,20 @@ module.exports = {
 
 		bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
 			.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+
+		// docs snippet
+		snippet: fs.readdirSync('src/docs/snippets')
+			.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+
+		// docs markdown
+		markdown: fs.readdirSync('src/docs/')
+			.filter(s => s.endsWith('.md.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
 	},
 
 	tasks: {
 		// all tasks
 		all: [
-			'link_to.*',
+			'prepublish.*',
 		],
 
 		// link alias
@@ -437,6 +445,8 @@ module.exports = {
 					cat <(echo "#@${s_channel}/${s_channel}") ../../../src/aux/README-defer.md > README.md
 				`,
 			}),
+
+			docs: ['docs/**'],
 		},
 
 		// publish
@@ -481,6 +491,28 @@ module.exports = {
 	outputs: {
 		// eslint config
 		'.eslintrc.yaml': () => ({copy:'~/dev/.eslintrc.yaml'}),
+
+		// docs
+		docs: {
+			// snippets
+			snippets: {
+				':snippet': h => jmacs_lint([
+					`src/docs/snippets/${h.snippet}.jmacs`,
+				]),
+			},
+
+			// markdown
+			':markdown': h => ({
+				deps: [
+					`src/docs/${h.markdown}.jmacs`,
+					`src/docs/docs.jmacs`,
+					'docs/snippets/**',
+				],
+				run: /* syntax: bash */ `
+					npx jmacs $1 > $@
+				`,
+			}),
+		},
 
 		// package builds
 		build: {

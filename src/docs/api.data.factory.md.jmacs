@@ -1,4 +1,4 @@
-
+@import './docs.jmacs'
 # Data Factory
 `@graphy/api.data.factory`
 
@@ -291,41 +291,13 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
    - **returns** a [`#string/concise-term`](concise#c1-term)
    - *example:*
       ```js
-      // snippets/write-comment.js
-      const factory = require('@graphy-dev/api.data.factory');
-      const ttl_write = require('@graphy-dev/content.ttl.write');
-      
-      let y_writer = ttl_write({
-         prefixes: {
-            demo: 'http://ex.org/',
-            dbo: 'http://dbpedia.org/ontology/',
-            rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
-            rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-         },
-      });
-      
-      y_writer.pipe(process.stdout);
-      
-      y_writer.write({
-         [factory.comment()]: 'this is a comment',
-         'demo:Banana': {
-            a: 'dbo:Fruit',
-            [factory.comment()]: 'so is this...',
-            'rdfs:label': '@en"Banana',
-         },
-      });
+      @{cat('snippets/write-comment.js', `
+      `)}
       ```
    - *outputs:*
       ```turtle
-      @prefix demo: <http://ex.org/> .
-      @prefix dbo: <http://dbpedia.org/ontology/> .
-      @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-      @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-      
-      # this is a comment
-      demo:Banana rdf:type dbo:Fruit ;
-         # so is this...
-         rdfs:label "Banana"@en
+      @{exec('snippets/write-comment.js', [], `
+      `)}
       ```
 
 <a name="function-newlines" />
