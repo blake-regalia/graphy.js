@@ -30,6 +30,7 @@ class Transform extends stream.Transform {
 }
 
 module.exports = {
+	...stream,
 	Readable,
 	Writable,
 	Transform,

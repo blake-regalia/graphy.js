@@ -18,12 +18,15 @@ dist.es6
 
 # dependencies
 node_modules
+.npm-packages
 
 # developer scrap files
 scrap
+serd
 
 # ignore files
 *.ignore
+*.dev
 
 # developer utilities
 debug

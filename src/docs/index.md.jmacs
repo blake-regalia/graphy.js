@@ -1,4 +1,6 @@
 # graphy.js 🍌
+[![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
+
 `graphy` is a collection of RDF libraries for JavaScript developers that focuses on performance and usability. Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
 
 ### Features
@@ -40,3 +42,37 @@ The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) conta
 ### Examples
 
 #### Covert a CSV document to a Turtle document
+```js
+@{cat('snippets/transform-csv.js')}
+```
+
+Run from the command line with:
+```sh
+cat <<EOF | node snippets/transform-csv.js
+> 1,Blake,Banana
+> 2,Banana,Water Sunlight Soil
+> EOF
+```
+
+Outputs:
+```turtle
+@{exec('snippets/transform-csv.js', {
+  input: [
+    '1,Blake,Banana',
+    '2,Banana,Water Sunlight Soil',
+  ].join('\n'),
+})}
+```
+
+
+## License
+
+ISC © [Blake Regalia]()
+
+
+[npm-image]: https://badge.fury.io/js/graphy.svg
+[npm-url]: https://npmjs.org/package/graphy
+[travis-image]: https://travis-ci.org/blake-regalia/graphy.js.svg?branch=master
+[travis-url]: https://travis-ci.org/blake-regalia/graphy.js
+[daviddm-image]: https://david-dm.org/blake-regalia/graphy.js.svg?theme=shields.io
+[daviddm-url]: https://david-dm.org/blake-regalia/graphy.js

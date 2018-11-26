@@ -282,7 +282,7 @@ Convert a CSV document into an RDF Turtle document using a custom transform in a
 
 Then, we can run the following command:
 ```sh
-cat <<EOF | node csv-demo.js
+cat <<EOF | node snippets/transform-csv.js
 > 1,Blake,Banana
 > 2,Banana,Water Sunlight Soil
 > EOF

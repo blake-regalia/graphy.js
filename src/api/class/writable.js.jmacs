@@ -144,10 +144,10 @@ class Serializer_N3_Terse extends Serializer_N3 {
 	}
 
 	// serialize a collection tersely
-	nested_collection_item(z_item) {
+	async nested_collection_item(z_item) {
 		// nested collection
 		if(Array.isArray(z_item)) {
-			return this.serialize_collection(z_item);
+			return await this.serialize_collection(z_item);
 		}
 		// blank node
 		else if('object' === typeof z_item) {
@@ -166,7 +166,7 @@ class Serializer_N3_Terse extends Serializer_N3 {
 				let ksw_objects = new SubWriter_Objects(this, this.writer, this.c1_node(s_key));
 
 				// add this hash
-				s_blank_node += ksw_objects.objects(z_item[s_key], @{XM_MODE_SUBJECT});
+				s_blank_node += await ksw_objects.objects(z_item[s_key], @{XM_MODE_SUBJECT});
 			}
 
 			// close blank node
@@ -306,6 +306,19 @@ class CTWriter extends stream.Transform {
 		});
 	}
 
+	push_async(...a_args) {
+		return new Promise((fk_push) => {
+			// push chunk; no back-pressure
+			if(this.push(...a_args)) {
+				fk_push();
+			}
+			// backpressure
+			else {
+				this.once('drain', fk_push);
+			}
+		});
+	}
+
 	transform_concise(hct_quads_or_triples, s_encoding, fk_transform) {
 		this.add(hct_quads_or_triples);
 
@@ -408,7 +421,7 @@ class CTWriter_Quads extends CTWriter {
 	}
 
 	// add triples to output
-	add(hct_quads) {
+	async add(hct_quads) {
 		// each entry in quads hash
 		for(let sct_graph in hct_quads) {
 			// [graph] => triples
@@ -416,7 +429,7 @@ class CTWriter_Quads extends CTWriter {
 
 			// create triples writer and then write to it
 			try {
-				this.graph(sct_graph).add(z_triples, 0);
+				await this.graph(sct_graph).add(z_triples, 0);
 			}
 			catch(e_write) {
 				throw new Error(`...while writing graph '${sct_graph}':\n${e_write.message}\n${e_write.stack}`);
@@ -436,12 +449,12 @@ class CTWriter_Quads extends CTWriter {
 	}
 
 	// add triples to output
-	add(hct_triples, xm_mode=@{XM_MODE_GRAPH}) {
+	async add(hct_triples, xm_mode=@{XM_MODE_GRAPH}) {
 		// each entry in triples hash
 		for(let s_key in hct_triples) {
 			// directive
 			if('`' === s_key[0]) {
-				this.serializer.writer.push(this.directive(s_key, hct_triples[s_key], xm_mode));
+				await this.serializer.writer.push_async(this.directive(s_key, hct_triples[s_key], xm_mode));
 				continue;
 			}
 
@@ -450,7 +463,7 @@ class CTWriter_Quads extends CTWriter {
 
 			// create pairs writer and then write to it
 			try {
-				this.subject(s_key).add(z_pairs, xm_mode);
+				await this.subject(s_key).add(z_pairs, xm_mode);
 			}
 			catch(e_write) {
 				throw new Error(`...while writing subject '${s_key}':\n${e_write.message}\n${e_write.stack}`);
@@ -493,12 +506,12 @@ class SubWriter_Pairs extends SubWriter {
 	}
 
 	// add predicate/object pairs using this subject
-	add(h_pairs, xm_mode=0) {
+	async add(h_pairs, xm_mode=0) {
 		// each item in add pairs
 		for(let s_key in h_pairs) {
 			// directive
 			if('`' === s_key[0]) {
-				this.serializer.writer.push(this.directive(s_key, h_pairs[s_key], xm_mode));
+				await this.serializer.writer.push_async(this.directive(s_key, h_pairs[s_key], xm_mode));
 				continue;
 			}
 
@@ -507,7 +520,7 @@ class SubWriter_Pairs extends SubWriter {
 
 			// create objects writer and then write to it
 			try {
-				this.predicate(s_key).add(w_objects, xm_mode);
+				await this.predicate(s_key).add(w_objects, xm_mode);
 			}
 			catch(e_write) {
 				throw new Error(`...while writing predicate '${s_key}':\n${e_write.message}\n${e_write.stack}`);
@@ -555,16 +568,16 @@ class SubWriter_Objects extends SubWriter {
 	}
 
 	// for nested blank node objects
-	pair(p_predicate, z_objects, xm_mode, n_nest_level) {
+	async pair(p_predicate, z_objects, xm_mode, n_nest_level) {
 		// serialize object
-		let p_object = this.objects(z_objects, xm_mode, n_nest_level+1);
+		let p_object = await this.objects(z_objects, xm_mode, n_nest_level+1);
 
 		// make pair
 		return this.serializer.serialize_pair(p_predicate, p_object, xm_mode);
 	}
 
 	// write objects
-	objects(z_objects, xm_mode=0, n_nest_level=1) {
+	async objects(z_objects, xm_mode=0, n_nest_level=1) {
 		let k_serializer = this.serializer;
 		// let k_writer = k_serializer.writer;
 		let hm_coercions = k_serializer.writer.coercions;
@@ -595,17 +608,17 @@ class SubWriter_Objects extends SubWriter {
 						if(Array.isArray(z_item)) {
 							// serializer can serialize collection
 							if(k_serializer.serialize_collection_object) {
-								s_write += k_serializer.serialize_collection_object(this, z_item, xm_mode);
+								s_write += await k_serializer.serialize_collection_object(this, z_item, xm_mode);
 							}
 							// transcode collection
 							else {
-								s_write += this.objects(this.transcode_collection(z_item), xm_mode);
+								s_write += await this.objects(this.transcode_collection(z_item), xm_mode);
 							}
 						}
 						// non-array
 						else {
 							// recurse on item
-							s_write += this.objects(z_item, xm_mode);
+							s_write += await this.objects(z_item, xm_mode);
 
 							// now they share same graph, subject & predicate
 							xm_mode |= @{XM_MODE_GRAPH | XM_MODE_SUBJECT | XM_MODE_PREDICATE};
@@ -639,7 +652,7 @@ class SubWriter_Objects extends SubWriter {
 							let ksw_objects = new SubWriter_Objects(k_serializer, this, k_serializer.c1_node(s_key));
 
 							// add this hash
-							s_blank_node += ksw_objects.objects(z_objects[s_key], xm_mode);
+							s_blank_node += await ksw_objects.objects(z_objects[s_key], xm_mode);
 						}
 
 						// close blank node
@@ -657,7 +670,7 @@ class SubWriter_Objects extends SubWriter {
 						let k_blank_node = this.parent.parent.subject(sct_blank_node);
 
 						// add pairs normally (same graph tho!)
-						k_blank_node.add(z_objects, xm_mode & @{XM_MODE_GRAPH});
+						await k_blank_node.add(z_objects, xm_mode & @{XM_MODE_GRAPH});
 
 						// then continue with outer triple where blank node is object
 						return this.serialize(k_blank_node.term, xm_mode);
@@ -684,8 +697,8 @@ class SubWriter_Objects extends SubWriter {
 	}
 
 	// add object using current [graph], subject, predicate
-	add(z_objects, xm_mode=0) {
-		this.serializer.writer.push(this.objects(z_objects, xm_mode));
+	async add(z_objects, xm_mode=0) {
+		await this.serializer.writer.push_async(await this.objects(z_objects, xm_mode));
 	}
 }
 
