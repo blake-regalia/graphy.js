@@ -38,17 +38,21 @@ k_writer.write({
 		'owl:equivalentClass': {
 			a: 'owl:Class',
 			'owl:intersectionOf': [
-				[{
-					a: 'owl:Restriction',
-					'owl:onProperty': ':hasChild',
-					'owl:allValuesFrom': ':Happy',
-				}],
-				[{
-					a: 'owl:Restriction',
-					'owl:onProperty': ':hasChild',
-					'owl:someValuesFrom': ':Happy',
-				}],
+				[
+					{
+						a: 'owl:Restriction',
+						'owl:onProperty': ':hasChild',
+						'owl:allValuesFrom': ':Happy',
+					},
+					{
+						a: 'owl:Restriction',
+						'owl:onProperty': ':hasChild',
+						'owl:someValuesFrom': ':Happy',
+					},
+				],
 			],
 		},
 	},
 });
+
+k_writer.end();

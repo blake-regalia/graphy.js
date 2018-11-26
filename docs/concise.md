@@ -106,6 +106,7 @@ let k_writer = ttl_write({
 
 k_writer.pipe(process.stdout);
 
+// the following demonstrates the use of a concise triples hash
 k_writer.write({
    // triples about dbr:Banana
    'dbr:Banana': {
@@ -127,20 +128,24 @@ k_writer.write({
       'owl:equivalentClass': {
          a: 'owl:Class',
          'owl:intersectionOf': [
-            [{
-               a: 'owl:Restriction',
-               'owl:onProperty': ':hasChild',
-               'owl:allValuesFrom': ':Happy',
-            }],
-            [{
-               a: 'owl:Restriction',
-               'owl:onProperty': ':hasChild',
-               'owl:someValuesFrom': ':Happy',
-            }],
+            [
+               {
+                  a: 'owl:Restriction',
+                  'owl:onProperty': ':hasChild',
+                  'owl:allValuesFrom': ':Happy',
+               },
+               {
+                  a: 'owl:Restriction',
+                  'owl:onProperty': ':hasChild',
+                  'owl:someValuesFrom': ':Happy',
+               },
+            ],
          ],
       },
    },
 });
+
+k_writer.end();
 ```
 
 **Outputs:**
@@ -170,15 +175,14 @@ dbr:Banana rdf:type dbo:Plant ;
             owl:onProperty :hasChild ;
             owl:allValuesFrom :Happy
          ]
-      ) ;
-      owl:intersectionOf (
          [
             rdf:type owl:Restriction ;
             owl:onProperty :hasChild ;
             owl:someValuesFrom :Happy
          ]
       )
-   ]
+   ] .
+
 ```
 
 ----

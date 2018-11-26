@@ -39,13 +39,14 @@
 		return normalize(s_contents, s_indent);
 	};
 
-	const exec = (p_source, a_args=[], s_indent='') => {
+	const exec = (p_source, gc_exec={}, s_indent='') => {
 		let {
 			stdout: s_stdout,
 			stderr: s_stderr,
 			status: xc_exit,
 			error: e_spawn,
-		} = cp.spawnSync(process.execPath, [local(p_source), ...a_args], {
+		} = cp.spawnSync(process.execPath, [local(p_source), gc_exec.args || []], {
+			...gc_exec,
 			encoding: 'utf8',
 		});
 

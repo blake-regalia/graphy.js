@@ -296,7 +296,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       ```
    - *outputs:*
       ```turtle
-      @{exec('snippets/write-comment.js', [], `
+      @{exec('snippets/write-comment.js', {}, `
       `)}
       ```
 
