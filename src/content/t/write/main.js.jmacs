@@ -68,7 +68,8 @@ class serializer extends writable.serializer.n3.terse {
 		}
 
 		for(let s_line of s_comment.split(/\n/g)) {
-			s_write += `# mode:${xm_mode}, nest:${this.nest_level}, nm:${this.nest_mask}, ns:${this.new_subject}, np:${b_newp}, ${s_line}\n`;
+			// s_write += `# mode:${xm_mode}, nest:${this.nest_level}, nm:${this.nest_mask}, ns:${this.new_subject}, np:${b_newp}, ${s_line}\n`;
+			s_write += `# ${s_line}\n`;
 		}
 
 		// return to correct column

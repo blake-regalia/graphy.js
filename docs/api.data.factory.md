@@ -23,9 +23,20 @@
      - [`number(...)`](#function-number)
      - [`date(...)`](#function-date)
      - [`dateTime(...)`](#function-datetime)
+   - Concise Term constructors
+     - [`c1(...)`](#function-c1)
+     - [`term(...)`](#function-term)
    - Quad constructors
      - [`quad(...)`](#function-quad)
      - [`triple(...)`](#function-triple)
+   - Concise Quads constructors
+     - [`c4(...)`](#function-c4)
+     - [`quads(...)`](#function-quads)
+     - [`c3(...)`](#function-c3)
+     - [`triples(...)`](#function-quads)
+   - Content Writer directives
+     - [`comment(...)`](#function-comment)
+     - [`newlines(...)`](#function-newlines)
  - [Classes](#classes) -- class definitions
    - [GenericTerm](#class-genericterm)
      - [NamedNode](#class-namednode)
@@ -78,7 +89,7 @@ The following section describes hinted formatting on ES primitives that are used
 
 <a name="string-term_concise" />
 
- - `#string/term_concise` -- a [concise-term string](/doc/concise-term#ct-string).
+ - `#string/term_concise` -- a [concise-term string](concise#ct-string).
 
 <a name="string-language_tag" />
 
@@ -232,11 +243,15 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       factory.dateTime(dt_event).terse(h_prefixes);  // '"1995-12-14T03:24:00"^^xsd:dateTime'
       ```
 
-<a name="function-double" />
+<a name="function-c1" />
 
- - `factory.double(value: number)`
-   - **returns** a [new Literal_Double](#class-literal_double)
-   - *examples:* [See Literal_Double](#class-literal_double)
+ - `factory.c1(term: `[`#string/concise-term`](concise#c1-string)`[, prefixes: `[`#hash/prefix-mappings`](#hash-prefixmappings)`])`
+   - **returns** a [new GenericTerm](#class-genericterm)
+
+<a name="function-term" />
+
+ - `factory.term(term: `[`#string/concise-term`](concise#c1-string)`[, prefixes: `[`#hash/prefix-mappings`](#hash-prefixmappings)`])`
+   - **returns** a [new GenericTerm](#class-genericterm)
 
 <a name="function-quad" />
 
@@ -247,6 +262,75 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
  - `factory.triple(subject: `[`Term`](#interface-term)`, predicate: `[`Term`](#interface-term)`, object: `[`Term`](#interface-term)`)`
    - **returns** a [new Triple](#class-triple)
+
+<a name="function-c4" />
+
+ - *generator* `factory.c4(quads: `[`#hash/concise-quads`](concise#c4-hash)`[, prefixes: `[`#hash/prefix-mappings`](#hash-prefixmappings)`])`
+   - **yields** a series of [Quads](#class-quad)
+
+<a name="function-quads" />
+
+ - *generator* `factory.quads(quads: `[`#hash/concise-quads`](concise#c4-hash)`[, prefixes: `[`#hash/prefix-mappings`](#hash-prefixmappings)`])`
+   - **yields** a series of [Quads](#class-quad)
+
+<a name="function-c3" />
+
+ - *generator* `factory.c3(triples: `[`#hash/concise-triples`](concise#c3-hash)`[, prefixes: `[`#hash/prefix-mappings`](#hash-prefixmappings)`])`
+   - **yields** a series of [Triples](#class-triple)
+
+<a name="function-triples" />
+
+ - *generator* `factory.triples(triples: `[`#hash/concise-triples`](concise#c3-hash)`[, prefixes: `[`#hash/prefix-mappings`](#hash-prefixmappings)`])`
+   - **yields** a series of [Triples](#class-triple)
+
+<a name="function-comment" />
+
+ - `factory.comment(config: `[`CommentConfig`](#config-comment)`)`
+   - creates a special concise term string that tells the RDF writer to interpret the value associated with this key as a comment and to insert it into the output RDF document if the destination RDF format supports comments. Use this function in the predicate, subject or graph position of any concise triples or concise quads hash.
+   - **returns** a [`#string/concise-term`](concise#c1-term)
+   - *example:*
+      ```js
+      const factory = require('@graphy/api.data.factory');
+      const ttl_write = require('@graphy/content.ttl.write');
+
+      let y_writer = ttl_write({
+          prefixes: {
+              demo: 'http://ex.org/',
+              dbo: 'http://dbpedia.org/ontology/',
+              rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+              rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+          },
+      });
+
+      y_writer.pipe(process.stdout);
+
+      y_writer.write({
+          [factory.comment()]: 'this is a comment',
+          'demo:Banana': {
+              a: 'dbo:Fruit',
+              [factory.comment()]: 'so is this...',
+              'rdfs:label': '@en"Banana',
+          },
+      });
+      ```
+   - *outputs:*
+      ```
+      @prefix demo: <http://ex.org/> .
+      @prefix dbo: <http://dbpedia.org/ontology/> .
+      @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+      @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+      # this is a comment
+      demo:Banana rdf:type dbo:Fruit ;
+          # so is this...
+          rdfs:label "Banana"@en
+      ```
+
+<a name="function-newlines" />
+
+ - `factory.newlines(config: `[`NewlinesConfig`](#config-newlines)`)`
+   - creates a special concise term string that tells the RDF writer to interpret the value associated with this key as the number of newlines to insert into the output RDF document if the destination RDF format supports empty newlines. Value must be an integer. Use this function in the predicate, subject or graph position of any concise triples or concise quads hash.
+   - **returns** a [`#string/concise-term`](concise#c1-term)
 
 ---
 

@@ -129,7 +129,7 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 
  - `#struct/input_stream` -- 
    - **required properties:**
-     - `.stream`: [`ReadableStream<string>`](/doc/api.iso.stream#readable_string)
+     - `.stream`: [`ReadableStream<string>`](api.iso.stream#readable_string)
 
 ---
 
@@ -154,8 +154,8 @@ Read RDF (in other words, deserialize it) from a document given by an input stre
 
 **Overloaded variants:**
  - `read([config: `[`ReadConfig_NoInput`](#config-read-no-input)`])`
-   - creates a new content reader that will act as a transform, accepting utf8-encoded strings on the writable side and outputting [Quads](/doc/api.data.factory#class-quad) on the readable side.
-   - **returns** a [new Transform<string, Quad>](/doc/api.iso.stream#transform_stringwritablequadreadable)
+   - creates a new content reader that will act as a transform, accepting utf8-encoded strings on the writable side and outputting [Quads](api.data.factory#class-quad) on the readable side.
+   - **returns** a [new Transform<string, Quad>](api.iso.stream#transform_stringwritablequadreadable)
 
  - `read(input_string: string[, config: `[`ReadConfig_NoInput`](#config-read-no-input)`])`
    - shortcut for:
@@ -167,9 +167,9 @@ Read RDF (in other words, deserialize it) from a document given by an input stre
           },
       })
       ```
-   - **returns** a [new ReadableStream<Quad>](/doc/api.iso.stream#readable_quad)
+   - **returns** a [new ReadableStream<Quad>](api.iso.stream#readable_quad)
  
- - `read(input_stream: `[`ReadableStream<string>`](/doc/api.iso.stream#readable_string)`[, config: `[`ReadConfig_NoInput`](#config-read-no-input)`])`
+ - `read(input_stream: `[`ReadableStream<string>`](api.iso.stream#readable_string)`[, config: `[`ReadConfig_NoInput`](#config-read-no-input)`])`
    - shortcut for:
       ```js
       read({
@@ -179,11 +179,11 @@ Read RDF (in other words, deserialize it) from a document given by an input stre
           },
       })
       ```
-   - **returns** a [new ReadableStream<Quad>](/doc/api.iso.stream#readable_quad)
+   - **returns** a [new ReadableStream<Quad>](api.iso.stream#readable_quad)
 
  - `read(config: `[`ReadConfig_WithInput`](#config-read-with-input)`)`
-   - creates a new content reader that will output [Quads](/doc/api.data.factory#class-quad).
-   - **returns** a [new ReadableStream<Quad>](/doc/api.iso.stream#readable_quad)
+   - creates a new content reader that will output [Quads](api.data.factory#class-quad).
+   - **returns** a [new ReadableStream<Quad>](api.iso.stream#readable_quad)
 
 **Examples**:
 ```js
@@ -263,16 +263,16 @@ Write RDF (in other words, serialize it) to a document for storage, transmission
    - creates a new content writer and returns a transform that operates in object mode on the writable side and emits utf8-encoded strings on the readable side. The type of object it expects on the writable side depends on the capabilities of the format and the options specified in `config`.
    - `@graphy/content.nt.write({type:'rdfjs'})`
    - `@graphy/content.ttl.write({type:'rdfjs'})`
-     - **returns** a [new `Transform<@RDFJS/Quad, string>`](/doc/api.iso.stream#transform_triplewritablestringreadable)
+     - **returns** a [new `Transform<@RDFJS/Quad, string>`](api.iso.stream#transform_triplewritablestringreadable)
    - `@graphy/content.nt.write({type:'concise'})`
    - `@graphy/content.ttl.write({type:'concise'})`
-     - **returns** a [new `Transform<#hash/concise-triple, string>`](/doc/api.iso.stream#transform_cttriplewritablestringreadable)
+     - **returns** a [new `Transform<#hash/concise-triple, string>`](api.iso.stream#transform_cttriplewritablestringreadable)
    - `@graphy/content.nq.write({type:'rdfjs'})`
    - `@graphy/content.trig.write({type:'rdfjs'})`
-     - **returns** a [new `Transform<@RDFJS/Quad, string>`](/doc/api.iso.stream#transform_quadwritablestringreadable)
+     - **returns** a [new `Transform<@RDFJS/Quad, string>`](api.iso.stream#transform_quadwritablestringreadable)
    - `@graphy/content.nq.write({type:'concise'})`
    - `@graphy/content.trig.write({type:'concise'})`
-     - **returns** a [new `Transform<#hash/concise-quad, string>`](/doc/api.iso.stream#transform_ctquadwritablestringreadable)
+     - **returns** a [new `Transform<#hash/concise-quad, string>`](api.iso.stream#transform_ctquadwritablestringreadable)
 
 **Example A**:
 Convert a CSV document into an RDF Turtle document using a custom transform in a pipeline.
@@ -391,7 +391,7 @@ The definition for all possible events emitted during content reading. Please [s
           },
       });
       ```
- - `data(quad: `[`Quad`](/doc/api.data.factory#class-quad)`)`
+ - `data(quad: `[`Quad`](api.data.factory#class-quad)`)`
    - Gets called once for each triple/quad as soon as it is parsed.
    - *examples:*
       ```js
@@ -408,7 +408,7 @@ The definition for all possible events emitted during content reading. Please [s
           y_quad.predicate.value;  // 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
       });
       ```
- - `enter(graph: `[`Term`](/doc/api.data.factory#class-namednode)`)`
+ - `enter(graph: `[`Term`](api.data.factory#class-namednode)`)`
    - Gets called each time a graph block is entered as soon as the opening brace character `{` is read. `graph` will either be a [NamedNode](#namednode), [BlankNode](#blanknode) or [DefaultGraph](#defaultgraph).
    - *example:*
       ```js
@@ -428,13 +428,13 @@ The definition for all possible events emitted during content reading. Please [s
           },
       });
       ```
- - `exit(graph: `[`NamedNode`](/doc/api.data.factory#class-namednode)`)`
+ - `exit(graph: `[`NamedNode`](api.data.factory#class-namednode)`)`
    - Gets called each time a graph block is exitted as soon as the closing brace character `}` is read.       `graph` will either be a [NamedNode](#namednode), [BlankNode](#blanknode) or       [DefaultGraph](#defaultgraph).
   - `progress(delta: integer)`
     - Gets called each time the reader has finished processing a chunk of data is going asynchronous to wait for the next I/O event. `delta` will reflect the number of characters that were consumed from the input which resulted in a change to the reader's internal state (i.e., incomplete tokens must wait for next chunk to be terminated). This event offers a nice way to provide progress updates to the user but would also require knowing ahead of time how many characters in total are contained by the input. This event also provides hints to resource-hungry applications when it might be an opportunistic time to perform synchronous tasks. This event will also be called right before the `eof()` event with a `delta` equal to `0`.
   - `error(err: Error)`
     - Gets called if an error occurs any time during the read process, including malformed syntax errors, unreadable inputs, and so forth. If an error does occur, no other events will be emitted after this one. If you do not include an error event handler, the parser will throw the error.
-  - `eof(prefixes: `[`PrefixMap`](/doc/api.data.factory#type-prefixmap)`)`
+  - `eof(prefixes: `[`PrefixMap`](api.data.factory#type-prefixmap)`)`
     - Gets called once the 'end-of-file' has been reached on the input and all other events have been emitted, except for the final `end()` event to indicate the the output stream is done. This event is useful for grabbing the final map of `prefixes`.
   - `end()`
     - Gets called once at the very end of the input. It indicates that the input stream (if any) has been closed and no more events will be emitted.
@@ -454,22 +454,85 @@ The definition for all possible events emitted during content writing. Please [s
 
 ## Classes
 
-<a name="class-quadwriter" />
+<a name="class-concisequadwriter" />
 
-### class **QuadWriter**
+### class **ConciseQuadWriter** extends [Transform](api.iso.stream#transform)&lt;[#hash/c4](concise#c4-hash), string&gt;
+Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c4](concise#c4-hash).
+
+**Construction:**
+See [`write`](#verb-write).
+
+**Methods:**
+ - ... [see those inheritted from Transform](api.iso.stream#transform)
+ - `graph(graph: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`ConciseTripleWriter`](#class-triplewriter) that allows for writing multiple statements which belong to the same given `graph`.
+   - **returns** a [new `ConciseTripleWriter`](#class-concisetriplewriter)
+ - `subject(subject: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`ConcisePairWriter`](#class-pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
+   - **returns** a [new `ConcisePairWriter`](#class-concisepairwriter)
+
+<a name="class-concisetriplewriter" />
+
+### class **ConciseTripleWriter** extends [Transform](api.iso.stream#transform)&lt;[#hash/c3](concise#c3-hash), string&gt;
+Acts as an object-writable, string-readable Transform for serializing RDF triples from memory to an output destination. Expects objects on the writable side to be of type [#hash/c3](concise#c3-hash).
+
+**Construction:**
+See [`write`](#verb-write).
+
+**Methods:**
+ - ... [see those inheritted from Transform](api.iso.stream#transform)
+ - `subject(subject: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`ConcisePairWriter`](#class-pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
+   - **returns** a [new `ConcisePairWriter`](#class-concisepairwriter)
+
+
+<a name="class-concisepairwriter" />
+
+### class **ConcisePairWriter** extends [Transform](api.iso.stream#transform)&lt;[#hash/c4](concise#c4-hash), string&gt;
+Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c4](concise#c4-hash).
+
+**Construction:**
+See [`write`](#verb-write).
+
+**Methods:**
+ - ... [see those inheritted from Transform](api.iso.stream#transform)
+ - `graph(graph: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`ConciseTripleWriter`](#class-triplewriter) that allows for writing multiple statements which belong to the same given `graph`.
+   - **returns** a [new `ConciseTripleWriter`](#class-concisetriplewriter)
+ - `subject(subject: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`ConcisePairWriter`](#class-pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
+   - **returns** a [new `ConcisePairWriter`](#class-concisepairwriter)
+
+<a name="class-rdfjsquadwriter" />
+
+### class **RDFJSQuadWriter** extends [Transform](api.iso.stream#transform)&lt;[@RDFJS/Quad](http://rdf.js.org/#quad-interface), string&gt;]
 Contains methods for serializing RDF quads from memory to an output destination.
 
 **Construction:**
 See [`write`](#verb-write).
 
 **Methods:**
- - `async add(quads: `[`#struct/concise-term-quads`](/doc/concise-term#ct-struct-quads)`)` -- serialize 
+ - `async add(quads: `[`#struct/concise-term-quads`](concise#ct-struct-quads)`)` -- serialize 
    - **resolves to** a [`WriteReport`](#class-writereport)
  - `async add(quad: `[`@RDFJS/Quad`](http://rdf.js.org/#quad-interface)`)`
    - **resolves to** a [`WriteReport`](#class-writereport)
- - `graph(graph: `[`NamedNode`](/doc/api.data.factory#class-namednode)`)` -- creates an instance of a [`TripleWriter`](#class-triplewriter) that allows for writing multiple statements which belong to the same given `graph`.
+ - `graph(graph: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`TripleWriter`](#class-triplewriter) that allows for writing multiple statements which belong to the same given `graph`.
    - **returns** a [new `TripleWriter`](#class-triplewriter)
- - `subject(subject: `[`NamedNode`](/doc/api.data.factory#class-namednode)`)` -- creates an instance of a [`PairWriter`](#class-pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
+ - `subject(subject: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`PairWriter`](#class-pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
+   - **returns** a [new `PairWriter`](#class-pairwriter)
+
+
+<a name="class-genericquadwriter" />
+
+### class **GenericQuadWriter** extends [Transform&lt;Quad | @RDFJS/Quad, string&gt;]()
+Contains methods for serializing RDF quads from memory to an output destination.
+
+**Construction:**
+See [`write`](#verb-write).
+
+**Methods:**
+ - `async add(quads: `[`#struct/concise-term-quads`](concise#ct-struct-quads)`)` -- serialize 
+   - **resolves to** a [`WriteReport`](#class-writereport)
+ - `async add(quad: `[`@RDFJS/Quad`](http://rdf.js.org/#quad-interface)`)`
+   - **resolves to** a [`WriteReport`](#class-writereport)
+ - `graph(graph: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`TripleWriter`](#class-triplewriter) that allows for writing multiple statements which belong to the same given `graph`.
+   - **returns** a [new `TripleWriter`](#class-triplewriter)
+ - `subject(subject: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`PairWriter`](#class-pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
    - **returns** a [new `PairWriter`](#class-pairwriter)
 
 <a name="class-triplewriter" />
@@ -481,11 +544,11 @@ Contains methods for serializing RDF triples from memory to an output destinatio
 See [`write`](#verb-write) and [`QuadWriter#graph`](#class-quadwriter).
 
 **Methods:**
- - `async add(triples: `[`#struct/concise-term-triples`](/doc/concise-term#ct-struct-triples)`)`
+ - `async add(triples: `[`#struct/concise-term-triples`](concise#ct-struct-triples)`)`
    - **resolves to** a [`WriteReport`](#class-writereport)
  - `async add(quad: `[`@RDFJS/Triple`](http://rdf.js.org/#triple-interface)`)`
    - **resolves to** a [`WriteReport`](#class-writereport)
- - `subject(subject: `[`NamedNode`](/doc/api.data.factory#class-namednode)`)` -- creates an instance of a [`PairWriter`](#class-pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
+ - `subject(subject: `[`NamedNode`](api.data.factory#class-namednode)`)` -- creates an instance of a [`PairWriter`](#class-pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
    - **returns** a [new `PairWriter`](#class-pairwriter)
 
 
@@ -521,8 +584,8 @@ An interface that defines the config object passed to a content writer.
 
 **Options:**
  - ... [see those inlined from WriteEvents](#events-write)
- - `type` : `'concise' | 'rdfjs' | null` -- optionally specify the type of objects that will be written to the transform, where `'concise'` indicates either objects of [ConciseQuadsHash](/doc/concise#ct-quads-hash) or [ConciseTriplesHash](/doc/concise#ct-triples-hash) depending on whether or not the underlying serialization format supports quads, and where `'rdfjs'` indicates objects of [@RDFJS/Quad](http://rdf.js.org/#quad-interface) (the graph component will be ignored for formats that do not support quads). If `null` is given or this option is not specified, each object written to the transform will be automatically duck-typed and interpretted as one of these two object types.
- - `prefixes` : [`#hash/prefix-mappings`](/doc/api.data.factory#hash-prefixmappings) -- prefix mappings to use in order to expand the concise-term strings within concise-quad hashes as they are written. These prefixes will also be used to create prefix statements and terse terms on the output stream whenever possible (e.g., for Turtle and TriG documents).
+ - `type` : `'concise' | 'rdfjs' | null` -- optionally specify the type of objects that will be written to the transform, where `'concise'` indicates either objects of [ConciseQuadsHash](concise#ct-quads-hash) or [ConciseTriplesHash](concise#ct-triples-hash) depending on whether or not the underlying serialization format supports quads, and where `'rdfjs'` indicates objects of [@RDFJS/Quad](http://rdf.js.org/#quad-interface) (the graph component will be ignored for formats that do not support quads). If `null` is given or this option is not specified, each object written to the transform will be automatically duck-typed and interpretted as one of these two object types.
+ - `prefixes` : [`#hash/prefix-mappings`](api.data.factory#hash-prefixmappings) -- prefix mappings to use in order to expand the concise-term strings within concise-quad hashes as they are written. These prefixes will also be used to create prefix statements and terse terms on the output stream whenever possible (e.g., for Turtle and TriG documents).
 
 
 <!-- - `coercions` : [`#map/object-coercions`](#map-objectcoercions) -- allows for extending the built-in mappings for coercing objects that are an `instanceof` some class or function to their RDF representation. For example, an instance of the `Date` object will -->

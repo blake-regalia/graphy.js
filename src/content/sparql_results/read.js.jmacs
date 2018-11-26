@@ -7,6 +7,7 @@
 
 const stream = require('@@@{S_GRAPHY_CHANNEL}/api.iso.stream');
 const factory = require('@@@{S_GRAPHY_CHANNEL}/api.data.factory');
+const factory_from = factory.from;
 
 class reader {
 	constructor(gc_read={}) {
@@ -55,7 +56,7 @@ class reader {
 
 						// each property in row
 						for(let s_key in h_row) {
-							h_row_terms[s_key] = factory.from_sparql_result(h_row[s_key]);
+							h_row_terms[s_key] = factory_from.sparql_result(h_row[s_key]);
 						}
 
 						// push row to output
