@@ -7,8 +7,8 @@
 
 const writable = require('@@@{S_GRAPHY_CHANNEL}/api.class.writable');
 
-class serializer extends writable.serializer.n3.verbose {
-	constructor(g_config) {
+class serializer extends writable.serializer.textual.verbose {
+	constructor(g_config={}) {
 		super(writable.triples, g_config);
 	}
 

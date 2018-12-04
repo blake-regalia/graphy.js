@@ -18,8 +18,11 @@ const s_channel = process.env.GRAPHY_CHANNEL || 'graphy';
 const g_package_json_super = require('./package.json');
 const g_package_json_base = require(`./src/aux/base-package-${s_channel}.json`);
 
-const s_base_version = g_package_json_base.version;
-const s_semver = B_DEVELOPMENT? s_base_version:`^${s_base_version}`;
+// const s_base_version = g_package_json_base.version;
+// const s_semver = B_DEVELOPMENT? s_base_version:`^${s_base_version}`;
+
+const s_base_version = g_package_json_super[B_DEVELOPMENT? 'devVersion': 'version'];
+const s_semver = B_DEVELOPMENT? s_base_version: `^${s_base_version}`;
 
 const dir_struct = (a_files) => {
 	let a_paths = [];
@@ -187,6 +190,7 @@ for(let [si_package, g_package] of Object.entries(h_packages)) {
 const package_json = si_package => () => ({
 	deps: [
 		`src/aux/base-package-${s_channel}.json`,
+		'package.json',
 	],
 
 	run: /* syntax: bash */ `
@@ -197,7 +201,9 @@ const package_json = si_package => () => ({
 				let g_package_json = ${JSON.stringify(h_packages[si_package].json)};
 
 				// update package.json
-				return Object.assign(g_base_package_json, g_package_json);
+				return Object.assign(g_base_package_json, g_package_json, {
+					version: '${s_base_version}',
+				});
 			`.trim().replace(/(["`])/g, '\\$1')} }" > $@
 
 		# sort its package.json
@@ -279,7 +285,7 @@ const package_node_modules = si_package => ({
 
 
 const scoped_package = si_package => ({
-	'.npmrc': npmrc,
+	// '.npmrc': npmrc,
 
 	'package.json': package_json(si_package),
 
@@ -476,13 +482,12 @@ module.exports = {
 		test: {
 			':package': h => ({
 				deps: [
+					`prepublish.${h.package}`,
 					`test/${h.package.replace(/\./g, '/')}.js`,
-					`build/${s_channel}/${h.package}/**`,
-					`link.${h.package}`,
 				],
 
 				run: /* syntax: bash */ `
-					mocha --colors $1
+					mocha --colors $2
 				`,
 			}),
 		},
@@ -598,11 +603,12 @@ module.exports = {
 
 				// the super module
 				[s_channel]: {
-					'.npmrc': npmrc,
+					// '.npmrc': npmrc,
 
 					'package.json': () => ({
 						deps: [
 							`src/aux/base-package-${s_channel}.json`,
+							'package.json',
 						],
 
 						run: /* syntax: bash */ `
@@ -619,6 +625,9 @@ module.exports = {
 											}), {}),
 										},
 										description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
+										bin: {
+											[s_channel]: 'main.js',
+										},
 									})};
 
 									// update package.json

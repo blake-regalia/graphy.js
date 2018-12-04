@@ -27,7 +27,7 @@ const doc_as_set = st_doc => new Promise((fk_set) => {
 		}));
 });
 
-const write = (hct_input, st_expected) => new Promise((fk_write) => {
+const write = (hc3_input, st_expected) => new Promise(async(fk_write) => {
 	let k_writer = ttl_write({
 		prefixes: H_PREFIXES,
 	});
@@ -53,7 +53,7 @@ const write = (hct_input, st_expected) => new Promise((fk_write) => {
 		});
 
 	// write to turtle document
-	k_writer.add(hct_input);
+	await k_writer.add(hc3_input);
 
 	// close document
 	k_writer.end();
@@ -117,5 +117,157 @@ describe('collections', () => {
 			) .
 		`);
 	});
+
+	it('custom collections', () => new Promise(async(fk_write) => {
+		let hc3_input = {
+			'>a': {
+				'>b': [[
+					'"a', '"b', '"c', [
+						'"D', '"E', '"F', [
+							'"g', '"h', '"i',
+						],
+						'"G', '"H', '"I',
+					],
+				]],
+			},
+		};
+
+		let st_expected = /* syntax: turtle */ `
+			<a> <b> [
+				<first> "a" ;
+				<rest> [
+					<first> "b" ;
+					<rest> [
+						<first> "c" ;
+						<rest> [
+							<first> [
+								<first> "D" ;
+								<rest> [
+									<first> "E" ;
+									<rest> [
+										<first> "F" ;
+										<rest> [
+											<first> [
+												<first> "g" ;
+												<rest> [
+													<first> "h" ;
+													<rest> [
+														<first> "i" ;
+														<rest> <nil> ;
+													] ;
+												] ;
+											] ;
+											<rest> [
+												<first> "G" ;
+												<rest> [
+													<first> "H" ;
+													<rest> [
+														<first> "I" ;
+														<rest> <nil>
+													] ;
+												] ;
+											] ;
+										] ;
+									] ;
+								] ;
+							] ;
+							<rest> <nil> ;
+						] ;
+					] ;
+				] ;
+			] .
+		`;
+
+		let k_writer = ttl_write({
+			prefixes: H_PREFIXES,
+			collections: {
+				first: '>first',
+				rest: '>rest',
+				nil: '>nil',
+			},
+		});
+
+		// output string
+		let st_output = '';
+		k_writer.setEncoding('utf8');
+		k_writer
+			.on('data', (s_chunk) => {
+				st_output += s_chunk;
+			})
+			.on('end', async() => {
+				// parse result document
+				let k_result = await doc_as_set(st_output);
+
+				// parse expected document
+				let k_expected = await doc_as_set(st_expected);
+
+				// compare
+				assert.strictEqual(k_result.canonicalize(), k_expected.canonicalize());
+
+				fk_write();
+			});
+
+		// write to turtle document
+		await k_writer.add(hc3_input);
+
+		// close document
+		k_writer.end();
+	}));
+
+	it('long custom collections', () => new Promise(async(fk_write) => {
+		let a_items = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+		let hc3_input = {
+			'>a': {
+				'>b': [a_items.map(s => '"'+s)],
+			},
+		};
+
+		let f_nt = a_rest => /* syntax: turtle */ `[
+			<first> "${a_rest.shift()}" ;
+			<rest> ${a_rest.length? f_nt(a_rest): '<nil>'} ;
+		]`;
+
+		let st_expected = /* syntax: turtle */ `
+			<a> <b> ${f_nt(a_items)}
+			.
+		`;
+
+		let k_writer = ttl_write({
+			prefixes: H_PREFIXES,
+			collections: {
+				first: '>first',
+				rest: '>rest',
+				nil: '>nil',
+			},
+		});
+
+		// output string
+		let st_output = '';
+		k_writer.setEncoding('utf8');
+		k_writer
+			.on('data', (s_chunk) => {
+				st_output += s_chunk;
+			})
+			.on('end', async() => {
+				// parse result document
+				let k_result = await doc_as_set(st_output);
+
+				// parse expected document
+				let k_expected = await doc_as_set(st_expected);
+
+				// compare
+				assert.strictEqual(k_result.canonicalize(), k_expected.canonicalize());
+
+				fk_write();
+			});
+
+		// write to turtle document
+		debugger;
+		await k_writer.add(hc3_input);
+
+		// close document
+		k_writer.end();
+	}));
 });
 

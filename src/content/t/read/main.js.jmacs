@@ -640,6 +640,7 @@ class reader {
 			// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
 			queue_event: [],
 
+			anonymous_blank_node: s_label => factory.blankNode(s_label, true),
 
 			// finds the next non-conflicting blank node label
 			next_label() {
@@ -778,29 +779,15 @@ class reader {
 					// make term
 					return factory.blankNode(s_label);
 				},
-				anonymous_blank_node: s_label => factory.blankNode(s_label, true),
+
 				named_node: s_iri => factory.namedNode(s_iri),
 
 				unescape_literal_short: unescape_literal_short,
-				// (s_literal){
-				// 	// try {
-				// 		return unescape_literal_short(s_literal);
-				// 	// }
-				// 	// catch(e_parse) {
-				// 	// 	return this._error(`invalid string literal: "${s_literal}"`);
-				// 	// }
-				// },
+
 				unescape_literal_long: unescape_literal_long,
-				// (s_literal) {
-				// 	// try {
-				// 		return unescape_literal_long(s_literal);
-				// 	// }
-				// 	// catch(e_parse) {
-				// 	// 	return this._error(`invalid string literal: "${s_literal}"`);
-				// 	// }
-				// },
 
 				match_prefixed_name_escapeless,
+
 				match_prefixed_name,
 			});
 

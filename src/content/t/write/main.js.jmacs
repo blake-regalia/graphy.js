@@ -5,11 +5,12 @@
 @import '../../../share/writer.jmacs'
 
 const writable = require('@{channel('api.class.writable')}');
+const big_integer = require('big-integer');
 
 @$ QUADS = ('trig' === FORMAT);
 
-class serializer extends writable.serializer.n3.terse {
-	constructor(g_config) {
+class serializer extends writable.serializer.textual.terse {
+	constructor(g_config={}) {
 		super(writable.triples, g_config);
 		
 		let s_indent = g_config.indent || '\t';
@@ -20,7 +21,7 @@ class serializer extends writable.serializer.n3.terse {
 			new_predicate: true,
 
 			blank_node_nesting: true,
-			nest_mask: 0,
+			nest_mask: big_integer.zero,
 			nest_level: 0,
 
 			// open a nested (anonymous) blank node
@@ -31,7 +32,11 @@ class serializer extends writable.serializer.n3.terse {
 			// close a nest
 			nest_close(s_char=']') {
 				// reset nest tracker
-				this.nest_mask = this.nest_mask & ~(1 << this.nest_level-1);
+				// this.nest_mask = this.nest_mask & ~(1 << this.nest_level-1);
+				this.nest_mask = this.nest_mask.and(
+					big_integer.one
+						.shiftLeft(this.nest_level-1)
+						.not());
 
 				// this.nest_level -= 1;
 				return `${this.trailing? ' ;': ''}\n@{QUADS? '${s_indent}':''}`+s_indent.repeat(this.nest_level--)+s_char;
@@ -60,9 +65,11 @@ class serializer extends writable.serializer.n3.terse {
 				s_write += ` ;\n${this.indent.repeat(this.nest_level+1)}`;
 				b_newp = !b_newp;
 			}
-			else if(this.nest_mask && this.nest_mask >= this.nest_level) {
+			// else if(this.nest_mask && this.nest_mask >= this.nest_level) {
+			else if(this.nest_mask.notEquals(0) && this.nest_mask.greaterOrEquals(this.nest_level)) {
 				s_write += ` ;\n${this.indent.repeat(this.nest_level+1)}`;
-				this.nest_mask = 0;
+				// this.nest_mask = 0;
+				this.nest_mask = big_integer.zero;
 			}
 			// this.nest_mask = 0;
 		}
@@ -100,13 +107,15 @@ class serializer extends writable.serializer.n3.terse {
 				let s_open = '';
 // debugger;
 				// reuse ?
-				if((this.nest_mask >>> (this.nest_level-1)) & 1) {
+				// if((this.nest_mask >>> (this.nest_level-1)) & 1) {
+				if((this.nest_mask.shiftRight(this.nest_level-1).and(1)).notEquals(0)) {
 					s_open = ` ;\n${this.indent}${this.indent.repeat(this.nest_level)}`;
 				}
 
 				// s_open += `${this.indent}${this.indent.repeat(this.nest_level)}`;
 
-				this.nest_mask = this.nest_mask | (1 << (this.nest_level-1));
+				// this.nest_mask = this.nest_mask | (1 << (this.nest_level-1));
+				this.nest_mask = this.nest_mask.or(big_integer.one.shiftLeft(this.nest_level-1));
 
 				return `${s_open}${s_predicate} ${s_object}`;
 			}
@@ -119,7 +128,8 @@ class serializer extends writable.serializer.n3.terse {
 				}
 
 				this.new_predicate = false;
-				this.nest_mask = 0;
+				// this.nest_mask = 0;
+				this.nest_mask = big_integer.zero;
 
 				return `${s_open}${s_predicate} ${s_object}`;
 			}

@@ -4,8 +4,13 @@ const async = require('async');
 const request = require('request');
 const chalk = require('chalk');
 
-const graphy = require(process.env.GRAPHY_CHANNEL || 'graphy');
-const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/api.data.factory`);
+let s_channel = process.env.GRAPHY_CHANNEL || 'graphy';
+const graphy = require(s_channel);
+const factory = require(`@${s_channel}/api.data.factory`);
+const quad_tree = require(`@${s_channel}/api.data.set`);
+const nt_read = require(`@${s_channel}/content.nt.read`);
+const ttl_read = require(`@${s_channel}/content.ttl.read`);
+const ttl_write = require(`@${s_channel}/content.ttl.write`);
 
 const H_AUTHORS = {
 	'>http://blake-regalia.com/#me': {
@@ -20,6 +25,7 @@ const H_AUTHORS = {
 const H_PREFIXES = {
 	rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
 	rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+	rdft: 'http://www.w3.org/ns/rdftest#',
 	dc: 'http://purl.org/dc/terms/',
 	doap: 'http://usefulinc.com/ns/doap#',
 	earl: 'http://www.w3.org/ns/earl#',
@@ -28,11 +34,13 @@ const H_PREFIXES = {
 	mf: 'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#',
 };
 
+const expand = sc1 => factory.c1(sc1, H_PREFIXES).value;
+
 // eval
 const A_TEST_TYPES_EVAL = [
 	'rdft:TestTurtleEval',  // turtle
 	'rdft:TestTrigEval',  // trig
-];
+].map(expand);
 
 // negative syntax
 const A_TEST_TYPES_SYNTAX_NEGATIVE = [
@@ -40,7 +48,7 @@ const A_TEST_TYPES_SYNTAX_NEGATIVE = [
 	'rdft:TestNQuadsNegativeSyntax',  // n-quads
 	'rdft:TestTurtleNegativeSyntax',  // turtle
 	'rdft:TestTrigNegativeSyntax',  // trig
-];
+].map(expand);
 
 // positive syntax
 const A_TEST_TYPES_SYNTAX_POSITIVE = [
@@ -48,7 +56,7 @@ const A_TEST_TYPES_SYNTAX_POSITIVE = [
 	'rdft:TestNQuadsPositiveSyntax',  // n-quads
 	'rdft:TestTurtlePositiveSyntax',  // turtle
 	'rdft:TestTrigPositiveSyntax',  // trig
-];
+].map(expand);
 
 // accepted test types
 const A_TEST_TYPES_ACCEPTED = [
@@ -92,10 +100,10 @@ class TestCase {
 				h_test_type = this.eval(fk_test, fe_test);
 			}
 			else if(p_test_type.endsWith('PositiveSyntax')) {
-				h_test_type = await TestCase.syntax_positive(fk_test, fe_test);
+				h_test_type = await TestCase.syntax_positive(this, fk_test, fe_test);
 			}
 			else if(p_test_type.endsWith('NegativeSyntax')) {
-				h_test_type = await TestCase.syntax_negative(fk_test, fe_test);
+				h_test_type = await TestCase.syntax_negative(this, fk_test, fe_test);
 			}
 			else {
 				throw new Error(`unknown test type: "${p_test_type}"`);
@@ -111,8 +119,8 @@ class TestCase {
 	// for evaluation types
 	eval(fk_eval, fe_eval) {
 		// create two new sets to compare actual result with expected result
-		let k_set_actual = graphy.set();
-		let k_set_expected = graphy.set();
+		let k_set_actual = quad_tree();
+		let k_set_expected = quad_tree();
 
 		// wait for expected value to be ready
 		let dp_expected = new Promise((fk_expected, fe_expected) => {
@@ -132,7 +140,7 @@ class TestCase {
 				})
 
 				// parse result as N-Triples
-				.pipe(graphy.content.nt.read({
+				.pipe(nt_read({
 					// each triple in result file
 					data(h_triple) {
 						// add to expected set
@@ -150,7 +158,8 @@ class TestCase {
 		// serializer config
 		return {
 			// default base is given by url of file
-			base: `${this.manifest}${this.id.value.slice(1)}.ttl`,
+			// base_uri: `${this.manifest}${this.id.value.slice(1)}.ttl`,
+			base_uri: this.id.value,
 
 			// each triple in test file
 			data(h_triple) {
@@ -185,14 +194,14 @@ class TestCase {
 	}
 
 	// for positive syntax types
-	static syntax_positive(fk_syntax, fe_syntax) {
+	static syntax_positive(k_test, fk_syntax, fe_syntax) {
 		return {
 			// ignore data events
 			data() {},
 
 			// an error is a failure
 			error(e_parse) {
-				fe_syntax(new Error(`failed to accept: "${this.comment.value}"\n\n${e_parse}`));
+				fe_syntax(new Error(`failed to accept: "${k_test.comment.value}"\n\n${e_parse}`));
 			},
 
 			// successfully finished
@@ -203,7 +212,7 @@ class TestCase {
 	}
 
 	// for negative syntax types
-	static syntax_negative(fk_syntax, fe_syntax) {
+	static syntax_negative(k_test, fk_syntax, fe_syntax) {
 		return {
 			// enable validation for these tests
 			validate: true,
@@ -218,7 +227,7 @@ class TestCase {
 
 			// error not caught
 			end() {
-				fe_syntax(`failed to invalidate: "${this.comment.value}"`);
+				fe_syntax(new Error(`failed to invalidate: "${k_test.comment.value}"`));
 			},
 		};
 	}
@@ -226,13 +235,13 @@ class TestCase {
 
 
 // run test on given manifest and pipe to given output stream
-module.exports = function test({
+module.exports = async function test({
 	manifest: p_manifest,
 	mime: pm_format,
 	output: ds_output,
 }) {
 	// create report
-	let kw_report = graphy.content.ttl.write({
+	let kw_report = ttl_write({
 		// user-defined prefixes
 		prefixes: H_PREFIXES,
 	});
@@ -241,7 +250,7 @@ module.exports = function test({
 	kw_report.pipe(ds_output);
 
 	// commit software info
-	kw_report.add({
+	await kw_report.add({
 		['>'+P_GRAPHY]: {
 			a: ['earl:Software', 'earl:TestSubject', 'earl:Project'],
 			'doap:name': '"graphy.js',
@@ -251,18 +260,18 @@ module.exports = function test({
 	});
 
 	// commit author info
-	kw_report.add(H_AUTHORS);
+	await kw_report.add(H_AUTHORS);
 
 	// for committing each test outcome
-	let commit_outcome = (k_test_case, s_outcome) => {
-		kw_report.add({
-			[graphy.comment()]: 'This RDF file was programtically generated using graphy.js: https://github.com/blake-regalia/graphy.js',
+	let commit_outcome = async(k_test_case, s_outcome) => {
+		await kw_report.add({
+			[factory.comment()]: 'This RDF file was programtically generated using graphy.js: https://github.com/blake-regalia/graphy.js',
 			['>'+k_test_case.id.value]: {
 				a: ['earl:TestCriterion', 'earl:TestCase'],
 				'dc:title': k_test_case.name,
 				'dc:description': k_test_case.comment,
 				'mf:action': k_test_case.action,
-				'mf:result': k_test_case.result,
+				...(k_test_case.result? {'mf:result':k_test_case.result}: {}),
 				'earl:assertions': [
 					[ // an rdf collection
 						{
@@ -283,7 +292,7 @@ module.exports = function test({
 		});
 	};
 
-	const P_PATH = 'http://www.w3.org/2013/TurtleTests/';
+	const P_PATH = 'https://www.w3.org/2013/TurtleTests/';
 
 	const P_IRI_MF = 'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#';
 	const P_IRI_MF_ACTION = P_IRI_MF+'action';
@@ -318,15 +327,15 @@ module.exports = function test({
 			});
 	}, 12);
 
-	// set of quads
-	let y_set = graphy.api.data.set({
+	// tree of quads
+	let y_tree = quad_tree({
 		prefixes: H_PREFIXES,
 	});
 
 	// fetch manifest file
 	request(p_manifest)
 		// deserialize
-		.pipe(graphy.content.ttl.read({
+		.pipe(ttl_read({
 			// base is resource url
 			base_uri: p_manifest,
 
@@ -369,36 +378,31 @@ module.exports = function test({
 				}
 
 				// add triple to set
-				y_set.add(y_quad);
+				y_tree.add(y_quad);
 			},
 
 			// done
 			async end() {
-				let h_graph = y_set['*'];
-
-				for(let {type:yt_type, subject:s_subject} of a_test_cases) {
-					let h_pairs = h_graph[s_subject];
-
-					let h_concise = {};
-					for(let s_predicate of h_pairs) {
-						h_concise[factory.ct(s_predicate).concise(H_PREFIXES)] = factory.ct([...h_pairs[s_predicate]][0]);
+				for(let {type:yt_type, subject:sv1_subject} of a_test_cases) {
+					let hc3_case = {};
+					for(let [sv1_predicate, as_objects] of y_tree.pairs('*', sv1_subject)) {
+						hc3_case[factory.c1(sv1_predicate).concise(H_PREFIXES)] = factory.c1([...as_objects][0]);
 					}
 
 					let {
 						'mf:name': yt_name,
 						'rdfs:comment': yt_comment,
 						'mf:action': yt_action,
-					} = h_concise;
-
-					let yt_result = h_concise['mf:result'] || null;
+					} = hc3_case;
 
 					// create test case instance
 					let k_test_case = new TestCase(p_manifest, pm_format, {
-						id: s_subject.slice(1),
+						id: factory.c1(sv1_subject),
 						type: yt_type,
-						name: yt_name.value,
-						comment: yt_comment.value,
-						action: yt_action.value,
+						name: yt_name,
+						comment: yt_comment,
+						action: yt_action,
+						result: hc3_case['mf:result'] || null,
 					});
 
 					// load test case
@@ -407,19 +411,19 @@ module.exports = function test({
 					}
 					catch(z_reason) {
 						// case label
-						let s_case = `${'˟'.red} ${k_test_case.id.value}`;
+						let s_case = `${chalk.red('˟')} ${k_test_case.id.value}`;
 
 						// actual vs. expected
 						if(z_reason instanceof AssertionResult) {
-							console.error(`${s_case}\n\t${z_reason.expected.red}\n\t${z_reason.actual.green}`);
+							console.error(`${s_case}\n\t${chalk.red(z_reason.expected)}\n\t${chalk.green(z_reason.actual)}`);
 						}
 						// error message
 						else {
-							console.error(`${s_case}\n\t${z_reason.red}`);
+							console.error(`${s_case}\n\t${chalk.red(z_reason)}`);
 						}
 
 						// write to report
-						commit_outcome(k_test_case, 'failed');
+						await commit_outcome(k_test_case, 'failed');
 
 						// next test case
 						continue;
@@ -429,7 +433,7 @@ module.exports = function test({
 					console.log(`${chalk.green('✓')} ${k_test_case.id.value}`);
 
 					// write to report
-					commit_outcome(k_test_case, 'passed');
+					await commit_outcome(k_test_case, 'passed');
 				}
 
 				// all done!

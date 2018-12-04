@@ -27,7 +27,7 @@ const doc_as_set = st_doc => new Promise((fk_set) => {
 		}));
 });
 
-const write = (hct_input, st_expected) => new Promise(async(fk_write) => {
+const write = (hc3_input, st_expected) => new Promise(async(fk_write) => {
 	let k_writer = nt_write({
 		prefixes: H_PREFIXES,
 	});
@@ -53,7 +53,7 @@ const write = (hct_input, st_expected) => new Promise(async(fk_write) => {
 		});
 
 	// write to turtle document
-	await k_writer.add(hct_input);
+	await k_writer.add(hc3_input);
 
 	// close document
 	k_writer.end();
