@@ -40,7 +40,7 @@ class Serializer {
 @;
 
 
-class Serializer_N3 extends Serializer {
+class Serializer_Textual extends Serializer {
 	// express a blank node in either terse or verbose syntax
 	c1_blank_node(s_label) {
 		// valid label (and not reserved mapping range)
@@ -63,7 +63,7 @@ class Serializer_N3 extends Serializer {
 	}
 }
 
-class Serializer_N3_Verbose extends Serializer_N3 {
+class Serializer_Textual_Verbose extends Serializer_Textual {
 	// serialize a term verbosely
 	rdfjs_term(k_term) {
 		// support verbose serialization method
@@ -97,7 +97,7 @@ class Serializer_N3_Verbose extends Serializer_N3 {
 	// }
 }
 
-class Serializer_N3_Terse extends Serializer_N3 {
+class Serializer_Textual_Terse extends Serializer_Textual {
 	// serialize prefixes
 	serialize_prefixes() {
 		let h_prefixes = this.writer.prefixes;
@@ -244,6 +244,51 @@ const HM_COERCIONS_DEFAULT = new Map([
 	[Number, x => factory.number(x)],
 ]);
 
+
+const custom_collection_transcoder = (g_transcoder) => {
+	let {
+		first: sc1_first=null,
+		rest: sc1_rest=null,
+		nil: sc1_nil=null,
+	} = g_transcoder;
+
+	if(!sc1_first) sc1_first = '>@{P_IRI_RDF}first';
+	if(!sc1_rest) sc1_rest = '>@{P_IRI_RDF}rest';
+	if(!sc1_nil) sc1_nil = '>@{P_IRI_RDF}nil';
+
+	// transcode array to concise-triple structs
+	let f_transcode = function(a_collection) {
+		// empty collection
+		if(!a_collection.length) {
+			return {
+				[sc1_first]: sc1_nil,
+			};
+		}
+		// non-empty collection
+		else {
+			let z_item = a_collection[0];
+			let w_first = z_item;
+
+			// item is nested collection; transcode
+			if(Array.isArray(z_item)) {
+				w_first = f_transcode(z_item);
+			}
+
+			return {
+				// first item
+				[sc1_first]: w_first,
+
+				// rest of items
+				[sc1_rest]: 1 === a_collection.length
+					? sc1_nil
+					: f_transcode(a_collection.slice(1)),
+			};
+		}
+	};
+
+	return f_transcode;
+};
+
 class CTWriter extends stream.Transform {
 	constructor(k_serializer, g_config={}) {
 		super({
@@ -260,42 +305,53 @@ class CTWriter extends stream.Transform {
 			}
 		}
 
-		// which object type
-		let z_type = g_config.type || null;
-		switch(z_type) {
-			// concise-quads
-			case 'concise': {
-				this._transform = this.transform_concise;
-				break;
-			}
+		// collections
+		if(g_config.collections) {
+			// mk custom transcoder
+			let f_transcode = custom_collection_transcoder(g_config.collections);
 
-			// rdfjs
-			case 'rdfjs': {
-				if(this instanceof CTWriter_Quads) {
-					this._transform = this.transform_rdfjs_quad;
-				}
-				else {
-					this._transform = this.transform_rdfjs_triple;
-				}
-				break;
-			}
-
-			// neither (as-is)
-			case null: {
-				if(this instanceof CTWriter_Quads) {
-					this._transform = this.transform_quad;
-				}
-				else {
-					this._transform = this.transform_triple;
-				}
-				break;
-			}
-
-			// invalid
-			default: {
-				throw new Error(`invalid object type for write: "${z_type}"`);
-			}
+			// overwrite impl's ability to serialize collection objects
+			k_serializer.serialize_collection_object = async function(ksw_objects, z_item, xm_mode) {
+				return await ksw_objects.objects(f_transcode(z_item), xm_mode);
+			};
 		}
+
+		// // which object type
+		// let z_type = g_config.type || null;
+		// switch(z_type) {
+		// 	// concise-quads
+		// 	case 'concise': {
+		// 		this._transform = this.transform_concise;
+		// 		break;
+		// 	}
+
+		// 	// rdfjs
+		// 	case 'rdfjs': {
+		// 		if(this instanceof CTWriter_Quads) {
+		// 			this._transform = this.transform_rdfjs_quad;
+		// 		}
+		// 		else {
+		// 			this._transform = this.transform_rdfjs_triple;
+		// 		}
+		// 		break;
+		// 	}
+
+		// 	// neither (as-is)
+		// 	case null: {
+		// 		if(this instanceof CTWriter_Quads) {
+		// 			this._transform = this.transform_ambivalent_quad;
+		// 		}
+		// 		else {
+		// 			this._transform = this.transform_ambivalent_triple;
+		// 		}
+		// 		break;
+		// 	}
+
+		// 	// invalid
+		// 	default: {
+		// 		throw new Error(`invalid object type for write: "${z_type}"`);
+		// 	}
+		// }
 
 		Object.assign(this, {
 			ready: this.ready || false,
@@ -304,6 +360,51 @@ class CTWriter extends stream.Transform {
 			coercions: hm_coercions,
 			writable: null,
 		});
+	}
+
+	_transform(g_event, s_encoding, fk_transform) {
+		if(this.busy) {
+			fk_transform(new Error('back-pressure not properly handled by upstream Readable/Transform implementation; push called before previous chunk drained'));
+			return;
+		}
+
+		this.busy = true;
+
+		this._transform_event(g_event, s_encoding, async(e_transform, z_push) => {
+			if(e_transform) {
+				fk_transform(e_transform);
+				return;
+			}
+
+			if(z_push) await this.push_async(z_push);
+
+			this.busy = false;
+
+			fk_transform();
+		});
+	}
+
+	_transform_event(g_event, s_encoding, fk_transform) {
+		let {
+			type: s_type,
+			value: z_value,
+		} = g_event;
+
+		let s_method = 'transform_'+s_type;
+		if(s_method in this) {
+			if('function' !== typeof this[s_method]) {
+				fk_transform(new Error(`bad ${s_type}; ${this[s_method]}`));
+				return;
+			}
+
+			this[s_method](z_value, s_encoding, () => {
+				this.busy = false;
+				fk_transform();
+			});
+		}
+		else {
+			fk_transform(new Error(`no such event type for writable RDF stream: '${s_type}'`));
+		}
 	}
 
 	push_async(...a_args) {
@@ -319,22 +420,64 @@ class CTWriter extends stream.Transform {
 		});
 	}
 
-	transform_concise(hct_quads_or_triples, s_encoding, fk_transform) {
-		this.add(hct_quads_or_triples);
+	async transform_array(a_items, s_encoding, fk_transform) {
+		// push each triple hash synchronously
+		for(let g_event of a_items) {
+			await new Promise((fk_push) => {
+				this._transform_event(g_event, s_encoding, async(e_transform, z_push) => {
+					if(e_transform) {
+						fk_transform(e_transform);
+						return;
+					}
+
+					if(z_push) await this.push_async(z_push);
+
+					fk_push();
+				});
+			});
+		}
 
 		fk_transform();
 	}
 
-	transform_rdfjs_triple(g_triple, s_encoding, fk_transform) {
-		this.serializer.subject(g_triple.subject)
+	async transform_prefixes(h_prefixes, s_encoding, fk_transform) {
+		await this.add_prefixes(h_prefixes);
+
+		fk_transform();
+	}
+
+	async transform_comment(s_comment, s_encoding, fk_transform) {
+		await this.add({
+			[factory.comment()]: s_comment,
+		});
+
+		fk_transform();
+	}
+
+	async transform_newlines(n_newlines, s_encoding, fk_transform) {
+		await this.add({
+			[factory.newlines()]: n_newlines,
+		});
+
+		fk_transform();
+	}
+
+	async transform_concise(hct_quads_or_triples, s_encoding, fk_transform) {
+		await this.add(hct_quads_or_triples);
+
+		fk_transform();
+	}
+
+	async transform_rdfjs_triple(g_triple, s_encoding, fk_transform) {
+		await this.serializer.subject(g_triple.subject)
 			.predicate(g_triple.predicate)
 			.object(g_triple.object);
 
 		fk_transform();
 	}
 
-	transform_rdfjs_quad(g_quad, s_encoding, fk_transform) {
-		this.serializer.graph(g_quad.graph)
+	async transform_rdfjs_quad(g_quad, s_encoding, fk_transform) {
+		await this.serializer.graph(g_quad.graph)
 			.subject(g_quad.subject)
 			.predicate(g_quad.predicate)
 			.object(g_quad.object);
@@ -342,10 +485,11 @@ class CTWriter extends stream.Transform {
 		fk_transform();
 	}
 
-	transform_quad(z_quad, s_encoding, fk_transform) {
+	async transform_ambivalent_quad(z_quad, s_encoding, fk_transform) {
 		// falsy
 		if(!z_quad) {
 			fk_transform(`invalid quad object supplied to content writer: ${z_quad}`);
+			return;
 		}
 		// graphy quad or RDFJS-compatiable quad
 		else if(z_quad.isGraphyQuad
@@ -354,18 +498,21 @@ class CTWriter extends stream.Transform {
 				&& z_quad.subject && z_quad.subject.termType
 				&& z_quad.object && z_quad.object.termType))
 		{
-			this.transform_rdfjs_quad(z_quad, s_encoding, fk_transform);
+			await this.transform_rdfjs_quad(z_quad, s_encoding, fk_transform);
 		}
 		// concise-term object
 		else {
-			this.transform_concise(z_quad, s_encoding, fk_transform);
+			await this.transform_concise(z_quad, s_encoding, fk_transform);
 		}
+
+		fk_transform();
 	}
 
-	transform_triple(z_triple, s_encoding, fk_transform) {
+	async transform_ambivalent_triple(z_triple, s_encoding, fk_transform) {
 		// falsy
 		if(!z_triple) {
 			fk_transform(`invalid triple object supplied to content writer: ${z_triple}`);
+			return;
 		}
 		// graphy quad or RDFJS-compatiable quad
 		else if(z_triple.isGraphyQuad
@@ -373,12 +520,14 @@ class CTWriter extends stream.Transform {
 				&& z_triple.subject && z_triple.subject.termType
 				&& z_triple.object && z_triple.object.termType))
 		{
-			this.transform_rdfjs_triple(z_triple, s_encoding, fk_transform);
+			await this.transform_rdfjs_triple(z_triple, s_encoding, fk_transform);
 		}
 		// concise-term object
 		else {
-			this.transform_concise(z_triple, s_encoding, fk_transform);
+			await this.transform_concise(z_triple, s_encoding, fk_transform);
 		}
+
+		fk_transform();
 	}
 
 	_flush(fk_flush) {
@@ -388,7 +537,7 @@ class CTWriter extends stream.Transform {
 		fk_flush();
 	}
 	
-	add_prefixes(h_prefixes, b_overwrite=false) {
+	async add_prefixes(h_prefixes, b_overwrite=false) {
 		// build prefixes string
 		let s_prefixes = '';
 
@@ -407,11 +556,23 @@ class CTWriter extends stream.Transform {
 		}
 
 		// push to output
-		this.push(s_prefixes+'\n');
+		await this.push_async(s_prefixes+'\n');
+	}
+
+	add_c4() {
+		throw new Error('cannot write a concise quads hash to a triple writer');
 	}
 
 	@{writer_directive()}
 }
+
+Object.assign(CTWriter.prototype, {
+	add_c3: CTWriter.prototype.add,
+	transform_c3: CTWriter.prototype.transform_concise,
+	transform_c4: CTWriter.prototype.transform_concise,
+	transform_triple: CTWriter.prototype.transform_rdfjs_triple,
+	transform_quad: CTWriter.prototype.transform_rdfjs_quad,
+});
 
 class CTWriter_Quads extends CTWriter {
 	// create a graph writer
@@ -436,7 +597,17 @@ class CTWriter_Quads extends CTWriter {
 			}
 		}
 	}
+
+	async add_c3(hct_triples) {
+		return await this.add_c4({
+			'*': hct_triples,
+		});
+	}
 }
+
+Object.assign(CTWriter_Quads.prototype, {
+	add_c4: CTWriter_Quads.prototype.add,
+});
 
 
 @> subwriter_triples()
@@ -709,9 +880,9 @@ module.exports = {
 	triples: CTWriter_Triples,
 
 	serializer: {
-		n3: {
-			verbose: Serializer_N3_Verbose,
-			terse: Serializer_N3_Terse,
+		textual: {
+			verbose: Serializer_Textual_Verbose,
+			terse: Serializer_Textual_Terse,
 		},
 	},
 };

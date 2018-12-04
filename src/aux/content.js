@@ -54,6 +54,9 @@ module.exports = {
 			links: [
 				'api.class.writable',
 			],
+			dependencies: [
+				'big-integer',
+			],
 			files: {
 				'main.js': [],
 			},

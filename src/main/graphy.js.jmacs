@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 @import '../share/channel.jmacs'
 
 @.{
@@ -189,8 +190,32 @@ const graphy = module.exports = Object.assign({
 	fromSPARQLResult(h_term) {
 		return H_SPARQL_RESULT_TYPES[h_term.type](h_term);
 	},
+@//@
 
 }, require('@{channel('api.data.factory')}'));
 
+
 // export graphy to window object if in main thread of browser
 if('undefined' !== typeof window) window.graphy = graphy;
+
+// cli
+if(module === require.main) {
+	const yargs = require('yargs');
+	let g_args = yargs
+		.command(...[
+			'content.ttl.read',
+			'read a Turtle document',
+			(y_yarg) => y_yarg.options({
+				pipe: {
+					alias: 'p',
+					describe: 'pipe output to another command',
+				},
+			}),
+			(g_argv) => {
+				console.log('ttl_read');
+				debugger;
+			},
+		])
+		.help()
+		.argv;
+}
