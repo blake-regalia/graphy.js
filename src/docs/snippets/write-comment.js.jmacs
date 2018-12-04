@@ -13,7 +13,7 @@ let y_writer = ttl_write({
 
 y_writer.pipe(process.stdout);
 
-y_writer.write({
+y_writer.add({
 	[factory.comment()]: 'this is a comment',
 	'demo:Banana': {
 		a: 'dbo:Fruit',

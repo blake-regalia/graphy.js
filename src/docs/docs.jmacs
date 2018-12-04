@@ -18,6 +18,24 @@
 		}
 	};
 
+	const H_DATATYPES = {
+		string: {
+			label: 'Strings',
+			href: 'strings',
+			info: gobble(/* syntax: md */ `
+
+			`),
+		},
+
+		struct: {
+			label: 'Structs',
+			href: 'structs',
+			info: gobble(/* syntax: md */ `
+				A 'struct' refers to an interface for a simple ES Object \`value\` such that \`value.constructor === Object\`. The following section documents the definitions for these interfaces.
+			`),
+		},
+	};
+
 	const normalize = (s_contents, s_indent) => {
 		// convert tabs to spaces
 		s_contents = s_contents.replace(/(^|\n)(\t+)/g, (s_0, s_nl, s_tabs) => {
@@ -64,4 +82,35 @@
 
 		return normalize(s_stdout, s_indent);
 	};
+
+	// const datatype_sections = (h_sections) => {
+	// 	let s_out = '';
+
+	// 	// each section in hash
+	// 	for(let s_datatype in h_sections) {
+	// 		let g_datatype = H_DATATYPES[s_datatype];
+
+	// 		let {
+	// 			label: s_label,
+	// 			href: s_href,
+	// 			info: s_info,
+	// 		} = g_datatype;
+
+	// 		// datatype section header
+	// 		s_out += gobble(/* syntax: md */ `
+	// 			<a name="${s_href}" />
+
+	// 			### ${s_label}:
+	// 			${s_info}
+	// 		`);
+
+	// 		// each interface in section
+	// 		let h_section = h_sections[s_datatype];
+	// 		for(let s_interface in h_section) {
+	// 			let g_interface = h_section[s_interface];
+
+
+	// 		}
+	// 	}
+	// };
 }

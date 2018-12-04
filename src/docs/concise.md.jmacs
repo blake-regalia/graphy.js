@@ -2,9 +2,9 @@
 # Concise Terms, Triples and Quads
 This document describes a language for concisely expressing RDF data from within a JavaScript programming environment, allowing for a convenient technique of mixing in data from live variables and objects to create RDF quads and RDF terms such as named nodes, blank nodes, and literals.
 
-<a name="c1-string" />
+<a name="string_c1" />
 
-## Concise Term String (c1-string)
+## Concise Term String (#string/c1)
 The concise term string defines a syntax that allows developers to quickly create RDF terms such as named nodes, blank nodes, and literals from a simple string. The syntax should be familiar to those who use Turtle.
  
 The first character of the string dictates what type of Term it is:
@@ -25,7 +25,7 @@ let y_node = factory.term('>'+p_iri);
 ```
 
 #### Blank Nodes: When to Use Them
-There's not much need to create blank nodes using concise-term strings since you can implicitly create them using [concise-triple](#c3-hash) and [concise-quad](#c4-hash) hashes. However, if you need to create new triples where the subject is a blank node, or need to use labelled blank nodes, this syntax will allow you to create them explicitly.
+There's not much need to create blank nodes using concise-term strings since you can implicitly create them using [concise-triple](#hash_c3) and [concise-quad](#hash_c4) hashes. However, if you need to create new triples where the subject is a blank node, or need to use labelled blank nodes, this syntax will allow you to create them explicitly.
 
 ```js
 ley y_triple = factory.triples({
@@ -61,7 +61,7 @@ y_node.value;  // 'http://dbpedia.org/resource/9/11_Memorial_(Arizona)'
 ```
 
 #### Directives
-Directives allow for special events to be passed to the output serializer at a given location within the document, such as for the insertion of comments and newlines. See [factory.comment](api.data.factory#function-comment) and [factory.newlines](api.data.factory#function-comment) for creating directive strings which can be used as keys in concise triples and concise quads hashes.
+Directives allow for special events to be passed to the output serializer at a given location within the document, such as for the insertion of comments and newlines. See [factory.comment](api.data.factory#function_comment) and [factory.newlines](api.data.factory#function_comment) for creating directive strings which can be used as keys in concise triples and concise quads hashes.
 
 
 #### Grammar
@@ -81,10 +81,10 @@ Directives allow for special events to be passed to the output serializer at a g
 
 ----
 
-<a name="c3-hash" />
+<a name="hash_c3" />
 
-## Concise Triples Hash (c3-hash)
-A concise triples hash describes a plain object whose keys represent the *subject* of a set of triples, and values represent the predicates and objects, collections, or nested blank nodes related to the subject/predicate pair in a tree-like structure.
+## Concise Triples Hash (#hash/c3)
+A concise triples hash describes a plain object whose keys represent the *subject* of a set of triples, and whose values represent the predicates and objects, collections, or nested blank nodes related to the subject/predicate pair in a tree-like structure.
 
 **Example:**
 ```js
@@ -100,5 +100,15 @@ A concise triples hash describes a plain object whose keys represent the *subjec
 
 <a name="c4-hash" />
 
-## Concise Quads Hash (c4-hash)
-A concise triple hash describes a plain object whose keys represent the *graph* of a triple, and values represent the subjects, predicates and objects, collections, or nested blank nodes related to the original triple in a tree-like structure.
+## Concise Quads Hash (#hash/c4)
+A concise quads hash describes a plain object whose keys represent the *graph* of a set of quads, and whose values are [concise triple hashes](#hash/c3), which represent the subjects, predicates and objects, collections, or nested blank nodes related to the graph/subject/predicate combinations in a tree-like structure.
+
+**Example:**
+```js
+@{cat('snippets/concise-quads.js')}
+```
+
+**Outputs:**
+```turtle
+@{exec('snippets/concise-quads.js')}
+```

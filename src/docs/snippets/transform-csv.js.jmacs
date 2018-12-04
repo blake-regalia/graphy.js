@@ -22,23 +22,22 @@ stream.pipeline(...[
 			let [s_id, s_name, s_likes] = a_row;
 
 			// structure data into concise-triple hash
-			this.push({
-				['demo:'+s_name]: {
-					'foaf:name': '"'+s_name,
-					'demo:id': parseInt(s_id),
-					'demo:likes': s_likes.split(/\s+/g)
-						.map(s => `demo:${s}`),
+			fk_transform(null, {
+				type: 'c3',
+				value: {
+					['demo:'+s_name]: {
+						'foaf:name': '"'+s_name,
+						'demo:id': parseInt(s_id),
+						'demo:likes': s_likes.split(/\s+/g)
+							.map(s => `demo:${s}`),
+					},
 				},
 			});
-
-			// done with row
-			fk_transform();
 		},
 	}),
 
 	// serialize each triple
 	ttl_write({
-		type: 'concise',
 		prefixes: {
 			demo: 'http://ex.org/',
 			foaf: 'http://xmlns.com/foaf/0.1/',

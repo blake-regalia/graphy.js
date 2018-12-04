@@ -17,8 +17,9 @@ let k_writer = ttl_write({
 k_writer.pipe(process.stdout);
 
 // the following demonstrates the use of a concise triples hash
-k_writer.write({
+k_writer.add({
 	// triples about dbr:Banana
+	[factory.comment()]: 'hey look, a comment!',
 	'dbr:Banana': {
 		// `a` is shortcut for rdf:type
 		a: 'dbo:Plant',
@@ -33,6 +34,7 @@ k_writer.write({
 	},
 
 	// example from OWL 2 primer: https://www.w3.org/TR/owl2-primer/#Property_Restrictions
+	[factory.comment()]: 'hey look, another comment!',
 	':HappyPerson': {
 		a: 'owl:Class',
 		'owl:equivalentClass': {
