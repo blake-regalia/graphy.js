@@ -316,71 +316,76 @@ class CTWriter extends stream.Transform {
 			};
 		}
 
-		// // which object type
-		// let z_type = g_config.type || null;
-		// switch(z_type) {
-		// 	// concise-quads
-		// 	case 'concise': {
-		// 		this._transform = this.transform_concise;
-		// 		break;
-		// 	}
-
-		// 	// rdfjs
-		// 	case 'rdfjs': {
-		// 		if(this instanceof CTWriter_Quads) {
-		// 			this._transform = this.transform_rdfjs_quad;
-		// 		}
-		// 		else {
-		// 			this._transform = this.transform_rdfjs_triple;
-		// 		}
-		// 		break;
-		// 	}
-
-		// 	// neither (as-is)
-		// 	case null: {
-		// 		if(this instanceof CTWriter_Quads) {
-		// 			this._transform = this.transform_ambivalent_quad;
-		// 		}
-		// 		else {
-		// 			this._transform = this.transform_ambivalent_triple;
-		// 		}
-		// 		break;
-		// 	}
-
-		// 	// invalid
-		// 	default: {
-		// 		throw new Error(`invalid object type for write: "${z_type}"`);
-		// 	}
-		// }
-
 		Object.assign(this, {
 			ready: this.ready || false,
+			busy: false,
 			serializer: k_serializer,
 			prefixes: g_config.prefixes || {},
 			coercions: hm_coercions,
 			writable: null,
+			queue: [],
 		});
 	}
 
-	_transform(g_event, s_encoding, fk_transform) {
-		if(this.busy) {
-			fk_transform(new Error('back-pressure not properly handled by upstream Readable/Transform implementation; push called before previous chunk drained'));
-			return;
+	async dequeue() {
+		// empty queue
+		while(this.queue.length) {
+			let {
+				method: f_method,
+				args: a_args,
+				resolve: fk_queued,
+			} = this.queue.shift();
+
+			// apply method
+			await f_method.apply(this, a_args);
+
+			// resolve
+			fk_queued();
 		}
 
+		// no longer busy
+		this.busy = false;
+	}
+
+	_transform(g_event, s_encoding, fk_push) {
+		// back-pressure not properly handled by upstream Readable/Transform implementation (push called before previous chunk drained)
+		if(this.busy) {
+			return new Promise((fk_transform) => {
+				// add to queue
+				this.queue.push({
+					method: this._transform,
+					args: [g_event, s_encoding, fk_push],
+					resolve: fk_transform,
+				});
+			});
+		}
+
+		// queue anything pushed too soon
 		this.busy = true;
 
-		this._transform_event(g_event, s_encoding, async(e_transform, z_push) => {
-			if(e_transform) {
-				fk_transform(e_transform);
-				return;
-			}
+		// sort event
+		return new Promise((fk_transform) => {
+			this._transform_event(g_event, s_encoding, async(e_transform, z_push) => {
+				if(e_transform) {
+					fk_push(e_transform);
+					return;
+				}
 
-			if(z_push) await this.push_async(z_push);
+				// chunk is pushed from callback
+				if(z_push) await this.push_async(z_push);
 
-			this.busy = false;
+				// no longer need to queue
+				this.busy = 0 !== this.queue.length;
 
-			fk_transform();
+				// resolve drain
+				fk_push();
+
+				// resolve transform
+				fk_transform();
+
+				// dequeue
+				this.dequeue();
+			});
 		});
 	}
 
@@ -398,7 +403,6 @@ class CTWriter extends stream.Transform {
 			}
 
 			this[s_method](z_value, s_encoding, () => {
-				this.busy = false;
 				fk_transform();
 			});
 		}
@@ -407,15 +411,18 @@ class CTWriter extends stream.Transform {
 		}
 	}
 
+
 	push_async(...a_args) {
 		return new Promise((fk_push) => {
 			// push chunk; no back-pressure
 			if(this.push(...a_args)) {
 				fk_push();
 			}
-			// backpressure
+			// pressure detected from push
 			else {
-				this.once('drain', fk_push);
+				this.once('drain', () => {
+					fk_push();
+				});
 			}
 		});
 	}
@@ -561,6 +568,25 @@ class CTWriter extends stream.Transform {
 
 	add_c4() {
 		throw new Error('cannot write a concise quads hash to a triple writer');
+	}
+
+	async end(z_chunk, s_encoding, fk_finished) {
+		if(this.busy) {
+			if(z_chunk) await this.push_async(z_chunk, s_encoding);
+			if(fk_finished) this.once('finish', fk_finished);
+			return new Promise((fk_end) => {
+				this.queue.push({
+					method: () => {
+						super.end();
+					},
+					args: [],
+					resolve: fk_end,
+				});
+			});
+		}
+		else {
+			super.end(z_chunk, s_encoding, fk_finished);
+		}
 	}
 
 	@{writer_directive()}
