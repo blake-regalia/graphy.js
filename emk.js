@@ -490,11 +490,12 @@ module.exports = {
 			':testable': ({testable:si_package}) => ({
 				deps: [
 					`prepublish.${si_package}`,
+					'link_to.util.dataset.tree',
 					`test/${si_package.replace(/\./g, '/')}.js`,
 				],
 
 				run: /* syntax: bash */ `
-					mocha --colors $2
+					mocha --colors $3
 				`,
 			}),
 		},
@@ -529,53 +530,57 @@ module.exports = {
 		// package builds
 		build: {
 			[s_channel]: {
-				// content.bat.*
-				...h_output_content_bat,
+				...('graphy-dev' === process.env.GRAPHY_CHANNEL
+					? {
+						// content.bat.*
+						...h_output_content_bat,
 
-				// store.memory.*
-				...h_output_store_mem,
+						// store.memory.*
+						...h_output_store_mem,
 
-				// bat schema
-				'schema.bat.default': {
-					...scoped_package('schema.bat.default'),
+						// bat schema
+						'schema.bat.default': {
+							...scoped_package('schema.bat.default'),
 
-					'main.js': () => jmacs_lint([
-						'src/gen/bat-schema/default.js.jmacs',
-						'src/gen/bat-schema/datatypes',  // directory
-						'src/gen/bat-schema/decoders',  // directory
-					]),
+							'main.js': () => jmacs_lint([
+								'src/gen/bat-schema/default.js.jmacs',
+								'src/gen/bat-schema/datatypes',  // directory
+								'src/gen/bat-schema/decoders',  // directory
+							]),
 
-					decoders: {
-						':bat_protocol': h => jmacs_lint([
-							`src/gen/bat-schema/decoders/${h.bat_protocol}.jmacs`,
-							'src/gen/bat-schema/schema.js.jmacs',
-						]),
-					},
+							decoders: {
+								':bat_protocol': h => jmacs_lint([
+									`src/gen/bat-schema/decoders/${h.bat_protocol}.jmacs`,
+									'src/gen/bat-schema/schema.js.jmacs',
+								]),
+							},
 
-					datatypes: {
-						':bat_datatype': h => jmacs_lint([
-							`src/gen/bat-schema/datatypes/${h.bat_datatype}.jmacs`,
-							'src/gen/bat-schema/schema.js.jmacs',
-						]),
-					},
+							datatypes: {
+								':bat_datatype': h => jmacs_lint([
+									`src/gen/bat-schema/datatypes/${h.bat_datatype}.jmacs`,
+									'src/gen/bat-schema/schema.js.jmacs',
+								]),
+							},
 
-					// ':bat_schema_file': h => ({
-					// 	deps: [
-					// 		'src/gen/schema/output.js.jmacs',
-					// 		'link_to.core.data.factory',
-					// 		'link_to.content.ttl.write',
-					// 	],
+							// ':bat_schema_file': h => ({
+							// 	deps: [
+							// 		'src/gen/schema/output.js.jmacs',
+							// 		'link_to.core.data.factory',
+							// 		'link_to.content.ttl.write',
+							// 	],
 
-					// 	run: /* syntax: bash */ `
-					// 		npx jmacs $1 -g '${
-					// 			/* eslint-disable indent */
-					// 			JSON.stringify({
-					// 				iri: h_schema_bat[h.bat_schema_file],
-					// 			})
-					// 		/* eslint-enable */}' > $@
-					// 	`,
-					// }),
-				},
+							// 	run: /* syntax: bash */ `
+							// 		npx jmacs $1 -g '${
+							// 			/* eslint-disable indent */
+							// 			JSON.stringify({
+							// 				iri: h_schema_bat[h.bat_schema_file],
+							// 			})
+							// 		/* eslint-enable */}' > $@
+							// 	`,
+							// }),
+						},
+					}
+					: {}),
 
 				// content subs
 				':content_sub': [si_package => ({
