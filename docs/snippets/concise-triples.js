@@ -18,7 +18,7 @@ y_writer.pipe(process.stdout);
 
 // the following demonstrates the use of a concise triples hash
 y_writer.write({
-	type: 'c3',
+	type: 'c4',
 	value: {
 		// triples about dbr:Banana
 		[factory.comment()]: 'hey look, a comment!',
