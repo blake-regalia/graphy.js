@@ -609,7 +609,10 @@ module.exports = {
 					[si_package]: {
 						...scoped_package(si_package),
 
-						'main.js': () => jmacs_lint([`src/${si_package.replace(/\./g, '/')}.js.jmacs`]),
+						'main.js': () => jmacs_lint([
+							`src/${si_package.replace(/\./g, '/')}.js.jmacs`,
+							`build/${s_channel}/${si_package}/package.json`,
+						]),
 					},
 				})],
 
