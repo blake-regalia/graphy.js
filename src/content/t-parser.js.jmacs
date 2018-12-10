@@ -13,7 +13,7 @@
 @import '../share/channel.jmacs'
 @import '../share/iris.jmacs'
 
-const stream = require('@{channel('api.iso.stream')}');
+const stream = require('@{channel('core.iso.stream')}');
 const parser_text = require('@{channel('format.common.parser.text')}')
 
 @{constants()}

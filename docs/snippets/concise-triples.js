@@ -1,5 +1,5 @@
 
-const factory = require('@graphy-dev/api.data.factory');
+const factory = require('@graphy-dev/core.data.factory');
 const ttl_write = require('@graphy-dev/content.ttl.write');
 
 let k_writer = ttl_write({

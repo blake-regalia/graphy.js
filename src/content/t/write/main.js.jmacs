@@ -4,14 +4,14 @@
 @import '../../../share/channel.jmacs'
 @import '../../../share/writer.jmacs'
 
-const writable = require('@{channel('api.class.writable')}');
+const writable = require('@{channel('core.class.writable')}');
 const big_integer = require('big-integer');
 
 @$ QUADS = ('trig' === FORMAT);
 
 class serializer extends writable.serializer.textual.terse {
 	constructor(g_config={}) {
-		super(writable.triples, g_config);
+		super(writable.@{QUADS? 'quads': 'triples'}, g_config);
 		
 		let s_indent = g_config.indent || '\t';
 
@@ -224,9 +224,14 @@ class serializer extends writable.serializer.textual.terse {
 
 	close() {
 		// close previous statement
-		if(!this.new_subject) {
+		if(!this.new_subject || !this.new_graph) {
 			this.writer.push((this.trailing? ' ;\n'+this.indent: '')+' .\n');
 		}
+		@- QUADS
+			if(!this.new_graph) {
+				this.writer.push('}\n');
+			}
+		@;
 	}
 };
 

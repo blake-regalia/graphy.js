@@ -10,16 +10,11 @@ const {
 	modes: h_content_modes,
 } = require('./src/aux/content.js');
 
-// const h_schema_bat = require('./src/gen/bat-schema/default.js');
-
 const B_DEVELOPMENT = 'graphy-dev' === process.env.GRAPHY_CHANNEL;
 const s_channel = process.env.GRAPHY_CHANNEL || 'graphy';
 
 const g_package_json_super = require('./package.json');
-const g_package_json_base = require(`./src/aux/base-package-${s_channel}.json`);
-
-// const s_base_version = g_package_json_base.version;
-// const s_semver = B_DEVELOPMENT? s_base_version:`^${s_base_version}`;
+const P_PACKAGE_JSON_BASE = `./src/aux/base-package-${s_channel}.json`;
 
 const s_base_version = g_package_json_super[B_DEVELOPMENT? 'devVersion': 'version'];
 const s_semver = B_DEVELOPMENT? s_base_version: `^${s_base_version}`;
@@ -189,7 +184,7 @@ for(let [si_package, g_package] of Object.entries(h_packages)) {
 // recipe to make package.json file
 const package_json = si_package => () => ({
 	deps: [
-		`src/aux/base-package-${s_channel}.json`,
+		P_PACKAGE_JSON_BASE,
 		'package.json',
 	],
 
@@ -370,6 +365,18 @@ module.exports = {
 		// contet sub enum
 		content_sub: a_content_subs,
 
+		testable: [
+			'core.data.factory',
+			'core.class.writable',
+			'content.nq.read',
+			'content.nt.read',
+			'content.nt.write',
+			'content.ttl.read',
+			'content.ttl.write',
+			'content.trig.read',
+			'content.trig.write',
+		],
+
 		// package enumeration
 		package: Object.keys(h_packages),
 
@@ -480,10 +487,10 @@ module.exports = {
 
 		// tests
 		test: {
-			':package': h => ({
+			':testable': ({testable:si_package}) => ({
 				deps: [
-					`prepublish.${h.package}`,
-					`test/${h.package.replace(/\./g, '/')}.js`,
+					`prepublish.${si_package}`,
+					`test/${si_package.replace(/\./g, '/')}.js`,
 				],
 
 				run: /* syntax: bash */ `
@@ -555,7 +562,7 @@ module.exports = {
 					// ':bat_schema_file': h => ({
 					// 	deps: [
 					// 		'src/gen/schema/output.js.jmacs',
-					// 		'link_to.api.data.factory',
+					// 		'link_to.core.data.factory',
 					// 		'link_to.content.ttl.write',
 					// 	],
 
@@ -607,7 +614,7 @@ module.exports = {
 
 					'package.json': () => ({
 						deps: [
-							`src/aux/base-package-${s_channel}.json`,
+							P_PACKAGE_JSON_BASE,
 							'package.json',
 						],
 
@@ -642,14 +649,14 @@ module.exports = {
 
 					node_modules: {
 						[`@${s_channel}`]: {
-							':package': h => ({
+							':package': ({package:si_package}) => ({
 								deps: [
-									`link.${h.package}`,
+									`link.${si_package}`,
 								],
 
 								run: /* syntax: bash */ `
 									cd build/${s_channel}/${s_channel}
-									npm link @${s_channel}/${h.package}
+									npm link @${s_channel}/${si_package}
 								`,
 							}),
 						},
@@ -666,14 +673,14 @@ module.exports = {
 			lib: {
 				node_modules: {
 					[`@${s_channel}`]: {
-						':package': h => ({
+						':package': ({package:si_package}) => ({
 							deps: [
-								`build/${s_channel}/${h.package}/**`,
+								`build/${s_channel}/${si_package}/**`,
 							],
 
 							run: /* syntax: bash */ `
 								# enter package directory
-								cd build/${s_channel}/${h.package}
+								cd build/${s_channel}/${si_package}
 
 								# remove package lock
 								rm -f package-lock.json
@@ -709,13 +716,13 @@ module.exports = {
 		// mono-repo testing
 		node_modules: {
 			[`@${s_channel}`]: {
-				':package': h => ({
+				':package': ({package:si_package}) => ({
 					deps: [
-						`link.${h.package}`,
+						`link.${si_package}`,
 					],
 
 					run: /* syntax: bash */ `
-						npm link @${s_channel}/${h.package}
+						npm link @${s_channel}/${si_package}
 					`,
 				}),
 			},

@@ -12,8 +12,8 @@
 @import '../../text.read.jmacs'
 
 
-const stream = require('@@@{S_GRAPHY_CHANNEL}/api.iso.stream');
-const factory = require('@@@{S_GRAPHY_CHANNEL}/api.data.factory').raw;
+const stream = require('@@@{S_GRAPHY_CHANNEL}/core.iso.stream');
+const factory = require('@@@{S_GRAPHY_CHANNEL}/core.data.factory').raw;
 const quad = h => factory.quad(h.subject, h.predicate, h.object, h.graph);
 
 

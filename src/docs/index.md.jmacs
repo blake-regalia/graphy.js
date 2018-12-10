@@ -5,13 +5,17 @@
 `graphy` is a collection of RDF libraries for JavaScript developers that focuses on performance and usability. Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
 
 ### Features
- - Read & write RDF document streams using objects that extend the [RDFJS Data Interface](http://rdf.js.org/), including support for: N-Triples, N-Quads, Turtle, and TriG.
+ - Read & write RDF document streams using objects that extend the [RDFJS Data Interface](http://rdf.js.org/), including support for the following formats:
+   - N-Triples (.nt)
+   - N-Quads (.nq)
+   - Turtle (.ttl)
+   - TriG (.trig)
  - [High-performance](#performance) textual RDF content readers.
- - Compute the union, intersection, or difference between two RDF graphs using the [Set package](api.data.set).
- - Compare two RDF graphs for equivalence using the [Set package](api.data.set), which implements the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
+ - Compute the union, intersection, or difference between two RDF graphs using the [DatasetTree package](util.dataset.tree).
+ - Compare two RDF graphs for equivalence using the [DatasetTree package](util.dataset.tree), which implements the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
 
 ### API Documentation
- - [Data Factory](api.data.factory) -- documentation for the `@graphy/api.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
+ - [Data Factory](core.data.factory) -- documentation for the `@graphy/core.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
  - [Textual Content Handlers](content.textual) -- covers all functionality exposed by packages prefixed with: `@graphy/content.nt.*`, `@graphy/content.nq.*`, `@graphy/content.ttl.*` and `@graphy/content.trig.*`.
 
 ### Mono-Repo
@@ -19,10 +23,12 @@ The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) conta
 
 ```
 @graphy/
-   api.
+   core.
       data.
-         factory -- @graphy/api.data.factory since v3.0.0
-         set -- @graphy/api.data.set since v3.0.0
+         factory -- @graphy/core.data.factory since v3.0.0
+   util.
+      dataset.
+         tree -- @graphy/util.dataset.tree since v3.0.0
    content.
       nt.
          read -- @graphy/content.nt.read since v3.0.0

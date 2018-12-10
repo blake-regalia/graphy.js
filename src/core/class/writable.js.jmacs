@@ -3,8 +3,8 @@
 @import '../../share/writer.jmacs'
 @import '../../share/tokens.jmacs'
 
-const stream = require('@{channel('api.iso.stream')}');
-const factory = require('@{channel('api.data.factory')}');
+const stream = require('@{channel('core.iso.stream')}');
+const factory = require('@{channel('core.data.factory')}');
 const factory_from = factory.from;
 
 const RT_VALID_BLANK_NODE_LABEL = /@{MK_RT_VALID_BLANK_NODE_LABEL()}/;
@@ -163,6 +163,7 @@ class Serializer_Textual_Terse extends Serializer_Textual {
 				}
 
 				// new subwriter for objects
+				debugger;
 				let ksw_objects = new SubWriter_Objects(this, this.writer, this.c1_node(s_key));
 
 				// add this hash
@@ -448,7 +449,7 @@ class CTWriter extends stream.Transform {
 	}
 
 	async transform_prefixes(h_prefixes, s_encoding, fk_transform) {
-		await this.add_prefixes(h_prefixes);
+		await this.add_prefixes(h_prefixes, true);
 
 		fk_transform();
 	}
@@ -629,6 +630,15 @@ class CTWriter_Quads extends CTWriter {
 			'*': hct_triples,
 		});
 	}
+
+	async transform_c3(hc3_triples, s_encoding, fk_transform) {
+		await this.add({
+			'*': hc3_triples,
+		});
+
+		fk_transform();
+	}
+
 }
 
 Object.assign(CTWriter_Quads.prototype, {
@@ -642,6 +652,7 @@ Object.assign(CTWriter_Quads.prototype, {
 	// create a subject writer
 	subject(sct_node) {
 		let k_serializer = this.serializer;
+		if(!k_serializer) debugger;
 		return new SubWriter_Pairs(k_serializer, this, k_serializer.c1_node(sct_node));
 	}
 
@@ -691,7 +702,7 @@ class SubWriter {
 	@{writer_directive()}
 }
 
-class SubWriter_Triples {
+class SubWriter_Triples extends SubWriter {
 	@{subwriter_triples()}
 }
 

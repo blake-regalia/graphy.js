@@ -11,8 +11,8 @@
 @// import parser macros
 @import '../../text.read.jmacs'
 
-const stream = require('@{channel('api.iso.stream')}');
-const factory = require('@{channel('api.data.factory')}').raw;
+const stream = require('@{channel('core.iso.stream')}');
+const factory = require('@{channel('core.data.factory')}').raw;
 
 const KT_DEFAULT_GRAPH = factory.defaultGraph();
 const KT_RDFS_LANG_STRING = factory.namedNode('@{P_IRI_RDFS}langString');
@@ -78,7 +78,7 @@ const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
 	(?:@{R_NODE(b_escapeless)})
 	[\x20\t]* @{R_NAMED_NODE(b_escapeless)}
 	[\x20\t]* (?:@{R_OBJECT(b_escapeless)})
-	[\x20\t]* (?:@{R_NAMED_NODE(b_escapeless)}|)
+	[\x20\t]* (?:@{R_NODE(b_escapeless)}|)
 	[\x20\t]* @{R_COMMENT()}
 @;
 
@@ -152,9 +152,9 @@ const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
 			@- QUADS
 				@{sv_match}[9]
 					? this.namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
-					: (@{sv_match[10]}
+					: (@{sv_match}[10]
 						? this.blankNode(@{sv_match}[10])
-						: ('string' === typeof @{sv_match[9]}
+						: ('string' === typeof @{sv_match}[9]
 							? this.namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
 							: KT_DEFAULT_GRAPH))
 			@:
@@ -504,11 +504,14 @@ class reader {
 					// remove this handler
 					ds_output._read = () => {};
 
-					// eot
-					// debugger;
-					this.s = null;
-					ds_output.push(null);
-					g_config.end();
+					// end-of-file
+					this.eof();
+
+					// // eot
+					// // debugger;
+					// this.s = null;
+					// ds_output.push(null);
+					// g_config.end();
 				},
 			});
 
@@ -589,7 +592,7 @@ class reader {
 	}
 
 	parse_error(s_state) {
-		throw new Error(`parsing error occurred in state: ${s_state}\n  ${this.s.substr(0, 50)}\n  ^ starting here`);
+		this.output.emit('error', new Error(`parsing error occurred in state: ${s_state}\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
 	}
 
 

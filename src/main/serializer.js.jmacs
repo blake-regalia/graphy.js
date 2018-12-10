@@ -3,8 +3,8 @@
 // const DC_URL = require('../isomorphic/locals.js').URL;
 const DC_URL = require('url').URL;
 
-const stream = require('@{channel('api.iso.stream')}');
-const factory = require('@{channel('api.data.factory')}');
+const stream = require('@{channel('core.iso.stream')}');
+const factory = require('@{channel('core.data.factory')}');
 
 @>> R_RANGE_PN_HIGH(b_extend=false)
 	@- b_extend

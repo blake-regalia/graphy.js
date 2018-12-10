@@ -1,7 +1,7 @@
 {
   "name": "@graphy/super-repo",
   "version": "3.0.0",
-  "devVersion": "0.0.17",
+  "devVersion": "0.0.20",
   "description": "A faster-than-lightning, asynchronous, streaming RDF deserializer that implements the RDFJS Representation Interfaces and natively parses Turtle, TriG, N-Triples, and N-Quads.",
   "keywords": [
     "linked-data",
@@ -43,6 +43,7 @@
     "eslint-plugin-chai-expect": "^1.1.1",
     "eslint-plugin-chai-friendly": "^0.4.1",
     "eslint-plugin-jmacs": "^1.1.0",
+    "n3": "^1.0.1",
     "request": "^2.87.0",
     "sort-package-json": "^1.15.0"
   }

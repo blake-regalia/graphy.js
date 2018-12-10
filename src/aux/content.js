@@ -8,21 +8,33 @@ module.exports = {
 			description: 'RDF N-Triples',
 			modes: [
 				'read',
-				'turbo',
 				'write',
 			],
 		},
-		// nq: 'n',
+		nq: {
+			super: 'n',
+			description: 'RDF N-Quads',
+			modes: [
+				'read',
+				'write',
+			],
+		},
 		ttl: {
 			super: 't',
 			description: 'RDF Turtle',
 			modes: [
 				'read',
-				'turbo',
 				'write',
 			],
 		},
-		// trig: 't',
+		trig: {
+			super: 't',
+			description: 'RDF TriG',
+			modes: [
+				'read',
+				'write',
+			],
+		},
 	},
 
 	// content modes
@@ -30,18 +42,18 @@ module.exports = {
 		read: {
 			description: s => `Single-threaded ${s} content reader`,
 			links: [
-				'api.iso.stream',
-				'api.data.factory',
+				'core.iso.stream',
+				'core.data.factory',
 			],
 			files: {
 				'main.js': ['../text.read.jmacs'],
 			},
 		},
 
-		turbo: {
+		scan: {
 			description: s => `Multi-threaded ${s} content reader`,
 			links: [
-				'api.data.factory',
+				'core.data.factory',
 			],
 			files: {
 				'main.js': [],
@@ -52,10 +64,20 @@ module.exports = {
 		write: {
 			description: s => `${s} content writer`,
 			links: [
-				'api.class.writable',
+				'core.class.writable',
 			],
 			dependencies: [
 				'big-integer',
+			],
+			files: {
+				'main.js': [],
+			},
+		},
+
+		scribe: {
+			description: s => `${s} content scriber`,
+			links: [
+				'core.class.writable',
 			],
 			files: {
 				'main.js': [],

@@ -192,7 +192,7 @@ const graphy = module.exports = Object.assign({
 	},
 @//@
 
-}, require('@{channel('api.data.factory')}'));
+}, require('@{channel('core.data.factory')}'));
 
 
 // export graphy to window object if in main thread of browser

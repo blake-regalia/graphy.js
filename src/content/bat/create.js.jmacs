@@ -1,7 +1,7 @@
 @import './constants.jmacs'
 @import '../../share/channel.jmacs'
 
-const stream = require('@{channel('api.iso.stream')}');
+const stream = require('@{channel('core.iso.stream')}');
 const primer = require('@{channel('content.bat.primer')}');
 const serializer = require('@{channel('content.bat.serializer')}');
 

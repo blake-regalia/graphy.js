@@ -2,7 +2,7 @@
 @import '../../../share/channel.jmacs'
 
 const bkit = require('bkit');
-const factory = require('@{channel('api.data.factory')}');
+const factory = require('@{channel('core.data.factory')}');
 
 const interfaces = require('./interfaces.js');
 

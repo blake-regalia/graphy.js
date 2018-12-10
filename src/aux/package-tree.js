@@ -1,10 +1,10 @@
 
 // package tree
 module.exports = {
-	api: {
+	core: {
 		class: {
 			writable: () => ({
-				links: ['api.data.factory', 'api.iso.stream'],
+				links: ['core.data.factory', 'core.iso.stream'],
 				description: 'Produce quads using nestable concise term string objects',
 			}),
 		},
@@ -12,14 +12,19 @@ module.exports = {
 			factory: () => ({
 				description: 'Create instances of Terms and Triples/Quads. Implements @RDFJS DataFactory',
 			}),
-			set: () => ({
-				links: ['api.data.factory', 'api.iso.stream'],
-				description: 'Create a mathematical set of triples for comparison and operations such as union, intersection, difference, etc.',
-			}),
 		},
 		iso: {
 			stream: () => ({
 				description: 'Provides isomorphic stream interface for node.js / browser and adds `.until`, a promisified version of the `.on` event listener',
+			}),
+		},
+	},
+
+	util: {
+		dataset: {
+			tree: () => ({
+				links: ['core.data.factory', 'core.iso.stream'],
+				description: 'Create a mathematical set of triples for comparison and operations such as union, intersection, difference, etc.',
 			}),
 		},
 		ui: {
@@ -66,7 +71,7 @@ module.exports = {
 		sparql_results: {
 			read: () => ({
 				links: [
-					'api.data.factory',
+					'core.data.factory',
 				],
 				description: 'Single-threaded SPARQL Query Results JSON Format (application/sparql-results+json) reader',
 			}),

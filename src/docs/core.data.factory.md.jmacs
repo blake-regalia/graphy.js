@@ -1,7 +1,7 @@
 @//@syntax:md
 @import './docs.jmacs'
 # Data Factory
-`@graphy/api.data.factory`
+`@graphy/core.data.factory`
 
 ## Primer
  - `factory` is used throughout this document to refer to this module's export.
@@ -65,11 +65,11 @@
 The following code block demonstrates three *different* ways to access this module.
 ```js
 // stand-alone
-const factory = require('@graphy/api.data.factory');
+const factory = require('@graphy/core.data.factory');
 
 // via the graphy 'super module'
 const graphy = require('graphy');
-const factory = graphy.api.data.factory;
+const factory = graphy.core.data.factory;
 
 // via inheritted methods on the graphy 'super module'
 const graphy = require('graphy');

@@ -5,7 +5,7 @@
 
 @$ QUADS = ('trig' === FORMAT);
 
-const writable = require('@@@{S_GRAPHY_CHANNEL}/api.class.writable');
+const writable = require('@@@{S_GRAPHY_CHANNEL}/core.class.writable');
 
 class serializer extends writable.serializer.textual.verbose {
 	constructor(g_config={}) {

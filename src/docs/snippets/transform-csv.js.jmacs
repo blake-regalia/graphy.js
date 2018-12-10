@@ -1,6 +1,6 @@
 @import '../../share/channel.jmacs'
 const csv_parse = require('csv-parse');
-const stream = require('@{channel('api.iso.stream')}');
+const stream = require('@{channel('core.iso.stream')}');
 const ttl_write = require('@{channel('content.ttl.write')}');
 
 // a series of streams to pipe together

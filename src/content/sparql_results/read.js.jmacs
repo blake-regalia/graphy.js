@@ -5,8 +5,8 @@
 @./* global FORMAT */
 @//@
 
-const stream = require('@@@{S_GRAPHY_CHANNEL}/api.iso.stream');
-const factory = require('@@@{S_GRAPHY_CHANNEL}/api.data.factory');
+const stream = require('@@@{S_GRAPHY_CHANNEL}/core.iso.stream');
+const factory = require('@@@{S_GRAPHY_CHANNEL}/core.data.factory');
 const factory_from = factory.from;
 
 class reader {
@@ -48,7 +48,7 @@ class reader {
 				objectMode: true,
 
 				// once data event is attached
-				read: () => {
+				read() {
 					// each row in bindings array
 					for(let h_row of a_bindings) {
 						// transform into hash of graphy terms
@@ -60,14 +60,17 @@ class reader {
 						}
 
 						// push row to output
-						ds_output.push(h_row);
+						this.push({
+							type: 'row',
+							value: h_row_terms,
+						});
 					}
 
 					// end
-					ds_output.emit('end');
+					this.push(null);
 
-					// remove this handler
-					ds_output._read = () => {};
+					// // remove this handler
+					// ds_output._read = () => {};
 				},
 			});
 

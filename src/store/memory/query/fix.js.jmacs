@@ -144,7 +144,7 @@ Sampling:
 @;
 
 
-const factory = require('@{channel('api.data.factory')}');
+const factory = require('@{channel('core.data.factory')}');
 
 const {
 	Match_Term,

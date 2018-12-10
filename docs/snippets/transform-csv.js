@@ -1,6 +1,6 @@
 
 const csv_parse = require('csv-parse');
-const stream = require('@graphy-dev/api.iso.stream');
+const stream = require('@graphy-dev/core.iso.stream');
 const ttl_write = require('@graphy-dev/content.ttl.write');
 
 // a series of streams to pipe together

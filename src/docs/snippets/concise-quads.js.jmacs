@@ -1,5 +1,5 @@
 @import '../../share/channel.jmacs'
-const factory = require('@{channel('api.data.factory')}');
+const factory = require('@{channel('core.data.factory')}');
 const trig_write = require('@{channel('content.trig.write')}');
 
 let k_writer = trig_write({

@@ -388,7 +388,7 @@ class bat_format {
 			prefixes: h_prefixes,
 		} = this;
 
-		const factory = require('@graphy/api.data.factory');  // eslint-disable-line global-require
+		const factory = require('@graphy/core.data.factory');  // eslint-disable-line global-require
 
 		let a_instances = [];
 		for(let [sct_thing, w_thing] of a_things) {
@@ -406,7 +406,7 @@ class bat_format {
 	}
 
 	fetch(sct_ref) {
-		const factory = require('@graphy/api.data.factory');  // eslint-disable-line global-require
+		const factory = require('@graphy/core.data.factory');  // eslint-disable-line global-require
 
 		return this.refs[factory.ct(sct_ref, this.prefixes)];
 	}

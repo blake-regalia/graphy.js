@@ -2,7 +2,7 @@
 
 const bkit = require('bkit');
 
-const factory = require('@{channel('api.data.factory')}');
+const factory = require('@{channel('core.data.factory')}');
 const HVT_SCHEMA_DEFAULT = require('@{channel('schema.bat.default')}');
 
 const p_base = 'https://bat-rdf.link/v1.0/';

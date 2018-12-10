@@ -1,5 +1,5 @@
 
-const factory = require('@graphy-dev/api.data.factory');
+const factory = require('@graphy-dev/core.data.factory');
 const trig_write = require('@graphy-dev/content.trig.write');
 
 let k_writer = trig_write({
