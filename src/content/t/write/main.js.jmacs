@@ -182,7 +182,6 @@ class serializer extends writable.serializer.textual.terse {
 			else {
 				let k_parent = k_leaf.parent;
 				this.new_predicate = true;
-				debugger;
 				let s_new_graph = `${k_parent.parent.term}\n{\n\t${k_parent.term}\n`;
 
 				// change graph

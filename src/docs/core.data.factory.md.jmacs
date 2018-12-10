@@ -35,15 +35,15 @@
      - [`term(...)`](#function_term)
    - Quad constructors
      - [`quad(...)`](#function_quad)
-     - [`triple(...)`](#function_triple)
+     @.{/*- [`triple(...)`](#function_triple)*/}
    - Concise Quads constructors
      - [`c4(...)`](#function_c4)
-     - [`quads(...)`](#function_quads)
+     @.{/*- [`quads(...)`](#function_quads)*/}
      - [`c3(...)`](#function_c3)
-     - [`triples(...)`](#function_quads)
+     @.{/*- [`triples(...)`](#function_quads)*/}
    - Content Writer directives
      - [`comment(...)`](#function_comment)
-     - [`newlines(...)`](#function_newlines)
+     @.{/*- [`newlines(...)`](#function_newlines)*/}
  - [Classes](#classes) -- class definitions
    - [GenericTerm](#class_genericterm)
      - [NamedNode](#class_namednode)
@@ -271,30 +271,37 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
  - `factory.quad(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
    - **returns** a [new Quad](#class_quad)
 
+@.{/*
 <a name="function_triple" />
 
  - `factory.triple(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`)`
    - **returns** a [new Triple](#class_triple)
+*/}
 
 <a name="function_c4" />
 
  - *generator* `factory.c4(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
 
+
+@.{/*
 <a name="function_quads" />
 
  - *generator* `factory.quads(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
+*/}
 
 <a name="function_c3" />
 
  - *generator* `factory.c3(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Triples](#class_triple)
 
+@.{/*
 <a name="function_triples" />
 
  - *generator* `factory.triples(triples: `[`#hash/concise-triples`](concise#hash_c3)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Triples](#class_triple)
+*/}
 
 <a name="function_comment" />
 
@@ -312,11 +319,13 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       `)}
       ```
 
+@.{/*
 <a name="function_newlines" />
 
  - `factory.newlines(config: `[`#config/newlines`](#config_newlines)`)`
    - creates a special concise term string that tells the RDF writer to interpret the value associated with this key as the number of newlines to insert into the output RDF document if the destination RDF format supports empty newlines. Value must be an integer. Use this function in the predicate, subject or graph position of any concise triples or concise quads hash.
    - **returns** a [`#string/concise-term`](concise#string_c1)
+*/}
 
 ---
 
