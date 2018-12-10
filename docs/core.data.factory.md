@@ -188,8 +188,8 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
    - *example:*
        ```js
        factory.literal('"').verbose();  // '"\""^^<http://www.w3.org/2001/XMLSchema#string>'
-       factory.literal('42', 'ex://datatype').verbose();  // '"42"^^<ex://datatype>'
-       factory.literal('hello Mars!', '@en').verbose();  // '"hello Mars!"@en'
+       factory.literal('42', 'ex://datatype').verbose();  // '"42"@ex://datatype'
+       factory.literal('hello Mars!', '@en').verbose();  // '"hello Mars!"@@en'
        ```
 
 <a name="function_integer" />
@@ -237,7 +237,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       ```js
       const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
       let dt_event = new Date('December 17, 1995 03:24:00');
-      factory.date(dt_event).terse(h_prefixes);  // '"1995-12-14Z"^^xsd:date'
+      factory.date(dt_event).terse(h_prefixes);  // '"1995-12-17Z"^^xsd:date'
       ```
 
 <a name="function_dateTime" />
@@ -248,7 +248,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       ```js
       const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
       let dt_event = new Date('December 17, 1995 03:24:00');
-      factory.dateTime(dt_event).terse(h_prefixes);  // '"1995-12-14T03:24:00"^^xsd:dateTime'
+      factory.dateTime(dt_event).terse(h_prefixes);  // '"1995-12-17T11:24:00.000Z"^^xsd:dateTime'
       ```
 
 <a name="function_c1" />
@@ -491,14 +491,14 @@ A class that represents an RDF literal that is an [xsd:integer](https://www.w3.o
 ```js
 let yt_answer = factory.integer(42);
 yt_answer.verbose();  // '"42"^^<http://www.w3.org/2001/XMLSchema#integer>'
-yt_answer.isNumeric;  // true
-yt_answer.isInteger;  // true
+yt_answer.isNumeric;  // 'true'
+yt_answer.isInteger;  // 'true'
 yt_answer.isDouble;  // undefined
 yt_answer.number + 1;  // 43
 yt_answer.value;  // '42'
 
 factory.integer('12').number;  // 12
-factory.integer(12.1);  // throws Error: Number is not an integer
+factory.integer(12.1);  // throws Number is not an integer: 12.1
 factory.integer('12.1');  // throws Error: Invalid integer string: 12.1
 ```
 

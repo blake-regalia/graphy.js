@@ -221,7 +221,7 @@ y_writer.pipe(process.stdout);
 
 // the following demonstrates the use of a concise quads hash
 y_writer.write({
-   type: 'c3',
+   type: 'c4',
    value: {
       // example 2 from TriG: https://www.w3.org/TR/trig/
       [factory.comment()]: 'default graph',
@@ -263,6 +263,5 @@ y_writer.end();
 @prefix dbo: <http://dbpedia.org/ontology/> .
 @prefix demo: <http://ex.org/demo#> .
 
-# default graph
 
 ```

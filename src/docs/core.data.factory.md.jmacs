@@ -1,5 +1,8 @@
 @//@syntax:md
 @import './docs.jmacs'
+@. const graphy = require(process.env.GRAPHY_CHANNEL || 'graphy');
+@. const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
+@. const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
 # Data Factory
 `@graphy/core.data.factory`
 
@@ -147,7 +150,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
   - **returns** a [new NamedNode](#class_named-node)
   - *example:*
       ```js
-      factory.namedNode('ex://test').verbose();  // '<ex://test>'
+      factory.namedNode('ex://test').verbose();  // '@{factory.namedNode('ex://test').verbose()}'
       ```
 
 <a name="function_blank-node" />
@@ -164,7 +167,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
        factory.blankNode().verbose();  // '_:439e14ae_1531_4683_ac96_b9f091da9595'
 
        // use given label constructor
-       factory.blankNode('label').verbose();  // '_:label'
+       factory.blankNode('label').verbose();  // '@{factory.blankNode('label').verbose()}'
 
        // use a LabelManager constructor
        graphy.content.nt.read('<a> <b> <c> .', {
@@ -189,8 +192,8 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
    - *example:*
        ```js
        factory.literal('"').verbose();  // '"\""^^<http://www.w3.org/2001/XMLSchema#string>'
-       factory.literal('42', 'ex://datatype').verbose();  // '"42"^^<ex://datatype>'
-       factory.literal('hello Mars!', '@en').verbose();  // '"hello Mars!"@en'
+       factory.literal('42', 'ex://datatype').verbose();  // '@{factory.literal('42', 'ex://datatype').verbose()}'
+       factory.literal('hello Mars!', '@en').verbose();  // '@{factory.literal('hello Mars!', '@en').verbose()}'
        ```
 
 <a name="function_integer" />
@@ -225,20 +228,21 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
    - *examples:*
       ```js
       const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
-      factory.number(42).datatype.terse(h_prefixes);  // 'xsd:integer'
-      factory.number(Math.PI).datatype.terse(h_prefixes);  // 'xsd:decimal'
-      factory.number(Infinity).datatype.terse(h_prefixes);  // 'xsd:double'
+      factory.number(42).datatype.terse(h_prefixes);  // '@{factory.number(42).datatype.terse(h_prefixes)}'
+      factory.number(Math.PI).datatype.terse(h_prefixes);  // '@{factory.number(Math.PI).datatype.terse(h_prefixes)}'
+      factory.number(Infinity).datatype.terse(h_prefixes);  // '@{factory.number(Infinity).datatype.terse(h_prefixes)}'
       ```
 
 <a name="function_date" />
 
+@. let dt_event = new Date('December 17, 1995 03:24:00');
  - `factory.date(date: Date)`
    - **returns** a [new Literal](#class_literal)
    - *examples:*
       ```js
       const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
       let dt_event = new Date('December 17, 1995 03:24:00');
-      factory.date(dt_event).terse(h_prefixes);  // '"1995-12-14Z"^^xsd:date'
+      factory.date(dt_event).terse(h_prefixes);  // '@{factory.date(dt_event).terse(h_prefixes)}'
       ```
 
 <a name="function_dateTime" />
@@ -249,7 +253,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       ```js
       const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
       let dt_event = new Date('December 17, 1995 03:24:00');
-      factory.dateTime(dt_event).terse(h_prefixes);  // '"1995-12-14T03:24:00"^^xsd:dateTime'
+      factory.dateTime(dt_event).terse(h_prefixes);  // '@{factory.dateTime(dt_event).terse(h_prefixes)}'
       ```
 
 <a name="function_c1" />
@@ -457,15 +461,26 @@ A class that represents an RDF literal that is an [xsd:integer](https://www.w3.o
 **Examples:**
 ```js
 let yt_answer = factory.integer(42);
-yt_answer.verbose();  // '"42"^^<http://www.w3.org/2001/XMLSchema#integer>'
-yt_answer.isNumeric;  // true
-yt_answer.isInteger;  // true
-yt_answer.isDouble;  // undefined
-yt_answer.number + 1;  // 43
-yt_answer.value;  // '42'
+@. let yt_answer = factory.integer(42);
+yt_answer.verbose();  // '@{yt_answer.verbose()}'
+yt_answer.isNumeric;  // '@{yt_answer.isNumeric}'
+yt_answer.isInteger;  // '@{yt_answer.isInteger}'
+yt_answer.isDouble;  // @{yt_answer.isDouble || 'undefined'}
+yt_answer.number + 1;  // @{yt_answer.number + 1}
+yt_answer.value;  // '@{yt_answer.value}'
 
-factory.integer('12').number;  // 12
-factory.integer(12.1);  // throws Error: Number is not an integer
+factory.integer('12').number;  // @{factory.integer('12').number}
+factory.integer(12.1);  // throws @{
+  (() => {
+    try {
+      factory.integer(12.1);
+    }
+    catch(e) {
+      return e.message;
+      // Error: Number is not an integer
+    }
+  })()
+}
 factory.integer('12.1');  // throws Error: Invalid integer string: 12.1
 ```
 
@@ -501,12 +516,13 @@ A class that represents an RDF literal that is an [xsd:double](https://www.w3.or
 
 **Examples:**
 ```js
+@. let yt_pi = factory.double(Math.PI);
 let yt_pi = factory.double(Math.PI);
-yt_pi.verbose();  // '"3.141592653589793"^^<http://www.w3.org/2001/XMLSchema#double>'
-yt_pi.isNumeric;  // true
-yt_pi.isDouble;  // true
-yt_pi.isInteger;  // undefined
-yt_pi.number * 2;  // 6.283185307179586
+yt_pi.verbose();  // '@{yt_pi.verbose()}'
+yt_pi.isNumeric;  // @{yt_pi.isNumeric}
+yt_pi.isDouble;  // @{yt_pi.isDouble}
+yt_pi.isInteger;  // @{yt_pi.isInteger || 'undefined'}
+yt_pi.number * 2;  // @{yt_pi.number * 2}
 
 graphy.content.ttl.read('<ex://unit-circle> <ex://area> 3.141592653589793 .', {
     data(y_quad) {
