@@ -65,6 +65,7 @@ Directives allow for special events to be passed to the output serializer at a g
 
 
 #### Grammar
+
 | State            | Production                                           |
 | ---------------- | ---------------------------------------------------- |
 | Term             | `NamedNode | BlankNode | Literal | Directive`        |
@@ -92,7 +93,7 @@ A concise triples hash describes a plain object whose keys represent the *subjec
 const factory = require('@graphy-dev/core.data.factory');
 const ttl_write = require('@graphy-dev/content.ttl.write');
 
-let k_writer = ttl_write({
+let y_writer = ttl_write({
    prefixes: {
       rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
       rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
@@ -104,50 +105,53 @@ let k_writer = ttl_write({
    },
 });
 
-k_writer.pipe(process.stdout);
+y_writer.pipe(process.stdout);
 
 // the following demonstrates the use of a concise triples hash
-k_writer.add({
-   // triples about dbr:Banana
-   [factory.comment()]: 'hey look, a comment!',
-   'dbr:Banana': {
-      // `a` is shortcut for rdf:type
-      a: 'dbo:Plant',
+y_writer.write({
+   type: 'c3',
+   value: {
+      // triples about dbr:Banana
+      [factory.comment()]: 'hey look, a comment!',
+      'dbr:Banana': {
+         // `a` is shortcut for rdf:type
+         a: 'dbo:Plant',
 
-      // list of objects
-      'rdfs:label': ['@en"Banana', '@fr"Banane', '@es"Plátano'],
+         // list of objects
+         'rdfs:label': ['@en"Banana', '@fr"Banane', '@es"Plátano'],
 
-      // nested array becomes an RDF collection
-      'demo:steps': [
-         ['demo:Peel', 'demo:Slice', 'demo:distribute'],
-      ],
-   },
-
-   // example from OWL 2 primer: https://www.w3.org/TR/owl2-primer/#Property_Restrictions
-   [factory.comment()]: 'hey look, another comment!',
-   ':HappyPerson': {
-      a: 'owl:Class',
-      'owl:equivalentClass': {
-         a: 'owl:Class',
-         'owl:intersectionOf': [
-            [
-               {
-                  a: 'owl:Restriction',
-                  'owl:onProperty': ':hasChild',
-                  'owl:allValuesFrom': ':Happy',
-               },
-               {
-                  a: 'owl:Restriction',
-                  'owl:onProperty': ':hasChild',
-                  'owl:someValuesFrom': ':Happy',
-               },
-            ],
+         // nested array becomes an RDF collection
+         'demo:steps': [
+            ['demo:Peel', 'demo:Slice', 'demo:distribute'],
          ],
+      },
+
+      // example from OWL 2 primer: https://www.w3.org/TR/owl2-primer/#Property_Restrictions
+      [factory.comment()]: 'hey look, another comment!',
+      ':HappyPerson': {
+         a: 'owl:Class',
+         'owl:equivalentClass': {
+            a: 'owl:Class',
+            'owl:intersectionOf': [
+               [
+                  {
+                     a: 'owl:Restriction',
+                     'owl:onProperty': ':hasChild',
+                     'owl:allValuesFrom': ':Happy',
+                  },
+                  {
+                     a: 'owl:Restriction',
+                     'owl:onProperty': ':hasChild',
+                     'owl:someValuesFrom': ':Happy',
+                  },
+               ],
+            ],
+         },
       },
    },
 });
 
-k_writer.end();
+y_writer.end();
 ```
 
 **Outputs:**
@@ -161,6 +165,31 @@ k_writer.end();
 @prefix : <http://ex.org/owl#> .
 
 # hey look, a comment!
+dbr:Banana rdf:type dbo:Plant ;
+   rdfs:label "Banana"@en, "Banane"@fr, "Plátano"@es ;
+   demo:steps (
+      demo:Peel
+      demo:Slice
+      demo:distribute
+   )# hey look, another comment!
+ .
+
+:HappyPerson rdf:type owl:Class ;
+   owl:equivalentClass [
+      rdf:type owl:Class ;
+      owl:intersectionOf (
+         [
+            rdf:type owl:Restriction ;
+               owl:onProperty :hasChild ;
+               owl:allValuesFrom :Happy
+            ]
+         [
+               rdf:type owl:Restriction ;
+               owl:onProperty :hasChild ;
+               owl:someValuesFrom :Happy
+         ]
+      )
+   ] .
 
 ```
 
@@ -177,7 +206,7 @@ A concise quads hash describes a plain object whose keys represent the *graph* o
 const factory = require('@graphy-dev/core.data.factory');
 const trig_write = require('@graphy-dev/content.trig.write');
 
-let k_writer = trig_write({
+let y_writer = trig_write({
    prefixes: {
       rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
       rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
@@ -188,38 +217,41 @@ let k_writer = trig_write({
    },
 });
 
-k_writer.pipe(process.stdout);
+y_writer.pipe(process.stdout);
 
 // the following demonstrates the use of a concise quads hash
-k_writer.add({
-   // example 2 from TriG: https://www.w3.org/TR/trig/
-   [factory.comment()]: 'default graph',
-   '*': {
+y_writer.write({
+   type: 'c3',
+   value: {
+      // example 2 from TriG: https://www.w3.org/TR/trig/
+      [factory.comment()]: 'default graph',
+      '*': {
+         'demo:bob': {
+            'dc:publisher': '"Bob',
+         },
+         'demo:alice': {
+            'dc:publisher': '"Alice',
+         },
+      },
+
       'demo:bob': {
-         'dc:publisher': '"Bob',
+         '_:a': {
+            'foaf:name': '"Bob',
+            'foaf:mbox': '>mailto:bob@oldcorp.example.org',
+            'foaf:knows': '_:b',
+         },
       },
+
       'demo:alice': {
-         'dc:publisher': '"Alice',
-      },
-   },
-
-   'demo:bob': {
-      '_:a': {
-         'foaf:name': '"Bob',
-         'foaf:mbox': '>mailto:bob@oldcorp.example.org',
-         'foaf:knows': '_:b',
-      },
-   },
-
-   'demo:alice': {
-      '_:b': {
-         'foaf:name': '"Alice',
-         'foaf:mbox': '>mailto:alice@work.example.org',
+         '_:b': {
+            'foaf:name': '"Alice',
+            'foaf:mbox': '>mailto:alice@work.example.org',
+         },
       },
    },
 });
 
-k_writer.end();
+y_writer.end();
 ```
 
 **Outputs:**
@@ -231,5 +263,6 @@ k_writer.end();
 @prefix dbo: <http://dbpedia.org/ontology/> .
 @prefix demo: <http://ex.org/demo#> .
 
+# default graph
 
 ```

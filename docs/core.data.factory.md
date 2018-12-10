@@ -313,14 +313,19 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       
       y_writer.pipe(process.stdout);
       
-      y_writer.add({
-         [factory.comment()]: 'this is a comment',
-         'demo:Banana': {
-            a: 'dbo:Fruit',
-            [factory.comment()]: 'so is this...',
-            'rdfs:label': '@en"Banana',
+      y_writer.write({
+         type: 'c3',
+         value: {
+            [factory.comment()]: 'this is a comment',
+            'demo:Banana': {
+               a: 'dbo:Fruit',
+               [factory.comment()]: 'so is this...',
+               'rdfs:label': '@en"Banana',
+            },
          },
       });
+      
+      y_writer.end();
       ```
    - *outputs:*
       ```turtle
@@ -332,7 +337,8 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       # this is a comment
       demo:Banana rdf:type dbo:Fruit ;
          # so is this...
-         rdfs:label "Banana"@en
+         rdfs:label "Banana"@en .
+      
       ```
 
 <a name="function_newlines" />

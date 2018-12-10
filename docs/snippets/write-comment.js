@@ -13,11 +13,16 @@ let y_writer = ttl_write({
 
 y_writer.pipe(process.stdout);
 
-y_writer.add({
-	[factory.comment()]: 'this is a comment',
-	'demo:Banana': {
-		a: 'dbo:Fruit',
-		[factory.comment()]: 'so is this...',
-		'rdfs:label': '@en"Banana',
+y_writer.write({
+	type: 'c3',
+	value: {
+		[factory.comment()]: 'this is a comment',
+		'demo:Banana': {
+			a: 'dbo:Fruit',
+			[factory.comment()]: 'so is this...',
+			'rdfs:label': '@en"Banana',
+		},
 	},
 });
+
+y_writer.end();
