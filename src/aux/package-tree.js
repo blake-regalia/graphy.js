@@ -27,80 +27,88 @@ module.exports = {
 				description: 'Create a mathematical set of triples for comparison and operations such as union, intersection, difference, etc.',
 			}),
 		},
-		ui: {
-			viz: () => ({
-				description: 'Create graphviz visualizations of triples and quads',
-			}),
-		},
+		...('graphy-dev' === process.env.GRAPHY_CHANNEL
+			? {
+				ui: {
+					viz: () => ({
+						description: 'Create graphviz visualizations of triples and quads',
+					}),
+				},
+			}
+			: {}),
 	},
 
-	content: {
-		bat: {
-			create: () => ({
-				dependencies: [
-					'bkit',
-				],
-				links: [
-					// 'content.bat.decoders',
-					'content.bat.primer',
-					'content.bat.serializer',
-				],
-				description: 'Create a compact RDF dataset according to the BAT format',
-			}),
-			decoders: () => ({
-				dependencies: [
-					'bkit',
-				],
-				description: 'Create a compact RDF dataset according to the BAT format',
-			}),
-			primer: () => ({
-				description: 'Intermediate data structures for creating a compact dataset',
-			}),
-			serializer: () => ({
-				dependencies: [
-					'bkit',
-					'worker',
-				],
-				description: 'Serialize an RDF dataset in the BAT format',
-			}),
-			decode: () => ({
-				description: 'Decode BAT data',
-			}),
-		},
+	...('graphy-dev' === process.env.GRAPHY_CHANNEL
+		? {
+			content: {
+				bat: {
+					create: () => ({
+						dependencies: [
+							'bkit',
+						],
+						links: [
+							// 'content.bat.decoders',
+							'content.bat.primer',
+							'content.bat.serializer',
+						],
+						description: 'Create a compact RDF dataset according to the BAT format',
+					}),
+					decoders: () => ({
+						dependencies: [
+							'bkit',
+						],
+						description: 'Create a compact RDF dataset according to the BAT format',
+					}),
+					primer: () => ({
+						description: 'Intermediate data structures for creating a compact dataset',
+					}),
+					serializer: () => ({
+						dependencies: [
+							'bkit',
+							'worker',
+						],
+						description: 'Serialize an RDF dataset in the BAT format',
+					}),
+					decode: () => ({
+						description: 'Decode BAT data',
+					}),
+				},
 
-		sparql_results: {
-			read: () => ({
-				links: [
-					'core.data.factory',
-				],
-				description: 'Single-threaded SPARQL Query Results JSON Format (application/sparql-results+json) reader',
-			}),
-		},
-	},
+				sparql_results: {
+					read: () => ({
+						links: [
+							'core.data.factory',
+						],
+						description: 'Single-threaded SPARQL Query Results JSON Format (application/sparql-results+json) reader',
+					}),
+				},
+			},
 
-	schema: {
-		bat: {
-			default: () => ({
-				dependencies: ['bkit'],
-				description: 'Default BAT schema',
-			}),
-		},
-	},
+			schema: {
+				bat: {
+					default: () => ({
+						dependencies: ['bkit'],
+						description: 'Default BAT schema',
+					}),
+				},
+			},
 
-	store: {
-		memory: {
-			query: () => ({
-				description: 'Query an in-memory quadstore using GTAR, the Graph Traversal API for RDF',
-			}),
-			create: () => ({
-				links: [
-					'content.bat.create',
-					'content.bat.decode',
-					'schema.bat.default',
-					'store.memory.query',
-				],
-				description: 'Create a quadstore in memory from a graphy event stream',
-			}),
-		},
-	},
+			store: {
+				memory: {
+					query: () => ({
+						description: 'Query an in-memory quadstore using GTAR, the Graph Traversal API for RDF',
+					}),
+					create: () => ({
+						links: [
+							'content.bat.create',
+							'content.bat.decode',
+							'schema.bat.default',
+							'store.memory.query',
+						],
+						description: 'Create a quadstore in memory from a graphy event stream',
+					}),
+				},
+			},
+		}
+		: {}),
 };

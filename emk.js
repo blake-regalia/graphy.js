@@ -357,10 +357,10 @@ const src_to_main = (pd_src, s_prefix, h_output={}) => {
 
 
 // bat output config
-let h_output_content_bat = src_to_main('src/content/bat', 'content.bat');
+let h_output_content_bat = B_DEVELOPMENT? src_to_main('src/content/bat', 'content.bat'): {};
 
 // memory store output config
-let h_output_store_mem = src_to_main('src/store/memory', 'store.memory');
+let h_output_store_mem = B_DEVELOPMENT? src_to_main('src/store/memory', 'store.memory'): {};
 
 // emk struct
 module.exports = {
@@ -395,11 +395,15 @@ module.exports = {
 		// // bat schema file
 		// bat_schema_file: Object.keys(h_schema_bat).map(s => `schema.bat.${s}`),
 
-		bat_protocol: fs.readdirSync('src/gen/bat-schema/decoders')
-			.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+		...(B_DEVELOPMENT
+			? {
+				bat_protocol: fs.readdirSync('src/gen/bat-schema/decoders')
+					.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
 
-		bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
-			.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+				bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
+					.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+			}
+			: {}),
 
 		// docs snippet
 		snippet: fs.readdirSync('src/docs/snippets')
@@ -415,6 +419,19 @@ module.exports = {
 		all: [
 			'prepublish.*',
 		],
+
+		// clean
+		clean: () => ({
+			run: /* syntax: bash */ `
+				rm -rf \
+					'${P_PACKAGE_PREFIX}/lib/node_modules/${s_channel}' \
+					'${P_PACKAGE_PREFIX}/lib/node_modules/@${s_channel}' \
+					'${P_PACKAGE_PREFIX}/bin/${s_channel}' \
+					'build/${s_channel}' \
+					'node_modules/${s_channel}' \
+					'node_modules/@${s_channel}'
+			`,
+		}),
 
 		// link alias
 		link: {
@@ -514,6 +531,8 @@ module.exports = {
 			snippets: {
 				':snippet': h => jmacs_lint([
 					`src/docs/snippets/${h.snippet}.jmacs`,
+				], [
+					'link_to.*',
 				]),
 			},
 
@@ -533,7 +552,7 @@ module.exports = {
 		// package builds
 		build: {
 			[s_channel]: {
-				...('graphy-dev' === process.env.GRAPHY_CHANNEL
+				...(B_DEVELOPMENT
 					? {
 						// content.bat.*
 						...h_output_content_bat,
@@ -663,7 +682,7 @@ module.exports = {
 						[`@${s_channel}`]: {
 							':package': ({package:si_package}) => ({
 								deps: [
-									`link.${si_package}`,
+									`link_to.${si_package}`,
 								],
 
 								run: /* syntax: bash */ `

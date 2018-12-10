@@ -1,6 +1,6 @@
 
-const factory = require('@graphy-dev/core.data.factory');
-const ttl_write = require('@graphy-dev/content.ttl.write');
+const factory = require('@graphy/core.data.factory');
+const ttl_write = require('@graphy/content.ttl.write');
 
 let y_writer = ttl_write({
 	prefixes: {
