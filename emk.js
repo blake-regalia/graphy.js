@@ -81,7 +81,7 @@ const files = (g_config={}, pd_rel=null) => {
 
 // for run commands to lint js files
 const eslint = () => /* syntax: bash */ `
-	eslint --fix --color --rule 'no-debugger: off' $@
+	npx eslint --fix --color --rule 'no-debugger: off' $@
 	eslint_exit=$?
 	# do not fail on warnings
 	if [ $eslint_exit -eq 2 ]; then

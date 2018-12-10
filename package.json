@@ -27,25 +27,25 @@
   },
   "dependencies": {
     "async": "^2.6.1",
-    "big-integer": "^1.6.39",
+    "big-integer": "^1.6.40",
     "bkit": "^1.4.0",
-    "buffer": "^5.2.0",
+    "buffer": "^5.2.1",
     "performance-now": "^2.1.0",
     "worker": "^0.3.12"
   },
   "devDependencies": {
     "@rdfjs/data-model": "^1.1.1",
-    "chai": "^4.1.2",
+    "chai": "^4.2.0",
     "chai-string": "^1.5.0",
-    "csv-parse": "^4.0.1",
+    "csv-parse": "^4.1.0",
     "detective": "^5.1.0",
-    "emk": "^1.4.0",
-    "eslint": "^5.2.0",
-    "eslint-plugin-chai-expect": "^1.1.1",
+    "emk": "^1.4.3",
+    "eslint": "^5.10.0",
+    "eslint-plugin-chai-expect": "^1.2.0",
     "eslint-plugin-chai-friendly": "^0.4.1",
     "eslint-plugin-jmacs": "^1.1.0",
     "n3": "^1.0.1",
     "request": "^2.87.0",
-    "sort-package-json": "^1.15.0"
+    "sort-package-json": "^1.17.0"
   }
 }
