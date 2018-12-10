@@ -144,10 +144,10 @@ class Serializer_Textual_Terse extends Serializer_Textual {
 	}
 
 	// serialize a collection tersely
-	async nested_collection_item(z_item) {
+	async nested_collection_item(k_leaf, z_item) {
 		// nested collection
 		if(Array.isArray(z_item)) {
-			return await this.serialize_collection(z_item);
+			return await this.serialize_collection(k_leaf, z_item);
 		}
 		// blank node
 		else if('object' === typeof z_item) {
@@ -163,11 +163,10 @@ class Serializer_Textual_Terse extends Serializer_Textual {
 				}
 
 				// new subwriter for objects
-				debugger;
-				let ksw_objects = new SubWriter_Objects(this, this.writer, this.c1_node(s_key));
+				let ksw_objects = new SubWriter_Objects(this, k_leaf, this.c1_node(s_key));
 
 				// add this hash
-				s_blank_node += await ksw_objects.objects(z_item[s_key], @{XM_MODE_SUBJECT});
+				s_blank_node += await ksw_objects.objects(z_item[s_key], @{XM_MODE_GRAPH | XM_MODE_SUBJECT});
 			}
 
 			// close blank node

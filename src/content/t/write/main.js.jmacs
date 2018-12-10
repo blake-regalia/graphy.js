@@ -182,6 +182,7 @@ class serializer extends writable.serializer.textual.terse {
 			else {
 				let k_parent = k_leaf.parent;
 				this.new_predicate = true;
+				debugger;
 				let s_new_graph = `${k_parent.parent.term}\n{\n\t${k_parent.term}\n`;
 
 				// change graph
@@ -204,7 +205,7 @@ class serializer extends writable.serializer.textual.terse {
 		@;
 	}
 
-	async serialize_collection(a_collection) {
+	async serialize_collection(k_leaf, a_collection) {
 		let s_indent = this.indent;
 		let n_indent = ++this.nest_level;
 		return `(${
@@ -212,13 +213,13 @@ class serializer extends writable.serializer.textual.terse {
 				.map(async s => `\n@{QUADS? '${s_indent}':''}${
 					s_indent.repeat(n_indent+1)
 				}${
-					await this.nested_collection_item(s)
+					await this.nested_collection_item(k_leaf, s)
 				}`))).join('')
 		}\n@{QUADS? '${s_indent}':''}${s_indent.repeat(--this.nest_level+1)})`;
 	}
 
 	async serialize_collection_object(k_leaf, a_collection, xm_mode) {
-		let s_object = await this.serialize_collection(a_collection);
+		let s_object = await this.serialize_collection(k_leaf, a_collection);
 		return this.serialize_object(k_leaf, s_object, xm_mode);
 	}
 
