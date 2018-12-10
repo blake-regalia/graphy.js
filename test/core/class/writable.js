@@ -1,6 +1,6 @@
 
 const assert = require('assert');
-const writable = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/api.class.writable`);
+const writable = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.class.writable`);
 
 const eq = assert.strictEqual;
 const deq = assert.deepEqual;
@@ -12,7 +12,7 @@ const has = (k, h) => {
 	}
 };
 
-describe('api.class.writable', () => {
+describe('core.class.writable', () => {
 	let g_serializer = writable.serializer;
 	describe('writable.serializer.textual', () => {
 		let g_textual = g_serializer.textual;

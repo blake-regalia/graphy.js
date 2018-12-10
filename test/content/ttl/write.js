@@ -2,7 +2,7 @@
 const assert = require('assert');
 
 const S_GRAPHY_CHANNEL = `@${process.env.GRAPHY_CHANNEL || 'graphy'}`;
-const data_set = require(`${S_GRAPHY_CHANNEL}/api.data.set`);
+const data_set = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
 const ttl_read = require(`${S_GRAPHY_CHANNEL}/content.ttl.read`);
 
 const ttl_write = require(`${S_GRAPHY_CHANNEL}/content.ttl.write`);
