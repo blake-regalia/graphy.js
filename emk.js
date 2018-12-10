@@ -219,9 +219,10 @@ const npmrc = () => ({
 });
 
 // recipe to build jmacs file
-const jmacs_lint = (a_deps=[]) => ({
+const jmacs_lint = (a_deps=[], a_deps_strict=[]) => ({
 	deps: [
 		...a_deps,
+		...a_deps_strict,
 		...(a_deps.reduce((a_requires, p_dep) => {
 			// skip directories
 			if(fs.statSync(p_dep).isDirectory()) return a_requires;
@@ -611,6 +612,7 @@ module.exports = {
 
 						'main.js': () => jmacs_lint([
 							`src/${si_package.replace(/\./g, '/')}.js.jmacs`,
+						], [
 							`build/${s_channel}/${si_package}/package.json`,
 						]),
 					},
