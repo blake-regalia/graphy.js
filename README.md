@@ -2,24 +2,27 @@
 `graphy` is a collection of RDF libraries for JavaScript developers that focuses on performance and usability. Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
 
 ### Features
- - Read & write RDF document streams using objects that extend the [RDFJS Data Interface](http://rdf.js.org/), including support for: N-Triples, N-Quads, Turtle, and TriG.
+ - Read & write RDF document streams using objects that extend the [RDFJS Data Interface](http://rdf.js.org/), including support for the following formats:
+   - N-Triples (.nt)
+   - N-Quads (.nq)
+   - Turtle (.ttl)
+   - TriG (.trig)
  - [High-performance](#performance) textual RDF content readers.
- - Compute the union, intersection, or difference between two RDF graphs using the [Set package](/docs/api.data.set).
- - Compare two RDF graphs for equivalence using the [Set package](/docs/api.data.set), which implements the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
+ - Compute the union, intersection, or difference between two RDF graphs using the [DatasetTree package](/docs/util.dataset.tree.md).
+ - Compare two RDF graphs for equivalence using the [DatasetTree package](docs/util.dataset.tree.md), which implements the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
 
 ### API Documentation
- - [Data Factory](/docs/api.data.factory) -- documentation for the `@graphy/api.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
- - [Textual Content Handlers](/docs/context.textual) -- covers all functionality exposed by packages prefixed with: `@graphy/content.nt.*`, `@graphy/content.nq.*`, `@graphy/content.ttl.*` and `@graphy/content.trig.*`.
+ - [Data Factory](/docs/core.data.factory.md) -- documentation for the `@graphy/core.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
+ - [Textual Content Handlers](/docs/context.textual.md) -- covers all functionality exposed by packages prefixed with: `@graphy/content.nt.*`, `@graphy/content.nq.*`, `@graphy/content.ttl.*` and `@graphy/content.trig.*`.
 
 ### Mono-Repo
 The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) contains source code for all of the packages published on npm under the `@graphy` org. Each package is namespaced according to its category, sub-category, and function. They are enumerated here for clarity:
 
 ```
 @graphy/
-   api.
+   core.
       data.
-         factory -- @graphy/api.data.factory since v3.0.0
-         set -- @graphy/api.data.set since v3.0.0
+         factory -- @graphy/core.data.factory since v3.0.0
    content.
       nt.
          read -- @graphy/content.nt.read since v3.0.0
@@ -33,4 +36,7 @@ The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) conta
       trig.
          read -- @graphy/content.trig.read since v3.0.0
          write -- @graphy/content.trig.write since v3.0.0
+   util.
+      dataset.
+         tree -- @graphy/util.dataset.tree since v3.0.0
 ```
