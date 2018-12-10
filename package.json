@@ -23,7 +23,7 @@
   },
   "repository": "blake-regalia/graphy.js",
   "scripts": {
-    "test": "npx emk test.*"
+    "test": "echo $NODE_VERSION && echo $NVM_SOURCE && echo $NVM_DIR && echo $PROFILE && npx emk test.*"
   },
   "dependencies": {
     "async": "^2.6.1",
