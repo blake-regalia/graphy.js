@@ -101,7 +101,7 @@ let y_writer = ttl_write({
       dbr: 'http://dbpedia.org/resource/',
       dbo: 'http://dbpedia.org/ontology/',
       demo: 'http://ex.org/demo#',
-      '': 'http://ex.org/owl#',
+      eg: 'http://ex.org/owl#',
    },
 });
 
@@ -128,7 +128,7 @@ y_writer.write({
 
       // example from OWL 2 primer: https://www.w3.org/TR/owl2-primer/#Property_Restrictions
       [factory.comment()]: 'hey look, another comment!',
-      ':HappyPerson': {
+      'eg:HappyPerson': {
          a: 'owl:Class',
          'owl:equivalentClass': {
             a: 'owl:Class',
@@ -136,13 +136,13 @@ y_writer.write({
                [
                   {
                      a: 'owl:Restriction',
-                     'owl:onProperty': ':hasChild',
-                     'owl:allValuesFrom': ':Happy',
+                     'owl:onProperty': 'eg:hasChild',
+                     'owl:allValuesFrom': 'eg:Happy',
                   },
                   {
                      a: 'owl:Restriction',
-                     'owl:onProperty': ':hasChild',
-                     'owl:someValuesFrom': ':Happy',
+                     'owl:onProperty': 'eg:hasChild',
+                     'owl:someValuesFrom': 'eg:Happy',
                   },
                ],
             ],
@@ -162,7 +162,7 @@ y_writer.end();
 @prefix dbr: <http://dbpedia.org/resource/> .
 @prefix dbo: <http://dbpedia.org/ontology/> .
 @prefix demo: <http://ex.org/demo#> .
-@prefix : <http://ex.org/owl#> .
+@prefix eg: <http://ex.org/owl#> .
 
 # hey look, a comment!
 dbr:Banana rdf:type dbo:Plant ;
@@ -174,19 +174,19 @@ dbr:Banana rdf:type dbo:Plant ;
    )# hey look, another comment!
  .
 
-:HappyPerson rdf:type owl:Class ;
+eg:HappyPerson rdf:type owl:Class ;
    owl:equivalentClass [
       rdf:type owl:Class ;
       owl:intersectionOf (
          [
             rdf:type owl:Restriction ;
-               owl:onProperty :hasChild ;
-               owl:allValuesFrom :Happy
+               owl:onProperty eg:hasChild ;
+               owl:allValuesFrom eg:Happy
             ]
          [
                rdf:type owl:Restriction ;
-               owl:onProperty :hasChild ;
-               owl:someValuesFrom :Happy
+               owl:onProperty eg:hasChild ;
+               owl:someValuesFrom eg:Happy
          ]
       )
    ] .
