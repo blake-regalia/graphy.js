@@ -498,7 +498,7 @@ module.exports = {
 				],
 
 				run: /* syntax: bash */ `
-					mocha --colors $3
+					npx mocha --colors $3
 				`,
 			}),
 		},
