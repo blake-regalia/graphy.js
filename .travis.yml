@@ -1,4 +1,6 @@
 language: node_js
+before_script:
+  - export GRAPHY_PACKAGE_PREFIX="$(dirname $(dirname $(nvm which current)))"
 node_js:
   - '8'
   - '9'

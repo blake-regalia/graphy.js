@@ -19,6 +19,8 @@ const P_PACKAGE_JSON_BASE = `./src/aux/base-package-${s_channel}.json`;
 const s_base_version = g_package_json_super[B_DEVELOPMENT? 'devVersion': 'version'];
 const s_semver = B_DEVELOPMENT? s_base_version: `^${s_base_version}`;
 
+const P_PACKAGE_PREFIX = process.env.GRAPHY_PACKAGE_PREFIX || '.npm-packages';
+
 const dir_struct = (a_files) => {
 	let a_paths = [];
 	for(let z_file of a_files) {
@@ -417,11 +419,11 @@ module.exports = {
 		// link alias
 		link: {
 			':package': h => ([
-				`.npm-packages/lib/node_modules/@${s_channel}/${h.package}`,
+				`${P_PACKAGE_PREFIX}/lib/node_modules/@${s_channel}/${h.package}`,
 			]),
 
 			[s_channel]: () => ([
-				`.npm-packages/lib/node_modules/${s_channel}`,
+				`${P_PACKAGE_PREFIX}/lib/node_modules/${s_channel}`,
 			]),
 		},
 
@@ -679,7 +681,7 @@ module.exports = {
 		},
 
 		// package linking
-		'.npm-packages': {
+		[P_PACKAGE_PREFIX]: {
 			lib: {
 				node_modules: {
 					[`@${s_channel}`]: {
