@@ -16,7 +16,11 @@
 
 ### API Documentation
  - [Data Factory](core.data.factory) -- documentation for the `@graphy/core.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
- - [Textual Content Handlers](content.textual) -- covers all functionality exposed by packages prefixed with: `@graphy/content.nt.*`, `@graphy/content.nq.*`, `@graphy/content.ttl.*` and `@graphy/content.trig.*`.
+ - [Textual Content Handlers](/docs/content.textual.md) -- covers all functionality exposed by packages prefixed with the following prefixes:
+   - `@graphy/content.nt.*`
+   - `@graphy/content.nq.*`
+   - `@graphy/content.ttl.*`
+   - `@graphy/content.trig.*`
 
 ### Mono-Repo
 The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) contains source code for all of the packages published on npm under the `@graphy` org. Each package is namespaced according to its category, sub-category, and function. They are enumerated here for clarity:
