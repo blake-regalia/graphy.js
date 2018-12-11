@@ -194,25 +194,25 @@ Read RDF (in other words, deserialize it) from a document given by an input stre
  - `read(input_string: string[, config: `[`#struct/read-config-no-input`](#struct_read-config-no-input)`])`
    - shortcut for:
       ```js
-      read({
-          ...config,
-          input: {
-              string: input_string,
-          },
-      })
-      ```
+read({
+    ...config,
+    input: {
+        string: input_string,
+    },
+});
+```
    - **returns** a [new ReadableStream<Quad>](core.iso.stream#readable_quad)
  
  - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#struct/read-config-no-input`](#struct_read-config-no-input)`])`
    - shortcut for:
       ```js
-      read({
-          ...config,
-          input: {
-              stream: input_stream,
-          },
-      })
-      ```
+read({
+    ...config,
+    input: {
+        stream: input_stream,
+    },
+});
+```
    - **returns** a [new ReadableStream<Quad>](core.iso.stream#readable_quad)
 
  - `read(config: `[`ReadConfig_WithInput`](#config-read-with-input)`)`
@@ -397,60 +397,60 @@ The definition for all possible events emitted during content reading. Please [s
    - Gets called once for each base statement as soon as it is parsed. `iri` is the full IRI of the new base.
    - *example:*
       ```js
-      ttl_read('@base <http://example.org/vocabulary/> .', {
-          base(p_iri) {
-              p_iri;  // 'http://example.org/vocabulary/'
-          },
-      });
-      ```
+ttl_read('@base <http://example.org/vocabulary/> .', {
+    base(p_iri) {
+        p_iri;  // 'http://example.org/vocabulary/'
+    },
+});
+```
  - `prefix(id: string, iri: string)`
    - Gets called once for each prefix statement as soon as it is parsed. `id` will be the name of the prefix without the colon and `iri` will be the full IRI of the associated mapping.
    - *example:*
       ```js
-      ttl_read('@prefix dbr: <http://dbpedia.org/resource/> .', {
-          prefix(s_id, p_iri) {
-              s_id;  // 'dbr'
-              p_iri;  // 'http://dbpedia.org/resource/'
-          },
-      });
-      ```
+ttl_read('@prefix dbr: <http://dbpedia.org/resource/> .', {
+    prefix(s_id, p_iri) {
+        s_id;  // 'dbr'
+        p_iri;  // 'http://dbpedia.org/resource/'
+    },
+});
+```
  - `data(quad: `[`Quad`](core.data.factory#class_quad)`)`
    - Gets called once for each triple/quad as soon as it is parsed.
    - *examples:*
       ```js
-      // inline event style (less overhead)
-      ttl_read('<#banana> a <#Fruit> .', {
-          data(y_quad) {
-              y_quad.predicate.value;  // 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
-          },
-      });
-      
-      // attach event listener style (more overhead)
-      let ds_read = ttl_read('<#banana> a <#Fruit> .');
-      ds_read.on('data', (y_quad) => {
-          y_quad.predicate.value;  // 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
-      });
-      ```
+// inline event style (less overhead)
+ttl_read('<#banana> a <#Fruit> .', {
+    data(y_quad) {
+        y_quad.predicate.value;  // 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+    },
+});
+
+// attach event listener style (more overhead)
+let ds_read = ttl_read('<#banana> a <#Fruit> .');
+ds_read.on('data', (y_quad) => {
+    y_quad.predicate.value;  // 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+});
+```
  - `enter(graph: `[`Term`](core.data.factory#class_namednode)`)`
    - Gets called each time a graph block is entered as soon as the opening brace character `{` is read. `graph` will either be a [NamedNode](#namednode), [BlankNode](#blanknode) or [DefaultGraph](#defaultgraph).
    - *example:*
       ```js
-      // only inspect triples within a certain graph
-      let b_inspect = false;
-      trig_read(ds_input, {
-          enter(y_graph) {
-              if(y_graph.value === 'http://target-graph') b_inspect = true;
-          },
-          exit(y_graph) {
-              b_inpsect = false;
-          },
-          data(y_quad) {
-              if(b_inspect) {  // much faster than comparing y_quad.graph to a string!
-                  // do something with triples
-              }
-          },
-      });
-      ```
+// only inspect triples within a certain graph
+let b_inspect = false;
+trig_read(ds_input, {
+    enter(y_graph) {
+        if(y_graph.value === 'http://target-graph') b_inspect = true;
+    },
+    exit(y_graph) {
+        b_inpsect = false;
+    },
+    data(y_quad) {
+        if(b_inspect) {  // much faster than comparing y_quad.graph to a string!
+            // do something with triples
+        }
+    },
+});
+```
  - `exit(graph: `[`NamedNode`](core.data.factory#class_named-node)`)`
    - Gets called each time a graph block is exitted as soon as the closing brace character `}` is read.       `graph` will either be a [NamedNode](core.data.factory#class_named-node), [BlankNode](core.data.factory#class_blank-node) or       [DefaultGraph](core.data.factory#class_default-graph).
   - `progress(delta: integer)`
