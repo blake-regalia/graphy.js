@@ -470,7 +470,7 @@ class reader {
 				begin_flow();
 			}
 			else {
-				fk_data = (g_quad) => ds_output.push(g_quad);
+				fk_data = g_quad => ds_output.push(g_quad);
 			}
 
 			// bind events to output stream

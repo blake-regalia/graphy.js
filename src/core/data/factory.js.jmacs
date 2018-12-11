@@ -330,7 +330,7 @@ class Literal extends GenericTerm {
 			termType: 'Literal',
 			value: this.value,
 			language: this.language,
-			datatype: Object.assign({}, this.datatype),
+			datatype: this.datatype.isolate(),
 		};
 	}
 } Object.assign(Literal.prototype, {
@@ -672,7 +672,7 @@ function BlankNode(s_value, b_anonymous=false) {
 		termType: 'BlankNode',
 		isBlankNode: true,
 		concise() {
-			return '_'+this.value;
+			return '_:'+this.value;
 		},
 		terse() {
 			return '_:'+this.value;
@@ -751,21 +751,21 @@ function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 	valueOf() {
 		return this.verbose();
 	},
-	concise() {
+	concise(h_prefixes={}) {
 		return [
-			this.graph.concise(),
-			this.subject.concise(),
-			this.predicate.concise(),
-			this.object.concise(),
+			this.subject.concise(h_prefixes),
+			this.predicate.concise(h_prefixes),
+			this.object.concise(h_prefixes),
+			this.graph.concise(h_prefixes),
 		];
 	},
 	terse(h_prefixes) {
-		let b_graph = !this.graph.isDefaultGraph;
-		return (b_graph? '': this.graph.terse(h_prefixes)+' { ')
+		let b_default_graph = this.graph.isDefaultGraph;
+		return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
 			+this.subject.terse(h_prefixes)
 			+' '+this.predicate.terse(h_prefixes)
 			+' '+this.object.terse(h_prefixes)+' .'
-			+(b_graph? ' }': '');
+			+(b_default_graph? '': ' }');
 	},
 	verbose() {
 		return this.subject.verbose()
@@ -826,7 +826,7 @@ let g_raw = {
 	}
 };
 
-
+@.{/*
 const normalize_ct_hash = (hct_graph, h_prefixes) => {
 	let hvt_graph = {};
 	for(let sct_key of hct_graph) {
@@ -857,6 +857,7 @@ const normalize_ct_value = (z_input, h_prefixes, b_leaf=false) => {
 		return [normalize_ct_hash(hct_input, h_prefixes)];
 	}
 };
+*/}
 
 const factory = module.exports = {
 	concise,

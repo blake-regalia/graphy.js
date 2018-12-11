@@ -31,6 +31,7 @@
     "bkit": "^1.4.0",
     "buffer": "^5.2.1",
     "performance-now": "^2.1.0",
+    "rdf-test-suite": "^1.2.0",
     "worker": "^0.3.12"
   },
   "devDependencies": {

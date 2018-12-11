@@ -511,7 +511,7 @@ module.exports = {
 				deps: [
 					`prepublish.${si_package}`,
 					'link_to.util.dataset.tree',
-					`test/${si_package.replace(/\./g, '/')}.js`,
+					`test/package/${si_package.replace(/\./g, '/')}.js`,
 				],
 
 				run: /* syntax: bash */ `
