@@ -90,7 +90,7 @@ class TestCase {
 
 	// run this test case
 	run() {
-		return new Promise(async(fk_test, fe_test) => {
+		return new Promise((fk_test, fe_test) => {
 			// determine how to handle events from parser given test type
 			let h_test_type;
 			let p_test_type = this.type.value;
@@ -101,10 +101,10 @@ class TestCase {
 				h_test_type = this.eval(fk_test, fe_test);
 			}
 			else if(p_test_type.endsWith('PositiveSyntax')) {
-				h_test_type = await TestCase.syntax_positive(this, fk_test, fe_test);
+				h_test_type = TestCase.syntax_positive(this, fk_test, fe_test);
 			}
 			else if(p_test_type.endsWith('NegativeSyntax')) {
-				h_test_type = await TestCase.syntax_negative(this, fk_test, fe_test);
+				h_test_type = TestCase.syntax_negative(this, fk_test, fe_test);
 			}
 			else {
 				throw new Error(`unknown test type: "${p_test_type}"`);
@@ -190,7 +190,7 @@ class TestCase {
 						fe_eval(new AssertionResult(s_actual, s_expected));
 					}
 				}).catch((e_expected) => {
-					throw new Error(e_expected);
+					fe_eval(new Error(e_expected));
 				});
 			},
 		};
@@ -252,46 +252,57 @@ module.exports = async function test({
 	// pipe to output
 	kw_report.pipe(ds_output);
 
-	// commit software info
-	await kw_report.add({
-		['>'+P_GRAPHY]: {
-			a: ['earl:Software', 'earl:TestSubject', 'earl:Project'],
-			'doap:name': '"graphy.js',
-			'doap:homepage': '>'+P_GRAPHY,
-			'dc:title': '"graphy.js',
-		},
-	});
+	// write to document
+	await new Promise((fk_write) => {
+		kw_report.write({
+			type: 'c3',
+			value: {
+				// software info
+				['>'+P_GRAPHY]: {
+					a: ['earl:Software', 'earl:TestSubject', 'earl:Project'],
+					'doap:name': '"graphy.js',
+					'doap:homepage': '>'+P_GRAPHY,
+					'dc:title': '"graphy.js',
+				},
 
-	// commit author info
-	await kw_report.add(H_AUTHORS);
+				// author info
+				...H_AUTHORS,
+			},
+		}, fk_write);
+	});
 
 	// for committing each test outcome
 	let commit_outcome = async(k_test_case, s_outcome) => {
-		await kw_report.add({
-			[factory.comment()]: 'This RDF file was programtically generated using graphy.js: https://github.com/blake-regalia/graphy.js',
-			['>'+k_test_case.id.value]: {
-				a: ['earl:TestCriterion', 'earl:TestCase'],
-				'dc:title': k_test_case.name,
-				'dc:description': k_test_case.comment,
-				'mf:action': k_test_case.action,
-				...(k_test_case.result? {'mf:result':k_test_case.result}: {}),
-				'earl:assertions': [
-					[ // an rdf collection
-						{
-							'rdf:type': 'earl:Assertion',
-							'earl:assertedBy': Object.keys(H_AUTHORS),
-							'earl:test': k_test_case.id,
-							'earl:subject': '>'+P_GRAPHY,
-							'earl:mode': 'earl:automatic',
-							'earl:result': {
-								a: 'earl:TestResult',
-								'earl:outcome': 'earl:'+s_outcome,
-								'dc:date': new Date(),
-							},
-						},
-					],
-				],
-			},
+		await new Promise((fk_write) => {
+			kw_report.write({
+				type: 'c3',
+				value: {
+					[factory.comment()]: 'This RDF file was programtically generated using graphy.js: https://github.com/blake-regalia/graphy.js',
+					['>'+k_test_case.id.value]: {
+						a: ['earl:TestCriterion', 'earl:TestCase'],
+						'dc:title': k_test_case.name,
+						'dc:description': k_test_case.comment,
+						'mf:action': k_test_case.action,
+						...(k_test_case.result? {'mf:result':k_test_case.result}: {}),
+						'earl:assertions': [
+							[ // an rdf collection
+								{
+									'rdf:type': 'earl:Assertion',
+									'earl:assertedBy': Object.keys(H_AUTHORS),
+									'earl:test': k_test_case.id,
+									'earl:subject': '>'+P_GRAPHY,
+									'earl:mode': 'earl:automatic',
+									'earl:result': {
+										a: 'earl:TestResult',
+										'earl:outcome': 'earl:'+s_outcome,
+										'dc:date': new Date(),
+									},
+								},
+							],
+						],
+					},
+				},
+			}, fk_write);
 		});
 	};
 
@@ -408,9 +419,14 @@ module.exports = async function test({
 						result: hc3_case['mf:result'] || null,
 					});
 
+					if(sv1_subject.endsWith('bad-uri-01')) {
+						debugger;
+					}
+
 					// load test case
+					let z_result;
 					try {
-						await k_test_case.run();
+						z_result = await k_test_case.run();
 					}
 					catch(z_reason) {
 						// case label
@@ -430,6 +446,10 @@ module.exports = async function test({
 
 						// next test case
 						continue;
+					}
+
+					if(sv1_subject.endsWith('bad-uri-01')) {
+						debugger;
 					}
 
 					// log success to console

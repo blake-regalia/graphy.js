@@ -28,10 +28,11 @@ const R_LITERAL_ESCAPELESS = /^"([^\\"]*)"(?:\^\^<([^\\>]*)>|@([^ \t.]+)|)?$/;
 const R_LITERAL = /^"(.*)"(?:\^\^<(.*)>|@([^ \t.]+)|)?$/;
 const RT_HAS_ESCAPES = /[\\]/;
 
-const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
+const RT_ABSOLUTE_IRI_VALID = /^[a-z][a-z0-9+\-.]*:([^\0-\x20<>"{}|^`\\]|@{UCHAR()})*$/;
 const RT_BLANK_NODE_LABEL_VALID = /(?:@{PN_CHARS_U()}|[0-9])(?:(?:@{PN_CHARS()}|[.])*@{PN_CHARS()})?/;
 const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
+const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 
 @>> R_NAMED_NODE(b_escapeless=false, b_open_cap=false)
 	@//@regex
@@ -136,7 +137,8 @@ const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
 		}
 		// otherwise, set language tag if present
 		else if(@{sv_match}[8]) {
-			w_object.language = @{sv_match}[8].toLowerCase();
+			let s_language = w_object.language = @{sv_match}[8].toLowerCase();
+			if(this.validate && !RT_LANGUAGE_VALID.test(s_language)) this._error(`invalid literal language tag: ${s_language}`);
 			w_object.datatype = KT_RDFS_LANG_STRING;
 		}
 	}
@@ -210,13 +212,15 @@ class reader {
 			n: 0,
 
 			debug: b_debug,
+
+			validate: b_validate,
 		});
 
 		// validation
 		Object.assign(this, b_validate
 			? {
 				namedNode(s_iri) {
-					if(!RT_NAMED_NODE_VALID.test(s_iri)) return this._error(`invalid IRI: "${s_iri}"`);
+					if(!RT_ABSOLUTE_IRI_VALID.test(s_iri)) return this._error(`invalid absolute IRI: "${s_iri}"`);
 					return factory.namedNode(s_iri);
 				},
 
@@ -263,7 +267,8 @@ class reader {
 				if(this.s.length) {
 					// append newline to end so we can match token
 					this.s += '\n';
-					if(this.debug) debugger;
+
+					// parse safely
 					this.safe_parse();
 
 					// still unparsed characters
@@ -363,7 +368,7 @@ class reader {
 	}
 
 	_error(s_message) {
-		throw new Error(s_message);
+		this.transform.emit('error', new Error(s_message));
 	}
 
 	parse_error(s_state, fk_flush=null) {
