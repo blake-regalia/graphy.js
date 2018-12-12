@@ -243,356 +243,132 @@ class reader {
 				literal: (s_literal, b_unescape) => factory.literal(b_unescape? @{unescape_literal('s_literal')}: s_literal),
 			});
 
-		// output stream
-		let ds_output;
+		// transform stream
+		let ds_transform;
 
-		// no input given, it will be written/piped in later
-		if(null === g_input) {
-			// whether or not data has been received before
-			let b_init = false;
+		// whether or not data has been received before
+		let b_init = false;
 
-			// create transform
-			ds_output = this.output = new stream.Transform({
-				// do not decode strings into buffers
-				decodeStrings: false,
+		// create transform
+		ds_transform = this.transform = new stream.Transform({
+			// do not decode strings into buffers
+			decodeStrings: false,
 
-				// output quad objects on readable side
-				readableObjectMode: true,
+			// output quad objects on readable side
+			readableObjectMode: true,
 
-				// once there's no more data to consume, invoke eof
-				flush: (fk_flush) => {
-					// now that stream has ended, clean up remainder
-					this.eof(true);
+			// once there's no more data to consume, invoke eof
+			flush: (fk_flush) => {
+				// there is still unparsed data
+				if(this.s.length) {
+					// append newline to end so we can match token
+					this.s += '\n';
+					if(this.debug) debugger;
+					this.safe_parse();
 
-					// done flushing, close read stream
-					fk_flush();
-				},
+					// still unparsed characters
+					if(this.s.length) {
+						// throw parse error
+						fk_flush(new Error(`parsing error occurred in state: statement\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
 
-				// on data event
-				transform: (s_chunk, s_encoding, fk_chunk) => {
-					// first transform
-					if(!b_init) {
-						// notify that data will begin
-						ds_output.emit('ready');
-
-						// do not emit 'ready' event again
-						b_init = false;
+						// exit method
+						return;
 					}
-
-					// stream is paused
-					if(this.n < 0) {
-						return this.error('stream received new data while it was supposed to be paused!');
-					}
-
-					// concatenate current chunk to previous chunk
-					let s = this.s += s_chunk;
-
-					// remove whitespace & comments from beginning
-					R_CLEAN.lastIndex = 0;
-					R_CLEAN.exec(s);
-
-					// update index and prepare to match statement
-					this.i = R_CLEAN.lastIndex;
-
-					// cache chunk length
-					this.n = s.length;
-
-					// resume parsing
-					this.safe_parse(true);
-
-					// emit progress event updates
-					ds_output.emit('progress', s_chunk.length);
-
-					// done transforming this chunk
-					fk_chunk();
-				},
-			});
-
-			// data event
-			this.data = g_quad => ds_output.push(g_quad);
-
-			// bind events to output stream
-			this.bind(g_config);
-
-			// notify once and never again
-			ds_output.once('pipe', (ds_input) => {
-				// input stream has encoding option
-				if(ds_input.setEncoding) {
-					// ensure stream is encoding in utf8
-					ds_input.setEncoding('utf8');
 				}
-			});
-		}
-		// input is stream
-		else if(g_input.stream) {
-			let ds_input = g_input.stream;
 
-			// whether or not data has been received before
-			let b_init = false;
+				// make buffer's alloc eligible for gc
+				this.s = null;
 
-			// local
-			let s = '';
+				// final progress update: no additional bytes were read
+				ds_transform.emit('progress', 0);
 
-			let fk_data;
+				// call end event listener
+				ds_transform.emit('eof');
 
-			// begin flowing mode on output stream
-			const begin_flow = () => {
-				// switch input to flowing mode
-				ds_input.on('data', (s_chunk) => {
-					// concatenate current chunk to previous chunk
-					s += s_chunk;
+				// done flushing, close read stream
+				fk_flush();
+			},
 
-					// remove whitespace & comments from beginning
-					R_CLEAN.lastIndex = 0;
-					R_CLEAN.exec(s);
-
-					// update index and prepare to match statement
-					let i = R_CLEAN.lastIndex;
-
-					// resume parsing
-					@{parse_n({
-						local: true,
-					})}
-
-					this.s = s;
-
-					// progress updates
-					ds_output.emit('progress', s_chunk.length);
-				});
-			};
-
-			// manual read mode
-			const read_manual = (nb_read) => {
-				// rather than emitting data/other events, queue them
-				// this.data = F_QUEUE_DATA;
-				this.event = this.queue;
-
-				// subscribe to readable events on input
-				ds_input.on('readable', () => {
-					// read chunk from input stream while there is data to read
-					let s_chunk = ds_input.read();
-
+			// on data event
+			transform: (s_chunk, s_encoding, fk_chunk) => {
+				// first transform
+				if(!b_init) {
 					// notify that data will begin
-					if(!b_init) {
-						ds_output.emit('ready');
+					ds_transform.emit('ready');
 
-						// do not notify again
-						b_init = true;
-					}
+					// do not emit 'ready' event again
+					b_init = false;
+				}
 
-					// concatenate current chunk to previous chunk
-					s = this.s += s_chunk;
+				// stream is paused
+				if(this.n < 0) {
+					return this.error('stream received new data while it was supposed to be paused!');
+				}
 
-					// remove whitespace & comments from beginning
-					R_CLEAN.lastIndex = 0;
-					R_CLEAN.exec(s);
+				// concatenate current chunk to previous chunk
+				let s = this.s += s_chunk;
 
-					// update index and prepare to match statement
-					this.i = R_CLEAN.lastIndex;
+				// remove whitespace & comments from beginning
+				R_CLEAN.lastIndex = 0;
+				R_CLEAN.exec(s);
 
-					// cache chunk length
-					this.n = s.length;
+				// update index and prepare to match statement
+				this.i = R_CLEAN.lastIndex;
 
-					// resume parsing
-					this.safe_parse(true);
+				// cache chunk length
+				this.n = s.length;
 
-					// progress updates
-					ds_output.emit('progress', s_chunk.length);
+				// resume parsing
+				this.safe_parse(true);
 
-					// return ...?
-				});
-			};
+				// emit progress event updates
+				ds_transform.emit('progress', s_chunk.length);
 
-			// create readable output
-			ds_output = this.output = new stream.Readable({
-				// outputs quad objets
-				objectMode: true,
+				// done transforming this chunk
+				fk_chunk();
+			},
+		});
 
-				// this will only happen if consumer uses stream in non-folowing mode
-				read(nb_read) {
-					// which flowing mode
-					switch(ds_output.readableFlowing) {
-						// in flowing mode (#pipe, #'data', or #resume)
-						case true: {
-							// ignore read requests
-							ds_output._read = () => {};
+		// data event
+		this.data = g_quad => ds_transform.push(g_quad);
 
-							// begin flowing
-							begin_flow();
-							break;
-						}
+		// bind events to transform stream
+		this.bind(g_config);
 
-						// manual reads
-						case false:
-						case null: {
-							// switch to manual read mode
-							ds_output._read = read_manual;
-
-							// forward request to handler
-							return ds_output._read(nb_read);
-						}
-
-						// no mechanism for consuming
-						default: {
-							debugger;
-							// do not start reading input, do not parse, do not emit
-						}
-					}
-				},
-			});
-
-			// internal link
-			ds_output._graphy_reader = this;
-
-			// inline data callback
-			if(g_config.data) {
-				fk_data = g_config.data;
-
-				// on new event listener
-				ds_output.on('newListener', function fk_add_listener(s_event) {
-					// a data listener was added
-					if('data' === s_event) {
-						// hold onto inline callback
-						let fk_hoc = fk_data;
-
-						// combine listeners
-						fk_data = (g_quad) => {
-							fk_hoc(g_quad);
-							ds_output.push(g_quad);
-						};
-
-						// don't do this again
-						ds_output.removeListener('newListener', fk_add_listener);
-					}
-				});
-
-				delete g_config.data;
-				begin_flow();
+		// notify once and never again
+		ds_transform.once('pipe', (ds_input) => {
+			// input stream has encoding option
+			if(ds_input.setEncoding) {
+				// ensure stream is encoding in utf8
+				ds_input.setEncoding('utf8');
 			}
+		});
+
+		// input
+		if(g_input) {
+			if(g_input.stream) {
+				g_input.stream.pipe(ds_transform);
+			}
+			// string
+			else if(g_input.string) {
+				setTimeout(() => {
+					ds_transform.end(g_input.string, 'utf8');
+				}, 0);
+			}
+			// invalid arg
 			else {
-				fk_data = g_quad => ds_output.push(g_quad);
-			}
-
-			// bind events to output stream
-			this.bind(g_config);
-
-			// set encoding on input stream
-			ds_input.setEncoding('utf8');
-
-			// once stream closes, invoke eof
-			ds_input.on('end', () => this.eof());
-
-			// capture error on input
-			ds_input.on('error', (e_input) => {
-				ds_output.emit('error', `error on input stream: ${e_input.message}\n${e_input.stack}`);
-			});
-		}
-		// string
-		else if(g_input.string) {
-			let s_input = g_input.string;
-
-			// create readable output
-			ds_output = this.output = new stream.Readable({
-				// outputs quad objets
-				objectMode: true,
-
-				// once data event is attached
-				read: () => {
-					// consume entire string
-					this.safe_parse(true);
-
-					// remove this handler
-					ds_output._read = () => {};
-
-					// end-of-file
-					this.eof();
-
-					// // eot
-					// // debugger;
-					// this.s = null;
-					// ds_output.push(null);
-					// g_config.end();
-				},
-			});
-
-			// concatenate previous chunk
-			this.s += s_input;
-
-			// eos means we've reached eof
-			if(g_config.async) {
-				this.eos = function() {
-					setTimeout(() => this.eof(), 0);
-				};
-			}
-			else {
-				this.eos = this.eof;
-			}
-
-			// compute chunk length
-			this.n = this.s.length;
-
-			// // reset index
-			// this.i = 0;
-
-			// remove whitespace & comments from beginning
-			R_CLEAN.lastIndex = 0;
-			R_CLEAN.exec(this.s);
-
-			// update index and prepare to match statement
-			this.i = R_CLEAN.lastIndex;
-
-
-			// bind events to output stream
-			this.bind(g_config);
-
-			this.data = g_config.data;
-
-			// ready to parse
-			ds_output.emit('ready');
-		}
-		// invalid arg
-		else {
-			throw new TypeError('invalid input: '+('object' === typeof g_input? JSON.stringify(g_input): g_input));
-		}
-	}
-
-	eof(b_flushing=false) {
-		// there is still unparsed data
-		if(this.s.length) {
-			// append newline to end so we can match token
-			this.s += '\n';
-			if(this.debug) debugger;
-			this.safe_parse();
-
-			// still unparsed characters
-			if(this.s.length) {
-				// throw parse error
-				return this.parse_error('statement');
+				throw new TypeError('invalid input: '+('object' === typeof g_input? JSON.stringify(g_input): g_input));
 			}
 		}
-
-		// make buffer's alloc eligible for gc
-		this.s = null;
-
-		// output stream
-		let ds_output = this.output;
-
-		// final progress update: no additional bytes were read
-		ds_output.emit('progress', 0);
-
-		// call end event listener
-		ds_output.emit('eof');
-
-		// close write stream (EOF-signaling)
-		if(!b_flushing) ds_output.push(null);
 	}
 
 	_error(s_message) {
 		throw new Error(s_message);
 	}
 
-	parse_error(s_state) {
-		this.output.emit('error', new Error(`parsing error occurred in state: ${s_state}\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
+	parse_error(s_state, fk_flush=null) {
+		fk_flush(new Error(`parsing error occurred in state: ${s_state}\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
+		// this.transform.emit('error', new Error(`parsing error occurred in state: ${s_state}\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
 	}
 
 
@@ -606,11 +382,11 @@ class reader {
 };
 
 	bind(g_config) {
-		let ds_output = this.output;
+		let ds_transform = this.transform;
 		@*{
 			for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
 				yield /* syntax: js */ `
-					if(g_config.${s_event}) ds_output.${g_event.once? 'once': 'on'}('${s_event}', g_config.${s_event});
+					if(g_config.${s_event}) ds_transform.${g_event.once? 'once': 'on'}('${s_event}', g_config.${s_event});
 					`.trim()+'\n';
 			}
 		}
@@ -633,6 +409,6 @@ const read = module.exports = function(...a_args) {
 
 	@{normalize_reader_config('g_config')}
 
-	// create reader, return output stream
-	return (new reader(g_config)).output;
+	// create reader, return transform stream
+	return (new reader(g_config)).transform;
 };

@@ -139,57 +139,57 @@ describe('trig parser:', () => {
 	});
 
 	describe('iris & prefixed names w/o graph:', () => {
-		const abc = [['z://a', 'z://b', 'z://c']];
+		const abc = [['z://_/a', 'z://_/b', 'z://_/c']];
 
-		allow('iris', '<z://a> <z://b> <z://c> .', abc);
+		allow('iris', '<z://_/a> <z://_/b> <z://_/c> .', abc);
 
-		allow('iris w/ base', '@base <z://>. <a> <b> <c> .', abc);
+		allow('iris w/ base', '@base <z://_/>. <a> <b> <c> .', abc);
 
 		allow('iris w/ unicode escapes', '<\\u2713> <like> <\\U0001F5F8> .', [
 			['\u2713', 'like', '\ud83d\uddf8', ''],
 		]);
 
-		allow('prefixed names w/ empty prefix id', '@prefix : <z://>. :a :b :c .', abc);
+		allow('prefixed names w/ empty prefix id', '@prefix : <z://_/>. :a :b :c .', abc);
 
-		allow('prefixed names w/ non-empty prefix id', '@prefix p: <z://>. p:a p:b p:c .', abc);
+		allow('prefixed names w/ non-empty prefix id', '@prefix p: <z://_/>. p:a p:b p:c .', abc);
 
-		allow('prefixed names w/ empty suffix', '@prefix pa: <z://a>. @prefix pb: <z://b>. @prefix pc: <z://c>. pa: pb: pc: .', abc);
+		allow('prefixed names w/ empty suffix', '@prefix pa: <z://_/a>. @prefix pb: <z://_/b>. @prefix pc: <z://_/c>. pa: pb: pc: .', abc);
 	});
 
 	describe('iris & prefixed names w/ default graph:', () => {
-		const abc = [['z://a', 'z://b', 'z://c']];
+		const abc = [['z://_/a', 'z://_/b', 'z://_/c']];
 
-		allow('iris', '{ <z://a> <z://b> <z://c> . }', abc);
+		allow('iris', '{ <z://_/a> <z://_/b> <z://_/c> . }', abc);
 
-		allow('iris w/ base', '@base <z://>. { <a> <b> <c> . }', abc);
+		allow('iris w/ base', '@base <z://_/>. { <a> <b> <c> . }', abc);
 
 		allow('iris w/ unicode escapes', '{ <\\u2713> <like> <\\U0001F5F8> . }', [
 			['\u2713', 'like', '\ud83d\uddf8', ''],
 		]);
 
-		allow('prefixed names w/ empty prefix id', '@prefix : <z://>. { :a :b :c . }', abc);
+		allow('prefixed names w/ empty prefix id', '@prefix : <z://_/>. { :a :b :c . }', abc);
 
-		allow('prefixed names w/ non-empty prefix id', '@prefix p: <z://>. { p:a p:b p:c . }', abc);
+		allow('prefixed names w/ non-empty prefix id', '@prefix p: <z://_/>. { p:a p:b p:c . }', abc);
 
-		allow('prefixed names w/ empty suffix', '@prefix pa: <z://a>. @prefix pb: <z://b>. @prefix pc: <z://c>. { pa: pb: pc: . }', abc);
+		allow('prefixed names w/ empty suffix', '@prefix pa: <z://_/a>. @prefix pb: <z://_/b>. @prefix pc: <z://_/c>. { pa: pb: pc: . }', abc);
 	});
 
 	describe('iris & prefixed names w/ named graph:', () => {
-		const abcd = [['z://a', 'z://b', 'z://c', 'z://d']];
+		const abcd = [['z://_/a', 'z://_/b', 'z://_/c', 'z://_/d']];
 
-		allow('iris', '<z://d> { <z://a> <z://b> <z://c> . }', abcd);
+		allow('iris', '<z://_/d> { <z://_/a> <z://_/b> <z://_/c> . }', abcd);
 
-		allow('iris w/ base', '@base <z://>. <z://d> { <a> <b> <c> . }', abcd);
+		allow('iris w/ base', '@base <z://_/>. <z://_/d> { <a> <b> <c> . }', abcd);
 
-		allow('iris w/ unicode escapes', '<z://d> { <\\u2713> <like> <\\U0001F5F8> . }', [
-			['\u2713', 'like', '\ud83d\uddf8', 'z://d'],
+		allow('iris w/ unicode escapes', '<z://_/d> { <\\u2713> <like> <\\U0001F5F8> . }', [
+			['\u2713', 'like', '\ud83d\uddf8', 'z://_/d'],
 		]);
 
-		allow('prefixed names w/ empty prefix id', '@prefix : <z://>. <z://d> { :a :b :c . }', abcd);
+		allow('prefixed names w/ empty prefix id', '@prefix : <z://_/>. <z://_/d> { :a :b :c . }', abcd);
 
-		allow('prefixed names w/ non-empty prefix id', '@prefix p: <z://>. <z://d> { p:a p:b p:c . }', abcd);
+		allow('prefixed names w/ non-empty prefix id', '@prefix p: <z://_/>. <z://_/d> { p:a p:b p:c . }', abcd);
 
-		allow('prefixed names w/ empty suffix', '@prefix pa: <z://a>. @prefix pb: <z://b>. @prefix pc: <z://c>. <z://d> { pa: pb: pc: . }', abcd);
+		allow('prefixed names w/ empty suffix', '@prefix pa: <z://_/a>. @prefix pb: <z://_/b>. @prefix pc: <z://_/c>. <z://_/d> { pa: pb: pc: . }', abcd);
 	});
 
 	describe('graphs:', () => {

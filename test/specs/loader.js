@@ -9,6 +9,7 @@ const graphy = require(s_channel);
 const factory = require(`@${s_channel}/core.data.factory`);
 const quad_tree = require(`@${s_channel}/util.dataset.tree`);
 const nt_read = require(`@${s_channel}/content.nt.read`);
+const nq_read = require(`@${s_channel}/content.nq.read`);
 const ttl_read = require(`@${s_channel}/content.ttl.read`);
 const ttl_write = require(`@${s_channel}/content.ttl.write`);
 
@@ -122,6 +123,9 @@ class TestCase {
 		let k_set_actual = quad_tree();
 		let k_set_expected = quad_tree();
 
+		// result format
+		let f_result_reader = this.result.value.endsWith('.nq')? nq_read: nt_read;
+
 		// wait for expected value to be ready
 		let dp_expected = new Promise((fk_expected, fe_expected) => {
 			// fetch result file
@@ -139,8 +143,8 @@ class TestCase {
 					}
 				})
 
-				// parse result as N-Triples
-				.pipe(nt_read({
+				// parse result as N-Triples/N-Quads
+				.pipe(f_result_reader({
 					// each triple in result file
 					data(h_triple) {
 						// add to expected set
@@ -158,8 +162,7 @@ class TestCase {
 		// serializer config
 		return {
 			// default base is given by url of file
-			// base_uri: `${this.manifest}${this.id.value.slice(1)}.ttl`,
-			base_uri: this.id.value,
+			base_uri: this.action.value,
 
 			// each triple in test file
 			data(h_triple) {

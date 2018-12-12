@@ -11,6 +11,7 @@
 @// import parser macros
 @import '../../text.read.jmacs'
 
+const uri = require('uri-js');
 
 const stream = require('@@@{S_GRAPHY_CHANNEL}/core.iso.stream');
 const factory = require('@@@{S_GRAPHY_CHANNEL}/core.data.factory').raw;
@@ -229,7 +230,7 @@ const R_BASE_KEYWORD = /(?:(@base)|[bB][aA][sS][eE])\s*/y;
 const R_COMMENT = /(#[^\n]*\n\s*)+/y;
 
 const RT_IRI_ABSOLUTE = /^[A-Za-z][A-Za-z0-9.\-+]*:/;
-const R_URI = /^(\/[^?#]+#?)/;
+const R_RELATIVE_URI = /^(\/[^?#]+)([?#].*)?$/;
 @>> R_BASE_IRI()
 	@//@regex
 	^(								@// 1: uri
@@ -244,7 +245,7 @@ const R_URI = /^(\/[^?#]+#?)/;
 	)$
 @;
 const R_BASE_IRI = /@{R_BASE_IRI()}/;
-const R_QUERYSTRING = /(\/[^/?#]*[?#].*)$/;
+// const R_QUERYSTRING = /(\/[^/?#]*)([?#].*)$/;
 
 const R_ANONYMOUS_BLANK_NODE = /\[\]\s*/y;
 const R_CHAR_BLANK_NODE = /\[(?:\s+|(?=[^\]]))/y;
@@ -337,37 +338,7 @@ const match_prefixed_name = (s, i) => {
 	}
 	// relative iri
 	else {
-		// make @{sv_term}
-		switch(s_iri[0]) {
-			case '#':
-				@{set(/* syntax: js */ `this.base_url + s_iri`)}
-				break;
-			case '?':
-				@{set(/* syntax: js */ `this.base_url.replace(/(\\?.*)?$/, s_iri)`)}
-				break;
-			case '/':
-				// relative to scheme
-				if('/' === s_iri[1]) {
-					@{set(/* syntax: js */ `this.base_url_scheme + F_DOT_SEGMENTS(s_iri.substr(1))`)}
-				}
-				// relative to root
-				else {
-					@{set(/* syntax: js */ `this.base_url_root + F_DOT_SEGMENTS(s_iri)`)}
-				}
-				break;
-			// empty
-			case undefined:  // eslint-disable-line no-undefined
-				// identity
-				@{set(/* syntax: js */ `this.base_url`)}
-				break;
-			// dot segment
-			case '.':
-				// prepend so it is relative to root
-				s_iri = '/'+s_iri;
-			// fallthrough: relative to path
-			default:
-				@{set(/* syntax: js */ `this.base_url_root + F_DOT_SEGMENTS(this.base_url_path + s_iri)`)}
-		}
+		@{set(/* syntax: js */ `uri.resolve(this.base_url, s_iri)`)}
 	}
 
 	@// update the base iri
@@ -522,17 +493,9 @@ const match_prefixed_name = (s, i) => {
 // instead of putting this in a macro to be unrolled at every IRI resolution,
 // ... spare the monstrosity from the source and make it a function
 const F_DOT_SEGMENTS = (s_rel_iri) => {
-	let m_uri = R_URI.exec(s_rel_iri);
-	if(!m_uri) return s_rel_iri;
-	let s_iri = m_uri[1];
-
-	//
-	let m_qs_hash = R_QUERYSTRING.exec(s_iri);
-	let s_qs_hash = '';
-	if(m_qs_hash) {
-		s_qs_hash = m_qs_hash[1];
-		s_iri = s_iri.slice(0, -s_qs_hash.length);
-	}
+	let m_rel_iri = R_RELATIVE_URI.exec(s_rel_iri);
+	if(!m_rel_iri) return s_rel_iri;
+	let [, s_iri, s_qs_hash] = m_rel_iri;
 
 	let a_segments = s_iri.split('/');
 	let a_output = [];
@@ -544,15 +507,24 @@ const F_DOT_SEGMENTS = (s_rel_iri) => {
 
 		// up a hierarchical level
 		if('..' === s_segment) {
-			if(a_output.length > 1) a_output.pop();
+			if(a_output.length > 1) {
+				a_output.pop();
+				if(i === a_segments.length-1) {
+					a_output.push('');
+				}
+			}
 		}
 		// down a level level
 		else if('.' !== s_segment && (s_segment || !i || i === a_segments.length-1)) {
 			a_output.push(s_segment);
 		}
+		// special case
+		else if('.' === s_segment && i === a_segments.length-1) {
+			a_output.push('');
+		}
 	}
 
-	return a_output.join('/')+s_qs_hash;
+	return a_output.join('/')+(s_qs_hash || '');
 };
 
 
@@ -2092,6 +2064,47 @@ class reader {
 		@{else_if_char('(')}
 			@{whitespace('i+1', true)}
 
+			// empty collection
+			if(')' === s[i]) {
+				this.i = i;
+				this.subject = this.nested[this.nested.length-1][0];
+				this.predicate = KT_RDF_FIRST;
+				this.nested.push([
+					this.subject,
+					KT_RDF_REST,
+					'collection_subject',
+				]);
+				@{goto('collection_object')}
+			}
+
+@.{/*
+			// commit list item pointer
+			if(null !== this.subject) {
+				s_pointer_label = this.next_label();
+				let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+				@{emit_statement()}
+
+				// add this list as an item to the outer list
+				this.subject = kt_blank_node;
+				this.predicate = KT_RDF_REST;
+
+				@{push_state('collection_object')}
+			}
+			else {
+				this.nested.push([
+					this.nested[this.nested.length-1][0],
+					KT_RDF_REST,
+					'collection_object',
+				]);
+			}
+
+
+			// prepare next triple
+			this.predicate = KT_RDF_FIRST;
+*/}
+
+
+
 			// commit list item pointer
 			s_pointer_label = this.next_label();
 			let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
@@ -2104,6 +2117,54 @@ class reader {
 
 			// prepare next triple
 			this.predicate = KT_RDF_FIRST;
+
+
+
+@.{/*
+
+			// commit list item pointer
+			s_pointer_label = this.next_label();
+			let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+			if(null === this.subject) {
+				let a_recent = this.nested[this.nested.length-1];
+				this.subject = a_recent[0];
+				this.predicate = a_recent[1];
+			}
+			@{emit_statement()}
+
+			// add this list as an item to the outer list
+			this.subject = kt_blank_node;
+			this.predicate = KT_RDF_REST;
+			@{push_state('collection_object')}
+
+			// prepare next triple
+			this.predicate = KT_RDF_FIRST;
+
+
+			// this blank node is just the next item in the list
+			s_pointer_label = this.next_label();
+			let kt_blank_node;
+			if(null !== this.subject) {
+				kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+				@{emit_statement()}
+			}
+
+			// subject needs to be set
+			this.subject = kt_blank_node || this.anonymous_blank_node(s_pointer_label);
+			this.predicate = KT_RDF_FIRST;
+			let s_label = this.next_label();
+			kt_blank_node = this.object = this.anonymous_blank_node(s_label);
+			@{emit_statement()}
+
+			// when resume
+			this.predicate = KT_RDF_REST;
+
+			// push state
+			@{push_state('collection_subject')}
+
+			// prepare next triple
+			this.subject = kt_blank_node;
+*/}
 
 			// flowing
 			continue;

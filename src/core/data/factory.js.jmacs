@@ -1,10 +1,9 @@
 @import '../../share/iris.jmacs'
 
-// const DC_URL = require('../isomorphic/locals.js').URL;
-const DC_URL = require('url').URL;
+const uri = require('uri-js');
 
-const RT_IRI_DIRTY = /[\u0000-\u0020<>"{}|^`\\]/;
-const R_IRI_ESCAPES = /([\u0000-\u0020<>"{}|^`\\])/g;
+// take a dirty iri and clean it up
+const clean_iri = p_iri_dirty => uri.serialize(uri.parse(p_iri_dirty), {iri:true});
 
 @>> MK_RANGE_PN_HIGH(b_extend=false)
 	@// #x00B7
@@ -123,16 +122,6 @@ const RT_AVOID_PNAME_LOCAL = /@{MK_RT_AVOID_PNAME_LOCAL()}/;
 const RT_BOOLEAN_TRUE = /^([Tt](rue)?|TRUE)$/;
 const RT_BOOLEAN_FALSE = /^([Ff](alse)?|FALSE)$/;
 
-const F_REPLACE_IRI_ESCAPE = (s_fragment, s_char) => {
-	let x_code = s_char.codePointAt(0);
-	if(x_code <= 0xffff) {
-		return `\\u${x_code.toString(16).padStart(4, '0')}`
-	}
-	else {
-		return `\\U${x_code.toString(16).padStart(8, '0')}`
-	}
-};
-
 const S_UUID_V4 = 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx';
 const R_UUID_V4 = /[xy]/g;
 
@@ -175,27 +164,6 @@ const concise = (p_iri, h_prefixes) => {
 
 	// no prefix found; default to full iri
 	return '>'+p_iri;
-};
-
-// take a dirty iri and clean it up
-const clean_iri = (p_iri_dirty) => {
-	// clean iri
-	let p_iri = p_iri_dirty;
-
-	// try parsing as URI
-	try {
-		p_iri = (new DC_URL(p_iri_dirty)).toString();
-	}
-	// not a URI
-	catch(e_parse) {
-		// illegal characters
-		if(RT_IRI_DIRTY.test(p_iri_dirty)) {
-			// escape them
-			p_iri = p_iri_dirty.replace(R_IRI_ESCAPES, F_REPLACE_IRI_ESCAPE)
-		}
-	}
-
-	return p_iri;
 };
 
 class GenericTerm {

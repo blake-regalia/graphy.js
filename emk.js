@@ -369,11 +369,12 @@ module.exports = {
 		content_sub: a_content_subs,
 
 		testable: [
-			'core.data.factory',
 			'core.class.writable',
-			'content.nq.read',
+			'core.data.factory',
 			'content.nt.read',
 			'content.nt.write',
+			'content.nq.read',
+			'content.nq.write',
 			'content.ttl.read',
 			'content.ttl.write',
 			'content.trig.read',

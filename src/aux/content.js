@@ -45,6 +45,9 @@ module.exports = {
 				'core.iso.stream',
 				'core.data.factory',
 			],
+			dependencies: [
+				'uri-js',
+			],
 			files: {
 				'main.js': ['../text.read.jmacs'],
 			},

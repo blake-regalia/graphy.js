@@ -153,25 +153,25 @@ describe('ttl reader:', () => {
 
 	describe('iris & prefixed names:', () => {
 
-		const abc = [['z://a', 'z://b', 'z://c']];
+		const abc = [['z://_/a', 'z://_/b', 'z://_/c']];
 
-		allow('iris', '<z://a> <z://b> <z://c> .', abc);
+		allow('iris', '<z://_/a> <z://_/b> <z://_/c> .', abc);
 
-		allow('iris w/ base', '@base <z://>. <a> <b> <c> .', abc);
+		allow('iris w/ base', '@base <z://_>. <a> <b> <c> .', abc);
 
 		allow('iris w/ unicode escapes', '<\\u2713> <like> <\\U0001F5F8> .', [
 			['\u2713', 'like', '\ud83d\uddf8'],
 		]);
 
-		allow('prefixed names w/ empty prefix id', '@prefix : <z://>. :a :b :c .', abc);
+		allow('prefixed names w/ empty prefix id', '@prefix : <z://_/>. :a :b :c .', abc);
 
 		allow('prefixed names w/ trailing colon & mid-stops', `
-			@prefix : <z://>. :a: :b.b :c:c.c: .`,
-			[['z://a:', 'z://b.b', 'z://c:c.c:']]);
+			@prefix : <z://_/>. :a: :b.b :c:c.c: .`,
+			[['z://_/a:', 'z://_/b.b', 'z://_/c:c.c:']]);
 
-		allow('prefixed names w/ non-empty prefix id', '@prefix p: <z://>. p:a p:b p:c .', abc);
+		allow('prefixed names w/ non-empty prefix id', '@prefix p: <z://_/>. p:a p:b p:c .', abc);
 
-		allow('prefixed names w/ empty suffix', '@prefix pa: <z://a>. @prefix pb: <z://b>. @prefix pc: <z://c>. pa: pb: pc: .', abc);
+		allow('prefixed names w/ empty suffix', '@prefix pa: <z://_/a>. @prefix pb: <z://_/b>. @prefix pc: <z://_/c>. pa: pb: pc: .', abc);
 	});
 
 
@@ -264,19 +264,19 @@ describe('ttl reader:', () => {
 
 	describe('comments:', () => {
 
-		const abc = [['z://a', 'z://b', 'z://c']];
+		const abc = [['z://_/a', 'z://_/b', 'z://_/c']];
 
-		allow('breaking triple', `@prefix p: <z://>. p:a#comment\np:b#\np:c#comment\n.`, abc);
+		allow('breaking triple', `@prefix p: <z://_/>. p:a#comment\np:b#\np:c#comment\n.`, abc);
 
-		allow('breaking base sequence', `@base#\n<z://>#\n#c\n.<a><b><c>#comment\n.`, abc);
+		allow('breaking base sequence', `@base#\n<z://_/>#\n#c\n.<a><b><c>#comment\n.`, abc);
 
-		allow('breaking prefix sequence', `@prefix#\np:#\n<z://>#\n. p:a p:b p:c#comment\n.`, abc);
+		allow('breaking prefix sequence', `@prefix#\np:#\n<z://_/>#\n. p:a p:b p:c#comment\n.`, abc);
 
 		allow('crammed spaces', `
-			@prefix p:<z://>.p:a<z://b>p:c,p:d;p:e"f"^^p:g.`, [
-				['z://a', 'z://b', 'z://c'],
-				['z://a', 'z://b', 'z://d'],
-				['z://a', 'z://e', {value:'f', datatype:{value:'z://g'}}],
+			@prefix p:<z://_/>.p:a<z://_/b>p:c,p:d;p:e"f"^^p:g.`, [
+				['z://_/a', 'z://_/b', 'z://_/c'],
+				['z://_/a', 'z://_/b', 'z://_/d'],
+				['z://_/a', 'z://_/e', {value:'f', datatype:{value:'z://_/g'}}],
 			]);
 
 	});
@@ -608,13 +608,13 @@ describe('ttl reader:', () => {
 
 		allow('datatype', `
 			:a :b "c"^^:x .
-			@base <z://> .
+			@base <z://_/> .
 			:d :e "f"^^<y> .
-			:g :h "i"^^<z://z> .
+			:g :h "i"^^<z://_/z> .
 			`, [
 				['#a', '#b', {value:'c', datatype:{value:'#x'}}],
-				['#d', '#e', {value:'f', datatype:{value:'z://y'}}],
-				['#g', '#h', {value:'i', datatype:{value:'z://z'}}],
+				['#d', '#e', {value:'f', datatype:{value:'z://_/y'}}],
+				['#g', '#h', {value:'i', datatype:{value:'z://_/z'}}],
 			]);
 	});
 

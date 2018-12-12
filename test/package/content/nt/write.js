@@ -4,6 +4,7 @@ const assert = require('assert');
 const S_GRAPHY_CHANNEL = `@${process.env.GRAPHY_CHANNEL || 'graphy'}`;
 const data_set = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
 const ttl_read = require(`${S_GRAPHY_CHANNEL}/content.ttl.read`);
+const nt_read = require(`${S_GRAPHY_CHANNEL}/content.nt.read`);
 
 const nt_write = require(`${S_GRAPHY_CHANNEL}/content.nt.write`);
 
@@ -11,9 +12,9 @@ const H_PREFIXES = {
 
 };
 
-const doc_as_set = st_doc => new Promise((fk_set) => {
+const doc_as_set = (f_reader, st_doc) => new Promise((fk_set) => {
 	// parse expected document
-	ttl_read({
+	f_reader({
 		prefixes: H_PREFIXES,
 		input: {
 			string: st_doc,
@@ -27,9 +28,10 @@ const doc_as_set = st_doc => new Promise((fk_set) => {
 		}));
 });
 
-const write = (hc3_input, st_expected) => new Promise(async(fk_write) => {
+const write = (hc3_input, st_expected, gc_write={}) => new Promise((fk_write) => {
 	let k_writer = nt_write({
 		prefixes: H_PREFIXES,
+		...gc_write,
 	});
 
 	// output string
@@ -41,10 +43,10 @@ const write = (hc3_input, st_expected) => new Promise(async(fk_write) => {
 		})
 		.on('end', async() => {
 			// parse result document
-			let k_result = await doc_as_set(st_output);
+			let k_result = await doc_as_set(nt_read, st_output);
 
 			// parse expected document
-			let k_expected = await doc_as_set(st_expected);
+			let k_expected = await doc_as_set(ttl_read, st_expected);
 
 			// compare
 			assert.strictEqual(k_result.canonicalize(), k_expected.canonicalize());
@@ -53,18 +55,14 @@ const write = (hc3_input, st_expected) => new Promise(async(fk_write) => {
 		});
 
 	// write to turtle document
-	await k_writer.add(hc3_input);
+	k_writer.write({
+		type: 'c3',
+		value: hc3_input,
+	});
 
-	// close document
+	// close document without waiting for drain
 	k_writer.end();
 });
-
-// describe('stream', () => {
-	// emits data
-	// emits end
-	// emits error
-	// 
-// });
 
 
 describe('collections', () => {

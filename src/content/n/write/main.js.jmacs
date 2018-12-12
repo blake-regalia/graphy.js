@@ -3,13 +3,13 @@
 
 @import '../../../share/channel.jmacs'
 
-@$ QUADS = ('trig' === FORMAT);
+@$ QUADS = ('nq' === FORMAT);
 
 const writable = require('@@@{S_GRAPHY_CHANNEL}/core.class.writable');
 
 class serializer extends writable.serializer.textual.verbose {
 	constructor(g_config={}) {
-		super(writable.triples, g_config);
+		super(writable.@{QUADS? 'quads': 'triples'}, g_config);
 	}
 
 	get comment() {
