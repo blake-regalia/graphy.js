@@ -26,21 +26,21 @@ The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) conta
 @graphy/
    core.
       data.
-         factory -- @graphy/core.data.factory since v3.0.0
+         factory -- @graphy/core.data.factory
    content.
       nt.
-         read -- @graphy/content.nt.read since v3.0.0
-         write -- @graphy/content.nt.write since v3.0.0
+         read -- @graphy/content.nt.read
+         write -- @graphy/content.nt.write
       ttl.
-         read -- @graphy/content.ttl.read since v3.0.0
-         write -- @graphy/content.ttl.write since v3.0.0
+         read -- @graphy/content.ttl.read
+         write -- @graphy/content.ttl.write
       nq.
-         read -- @graphy/content.nq.read since v3.0.0
-         write -- @graphy/content.nq.write since v3.0.0
+         read -- @graphy/content.nq.read
+         write -- @graphy/content.nq.write
       trig.
-         read -- @graphy/content.trig.read since v3.0.0
-         write -- @graphy/content.trig.write since v3.0.0
+         read -- @graphy/content.trig.read
+         write -- @graphy/content.trig.write
    util.
       dataset.
-         tree -- @graphy/util.dataset.tree since v3.0.0
+         tree -- @graphy/util.dataset.tree
 ```
