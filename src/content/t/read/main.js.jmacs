@@ -47,24 +47,20 @@ const H_ESCAPES_JSON = {
 
 
 @$ H_LOOKAHEADS = {
-	string: {
-		sub: 'terminal',
+	comment: {
+		chars: '#',
+	},
+	tree: {
+		sub: 'comment',
+		chars: '<',  // node
+	},
+	predicate: {
+		sub: 'tree',
 		chars: ''
-			+'@'  // langtag
-			+'^'  // datatype
+			+'['  // blank node property list
+			+'('  // collection
+			+'"\''  // string
 			,
-	},
-	terminal: {
-		sub: 'object',
-		chars: '.',
-	},
-	blank_node: {
-		sub: 'object',
-		chars: '<',
-	},
-	blank_node_graph: {
-		sub: 'blank_node',
-		chars: '}',
 	},
 	object: {
 		sub: 'comment',
@@ -75,24 +71,28 @@ const H_ESCAPES_JSON = {
 			+')'  // collection
 			,
 	},
-	predicate: {
-		sub: 'tree',
+	terminal: {
+		sub: 'object',
+		chars: '.',
+	},
+	string: {
+		sub: 'terminal',
 		chars: ''
-			+'['  // blank node property list
-			+'('  // collection
-			+'"\''  // string
+			+'@'  // langtag
+			+'^'  // datatype
 			,
 	},
-	tree: {
-		sub: 'comment',
-		chars: '<',  // node
-	},
-	comment: {
-		chars: '#',
+	blank_node: {
+		sub: 'object',
+		chars: ''
+			+'<'  // iri
+			+':'  // prefixed name (only one colon allowed in blank node label)
+			+(TRIG? '}': '')  // end-of-graph
+			,
 	},
 };
 
-@>> lookahead(s_key)
+@>> lookahead(s_key, s_append='')
 	@//@regex
 	(?:\s+|(?=[@*{
 		let h_node;
@@ -100,18 +100,18 @@ const H_ESCAPES_JSON = {
 			h_node = H_LOOKAHEADS[s_key];
 			yield h_node.chars;
 		} while(h_node.sub && (s_key=h_node.sub));
-	}]))
+	}])@{s_append})
 @;
 
 
 @>> R_CHAR(s_delims='')
 	@//@regex
-	[^\s#<[("'@{s_delims}]
+	[^\s#@<[("'@{s_delims}@{QUADS? '{}': ''}]
 @;
 
 @>> R_CHAR_NO_CLOSERS(s_puncts='.;,')
 	@//@regex
-	[^\s#<[("'@{s_puncts})\]\\]
+	[^\s#@<[("'@{s_puncts}@{QUADS? '{}': ''})\]\\]
 @;
 
 @>> R_PREFIX_ID()
@@ -130,8 +130,8 @@ const H_ESCAPES_JSON = {
 @>> R_CONTENT_LOOKAHEAD()
 	@//@regex
 	(?=
-		\.[<[("';,)\]#\s\0]
-		| [<[("';,)\]#]
+		\.[<[("';,)\]#@{QUADS? '{}': ''}\s\0]
+		| [<[("';,)\]#@{QUADS? '{}': ''}]
 	)
 @;
 
@@ -158,7 +158,7 @@ const R_PREFIXED_NAME_ESCAPELESS = /@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 //										/([^\s#:<[("'_][^\s#:<[("']*)?:([^\s#<[("'.;,)\]\\]*)(?:\s+|(?=[<[("';,)\]#]))/y;
 // const R_PREFIXED_NAME_ESCAPELESS_WITH_STOPS = /([^#:<[("'_][^\s#:<[("']*)?:((?:[^\s#<[("'.;,)\]\\]*[^\s#<[("';,)\]\\])?)(?:\s+|(?=[<[("'.;,)\]#]))/y;
 
-@>> R_PREFIXED_NAME()
+@>> R_PREFIXED_NAME(b_lookahead=false)
 	@//@regex
 	(@{R_PREFIX_ID()})? :				@// 1: prefix id
 	(											@// 2: prefix iri
@@ -179,22 +179,26 @@ const R_PREFIXED_NAME_ESCAPELESS = /@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 			)?
 		)?
 	)
-	(?:											@// consume trailing whitespace
-		\s+
-		| @{R_CONTENT_LOOKAHEAD()}
-	)
+	@- b_lookahead
+		(?:											@// consume trailing whitespace
+			\s+
+			| @{R_CONTENT_LOOKAHEAD()}
+		)
+	@;
 @;
 
-const R_PREFIXED_NAME = /@{R_PREFIXED_NAME()}/y;
+const R_PREFIXED_NAME = /@{R_PREFIXED_NAME(true)}/y;
 
 const R_PN_LOCAL_ESCAPES = /\\(.)/g;
 
-@// blank node labels have different lookahead characters
-@- TTL
-	const R_BLANK_NODE_LABEL = /_:(.(?:[^\s:<;,)\]#]*[^\s:<.;,)\]#])?)@{lookahead('blank_node')}/y;
-@:
-	const R_BLANK_NODE_LABEL = /_:(.(?:[^\s:<;,)\]#}]*[^\s:<;,)\]#}])?)@{lookahead('blank_node_graph')}/y;
+@// blank node labels
+@>> R_BLANK_NODE_LABEL()
+	@//@regex
+	_:(.(?:[^\s:<;,)\]#@{QUADS? '}': ''}]*[^\s:<.;,)\]#@{QUADS? '}': ''}])?)
 @;
+
+const R_BLANK_NODE_LABEL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node')}/y;
+const R_BLANK_NODE_LABEL_TERMINAL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node', '|(?=\\.[@#<({\\[}])')}/y;
 
 
 const R_STRING_LITERAL_QUOTE = /"((?:[^"\\]|\\.)*)"@{lookahead('string')}/y;
@@ -220,11 +224,11 @@ const R_PREFIX_ID = /([^#:]*):\s*/iy;
 const R_BASE_KEYWORD = /(?:(@base)|[bB][aA][sS][eE])\s*/y;
 
 @- TRIG
-	const R_GRAPH_IRI_ESCAPELESS = /(?:graph)?\s*<([^\\>]*)>\s*\{\s*/y;
-	const R_GRAPH_PREFIXED_NAME = /(?:graph)?\s*([^\s:_][^\s:]*)?:([^\s\{]*)\s*\{\s*/y;
-	const R_GRAPH_LABELED_BLANK_NODE = /(?:graph)?\s*_:([^\s{#]+)\s*\{\s*/y;
-	const R_GRAPH_ANONYMOUS_BLANK_NODE = /(?:graph)?\s*\[\]\s*\{\s*/y;
-	const R_GRAPH_IRI = /(?:graph)?\s*<([^>]*)>\s*\{\s*/y;
+	const R_GRAPH_IRI_ESCAPELESS = /(?:graph)?\s*<([^\\>]*)>\s*\{\s*/iy;
+	const R_GRAPH_PREFIXED_NAME = /(?:graph)?\s*@{R_PREFIXED_NAME()}\s*\{\s*/iy;
+	const R_GRAPH_LABELED_BLANK_NODE = /(?:graph)?\s*@{R_BLANK_NODE_LABEL()}\s*\{\s*/iy;
+	const R_GRAPH_ANONYMOUS_BLANK_NODE = /(?:graph)?\s*\[\s*\]\s*\{\s*/iy;
+	const R_GRAPH_IRI = /(?:graph)?\s*<([^>]*)>\s*\{\s*/iy;
 @;
 
 const R_COMMENT = /(#[^\n]*\n\s*)+/y;
@@ -247,7 +251,7 @@ const R_RELATIVE_URI = /^(\/[^?#]+)([?#].*)?$/;
 const R_BASE_IRI = /@{R_BASE_IRI()}/;
 // const R_QUERYSTRING = /(\/[^/?#]*)([?#].*)$/;
 
-const R_ANONYMOUS_BLANK_NODE = /\[\]\s*/y;
+const R_ANONYMOUS_BLANK_NODE = /\[\s*\]\s*/y;
 const R_CHAR_BLANK_NODE = /\[(?:\s+|(?=[^\]]))/y;
 const R_CHAR_COLLECTION = /\(\s*/y;
 
@@ -275,7 +279,7 @@ const KT_RDF_REST = factory.namedNode('@{P_IRI_RDF}rest');
 const KT_RDF_NIL = factory.namedNode('@{P_IRI_RDF}nil');
 
 
-const H_DEFAULT_GRAPH = factory.defaultGraph();
+const KT_DEFAULT_GRAPH = factory.defaultGraph();
 
 const unescape_literal_short = s_literal => @{unescape_literal('s_literal', false)};
 const unescape_literal_long = s_literal => @{unescape_literal('s_literal', true)};
@@ -591,7 +595,7 @@ class reader {
 			subject: null,
 			predicate: KT_RDF_FIRST,
 			object: null,
-			graph: H_DEFAULT_GRAPH,
+			graph: KT_DEFAULT_GRAPH,
 
 			// queue of nested subject, predicate, state for blanknodes and collections
 			nested: [],
@@ -1230,21 +1234,64 @@ class reader {
 
 	// a resume-only state to handle eos interupting ';'
 	post_pair() {
-		let s = this.s;
-		let x = s[this.i];
+		let {s, i} = this;
+		let x = s[i];
 		if('.' === x || ']' === x) {
-			@{whitespace('this.i+1')}
-		}
+			@{whitespace('i+1')}
+		@- QUADS
+			@{else_if_match('R_CHAR_CLOSE')}
+				// emit graph_close event
+				@{emit_graph_close()}
+
+				// reset graph
+				this.graph = KT_DEFAULT_GRAPH;
+
+				// goto block state
+				@{goto('block')}
+			@{end_else()}
+		@:
+			}
+		@;
 		@{goto('pairs')}
 	}
 
 	// after a blank node subject (either property-list or colleciton)
 	post_blank_subject() {
-		let s = this.s;
-		if('.' === s[this.i]) {
-			@{whitespace('this.i+1')}
-			@{goto('statement')}
-		}
+		let {s, i} = this;
+		if('.' === s[i]) {
+			@{whitespace('i+1')}
+
+			@-QUADS
+				// not inside block
+				if(KT_DEFAULT_GRAPH === this.graph) {
+					@{goto('block')}
+				}
+				// inside block
+				else {
+					@{goto('statement')}
+				}
+			@:
+				@{goto('statement')}
+			@;
+		@- QUADS
+			@{else_if_match('R_CHAR_CLOSE')}
+				// empty collection
+				if(KT_RDF_NIL === this.subject) {
+					return this.error('empty collection');
+				}
+
+				// emit graph_close event
+				@{emit_graph_close()}
+
+				// reset graph
+				this.graph = KT_DEFAULT_GRAPH;
+
+				// goto block state
+				@{goto('block')}
+			@{end_else()}
+		@:
+			}
+		@;
 		@{goto('pairs')}
 	}
 
@@ -1260,7 +1307,7 @@ class reader {
 			@{goto('pairs')}
 
 		@// sub-macro for reusing statement productions
-		@def triples(directives)
+		@def triples(directives=false)
 			// prefixed name
 			@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_subject')}
 
@@ -1337,7 +1384,7 @@ class reader {
 					@{emit_graph_close()}
 
 					// reset graph
-					this.graph = H_DEFAULT_GRAPH;
+					this.graph = KT_DEFAULT_GRAPH;
 
 					// goto block state
 					@{goto('block')}
@@ -1368,7 +1415,7 @@ class reader {
 		@// for trig only
 		@- TRIG
 			@{else_if_match('R_CHAR_CLOSE')}
-				this.graph = H_DEFAULT_GRAPH;
+				this.graph = KT_DEFAULT_GRAPH;
 				@{goto('block')}
 		@;
 
@@ -1570,7 +1617,7 @@ class reader {
 			@{goto('pairs')}
 
 		// labeled blank node
-		@{else_if_match('R_BLANK_NODE_LABEL', 'm_blank_node_label_object')}
+		@{else_if_match('R_BLANK_NODE_LABEL_TERMINAL', 'm_blank_node_label_object')}
 			// ref blank node label
 			let s_label = m_blank_node_label_object[1];
 
@@ -1736,9 +1783,9 @@ class reader {
 
 		// ';' more predicate-object pairs
 		@{else_if_char(';')}
-			// next token is end of statement or end of blank node property list
+			// next token is end of outer section
 			let x1 = s[this.i];
-			if('.' === x1 || ']' === x1 || ';' === x1) {
+			if('.' === x1 || ']' === x1 || ';' === x1 @{QUADS? /* syntax: js */ `|| '}' === x1`: ''}) {
 				// goto post-object state
 				@{goto('post_object')}
 			}
@@ -1762,7 +1809,7 @@ class reader {
 			@- TTL
 				@{goto(S_STATE_PRIMARY)}
 			@:
-				return (H_DEFAULT_GRAPH === this.graph)? this.@{S_STATE_PRIMARY}(): this.statement();
+				return (KT_DEFAULT_GRAPH === this.graph)? this.@{S_STATE_PRIMARY}(): this.statement();
 			@;
 
 		// ']' end of property-object pairs
@@ -1773,6 +1820,18 @@ class reader {
 		@{else_if_char(')')}
 			// should not be here
 			return this.parse_error('unexpected end of collection');
+
+		@- QUADS
+			// closing graph '}'
+			@{else_if_match('R_CHAR_CLOSE')}
+				// emit graph_close event
+				@{emit_graph_close()}
+
+				// reset graph
+				this.graph = KT_DEFAULT_GRAPH;
+
+				@{goto('block')}
+		@;
 
 		// comment
 		@{else_if_match('R_COMMENT', false, true)}
