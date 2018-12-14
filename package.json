@@ -33,6 +33,7 @@
     "performance-now": "^2.1.0",
     "rdf-test-suite": "^1.2.0",
     "uri": "^0.1.0",
+    "uri-js": "^4.2.2",
     "worker": "^0.3.12"
   },
   "devDependencies": {
