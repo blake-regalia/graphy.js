@@ -11,6 +11,9 @@ module.exports = {
 		data: {
 			factory: () => ({
 				description: 'Create instances of Terms and Triples/Quads. Implements @RDFJS DataFactory',
+				dependencies: [
+					'uri-js',
+				],
 			}),
 		},
 		iso: {
