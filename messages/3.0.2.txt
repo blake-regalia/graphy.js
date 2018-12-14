@@ -1,0 +1,6 @@
+v3.0.2 (2018-12-13)
+------------------------
+
+# Passing Specification Tests
+
+  The main four textual content readers, N-Triples, N-Quads, Turtle and TriG now pass all specification tests. More unit tests needed to cover all API use cases.

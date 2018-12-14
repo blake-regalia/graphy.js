@@ -1,0 +1,6 @@
+v3.0.0 (2018-12-10)
+------------------------
+
+# Beta Production Release
+
+  Had to get out a beta on npm before unit tests could be completed due to pressure over the temporarily dormant `graphy` org name on npm.
