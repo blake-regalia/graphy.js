@@ -1,6 +1,6 @@
 {
   "name": "@graphy/super-repo",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "devVersion": "0.0.21",
   "description": "A faster-than-lightning, asynchronous, streaming RDF deserializer that implements the RDFJS Representation Interfaces and natively parses Turtle, TriG, N-Triples, and N-Quads.",
   "keywords": [
