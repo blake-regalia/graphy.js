@@ -439,13 +439,13 @@ module.exports = async() => {
 				'core.class.writable',
 				'core.data.factory',
 				'content.nt.read',
-				'content.nt.write',
+				// 'content.nt.write',
 				'content.nq.read',
-				'content.nq.write',
+				// 'content.nq.write',
 				'content.ttl.read',
-				'content.ttl.write',
+				// 'content.ttl.write',
 				'content.trig.read',
-				'content.trig.write',
+				// 'content.trig.write',
 			],
 
 			// package enumeration

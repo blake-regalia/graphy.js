@@ -2,7 +2,7 @@
   "name": "@graphy/super-repo",
   "version": "3.0.4",
   "devVersion": "0.0.22",
-  "description": "A faster-than-lightning, asynchronous, streaming RDF deserializer that implements the RDFJS Representation Interfaces and natively parses Turtle, TriG, N-Triples, and N-Quads.",
+  "description": "A collection of RDF libraries for JavaScript developers that focus on performance and usability",
   "keywords": [
     "linked-data",
     "n-quads",
@@ -23,7 +23,7 @@
   },
   "repository": "blake-regalia/graphy.js",
   "scripts": {
-    "test": "npx emk test.*"
+    "test": "npx emk && npx emk build/test/cache/** && npx emk test.*"
   },
   "dependencies": {
     "async": "^2.6.1",
