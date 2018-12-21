@@ -419,10 +419,6 @@ module.exports = async function test({
 						result: hc3_case['mf:result'] || null,
 					});
 
-					if(sv1_subject.endsWith('bad-uri-01')) {
-						debugger;
-					}
-
 					// load test case
 					let z_result;
 					try {
@@ -446,10 +442,6 @@ module.exports = async function test({
 
 						// next test case
 						continue;
-					}
-
-					if(sv1_subject.endsWith('bad-uri-01')) {
-						debugger;
 					}
 
 					// log success to console

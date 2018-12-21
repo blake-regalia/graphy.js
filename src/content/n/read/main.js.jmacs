@@ -29,7 +29,7 @@ const R_LITERAL = /^"(.*)"(?:\^\^<(.*)>|@([^ \t.]+)|)?$/;
 const RT_HAS_ESCAPES = /[\\]/;
 
 const RT_ABSOLUTE_IRI_VALID = /^[a-z][a-z0-9+\-.]*:([^\0-\x20<>"{}|^`\\]|@{UCHAR()})*$/;
-const RT_BLANK_NODE_LABEL_VALID = /(?:@{PN_CHARS_U()}|[0-9])(?:(?:@{PN_CHARS()}|[.])*@{PN_CHARS()})?/;
+const RT_BLANK_NODE_LABEL_VALID = /^(?:[@{RANGE_PN_CHARS_U()}0-9])(?:(?:[@{RANGE_PN_CHARS()}.])*[@{RANGE_PN_CHARS()}])?$/u;
 const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
 const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
@@ -138,7 +138,7 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 		// otherwise, set language tag if present
 		else if(@{sv_match}[8]) {
 			let s_language = w_object.language = @{sv_match}[8].toLowerCase();
-			if(this.validate && !RT_LANGUAGE_VALID.test(s_language)) this._error(`invalid literal language tag: ${s_language}`);
+			if(this.validate && !RT_LANGUAGE_VALID.test(s_language)) return this._error(`invalid literal language tag: ${s_language}`);
 			w_object.datatype = KT_RDFS_LANG_STRING;
 		}
 	}
@@ -326,11 +326,19 @@ class reader {
 				// resume parsing
 				this.safe_parse(true);
 
-				// emit progress event updates
-				ds_transform.emit('progress', s_chunk.length);
+				// read error occurred
+				if(this.read_error) {
+					// destroy stream
+					ds_transform.destroy(this.read_error);
+				}
+				// no errors
+				else {
+					// emit progress event updates
+					ds_transform.emit('progress', s_chunk.length);
 
-				// done transforming this chunk
-				fk_chunk();
+					// done transforming this chunk
+					fk_chunk();
+				}
 			},
 		});
 
@@ -355,7 +363,7 @@ class reader {
 				g_input.stream.pipe(ds_transform);
 			}
 			// string
-			else if(g_input.string) {
+			else if('string' in g_input) {
 				setTimeout(() => {
 					ds_transform.end(g_input.string, 'utf8');
 				}, 0);
@@ -368,12 +376,7 @@ class reader {
 	}
 
 	_error(s_message) {
-		this.transform.emit('error', new Error(s_message));
-	}
-
-	parse_error(s_state, fk_flush=null) {
-		fk_flush(new Error(`parsing error occurred in state: ${s_state}\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
-		// this.transform.emit('error', new Error(`parsing error occurred in state: ${s_state}\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
+		this.read_error = new Error(s_message);
 	}
 
 

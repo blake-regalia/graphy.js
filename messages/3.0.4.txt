@@ -1,0 +1,6 @@
+v3.0.4 (2018-12-21)
+------------------------
+
+# Comprehensive Unit Testing for Content Readers
+
+  Content readers for N-Triples, N-Quads, Turtle and TriG now pass all unit tests provided by W3C when validation is enabled.

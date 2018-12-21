@@ -1,6 +1,8 @@
 @// for counting if/else braces in regex matching
 @$ c_braces = 0;
 
+const FN_TO_STRING_OBJECT = Object.prototype.toString;
+
 @>> R_CHAR_HEX()
 	[0-9A-Fa-f]
 @;
@@ -32,29 +34,29 @@
 
 
 
-@>> PN_CHARS_BASE()
+@>> RANGE_PN_CHARS_BASE()
 	@//@regex
 	A-Za-z\xc0-\xd6\xd8-\xf6\xf8-\u{02ff}\u{0370}-\u{037d}\u{037f}-\u{1fff}\u{200c}-\u{200d}\u{2070}-\u{218f}\u{2c00}-\u{2fef}\u{3001}-\u{d7ff}\u{f900}-\u{fdcf}\u{fdf0}-\u{fffd}\u{10000}-\u{effff}
 @;
 
-@>> PN_CHARS_U()
+@>> RANGE_PN_CHARS_U()
 	@//@regex
-	@{PN_CHARS_BASE()}_
+	@{RANGE_PN_CHARS_BASE()}_
 @;
 
-@>> PN_CHARS()
+@>> RANGE_PN_CHARS()
 	@//@regex
-	@{PN_CHARS_U()}\-0-9\xb7\u{0300}-\u{036f}\u{203f}-\u{2040}
+	@{RANGE_PN_CHARS_U()}\-0-9\xb7\u{0300}-\u{036f}\u{203f}-\u{2040}
 @;
 
 @>> PN_CHARS_FS()
 	@//@regex
-	([@{PN_CHARS()}.]*[@{PN_CHARS()}])?
+	([@{RANGE_PN_CHARS()}.]*[@{RANGE_PN_CHARS()}])?
 @;
 
 @>> PN_PREFIX()
 	@//@regex
-	[@{PN_CHARS_BASE()}]@{PN_CHARS_FS()}
+	[@{RANGE_PN_CHARS_BASE()}]@{PN_CHARS_FS()}
 @;
 
 @>> PLX()
@@ -64,7 +66,7 @@
 
 @>> PN_LOCAL()
 	@//@regex
-	([@{PN_CHARS_U()}:0-9]|@{PLX()})(([@{PN_CHARS()}.:]|@{PLX()})*([@{PN_CHARS()}:]|@{PLX()}))?
+	([@{RANGE_PN_CHARS_U()}:0-9]|@{PLX()})(([@{RANGE_PN_CHARS()}.:]|@{PLX()})*([@{RANGE_PN_CHARS()}:]|@{PLX()}))?
 @;
 
 @>> UCHAR(s_ins='')
@@ -233,7 +235,7 @@
 		let z_arg_0 = a_args[0];
 
 		// config struct
-		if(z_arg_0 && 'object' === typeof z_arg_0 && Object === z_arg_0.constructor) {
+		if(z_arg_0 && 'object' === typeof z_arg_0 && '[object Object]' === FN_TO_STRING_OBJECT.call(z_arg_0)) {
 			g_config = z_arg_0;
 
 			// more args; invalid

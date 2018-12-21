@@ -7,8 +7,12 @@ const stream = require('stream');
 
 const expect = require('chai').expect;
 
+const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
 const nt_read = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/content.nt.read`);
+const dataset_tree = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
 
+const graphy_reader_interface = require('../../../interfaces/content-reader.js');
+const w3c_rdf_specification = require('../../../interfaces/w3c-rdf-specification.js');
 
 
 const P_IRI_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
@@ -251,6 +255,44 @@ describe('nt reader:', () => {
 			<a> <b> <c> .`, [
 				['a', 'b', 'c'],
 			]);
+	});
+
+	describe('graphy reader interface', () => {
+		let k_tree_expect = dataset_tree();
+		k_tree_expect.add(factory.quad(...[
+			factory.namedNode('a'),
+			factory.namedNode('b'),
+			factory.namedNode('c'),
+		]));
+
+		graphy_reader_interface({
+			reader: nt_read,
+			input: /* syntax: nt */ `
+				<a> <b> <c> .
+			`,
+			events: {
+				data(a_events) {
+					let k_tree_actual = dataset_tree();
+					for(let [g_quad] of a_events) {
+						k_tree_actual.add(g_quad);
+					}
+
+					expect(k_tree_actual.equals(k_tree_expect)).to.be.true;
+				},
+
+				eof(a_eofs) {
+					expect(a_eofs).to.have.length(1);
+				},
+			},
+		});
+	});
+
+	describe('w3c rdf specification', async() => {
+		await w3c_rdf_specification({
+			reader: nt_read,
+			package: 'content.nt.read',
+			manifest: 'http://w3c.github.io/rdf-tests/ntriples/manifest.ttl',
+		});
 	});
 });
 

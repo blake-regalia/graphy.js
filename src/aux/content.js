@@ -10,6 +10,8 @@ module.exports = {
 				'read',
 				'write',
 			],
+			manifest: 'http://w3c.github.io/rdf-tests/ntriples/manifest.ttl',
+			mime: 'application/n-triples',
 		},
 		nq: {
 			super: 'n',
@@ -18,6 +20,8 @@ module.exports = {
 				'read',
 				'write',
 			],
+			manifest: 'http://w3c.github.io/rdf-tests/nquads/manifest.ttl',
+			mime: 'application/n-quads',
 		},
 		ttl: {
 			super: 't',
@@ -26,6 +30,8 @@ module.exports = {
 				'read',
 				'write',
 			],
+			manifest: 'http://w3c.github.io/rdf-tests/turtle/manifest.ttl',
+			mime: 'text/turtle',
 		},
 		trig: {
 			super: 't',
@@ -34,6 +40,8 @@ module.exports = {
 				'read',
 				'write',
 			],
+			manifest: 'http://w3c.github.io/rdf-tests/trig/manifest.ttl',
+			mime: 'application/trig',
 		},
 	},
 

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const url = require('url').URL;
 
 const jmacs = require('jmacs');
 const detective = require('detective');
@@ -14,7 +15,7 @@ const B_DEVELOPMENT = 'graphy-dev' === process.env.GRAPHY_CHANNEL;
 const s_channel = process.env.GRAPHY_CHANNEL || 'graphy';
 
 const g_package_json_super = require('./package.json');
-const P_PACKAGE_JSON_BASE = `./src/aux/base-package-${s_channel}.json`;
+const P_PACKAGE_JSON_BASE = `src/aux/base-package-${s_channel}.json`;
 
 const s_base_version = g_package_json_super[B_DEVELOPMENT? 'devVersion': 'version'];
 const s_semver = B_DEVELOPMENT? s_base_version: `^${s_base_version}`;
@@ -138,6 +139,7 @@ for(let [s_content, g_content] of Object.entries(h_content_packages)) {
 
 		// add definition to package hash
 		h_packages[si_name] = {
+			...g_content,
 			...g_mode,
 			description: s_description_mode,
 		};
@@ -220,7 +222,7 @@ const npmrc = () => ({
 
 	run: /* syntax: bash */ `
 		# write .npmrc file
-		echo "prefix = ../../../.npm-packages" >> $@
+		echo "prefix = ../../../../.npm-packages" >> $@
 	`,
 });
 
@@ -260,7 +262,7 @@ const package_node_modules = si_package => ({
 				],
 
 				run: /* syntax: bash */ `
-					cd build/${s_channel}/${si_package}
+					cd build/${s_channel}/package/${si_package}
 
 					# link to dep
 					npm link @${s_channel}/${si_link}
@@ -278,8 +280,8 @@ const package_node_modules = si_package => ({
 					'package.json',
 				],
 				run: /* syntax: bash */ `
-					cd build/${s_channel}/${si_package}/node_modules
-					ln -sf "../../../../$1" ${si_dep}
+					cd "build/${s_channel}/package/${si_package}/node_modules"
+					ln -sf "../../../../../$1" ${si_dep}
 				`,
 			}),
 		}), {}),
@@ -366,357 +368,488 @@ let h_output_content_bat = B_DEVELOPMENT? src_to_main('src/content/bat', 'conten
 // memory store output config
 let h_output_store_mem = B_DEVELOPMENT? src_to_main('src/store/memory', 'store.memory'): {};
 
+
 // emk struct
-module.exports = {
-	defs: {
-		// contet sub enum
-		content_sub: a_content_subs,
+module.exports = async() => {
+	// make manifest dependencies
+	let h_manifest_deps = await new Promise(async(fk_manifest_deps) => {
+		const A_DEPEDENCY_PREDICATES = [
+			'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#action',
+			'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#result',
+		];
+		let h_out = {};
 
-		testable: [
-			'core.class.writable',
-			'core.data.factory',
-			'content.nt.read',
-			'content.nt.write',
-			'content.nq.read',
-			'content.nq.write',
-			'content.ttl.read',
-			'content.ttl.write',
-			'content.trig.read',
-			'content.trig.write',
-		],
+		for(let si_package of a_content_subs.filter(s => s.endsWith('.read'))) {
+			let h_deps = h_out[`manifest_deps_${si_package.replace(/\./g, '_')}`] = {};
 
-		// package enumeration
-		package: Object.keys(h_packages),
-
-		// non-content-sub packages
-		package_ncs: Object.keys(h_packages)
-			.filter(s => !a_content_subs.includes(s)
-				&& !s.startsWith('content.n')
-				&& !s.startsWith('content.t')
-				&& !s.startsWith('content.bat')
-				&& !s.startsWith('schema.')
-				&& !s.startsWith('store.memory.query')),
-
-		// // bat schema file
-		// bat_schema_file: Object.keys(h_schema_bat).map(s => `schema.bat.${s}`),
-
-		...(B_DEVELOPMENT
-			? {
-				bat_protocol: fs.readdirSync('src/gen/bat-schema/decoders')
-					.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
-
-				bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
-					.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+			try {
+				fs.accessSync(`build/${s_channel}/package/content.ttl.read/main.js`, fs.constants.F_OK);
+				fs.accessSync(`build/${s_channel}/test/cache/${si_package}/manifest.ttl`, fs.constants.F_OK);
 			}
-			: {}),
+			catch(e_access) {
+				continue;
+			}
 
-		// docs snippet
-		snippet: fs.readdirSync('src/docs/snippets')
-			.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+			let ttl_read;
+			try {
+				ttl_read = require(`@${s_channel}/content.ttl.read`);
+			}
+			catch(e_require) {
+				continue;
+			}
 
-		// docs markdown
-		markdown: fs.readdirSync('src/docs/')
-			.filter(s => s.endsWith('.md.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
-	},
+			if('function' !== typeof ttl_read) continue;
 
-	tasks: {
-		// all tasks
-		all: [
-			'prepublish.*',
-		],
+			await new Promise((fk_deps, fe_deps) => {
+				fs.createReadStream(path.join(`build/${s_channel}/test/cache`, si_package, 'manifest.ttl'))
+					.pipe(ttl_read({
+						base_uri: h_packages[si_package].manifest,
+						data(g_quad) {
+							if(A_DEPEDENCY_PREDICATES.includes(g_quad.predicate.value)) {
+								let p_dep = g_quad.object.value;
+								h_deps[path.basename((new url(p_dep)).pathname)] = p_dep;
+							}
+						},
 
-		// clean
-		clean: () => ({
-			run: /* syntax: bash */ `
-				rm -rf \
-					'${P_PACKAGE_PREFIX}/lib/node_modules/${s_channel}' \
-					'${P_PACKAGE_PREFIX}/lib/node_modules/@${s_channel}' \
-					'${P_PACKAGE_PREFIX}/bin/${s_channel}' \
-					'build/${s_channel}' \
-					'node_modules/${s_channel}' \
-					'node_modules/@${s_channel}'
-			`,
-		}),
+						error(e_read) {
+							fe_deps(e_read);
+						},
 
-		// link alias
-		link: {
-			':package': h => ([
-				`${P_PACKAGE_PREFIX}/lib/node_modules/@${s_channel}/${h.package}`,
-			]),
+						end() {
+							fk_deps(h_deps);
+						},
+					}));
+			});
+		}
 
-			[s_channel]: () => ([
-				`${P_PACKAGE_PREFIX}/lib/node_modules/${s_channel}`,
-			]),
+		fk_manifest_deps(h_out);
+	});
+
+	return {
+		defs: {
+			// contet sub enum
+			content_sub: a_content_subs,
+
+			...(Object.entries(h_manifest_deps).reduce((h_out, [si_key, h_deps]) => ({
+				...h_out,
+				[si_key]: Object.keys(h_deps),
+			}), {})),
+
+			testable: [
+				'core.class.writable',
+				'core.data.factory',
+				'content.nt.read',
+				'content.nt.write',
+				'content.nq.read',
+				'content.nq.write',
+				'content.ttl.read',
+				'content.ttl.write',
+				'content.trig.read',
+				'content.trig.write',
+			],
+
+			// package enumeration
+			package: Object.keys(h_packages),
+
+			// non-content-sub packages
+			package_ncs: Object.keys(h_packages)
+				.filter(s => !a_content_subs.includes(s)
+					&& !s.startsWith('content.n')
+					&& !s.startsWith('content.t')
+					&& !s.startsWith('content.bat')
+					&& !s.startsWith('schema.')
+					&& !s.startsWith('store.memory.query')),
+
+			// // bat schema file
+			// bat_schema_file: Object.keys(h_schema_bat).map(s => `schema.bat.${s}`),
+
+			...(B_DEVELOPMENT
+				? {
+					bat_protocol: fs.readdirSync('src/gen/bat-schema/decoders')
+						.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+
+					bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
+						.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+				}
+				: {}),
+
+			// docs snippet
+			snippet: fs.readdirSync('src/docs/snippets')
+				.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+
+			// docs markdown
+			markdown: fs.readdirSync('src/docs/')
+				.filter(s => s.endsWith('.md.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
 		},
 
-		// link-to alias
-		link_to: {
-			':package': h => ({
-				deps: [`node_modules/@${s_channel}/${h.package}`],
-			}),
+		tasks: {
+			// all tasks
+			all: [
+				'prepublish.*',
+			],
 
-			[s_channel]: () => ({
-				deps: [`node_modules/${s_channel}`],
-			}),
-		},
-
-		// prepublish
-		prepublish: {
-			':package': h => ({
-				deps: [`link_to.${h.package}`],
+			// clean
+			clean: () => ({
 				run: /* syntax: bash */ `
-					cd build/${s_channel}/${h.package}
-
-					# defer README to GitHub
-					rm -rf README.md
-					cat <(echo "#@${s_channel}/${h.package}") ../../../src/aux/README-defer.md > README.md
+					rm -rf \
+						'${P_PACKAGE_PREFIX}/lib/node_modules/${s_channel}' \
+						'${P_PACKAGE_PREFIX}/lib/node_modules/@${s_channel}' \
+						'${P_PACKAGE_PREFIX}/bin/${s_channel}' \
+						'build/${s_channel}' \
+						'node_modules/${s_channel}' \
+						'node_modules/@${s_channel}'
 				`,
 			}),
 
-			[s_channel]: () => ({
-				deps: [`link_to.${s_channel}`],
-				run: /* syntax: bash */ `
-					cd build/${s_channel}/${s_channel}
+			// link alias
+			link: {
+				':package': h => ([
+					`${P_PACKAGE_PREFIX}/lib/node_modules/@${s_channel}/${h.package}`,
+				]),
 
-					# defer README to GitHub
-					rm -rf README.md
-					cat <(echo "#@${s_channel}/${s_channel}") ../../../src/aux/README-defer.md > README.md
-				`,
-			}),
-
-			docs: ['docs/**'],
-		},
-
-		// publish
-		publish: {
-			':package': h => ({
-				deps: [`prepublish.${h.package}`],
-				run: /* syntax: bash */ `
-					cd build/${s_channel}/${h.package}
-
-					# publish to npm
-					npm publish --access=public
-				`,
-			}),
-
-			[s_channel]: () => ({
-				deps: [`prepublish.${s_channel}`],
-				run: /* syntax: bash */ `
-					cd build/${s_channel}/${s_channel}
-
-					# publish to npm
-					npm publish --access=public
-				`,
-			}),
-		},
-
-		// tests
-		test: {
-			':testable': ({testable:si_package}) => ({
-				deps: [
-					`prepublish.${si_package}`,
-					'link_to.util.dataset.tree',
-					`test/package/${si_package.replace(/\./g, '/')}.js`,
-				],
-
-				run: /* syntax: bash */ `
-					npx mocha --colors $3
-				`,
-			}),
-		},
-	},
-
-	outputs: {
-		// eslint config
-		'.eslintrc.yaml': () => ({copy:'~/dev/.eslintrc.yaml'}),
-
-		// docs
-		docs: {
-			// snippets
-			snippets: {
-				':snippet': h => jmacs_lint([
-					`src/docs/snippets/${h.snippet}.jmacs`,
-				], [
-					'link_to.*',
+				[s_channel]: () => ([
+					`${P_PACKAGE_PREFIX}/lib/node_modules/${s_channel}`,
 				]),
 			},
 
-			// markdown
-			':markdown': h => ({
-				deps: [
-					`src/docs/${h.markdown}.jmacs`,
-					`src/docs/docs.jmacs`,
-					'docs/snippets/**',
-				],
-				run: /* syntax: bash */ `
-					npx jmacs $1 > $@
-				`,
-			}),
+			// link-to alias
+			link_to: {
+				':package': h => ({
+					deps: [`node_modules/@${s_channel}/${h.package}`],
+				}),
+
+				[s_channel]: () => ({
+					deps: [`node_modules/${s_channel}`],
+				}),
+			},
+
+			// prepublish
+			prepublish: {
+				':package': h => ({
+					deps: [`link_to.${h.package}`],
+					run: /* syntax: bash */ `
+						cd build/${s_channel}/package/${h.package}
+
+						# defer README to GitHub
+						rm -rf README.md
+						cat <(echo "#@${s_channel}/${h.package}") ../../../../src/aux/README-defer.md > README.md
+					`,
+				}),
+
+				[s_channel]: () => ({
+					deps: [`link_to.${s_channel}`],
+					run: /* syntax: bash */ `
+						cd build/${s_channel}/package/${s_channel}
+
+						# defer README to GitHub
+						rm -rf README.md
+						cat <(echo "#@${s_channel}/${s_channel}") ../../../../src/aux/README-defer.md > README.md
+					`,
+				}),
+
+				docs: ['docs/**'],
+			},
+
+			// publish
+			publish: {
+				':package': h => ({
+					deps: [`prepublish.${h.package}`],
+					run: /* syntax: bash */ `
+						cd build/${s_channel}/package/${h.package}
+
+						# publish to npm
+						npm publish --access=public
+					`,
+				}),
+
+				[s_channel]: () => ({
+					deps: [`prepublish.${s_channel}`],
+					run: /* syntax: bash */ `
+						cd build/${s_channel}/package/${s_channel}
+
+						# publish to npm
+						npm publish --access=public
+					`,
+				}),
+			},
+
+			// tests
+			test: {
+				':testable': ({testable:si_package}) => ({
+					deps: [
+						`prepublish.${si_package}`,
+						'link_to.util.dataset.tree',
+						`test/package/${si_package.replace(/\./g, '/')}.js`,
+						...a_content_subs.includes(si_package)
+							? [
+								`build/${s_channel}/test/cache/${si_package}/**`,
+								// `build/${s_channel}/test/cache/${si_package}/dependencies/*:{optional:true}`,
+							]
+							: [],
+					],
+
+					run: /* syntax: bash */ `
+						npx mocha --colors $3
+					`,
+				}),
+			},
 		},
 
-		// package builds
-		build: {
-			[s_channel]: {
-				...(B_DEVELOPMENT
-					? {
-						// content.bat.*
-						...h_output_content_bat,
+		outputs: {
+			// eslint config
+			'.eslintrc.yaml': () => ({copy:'~/dev/.eslintrc.yaml'}),
 
-						// store.memory.*
-						...h_output_store_mem,
+			// docs
+			docs: {
+				// snippets
+				snippets: {
+					':snippet': h => jmacs_lint([
+						`src/docs/snippets/${h.snippet}.jmacs`,
+					], [
+						'link_to.*',
+					]),
+				},
 
-						// bat schema
-						'schema.bat.default': {
-							...scoped_package('schema.bat.default'),
+				// markdown
+				':markdown': h => ({
+					deps: [
+						`src/docs/${h.markdown}.jmacs`,
+						`src/docs/docs.jmacs`,
+						'docs/snippets/**',
+					],
+					run: /* syntax: bash */ `
+						npx jmacs $1 > $@
+					`,
+				}),
+			},
 
-							'main.js': () => jmacs_lint([
-								'src/gen/bat-schema/default.js.jmacs',
-								'src/gen/bat-schema/datatypes',  // directory
-								'src/gen/bat-schema/decoders',  // directory
-							]),
+			// package builds
+			build: {
+				[s_channel]: {
+					test: {
+						cache: {
+							':content_sub': [si_package => ({
+								...(si_package.endsWith('.read')
+									? {
+										[si_package]: (g_package => ({
+											// manifest file
+											[path.basename(g_package.manifest)]: () => ({
+												deps: [
+													g_package.manifest,
+												],
 
-							decoders: {
-								':bat_protocol': h => jmacs_lint([
-									`src/gen/bat-schema/decoders/${h.bat_protocol}.jmacs`,
-									'src/gen/bat-schema/schema.js.jmacs',
-								]),
-							},
+												run: /* syntax: bash */ `
+													curl "$1" > $@
+												`,
+											}),
 
-							datatypes: {
-								':bat_datatype': h => jmacs_lint([
-									`src/gen/bat-schema/datatypes/${h.bat_datatype}.jmacs`,
-									'src/gen/bat-schema/schema.js.jmacs',
-								]),
-							},
-
-							// ':bat_schema_file': h => ({
-							// 	deps: [
-							// 		'src/gen/schema/output.js.jmacs',
-							// 		'link_to.core.data.factory',
-							// 		'link_to.content.ttl.write',
-							// 	],
-
-							// 	run: /* syntax: bash */ `
-							// 		npx jmacs $1 -g '${
-							// 			/* eslint-disable indent */
-							// 			JSON.stringify({
-							// 				iri: h_schema_bat[h.bat_schema_file],
-							// 			})
-							// 		/* eslint-enable */}' > $@
-							// 	`,
-							// }),
+											// manifest dependencies
+											...(si_manifest_dep => ({
+												[`:${si_manifest_dep}`]: [s_dep => ({
+													[s_dep]: () => ({
+														deps: [
+															h_manifest_deps[si_manifest_dep][s_dep],
+															`build/${s_channel}/test/cache/${si_package}/${path.basename(g_package.manifest)}`,
+														],
+														run: /* syntax: bash */ `
+															curl "$1" > $@
+														`,
+													}),
+												})],
+											}))(`manifest_deps_${si_package.replace(/\./g, '_')}`),
+										}))(h_packages[si_package]),
+									}
+									: {}),
+							})],
 						},
-					}
-					: {}),
 
-				// content subs
-				':content_sub': [si_package => ({
-					[si_package]: (g_package => ({
-						...scoped_package(si_package),
+						// reports: {
 
-						...Object.entries(g_package.files).reduce((h_def, [s_file, a_deps]) => ({
-							...h_def,
-							[s_file]: () => ({
+						// },
+					},
+
+					package: {
+						...(B_DEVELOPMENT
+							? {
+								// content.bat.*
+								...h_output_content_bat,
+
+								// store.memory.*
+								...h_output_store_mem,
+
+								// bat schema
+								'schema.bat.default': {
+									...scoped_package('schema.bat.default'),
+
+									'main.js': () => jmacs_lint([
+										'src/gen/bat-schema/default.js.jmacs',
+										'src/gen/bat-schema/datatypes',  // directory
+										'src/gen/bat-schema/decoders',  // directory
+									]),
+
+									decoders: {
+										':bat_protocol': h => jmacs_lint([
+											`src/gen/bat-schema/decoders/${h.bat_protocol}.jmacs`,
+											'src/gen/bat-schema/schema.js.jmacs',
+										]),
+									},
+
+									datatypes: {
+										':bat_datatype': h => jmacs_lint([
+											`src/gen/bat-schema/datatypes/${h.bat_datatype}.jmacs`,
+											'src/gen/bat-schema/schema.js.jmacs',
+										]),
+									},
+
+									// ':bat_schema_file': h => ({
+									// 	deps: [
+									// 		'src/gen/schema/output.js.jmacs',
+									// 		'link_to.core.data.factory',
+									// 		'link_to.content.ttl.write',
+									// 	],
+
+									// 	run: /* syntax: bash */ `
+									// 		npx jmacs $1 -g '${
+									// 			/* eslint-disable indent */
+									// 			JSON.stringify({
+									// 				iri: h_schema_bat[h.bat_schema_file],
+									// 			})
+									// 		/* eslint-enable */}' > $@
+									// 	`,
+									// }),
+								},
+							}
+							: {}),
+
+						// content subs
+						':content_sub': [si_package => ({
+							[si_package]: (g_package => ({
+								...scoped_package(si_package),
+
+								...Object.entries(g_package.files).reduce((h_def, [s_file, a_deps]) => ({
+									...h_def,
+									[s_file]: () => ({
+										deps: [
+											`src/content/${g_package.super}/${si_package.split(/\./g)[2]}/${s_file}.jmacs`,
+											...a_deps.map(s_dep => path.join(`src/content/${g_package.super}/`, s_dep)),
+										],
+
+										run: /* syntax: bash */ `
+											npx jmacs -g "{FORMAT:'${si_package.split(/\./g)[1]}'}" $1 > $@ \
+											 && ${eslint()}
+										`,
+									}),
+								}), {}),
+							}))(h_packages[si_package]),
+						})],
+
+						// all non-content-sub packages
+						':package_ncs': [si_package => ({
+							[si_package]: {
+								...scoped_package(si_package),
+
+								'main.js': () => jmacs_lint([
+									`src/${si_package.replace(/\./g, '/')}.js.jmacs`,
+								], [
+									`build/${s_channel}/package/${si_package}/package.json`,
+								]),
+							},
+						})],
+
+						// the super module
+						[s_channel]: {
+							// '.npmrc': npmrc,
+
+							'package.json': () => ({
 								deps: [
-									`src/content/${g_package.super}/${si_package.split(/\./g)[2]}/${s_file}.jmacs`,
-									...a_deps.map(s_dep => path.join(`src/content/${g_package.super}/`, s_dep)),
+									P_PACKAGE_JSON_BASE,
+									'package.json',
 								],
 
 								run: /* syntax: bash */ `
-									npx jmacs -g "{FORMAT:'${si_package.split(/\./g)[1]}'}" $1 > $@ \
-									 && ${eslint()}
+									cat $1 | npx lambduh "g_base_package_json => { \
+										${/* eslint-disable indent */
+											/* syntax: js */`
+											// load package info
+											let g_package_json = ${JSON.stringify({
+												name: s_channel,
+												dependencies: {
+													...g_package_json_super.dependencies,
+													...Object.keys(h_packages).reduce((h, si_link) => Object.assign(h, {
+														[`@${s_channel}/${si_link}`]: s_base_version,
+													}), {}),
+												},
+												description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
+												bin: {
+													[s_channel]: 'main.js',
+												},
+											})};
+
+											// update package.json
+											return Object.assign(g_base_package_json, g_package_json);
+										`.trim().replace(/(["`])/g, '\\$1')
+										/* eslint-enable */} }" > $@
+
+									# sort its package.json
+									npx sort-package-json $@
 								`,
 							}),
-						}), {}),
-					}))(h_packages[si_package]),
-				})],
 
-				// all non-content-sub packages
-				':package_ncs': [si_package => ({
-					[si_package]: {
-						...scoped_package(si_package),
+							node_modules: {
+								[`@${s_channel}`]: {
+									':package': ({package:si_package}) => ({
+										deps: [
+											`link_to.${si_package}`,
+										],
 
-						'main.js': () => jmacs_lint([
-							`src/${si_package.replace(/\./g, '/')}.js.jmacs`,
-						], [
-							`build/${s_channel}/${si_package}/package.json`,
-						]),
+										run: /* syntax: bash */ `
+											cd build/${s_channel}/package/${s_channel}
+											npm link @${s_channel}/${si_package}
+										`,
+									}),
+								},
+							},
+
+							'main.js': () => jmacs_lint([`src/main/graphy.js.jmacs`]),
+						},
+
 					},
-				})],
+				},
+			},
 
-				// the super module
-				[s_channel]: {
-					// '.npmrc': npmrc,
-
-					'package.json': () => ({
-						deps: [
-							P_PACKAGE_JSON_BASE,
-							'package.json',
-						],
-
-						run: /* syntax: bash */ `
-							cat $1 | npx lambduh "g_base_package_json => { \
-								${/* eslint-disable indent */
-									/* syntax: js */`
-									// load package info
-									let g_package_json = ${JSON.stringify({
-										name: s_channel,
-										dependencies: {
-											...g_package_json_super.dependencies,
-											...Object.keys(h_packages).reduce((h, si_link) => Object.assign(h, {
-												[`@${s_channel}/${si_link}`]: s_base_version,
-											}), {}),
-										},
-										description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
-										bin: {
-											[s_channel]: 'main.js',
-										},
-									})};
-
-									// update package.json
-									return Object.assign(g_base_package_json, g_package_json);
-								`.trim().replace(/(["`])/g, '\\$1')
-								/* eslint-enable */} }" > $@
-
-							# sort its package.json
-							npx sort-package-json $@
-						`,
-					}),
-
+			// package linking
+			[P_PACKAGE_PREFIX]: {
+				lib: {
 					node_modules: {
 						[`@${s_channel}`]: {
 							':package': ({package:si_package}) => ({
 								deps: [
-									`link_to.${si_package}`,
+									`build/${s_channel}/package/${si_package}/**`,
 								],
 
 								run: /* syntax: bash */ `
-									cd build/${s_channel}/${s_channel}
-									npm link @${s_channel}/${si_package}
+									# enter package directory
+									cd build/${s_channel}/package/${si_package}
+
+									# remove package lock
+									rm -f package-lock.json
+
+									# then link self
+									npm link
 								`,
 							}),
 						},
-					},
 
-					'main.js': () => jmacs_lint([`src/main/graphy.js.jmacs`]),
-				},
-
-			},
-		},
-
-		// package linking
-		[P_PACKAGE_PREFIX]: {
-			lib: {
-				node_modules: {
-					[`@${s_channel}`]: {
-						':package': ({package:si_package}) => ({
+						[s_channel]: () => ({
 							deps: [
-								`build/${s_channel}/${si_package}/**`,
+								`build/${s_channel}/package/${s_channel}/**`,
+
+								...Object.keys(h_packages).map(s_dep => `link.${s_dep}`),
 							],
 
 							run: /* syntax: bash */ `
 								# enter package directory
-								cd build/${s_channel}/${si_package}
+								cd build/${s_channel}/package/${s_channel}
 
 								# remove package lock
 								rm -f package-lock.json
@@ -726,52 +859,33 @@ module.exports = {
 							`,
 						}),
 					},
+				},
+			},
 
-					[s_channel]: () => ({
+			// mono-repo testing
+			node_modules: {
+				[`@${s_channel}`]: {
+					':package': ({package:si_package}) => ({
 						deps: [
-							`build/${s_channel}/${s_channel}/**`,
-
-							...Object.keys(h_packages).map(s_dep => `link.${s_dep}`),
+							`link.${si_package}`,
 						],
 
 						run: /* syntax: bash */ `
-							# enter package directory
-							cd build/${s_channel}/${s_channel}
-
-							# remove package lock
-							rm -f package-lock.json
-
-							# then link self
-							npm link
+							npm link @${s_channel}/${si_package}
 						`,
 					}),
 				},
-			},
-		},
 
-		// mono-repo testing
-		node_modules: {
-			[`@${s_channel}`]: {
-				':package': ({package:si_package}) => ({
+				[s_channel]: () => ({
 					deps: [
-						`link.${si_package}`,
+						`link.${s_channel}`,
 					],
 
 					run: /* syntax: bash */ `
-						npm link @${s_channel}/${si_package}
+						npm link ${s_channel}
 					`,
 				}),
 			},
-
-			[s_channel]: () => ({
-				deps: [
-					`link.${s_channel}`,
-				],
-
-				run: /* syntax: bash */ `
-					npm link ${s_channel}
-				`,
-			}),
 		},
-	},
+	};
 };

@@ -1,9 +1,16 @@
 /*eslint indent:0*/
 const assert = require('assert');
+const expect = require('chai').expect;
 const stream = require('stream');
 const deq = assert.deepEqual;
 
+const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
 const trig_read = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/content.trig.read`);
+
+const dataset_tree = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
+
+const graphy_reader_interface = require('../../../interfaces/content-reader.js');
+const w3c_rdf_specification = require('../../../interfaces/w3c-rdf-specification.js');
 
 
 const P_IRI_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
@@ -311,6 +318,86 @@ describe('trig parser:', () => {
 						[' g21', '#n', '#o', '#g30'],
 						[' g20', '>>', '.', '#g30'],
 			]);
+	});
+
+	describe('graphy reader interface', () => {
+		let k_tree_expect = dataset_tree();
+
+		k_tree_expect.add(factory.quad(...[
+			factory.namedNode('test://a'),
+			factory.namedNode('test://b'),
+			factory.namedNode('test://c'),
+		]));
+
+		k_tree_expect.add(factory.quad(...[
+			factory.namedNode('test://d'),
+			factory.namedNode('test://e'),
+			factory.namedNode('test://f'),
+			factory.namedNode('test://graph'),
+		]));
+
+		k_tree_expect.add(factory.quad(...[
+			factory.namedNode('test://g'),
+			factory.namedNode('test://h'),
+			factory.namedNode('test://i'),
+		]));
+
+		graphy_reader_interface({
+			reader: trig_read,
+			input: /* syntax: trig */ `
+				@base <base://> .
+				@prefix : <test://> .
+				@prefix test: <test://test#> .
+				:a :b :c .
+				:graph {
+					:d :e :f .
+				}
+				:g :h :i .
+			`,
+			events: {
+				base(a_bases) {
+					expect(a_bases).to.eql([
+						['base://'],
+					]);
+				},
+
+				prefix(a_prefixes) {
+					expect(a_prefixes).to.eql([
+						['', 'test://'],
+						['test', 'test://test#'],
+					]);
+				},
+
+				graph_open(a_opens) {
+					expect(a_opens).to.have.length(1);
+				},
+
+				graph_close(a_closes) {
+					expect(a_closes).to.have.length(1);
+				},
+
+				data(a_events) {
+					let k_tree_actual = dataset_tree();
+					for(let [g_quad] of a_events) {
+						k_tree_actual.add(g_quad);
+					}
+
+					expect(k_tree_actual.equals(k_tree_expect)).to.be.true;
+				},
+
+				eof(a_eofs) {
+					expect(a_eofs).to.have.length(1);
+				},
+			},
+		});
+	});
+
+	describe('w3c rdf specification', async() => {
+		await w3c_rdf_specification({
+			reader: trig_read,
+			package: 'content.trig.read',
+			manifest: 'http://w3c.github.io/rdf-tests/trig/manifest.ttl',
+		});
 	});
 });
 

@@ -28,6 +28,7 @@ package-lock.json
 debug
 /fixed
 .devtoolrc
+/publish.*
 
 # auxillary
 /test/main/linked.js

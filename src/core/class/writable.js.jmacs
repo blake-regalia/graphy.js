@@ -330,6 +330,7 @@ class CTWriter extends stream.Transform {
 	async dequeue() {
 		// empty queue
 		while(this.queue.length) {
+			debugger;
 			let {
 				method: f_method,
 				args: a_args,

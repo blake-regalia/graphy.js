@@ -897,7 +897,7 @@ class QuadSet extends stream.Writable {
 		}
 
 		// compare digests
-		return this.hash() === k_other.hash();
+		return this.canonicalize() === k_other.canonicalize();
 	}
 
 	// generate the canonical string representation of a quad
@@ -1244,7 +1244,7 @@ class QuadSet extends stream.Writable {
 					// subject is not in b
 					else {
 						// add all pairs from this subject
-						let h_pairs_r = h_triples_r[p_subject] = h_triples_a[p_graph];
+						let h_pairs_r = h_triples_r[p_subject] = h_triples_a[p_subject];
 
 						// update key count
 						h_triples_r[$_KEYS] += 1;

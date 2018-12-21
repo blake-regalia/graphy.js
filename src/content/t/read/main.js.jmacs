@@ -22,7 +22,7 @@ const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
 const RT_PREFIXED_NAME_LOCAL_NAME_VALID = /^@{PN_LOCAL()}$/u;
 
-const RT_BLANK_NODE_VALID = /^[@{PN_CHARS_U()}0-9]@{PN_CHARS_FS()}$/u;
+const RT_BLANK_NODE_VALID = /^[@{RANGE_PN_CHARS_U()}0-9]@{PN_CHARS_FS()}$/u;
 const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
 
 const R_ESCAPES = /@{R_ESCAPES()}/g;
@@ -255,14 +255,6 @@ const R_ANONYMOUS_BLANK_NODE = /\[\s*\]\s*/y;
 const R_CHAR_BLANK_NODE = /\[(?:\s+|(?=[^\]]))/y;
 const R_CHAR_COLLECTION = /\(\s*/y;
 
-@- NEEDED
-	const R_CHAR_COMMA = /,\s*/y;
-	const R_CHAR_SEMI = /;\s*/y;
-	const R_CHAR_BRA = /\[\s*/y;
-	const R_CHAR_WAX = /\(\s*/y;
-	const R_CHAR_WANE = /\)\s*/y;
-@;
-
 const R_CHAR_KET = /\]\s*/y
 
 @- TRIG
@@ -296,12 +288,12 @@ const match_prefixed_name = (s, i) => {
 
 @// will only be used by TriG
 @> emit_graph_open()
-	if(this.graph_open) this.graph_open(this.graph);
+	this.emit('graph_open', this.graph);
 @;
 
 @// will only be used by TriG
 @> emit_graph_close()
-	if(this.graph_close) this.graph_close(this.graph);
+	this.emit('graph_close', this.graph);
 @;
 
 
@@ -396,27 +388,33 @@ const match_prefixed_name = (s, i) => {
 	return this.@{s_method}();
 @;
 
+@$ a_methods = [];
+
 @// declare a parse state
-@> method(name, extern)
-	// parse state for @{name}
-	@- extern
-		@{name}: () => {
+@> method(s_name, b_extern)
+	@.{
+		a_methods.push(s_name);
+	}
+
+	// parse state for @{s_name}
+	@- b_extern
+		@{s_name}: () => {
 	@:
-		@{name}() {
+		@{s_name}() {
 	@;
 		// destruct chunk, length, and index
 		let {s, n, i} = this;
 
 		// start labeled loop, run while there are characters
-		@{name}: while(i < n) {  // eslint-disable-line no-unmodified-loop-condition
+		@{s_name}: while(i < n) {  // eslint-disable-line no-unmodified-loop-condition
 @;
 
 @// end parse state method
-@> end_method(name, max_token)
+@> end_method(s_name, max_token)
 		}
 
 		// ran out of characters
-		@{resume_state(name, false, max_token)}
+		@{resume_state(s_name, false, max_token)}
 	}
 @;
 
@@ -585,6 +583,10 @@ class reader {
 			// map of current prefix ids => iris
 			prefixes: h_prefixes,
 
+			// reader was destroyed by an error
+			destroyed: false,
+			read_error: null,
+
 			// current @base url
 			base_url: '',
 			base_url_scheme: '',
@@ -719,7 +721,7 @@ class reader {
 							return;
 						}
 						// invalid local name
-						else if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name_e[2])) {
+						else if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name_e[2]) && m_prefixed_name_e[2]) {
 							this.error(`invalid prefixed name local name: "${m_prefixed_name_e[2]}:"`);
 							return;
 						}
@@ -782,254 +784,90 @@ class reader {
 			this.base_url_scheme = m_base_iri[3] || '';
 			this.base_url_path = m_base_iri[4] || ''; 
 		}
+		// not set; 'url' variant is
+		else if(g_config.base_url || g_config.baseUrl || g_config.baseURL) {
+			throw new Error(`invalid option: .base${g_config.base_url? '_url': g_config.baseUrl? 'Url': g_config.baseURL? 'URL': ''}; use the '.base_uri' key instead`);
+		}
 
-		// output stream
-		let ds_output;
+		// transform stream
+		let ds_transform = this.transform = new stream.Transform({
+			// do not decode strings into buffers
+			decodeStrings: false,
+
+			// accept strings as input on writable side
+			writableObjectMode: false,
+
+			// output quad objects on readable side
+			readableObjectMode: true,
+
+			// on data event
+			transform: (s_chunk, s_encoding, fke_chunk) => {
+				// concatenate current chunk to previous chunk
+				let s = this.s = this.pre + s_chunk;
+
+				// cache chunk length
+				this.n = s.length;
+
+				@// eat whitespace before token and reset index
+				@{whitespace()}
+
+				// resume parsing; no errors
+				if(this.safe_parse(true)) {
+					// emit progress event updates
+					ds_transform.emit('progress', s_chunk.length);
+
+					// done transforming this chunk
+					fke_chunk();
+				}
+			},
+
+			// once there's no more data to consume, invoke eof
+			flush: (fke_flush) => {
+				// now that input stream has ended, clean up remainder; read error occurred
+				if(this.eof(1)) {
+					// exit gracefully
+					return;
+				}
+				// no errors
+				else {
+					// done flushing, close read stream
+					fke_flush();
+				}
+			},
+		});
+
+		// bind events to transform stream
+		this.bind(g_config);
+
+		// once writable side is piped into
+		ds_transform.once('pipe', (ds_input) => {
+			// input stream has encoding option; ensure stream encoding is utf8
+			if('function' === typeof ds_input.setEncoding) {
+				ds_input.setEncoding('utf8');
+			}
+		});
 
 		// no input given, it will be written/piped in later
 		if(null === g_input) {
-			// whether or not data has been received before
-			let b_init = false;
-
-			// create transform
-			ds_output = this.output = new stream.Transform({
-				// do not decode strings into buffers
-				decodeStrings: false,
-
-				// output quad objects on readable side
-				readableObjectMode: true,
-
-				// once there's no more data to consume, invoke eof
-				flush: (fk_flush) => {
-					// now that stream has ended, clean up remainder
-					this.eof(1);
-
-					// done flushing, close read stream
-					fk_flush();
-				},
-
-				// on data event
-				transform: (s_chunk, s_encoding, fk_chunk) => {
-					// first transform
-					if(!b_init) {
-						// notify that data will begin
-						ds_output.emit('ready');
-
-						// do not emit 'ready' event again
-						b_init = false;
-					}
-
-					// stream is paused
-					if(this.n < 0) {
-						return this.error('stream received new data while it was supposed to be paused!');
-					}
-
-					// concatenate current chunk to previous chunk
-					let s = this.s = this.pre + s_chunk;
-
-					// cache chunk length
-					this.n = s.length;
-
-					@// eat whitespace before token and reset index
-					@{whitespace()}
-
-					// resume parsing
-					this.safe_parse(true);
-
-					// emit progress event updates
-					ds_output.emit('progress', s_chunk.length);
-
-					// done transforming this chunk
-					fk_chunk();
-				},
-			});
-
-			// bind events to output stream
-			this.bind(g_config);
-
-			// notify once and never again
-			ds_output.once('pipe', (ds_input) => {
-				// input stream has encoding option
-				if(ds_input.setEncoding) {
-					// ensure stream is encoding in utf8
-					ds_input.setEncoding('utf8');
-				}
-			});
+			return;
 		}
 		// input is stream
 		else if(g_input.stream) {
 			let ds_input = g_input.stream;
 
-			// whether or not data has been received before
-			let b_init = false;
-
-			// begin flowing mode on output stream
-			const begin_flow = () => {
-				// switch input to flowing mode
-				ds_input.on('data', (s_chunk) => {
-					// // stream is paused
-					// if(this.n < 0) {
-					// 	return this.error('stream received new data while it was supposed to be paused!');
-					// }
-
-					// // notify that data will begin
-					// if(!b_init) {
-					// 	ds_output.emit('ready');
-
-					// 	// do not notify again
-					// 	b_init = true;
-					// }
-
-					// concatenate current chunk to previous chunk
-					let s = this.s = this.pre + s_chunk;
-
-					// cache chunk length
-					this.n = s.length;
-
-					@// eat whitespace before token and reset index
-					@{whitespace()}
-
-					// resume parsing
-					this.safe_parse(true);
-
-					// // progress updates
-					// ds_output.emit('progress', s_chunk.length);
-				});
-			};
-
-			// manual read mode
-			const read_manual = (nb_read) => {
-				// rather than emitting data/other events, queue them
-				// this.data = F_QUEUE_DATA;
-				this.event = this.queue;
-
-				// subscribe to readable events on input
-				ds_input.on('readable', () => {
-					// read chunk from input stream while there is data to read
-					let s_chunk = ds_input.read();
-
-					// notify that data will begin
-					if(!b_init) {
-						ds_output.emit('ready');
-
-						// do not notify again
-						b_init = true;
-					}
-
-					// concatenate current chunk to previous chunk
-					let s = this.s = this.pre + s_chunk;
-
-					// cache chunk length
-					this.n = s.length;
-
-					@// eat whitespace before token and reset index
-					@{whitespace()}
-
-					// resume parsing
-					this.safe_parse(true);
-
-					// progress updates
-					ds_output.emit('progress', s_chunk.length);
-
-					// return ...?
-				});
-			};
-
-			// create readable output
-			ds_output = this.output = new stream.Readable({
-				// outputs quad objets
-				objectMode: true,
-
-				// this will only happen if consumer uses stream in non-folowing mode
-				read(nb_read) {
-					// which flowing mode
-					switch(ds_output.readableFlowing) {
-						// in flowing mode (#pipe, #'data', or #resume)
-						case true: {
-							// ignore read requests
-							ds_output._read = () => {};
-
-							// begin flowing
-							begin_flow();
-							break;
-						}
-
-						// manual reads
-						case false:
-						case null: {
-							// switch to manual read mode
-							ds_output._read = read_manual;
-
-							// forward request to handler
-							return ds_output._read(nb_read);
-						}
-
-						// no mechanism for consuming
-						default: {
-							debugger;
-							// do not start reading input, do not parse, do not emit
-						}
-					}
-				},
-			});
-
-			// bind events to output stream
-			this.bind(g_config);
-
-			// set encoding on input stream
-			ds_input.setEncoding('utf8');
-
-			// once stream closes, invoke eof
-			ds_input.on('end', () => this.eof());
-
-			// capture error on input
-			ds_input.on('error', (e_input) => {
-				ds_output.emit('error', `error on input stream: ${e_input.message}\n${e_input.stack}`);
-			});
+			// go async so caller has chance to bind event listeners
+			setTimeout(() => {
+				ds_input.pipe(ds_transform);
+			}, 0);
 		}
 		// string
 		else if('string' === typeof g_input.string) {
 			let s_input = g_input.string;
 
-			// create readable output
-			ds_output = this.output = new stream.Readable({
-				// outputs quad objets
-				objectMode: true,
-
-				// once data event is attached
-				read: () => {
-					// consume entire string
-					this.safe_parse(true);
-
-					// remove this handler
-					ds_output._read = () => {};
-				},
-			});
-
-			// concatenate previous chunk
-			let s = this.s = this.pre+s_input;
-
-			// eos means we've reached eof
-			if(g_config.async) {
-				this.eos = function() {
-					setTimeout(() => this.eof(), 0);
-				};
-			}
-			else {
-				this.eos = this.eof;
-			}
-
-			// compute chunk length
-			this.n = s.length;
-
-			@// eat whitespace before token and reset index
-			@{whitespace()}
-
-			// bind events to output stream
-			this.bind(g_config);
-
-			// ready to parse
-			ds_output.emit('ready');
+			// go async so caller has chance to bind event listeners
+			setTimeout(() => {
+				ds_transform.end(s_input);
+			}, 0);
 		}
 		// invalid arg
 		else {
@@ -1044,15 +882,26 @@ class reader {
 			f_sync = f_sync.apply(this);
 		}
 
-		return f_sync;
+		// read error occurred
+		if(this.read_error) {
+			// destroy stream
+			this.transform.destroy(this.read_error);
+
+			// failure
+			return false;
+		}
+		// okay
+		else {
+			return true;
+		}
 	}
 
 	emit_data(g_quad) {
-		this.output.push(g_quad);
+		this.transform.push(g_quad);
 	}
 
 	emit(s_event, ...a_args) {
-		this.output.emit(s_event, ...a_args);
+		this.transform.emit(s_event, ...a_args);
 	}
 
 	queue(s_event, ...a_args) {
@@ -1063,11 +912,15 @@ class reader {
 	}
 
 	error(s_message) {
-		this.output.emit('error', new Error(s_message));
+		this.read_error = new Error(s_message);
+		this.destroy();
 	}
 
 	// parse_error (not meant to be an event callback)
 	parse_error(s_expected, b_eof) {
+		// read error; safe_parse will handle errback
+		if(this.read_error) return true;
+
 		@- T
 			let i = this.i;
 			let i_off = Math.min(i, Math.abs(i-15));
@@ -1079,6 +932,10 @@ class reader {
 		this.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
 			+` ${' '.repeat(i-i_off)}^\n`
 			+`expected ${s_expected} ${b_eof? 'but encountered <<EOF>>': ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
+
+		this.transform.destroy(this.read_error);
+
+		return true;
 	}
 
 	// end of file
@@ -1124,7 +981,9 @@ class reader {
 		// invalid parsing state
 		if(this.@{S_STATE_PRIMARY} !== this.state) {
 			// already eof'ed
-			if(this.eofed) return this.parse_error(this.state.name, true);
+			if(this.eofed) {
+				return this.parse_error(this.state.name, true);
+			}
 
 			// now we have
 			this.eofed = true;
@@ -1135,29 +994,29 @@ class reader {
 			// exit "flowing" mode
 			this.n = this.s.length;
 
-			// resume parsing
-			this.safe_parse();
-			
-			// eof has occurred under safe parse
-			if(null === this.s) return;
+			// resume parsing; no errors
+			if(this.safe_parse()) {
+				// eof has occurred under safe parse
+				if(null === this.s) return;
 
-			// callback paused stream
-			if(this.n < 0) {
-				debugger;
+				// callback paused stream
+				if(this.n < 0) {
+					debugger;
 
-				// resume here later
-				this.queue_event.push({
-					event: 'eof',
-					data: null,
-				});
+					// resume here later
+					this.queue_event.push({
+						event: 'eof',
+						data: null,
+					});
 
-				// stop emptying event queue and go async immediately
-				return;
-			}
+					// stop emptying event queue and go async immediately
+					return;
+				}
 
-			// still invalid parsing state
-			if(this.@{S_STATE_PRIMARY} !== this.state) {
-				return this.parse_error(this.state.name, true);
+				// still invalid parsing state
+				if(this.@{S_STATE_PRIMARY} !== this.state) {
+					return this.parse_error(this.state.name, true);
+				}
 			}
 		}
 
@@ -1188,17 +1047,17 @@ class reader {
 		// make buffer's alloc eligible for gc
 		this.s = null;
 
-		// output stream
-		let ds_output = this.output;
+		// transform stream
+		let ds_transform = this.transform;
 
 		// final progress update: no additional bytes were read
-		ds_output.emit('progress', 0);
+		ds_transform.emit('progress', 0);
 
 		// call end event listener
-		ds_output.emit('eof', this.prefixes);
+		ds_transform.emit('eof', this.prefixes);
 
 		// close write stream (EOF-signaling)
-		ds_output.push(null);
+		ds_transform.push(null);
 	};
 
 
@@ -1220,13 +1079,13 @@ class reader {
 	data: {},  // attach data listener last
 };
 
-	// bind event listeners to output stream
+	// bind event listeners to transform stream
 	bind(g_config) {
-		let ds_output = this.output;
+		let ds_transform = this.transform;
 		@*{
 			for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
 				yield /* syntax: js */ `
-					if(g_config.${s_event}) ds_output.${g_event.once? 'once': 'on'}('${s_event}', g_config.${s_event});
+					if(g_config.${s_event}) ds_transform.${g_event.once? 'once': 'on'}('${s_event}', g_config.${s_event});
 					`.trim()+'\n';
 			}
 		}
@@ -1845,13 +1704,14 @@ class reader {
 
 
 	@{method('base_iri')}
+if(this.debug) debugger;
 		// prefix id
 		@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_base')}
 			@// set base url
 			@{iriref('base_url', 'm_iriref_e_base', false, true)}
 
 			// emit base event
-			if(this.base) this.base(this.base_url);
+			this.emit('base', this.base_url);
 
 			@// handle full stop
 			@{full_stop()}
@@ -1865,7 +1725,7 @@ class reader {
 			@{iriref('base_url', 'm_iriref_base', false, true, true)}
 
 			// emit base event
-			if(this.base) this.base(this.base_url);
+			this.emit('base', this.base_url);
 
 			@// handle full stop
 			@{full_stop()}
@@ -2458,6 +2318,17 @@ class reader {
 	@{end_method('collection_object')}
 
 	@//@object-literal
+
+	destroy() {
+		@*{
+			for(let s_method of a_methods) {
+				yield /* syntax: js */ `
+					this.${s_method} = () => {};
+				`;
+			}
+		}
+		this.destroyed = true;
+	}
 }
 
 module.exports = function(...a_args) {
@@ -2465,6 +2336,6 @@ module.exports = function(...a_args) {
 
 	@{normalize_reader_config('g_config')}
 
-	// create reader, return output stream
-	return (new reader(g_config)).output;
+	// create reader, return transform stream
+	return (new reader(g_config)).transform;
 };

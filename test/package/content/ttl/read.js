@@ -2,13 +2,16 @@
 const assert = require('assert');
 const deq = assert.deepEqual;
 const eq = assert.strictEqual;
-
 const stream = require('stream');
-
 const expect = require('chai').expect;
 
-const ttl_read = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/content.ttl.read`);
+let S_GRAPHY_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
+const factory = require(`@${S_GRAPHY_CHANNEL}/core.data.factory`);
+const dataset_tree = require(`@${S_GRAPHY_CHANNEL}/util.dataset.tree`);
+const graphy_reader_interface = require('../../../interfaces/content-reader.js');
+const w3c_rdf_specification = require('../../../interfaces/w3c-rdf-specification.js');
 
+const ttl_read = require(`@${S_GRAPHY_CHANNEL}/content.ttl.read`);
 
 const P_IRI_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
 const P_IRI_RDF_FIRST = P_IRI_RDF+'first';
@@ -73,7 +76,7 @@ const err = (s_test, s_ttl, s_err_char, s_err_state) => {
 				let s_match = 'failed to parse a valid token'; // starting at '+('string' === typeof s_err_char? '"'+s_err_char+'"': '<<EOF>>');
 				expect(e_parse.message).to.have.string(s_match);
 				if(s_err_state) {
-					expect(/expected (\w+)/.exec(e_parse)[1]).to.equal(s_err_state);
+					expect(/expected (\w+)/.exec(e_parse.message)[1]).to.equal(s_err_state);
 				}
 			},
 			end() {},
@@ -82,7 +85,7 @@ const err = (s_test, s_ttl, s_err_char, s_err_state) => {
 };
 
 const deq_quads = (a_quads_a, a_quads_b) => {
-	eq(a_quads_a.length, a_quads_b.length, `expected ${a_quads_b.length} quads, parsed ${a_quads_a.length}`);
+	eq(a_quads_a.length, a_quads_b.length, `expected ${a_quads_b.length} quads, read ${a_quads_a.length}`);
 	for(let i_quad=0, nl_quads=a_quads_a.length; i_quad<nl_quads; i_quad++) {
 		let g_quad_a = a_quads_a[i_quad];
 		let g_quad_b = a_quads_b[i_quad];
@@ -118,7 +121,7 @@ const survive = (s_test, s_ttl, a_pattern, b_debug=false) => {
 		s_ttl = S_AUTO_PREFIX + s_ttl;
 	}
 	let a_ttl = s_ttl.split('');
-	it(s_test, (f_done) => {
+	it(s_test, (fke_done) => {
 		(new stream.Readable({
 			read() {
 				this.push(a_ttl.shift() || null);
@@ -126,14 +129,14 @@ const survive = (s_test, s_ttl, a_pattern, b_debug=false) => {
 		})).pipe(ttl_read({
 			debug: b_debug,
 			error(e_parse) {
-				throw e_parse;
+				fke_done(e_parse);
 			},
 			data(h_triple) {
 				a_quads.push(h_triple);
 			},
 			end() {
 				deq_quads(a_quads, a_pattern.map(as_triple));
-				f_done();
+				fke_done();
 			},
 		}));
 	});
@@ -142,17 +145,13 @@ const survive = (s_test, s_ttl, a_pattern, b_debug=false) => {
 const allow = survive;
 
 describe('ttl reader:', () => {
-
 	describe('empty:', () => {
-
 		allow('blank', '', []);
 
 		allow('whitespace', ' \t \n', []);
 	});
 
-
 	describe('iris & prefixed names:', () => {
-
 		const abc = [['z://_/a', 'z://_/b', 'z://_/c']];
 
 		allow('iris', '<z://_/a> <z://_/b> <z://_/c> .', abc);
@@ -174,9 +173,7 @@ describe('ttl reader:', () => {
 		allow('prefixed names w/ empty suffix', '@prefix pa: <z://_/a>. @prefix pb: <z://_/b>. @prefix pc: <z://_/c>. pa: pb: pc: .', abc);
 	});
 
-
 	describe('base & relative iris:', () => {
-
 		allow('change scheme', `
 			@base <scheme://auth/path/end> .
 			<//a> <//a/b> <//a/b/d/../c> .`, [
@@ -261,9 +258,7 @@ describe('ttl reader:', () => {
 			]);
 	});
 
-
 	describe('comments:', () => {
-
 		const abc = [['z://_/a', 'z://_/b', 'z://_/c']];
 
 		allow('breaking triple', `@prefix p: <z://_/>. p:a#comment\np:b#\np:c#comment\n.`, abc);
@@ -278,12 +273,9 @@ describe('ttl reader:', () => {
 				['z://_/a', 'z://_/b', 'z://_/d'],
 				['z://_/a', 'z://_/e', {value:'f', datatype:{value:'z://_/g'}}],
 			]);
-
 	});
 
-
 	describe('blank nodes:', () => {
-
 		allow('labeled', `
 			_:a :b _:c .
 			_:c :d _:e .
@@ -329,7 +321,6 @@ describe('ttl reader:', () => {
 
 
 	describe('collections:', () => {
-
 		allow('empty', ':a :b ().', [
 			['#a', '#b', '.'],
 		]);
@@ -544,7 +535,6 @@ describe('ttl reader:', () => {
 	});
 
 	describe('string literals:', () => {
-
 		allow('single quotes', `
 			:a :b '' .
 			:a :b 'c' .
@@ -619,7 +609,6 @@ describe('ttl reader:', () => {
 	});
 
 	describe('numeric literals:', () => {
-
 		allow('integers', `
 			:a :b 0, -2, +20 .
 			`, [
@@ -646,7 +635,6 @@ describe('ttl reader:', () => {
 	});
 
 	describe('boolean literals:', () => {
-
 		allow('true', `
 			:a :b true, TRUE .
 			`, [
@@ -663,7 +651,6 @@ describe('ttl reader:', () => {
 	});
 
 	describe('emits parsing error for:', () => {
-
 		err('prefix declaration without prefix',
 			'@prefix <a> ', '<', 'prefix_id');
 
@@ -752,7 +739,6 @@ describe('ttl reader:', () => {
 
 	// Special thanks to Ruben Verborgh for the following test cases:
 	describe('n3 test cases:', () => {
-
 		allow('should parse statements with an empty list in the subject',
 			'() <a> <b>.', [
 				[P_IRI_RDF_NIL, 'a', 'b'],
@@ -864,5 +850,60 @@ describe('ttl reader:', () => {
 				[' g1', '>>', '.'],
 				[' g0', 'c', 'd'],
 		]);
+	});
+
+	describe('graphy reader interface', () => {
+		let k_tree_expect = dataset_tree();
+
+		k_tree_expect.add(factory.quad(...[
+			factory.namedNode('test://a'),
+			factory.namedNode('test://b'),
+			factory.namedNode('test://c'),
+		]));
+
+		graphy_reader_interface({
+			reader: ttl_read,
+			input: /* syntax: ttl */ `
+				@base <base://> .
+				@prefix : <test://> .
+				@prefix test: <test://test#> .
+				:a :b :c .
+			`,
+			events: {
+				base(a_bases) {
+					expect(a_bases).to.eql([
+						['base://'],
+					]);
+				},
+
+				prefix(a_prefixes) {
+					expect(a_prefixes).to.eql([
+						['', 'test://'],
+						['test', 'test://test#'],
+					]);
+				},
+
+				data(a_events) {
+					let k_tree_actual = dataset_tree();
+					for(let [g_quad] of a_events) {
+						k_tree_actual.add(g_quad);
+					}
+
+					expect(k_tree_actual.equals(k_tree_expect)).to.be.true;
+				},
+
+				eof(a_eofs) {
+					expect(a_eofs).to.have.length(1);
+				},
+			},
+		});
+	});
+
+	describe('w3c rdf specification', async() => {
+		await w3c_rdf_specification({
+			reader: ttl_read,
+			package: 'content.ttl.read',
+			manifest: 'http://w3c.github.io/rdf-tests/turtle/manifest.ttl',
+		});
 	});
 });
