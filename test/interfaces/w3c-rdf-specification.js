@@ -4,6 +4,9 @@ const stream = require('stream');
 const url = require('url');
 const expect = require('chai').expect;
 
+const pathToFileURL = url.pathToFileURL || (p_path => `file://${p_path}`);
+const fileURLToPath = url.fileURLToPath || (p_url => p_url.replace(/^file:\/\//, ''));
+
 const S_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
 const ttl_read = require(`@${S_CHANNEL}/content.ttl.read`);
 const nt_read = require(`@${S_CHANNEL}/content.nt.read`);
@@ -313,21 +316,20 @@ module.exports = (gc_tests={}) => new Promise((fk_describe) => {
 	} = gc_tests;
 
 	let p_manifest = path.join(pd_root, 'build', S_CHANNEL, 'test/cache', si_package, 'manifest.ttl');
-	let p_iri_manifest = url.pathToFileURL(p_manifest);
+	let p_iri_manifest = pathToFileURL(p_manifest);
 
 	let k_tree = dataset_tree();
-	stream.pipeline(...[
-		fs.createReadStream(p_manifest),
 
-		ttl_read({
+	// pipeline for backwards-compat w/ < v10
+	fs.createReadStream(p_manifest)
+		.pipe(ttl_read({
 			base_uri: p_iri_manifest,
-		}),
-
-		k_tree,
-
-		(e_pipeline) => {
+		}))
+		.pipe(k_tree)
+		.on('error', (e_pipeline) => {
 			if(e_pipeline) throw e_pipeline;
-
+		})
+		.on('end', () => {
 			let sv1_head = [...k_tree.objects('*', '>'+p_iri_manifest, '>'+H_PREFIXES.mf+'entries', null)][0];
 
 			let a_entries = collection(sv1_head, k_tree);
@@ -346,7 +348,7 @@ module.exports = (gc_tests={}) => new Promise((fk_describe) => {
 
 					let sv1_type = [...as_types][0];
 					let s_name = [...as_names][0].slice(1);
-					let p_action = url.fileURLToPath([...as_actions][0].slice(1));
+					let p_action = fileURLToPath([...as_actions][0].slice(1));
 
 					// no route
 					if(!(sv1_type in HV1_TEST_TYPES)) {
@@ -359,7 +361,7 @@ module.exports = (gc_tests={}) => new Promise((fk_describe) => {
 						reader: f_reader,
 						name: s_name,
 						action: p_action,
-						result: as_results.size? url.fileURLToPath([...as_results][0].slice(1)): null,
+						result: as_results.size? fileURLToPath([...as_results][0].slice(1)): null,
 						base: p_manifest_source.replace(/\/[^/]+$/, '/'+path.basename(p_action)),
 					});
 
@@ -369,6 +371,5 @@ module.exports = (gc_tests={}) => new Promise((fk_describe) => {
 			});
 
 			fk_describe();
-		},
-	]);
+		});
 });

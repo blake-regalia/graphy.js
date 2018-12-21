@@ -23,7 +23,7 @@
   },
   "repository": "blake-regalia/graphy.js",
   "scripts": {
-    "test": "npx emk && npx emk build/test/cache/** && npx emk test.*"
+    "test": "npx emk && npx emk build/graphy/test/cache/** && npx emk test.*"
   },
   "dependencies": {
     "async": "^2.6.1",
