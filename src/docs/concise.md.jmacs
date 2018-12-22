@@ -66,6 +66,7 @@ Directives allow for special events to be passed to the output serializer at a g
 
 #### Grammar
 
+
 | State            | Production                                           |
 | ---------------- | ---------------------------------------------------- |
 | Term             | `NamedNode | BlankNode | Literal | Directive`        |
