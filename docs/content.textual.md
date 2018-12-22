@@ -119,7 +119,7 @@ The following section describes hinted formatting on ES primitives that are used
 <a name="#string_js-function-map" />
 
  - `#string/js-function-map` -- see [`@string/js-function-*`](#string_js-function-).
-   - **signature:** `function(result_callback: callback(result: any))` : [`ReadConfig_NoInput`](#config-read)
+   - **signature:** `function(result_callback: callback(result: any))` : [`ReadConfig_NoInput`](#config_read)
 
 <a name="#string_js-function-reduce" />
 
@@ -162,20 +162,25 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
         - *expects* `.value` to be a [Triple](core.data.factory#class_triple)
      - `'quad'` -- write a single RDFJS-compatible quad to the output.
         - *expects* `.value` to be a [Quad](core.data.factory#class_quad)
+     - `'base'`-- sets or updates the current base URI used for relative IRI resolution. Will also cause the writer to output a `@base` statement if supported by the underlying RDF format.
+        - *expects* `.value` to be an IRI `string`.
      - `'prefixes'` -- updates the current prefix mappings which are used to expand CURIEs found in following concise triple (c3) and concise quad (c4) hashes. Will also cause the writer to output the given prefix mappings if supported by the underlying RDF format.
         - *expects* `.value` to be a [#struct/prefix-mappings](core.data.factory#struct_prefix-mappings)
      - `'comment'` -- if the underlying RDF format supports it, a comment will be written to the output document, otherwise this has no effect.
-        - *expects* `.value` to be a:
+        - *expects* `.value` to be one of the following:
            - `string` -- a single-line comment
-           - [#struct/comment-config](#struct_comment-config)
-        [#struct/prefix-mappings](core.data.factory#struct_prefix-mappings)
+           - [#struct/comment-config](#struct_comment-config) -- enhanced comment 
 
 <a name="struct_comment-config" />
 
  - `#struct/comment-config` -- 
    - **required properties:**
      - `.contents`: `string` -- the contents of the comment
-     - `.column`: `int` -- a column number to break long comments by word and wrap onto the next line
+   - **optional properties:**
+     - `.width`: `int` -- if specified, breaks comments longer than the given `width` onto multiple lines.
+
+<!--     - `.column`: `int` -- a column number to break long comments by word and wrap onto the next line
+-->
 
 ---
 
@@ -189,6 +194,8 @@ This section documents the 'verb' part of each content module. A 'verb' refers t
 <!--
  - [turbo](#verb-turbo) -- read serialized RDF documents using multiple threads.
 -->
+
+---
 
 <a name="verb_read" />
 
@@ -204,35 +211,41 @@ Read RDF data (in other words, deserialize it) from a document given by an input
 **Overloaded variants:**
  - `read([config: `[`#struct/read-config-no-input`](#struct_read-config-no-input)`])`
    - creates a new content reader that will act as a transform, accepting utf8-encoded strings on the writable side and outputting [Quads](core.data.factory#class-quad) on the readable side.
-   - **returns** a [new Transform<string, Quad>](core.iso.stream#transform_string-writable-quad-readable)
+   - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
 
  - `read(input_string: string[, config: `[`#struct/read-config-no-input`](#struct_read-config-no-input)`])`
    - shortcut for:
       ```js
-      read({
-          ...config,
-          input: {
-              string: input_string,
-          },
-      })
+      read(config)
+        .end(input_string, 'utf-8');
       ```
-   - **returns** a [`new ReadableStream<Quad>`](core.iso.stream#readable_quad)
+   - equivalent to:
+      ```js
+      read({
+        ...config,
+        input: {string:input_string},
+      });
+      ```
+   - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
  
  - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#struct/read-config-no-input`](#struct_read-config-no-input)`])`
    - shortcut for:
       ```js
-      read({
-          ...config,
-          input: {
-              stream: input_stream,
-          },
-      })
+      input_stream
+        .pipe(read(config));
       ```
-   - **returns** a [`new ReadableStream<Quad>`](core.iso.stream#readable_quad)
+   - equivalent to:
+      ```js
+      read({
+        ...config,
+        input: {stream:input_stream},
+      });
+      ```
+   - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
 
- - `read(config: `[`ReadConfig_WithInput`](#config-read-with-input)`)`
+ - `read(config: `[`ReadConfig_WithInput`](#config_read-with-input)`)`
    - creates a new content reader that will output [Quads](core.data.factory#class_quad).
-   - **returns** a [`new ReadableStream<Quad>`](core.iso.stream#readable_quad)
+   - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
 
 **Examples**:
 ```js
@@ -310,6 +323,8 @@ let ds_reader = nt_read({
 ds_reader.write('<a> <b> <c> .');
 ```
 
+---
+
 <a name="verb_write" />
 
 ### write
@@ -323,8 +338,8 @@ Write RDF (in other words, serialize it) to a document for storage, transmission
 
 **Overloaded variants:**
  - `write([config: `[`WriteConfig`](#config_write)`])`
-   - creates a new content writer and returns a transform that operates in object mode on the writable side and emits utf8-encoded strings on the readable side. The type of object it expects on the writable side depends on the capabilities of the format and the options specified in `config`
-     - **returns** a [new `Transform<#struct/write-data-event, string>`](#transform-write-data-event-writable-string-readable)
+   - creates a new content writer and returns a transform that operates in object mode on the writable side and emits utf8-encoded strings on the readable side. The types of objects it responds to on the writable side may depend on the capabilities of the format.
+     - **returns** a [new `Transform<#struct/writable-data-event, string>`](#transform_writable-data-event-writable_string-readable)
 
 **Example A**:
 Convert a CSV document into an RDF Turtle document using a custom transform in a pipeline.
@@ -334,25 +349,25 @@ const csv_parse = require('csv-parse');
 const stream = require('@graphy/core.iso.stream');
 const ttl_write = require('@graphy/content.ttl.write');
 
-   // a series of streams to pipe together
+// a series of streams to pipe together
 stream.pipeline(...[
-      // read from standard input
+   // read from standard input
    process.stdin,
 
-      // parse string chunks from CSV into row objects
+   // parse string chunks from CSV into row objects
    csv_parse(),
 
-      // transform each row
+   // transform each row
    new stream.Transform({
-         // this transform both expects objects as input and outputs object
+      // this transform both expects objects as input and outputs object
       objectMode: true,
 
-         // each row
+      // each row
       transform(a_row, s_encoding, fk_transform) {
-            // destructure row into cells
+         // destructure row into cells
          let [s_id, s_name, s_likes] = a_row;
 
-            // structure data into concise-triple hash
+         // structure data into concise-triple hash
          fk_transform(null, {
             type: 'c3',
             value: {
@@ -367,7 +382,7 @@ stream.pipeline(...[
       },
    }),
 
-      // serialize each triple
+   // serialize each triple
    ttl_write({
       prefixes: {
          demo: 'http://ex.org/',
@@ -375,10 +390,10 @@ stream.pipeline(...[
       },
    }),
 
-      // write to standard output
+   // write to standard output
    process.stdout,
 
-      // listen for errors; throw them
+   // listen for errors; throw them
    (e_stream) => {
       throw e_stream;
    },
@@ -508,7 +523,7 @@ The definition for all possible events emitted during content writing. Please [s
 
 <a name="class_concise-quad-writer" />
 
-### class **ConciseQuadWriter** extends [Transform](core.iso.stream#transform)&lt;[#hash/c4](concise#c4-hash), string&gt;
+### class **ConciseQuadWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[#hash/c4](concise#c4-hash), string&gt;
 Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c4](concise#c4-hash).
 
 **Construction:**
@@ -523,7 +538,7 @@ See [`write`](#verb-write).
 
 <a name="class_concise-triple-writer" />
 
-### class **ConciseTripleWriter** extends [Transform](core.iso.stream#transform)&lt;[#hash/c3](concise#c3-hash), string&gt;
+### class **ConciseTripleWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[#hash/c3](concise#c3-hash), string&gt;
 Acts as an object-writable, string-readable Transform for serializing RDF triples from memory to an output destination. Expects objects on the writable side to be of type [#hash/c3](concise#c3-hash).
 
 **Construction:**
@@ -537,7 +552,7 @@ See [`write`](#verb-write).
 
 <a name="class-concisepairwriter" />
 
-### class **ConcisePairWriter** extends [Transform](core.iso.stream#transform)&lt;[#hash/c4](concise#c4-hash), string&gt;
+### class **ConcisePairWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[#hash/c4](concise#c4-hash), string&gt;
 Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c4](concise#c4-hash).
 
 **Construction:**
@@ -554,7 +569,7 @@ See [`write`](#verb-write).
 
 <a name="class_rdfjs-quad-writer" />
 
-### class **RDFJSQuadWriter** extends [Transform](core.iso.stream#transform)&lt;[@RDFJS/Quad](http://rdf.js.org/#quad-interface), string&gt;]
+### class **RDFJSQuadWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[@RDFJS/Quad](http://rdf.js.org/#quad-interface), string&gt;]
 Contains methods for serializing RDF quads from memory to an output destination.
 
 **Construction:**
@@ -573,7 +588,7 @@ See [`write`](#verb_write).
 
 <a name="class_generic-quad-writer" />
 
-### class **GenericQuadWriter** extends [Transform&lt;Quad | @RDFJS/Quad, string&gt;]()
+### class **GenericQuadWriter** _extends_ [Transform&lt;Quad | @RDFJS/Quad, string&gt;]()
 Contains methods for serializing RDF quads from memory to an output destination.
 
 **Construction:**
@@ -615,7 +630,7 @@ See [`write`](#verb_write) and [`QuadWriter#graph`](#class_quadwriter).
 
 <a name="config_read-no-input" />
 
-#### config **ReadConfig_NoInput** inlines [ReadEvents](#events_read)
+#### config **ReadConfig_NoInput** _inlines_ [ReadEvents](#events_read)
 An interface that defines the config object passed to a content reader.
 
 **Options:**
@@ -623,10 +638,10 @@ An interface that defines the config object passed to a content reader.
 
 <a name="config_read-with-input" />
 
-#### config **ReadConfig_WithInput** extends [ReadConfig_NoInput](#config_read-no-input)
+#### config **ReadConfig_WithInput** _extends_ [ReadConfig_NoInput](#config_read-no-input)
       
 **Options:**
- - ... [see those inheritted from ReadConfig_NoInput](#config-read-no-input)
+ - ... [see those inheritted from ReadConfig_NoInput](#config_read-no-input)
 
 **Required:**
  - `input` : [`#struct/input_string`](#struct_input-string)` | `[`#struct/input_stream`](#struct_input-stream)
@@ -634,7 +649,7 @@ An interface that defines the config object passed to a content reader.
 
 <a name="config_write" />
 
-#### config **WriteConfig** inlines [WriteEvents](#events_write)
+#### config **WriteConfig** _inlines_ [WriteEvents](#events_write)
 An interface that defines the config object passed to a content writer.
 
 **Options:**
@@ -648,14 +663,14 @@ An interface that defines the config object passed to a content writer.
 
 <!--
 
-<a name="config-turbo-no-input" />
+<a name="config_turbo-no-input" />
 
-#### config **TurboConfig_WithInput** inlines [TurboEvents](#events-turbo)
+#### config **TurboConfig_WithInput** _inlines_ [TurboEvents](#events-turbo)
  
 **Required:**
  - `input` : [`#struct/input_file`](#struct_input-file)` | `[`#struct/input_url`](#struct_input-url)
  - `map` : [`#string/js_function_map`](#string-js_function_map)
-   - **signature:** `function(result_callback: callback(result: any))` : [`ReadConfig_NoInput`](#config-read)
+   - **signature:** `function(result_callback: callback(result: any))` : [`ReadConfig_NoInput`](#config_read)
    - This string will be copied and given to each worker thread where it will be turned into a new function in order to build the reader config as well as to distill the results that you are interested in obtaining. The function should accept a single argument, a callback function `result_callback` which expects to be called once the worker thread is ready to pass its results back to the main thread.
  - `reduce` : [`#string/js_function_reduce`](#string-js_function_reduce)
    - **signature:** `function(result_a: any, result_b: any)` : `any`

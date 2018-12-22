@@ -4,7 +4,7 @@
 @import "{{ site.theme }}";
 
 .wrapper {
-	width: 80%;
+	width: 85%;
 	max-width: 1600px;
 	background-color: #fefefe;
 }
@@ -15,7 +15,11 @@ code {
 }
 
 code a {
-	color: #069;
+	color: #069 !important;
+}
+
+a code {
+	color: #069 !important;
 }
 
 body {
@@ -42,4 +46,18 @@ h4 {
 
 h3, h4, h5, h6 {
 	color: #000;
+	margin-left: -5px;
+}
+
+hr {
+	margin-top: 20px;
+}
+
+strong {
+	font-size: 1.1em;
+	color: #000;
+}
+
+p+ul {
+	margin-top: -15px;
 }
