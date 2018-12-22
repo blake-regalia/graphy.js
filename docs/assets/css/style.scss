@@ -53,11 +53,23 @@ hr {
 	margin-top: 20px;
 }
 
-strong {
+h3 strong, h4 strong, h5 strong, h6 strong {
 	font-size: 1.1em;
 	color: #000;
 }
 
 p+ul {
 	margin-top: -15px;
+}
+
+.highlight {
+	border-radius: 1em;
+}
+
+li pre {
+	margin-top: 5px;
+	margin-left: 0;
+	padding-left: 10px;
+	padding-top: 15px;
+	padding-bottom: 15px;
 }

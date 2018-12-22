@@ -10,7 +10,9 @@ This documentation covers the following graphy packages:
  - TriG
    - reader: `@graphy/content.trig.read`
 
-## Contents of this document
+----
+
+## Contents
  - [A Note About Events](#note_events) -- two different styles for event binding
  - [Accessibility](#accessibility) -- all textual RDF content modules
  - [Datatypes](#datatypes) -- formatting hints or restrictions on primitive ES datatypes
@@ -28,7 +30,7 @@ This documentation covers the following graphy packages:
 - [`scribe`](#verb-scribe) -- for writing RDF using Quad objects only
 -->
 
----
+----
 
 <a name="note_events" />
 
@@ -39,7 +41,7 @@ A sleeker alternative to the `.on(...)` approach is the *inline events* style. S
 
 See the [`read`](#verb-read) examples for a demonstration of the two styles of attaching event listeners.
 
----
+----
 
 <a name="accessibility" />
 
@@ -182,7 +184,7 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 <!--     - `.column`: `int` -- a column number to break long comments by word and wrap onto the next line
 -->
 
----
+----
 
 <a name="verbs" />
 
@@ -195,7 +197,7 @@ This section documents the 'verb' part of each content module. A 'verb' refers t
  - [turbo](#verb-turbo) -- read serialized RDF documents using multiple threads.
 -->
 
----
+----
 
 <a name="verb_read" />
 
@@ -323,7 +325,7 @@ let ds_reader = nt_read({
 ds_reader.write('<a> <b> <c> .');
 ```
 
----
+----
 
 <a name="verb_write" />
 
@@ -423,7 +425,7 @@ demo:Banana foaf:name "Banana" ;
 
 ```
 
----
+----
 
 <a name="events" />
 
@@ -498,7 +500,7 @@ The definition for all possible events emitted during content reading. Please [s
  - `exit(graph: `[`NamedNode`](core.data.factory#class_named-node)`)`
    - Gets called each time a graph block is exitted as soon as the closing brace character `}` is read.       `graph` will either be a [NamedNode](core.data.factory#class_named-node), [BlankNode](core.data.factory#class_blank-node) or       [DefaultGraph](core.data.factory#class_default-graph).
   - `progress(delta: integer)`
-    - Gets called each time the reader has finished processing a chunk of data is going asynchronous to wait for the next I/O event. `delta` will reflect the number of characters that were consumed from the input which resulted in a change to the reader's internal state (i.e., incomplete tokens must wait for next chunk to be terminated). This event offers a nice way to provide progress updates to the user but would also require knowing ahead of time how many characters in total are contained by the input. This event also provides hints to resource-hungry applications when it might be an opportunistic time to perform synchronous tasks. This event will also be called right before the `eof()` event with a `delta` equal to `0`.
+    - Gets called each time the reader has finished processing a chunk of data and is about to go asynchronous and wait for the next I/O event. `delta` will reflect the number of characters that were consumed from the input which resulted in a change to the reader's internal state (i.e., incomplete tokens must wait for next chunk to be terminated). This event offers a nice way to provide progress updates to the user, however this would require knowing ahead of time how many characters in total are contained by the input. This event also provides hints to resource-hungry applications when it might be an opportunistic time to perform synchronous tasks. This event will also be called right before the `eof()` event with a `delta` equal to `0`.
   - `error(err: Error)`
     - Gets called if an error occurs any time during the read process, including malformed syntax errors, unreadable inputs, and so forth. If an error does occur, no other events will be emitted after this one. If you do not include an error event handler, the parser will throw the error.
   - `eof(prefixes: `[`#hash/prefix-mappings`](core.data.factory#hash_prefix-mappings)`)`
@@ -515,7 +517,7 @@ The definition for all possible events emitted during content writing. Please [s
 **Events:**
  - ... [see those inherited from @nodejs/stream.Transform](https://nodejs.org/api/stream.html#stream_class_stream_transform) (i.e., events from both @nodejs/stream.Readable and @nodejs/stream.Writable)
 
----
+----
 
 <a name="classes" />
 
@@ -552,8 +554,8 @@ See [`write`](#verb-write).
 
 <a name="class-concisepairwriter" />
 
-### class **ConcisePairWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[#hash/c4](concise#c4-hash), string&gt;
-Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c4](concise#c4-hash).
+### class **ConcisePairWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[#hash/c2](concise#c2-hash), string&gt;
+Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c2](concise#c2-hash).
 
 **Construction:**
 See [`write`](#verb-write).
@@ -622,7 +624,7 @@ See [`write`](#verb_write) and [`QuadWriter#graph`](#class_quadwriter).
 
 -->
 
----
+----
 
 <a name="configs" />
 
@@ -654,7 +656,7 @@ An interface that defines the config object passed to a content writer.
 
 **Options:**
  - ... [see those inlined from WriteEvents](#events_write)
- - `type` : `'concise' | 'rdfjs' | null` -- optionally specify the type of objects that will be written to the transform, where `'concise'` indicates objects of either [concise triple hash](concise#hash_c3) or [concise quad hash](concise#hash_c4) depending on whether or not the underlying serialization format supports quads, and where `'rdfjs'` indicates objects of [@RDFJS/Quad](http://rdf.js.org/#quad-interface) (the graph component will be ignored for formats that do not support quads). If `null` is given or this option is not specified, each object written to the transform will be automatically duck-typed and interpretted as one of these two object types.
+ // - `type` : `'concise' | 'rdfjs' | null` -- optionally specify the type of objects that will be written to the transform, where `'concise'` indicates objects of either [concise triple hash](concise#hash_c3) or [concise quad hash](concise#hash_c4) depending on whether or not the underlying serialization format supports quads, and where `'rdfjs'` indicates objects of [@RDFJS/Quad](http://rdf.js.org/#quad-interface) (the graph component will be ignored for formats that do not support quads). If `null` is given or this option is not specified, each object written to the transform will be automatically duck-typed and interpretted as one of these two object types.
  - `prefixes` : [`#hash/prefix-mappings`](core.data.factory#hash_prefix-mappings) -- prefix mappings to use in order to expand the concise-term strings within concise-quad hashes as they are written. These prefixes will also be used to create prefix statements and terse terms on the output stream whenever possible (e.g., for Turtle and TriG documents).
 
 
