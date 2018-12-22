@@ -288,12 +288,12 @@ const match_prefixed_name = (s, i) => {
 
 @// will only be used by TriG
 @> emit_graph_open()
-	this.emit('graph_open', this.graph);
+	this.emit('enter', this.graph);
 @;
 
 @// will only be used by TriG
 @> emit_graph_close()
-	this.emit('graph_close', this.graph);
+	this.emit('exit', this.graph);
 @;
 
 
@@ -1067,8 +1067,8 @@ class reader {
 	prefix: {},
 	...(QUADS
 		? {
-			graph_open: {},
-			graph_close: {},
+			enter: {},
+			exit: {},
 		}
 		: {}),
 	error: {},

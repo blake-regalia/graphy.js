@@ -1,12 +1,14 @@
 @import './docs.jmacs'
 # Textual RDF Content Handlers
-This documentation serves for all graphy packages that are under the following prefixes:
- - `@graphy/content.nt.*`
- - `@graphy/content.ttl.*`
- - `@graphy/content.nq.*`
- - `@graphy/content.trig.*`
-
-These are considered 'textual' RDF content handlers and include 
+This documentation covers the following graphy packages:
+ - N-Triples
+   - reader: `@graphy/content.nt.read`
+ - N-Quads
+   - reader: `@graphy/content.nq.read`
+ - Turtle
+   - reader: `@graphy/content.ttl.read`
+ - TriG
+   - reader: `@graphy/content.trig.read`
 
 ## Contents of this document
  - [A Note About Events](#note_events) -- two different styles for event binding
@@ -31,9 +33,9 @@ These are considered 'textual' RDF content handlers and include
 <a name="note_events" />
 
 #### A note about Events
-These modules offer two distinct approaches to binding event listeners. The traditional `.on(...)` approach will allow you to bind event listeners on the returned handle as popularized by node.js, however this actually does incur a non-trivial amount of overhead for setup, teardown, and every time an event is emitted.
+These modules offer two distinct approaches to binding event listeners. The traditional `.on(...)` approach will allow you to attach event listeners on the `Transform` object that is returned by the module function. This style was popularized by node.js, however this actually does incur a non-trivial amount of overhead for setup, teardown, and emittance.
 
-A sleeker alternative is to provide a callback function for each event you want to listen for at the time the reader is created, giving the reader a direct reference to at most a single callback function per event. While this allows for better performance, it might not be suitable for users who want the ability to add multiple event listeners, to remove listeners, or to add listeners at a later time.
+A sleeker alternative to the `.on(...)` approach is the *inline events* style. Simply provide a callback function for each event you want to attach a listener to at the time the module function is called, passing a direct reference to at most one callback function per event. This approach allows the module to bypass the `EventEmitter` methods and can result in slightly better performance; it is also more pleasant to look at. However, it might not be suitable for users who need the ability to add multiple event listeners, to remove listeners, or to add listeners at a later time.
 
 See the [`read`](#verb-read) examples for a demonstration of the two styles of attaching event listeners.
 
@@ -42,7 +44,7 @@ See the [`read`](#verb-read) examples for a demonstration of the two styles of a
 <a name="accessibility" />
 
 ## Accessibility
-The following code block demonstrates two *different* ways to access this module.
+The following code block demonstrates three *different* ways to access this module.
 ```js
 // stand-alone readers
 const nt_read = require('@graphy/content.nt.read');
@@ -50,12 +52,19 @@ const nq_read = require('@graphy/content.nq.read');
 const ttl_read = require('@graphy/content.ttl.read');
 const trig_read = require('@graphy/content.trig.read');
 
-// readers via the graphy 'super module'
+// readers via named access from the graphy 'super module'
 const graphy = require('graphy');
 const nt_read = graphy.content.nt.read;
 const nq_read = graphy.content.nq.read;
 const ttl_read = graphy.content.ttl.read;
 const trig_read = graphy.content.trig.read;
+
+// readers via Content-Type query from the graphy 'super module'
+const graphy = require('graphy');
+const nt_read = graphy.content('application/n-triples').read;
+const nq_read = graphy.content('application/n-quads').read;
+const ttl_read = graphy.content('text/turtle').read;
+const trig_read = graphy.content('application/trig').read;
 
 ```
 
@@ -97,11 +106,10 @@ const trig_write = graphy.content.trig.write;
 ## Datatypes
 The following section describes hinted formatting on ES primitives that are used throughout this document.
 
-
+<!--
 <a name="strings" />
 
 ### Strings:
-
 
 <a name="#string_js-function-" />
 
@@ -118,6 +126,8 @@ The following section describes hinted formatting on ES primitives that are used
  - `#string/js-function-reduce` -- see [`@string/js-function-*`](#string_js-function-).
    - **signature:** `function(result_a: any, result_b: any)` : `any`
 
+-->
+
 <a name="structs" />
 
 ### Structs:
@@ -125,7 +135,7 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 
 <a name="struct_input-string" />
 
- - `#struct/input-string` -- a static utf8-encoded string to use as input to a reader.
+ - `#struct/input-string` -- indicates a utf8-encoded string to use as input to a reader.
    - **required properties:**
      - `.string`: `string`
 
@@ -135,20 +145,22 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
    - **required properties:**
      - `.stream`: [`ReadableStream<string>`](core.iso.stream#readable-string)
 
-<a name="struct_write-datum" />
+<a name="struct_writable-data-event" />
 
  - `#struct/writable-data-event` -- 
    - **required properties:**
      - `.type`: `string` -- the type of event this object represents, see below
      - `.value`: `any` -- the value of the object
    - The string given for `.type` should be one of the following:
+     - `'array'` -- write a series of data events (useful for aggregating events synchronously before going async).
+        - *expects* `.value` to be an `Array<`[`#struct/writable-data-event`](struct_writable-data-event)`>`.
      - `'c3'` -- write a set of triples to the output.
         - *expects* `.value` to be a [concise triple hash](concise#hash_c3)
      - `'c4'` -- write a set of quads to the output.
         - *expects* `.value` to be a [concise quad hash](concise#hash_c4)
-     - `'triple'` -- write a single triple to the output.
+     - `'triple'` -- write a single RDFJS-compatible triple to the output.
         - *expects* `.value` to be a [Triple](core.data.factory#class_triple)
-     - `'quad'` -- write a single quad to the output.
+     - `'quad'` -- write a single RDFJS-compatible quad to the output.
         - *expects* `.value` to be a [Quad](core.data.factory#class_quad)
      - `'prefixes'` -- updates the current prefix mappings which are used to expand CURIEs found in following concise triple (c3) and concise quad (c4) hashes. Will also cause the writer to output the given prefix mappings if supported by the underlying RDF format.
         - *expects* `.value` to be a [#struct/prefix-mappings](core.data.factory#struct_prefix-mappings)
@@ -171,14 +183,17 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 
 ## Verbs
 This section documents the 'verb' part of each content module. A 'verb' refers to the fact that the module's export is itself a function.
- - [read](#verb-read) -- reads a serialized RDF document, given by an input stream or string, using a single thread.
- - [turbo](#verb-turbo) -- reads a serialized RDF document, given by an input target, using multiple threads.
- - [write](#verb-write) -- writes serialized RDF data to an output in an event-driven manner using the elegant concise-struct language.
+ - [read](#verb-read) -- read serialized RDF documents using a single thread.
+ - [write](#verb-write) -- write serialized RDF data to an output destination in an event-driven manner using the elegant concise-struct language.
+
+<!--
+ - [turbo](#verb-turbo) -- read serialized RDF documents using multiple threads.
+-->
 
 <a name="verb_read" />
 
 ### read
-Read RDF (in other words, deserialize it) from a document given by an input stream or input string. Uses a single thread.
+Read RDF data (in other words, deserialize it) from a document given by an input stream, input string or via duplexing. Uses a single thread.
 
 **Accessible via the following modules:**
  - N-Triples (.nt) -- `@graphy/content.nt.read`
@@ -201,7 +216,7 @@ Read RDF (in other words, deserialize it) from a document given by an input stre
           },
       })
       ```
-   - **returns** a [new ReadableStream<Quad>](core.iso.stream#readable_quad)
+   - **returns** a [`new ReadableStream<Quad>`](core.iso.stream#readable_quad)
  
  - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#struct/read-config-no-input`](#struct_read-config-no-input)`])`
    - shortcut for:
@@ -213,11 +228,11 @@ Read RDF (in other words, deserialize it) from a document given by an input stre
           },
       })
       ```
-   - **returns** a [new ReadableStream<Quad>](core.iso.stream#readable_quad)
+   - **returns** a [`new ReadableStream<Quad>`](core.iso.stream#readable_quad)
 
  - `read(config: `[`ReadConfig_WithInput`](#config-read-with-input)`)`
    - creates a new content reader that will output [Quads](core.data.factory#class_quad).
-   - **returns** a [new ReadableStream<Quad>](core.iso.stream#readable_quad)
+   - **returns** a [`new ReadableStream<Quad>`](core.iso.stream#readable_quad)
 
 **Examples**:
 ```js
@@ -230,6 +245,8 @@ nt_read('<a> <b> <c> .', {
     },
 });
 
+// -----
+
 // equivalent to above
 nt_read({
     input: {
@@ -240,18 +257,23 @@ nt_read({
     },
 });
 
+// -----
+
 // also equivalent to above
 nt_read('<a> <b> <c> .')
     .on('data', (y_quad) => {
         y_quad.predicate.value;  // 'b'
     });
 
+// -----
 
 // input stream
 let ds_input = fs.createReadStream('./input.nt');
 nt_read(ds_input, {
     data(y_quad) { /* ... */ },
 });
+
+// -----
 
 // equivalent to above
 nt_read({
@@ -261,22 +283,29 @@ nt_read({
     data(y_quad) { /* ... */ },
 });
 
+// -----
+
 // also equivalent to above
 nt_read(fs.createReadStream('./input.nt'))
     .on('data', () => { /* ... */ });
 
+// -----
 
 // no input given yet
 let ds_reader = nt_read({
     data(y_quad) { /* ... */ },
 });
+
 // pipe in data later
 fs.createReadStream('./input.nt').pipe(ds_reader);
 
+// -----
+
 // no input given yet
 let ds_reader = nt_read({
     data(y_quad) { /* ... */ },
 });
+
 // write data later
 ds_reader.write('<a> <b> <c> .');
 ```
@@ -463,6 +492,8 @@ See [`write`](#verb-write).
  - `subject(subject: `[`NamedNode`](core.data.factory#class_namednode)`)` -- creates an instance of a [`ConcisePairWriter`](#class_pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
    - **returns** a [new `ConcisePairWriter`](#class_concisepairwriter)
 
+<!--
+
 <a name="class_rdfjs-quad-writer" />
 
 ### class **RDFJSQuadWriter** extends [Transform](core.iso.stream#transform)&lt;[@RDFJS/Quad](http://rdf.js.org/#quad-interface), string&gt;]
@@ -516,6 +547,7 @@ See [`write`](#verb_write) and [`QuadWriter#graph`](#class_quadwriter).
  - `subject(subject: `[`NamedNode`](core.data.factory#class_namednode)`)` -- creates an instance of a [`PairWriter`](#class_pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
    - **returns** a [new `PairWriter`](#class_pairwriter)
 
+-->
 
 ---
 

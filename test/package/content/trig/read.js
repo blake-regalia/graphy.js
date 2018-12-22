@@ -368,12 +368,12 @@ describe('trig parser:', () => {
 					]);
 				},
 
-				graph_open(a_opens) {
+				enter(a_opens) {
 					expect(a_opens).to.have.length(1);
 				},
 
-				graph_close(a_closes) {
-					expect(a_closes).to.have.length(1);
+				exit(a_exits) {
+					expect(a_exits).to.have.length(1);
 				},
 
 				data(a_events) {
