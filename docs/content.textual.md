@@ -517,6 +517,9 @@ The definition for all possible events emitted during content writing. Please [s
 **Events:**
  - ... [see those inherited from @nodejs/stream.Transform](https://nodejs.org/api/stream.html#stream_class_stream_transform) (i.e., events from both @nodejs/stream.Readable and @nodejs/stream.Writable)
 
+
+<!--
+
 ----
 
 <a name="classes" />
@@ -548,24 +551,30 @@ See [`write`](#verb-write).
 
 **Methods:**
  - ... [see those inheritted from Transform](core.iso.stream#transform)
- - `subject(subject: `[`NamedNode`](core.data.factory#class_named-node)`)` -- creates an instance of a [`ConcisePairWriter`](#class_pair-writer) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
+ - `subject(subject: `[`NamedNode`](core.data.factory#class_named-node)`)` -- creates an instance of a [`ConcisePairWriter`](#class_concise-pair-writer) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
    - **returns** a [new `ConcisePairWriter`](#class_concise-pair-writer)
 
 
-<a name="class-concisepairwriter" />
+<a name="class_concise-pair-writer" />
 
 ### class **ConcisePairWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[#hash/c2](concise#c2-hash), string&gt;
 Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c2](concise#c2-hash).
 
-**Construction:**
-See [`write`](#verb-write).
+**Methods:**
+ - ... [see those inheritted from Transform](core.iso.stream#transform)
+ - `predicate(predicate: `[`NamedNode`](core.data.factory#class_namednode)`)` -- creates an instance of a [`ConciseObjectWriter`](#class_concise-object-writer) that allows for writing multiple statements which belong to the same given `predicate` under the current graph and subject.
+   - **returns** a [new `ConciseObjectWriter`](#class_concise-object-writer)
+
+
+<a name="class_concise-object-writer" />
+
+### class **ConciseObjectWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[#hash/c2](concise#c2-hash), string&gt;
+Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c2](concise#c2-hash).
 
 **Methods:**
  - ... [see those inheritted from Transform](core.iso.stream#transform)
- - `graph(graph: `[`NamedNode`](core.data.factory#class_named-node)`)` -- creates an instance of a [`ConciseTripleWriter`](#class_triplewriter) that allows for writing multiple statements which belong to the same given `graph`.
-   - **returns** a [new `ConciseTripleWriter`](#class_concisetriplewriter)
- - `subject(subject: `[`NamedNode`](core.data.factory#class_namednode)`)` -- creates an instance of a [`ConcisePairWriter`](#class_pairwriter) that allows for writing multiple statements which belong to the same given `subject` under the default graph.
-   - **returns** a [new `ConcisePairWriter`](#class_concisepairwriter)
+ - `add(predicate: `[`NamedNode`](core.data.factory#class_namednode)`)` -- creates an instance of a [`ConciseObjectWriter`](#class_concise-object-writer) that allows for writing multiple statements which belong to the same given `predicate` under the current graph and subject.
+   - **returns** a [new `ConciseObjectWriter`](#class_concise-object-writer)
 
 <!--
 
@@ -656,7 +665,6 @@ An interface that defines the config object passed to a content writer.
 
 **Options:**
  - ... [see those inlined from WriteEvents](#events_write)
- // - `type` : `'concise' | 'rdfjs' | null` -- optionally specify the type of objects that will be written to the transform, where `'concise'` indicates objects of either [concise triple hash](concise#hash_c3) or [concise quad hash](concise#hash_c4) depending on whether or not the underlying serialization format supports quads, and where `'rdfjs'` indicates objects of [@RDFJS/Quad](http://rdf.js.org/#quad-interface) (the graph component will be ignored for formats that do not support quads). If `null` is given or this option is not specified, each object written to the transform will be automatically duck-typed and interpretted as one of these two object types.
  - `prefixes` : [`#hash/prefix-mappings`](core.data.factory#hash_prefix-mappings) -- prefix mappings to use in order to expand the concise-term strings within concise-quad hashes as they are written. These prefixes will also be used to create prefix statements and terse terms on the output stream whenever possible (e.g., for Turtle and TriG documents).
 
 

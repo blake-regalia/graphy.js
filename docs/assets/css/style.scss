@@ -47,6 +47,7 @@ h4 {
 h3, h4, h5, h6 {
 	color: #000;
 	margin-left: -5px;
+	padding-top: 20px;
 }
 
 hr {
@@ -72,4 +73,16 @@ li pre {
 	padding-left: 10px;
 	padding-top: 15px;
 	padding-bottom: 15px;
+}
+
+ul ul, li p {
+	margin-bottom: 0;
+}
+
+li {
+	margin-top: 5px;
+}
+
+section>ul>li {
+	margin-top: 8px;
 }
