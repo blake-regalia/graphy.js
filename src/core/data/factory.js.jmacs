@@ -870,12 +870,8 @@ const factory = module.exports = {
 		else if('string' === typeof z_label) {
 			return new BlankNode(z_label);
 		}
-		// parser or graph object given
-		else if('object' === typeof z_label) {
-			return new BlankNode(z_label.next_label(), true);
-		}
 
-		throw new TypeError('unexpected type for `label` parameter');
+		throw new TypeError(`factory.blankNode(label) expects 'label' parameter to be falsy or a string; instead found: ${z_label}`);
 	},
 
 	literal(s_value, w_datatype_or_lang) {

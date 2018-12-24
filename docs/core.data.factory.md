@@ -28,15 +28,15 @@
      - [`dateTime(...)`](#function_datetime)
    - Concise Term constructors
      - [`c1(...)`](#function_c1)
-     - [`term(...)`](#function_term)
+     
    - Quad constructors
      - [`quad(...)`](#function_quad)
      
    - Concise Quads constructors
-     - [`c4(...)`](#function_c4)
      
      - [`c3(...)`](#function_c3)
      
+     - [`c4(...)`](#function_c4)
    - Content Writer directives
      - [`comment(...)`](#function_comment)
      
@@ -56,7 +56,7 @@
      - [Triple](#class_triple)
  - [Interfaces](#interfaces) -- interface definitions
    - [Term](#interface_term)
-   - [LabelManager](#interface_term)
+
 
 ---
 
@@ -100,27 +100,28 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 <a name="struct_term-isolate" />
 
  - `#struct/term-isolate` -- an object that represents an isolated RDF term.
-   - **required properties:**
+   - _required properties:_
      - `.termType`: `string`
      - `.value`: `string`
-   - **optional properties:**
+   - _optional properties:_
      - `.datatype`: [`#struct/node-isolate`]
      - `.language`: [`#string/language-tag`]
 
 <a name="struct_quad-isolate" />
 
  - `#struct/quad-isolate` -- an object that represents an isolated RDF quad.
-   - **properties:**
+   - _properties:_
      - `.subject` : [`#struct/term-isolate`]
      - `.predicate` : [`#struct/term-isolate`]
      - `.object` : [`#struct/term-isolate`]
      - `.graph` : [`#struct/term-isolate`]
 
+<!--
 <a name="configs" />
 
 ### Configs:
 A 'config' refers to an interface for a value that has certain expected or optional properties. Configs are typically used to pass named options to a method.
-
+-->
 
 
 <a name="hashes" />
@@ -131,10 +132,10 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 <a name="hash_prefix-mappings" />
 
  - `#hash/prefix-mappings` -- an object that represents the mappings from a prefix string to its expanded IRI.
-  - **definition:**
-    ```ts
-    interface **PrefixMappings** { [prefix: string]: string; };
-    ```
+   - **definition:**
+     ```ts
+     interface **PrefixMappings** { [prefix: string]: string; };
+     ```
 
 ---
 
@@ -155,7 +156,6 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
    - *overloaded variants*
      - `()` -- no args constructor will generate a new UUID4 in attempt to avoid label collisions
      - `(label: string)` -- uses the given `label` 
-     - `(label_manager: `[`LabelManager`](#interface_label-manager)`)` -- calls `label_manager.next_label()` to generate a new label. It is recommended to use this variant rather than the no-args variant because it guarantees collision-free labels and is typically better performance.
    - **returns** a [new BlankNode](#class_blank-node)
    - *examples:*
        ```js
@@ -165,10 +165,6 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
        // use given label constructor
        factory.blankNode('label').verbose();  // '_:label'
 
-       // use a LabelManager constructor
-       graphy.content.nt.read('<a> <b> <c> .', {
-           data() { factory.blankNode(this).verbose(); },  // _:g0
-       });
        ```
 
 <a name="function_default-graph" />
@@ -256,15 +252,24 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
  - `factory.c1(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **returns** a [new GenericTerm](#class_generic-term)
 
+<!--
 <a name="function_term" />
 
  - `factory.term(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **returns** a [new GenericTerm](#class_generic-term)
+-->
+
+
 
 <a name="function_quad" />
 
  - `factory.quad(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
    - **returns** a [new Quad](#class_quad)
+
+<a name="function_c3" />
+
+ - *generator* `factory.c3(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+   - **yields** a series of [Triples](#class_triple)
 
 
 
@@ -273,13 +278,6 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
  - *generator* `factory.c4(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
 
-
-
-
-<a name="function_c3" />
-
- - *generator* `factory.c3(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
-   - **yields** a series of [Triples](#class_triple)
 
 
 
@@ -479,15 +477,15 @@ A class that represents an RDF literal that is an [xsd:integer](https://www.w3.o
 ```js
 let yt_answer = factory.integer(42);
 yt_answer.verbose();  // '"42"^^<http://www.w3.org/2001/XMLSchema#integer>'
-yt_answer.isNumeric;  // 'true'
-yt_answer.isInteger;  // 'true'
+yt_answer.isNumeric;  // true
+yt_answer.isInteger;  // true
 yt_answer.isDouble;  // undefined
 yt_answer.number + 1;  // 43
 yt_answer.value;  // '42'
 
 factory.integer('12').number;  // 12
-factory.integer(12.1);  // throws Number is not an integer: 12.1
-factory.integer('12.1');  // throws Error: Invalid integer string: 12.1
+factory.integer(12.1);  // throws an Error: Number is not an integer: 12.1
+factory.integer('12.1');  // throws an Error: Invalid integer string: 12.1
 ```
 
 
@@ -617,12 +615,3 @@ A class that represents an RDF quad.
 
 ### interface **Term** extends [@RDFJS/Term](http://rdf.js.org/#term-interface)
 Alias of [@RDFJS/Term](http://rdf.js.org/#term-interface)
-
-<a name="interface_labelmanager" />
-
-### interface **LabelManager**
-
-**Methods:**
- - `nextLabel()`
-   - generate the next unique blank node label
-   - **returns** a `string`

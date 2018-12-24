@@ -138,19 +138,19 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 <a name="struct_input-string" />
 
  - `#struct/input-string` -- indicates a utf8-encoded string to use as input to a reader.
-   - **required properties:**
+   - _required properties:_
      - `.string`: `string`
 
 <a name="struct_input-stream" />
 
  - `#struct/input-stream` -- 
-   - **required properties:**
+   - _required properties:_
      - `.stream`: [`ReadableStream<string>`](core.iso.stream#readable-string)
 
 <a name="struct_writable-data-event" />
 
  - `#struct/writable-data-event` -- 
-   - **required properties:**
+   - _required properties:_
      - `.type`: `string` -- the type of event this object represents, see below
      - `.value`: `any` -- the value of the object
    - The string given for `.type` should be one of the following:
@@ -176,9 +176,9 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 <a name="struct_comment-config" />
 
  - `#struct/comment-config` -- 
-   - **required properties:**
+   - _required properties:_
      - `.contents`: `string` -- the contents of the comment
-   - **optional properties:**
+   - _optional properties:_
      - `.width`: `int` -- if specified, breaks comments longer than the given `width` onto multiple lines.
 
 <!--     - `.column`: `int` -- a column number to break long comments by word and wrap onto the next line
@@ -402,6 +402,7 @@ stream.pipeline(...[
 ]);
 ```
 
+<br /><br />
 Then, we can run the following command:
 ```sh
 cat <<EOF | node snippets/transform-csv.js
@@ -410,6 +411,7 @@ cat <<EOF | node snippets/transform-csv.js
 > EOF
 ```
 
+<br /><br />
 And get the output:
 ```turtle
 @prefix demo: <http://ex.org/> .

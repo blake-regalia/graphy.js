@@ -53,27 +53,39 @@ module.exports = {
 							return {
 								termType: 'Literal',
 								value: se1.slice(1),
+								language: '',
+								datatype: {
+									termType: 'NamedNode',
+									value: 'http://www.w3.org/2001/XMLSchema#string',
+								},
 							};
 						}
 
-						// // datatyped-literal
-						// case '^': {
-						// 	return {
-						// 		termType: 'Literal',
-						// 		datatype: {
-						// 			value: se1.slice(1, i_contents),
-						// 		},
-						// 		value: se1.slice(i_contents+1),
-						// 	};
-						// }
+						// datatyped-literal
+						case '^': {
+							let i_contents = se1.indexOf('"');
+							return {
+								termType: 'Literal',
+								value: se1.slice(i_contents+1),
+								language: '',
+								datatype: {
+									termType: 'NamedNode',
+									value: se1.slice(1, i_contents),
+								},
+							};
+						}
 
 						// languaged-literal
 						case '@': {
 							let i_contents = se1.indexOf('"');
 							return {
 								termType: 'Literal',
-								language: se1.slice(1, i_contents),
 								value: se1.slice(i_contents+1),
+								language: se1.slice(1, i_contents),
+								datatype: {
+									termType: 'NamedNode',
+									value: 'http://www.w3.org/2001/XMLSchema#langString',
+								},
 							};
 						}
 

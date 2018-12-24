@@ -206,17 +206,33 @@ const validate_c1 = (g_actions) => {
 	}
 };
 
-const validate_quads = (a_actual, a_expect) => {
-	a_expect = a_expect.map(a => helper.e4(a));
+const validate_quads = (dg_actual, a_expect) => {
+	expect(dg_actual).to.have.property('constructor')
+		.that.equals(((function *() {})()).constructor);
 
+	a_expect = a_expect.map(a => helper.e4(a));
+	let a_actual = [...dg_actual];
 	expect(a_actual).to.have.lengthOf(a_expect.length);
 	for(let i_quad=0; i_quad<a_expect.length; i_quad++) {
 		let g_actual = a_actual[i_quad];
 		let g_expect = a_expect[i_quad];
 
-		expect(g_actual.subject).to.include(g_expect.subject);
-		expect(g_actual.predicate).to.include(g_expect.predicate);
-		expect(g_actual.object).to.include(g_expect.object);
+		if(g_actual.subject.isAnonymous) {
+			expect(g_actual.subject).to.include(g_expect.subject);
+		}
+		else {
+			expect(g_actual.subject.isolate()).to.eql(g_expect.subject);
+		}
+
+		expect(g_actual.predicate.isolate()).to.eql(g_expect.predicate);
+
+		if(g_actual.object.isAnonymous) {
+			expect(g_actual.object).to.include(g_expect.object);
+		}
+		else {
+			expect(g_actual.object.isolate()).to.eql(g_expect.object);
+		}
+
 		if(g_expect.graph) {
 			expect(g_actual.graph).to.include(g_expect.graph);
 		}
@@ -588,10 +604,10 @@ describe('DataFactory:', () => {
 
 	describe('factory.c3', () => {
 		it('works', () => {
-			validate_quads([...factory.c3({
+			validate_quads(factory.c3({
 				'>a': {
 					'>b': '>c',
-					'>d': ['>e', '"f'],
+					'>d': ['>e', '^>y"f'],
 					'>g': ['>h', [
 						'>i',
 						'>j',
@@ -602,10 +618,10 @@ describe('DataFactory:', () => {
 				'>g': {
 					'>h': '>i',
 				},
-			})], [
+			}), [
 				['a', 'b', 'c'],
 				['a', 'd', 'e'],
-				['a', 'd', '"f'],
+				['a', 'd', '^y"f'],
 				['a', 'g', 'h'],
 				['a', 'g', ' g0'],
 				[' g0', '->', 'i'],
@@ -617,15 +633,49 @@ describe('DataFactory:', () => {
 				['g', 'h', 'i'],
 			]);
 		});
+
+		it('works w/ prefix-mappings', () => {
+			validate_quads(factory.c3({
+				':a': {
+					':b': ':c',
+					':d': [':e', '^:y"f'],
+					':g': [':h', [
+						':i',
+						':j',
+						'"k',
+					]],
+				},
+
+				'z:g': {
+					'z:h': 'z:i',
+				},
+			}, {
+				'': 'Z://',
+				z: 'z://',
+			}), [
+				['Z://a', 'Z://b', 'Z://c'],
+				['Z://a', 'Z://d', 'Z://e'],
+				['Z://a', 'Z://d', '^Z://y"f'],
+				['Z://a', 'Z://g', 'Z://h'],
+				['Z://a', 'Z://g', ' g0'],
+				[' g0', '->', 'Z://i'],
+				[' g0', '>>', ' g1'],
+				[' g1', '->', 'Z://j'],
+				[' g1', '>>', ' g2'],
+				[' g2', '->', '"k'],
+				[' g2', '>>', '.'],
+				['z://g', 'z://h', 'z://i'],
+			]);
+		});
 	});
 
 	describe('factory.c4', () => {
 		it('works', () => {
-			validate_quads([...factory.c4({
+			validate_quads(factory.c4({
 				'*': {
 					'>a': {
 						'>b': '>c',
-						'>d': ['>e', '"f'],
+						'>d': ['>e', '^>y"f'],
 						'>g': ['>h', [
 							'>i',
 							'>j',
@@ -639,10 +689,10 @@ describe('DataFactory:', () => {
 						'>i': '>j',
 					},
 				},
-			})], [
+			}), [
 				['a', 'b', 'c', '*'],
 				['a', 'd', 'e', '*'],
-				['a', 'd', '"f', '*'],
+				['a', 'd', '^y"f', '*'],
 				['a', 'g', 'h', '*'],
 				['a', 'g', ' g0', '*'],
 				[' g0', '->', 'i', '*'],
@@ -652,6 +702,44 @@ describe('DataFactory:', () => {
 				[' g2', '->', '"k', '*'],
 				[' g2', '>>', '.', '*'],
 				['h', 'i', 'j', 'g'],
+			]);
+		});
+
+		it('works w/ prefix-mappings', () => {
+			validate_quads(factory.c4({
+				'*': {
+					':a': {
+						':b': ':c',
+						':d': [':e', '^:y"f'],
+						':g': [':h', [
+							':i',
+							':j',
+							'"k',
+						]],
+					},
+				},
+
+				'z:g': {
+					'z:h': {
+						'z:i': 'z:j',
+					},
+				},
+			}, {
+				'': 'Z://',
+				z: 'z://',
+			}), [
+				['Z://a', 'Z://b', 'Z://c', '*'],
+				['Z://a', 'Z://d', 'Z://e', '*'],
+				['Z://a', 'Z://d', '^Z://y"f', '*'],
+				['Z://a', 'Z://g', 'Z://h', '*'],
+				['Z://a', 'Z://g', ' g0', '*'],
+				[' g0', '->', 'Z://i', '*'],
+				[' g0', '>>', ' g1', '*'],
+				[' g1', '->', 'Z://j', '*'],
+				[' g1', '>>', ' g2', '*'],
+				[' g2', '->', '"k', '*'],
+				[' g2', '>>', '.', '*'],
+				['z://h', 'z://i', 'z://j', 'z://g'],
 			]);
 		});
 	});
