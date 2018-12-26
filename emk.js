@@ -446,6 +446,7 @@ module.exports = async() => {
 				// 'content.ttl.write',
 				'content.trig.read',
 				// 'content.trig.write',
+				'util.dataset.tree',
 			],
 
 			// package enumeration

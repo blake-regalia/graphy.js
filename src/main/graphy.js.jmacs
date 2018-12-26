@@ -129,6 +129,13 @@ const H_SPARQL_RESULT_TYPES = {
 	};
 }
 
+@>> R_TOKENS()
+	@//@regex
+	[^0- ()<>@,;:\\"\/[\]?.=]+
+@;
+
+const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS})((:;.+)$/;
+
 const graphy = module.exports = Object.assign({
 
 	/**
@@ -136,14 +143,19 @@ const graphy = module.exports = Object.assign({
 	**/
 
 	content: Object.assign(function(s_query) {
-		if(s_query in H_CONTENT_TAGS) {
-			return H_CONTENT_TAGS[s_query];
+		let m_content_type = R_CONTENT_TYPE.exec(s_query);
+		if(!m_content_type) throw new Error(`invalid content-type string: "${s_query}"`);
+		let [, s_content_type, s_parameters] = m_content_type;
+		let s_content_type_normal = s_content_type.toLowerCase();
+
+		if(s_content_type_normal in H_CONTENT_TAGS) {
+			return H_CONTENT_TAGS[s_content_type_normal];
 		}
-		else if(s_query in H_CONTENT_MIMES) {
-			return H_CONTENT_MIMES[s_query];
+		else if(s_content_type_normal in H_CONTENT_MIMES) {
+			return H_CONTENT_MIMES[s_content_type_normal];
 		}
 		else {
-			throw new Error(`no content handlers matched query for '${s_query}'`);
+			throw new Error(`no content handlers matched query for "${s_content_type_normal}"`);
 		}
 	}, {
 		@*{

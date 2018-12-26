@@ -1,0 +1,123 @@
+@import './docs.jmacs'
+@.{
+  const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
+  const dataset_tree = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
+  const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
+}
+# Dataset Tree
+`@graphy/util.dataset.tree`
+
+## Primer
+ - `dataset_tree` is used throughout this document to refer to this module's export.
+
+## Contents
+ - [Memory and Performance](#memory-and-performance) -- what to be aware of when using this package.
+ - [Construction](#construction) -- how to create an instance of a `dataset_tree`.
+ - [Properties](#properties)
+   - [size](#property_size) -- number of quads in the tree.
+ - [Prototype Methods](#methods) -- 
+   - Set Mutators
+     - [add(...)](#method_add)
+     - [delete(...)](#method_delete)
+     - [clear(...)](#method_clear) -- remove all quads from the tree
+   - Set Algebra Primitives
+     - [union(...)](#method_union) -- `A ∪ B`
+     - [intersection(...)](#method_intersection) -- `A ∩ B`
+   - Set Algebra Booleans
+     - [equals(...)](#method_equals) -- `A == B`
+     - [includes(...)](#method_includes) -- `(A ∩ B) == B`
+   - Set Algebra Derivatives
+     - [minus(...)](#method_minus) -- `A - (A ∩ B)`
+     - [difference(...)](#method_difference) -- `(A - (A ∩ B)) ∪ (B - (A ∩ B))`
+   - Iterators
+     - [quads(...)](#method_quads) -- return an iterator 
+     - [distinctGraphs(...)](#method_distinct)
+     - [distinctSubjects(...)](#method_distinct)
+     - [distinctPredicates(...)](#method_distinct)
+     - [distinctObjects(...)](#method_distinct)
+   - Statistics
+     - [count(...)](#method_count)
+   - Canonicalization
+     - [canonicalize(...)][#method_canonicalize]
+   - Thread-Safe Translation
+     - [export(...)][#method_export]
+   - Thread-Safe Translation
+     - [export(...)][#method_export]
+
+----
+
+## Memory and Performance
+
+This data structure is implemented in a performance-oriented, memory-conscious manner. More technically, certain set operations may reuse pointers to existing object trees in order to save the time it takes to copy subtrees and to reduce the overall memory footprint. This should have no effect on user functionality since object reuse is handled internally and all methods ensure that each instance remains immutable.
+
+
+----
+
+## Properties
+
+
+<a name="property_size" />
+
+ - `dataset_tree.prototype.size`
+   - get the number of quads in the tree.
+   - **returns** a [`#number/integer`](#number_integer)
+   - *examples:*
+       ```js
+       @. let y_tree_size = dataset_tree();
+       let y_tree = dataset_tree();
+
+       y_tree.size;  // @{y_tree_size.size()}
+
+       y_tree.add(factory.c3({
+           '>z://a': {
+               '>z://b': ['"hello', '"world'],
+           },
+       }).next());
+       @.{
+       	y_tree_size.add(factory.c3({
+       		'>z://a': {
+       			'>z://b': ['"hello', '"world'],
+       		},
+       	}).next());
+       }
+       y_tree.size;  // @{y_tree_size.size()}
+       ```
+
+----
+
+## Methods
+
+
+<a name="method_add" />
+
+ - `dataset_tree.prototype.add(quad1: `[`#struct/quad-isolate`](core.data.factory#struct_quad-isolate)`[, ...[, quadN: `[`#struct/quad-isolate`](core.data.factory#struct_quad-isolate)`]])`
+   - add quads to the tree; will only add each quad that is not already present.
+   - **returns** a [`#number/integer`](#number_integer) indicating how many quads were successfully added to the tree.
+
+
+<a name="method_delete" />
+
+ - `dataset_tree.prototype.delete(quad1: `[`#struct/quad-isolate`](core.data.factory#struct_quad-isolate)`[, ...[, quadN: `[`#struct/quad-isolate`](core.data.factory#struct_quad-isolate)`]])`
+   - delete the given quads from the tree if they exist.
+   - **returns** a [`#number/integer`](#number_integer) indicating how many quads were successfully deleted from the tree.
+
+<a name="method_clear" />
+
+ - `dataset_tree.prototype.clear()`
+   - remove all quads from the tree.
+   - **returns** `undefined`.
+
+
+<a name="method_union" />
+
+ - `dataset_tree.prototype.union()`
+   - 
+   - **returns** a [new DatasetTree](#methods).
+
+
+<a name="method_intersection" />
+
+ - `dataset_tree.prototype.intersection()`
+   - 
+   - **returns** a [new DatasetTree](#methods).
+

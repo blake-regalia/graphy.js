@@ -1,8 +1,10 @@
 @//@syntax:md
 @import './docs.jmacs'
-@. const graphy = require(process.env.GRAPHY_CHANNEL || 'graphy');
-@. const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
-@. const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
+@.{
+  const graphy = require(process.env.GRAPHY_CHANNEL || 'graphy');
+  const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
+  const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
+}
 # Data Factory
 `@graphy/core.data.factory`
 
@@ -30,24 +32,27 @@
      - [`number(...)`](#function_number)
      - [`date(...)`](#function_date)
      - [`dateTime(...)`](#function_datetime)
-   - Concise Term constructors
-     - [`c1(...)`](#function_c1)
-     @.{/*- [`term(...)`](#function_term)*/}
    - Quad constructors
      - [`quad(...)`](#function_quad)
      @.{/*- [`triple(...)`](#function_triple)*/}
+   - Concise Term constructors
+     - [`c1(...)`](#function_c1)
+     @.{/*- [`term(...)`](#function_term)*/}
    - Concise Quads constructors
      @.{/*- [`quads(...)`](#function_quads)*/}
      - [`c3(...)`](#function_c3)
      @.{/*- [`triples(...)`](#function_quads)*/}
      - [`c4(...)`](#function_c4)
+   - Normalization
+     - [`from.term`](#function_from-term)
+     - [`from.quad`](#function_from-term)
    - Content Writer directives
      - [`comment(...)`](#function_comment)
      @.{/*- [`newlines(...)`](#function_newlines)*/}
  - [Classes](#classes) -- class definitions
-   - [GenericTerm](#class_genericterm)
-     - [NamedNode](#class_namednode)
-     - [BlankNode](#class_blanknode)
+   - [GenericTerm](#class_generic-term)
+     - [NamedNode](#class_named-node)
+     - [BlankNode](#class_blank-node)
      - [Literal](#class_literal)
        - [Literal_Boolean](#class_literal-boolean)
        - [Literal_Integer](#class_literal-integer)
@@ -258,6 +263,11 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       factory.dateTime(dt_event).terse(h_prefixes);  // '@{factory.dateTime(dt_event).terse(h_prefixes)}'
       ```
 
+<a name="function_quad" />
+
+ - `factory.quad(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
+   - **returns** a [new Quad](#class_quad)
+
 <a name="function_c1" />
 
  - `factory.c1(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
@@ -276,11 +286,6 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
  - `factory.triple(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`)`
    - **returns** a [new Triple](#class_triple)
 */}
-
-<a name="function_quad" />
-
- - `factory.quad(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
-   - **returns** a [new Quad](#class_quad)
 
 <a name="function_c3" />
 
@@ -306,6 +311,58 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
  - *generator* `factory.quads(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
 */}
+
+<a name="function_from-term" />
+
+ - `factory.from.term(term: `[`#struct/term-isolate`](#struct_term-isolate)`)`
+   - converts an object that represents an RDF term, as long as it includes the expected keys such as an [@RDFJS/Term](http://rdf.js.org/#term-interface) from another library, into a graphy-constructed [GenericTerm](#class_generic-term).
+   - **returns** a [new GenericTerm](#class_generic-term)
+   - *example:*
+      ```js
+      factory.from.term({
+          termType: 'NamedNode',
+          value: 'z://a',
+      }).verbose();  // @{factory.from.term({
+          termType: 'NamedNode',
+          value: 'z://a',
+      })}
+      ```
+
+<a name="function_from-quad" />
+
+ - `factory.from.quad(term: `[`#struct/quad-isolate`](#struct_quad-isolate)`)`
+   - converts an object that represents an RDF quad, as long as it includes the expected keys such as an [@RDFJS/Quad](http://rdf.js.org/#quad-interface) from another library, into a graphy-constructed [Quad](#class_quad).
+   - **returns** a [new Quad](#class_quad)
+   - *example:*
+      ```js
+      factory.from.quad({
+          subject: {
+              termType: 'NamedNode',
+              value: 'z://a',
+          },
+          predicate: {
+              termType: 'NamedNode',
+              value: 'z://b',
+          },
+          object: {
+              termType: 'NamedNode',
+              value: 'z://c',
+          },
+      }).verbose();  // @{factory.from.term({
+          subject: {
+              termType: 'NamedNode',
+              value: 'z://a',
+          },
+          predicate: {
+              termType: 'NamedNode',
+              value: 'z://b',
+          },
+          object: {
+              termType: 'NamedNode',
+              value: 'z://c',
+          },
+      })}
+      ```
 
 <a name="function_comment" />
 
@@ -606,7 +663,8 @@ A class that represents an RDF quad.
  - `.graph` : [`NamedNode`](#class_named-node)` | `[`BlankNode`](#named-node)` | `[`DefaultGraph`](#class_default-graph)
  
 **Methods:**
- - `equals(other: `[`@RDFJS/Quad`](http://rdf.js.org/#quad-interface)`)`
+ - `equals(other: `[`#struct/quad-isolate`](#struct_quad-isolate)`)`
+   - compare this RDF quad to another quad (which itself may be a simple object with the expected keys such as an [@RDFJS/Term](http://rdf.js.org/#term-interface) from another library).
    - **returns** a `boolean`
  - `verbose()`
    - **returns** a [`#string/quad_verbose`](#string_quad-verbose)

@@ -1,5 +1,9 @@
 @import '../../share/channel.jmacs'
 
+@.{
+	const B_HARDEN_PROTOTYPE = true;
+}
+
 const crypto = require('crypto');
 
 const stream = require('@@@{S_GRAPHY_CHANNEL}/core.iso.stream');
@@ -8,6 +12,7 @@ const factory_from = factory.from;
 
 const $_KEYS = Symbol('key-count');
 const $_QUADS = Symbol('quad-count');
+const $_KIDS = Symbol('has-descendents');
 const $_WEAK = Symbol('has-weak-keys');
 
 const XM_WEAK_HERE = 1;
@@ -590,6 +595,33 @@ const harden_triples = (h_triples) => {
 	}
 };
 
+// const harden = (h_tree) => {
+// 	// create hardened object
+// 	let h_hardened = {};
+
+// 	// check each key
+// 	for(let svt_key in h_tree) {
+// 		// prep ref for its sub-branch
+// 		let h_subtree = h_tree[svt_key];
+
+// 		// key is own property
+// 		if(h_tree.hasOwnProperty(svt_key)) {
+// 			h_subtree = h_tree[svt_key];
+// 		}
+// 		// proto property
+// 		else {
+// 			// make own property
+// 			h_pairs = h_triples[s_subject] = h_triples[s_subject];
+// 		}
+
+// 		// has weak keys or weak children; harden
+// 		if(h_pairs[$_WEAK]) {
+// 			harden_pairs(harden_pairs);
+// 		}
+// 	}
+// };
+
+
 const harden_pairs = (h_pairs) => {
 	// check each pair
 	for(let s_predicate in h_pairs) {
@@ -599,6 +631,11 @@ const harden_pairs = (h_pairs) => {
 		}
 	}
 };
+
+const branch = () => ({
+	[$_KEYS]: 0,
+	[$_QUADS]: 0,
+});
 
 class QuadSet extends stream.Writable {
 	static from(h_quad_tree, g_config={}) {
@@ -660,46 +697,59 @@ class QuadSet extends stream.Writable {
 
 
 	export() {
-		let h_quads = this.quad_tree;
+		let h_quads_src = this.quad_tree;
+		let h_quads_dst = {
+			'{KEYS}': h_quads_src[$_KEYS],
+			'{QUADS}': h_quads_src[$_QUADS],
+		};
 
-		// weak
-		if(h_quads[$_WEAK]) {
-			debugger;
-			this.harden();
-		}
-
-		h_quads['{KEYS}'] = h_quads[$_KEYS];
-		h_quads['{QUADS}'] = h_quads[$_QUADS];
-		delete h_quads[$_KEYS];
-		delete h_quads[$_QUADS];
-		return h_quads;
-	}
-
-	harden() {
-		// ref quads
-		let h_quads = this.quad_tree;
-
-		// check each quad
-		for(let s_graph in h_quads) {
-			// prep ref for its triples
-			let h_triples;
-
-			// graph is own property
-			if(h_quads.hasOwnProperty(s_graph)) {
-				h_triples = h_quads[s_graph];
-			}
-			// proto property
-			else {
-				// make own property
-				h_triples = h_quads[s_graph] = h_quads[s_graph];
-			}
-
-			// has weak keys or weak children; harden
-			if(h_triples[$_WEAK]) {
-				harden_triples(h_triples);
+		for(let svt_graph in h_quads_src) {
+			let h_triples_src = h_quads_src[svt_graph];
+			let h_triples_dst = h_quads_dst[svt_graph] = {
+				'{KEYS}': h_triples_src[$_KEYS],
+				'{QUADS}': h_triples_src[$_QUADS],
+			};
+			for(let svt_subject in h_triples_src) {
+				let h_pairs_src = h_triples_src[svt_subject];
+				let h_pairs_dst = h_triples_dst[svt_subject] = {
+					'{KEYS}': h_pairs_src[$_KEYS],
+					'{QUADS}': h_pairs_src[$_QUADS],
+				};
+				for(let svt_predicate in h_pairs_src) {
+					let as_objects_src = h_pairs_src[svt_predicate];
+					h_pairs_dst[svt_predicate] = new Set([...as_objects_src]);
+				}
 			}
 		}
+
+		return h_quads_dst;
 	}
+
+	// harden() {
+	// 	// ref quads
+	// 	let h_quads = this.quad_tree;
+
+	// 	// check each quad
+	// 	for(let s_graph in h_quads) {
+	// 		// prep ref for its triples
+	// 		let h_triples;
+
+	// 		// graph is own property
+	// 		if(h_quads.hasOwnProperty(s_graph)) {
+	// 			h_triples = h_quads[s_graph];
+	// 		}
+	// 		// proto property
+	// 		else {
+	// 			// make own property
+	// 			h_triples = h_quads[s_graph] = h_quads[s_graph];
+	// 		}
+
+	// 		// has weak keys or weak children; harden
+	// 		if(h_triples[$_WEAK]) {
+	// 			harden_triples(h_triples);
+	// 		}
+	// 	}
+	// }
 
 	* quads() {
 		let h_quads = this.quad_tree;
@@ -776,109 +826,234 @@ class QuadSet extends stream.Writable {
 		return (new Matcher(this)).match(z_subject, z_predicate, z_object, z_graph);
 	}
 
-	// add a quad to this set
-	add(g_quad) {
+	get size() {
+		return this.quad_tree[$_QUADS];
+	}
+
+	// add quad(s) to this set
+	add(...a_values) {
 		let h_quads = this.quad_tree;
+		let c_added = 0;
 
-		let p_graph = g_quad.graph.concise();
-		let p_subject = g_quad.subject.concise();
-		let p_predicate = g_quad.predicate.concise();
-		let p_object = g_quad.object.concise();
+		// each quad in arguments
+		for(let g_quad of a_values.map(factory.from.quad)) {
+			let p_graph = g_quad.graph.concise();
+			let p_subject = g_quad.subject.concise();
+			let p_predicate = g_quad.predicate.concise();
+			let p_object = g_quad.object.concise();
 
-		// first encounter of graph
-		if(!(p_graph in h_quads)) {
-			// add new tree under graph
-			h_quads[p_graph] = {
-				[$_KEYS]: 1,
-				[$_QUADS]: 1,
-				[p_subject]: {
+			// so we don't have to check twice
+			let b_hardened_quads = false;
+
+			// first encounter of graph
+			if(!(p_graph in h_quads)) {
+				// has weak descendents; harden self
+				if(h_quads.hasOwnProperty($_KIDS)) {
+					h_quads = this.quad_tree = Object.assign({}, h_quads);
+					delete h_quads[$_KIDS];
+					b_hardened_quads = true;
+				}
+				
+				// add new tree under graph
+				h_quads[p_graph] = {
 					[$_KEYS]: 1,
 					[$_QUADS]: 1,
-					[p_predicate]: new Set([p_object]),
-				},
-			};
-
-			// increment how many graphs there are in this set
-			h_quads[$_KEYS] += 1;
-		}
-		// graph exists
-		else {
-			let h_triples = h_quads[p_graph];
-
-			// first encounter of subject
-			if(!(p_subject in h_triples)) {
-				// add new tree under subject
-				h_triples[p_subject] = {
-					[$_KEYS]: 1,
-					[$_QUADS]: 1,
-					[p_predicate]: new Set([p_object]),
+					[p_subject]: {
+						[$_KEYS]: 1,
+						[$_QUADS]: 1,
+						[p_predicate]: new Set([p_object]),
+					},
 				};
 
-				// increment how many subjects there are under this graph
-				h_triples[$_KEYS] += 1;
+				// increment how many graphs there are in this set
+				h_quads[$_KEYS] += 1;
 			}
-			// subject exists
+			// graph exists
 			else {
-				let h_pairs = h_triples[p_subject];
+				let h_triples = h_quads[p_graph];
 
-				// first encounter of predicate
-				if(!(p_predicate in h_pairs)) {
-					// add new set under predicate
-					h_pairs[p_predicate] = new Set([p_object]);
+				// first encounter of subject
+				if(!(p_subject in h_triples)) {
+					// triples tree is weak; harden it
+					if(h_triples.hasOwnProperty($_KIDS)) {
+						h_triples = Object.assign({}, h_triples);
+						delete h_triples[$_KIDS];
+					}
 
-					// increment how many predicates there are under this subject
-					h_pairs[$_KEYS] += 1;
+					// add new tree under subject
+					h_triples[p_subject] = {
+						[$_KEYS]: 1,
+						[$_QUADS]: 1,
+						[p_predicate]: new Set([p_object]),
+					};
+
+					// increment how many subjects there are under this graph
+					h_triples[$_KEYS] += 1;
 				}
-				// predicate exists
+				// subject exists
 				else {
-					let as_objects = h_pairs[p_predicate];
+					let h_pairs = h_triples[p_subject];
 
-					// first encounter of object
-					if(!as_objects.has(p_object)) {
-						// add object to set
-						as_objects.add(p_object);
+					// first encounter of predicate
+					if(!(p_predicate in h_pairs)) {
+						// pairs tree is weak; harden it
+						if(h_pairs.hasOwnProperty($_KIDS)) {
+							h_pairs = Object.assign({}, h_pairs);
+							delete h_pairs[$_KIDS];
+						}
+
+						// add new set under predicate
+						h_pairs[p_predicate] = new Set([p_object]);
+
+						// increment how many predicates there are under this subject
+						h_pairs[$_KEYS] += 1;
 					}
-					// duplicate
+					// predicate exists
 					else {
-						return;
+						let as_objects = h_pairs[p_predicate];
+
+						// first encounter of object
+						if(!as_objects.has(p_object)) {
+							// add object to set
+							as_objects.add(p_object);
+
+							// increment counter
+							c_added += 1;
+						}
+						// duplicate
+						else {
+							continue;
+						}
 					}
+
+					// pairs tree is weak; harden it
+					if(h_pairs.hasOwnProperty($_KIDS)) {
+						h_pairs = Object.assign({}, h_pairs);
+						delete h_pairs[$_KIDS];
+					}
+
+					// increment how many quads there are under this subject
+					h_pairs[$_QUADS] += 1;
 				}
 
-				// increment how many quads there are under this subject
-				h_pairs[$_QUADS] += 1;
+				// triples tree is weak; harden it
+				if(h_triples.hasOwnProperty($_KIDS)) {
+					h_triples = Object.assign({}, h_triples);
+					delete h_triples[$_KIDS];
+				}
+
+				// increment how many quads there are under this graph
+				h_triples[$_QUADS] += 1;
 			}
 
-			// increment how many quads there are under this graph
-			h_triples[$_QUADS] += 1;
-		}
-
-		// increment how many quads there are in set
-		h_quads[$_QUADS] += 1;
-
-		// subject is blank node
-		if(g_quad.subject.isBlankNode) {
-			let h_root_blanks = this.root_blanks;
-			if(p_subject in h_root_blanks) {
-				h_root_blanks[p_subject].add(g_quad);
+			// triples tree is weak; harden it
+			if(!b_hardened_quads && h_quads.hasOwnProperty($_KIDS)) {
+				h_quads = this.quad_tree = Object.assign({}, h_quads);
+				delete h_quads[$_KIDS];
 			}
-			else {
-				h_root_blanks[p_subject] = new Set([g_quad]);
-			}
-		}
 
-		// object is blank node
-		if(g_quad.object.isBlankNode) {
-			let h_leaf_blanks = this.leaf_blanks;
-			if(p_object in h_leaf_blanks) {
-				h_leaf_blanks[p_object].add(g_quad);
+			// increment how many quads there are in set
+			h_quads[$_QUADS] += 1;
+
+			// subject is blank node
+			if(g_quad.subject.isBlankNode) {
+				let h_root_blanks = this.root_blanks;
+				if(p_subject in h_root_blanks) {
+					h_root_blanks[p_subject].add(g_quad);
+				}
+				else {
+					h_root_blanks[p_subject] = new Set([g_quad]);
+				}
 			}
-			else {
-				h_leaf_blanks[p_object] = new Set([g_quad]);
+
+			// object is blank node
+			if(g_quad.object.isBlankNode) {
+				let h_leaf_blanks = this.leaf_blanks;
+				if(p_object in h_leaf_blanks) {
+					h_leaf_blanks[p_object].add(g_quad);
+				}
+				else {
+					h_leaf_blanks[p_object] = new Set([g_quad]);
+				}
 			}
 		}
 
 		// invalidate hash and canonicalization
 		this.hash = this.canonicalization = null;
+
+		return c_added;
+	}
+
+	clear() {
+		this.quad_tree = {[$_KEYS]:0, [$_QUADS]:0};
+		this.digest = this.hash = this.canonicalization = null;
+		this.root_blanks = {};
+		this.leaf_blanks = {};
+	}
+
+	delete(...a_quads) {
+		let h_quads = this.quad_tree;
+		let c_deleted = 0;
+
+		for(let g_quad of a_quads) {
+			let svt_graph = g_quad.graph.concise();
+			let svt_subject = g_quad.subject.concise();
+			let svt_predicate = g_quad.predicate.concise();
+			let svt_object = g_quad.object.concise();
+
+			// graph exists
+			if(svt_graph in h_quads) {
+				let h_triples = h_quads[svt_graph];
+
+				// subject exists
+				if(svt_subject in h_triples) {
+					let h_pairs = h_triples[svt_subject];
+
+					// predicate exists
+					if(svt_predicate in h_pairs) {
+						let as_objects = h_pairs[svt_predicate];
+
+						// return result of deleting from set
+						if(as_objects.delete(svt_object)) {
+							c_deleted += 1;
+						}
+					}
+				}
+			}
+		}
+
+		// quad not in tree
+		return c_deleted;
+	}
+
+	has(g_quad) {
+		let h_quads = this.quad_tree;
+
+		let svt_graph = g_quad.graph.concise();
+		let svt_subject = g_quad.subject.concise();
+		let svt_predicate = g_quad.predicate.concise();
+		let svt_object = g_quad.object.concise();
+
+		// graph exists
+		if(svt_graph in h_quads) {
+			let h_triples = h_quads[svt_graph];
+
+			// subject exists
+			if(svt_subject in h_triples) {
+				let h_pairs = h_triples[svt_subject];
+
+				// predicate exists
+				if(svt_predicate in h_pairs) {
+					let as_objects = h_pairs[svt_predicate];
+
+					// return result of deleting from set
+					return as_objects.has(svt_object)
+				}
+			}
+		}
+
+		// quad not in tree
+		return false;
 	}
 
 	equals(k_other) {
@@ -932,6 +1107,10 @@ class QuadSet extends stream.Writable {
 		if(h_quads_a[$_KEYS] < h_quads_b[$_KEYS]) {
 			[h_quads_a, h_quads_b] = [h_quads_b, h_quads_a];
 		}
+		// // a and b have same number of keys, but b has more quads; swap
+		// else if(h_quads_a[$_KEYS] === h_quads_b[$_KEYS] && h_quads_a[$_QUADS] < h_quads_b[$_QUADS]) {
+		// 	[h_quads_a, h_quads_b] = [h_quads_b, h_quads_a];
+		// }
 
 		// prep quads union
 		let h_quads_u = Object.create(h_quads_a);
@@ -947,16 +1126,26 @@ class QuadSet extends stream.Writable {
 				let h_triples_a = h_quads_a[p_graph];
 				let h_triples_b = h_quads_b[p_graph];
 
-				// a has less keys than b; swap triples
+				// triples are not swapped relative to quads
+				let b_swapped_triples = false;
+
+				// a has less keys than b
 				if(h_triples_a[$_KEYS] < h_triples_b[$_KEYS]) {
+					// swap triples
 					[h_triples_a, h_triples_b] = [h_triples_b, h_triples_a];
+
+					// beware consequence of swap
+					b_swapped_triples = true;
 				}
 
-				// prep triples union and save it to quads union
-				let h_triples_u = h_quads_u[p_graph] = Object.create(h_triples_a);
+				// prep triples union
+				let h_triples_u = Object.create(h_triples_a);
 
 				// weak keys
 				h_triples_u[$_WEAK] = 1;
+
+				// save triples union
+				let b_save_triples = false;
 
 				// each subject in a
 				for(let p_subject in h_triples_a) {
@@ -966,16 +1155,26 @@ class QuadSet extends stream.Writable {
 						let h_pairs_a = h_triples_a[p_subject];
 						let h_pairs_b = h_triples_b[p_subject];
 
-						// a has less keys than b; swap pairs
+						// pairs are not swapped relative to triples
+						let b_swapped_pairs = false;
+
+						// a has less keys than b
 						if(h_pairs_a[$_KEYS] < h_pairs_b[$_KEYS]) {
+							// swap pairs
 							[h_pairs_a, h_pairs_b] = [h_pairs_b, h_pairs_a];
+
+							// beware consequences of swap
+							b_swapped_pairs = true;
 						}
 
-						// prep pairs union and save it to triples union
+						// prep pairs union
 						let h_pairs_u = h_triples_u[p_subject] = Object.create(h_pairs_a);
 
 						// weak keys
 						h_pairs_u[$_WEAK] = 1;
+
+						// quads to add under pairs
+						let c_quads_add_pairs = 0;
 
 						// each predicate in a
 						for(let p_predicate in h_pairs_a) {
@@ -989,17 +1188,14 @@ class QuadSet extends stream.Writable {
 								let as_objects_u = h_pairs_u[p_predicate] = new Set([...as_objects_a, ...as_objects_b]);
 
 								// update quad counts with difference
-								let n_quads_add = as_objects_u.size - as_objects_a.size;
-								h_pairs_u[$_QUADS] += n_quads_add;
-								h_triples_u[$_QUADS] += n_quads_add;
-								h_quads_u[$_QUADS] += n_quads_add;
+								c_quads_add_pairs += as_objects_u.size - as_objects_a.size;
 							}
 						}
 
 						// each predicate in b
 						for(let p_predicate in h_pairs_b) {
 							// predicate is not in a
-							if(!(p_predicate in h_triples_a)) {
+							if(!(p_predicate in h_pairs_a)) {
 								// add all objects from this predicate
 								h_pairs_u[p_predicate] = h_pairs_b[p_predicate];
 
@@ -1007,21 +1203,67 @@ class QuadSet extends stream.Writable {
 								h_pairs_u[$_KEYS] += 1;
 
 								// update quad counts
-								let n_quads_add = h_pairs_b[p_predicate].size;
-								h_pairs_u[$_QUADS] += n_quads_add;
-								h_triples_u[$_QUADS] += n_quads_add;
-								h_quads_u[$_QUADS] += n_quads_add;
+								c_quads_add_pairs += h_pairs_b[p_predicate].size;
 							}
+						}
+
+						// difference
+						if(c_quads_add_pairs) {
+							// update counts
+							h_pairs_u[$_QUADS] += c_quads_add_pairs;
+							h_triples_u[$_QUADS] += c_quads_add_pairs;
+							h_quads_u[$_QUADS] += c_quads_add_pairs;
+
+							// union has same keys as prototype
+							if(h_pairs_u[$_KEYS] === h_pairs_a[$_KEYS] && h_pairs_u.hasOwnProperty($_KEYS)) {
+								// harden this
+								@- B_HARDEN_PROTOTYPE
+									// set own symbol properties
+									h_pairs_u[$_WEAK] = 0;
+									h_pairs_u[$_KEYS] = h_pairs_a[$_KEYS];
+
+									// uninherit from a
+									Object.setPrototypeOf(h_pairs_u, {});
+								@:
+									// copy to new object
+									h_pairs_u = harden(h_pairs_u);
+								@;
+							}
+							// union differs from prototype
+							else {
+								// flag descendents on source
+								h_pairs_a[$_KIDS] = 1;
+							}
+
+							// save reference in triples
+							h_triples_u[p_subject] = h_pairs_u;
+
+							// save triples reference
+							b_save_triples = true;
+						}
+						// no difference, but prototype is invalid from pair swap
+						else if(b_swapped_pairs) {
+							// discard union object, recreate it and save to triples
+							h_triples_u[p_subject] = Object.create(h_pairs_a);
 						}
 					}
 				}
 
 				// each subject in b
 				for(let p_subject in h_triples_b) {
-					// subject is not is a
+					// subject is not in a
 					if(!(p_subject in h_triples_a)) {
-						// add all pairs from this subject
-						let h_pairs_u = h_triples_u[p_subject] = h_triples_b[p_subject];
+						// ref pairs
+						let h_pairs_b = h_triples_b[p_subject];
+
+						// add all pairs from this subject and save to triples union
+						let h_pairs_u = h_triples_u[p_subject] = Object.create(h_pairs_b);
+
+						// weak descendents
+						h_pairs_b[$_KIDS] = 1;
+
+						// weak keys
+						h_pairs_u[$_WEAK] = 1;
 
 						// update key count
 						h_triples_u[$_KEYS] += 1;
@@ -1030,7 +1272,42 @@ class QuadSet extends stream.Writable {
 						let n_quads_add = h_pairs_u[$_QUADS];
 						h_triples_u[$_QUADS] += n_quads_add;
 						h_quads_u[$_QUADS] += n_quads_add;
+
+						// save triples reference
+						b_save_triples = true;
 					}
+				}
+
+				// yes mutations
+				if(b_save_triples) {
+					// union has same keys as prototype
+					if(h_triples_u[$_KEYS] === h_triples_a[$_KEYS] && h_triples_u.hasOwnProperty($_KEYS)) {
+						// harden this
+						@- B_HARDEN_PROTOTYPE
+							// set own symbol properties
+							h_triples_u[$_WEAK] = 0;
+							h_triples_u[$_KEYS] = h_triples_a[$_KEYS];
+
+							// uninherit from a
+							Object.setPrototypeOf(h_triples_u, {});
+						@:
+							// copy to new object
+							h_triples_u = harden(h_triples_u);
+						@;
+					}
+					// union differs from prototype
+					else {
+						// flag descendents on source
+						h_triples_a[$_KIDS] = 1;
+					}
+
+					// save triples union to quads union
+					h_quads_u[p_graph] = h_triples_u;
+				}
+				// no mutations, but prototype is invalid from triple swap
+				else if(b_swapped_triples) {
+					// discard union object, recreate it and save to quads
+					h_quads_u[p_graph] = Object.create(h_triples_a);
 				}
 			}
 		}
@@ -1051,6 +1328,28 @@ class QuadSet extends stream.Writable {
 			}
 		}
 
+		// union has same keys as prototype
+		if(h_quads_u[$_KEYS] === h_quads_a[$_KEYS] && h_quads_u.hasOwnProperty($_KEYS)) {
+			// harden this
+			@- B_HARDEN_PROTOTYPE
+				// set own symbol properties
+				h_quads_u[$_WEAK] = 0;
+				h_quads_u[$_KEYS] = h_quads_a[$_KEYS];
+
+				// uninherit from a
+				Object.setPrototypeOf(h_quads_u, {});
+			@:
+				// copy to new object
+				h_quads_u = harden(h_quads_u);
+			@;
+		}
+		// union differs from prototype
+		else {
+			// flag descendents on source
+			h_quads_a[$_KIDS] = 1;
+		}
+
+		// always return new instance
 		return new QuadSet({}, h_quads_u);
 	}
 
@@ -1148,7 +1447,7 @@ class QuadSet extends stream.Writable {
 							h_triples_i[$_KEYS] += 1;
 
 							// update quad count
-							h_triples_i[$_QUADS] += 1;
+							h_triples_i[$_QUADS] += h_pairs_i[$_QUADS];
 						}
 					}
 				}
@@ -1162,7 +1461,7 @@ class QuadSet extends stream.Writable {
 					h_quads_i[$_KEYS] += 1;
 
 					// update quad count
-					h_quads_i[$_QUADS] += 1;
+					h_quads_i[$_QUADS] += h_triples_i[$_QUADS];
 				}
 			}
 		}
@@ -1286,8 +1585,8 @@ class QuadSet extends stream.Writable {
 	// tests if another set is included in this set
 	includes(k_other) {
 		// compute intersection first
-		let k_i = this.intersection(k_other);
 
+		let k_i = this.intersection(k_other);
 		// (A ∩ B) == B
 		return k_i.equals(k_other);
 	}
