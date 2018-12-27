@@ -33,23 +33,6 @@
 			delete @{s_content}.write;
 			return @{s_content}.write = require('@{channel(`content.${s_content}.write`)}');  // eslint-disable-line global-require
 		},
-
-		// // parse @{s_content} input
-		// parse(...a_args) {
-		// 	return @{s_content}.parser(...a_args);
-		// 	// if(1 === a_args.length) {
-		// 	// 	a_args[0].validate = true;
-		// 	// }
-		// 	// else {
-		// 	// 	a_args = [
-		// 	// 		a_args[0] || null,
-		// 	// 		Object.assign(a_args[1] || {}, {
-		// 	// 			validate: true,
-		// 	// 		}),
-		// 	// 	];
-		// 	// }
-		// 	// return @{s_content}.deserializer(...a_args);
-		// },
 	};
 @;
 
@@ -131,10 +114,10 @@ const H_SPARQL_RESULT_TYPES = {
 
 @>> R_TOKENS()
 	@//@regex
-	[^0- ()<>@,;:\\"\/[\]?.=]+
+	[^\0-\x20()<>@,;:\\"\/[\]?.=]+
 @;
 
-const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS})((:;.+)$/;
+const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS()})(:;.+)$/;
 
 const graphy = module.exports = Object.assign({
 

@@ -23,7 +23,8 @@
   },
   "repository": "blake-regalia/graphy.js",
   "scripts": {
-    "test": "npx emk && npx emk build/graphy/test/cache/** && npx emk test.*"
+    "test": "npx emk && npx emk build/graphy/test/cache/** && npx emk test.*",
+    "coverage": "nyc --reporter=text mocha test/package"
   },
   "dependencies": {
     "async": "^2.6.1",
@@ -51,6 +52,7 @@
     "lambduh": "^3.1.0",
     "mocha": "^5.2.0",
     "n3": "^1.0.1",
+    "nyc": "^13.1.0",
     "request": "^2.87.0",
     "sort-package-json": "^1.17.0"
   }

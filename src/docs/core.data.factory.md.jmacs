@@ -348,7 +348,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
               termType: 'NamedNode',
               value: 'z://c',
           },
-      }).verbose();  // @{factory.from.term({
+      }).verbose();  // @{factory.from.quad({
           subject: {
               termType: 'NamedNode',
               value: 'z://a',

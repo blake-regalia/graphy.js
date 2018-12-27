@@ -1147,7 +1147,7 @@ const factory = module.exports = {
 				g_from.rdfjs_term(g_quad.subject),
 				g_from.rdfjs_term(g_quad.predicate),
 				g_from.rdfjs_term(g_quad.object),
-				g_from.rdfjs_term(g_quad.graph),
+				g_quad.graph? g_from.rdfjs_term(g_quad.graph): KT_DEFAULT_GRAPH,
 			);
 		},
 
