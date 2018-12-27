@@ -1,4 +1,5 @@
 
+
 # Data Factory
 `@graphy/core.data.factory`
 
@@ -26,24 +27,27 @@
      - [`number(...)`](#function_number)
      - [`date(...)`](#function_date)
      - [`dateTime(...)`](#function_datetime)
-   - Concise Term constructors
-     - [`c1(...)`](#function_c1)
-     
    - Quad constructors
      - [`quad(...)`](#function_quad)
+     
+   - Concise Term constructors
+     - [`c1(...)`](#function_c1)
      
    - Concise Quads constructors
      
      - [`c3(...)`](#function_c3)
      
      - [`c4(...)`](#function_c4)
+   - Normalization
+     - [`from.term`](#function_from-term)
+     - [`from.quad`](#function_from-term)
    - Content Writer directives
      - [`comment(...)`](#function_comment)
      
  - [Classes](#classes) -- class definitions
-   - [GenericTerm](#class_genericterm)
-     - [NamedNode](#class_namednode)
-     - [BlankNode](#class_blanknode)
+   - [GenericTerm](#class_generic-term)
+     - [NamedNode](#class_named-node)
+     - [BlankNode](#class_blank-node)
      - [Literal](#class_literal)
        - [Literal_Boolean](#class_literal-boolean)
        - [Literal_Integer](#class_literal-integer)
@@ -247,6 +251,11 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       factory.dateTime(dt_event).terse(h_prefixes);  // '"1995-12-17T11:24:00.000Z"^^xsd:dateTime'
       ```
 
+<a name="function_quad" />
+
+ - `factory.quad(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
+   - **returns** a [new Quad](#class_quad)
+
 <a name="function_c1" />
 
  - `factory.c1(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
@@ -260,11 +269,6 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 -->
 
 
-
-<a name="function_quad" />
-
- - `factory.quad(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
-   - **returns** a [new Quad](#class_quad)
 
 <a name="function_c3" />
 
@@ -280,6 +284,87 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 
 
+
+<a name="function_from-term" />
+
+ - `factory.from.term(term: `[`#struct/term-isolate`](#struct_term-isolate)`)`
+   - converts an object that represents an RDF term, as long as it includes the expected keys such as an [@RDFJS/Term](http://rdf.js.org/#term-interface) from another library, into a graphy-constructed [GenericTerm](#class_generic-term).
+   - **returns** a [new GenericTerm](#class_generic-term)
+   - *example:*
+      ```js
+      factory.from.term({
+          termType: 'NamedNode',
+          value: 'z://a',
+      }).verbose();  // {value:'z://a', termType:'NamedNode', isNamedNode:true, isGraphyTerm:true, }
+      ```
+
+<a name="function_from-quad" />
+
+ - `factory.from.quad(term: `[`#struct/quad-isolate`](#struct_quad-isolate)`)`
+   - converts an object that represents an RDF quad, as long as it includes the expected keys such as an [@RDFJS/Quad](http://rdf.js.org/#quad-interface) from another library, into a graphy-constructed [Quad](#class_quad).
+   - **returns** a [new Quad](#class_quad)
+   - *example:*
+      ```js
+      factory.from.quad({
+          subject: {
+              termType: 'NamedNode',
+              value: 'z://a',
+          },
+          predicate: {
+              termType: 'NamedNode',
+              value: 'z://b',
+          },
+          object: {
+              termType: 'NamedNode',
+              value: 'z://c',
+          },
+      }).verbose();  // {subject:{value:'z://a', termType:'NamedNode', isNamedNode:true, isGraphyTerm:true, }, predicate:{value:'z://b', termType:'NamedNode', isNamedNode:true, isGraphyTerm:true, }, object:{value:'z://c', termType:'NamedNode', isNamedNode:true, isGraphyTerm:true, }, graph:{value:'', termType:'DefaultGraph', isDefaultGraph:true, concise:concise() {
+			return '*';
+		}, terse:terse() {
+			return '';
+		}, verbose:verbose() {
+			return '';
+		}, isolate:isolate() {
+			return {
+				termType: 'DefaultGraph',
+				value: '',
+			};
+		}, isGraphyTerm:true, }, isGraphyQuad:true, equals:equals(y_other) {
+		return this === y_other
+			|| (this.object.equals(y_other.object)
+				&& this.subject.equals(y_other.subject)
+				&& this.predicate.equals(y_other.predicate)
+				&& this.graph.equals(y_other.graph));
+	}, valueOf:valueOf() {
+		return this.verbose();
+	}, concise:concise(h_prefixes={}) {
+		return [
+			this.subject.concise(h_prefixes),
+			this.predicate.concise(h_prefixes),
+			this.object.concise(h_prefixes),
+			this.graph.concise(h_prefixes),
+		];
+	}, terse:terse(h_prefixes) {
+		let b_default_graph = this.graph.isDefaultGraph;
+		return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
+			+this.subject.terse(h_prefixes)
+			+' '+this.predicate.terse(h_prefixes)
+			+' '+this.object.terse(h_prefixes)+' .'
+			+(b_default_graph? '': ' }');
+	}, verbose:verbose() {
+		return this.subject.verbose()
+			+' '+this.predicate.verbose()
+			+' '+this.object.verbose()
+			+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
+	}, isolate:isolate() {
+		return {
+			subject: this.subject.isolate(),
+			predicate: this.predicate.isolate(),
+			object: this.object.isolate(),
+			graph: this.graph.isolate(),
+		};
+	}, }
+      ```
 
 <a name="function_comment" />
 
@@ -596,7 +681,8 @@ A class that represents an RDF quad.
  - `.graph` : [`NamedNode`](#class_named-node)` | `[`BlankNode`](#named-node)` | `[`DefaultGraph`](#class_default-graph)
  
 **Methods:**
- - `equals(other: `[`@RDFJS/Quad`](http://rdf.js.org/#quad-interface)`)`
+ - `equals(other: `[`#struct/quad-isolate`](#struct_quad-isolate)`)`
+   - compare this RDF quad to another quad (which itself may be a simple object with the expected keys such as an [@RDFJS/Term](http://rdf.js.org/#term-interface) from another library).
    - **returns** a `boolean`
  - `verbose()`
    - **returns** a [`#string/quad_verbose`](#string_quad-verbose)

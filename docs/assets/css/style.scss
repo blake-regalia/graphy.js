@@ -33,6 +33,7 @@ a {
 
 pre code {
 	background-color: inherit;
+	padding: 0;
 }
 
 pre {
@@ -59,7 +60,7 @@ h3 strong, h4 strong, h5 strong, h6 strong {
 	color: #000;
 }
 
-p+ul {
+section>p+ul {
 	margin-top: -15px;
 }
 
@@ -85,4 +86,12 @@ li {
 
 section>ul>li {
 	margin-top: 8px;
+}
+
+footer p:nth-child(2) {
+	display: none;
+}
+
+footer p:nth-child(1) {
+	text-align: center;
 }
