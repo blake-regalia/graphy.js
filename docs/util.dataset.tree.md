@@ -1,9 +1,5 @@
-@import './docs.jmacs'
-@.{
-  const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
-  const dataset_tree = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
-  const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
-}
+
+
 # Dataset Tree
 `@graphy/util.dataset.tree`
 
@@ -37,19 +33,7 @@
      - [difference(...)](#method_difference) -- `(A - (A ∩ B)) ∪ (B - (A ∩ B))`
    - Iterators
      - [iterator(...)](#method_iterator) -- return an iterator 
-     @.{/*
-     - [quads(...)](#method_quads) -- return an iterator 
-     - [distinctGraphs(...)](#method_distinct)
-     - [distinctSubjects(...)](#method_distinct)
-     - [distinctPredicates(...)](#method_distinct)
-     - [distinctObjects(...)](#method_distinct)
-   - Statistics
-     - [count(...)](#method_count)
-   - Canonicalization
-     - [canonicalize(...)][#method_canonicalize]
-   - Thread-Safe Translation
-     - [export(...)][#method_export]
-    */}
+     
 
 ----
 
@@ -70,24 +54,17 @@ This data structure is implemented in a performance-oriented, memory-conscious m
    - **returns** a [`#number/integer`](#number_integer)
    - *examples:*
        ```js
-       @. let y_tree_size = dataset_tree();
-       let y_tree = dataset_tree();
+              let y_tree = dataset_tree();
 
-       y_tree.size;  // @{y_tree_size.size}
+       y_tree.size;  // 0
 
        y_tree.addQuads(factory.c3({
            '>z://a': {
                '>z://b': ['"hello', '"world'],
            },
        }));
-       @.{
-       	y_tree_size.addQuads(factory.c3({
-       		'>z://a': {
-       			'>z://b': ['"hello', '"world'],
-       		},
-       	}));
-       }
-       y_tree.size;  // @{y_tree_size.size}
+       
+       y_tree.size;  // 2
        ```
 
 ----
@@ -205,17 +182,3 @@ This data structure is implemented in a performance-oriented, memory-conscious m
    - **yields** a [Quad](core.data.factory#class_quad).
 
 
-@.{/*
-<a name="method_canonicalize" />
-
-### method **canonicalize**()
-   - canonicalize the 
-   - **returns** a `string`.
-
-@.{/*
-<a name="method_export" />
-
-### method **export**()
-   - create 
-   - **yields** a [Quad](core.data.factory#class_quad).
-*/}

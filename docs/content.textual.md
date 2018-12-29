@@ -589,7 +589,7 @@ Contains methods for serializing RDF quads from memory to an output destination.
 See [`write`](#verb_write).
 
 **Methods:**
- - `async add(quads: `[`#struct/c4-hash`](concise#c4-hash)`)` -- serialize 
+ - `async add(quads: `[`#struct/c4`](concise#struct_c4)`)` -- serialize 
    - **resolves to** a [`WriteReport`](#class_writereport)
  - `async add(quad: `[`@RDFJS/Quad`](http://rdf.js.org/#quad-interface)`)`
    - **resolves to** a [`WriteReport`](#class_writereport)
@@ -657,7 +657,7 @@ An interface that defines the config object passed to a content reader.
  - ... [see those inheritted from ReadConfig_NoInput](#config_read-no-input)
 
 **Required:**
- - `input` : [`#struct/input_string`](#struct_input-string)` | `[`#struct/input_stream`](#struct_input-stream)
+ - `input` : [`#struct/input-string`](#struct_input-string)` | `[`#struct/input-stream`](#struct_input-stream)
 
 
 <a name="config_write" />
@@ -680,7 +680,7 @@ An interface that defines the config object passed to a content writer.
 #### config **TurboConfig_WithInput** _inlines_ [TurboEvents](#events-turbo)
  
 **Required:**
- - `input` : [`#struct/input_file`](#struct_input-file)` | `[`#struct/input_url`](#struct_input-url)
+ - `input` : [`#struct/input-file`](#struct_input-file)` | `[`#struct/input-url`](#struct_input-url)
  - `map` : [`#string/js_function_map`](#string-js_function_map)
    - **signature:** `function(result_callback: callback(result: any))` : [`ReadConfig_NoInput`](#config_read)
    - This string will be copied and given to each worker thread where it will be turned into a new function in order to build the reader config as well as to distill the results that you are interested in obtaining. The function should accept a single argument, a callback function `result_callback` which expects to be called once the worker thread is ready to pass its results back to the main thread.

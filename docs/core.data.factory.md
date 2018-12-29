@@ -84,6 +84,18 @@ const factory = graphy;
 ## Datatypes
 The following section describes hinted formatting on ES primitives that are used throughout this document.
 
+
+### Numbers:
+
+<a name="number_integer" />
+
+ - `#number/integer` -- any number such that `Numer.isInteger(value) === true`.
+
+<a name="number_double" />
+
+ - `#number/double` -- any number.
+
+
 ### Strings:
 
 <a name="string_term-verbose" />
@@ -96,7 +108,8 @@ The following section describes hinted formatting on ES primitives that are used
 
 <a name="string_language-tag" />
 
- - `#string/language_tag` -- a [BCP47 string](https://tools.ietf.org/html/bcp47).
+ - `#string/language-tag` -- a [BCP47 string](https://tools.ietf.org/html/bcp47).
+
 
 ### Structs:
 A 'struct' refers to an interface for a simple ES Object `value` such that `value.constructor === Object`. This is important because some methods may perform duck-typing on their arguments in order to deduce which overloaded variant to employ. The following section documents the definitions for these interfaces.
@@ -287,21 +300,21 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_from-term" />
 
- - `factory.from.term(term: `[`#struct/term-isolate`](#struct_term-isolate)`)`
-   - converts an object that represents an RDF term, as long as it includes the expected keys such as an [@RDFJS/Term](http://rdf.js.org/#term-interface) from another library, into a graphy-constructed [GenericTerm](#class_generic-term).
+ - `factory.from.term(term: `[`AnyTerm`](#interface_any-term)`)`
+   - converts an object that represents an RDF term, as long as it includes the expected keys such as an [@RDFJS/Term](https://rdf.js.org/#term-interface) from another library, into a graphy-constructed [GenericTerm](#class_generic-term).
    - **returns** a [new GenericTerm](#class_generic-term)
    - *example:*
       ```js
       factory.from.term({
           termType: 'NamedNode',
           value: 'z://a',
-      }).verbose();  // {value:'z://a', termType:'NamedNode', isNamedNode:true, isGraphyTerm:true, }
+      }).verbose();  // '<z://a>'
       ```
 
 <a name="function_from-quad" />
 
- - `factory.from.quad(term: `[`#struct/quad-isolate`](#struct_quad-isolate)`)`
-   - converts an object that represents an RDF quad, as long as it includes the expected keys such as an [@RDFJS/Quad](http://rdf.js.org/#quad-interface) from another library, into a graphy-constructed [Quad](#class_quad).
+ - `factory.from.quad(term: `[`AnyQuad`](#interface_any-quad)`)`
+   - converts an object that represents an RDF quad, as long as it includes the expected keys such as an [@RDFJS/Quad](https://rdf.js.org/#quad-interface) from another library, into a graphy-constructed [Quad](#class_quad).
    - **returns** a [new Quad](#class_quad)
    - *example:*
       ```js
@@ -318,52 +331,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
               termType: 'NamedNode',
               value: 'z://c',
           },
-      }).verbose();  // {subject:{value:'z://a', termType:'NamedNode', isNamedNode:true, isGraphyTerm:true, }, predicate:{value:'z://b', termType:'NamedNode', isNamedNode:true, isGraphyTerm:true, }, object:{value:'z://c', termType:'NamedNode', isNamedNode:true, isGraphyTerm:true, }, graph:{value:'', termType:'DefaultGraph', isDefaultGraph:true, concise:concise() {
-			return '*';
-		}, terse:terse() {
-			return '';
-		}, verbose:verbose() {
-			return '';
-		}, isolate:isolate() {
-			return {
-				termType: 'DefaultGraph',
-				value: '',
-			};
-		}, isGraphyTerm:true, }, isGraphyQuad:true, equals:equals(y_other) {
-		return this === y_other
-			|| (this.object.equals(y_other.object)
-				&& this.subject.equals(y_other.subject)
-				&& this.predicate.equals(y_other.predicate)
-				&& this.graph.equals(y_other.graph));
-	}, valueOf:valueOf() {
-		return this.verbose();
-	}, concise:concise(h_prefixes={}) {
-		return [
-			this.subject.concise(h_prefixes),
-			this.predicate.concise(h_prefixes),
-			this.object.concise(h_prefixes),
-			this.graph.concise(h_prefixes),
-		];
-	}, terse:terse(h_prefixes) {
-		let b_default_graph = this.graph.isDefaultGraph;
-		return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
-			+this.subject.terse(h_prefixes)
-			+' '+this.predicate.terse(h_prefixes)
-			+' '+this.object.terse(h_prefixes)+' .'
-			+(b_default_graph? '': ' }');
-	}, verbose:verbose() {
-		return this.subject.verbose()
-			+' '+this.predicate.verbose()
-			+' '+this.object.verbose()
-			+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
-	}, isolate:isolate() {
-		return {
-			subject: this.subject.isolate(),
-			predicate: this.predicate.isolate(),
-			object: this.object.isolate(),
-			graph: this.graph.isolate(),
-		};
-	}, }
+      }).verbose();  // '<z://a> <z://b> <z://c> .'
       ```
 
 <a name="function_comment" />
@@ -422,23 +390,24 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 ## Classes
 
+
 <a name="class_generic-term" />
 
-### abstract class **GenericTerm** implements [Term](#interface_term)
+### abstract class **GenericTerm** implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 **Properties:**
  - `.isGraphyTerm` : `boolean` = `true`
 
 **Methods:**
- - `equals(other: `[`@RDFJS/Term`](http://rdf.js.org/#term-interface)`)`
+ - `equals(other: `[`AnyTerm`](#interface_any-term)`)`
    - **returns** `boolean`
  - `verbose()`
-   - **returns** [`#string/term_verbose`](#string-term_verbose)
- - `terse(prefix_map: `[`#hash/prefix-mappings`](#hash-prefixmappings)`)`
-   - **returns** [`#string/term_terse`](#string-term_terse)
- - `concise(prefix_map: `[`#hash/prefix-mappings`](#hash-prefixmappings)`)`
-   - **returns** [`#string/term_concise`](#string-term_concise)
+   - **returns** [`#string/term_verbose`](#string_term-verbose)
+ - `terse(prefix_map: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`)`
+   - **returns** [`#string/term_terse`](#string_term-terse)
+ - `concise(prefix_map: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`)`
+   - **returns** [`#string/term_concise`](#string_term-concise)
  - `isolate()` -- creates a self-contained object representation of this term, devoid of references to other objects
-   - **returns** [`#struct/term_isolated`](#struct-term_isolate)
+   - **returns** [`#struct/term-isolate`](#struct_term-isolate)
    - *example:*
       ```js
       factory.namedNode('ex://test').isolate();  // {termType:'NamedNode', value:'ex://test'}
@@ -455,10 +424,10 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="class_named-node" />
 
-### class **NamedNode** extends [GenericTerm](#class_generic-term) implements [@RDFJS/NamedNode](http://rdf.js.org/#namednode-interface)
+### class **NamedNode** extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 A class that represents an RDF named node.
 
-**Properties implementing [@RDFJS/NamedNode](http://rdf.js.org/#namednode-interface)**:
+**Properties implementing [@RDFJS/NamedNode](https://rdf.js.org/#namednode-interface)**:
  - `.termType` : `string` = `'NamedNode'`
  - `.value` : `string` -- the IRI of this named node
 
@@ -470,10 +439,10 @@ A class that represents an RDF named node.
 
 <a name="class_blank-node" />
 
-### class **BlankNode** extends [GenericTerm](#class_generic-term) implements [@RDFJS/BlankNode](http://rdf.js.org/#blanknode-interface)
+### class **BlankNode** extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 A class that represents an RDF blank node.
 
-**Properties implementing [@RDFJS/BlankNode](http://rdf.js.org/#blanknode-interface)**:
+**Properties implementing [@RDFJS/BlankNode](https://rdf.js.org/#blanknode-interface)**:
  - `.termType` : `string` = `'BlankNode'`
  - `.value` : `string` -- the label of this blank node (i.e., without leading `'_:'`)
 
@@ -499,10 +468,10 @@ graphy.content.ttl.read('_:a <b> [] .', {
 
 <a name="class_default-graph" />
 
-### class **DefaultGraph** extends [GenericTerm](#class_generic-term) implements [@RDFJS/DefaultGraph](http://rdf.js.org/#defaultgraph-interface)
+### class **DefaultGraph** extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 A class that represents an RDF default graph.
 
-**Properties implementing [@RDFJS/DefaultGraph](http://rdf.js.org/#defaultgraph-interface)**:
+**Properties implementing [@RDFJS/DefaultGraph](https://rdf.js.org/#defaultgraph-interface)**:
  - `.termType` : `string` = `'DefaultGraph'`
  - `.value` : `string` = `''` (an empty string)
 
@@ -514,14 +483,14 @@ A class that represents an RDF default graph.
 
 <a name="class_literal" />
 
-### class **Literal** extends [GenericTerm](#class_generic-term) implements [@RDFJS/Literal](http://rdf.js.org/#literal-interface)
+### class **Literal** extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 A class that represents an RDF literal.
 
-**Properties implementing [@RDFJS/Literal](http://rdf.js.org/#literal-interface)**:
+**Properties implementing [@RDFJS/Literal](https://rdf.js.org/#literal-interface)**:
  - `.termType` : `string` = `'Literal'`
  - `.value` : `string` -- the contents of this literal
  - `.datatype` : [`NamedNode`](#class-namednode) -- the datatype of this literal (defaults to [rdf:langString](https://www.w3.org/1999/02/22-rdf-syntax-ns#langString))
- - `.language` : `#string/language_tag` -- the language tag associated with this literal (will be an empty string if it has no language)
+ - `.language` : `#string/language-tag` -- the language tag associated with this literal (will be an empty string if it has no language)
 
 **Properties:**
  - `.isLiteral` : `boolean` = `true` -- a faster alternative to test for Literal term types
@@ -671,7 +640,7 @@ A class that represents an RDF literal that is NaN, which is of type [xsd:double
 
 <a name="class_quad" />
 
-### class **Quad** implements [@RDFJS/Quad](http://rdf.js.org/#quad-interface)
+### class **Quad** implements [@RDFJS/Quad](https://rdf.js.org/#quad-interface)
 A class that represents an RDF quad.
 
 **Properties:**
@@ -681,23 +650,42 @@ A class that represents an RDF quad.
  - `.graph` : [`NamedNode`](#class_named-node)` | `[`BlankNode`](#named-node)` | `[`DefaultGraph`](#class_default-graph)
  
 **Methods:**
- - `equals(other: `[`#struct/quad-isolate`](#struct_quad-isolate)`)`
-   - compare this RDF quad to another quad (which itself may be a simple object with the expected keys such as an [@RDFJS/Term](http://rdf.js.org/#term-interface) from another library).
+ - `equals(other: `[`AnyQuad`](#interface_any-quad)`)`
+   - compare this RDF quad to another quad (which itself may be a simple object with the expected keys such as an [@RDFJS/Term](https://rdf.js.org/#term-interface) from another library).
    - **returns** a `boolean`
  - `verbose()`
-   - **returns** a [`#string/quad_verbose`](#string_quad-verbose)
+   - **returns** a [#string/quad_verbose](#string_quad-verbose)
  - `terse()`
-   - **returns** a [`#string/quad_terse`](#string_quad-terse)
+   - **returns** a [#string/quad_terse](#string_quad-terse)
  - `concise()`
-   - **returns** a [`#struct/quad_concise`](#struct_quad-concise)
+   - **returns** a [#struct/quad_concise](#struct_quad-concise)
  - `isolate()`
-   - **returns** a [`#struct/quad_isolate`](#struct_quad-isolate)
+   - **returns** a [#struct/quad_isolate](#struct_quad-isolate)
 
 ---
 
 ## Interfaces
 
-<a name="interface_term" />
+<a name="interface_any-term" />
 
-### interface **Term** extends [@RDFJS/Term](http://rdf.js.org/#term-interface)
-Alias of [@RDFJS/Term](http://rdf.js.org/#term-interface)
+### interface **AnyTerm**
+Any object with the given properties defined, including plain objects. By definition, any instance of an [@RDFJS/Term](https://rdf.js.org/#term-interface) or [GenericTerm](#class_generic-term) also meet these criteria.
+ - _required properties_:
+   - `.termType` : `'NamedNode' | 'BlankNode' | 'Literal' | 'DefaultGraph'`
+   - `.value` : `string`
+ - _optional properties_:
+   - `.datatype` : [AnyTerm](#interface_any-term)
+   - `.language` : [#string/language-tag](#string_language-tag)
+
+
+
+<a name="interface_any-quad" />
+
+### interface **AnyQuad**
+Any object with the given properties defined, including plain objects. By definition, any instance of an [@RDFJS/Quad](https://rdf.js.org/#quad-interface) or [Quad](#class_quad) also meet these criteria.
+ - _required properties_:
+   - `.subject` : [AnyTerm](#interface_any-term)
+   - `.predicate` : [AnyTerm](#interface_any-term)
+   - `.object` : [AnyTerm](#interface_any-term)
+ - _optional properties_:
+   - `.graph` : [AnyTerm](#interface_any-term)

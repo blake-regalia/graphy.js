@@ -748,6 +748,10 @@ class DatasetTree extends stream.Transform {
 		return h_quads_dst;
 	}
 
+	* iterator() {
+		yield* this.quads();
+	}
+
 	* quads() {
 		let h_quads = this.quad_tree;
 		for(let sv1_graph in h_quads) {
@@ -895,12 +899,12 @@ class DatasetTree extends stream.Transform {
 	}
 
 	// add quad(s) to this set
-	add_quads(a_quads_safe) {
+	add_quads(z_quads_safe) {
 		let h_quads = this.quad_tree;
 		let c_added = 0;
 
 		// each quad in arguments
-		for(let g_quad of a_quads_safe) {
+		for(let g_quad of z_quads_safe) {
 			let p_graph = g_quad.graph.concise();
 			let p_subject = g_quad.subject.concise();
 			let p_predicate = g_quad.predicate.concise();
