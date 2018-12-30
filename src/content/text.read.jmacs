@@ -234,8 +234,24 @@ const FN_TO_STRING_OBJECT = Object.prototype.toString;
 	if(a_args.length) {
 		let z_arg_0 = a_args[0];
 
+		// string
+		if('string' === typeof z_arg_0) {
+			@- g_config.string
+				g_config.input = @{g_config.string('z_arg_0')};
+			@:
+				g_config.input = {string:z_arg_0};
+			@;
+		}
+		// null
+		else if(null === z_arg_0) {
+			g_config.input = null;
+		}
+		// node stream
+		else if('function' === typeof z_arg_0.setEncoding) {
+			g_config.input = {stream:z_arg_0};
+		}
 		// config struct
-		if(z_arg_0 && 'object' === typeof z_arg_0 && '[object Object]' === FN_TO_STRING_OBJECT.call(z_arg_0)) {
+		else if(z_arg_0 && 'object' === typeof z_arg_0 && '[object Object]' === FN_TO_STRING_OBJECT.call(z_arg_0)) {
 			g_config = z_arg_0;
 
 			// more args; invalid
@@ -243,38 +259,19 @@ const FN_TO_STRING_OBJECT = Object.prototype.toString;
 				throw new TypeError(`unexpected argument(s) after config struct: ${a_args.slice(1)}`);
 			}
 		}
-		// input arg
+		// unknown
 		else {
-			// string
-			if('string' === typeof z_arg_0) {
-				@- g_config.string
-					g_config.input = @{g_config.string('z_arg_0')};
-				@:
-					g_config.input = {string:z_arg_0};
-				@;
-			}
-			// node stream
-			else if('function' === typeof z_arg_0.setEncoding) {
-				g_config.input = {stream:z_arg_0};
-			}
-			// null
-			else if(null === z_arg_0) {
-				g_config.input = null;
-			}
-			// unknown
-			else {
-				throw new TypeError(`unexpected input type: ${z_arg_0}`);
-			}
+			throw new TypeError(`unexpected input type: ${z_arg_0}`);
+		}
+
+		// more args
+		if(a_args.length > 1) {
+			// copy onto struct
+			Object.assign(g_config, a_args[1]);
 
 			// more args
-			if(a_args.length > 1) {
-				// copy onto struct
-				Object.assign(g_config, a_args[1]);
-
-				// more args
-				if(a_args.length > 2) {
-					throw new TypeError(`unexpected argument(s) after input and config struct: ${a_args.slice(2)}`);
-				}
+			if(a_args.length > 2) {
+				throw new TypeError(`unexpected argument(s) after input and config struct: ${a_args.slice(2)}`);
 			}
 		}
 	}

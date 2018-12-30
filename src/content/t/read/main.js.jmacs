@@ -92,9 +92,9 @@ const H_ESCAPES_JSON = {
 	},
 };
 
-@>> lookahead(s_key, s_append='')
+@>> lookahead(s_key, s_append='', s_prepend='')
 	@//@regex
-	(?:\s+|(?=[@*{
+	(?:\s+|(?=@{s_prepend}[@*{
 		let h_node;
 		do {
 			h_node = H_LOOKAHEADS[s_key];
@@ -198,7 +198,7 @@ const R_PN_LOCAL_ESCAPES = /\\(.)/g;
 @;
 
 const R_BLANK_NODE_LABEL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node')}/y;
-const R_BLANK_NODE_LABEL_TERMINAL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node', '|(?=\\.[@#<({\\[}])')}/y;
+const R_BLANK_NODE_LABEL_TERMINAL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node', '|(?=\\.[\\s@#<({\\[}])', '\\.?')}/y;
 
 
 const R_STRING_LITERAL_QUOTE = /"((?:[^"\\]|\\.)*)"@{lookahead('string')}/y;
