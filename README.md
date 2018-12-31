@@ -1,46 +1,42 @@
 # graphy.js 🍌
-`graphy` is a collection of RDF libraries for JavaScript developers that focuses on performance and usability. Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
+`graphy` is a collection of RDF libraries for JavaScript developers that focuses on performance and usability. 
 
-### Features
- - Read & write RDF document streams using objects that extend the [RDFJS Data Interface](http://rdf.js.org/), including support for the following formats:
-   - N-Triples (.nt)
-   - N-Quads (.nq)
-   - Turtle (.ttl)
-   - TriG (.trig)
- - [High-performance](#performance) textual RDF content readers.
- - Compute the union, intersection, or difference between two RDF graphs using the [DatasetTree package](/docs/util.dataset.tree.md).
- - Compare two RDF graphs for equivalence using the [DatasetTree package](docs/util.dataset.tree.md), which implements the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
+## [See API Documentation](https://graphy.link/api)
 
-### API Documentation
- - [Data Factory](/docs/core.data.factory.md) -- documentation for the `@graphy/core.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
- - [Textual Content Handlers](/docs/content.textual.md) -- covers all functionality exposed by packages prefixed with the following prefixes:
-   - `@graphy/content.nt.*`
-   - `@graphy/content.nq.*`
-   - `@graphy/content.ttl.*`
-   - `@graphy/content.trig.*`
+## Features
+ - [Textual Content Handlers](content.textual)
+   - **Read & write** RDF documents using streams. Includes support for:
+     - N-Triples (.nt)
+     - N-Quads (.nq)
+     - Turtle (.ttl)
+     - TriG (.trig)
+ - [DatasetTree package](util.dataset.tree)
+   - Compute the union, intersection, and difference between two RDF graphs.
+   - Compare two RDF graphs for equivalence, inclusion, and disjointness using the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
 
-### Mono-Repo
+
+## Package Tree
 The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) contains source code for all of the packages published on npm under the `@graphy` org. Each package is namespaced according to its category, sub-category, and function. They are enumerated here for clarity:
 
-```
-@graphy/
-   core.
-      data.
-         factory -- @graphy/core.data.factory
-   content.
-      nt.
-         read -- @graphy/content.nt.read
-         write -- @graphy/content.nt.write
-      ttl.
-         read -- @graphy/content.ttl.read
-         write -- @graphy/content.ttl.write
-      nq.
-         read -- @graphy/content.nq.read
-         write -- @graphy/content.nq.write
-      trig.
-         read -- @graphy/content.trig.read
-         write -- @graphy/content.trig.write
-   util.
-      dataset.
-         tree -- @graphy/util.dataset.tree
+```yaml
+graphy/:
+  core.:
+    data.:
+      factory: '@graphy/core.data.factory'
+  util.:
+    dataset.:
+      tree: '@graphy/util.dataset.tree'
+  content.:
+    nt.:
+      read: '@graphy/content.nt.read'
+      write: '@graphy/content.nt.write'
+    nq.:
+      read: '@graphy/content.nq.read'
+      write: '@graphy/content.nq.write'
+    ttl.:
+      read: '@graphy/content.ttl.read'
+      write: '@graphy/content.ttl.write'
+    trig.:
+      read: '@graphy/content.trig.read'
+      write: '@graphy/content.trig.write'
 ```
