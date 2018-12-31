@@ -1,6 +1,6 @@
 
 
-# Concise Terms, Triples and Quads
+# [« API](api) / Concise Terms, Triples and Quads
 This document describes a language for concisely expressing RDF data from within a JavaScript programming environment, allowing for a convenient technique of mixing in data from live variables and objects to create RDF quads and RDF terms such as named nodes, blank nodes, and literals.
 
 <a name="string_c1" />

@@ -1,7 +1,7 @@
 
 
-# Data Factory
-`@graphy/core.data.factory`
+# [« API](api) / Data Factory
+## `@graphy/core.data.factory`
 
 ## Primer
  - `factory` is used throughout this document to refer to this module's export.
@@ -54,7 +54,7 @@
    - [Quad](#class_quad)
  - [Interfaces](#interfaces) -- interface definitions
    - [AnyTerm](#interface_any-term)
-   - [AnyQyad](#interface_any-quad)
+   - [AnyQuad](#interface_any-quad)
 
 
 ---

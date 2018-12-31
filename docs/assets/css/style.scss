@@ -99,3 +99,21 @@ footer p:nth-child(1) {
 section>ul ul div.highlight {
 	padding-bottom: 10px;
 }
+
+h1>code, h2>code, h3>code, h4>code, h5>code, h6>code {
+	font-size: 0.9em;
+	padding: 0.25em 0.5em;
+	vertical-align: 0.1em;
+}
+
+div.highlighter-rouge+p {
+	margin-bottom: 10px;
+}
+
+p+div.highlighter-rouge {
+	margin-top: -10px;
+}
+
+div.highlighter-rouge {
+	margin-bottom: 10px;
+}

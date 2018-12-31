@@ -4,8 +4,8 @@
   const dataset_tree = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
   const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
 }
-# Dataset Tree
-`@graphy/util.dataset.tree`
+@{api_title('Dataset Tree')}
+## `@graphy/util.dataset.tree`
 
 ## Primer
  - `dataset_tree` is used throughout this document to refer to this module's export.
@@ -64,13 +64,14 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 
 <a name="property_size" />
-
+@.{
+  let y_tree_size = dataset_tree();
+}
  - `dataset_tree.prototype.size`
    - get the number of quads in the tree.
-   - **returns** a [`#number/integer`](#number_integer)
+   - **returns** a [`#number/integer`](core.data.factory#number_integer)
    - *examples:*
        ```js
-       @. let y_tree_size = dataset_tree();
        let y_tree = dataset_tree();
 
        y_tree.size;  // @{y_tree_size.size}
@@ -97,55 +98,55 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_add" />
 
-### method **add**(quad: [AnyQuad](core.data.factory#class_any-quad)) _implements_ [@RDFJS/dataset.add](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-add)
+### **add**(quad: [AnyQuad](core.data.factory#interface_any-quad)) _implements_ [@RDFJS/dataset.add](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-add)
    - add a single quad to the tree; will only succeed if the quad is not already present.
    - **returns** `this`.
 
 
 <a name="method_add-all" />
 
-### method **addAll**(quads: [@RDFJS/dataset](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset) | sequence<[AnyQuad](core.data.factory#class_any-quad)>) _implements_ [@RDFJS/dataset.addAll](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-addall)
+### **addAll**(quads: [@RDFJS/dataset](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset) | sequence<[AnyQuad](core.data.factory#interface_any-quad)>) _implements_ [@RDFJS/dataset.addAll](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-addall)
    - add quads to the tree; will only add each quad that is not already present. 
    - **returns** `this`
 
 
 <a name="method_add-quads" />
 
-### method **addQuads**(quads: [Iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator)<[Quad](core.data.factory#class_quad)>)
+### **addQuads**(quads: [Iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator)<[Quad](core.data.factory#class_quad)>)
    - add quads to the tree; will only add each quad that is not already present. Bypass the internal overhead of checking and needlessly converting each quad to graphy-safe objects. Notice that `quads` must be an [Iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator) sequence of graphy [Quads](core.data.factory#class_quad).
-   - **returns** a [`#number/integer`](#number_integer) indicating how many quads were successfully added to the tree.
+   - **returns** a [`#number/integer`](core.data.factory#number_integer) indicating how many quads were successfully added to the tree.
 
 
 <a name="method_delete" />
 
-### method **delete**(Quad quad) _implements_ [@RDFJS/dataset.delete](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-delete)
+### **delete**(Quad quad) _implements_ [@RDFJS/dataset.delete](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-delete)
    - delete the given `quad` from the tree if it exists.
    - **returns** `this`
 
 <a name="method_delete-quads" />
 
-### method **deleteQuads**(quads: list<[Quad](core.data.factory#class_quad)>)
+### **deleteQuads**(quads: list<[Quad](core.data.factory#class_quad)>)
    - delete the given `quads` from the tree if they exist.
-   - **returns** a [`#number/integer`](#number_integer) indicating how many quads were successfully deleted from the tree.
+   - **returns** a [`#number/integer`](core.data.factory#number_integer) indicating how many quads were successfully deleted from the tree.
 
 
 <a name="method_clear" />
 
-### method **clear**()
+### **clear**()
    - remove all quads from the tree.
    - **returns** `undefined`.
 
 
 <a name="method_has" />
 
-### method **has**(quad: [AnyQuad](core.data.factory#class_any-quad)) _implements_ [@RDFJS/dataset.has](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-has)
+### **has**(quad: [AnyQuad](core.data.factory#interface_any-quad)) _implements_ [@RDFJS/dataset.has](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-has)
    - tests if this contains the given `quad`.
    - **returns** a `boolean`.
 
 
 <a name="method_equals" />
 
-### method **equals**(other: [DatasetTree](#methods)>) _implements_ [@RDFJS/dataset.equals](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-equals)
+### **equals**(other: [DatasetTree](#methods)>) _implements_ [@RDFJS/dataset.equals](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-equals)
    - `A = B`
    - tests if `this` and `other` are equivalent graphs using [URDNA2015](https://json-ld.github.io/normalization/spec/).
    - **returns** a `boolean`
@@ -153,7 +154,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_includes" />
 
-### method **includes**(other: [DatasetTree](#methods)>)
+### **includes**(other: [DatasetTree](#methods)>)
    - `(A ∩ B) = B`
    - tests if `this` includes all quads in `other`.
    - **returns** a `boolean`.
@@ -161,7 +162,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_disjoint" />
 
-### method **disjoint**(other: [DatasetTree](#methods)>)
+### **disjoint**(other: [DatasetTree](#methods)>)
    - `(A ∩ B) = Ø`
    - tests if `this` is disjoint with `other`.
    - **returns** a `boolean`.
@@ -169,14 +170,14 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_union" />
 
-### method **union**(other: [DatasetTree](#methods)>)
+### **union**(other: [DatasetTree](#methods)>)
    - create a new DatasetTree by combining the quads from both `this` and `other`.
    - **returns** a [new DatasetTree](#methods).
 
 
 <a name="method_intersection" />
 
-### method **intersection**(other: [DatasetTree](#methods)>)
+### **intersection**(other: [DatasetTree](#methods)>)
    - `A ∩ B`
    - create a new DatasetTree by intersecting the quads between `this` and `other`.
    - **returns** a [new DatasetTree](#methods).
@@ -184,7 +185,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_minus" />
 
-### method **minus**(other: [DatasetTree](#methods)>)
+### **minus**(other: [DatasetTree](#methods)>)
    - `(A - (A ∩ B))`
    - create a new DatasetTree by subtracting the quads in `other` from `this`.
    - **returns** a [new DatasetTree](#methods).
@@ -192,7 +193,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_difference" />
 
-### method **difference**(other: [DatasetTree](#methods)>)
+### **difference**(other: [DatasetTree](#methods)>)
    - `(A - (A ∩ B)) ∪ (B - (A ∩ B))`
    - create a new DatasetTree by taking the difference between `this` and `other`.
    - **returns** a [new DatasetTree](#methods).
@@ -200,7 +201,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_iterator" />
 
-### _generator_ method **iterator**()
+### * **iterator**()
    - create an iterator to traverse each quad in `this`.
    - **yields** a [Quad](core.data.factory#class_quad).
 
@@ -208,14 +209,14 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 @.{/*
 <a name="method_canonicalize" />
 
-### method **canonicalize**()
+### **canonicalize**()
    - canonicalize the 
    - **returns** a `string`.
 
 @.{/*
 <a name="method_export" />
 
-### method **export**()
+### **export**()
    - create 
    - **yields** a [Quad](core.data.factory#class_quad).
 */}

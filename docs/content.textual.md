@@ -1,5 +1,5 @@
 
-# Textual RDF Content Handlers
+# [« API](api) / Textual RDF Content Handlers
 This documentation covers the following graphy packages:
  - N-Triples
    - reader: `@graphy/content.nt.read`
@@ -26,8 +26,8 @@ This documentation covers the following graphy packages:
  - [Configs](#configs) -- definitions for config interfaces
 
 <!--
-- [`scan`](#verb-scan) -- for reading RDF from a string or stream using multiple threads
-- [`scribe`](#verb-scribe) -- for writing RDF using Quad objects only
+- [`scan`](#verb_scan) -- for reading RDF from a string or stream using multiple threads
+- [`scribe`](#verb_scribe) -- for writing RDF using Quad objects only
 -->
 
 ----
@@ -39,7 +39,7 @@ These modules offer two distinct approaches to binding event listeners. The trad
 
 A sleeker alternative to the `.on(...)` approach is the *inline events* style. Simply provide a callback function for each event you want to attach a listener to at the time the module function is called, passing a direct reference to at most one callback function per event. This approach allows the module to bypass the `EventEmitter` methods and can result in slightly better performance; it is also more pleasant to look at. However, it might not be suitable for users who need the ability to add multiple event listeners, to remove listeners, or to add listeners at a later time.
 
-See the [`read`](#verb-read) examples for a demonstration of the two styles of attaching event listeners.
+See the [`read`](#verb_read) examples for a demonstration of the two styles of attaching event listeners.
 
 ----
 
@@ -190,11 +190,11 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 
 ## Verbs
 This section documents the 'verb' part of each content module. A 'verb' refers to the fact that the module's export is itself a function.
- - [read](#verb-read) -- read serialized RDF documents using a single thread.
- - [write](#verb-write) -- write serialized RDF data to an output destination in an event-driven manner using the elegant concise-struct language.
+ - [read](#verb_read) -- read serialized RDF documents using a single thread.
+ - [write](#verb_write) -- write serialized RDF data to an output destination in an event-driven manner using the elegant concise-struct language.
 
 <!--
- - [turbo](#verb-turbo) -- read serialized RDF documents using multiple threads.
+ - [turbo](#verb_turbo) -- read serialized RDF documents using multiple threads.
 -->
 
 ----
@@ -534,7 +534,7 @@ The definition for all possible events emitted during content writing. Please [s
 Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c4](concise#c4-hash).
 
 **Construction:**
-See [`write`](#verb-write).
+See [`write`](#verb_write).
 
 **Methods:**
  - ... [see those inheritted from Transform](core.iso.stream#transform)
@@ -549,7 +549,7 @@ See [`write`](#verb-write).
 Acts as an object-writable, string-readable Transform for serializing RDF triples from memory to an output destination. Expects objects on the writable side to be of type [#hash/c3](concise#c3-hash).
 
 **Construction:**
-See [`write`](#verb-write).
+See [`write`](#verb_write).
 
 **Methods:**
  - ... [see those inheritted from Transform](core.iso.stream#transform)

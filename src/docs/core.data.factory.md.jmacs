@@ -5,8 +5,8 @@
   const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
   const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
 }
-# Data Factory
-`@graphy/core.data.factory`
+@{api_title('Data Factory')}
+## `@graphy/core.data.factory`
 
 ## Primer
  - `factory` is used throughout this document to refer to this module's export.
@@ -66,7 +66,7 @@
      - [Triple](#class_triple)*/}
  - [Interfaces](#interfaces) -- interface definitions
    - [AnyTerm](#interface_any-term)
-   - [AnyQyad](#interface_any-quad)
+   - [AnyQuad](#interface_any-quad)
 
 
 ---

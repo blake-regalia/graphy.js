@@ -2,10 +2,13 @@
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
 # `graphy` is a collection of JavaScript packages for RDF that focuses on performance and usability.
-Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
+> Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
+
+<br />
 
 ## [API Documentation](api)
 
+<br />
 ## Features
  - [Textual Content Handlers](content.textual)
    - **Read & write** RDF documents using streams. Includes support for:
@@ -20,6 +23,7 @@ Each package works with both Node.js and the browser (with the help of a bundler
  - Enjoy the ease-of-use with the command-line interface.
 
 
+<br />
 ## Package Tree
 The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) contains source code for all of the packages published on npm under the `@graphy` org. Each package is namespaced according to its category, sub-category, and function. They are enumerated here for clarity:
 
