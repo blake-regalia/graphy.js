@@ -52,7 +52,7 @@ graphy/:
 
 ----
 
-### Examples
+## Examples
 
 #### Covert a CSV document to a Turtle document
 ```js

@@ -1,5 +1,5 @@
 
-# API Documentation
+# [« Home](https://graphy.link/) / API Documentation
 
 ### [Data Factory](core.data.factory)
 documentation for the `@graphy/core.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
