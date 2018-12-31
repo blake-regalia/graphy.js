@@ -5,7 +5,7 @@
   const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
 }
 @{api_title('Dataset Tree')}
-## `@graphy/util.dataset.tree`
+### `@graphy/util.dataset.tree`
 
 ## Primer
  - `dataset_tree` is used throughout this document to refer to this module's export.

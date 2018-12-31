@@ -6,7 +6,7 @@
   const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
 }
 @{api_title('Data Factory')}
-## `@graphy/core.data.factory`
+### `@graphy/core.data.factory`
 
 ## Primer
  - `factory` is used throughout this document to refer to this module's export.

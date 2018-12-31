@@ -1,7 +1,7 @@
 
 
 # [« API](api) / Data Factory
-## `@graphy/core.data.factory`
+### `@graphy/core.data.factory`
 
 ## Primer
  - `factory` is used throughout this document to refer to this module's export.

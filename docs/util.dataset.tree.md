@@ -1,7 +1,7 @@
 
 
 # [« API](api) / Dataset Tree
-## `@graphy/util.dataset.tree`
+### `@graphy/util.dataset.tree`
 
 ## Primer
  - `dataset_tree` is used throughout this document to refer to this module's export.
