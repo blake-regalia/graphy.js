@@ -1,0 +1,6 @@
+v3.0.6 (2018-12-30)
+------------------------
+
+# Turtle and TriG reader patches
+
+  Patches a blank node regex to cover a corner-case in reading Turtle and TriG documents.
