@@ -36,7 +36,7 @@ class Serializer {
 @> intercept_blank_nodes(s_var)
 	@//@
 	// blank node; use label
-	if('_' === @{s_var}[0]) return this.c1_blank_node(@{s_var}.slice(1));
+	if('_' === @{s_var}[0] && ':' === @{s_var}[1]) return this.c1_blank_node(@{s_var}.slice(2));
 @;
 
 
@@ -317,6 +317,7 @@ class CTWriter extends stream.Transform {
 		}
 
 		Object.assign(this, {
+			isGraphyWritable: true,
 			ready: this.ready || false,
 			busy: false,
 			serializer: k_serializer,
@@ -687,6 +688,14 @@ Object.assign(CTWriter_Quads.prototype, {
 
 class CTWriter_Triples extends CTWriter {
 	@{subwriter_triples()}
+
+	async transform_c4(hc4_quads, s_encoding, fk_transform) {
+		for(let sc1_graph in hc4_quads) {
+			await this.add(hc4_quads[sc1_graph]);
+		}
+
+		fk_transform();
+	}
 }
 
 
@@ -831,6 +840,21 @@ class SubWriter_Objects extends SubWriter {
 							// now they share same graph, subject & predicate
 							xm_mode |= @{XM_MODE_GRAPH | XM_MODE_SUBJECT | XM_MODE_PREDICATE};
 						}
+					}
+
+					return s_write;
+				}
+				// set
+				else if(z_objects instanceof Set) {
+					let s_write = '';
+
+					// each object
+					for(let z_item of z_objects) {
+						// recurse on item
+						s_write += await this.objects(z_item, xm_mode);
+
+						// now they share same graph, subject & predicate
+						xm_mode |= @{XM_MODE_GRAPH | XM_MODE_SUBJECT | XM_MODE_PREDICATE};
 					}
 
 					return s_write;
