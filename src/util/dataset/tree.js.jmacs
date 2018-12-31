@@ -666,9 +666,24 @@ class DatasetTree extends stream.Transform {
 		});
 	}
 
+	// on pipe
+	pipe(ds_out) {
+		// deduce write mode
+		if(ds_out.isGraphyWritable) {
+			this._flush = this.flush_graphy;
+		}
+
+		// forward to super
+		return super.pipe(ds_out);
+	}
+
 	// no more incoming data
 	_flush(fk_flush) {
 		this.resume_flush(this.quads(), fk_flush);
+	}
+
+	_final(fk_final) {
+		debugger;
 	}
 
 	resume_flush(dg_quads, fk_flush) {
@@ -690,6 +705,63 @@ class DatasetTree extends stream.Transform {
 
 			// advance iterator
 			di_next = dg_quads.next();
+		}
+
+		// done flushing
+		fk_flush();
+	}
+
+	// graphy flush
+	flush_graphy(fk_flush) {
+		let dg_graphs = this.c1_graphs();
+		let di_graph = dg_graphs.next();
+		this.resume_flush_graphy(dg_graphs, di_graph, null, fk_flush);
+	}
+
+	resume_flush_graphy(dg_graphs, di_graph, dg_subjects, fk_flush) {
+		let h_quads = this.quad_tree;
+debugger;
+		// continue until iterator is done
+		while(!di_graph.done) {
+			let sv1_graph = di_graph.value;
+			let h_triples = h_quads[sv1_graph];
+
+			// advance subject iterator
+			if(!dg_subjects) {
+				dg_subjects = this.c1_subjects(sv1_graph);
+			}
+
+			let di_subject = dg_subjects.next();
+
+			while(!di_subject.done) {
+				let sv1_subject = di_subject.value;
+
+				// stream pausing
+				if(!this.push({
+					type: 'c4',
+					value: {
+						[sv1_graph]: {
+							[sv1_subject]: h_triples[sv1_subject],
+						},
+					},
+				})) {
+					debugger;
+					// wait for drain event
+					this.once('drain', () => {  // eslint-disable-line no-loop-func
+						debugger;
+						this.resume_flush(dg_graphs, di_graph, dg_subjects, fk_flush);
+					});
+
+					// go async
+					return;
+				}
+
+				// advance subject iterator
+				di_subject = dg_subjects.next();
+			}
+
+			// advance graph iterator
+			di_graph = dg_graphs.next();
 		}
 
 		// done flushing
@@ -792,27 +864,27 @@ class DatasetTree extends stream.Transform {
 		}
 	}
 
-	* graphs() {
-		for(let s_graph in this.quad_tree) {
-			yield s_graph;
+	* c1_graphs() {
+		for(let sv1_graph in this.quad_tree) {
+			yield sv1_graph;
 		}
 	}
 
-	* subjects(s_graph) {
-		let h_subjects = this.quad_tree[s_graph];
-		for(let s_subject in h_subjects) {
-			yield s_subject;
+	* c1_subjects(sv1_graph) {
+		let h_subjects = this.quad_tree[sv1_graph];
+		for(let sv1_subject in h_subjects) {
+			yield sv1_subject;
 		}
 	}
 
-	* predicates(s_graph, s_subject) {
+	* c1_predicates(s_graph, s_subject) {
 		let h_predicates = this.quad_tree[s_graph][s_subject];
 		for(let s_predicate in h_predicates) {
 			yield s_predicate;
 		}
 	}
 
-	* objects(s_graph, s_subject, s_predicate) {
+	* c1_objects(s_graph, s_subject, s_predicate) {
 		yield* this.quad_tree[s_graph][s_subject][s_predicate];
 	}
 
