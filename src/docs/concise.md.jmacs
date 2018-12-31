@@ -29,7 +29,7 @@ let yt_node = factory.c1('>'+p_iri);
 ```
 
 #### Blank Nodes: When to Use Them
-There's not much need to create blank nodes using concise-term strings since you can implicitly create them using [concise triple](#struct/c3) and [concise quad](#struct/c4) hashes. However, if you need to create new triples where the subject is a blank node, or need to use labeled blank nodes, this syntax will allow you to create them explicitly.
+There's not much need to create blank nodes using concise-term strings since you can implicitly create them using [concise triple](#hash/c3) and [concise quad](#hash/c4) hashes. However, if you need to create new triples where the subject is a blank node, or need to use labeled blank nodes, this syntax will allow you to create them explicitly.
 
 ```js
 ley a_triples = [...factory.c3({
@@ -103,14 +103,14 @@ Directives allow for special events to be passed to the output serializer at a g
 
 ----
 
-## Structs:
-A 'struct' refers to an interface for an object `value` such that `typeof value === 'object'` with the given enumerable properties (which themselves may or may not be defined in `value`'s prototype chain). If a method is said to return a `#struct/*` then this also implies that `value.constructor === Object`. The following section documents the definitions for these interfaces.
+## Hash Interfaces:
+A 'hash' refers to a dictionary (a plain ES object) `value` with enumerable properties (which themselves may or may not be defined in `value`'s prototype chain). The following section documents the implications of the key and value types.
 
 
-<a name="struct_c4" />
+<a name="hash_c4" />
 
-### `#struct/c4` -- Concise Quads Hash
-A concise quads hash describes a plain object whose keys represent the *graph* of a set of quads, and whose values are [concise triple hashes](#struct_c3), which represent the subjects, predicates and objects, collections, or nested blank nodes related to the graph/subject/predicate combinations in a tree-like structure.
+### `#hash/c4` -- Concise Quads Hash
+A concise quads hash describes a plain object whose keys represent the *graph* of a set of quads, and whose values are [concise triple hashes](#hash_c3), which represent the subjects, predicates and objects, collections, or nested blank nodes related to the graph/subject/predicate combinations in a tree-like structure.
 
 **Example:**
 ```js
@@ -124,10 +124,10 @@ A concise quads hash describes a plain object whose keys represent the *graph* o
 
 ----
 
-<a name="struct_c3" />
+<a name="hash_c3" />
 
-### `#struct/c3` -- Concise Triples Hash
-A concise triples hash describes a plain object whose keys represent the *subject* of a set of triples, and whose values are [concise pair hashes](#struct_c2), which represent the objects, collections, or nested blank nodes related to the subject/predicate combination in a tree-like structure.
+### `#hash/c3` -- Concise Triples Hash
+A concise triples hash describes a plain object whose keys represent the *subject* of a set of triples, and whose values are [concise pair hashes](#hash_c2), which represent the objects, collections, or nested blank nodes related to the subject/predicate combination in a tree-like structure.
 
 **Example:**
 ```js
@@ -141,9 +141,9 @@ A concise triples hash describes a plain object whose keys represent the *subjec
 
 ----
 
-<a name="struct_c2" />
+<a name="hash_c2" />
 
-### `#struct/c2` -- Concise Pairs Hash
+### `#hash/c2` -- Concise Pairs Hash
 A concise pairs hash describes a plain object whose keys represent the *predicate* of a set of predicate/object pairs, and whose values are [ConciseObjects](#value_concise-object), which represent the objects, collections, or nested blank nodes related to the predicate in a tree-like structure.
 
 **Example:**
@@ -165,7 +165,7 @@ A concise pairs hash describes a plain object whose keys represent the *predicat
 ### value **ConciseObject**
 A value that must be one of the following types:
  - [#string/c1](#string_c1) -- represents a single RDF term such as a NamedNode, BlankNode, or Literal.
- - [#struct/c2] -- such that `value.constructor === Object`; represents an anonymous nested blank node, allowing you to continue nesting subtrees in the same object literal.
+ - [#hash/c2] -- such that `value.constructor === Object`; represents an anonymous nested blank node, allowing you to continue nesting subtrees in the same object literal.
  - `Array<`[`ConciseObjectItem`](#value_concise-object-item)`>` -- represents a list of objects, each one belonging to the same graph, subject, and predicate.
  - `number` -- represents an RDF literal with some numeric datatype; calls [factory.number()](core.data.factory#function_number) on `value` to determine the datatype IRI.
  - [GenericTerm](core.data.factory#class_generic-term) | [@RDFJS/Term](https://rdf.js.org/#term-interface) -- a single RDF term

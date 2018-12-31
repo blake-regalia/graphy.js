@@ -9,41 +9,36 @@
 ## Contents
  - [Accessibility](#accessibility) -- how to access this module
  - [Datatypes](#datatypes) -- formatting hints or restrictions on primitive ES datatypes
+   - [Numbers](#numbers) -- restrictions on the value of primitive numbers
    - [Strings](#strings) -- restrictions on the format or syntax of primitive strings
    - [Structs](#structs) -- restrictions on plain objects, i.e., `typeof value === 'object' && value.constructor === Object`
-   - [Configs](#configs) -- objects that have certain expected keys and/or may have  certain optional keys
    - [Hashes](#hashes) -- plain objects that have arbitrary keys which correspond to their value, much like a HashMap
  - [Functions](#functions) -- static functions made available on this module's export
    - Basic Term constructors
-     - [`namedNode(...)`](#function_named-node)
-     - [`blankNode(...)`](#function_blank-node)
-     - [`defaultGraph(...)`](#function_default-graph)
-     - [`literal(...)`](#function_literal)
+     - [`.namedNode(...)`](#function_named-node)
+     - [`.blankNode(...)`](#function_blank-node)
+     - [`.defaultGraph(...)`](#function_default-graph)
+     - [`.literal(...)`](#function_literal)
    - Specialized Literal Term constructors
-     - [`boolean(...)`](#function_boolean)
-     - [`integer(...)`](#function_integer)
-     - [`decimal(...)`](#function_decimal)
-     - [`double(...)`](#function_double)
-     - [`number(...)`](#function_number)
-     - [`date(...)`](#function_date)
-     - [`dateTime(...)`](#function_datetime)
+     - [`.boolean(...)`](#function_boolean)
+     - [`.integer(...)`](#function_integer)
+     - [`.decimal(...)`](#function_decimal)
+     - [`.double(...)`](#function_double)
+     - [`.number(...)`](#function_number)
+     - [`.date(...)`](#function_date)
+     - [`.dateTime(...)`](#function_datetime)
    - Quad constructors
-     - [`quad(...)`](#function_quad)
-     
+     - [`.quad(...)`](#function_quad)
    - Concise Term constructors
-     - [`c1(...)`](#function_c1)
-     
+     - [`.c1(...)`](#function_c1)
    - Concise Quads constructors
-     
-     - [`c3(...)`](#function_c3)
-     
-     - [`c4(...)`](#function_c4)
+     - [`.c3(...)`](#function_c3)
+     - [`.c4(...)`](#function_c4)
    - Normalization
-     - [`from.term`](#function_from-term)
-     - [`from.quad`](#function_from-term)
+     - [`.from.term`](#function_from-term)
+     - [`.from.quad`](#function_from-term)
    - Content Writer directives
-     - [`comment(...)`](#function_comment)
-     
+     - [`.comment(...)`](#function_comment)
  - [Classes](#classes) -- class definitions
    - [GenericTerm](#class_generic-term)
      - [NamedNode](#class_named-node)
@@ -57,9 +52,9 @@
          - [Literal_NegativeInfinity](#class_literal-negative-infinity)
          - [Literal_NaN](#class_literal-nan)
    - [Quad](#class_quad)
-     - [Triple](#class_triple)
  - [Interfaces](#interfaces) -- interface definitions
-   - [Term](#interface_term)
+   - [AnyTerm](#interface_any-term)
+   - [AnyQyad](#interface_any-quad)
 
 
 ---
@@ -85,6 +80,8 @@ const factory = graphy;
 The following section describes hinted formatting on ES primitives that are used throughout this document.
 
 
+<a name="numbers" />
+
 ### Numbers:
 
 <a name="number_integer" />
@@ -96,11 +93,17 @@ The following section describes hinted formatting on ES primitives that are used
  - `#number/double` -- any number.
 
 
+<a name="strings" />
+
 ### Strings:
 
 <a name="string_term-verbose" />
 
  - `#string/term-verbose` -- a string which is conformant with the grammar production `subject`, `predicate`, `object` or `graphLabel` as they are defined in the [N-Triples](https://www.w3.org/TR/n-triples/#n-triples-grammar) and [N-Quads](https://www.w3.org/TR/n-quads/#sec-grammar) specifications.
+
+<a name="string_quad-verbose" />
+
+ - `#string/quad-verbose` -- a string which is conformant with the grammar production `statement` as is is defined in the [N-Quads](https://www.w3.org/TR/n-quads/#sec-grammar) specification.
 
 <a name="string_term-terse" />
 
@@ -110,6 +113,8 @@ The following section describes hinted formatting on ES primitives that are used
 
  - `#string/language-tag` -- a [BCP47 string](https://tools.ietf.org/html/bcp47).
 
+
+<a name="structs" />
 
 ### Structs:
 A 'struct' refers to an interface for a simple ES Object `value` such that `value.constructor === Object`. This is important because some methods may perform duck-typing on their arguments in order to deduce which overloaded variant to employ. The following section documents the definitions for these interfaces.
@@ -121,17 +126,17 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
      - `.termType`: `string`
      - `.value`: `string`
    - _optional properties:_
-     - `.datatype`: [`#struct/node-isolate`]
-     - `.language`: [`#string/language-tag`]
+     - `.datatype`: [#struct/term-isolate](#struct_term-isolate)
+     - `.language`: [#string/language-tag](#string_language-tag)
 
 <a name="struct_quad-isolate" />
 
  - `#struct/quad-isolate` -- an object that represents an isolated RDF quad.
    - _properties:_
-     - `.subject` : [`#struct/term-isolate`]
-     - `.predicate` : [`#struct/term-isolate`]
-     - `.object` : [`#struct/term-isolate`]
-     - `.graph` : [`#struct/term-isolate`]
+     - `.subject` : [#struct/term-isolate](#struct_term-isolate)
+     - `.predicate` : [#struct/term-isolate](#struct_term-isolate)
+     - `.object` : [#struct/term-isolate](#struct_term-isolate)
+     - `.graph` : [#struct/term-isolate](#struct_term-isolate)
 
 <!--
 <a name="configs" />
@@ -654,13 +659,17 @@ A class that represents an RDF quad.
    - compare this RDF quad to another quad (which itself may be a simple object with the expected keys such as an [@RDFJS/Term](https://rdf.js.org/#term-interface) from another library).
    - **returns** a `boolean`
  - `verbose()`
-   - **returns** a [#string/quad_verbose](#string_quad-verbose)
- - `terse()`
-   - **returns** a [#string/quad_terse](#string_quad-terse)
- - `concise()`
-   - **returns** a [#struct/quad_concise](#struct_quad-concise)
+   - **returns** a [#string/quad-verbose](#string_quad-verbose)
+ - `terse([prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+   - **returns** a [#string/quad-terse](#string_quad-terse)
+ - `concise([prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+   - **returns** a plain object with the following key/value pairs:
+     - `.subject`: [#string/quad-term](#string_term-concise)
+     - `.predicate`: [#string/quad-term](#string_term-concise)
+     - `.object`: [#string/quad-term](#string_term-concise)
+     - `.graph`: [#string/quad-term](#string_term-concise)
  - `isolate()`
-   - **returns** a [#struct/quad_isolate](#struct_quad-isolate)
+   - **returns** a [#struct/quad-isolate](#struct_quad-isolate)
 
 ---
 

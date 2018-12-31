@@ -10,29 +10,29 @@
  - [Memory and Performance](#memory-and-performance) -- what to be aware of when using this package.
  - [Construction](#construction) -- how to create an instance of a `dataset_tree`.
  - [Properties](#properties)
-   - [size](#property_size) -- number of quads in the tree.
+   - [`.size`](#property_size) -- number of quads in the tree.
  - [Prototype Methods](#methods) -- 
    - Set Mutators
-     - [add(...)](#method_add)
-     - [addAll(...)](#method_add-all)
-     - [addQuads(...)](#method_add-quads)
-     - [delete(...)](#method_delete)
-     - [deleteQuads(...)](#method_delete-quads)
-     - [clear(...)](#method_clear) -- remove all quads from the tree
+     - [`.add(...)`](#method_add)
+     - [`.addAll(...)`](#method_add-all)
+     - [`.addQuads(...)`](#method_add-quads)
+     - [`.delete(...)`](#method_delete)
+     - [`.deleteQuads(...)`](#method_delete-quads)
+     - [`.clear(...)`](#method_clear) -- remove all quads from the tree
    - Set Analogues
-     - [has(...)](#method_has)
+     - [`.has(...)`](#method_has)
    - Set Algebra Booleans
-     - [equals(...)](#method_equals) -- `A = B`
-     - [includes(...)](#method_includes) -- `(A ∩ B) = B`
-     - [disjoint(...)](#method_disjoint) -- `(A ∩ B) = Ø`
+     - [`.equals(...)`](#method_equals) -- `A = B`
+     - [`.includes(...)`](#method_includes) -- `(A ∩ B) = B`
+     - [`.disjoint(...)`](#method_disjoint) -- `(A ∩ B) = Ø`
    - Set Algebra Primitives
-     - [union(...)](#method_union) -- `A ∪ B`
-     - [intersection(...)](#method_intersection) -- `A ∩ B`
+     - [`.union(...)`](#method_union) -- `A ∪ B`
+     - [`.intersection(...)`](#method_intersection) -- `A ∩ B`
    - Set Algebra Derivatives
-     - [minus(...)](#method_minus) -- `A - (A ∩ B)`
-     - [difference(...)](#method_difference) -- `(A - (A ∩ B)) ∪ (B - (A ∩ B))`
+     - [`.minus(...)`](#method_minus) -- `A - (A ∩ B)`
+     - [`.difference(...)`](#method_difference) -- `(A - (A ∩ B)) ∪ (B - (A ∩ B))`
    - Iterators
-     - [iterator(...)](#method_iterator) -- return an iterator 
+     - [`.iterator(...)`](#method_iterator) -- return an iterator 
      
 
 ----

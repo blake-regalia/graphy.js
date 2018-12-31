@@ -315,7 +315,7 @@ module.exports = (gc_tests={}) => new Promise((fk_describe) => {
 		manifest: p_manifest_source,
 	} = gc_tests;
 
-	let p_manifest = path.join(pd_root, 'build', S_CHANNEL, 'test/cache', si_package, 'manifest.ttl');
+	let p_manifest = path.join(pd_root, 'build/cache/specs', si_package, 'manifest.ttl');
 	let p_iri_manifest = pathToFileURL(p_manifest);
 
 	let k_tree = dataset_tree();

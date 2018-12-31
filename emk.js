@@ -5,17 +5,17 @@ const url = require('url').URL;
 const jmacs = require('jmacs');
 const detective = require('detective');
 
-const h_package_tree = require('./src/aux/package-tree.js');
+const h_package_tree = require('./emk/aux/package-tree.js');
 const {
 	packages: h_content_packages,
 	modes: h_content_modes,
-} = require('./src/aux/content.js');
+} = require('./emk/aux/content.js');
 
 const B_DEVELOPMENT = 'graphy-dev' === process.env.GRAPHY_CHANNEL;
 const s_channel = process.env.GRAPHY_CHANNEL || 'graphy';
 
 const g_package_json_super = require('./package.json');
-const P_PACKAGE_JSON_BASE = `src/aux/base-package-${s_channel}.json`;
+const P_PACKAGE_JSON_BASE = `emk/aux/base-package-${s_channel}.json`;
 
 const s_base_version = g_package_json_super[B_DEVELOPMENT? 'devVersion': 'version'];
 const s_semver = B_DEVELOPMENT? s_base_version: `^${s_base_version}`;
@@ -369,6 +369,84 @@ let h_output_content_bat = B_DEVELOPMENT? src_to_main('src/content/bat', 'conten
 let h_output_store_mem = B_DEVELOPMENT? src_to_main('src/store/memory', 'store.memory'): {};
 
 
+const h_content_type_aliases = {
+	nt: 'application/n-triples',
+	nq: 'application/n-quads',
+	ttl: 'text/turtle',
+	trig: 'application/trig',
+};
+
+const performance_data = () => {
+	const evaluator = require('emk/perf/evaluator.js');
+
+	let h_out = {};
+	for(let g_input of evaluator.inputs()) {
+		let s_host = g_input.source_host;
+		let h_host = h_out[s_host] = h_out[s_host] || {};
+		let s_decompress = '';
+		if(g_input.compressed) {
+			s_decompress = /* syntax: bash */ `| bzip2 -d`;
+		}
+
+		h_host[g_input.basename] = () => ({
+			deps: [
+				g_input.url,
+			],
+			run: /* syntax: bash */ `
+				curl "$1" ${s_decompress} > $@
+			`,
+		});
+	}
+
+	return h_out;
+};
+
+//
+const reader_performances = () => {
+	const p_gen_src = 'emk/perf/reader.js';
+	const gen = require('./'+p_gen_src);
+
+	let h_out = {};
+	for(let g_target of gen.targets()) {
+		let {
+			host: s_host,
+			mode: s_mode,
+			content_type: s_content_type,
+		} = g_target;
+
+		// let h_host = h_out[s_host] = h_out[s_host] || {};
+		h_out[g_target.file] = () => ({
+			deps: [p_gen_src],
+			run: /* syntax: bash */ `
+				node $1 \
+					--content_type='${s_content_type}' \
+					--host='${s_host}' \
+					--mode='${s_mode}' \
+					> $@
+			`,
+		});
+	}
+
+	return {
+		runner: h_out,
+		report: {
+			':content_type_alias.json': ({content_type_alias:s_alias}) => (p_mime => ({
+				deps: [
+					'emk/perf/evaluator.js',
+					'perf.data',
+					...[...gen.targets({
+						content_type: p_mime,
+					})].map(g_target => `build/${s_channel}/performance/reader/runner/${g_target.file}`),
+				],
+
+				run: (p_out, p_eval, _ignore, ...a_runners) => /* syntax: bash */ `
+					node $1 reader '${p_mime}' ${a_runners.map(p => `'${p}'`).join(' ')} > $@
+				`,
+			}))(h_content_type_aliases[s_alias]),
+		},
+	};
+};
+
 // emk struct
 module.exports = async() => {
 	// make manifest dependencies
@@ -384,7 +462,7 @@ module.exports = async() => {
 
 			try {
 				fs.accessSync(`build/${s_channel}/package/content.ttl.read/main.js`, fs.constants.F_OK);
-				fs.accessSync(`build/${s_channel}/test/cache/${si_package}/manifest.ttl`, fs.constants.F_OK);
+				fs.accessSync(`build/cache/specs/${si_package}/manifest.ttl`, fs.constants.F_OK);
 			}
 			catch(e_access) {
 				continue;
@@ -401,7 +479,7 @@ module.exports = async() => {
 			if('function' !== typeof ttl_read) continue;
 
 			await new Promise((fk_deps, fe_deps) => {
-				fs.createReadStream(path.join(`build/${s_channel}/test/cache`, si_package, 'manifest.ttl'))
+				fs.createReadStream(path.join(`build/cache/specs`, si_package, 'manifest.ttl'))
 					.pipe(ttl_read({
 						base_uri: h_packages[si_package].manifest,
 						data(g_quad) {
@@ -435,6 +513,8 @@ module.exports = async() => {
 				[si_key]: Object.keys(h_deps),
 			}), {})),
 
+			content_type_alias: Object.keys(h_content_type_aliases),
+
 			testable: [
 				'core.class.writable',
 				'core.data.factory',
@@ -464,15 +544,15 @@ module.exports = async() => {
 			// // bat schema file
 			// bat_schema_file: Object.keys(h_schema_bat).map(s => `schema.bat.${s}`),
 
-			...(B_DEVELOPMENT
-				? {
-					bat_protocol: fs.readdirSync('src/gen/bat-schema/decoders')
-						.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+			// ...(B_DEVELOPMENT
+			// 	? {
+			// 		bat_protocol: fs.readdirSync('src/gen/bat-schema/decoders')
+			// 			.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
 
-					bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
-						.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
-				}
-				: {}),
+			// 		bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
+			// 			.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+			// 	}
+			// 	: {}),
 
 			// docs snippet
 			snippet: fs.readdirSync('src/docs/snippets')
@@ -533,7 +613,7 @@ module.exports = async() => {
 
 						# defer README to GitHub
 						rm -rf README.md
-						cat <(echo "#@${s_channel}/${h.package}") ../../../../src/aux/README-defer.md > README.md
+						cat <(echo "#@${s_channel}/${h.package}") ../../../../emk/aux/README-defer.md > README.md
 					`,
 				}),
 
@@ -544,7 +624,7 @@ module.exports = async() => {
 
 						# defer README to GitHub
 						rm -rf README.md
-						cat <(echo "#@${s_channel}/${s_channel}") ../../../../src/aux/README-defer.md > README.md
+						cat <(echo "#@${s_channel}/${s_channel}") ../../../../emk/aux/README-defer.md > README.md
 					`,
 				}),
 
@@ -583,8 +663,8 @@ module.exports = async() => {
 						`test/package/${si_package.replace(/\./g, '/')}.js`,
 						...a_content_subs.includes(si_package)
 							? [
-								`build/${s_channel}/test/cache/${si_package}/**`,
-								// `build/${s_channel}/test/cache/${si_package}/dependencies/*:{optional:true}`,
+								`build/cache/specs/${si_package}/**`,
+								// `build/cache/specs/${si_package}/dependencies/*:{optional:true}`,
 							]
 							: [],
 					],
@@ -594,6 +674,28 @@ module.exports = async() => {
 					`,
 				}),
 			},
+
+			// performance evaluation
+			perf: {
+				reader: {
+					':content_type_alias': ({content_type_alias:s_alias}) => ({
+						deps: [`build/${s_channel}/performance/reader/report/${s_alias}.json`],
+					}),
+				},
+
+				data: () => ({
+					deps: ['build/cache/data/**'],
+				}),
+			},
+
+			// // 
+			// perf: () => ({
+			// 	deps: [],
+
+			// 	run: /* syntax: bash */ `
+			// 		node $1 < $2 >
+			// 	`,
+			// }),
 		},
 
 		outputs: {
@@ -626,101 +728,103 @@ module.exports = async() => {
 
 			// package builds
 			build: {
+				cache: {
+					data: performance_data(),
+
+					specs: {
+						':content_sub': [si_package => ({
+							...(si_package.endsWith('.read')
+								? {
+									[si_package]: (g_package => ({
+										// manifest file
+										[path.basename(g_package.manifest)]: () => ({
+											deps: [
+												g_package.manifest,
+											],
+
+											run: /* syntax: bash */ `
+												curl "$1" > $@
+											`,
+										}),
+
+										// manifest dependencies
+										...(si_manifest_dep => ({
+											[`:${si_manifest_dep}`]: [s_dep => ({
+												[s_dep]: () => ({
+													deps: [
+														h_manifest_deps[si_manifest_dep][s_dep],
+														`build/cache/specs/${si_package}/${path.basename(g_package.manifest)}`,
+													],
+													run: /* syntax: bash */ `
+														curl "$1" > $@
+													`,
+												}),
+											})],
+										}))(`manifest_deps_${si_package.replace(/\./g, '_')}`),
+									}))(h_packages[si_package]),
+								}
+								: {}),
+						})],
+					},
+				},
+
 				[s_channel]: {
-					test: {
-						cache: {
-							':content_sub': [si_package => ({
-								...(si_package.endsWith('.read')
-									? {
-										[si_package]: (g_package => ({
-											// manifest file
-											[path.basename(g_package.manifest)]: () => ({
-												deps: [
-													g_package.manifest,
-												],
-
-												run: /* syntax: bash */ `
-													curl "$1" > $@
-												`,
-											}),
-
-											// manifest dependencies
-											...(si_manifest_dep => ({
-												[`:${si_manifest_dep}`]: [s_dep => ({
-													[s_dep]: () => ({
-														deps: [
-															h_manifest_deps[si_manifest_dep][s_dep],
-															`build/${s_channel}/test/cache/${si_package}/${path.basename(g_package.manifest)}`,
-														],
-														run: /* syntax: bash */ `
-															curl "$1" > $@
-														`,
-													}),
-												})],
-											}))(`manifest_deps_${si_package.replace(/\./g, '_')}`),
-										}))(h_packages[si_package]),
-									}
-									: {}),
-							})],
-						},
-
-						// reports: {
-
-						// },
+					performance: {
+						reader: reader_performances(),
 					},
 
 					package: {
-						...(B_DEVELOPMENT
-							? {
-								// content.bat.*
-								...h_output_content_bat,
+						// ...(B_DEVELOPMENT
+						// 	? {
+						// 		// content.bat.*
+						// 		...h_output_content_bat,
 
-								// store.memory.*
-								...h_output_store_mem,
+						// 		// store.memory.*
+						// 		...h_output_store_mem,
 
-								// bat schema
-								'schema.bat.default': {
-									...scoped_package('schema.bat.default'),
+						// 		// bat schema
+						// 		'schema.bat.default': {
+						// 			...scoped_package('schema.bat.default'),
 
-									'main.js': () => jmacs_lint([
-										'src/gen/bat-schema/default.js.jmacs',
-										'src/gen/bat-schema/datatypes',  // directory
-										'src/gen/bat-schema/decoders',  // directory
-									]),
+						// 			'main.js': () => jmacs_lint([
+						// 				'src/gen/bat-schema/default.js.jmacs',
+						// 				'src/gen/bat-schema/datatypes',  // directory
+						// 				'src/gen/bat-schema/decoders',  // directory
+						// 			]),
 
-									decoders: {
-										':bat_protocol': h => jmacs_lint([
-											`src/gen/bat-schema/decoders/${h.bat_protocol}.jmacs`,
-											'src/gen/bat-schema/schema.js.jmacs',
-										]),
-									},
+						// 			decoders: {
+						// 				':bat_protocol': h => jmacs_lint([
+						// 					`src/gen/bat-schema/decoders/${h.bat_protocol}.jmacs`,
+						// 					'src/gen/bat-schema/schema.js.jmacs',
+						// 				]),
+						// 			},
 
-									datatypes: {
-										':bat_datatype': h => jmacs_lint([
-											`src/gen/bat-schema/datatypes/${h.bat_datatype}.jmacs`,
-											'src/gen/bat-schema/schema.js.jmacs',
-										]),
-									},
+						// 			datatypes: {
+						// 				':bat_datatype': h => jmacs_lint([
+						// 					`src/gen/bat-schema/datatypes/${h.bat_datatype}.jmacs`,
+						// 					'src/gen/bat-schema/schema.js.jmacs',
+						// 				]),
+						// 			},
 
-									// ':bat_schema_file': h => ({
-									// 	deps: [
-									// 		'src/gen/schema/output.js.jmacs',
-									// 		'link_to.core.data.factory',
-									// 		'link_to.content.ttl.write',
-									// 	],
+						// 			// ':bat_schema_file': h => ({
+						// 			// 	deps: [
+						// 			// 		'src/gen/schema/output.js.jmacs',
+						// 			// 		'link_to.core.data.factory',
+						// 			// 		'link_to.content.ttl.write',
+						// 			// 	],
 
-									// 	run: /* syntax: bash */ `
-									// 		npx jmacs $1 -g '${
-									// 			/* eslint-disable indent */
-									// 			JSON.stringify({
-									// 				iri: h_schema_bat[h.bat_schema_file],
-									// 			})
-									// 		/* eslint-enable */}' > $@
-									// 	`,
-									// }),
-								},
-							}
-							: {}),
+						// 			// 	run: /* syntax: bash */ `
+						// 			// 		npx jmacs $1 -g '${
+						// 			// 			/* eslint-disable indent */
+						// 			// 			JSON.stringify({
+						// 			// 				iri: h_schema_bat[h.bat_schema_file],
+						// 			// 			})
+						// 			// 		/* eslint-enable */}' > $@
+						// 			// 	`,
+						// 			// }),
+						// 		},
+						// 	}
+						// 	: {}),
 
 						// content subs
 						':content_sub': [si_package => ({

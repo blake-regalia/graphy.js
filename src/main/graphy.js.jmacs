@@ -11,6 +11,7 @@
 }
 
 @> content(s_content)
+
 	// @{s_content} package
 	const @{s_content} = {
 		// read @{s_content} output
@@ -20,11 +21,11 @@
 			return @{s_content}.read = require('@{channel(`content.${s_content}.read`)}');  // eslint-disable-line global-require
 		},
 
-		// turbo @{s_content} output
-		get turbo() {
+		// scan @{s_content} output
+		get scan() {
 			// memoize
-			delete @{s_content}.turbo;
-			return @{s_content}.turbo = require('@{channel(`content.${s_content}.turbo`)}');  // eslint-disable-line global-require
+			delete @{s_content}.scan;
+			return @{s_content}.scan = require('@{channel(`content.${s_content}.scan`)}');  // eslint-disable-line global-require
 		},
 
 		// write @{s_content} input
@@ -193,8 +194,24 @@ const graphy = module.exports = Object.assign({
 // export graphy to window object if in main thread of browser
 if('undefined' !== typeof window) window.graphy = graphy;
 
+// commands
+let h_commands = {
+	'content.ttl.read': (a_argv) => {
+
+	},
+};
+
 // cli
 if(module === require.main) {
+	let a_argv = process.argv;
+	let n_args = a_argv.length;
+	for(let i_argv=0; i_argv<n_args; i_argv++) {
+		let s_arg = a_argv[i_argv];
+
+		// if(h_commands[s_arg]) {
+			
+		// }
+	}
 	const yargs = require('yargs');
 	let g_args = yargs
 		.command(...[

@@ -48,11 +48,12 @@
     "eslint-plugin-chai-expect": "^1.2.0",
     "eslint-plugin-chai-friendly": "^0.4.1",
     "eslint-plugin-jmacs": "^1.1.0",
-    "jmacs": "^1.2.4",
+    "jmacs": "^1.2.7",
     "lambduh": "^3.1.0",
     "mocha": "^5.2.0",
-    "n3": "^1.0.1",
+    "n3": "^1.0.2",
     "nyc": "^13.1.0",
+    "plotly": "^1.0.6",
     "request": "^2.87.0",
     "sort-package-json": "^1.17.0"
   }

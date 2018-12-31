@@ -211,11 +211,11 @@ Read RDF data (in other words, deserialize it) from a document given by an input
  - TriG (.trig) -- `@graphy/content.trig.read`
 
 **Overloaded variants:**
- - `read([config: `[`#struct/read-config-no-input`](#struct_read-config-no-input)`])`
+ - `read([config: `[`#config/read-no-input`](#config_read-no-input)`])`
    - creates a new content reader that will act as a transform, accepting utf8-encoded strings on the writable side and outputting [Quads](core.data.factory#class-quad) on the readable side.
    - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
 
- - `read(input_string: string[, config: `[`#struct/read-config-no-input`](#struct_read-config-no-input)`])`
+ - `read(input_string: string[, config: `[`#config/read-no-input`](#config_read-no-input)`])`
    - shortcut for:
       ```js
       read(config)
@@ -230,7 +230,7 @@ Read RDF data (in other words, deserialize it) from a document given by an input
       ```
    - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
  
- - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#struct/read-config-no-input`](#struct_read-config-no-input)`])`
+ - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#config/read-no-input`](#config_read-no-input)`])`
    - shortcut for:
       ```js
       input_stream
@@ -589,7 +589,7 @@ Contains methods for serializing RDF quads from memory to an output destination.
 See [`write`](#verb_write).
 
 **Methods:**
- - `async add(quads: `[`#struct/c4`](concise#struct_c4)`)` -- serialize 
+ - `async add(quads: `[`#hash/c4`](concise#struct_c4)`)` -- serialize 
    - **resolves to** a [`WriteReport`](#class_writereport)
  - `async add(quad: `[`@RDFJS/Quad`](http://rdf.js.org/#quad-interface)`)`
    - **resolves to** a [`WriteReport`](#class_writereport)
@@ -643,7 +643,7 @@ See [`write`](#verb_write) and [`QuadWriter#graph`](#class_quadwriter).
 
 <a name="config_read-no-input" />
 
-#### config **ReadConfig_NoInput** _inlines_ [ReadEvents](#events_read)
+#### config **read-no-input** _inlines_ [ReadEvents](#events_read)
 An interface that defines the config object passed to a content reader.
 
 **Options:**
@@ -651,7 +651,7 @@ An interface that defines the config object passed to a content reader.
 
 <a name="config_read-with-input" />
 
-#### config **ReadConfig_WithInput** _extends_ [ReadConfig_NoInput](#config_read-no-input)
+#### config **read-with-input** _extends_ [ReadConfig_NoInput](#config_read-no-input)
       
 **Options:**
  - ... [see those inheritted from ReadConfig_NoInput](#config_read-no-input)
@@ -662,7 +662,7 @@ An interface that defines the config object passed to a content reader.
 
 <a name="config_write" />
 
-#### config **WriteConfig** _inlines_ [WriteEvents](#events_write)
+#### config **write** _inlines_ [WriteEvents](#events_write)
 An interface that defines the config object passed to a content writer.
 
 **Options:**

@@ -284,6 +284,15 @@ describe('ttl reader:', () => {
 				['_c', '#d', '_e'],
 			]);
 
+		allow('labeled spacing', `
+			_:a :b _:c.
+			<z://c> :d _:e.<z://c> :d _:f.
+			`, [
+				['_a', '#b', '_c'],
+				['z://c', '#d', '_e'],
+				['z://c', '#d', '_f'],
+			]);
+
 		allow('anonymous', `
 			[] :b _:c .
 			_:c :d [] .

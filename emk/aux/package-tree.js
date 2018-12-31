@@ -30,7 +30,7 @@ module.exports = {
 				description: 'Create a mathematical set of triples for comparison and operations such as union, intersection, difference, etc.',
 			}),
 		},
-		...('graphy-dev' === process.env.GRAPHY_CHANNEL
+		...('graphy-ignore' === process.env.GRAPHY_CHANNEL
 			? {
 				ui: {
 					viz: () => ({
@@ -41,7 +41,7 @@ module.exports = {
 			: {}),
 	},
 
-	...('graphy-dev' === process.env.GRAPHY_CHANNEL
+	...('graphy-ignore' === process.env.GRAPHY_CHANNEL
 		? {
 			content: {
 				bat: {
