@@ -624,7 +624,7 @@ module.exports = async() => {
 
 						# defer README to GitHub
 						rm -rf README.md
-						cat <(echo "#@${s_channel}/${s_channel}") ../../../../emk/aux/README-defer.md > README.md
+						cat <(echo "#${s_channel}") ../../../../emk/aux/README-defer.md > README.md
 					`,
 				}),
 

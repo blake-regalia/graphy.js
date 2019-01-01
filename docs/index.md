@@ -8,9 +8,12 @@
 
 ## [API Documentation](api)
 
+<br />
+
 ## [Command Line Interface Documentation](cli)
 
 <br />
+
 ## Features
  - [Textual Content Handlers](content.textual)
    - **Read & write** RDF documents using streams. Includes support for:
@@ -24,8 +27,8 @@
    - Compare two RDF graphs for equivalence, inclusion, and disjointness using the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
  - Enjoy the ease-of-use with the command-line interface.
 
-
 <br />
+
 ## Package Tree
 The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) contains source code for all of the packages published on npm under the `@graphy` org. Each package is namespaced according to its category, sub-category, and function. They are enumerated here for clarity:
 
@@ -52,7 +55,7 @@ graphy/:
       write: '@graphy/content.trig.write'
 ```
 
-----
+<br />
 
 ## Examples
 
@@ -137,6 +140,7 @@ demo:Banana foaf:name "Banana" ;
 
 ```
 
+<br />
 
 ## License
 
