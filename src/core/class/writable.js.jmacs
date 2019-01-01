@@ -690,8 +690,25 @@ class CTWriter_Triples extends CTWriter {
 	@{subwriter_triples()}
 
 	async transform_c4(hc4_quads, s_encoding, fk_transform) {
-		for(let sc1_graph in hc4_quads) {
-			await this.add(hc4_quads[sc1_graph]);
+		let a_unions = [];
+
+		for(let sv1_graph in hc4_quads) {
+			// non-default graph; union from dataset
+			if('*' !== sv1_graph) a_unions.push(sv1_graph);
+			
+			// add all quads from graph
+			await this.add(hc4_quads[sv1_graph]);
+		}
+
+		// a union was performed
+		if(a_unions.length) {
+			// warn about implicit union
+			let s_warning = `an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => factory.c1(sc1).verbose()).join(', ')}`;
+
+			// emit warning, wasn't listened to
+			if(!this.emit('warning', s_warning)) {
+				console.warn(s_warning);
+			}
 		}
 
 		fk_transform();

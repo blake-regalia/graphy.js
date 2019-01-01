@@ -71,33 +71,10 @@ const H_CONTENT_TAGS = {
 	// 'application/sparql-results+json': sparql_results,
 };
 
-const H_SPARQL_RESULT_TYPES = {
-	uri: h => graphy.namedNode(h.value),
-	iri: h => graphy.namedNode(h.value),
-	bnode: h => graphy.blankNode(h.value),
-	literal: (h) => {
-		// language
-		if('xml:lang' in h) {
-			return graphy.literal(h.value, h['xml:lang']);
-		}
-		// datatype
-		else if('datatype' in h) {
-			return graphy.literal(h.value, graphy.namedNode(h.datatype));
-		}
-		// simple
-		else {
-			return graphy.literal(h.value);
-		}
-	},
-
-	// old version of SPARQL results
-	'typed-literal': h => graphy.literal(h.value, graphy.namedNode(h.datatype)),
-};
-
 
 @> memoize(s_package)
 	@//@object-literal
-	get @{s_package}() {
+	get @{s_package.replace(/^.*\.([^.]+)$/, '$1')}() {
 		// memoize
 		delete graphy.@{s_package};
 		return (graphy.@{s_package} = require('@{channel(s_package)}'));
@@ -122,10 +99,6 @@ const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS()})(:;.+)$/;
 
 const graphy = module.exports = Object.assign({
 
-	/**
-	* API:
-	**/
-
 	content: Object.assign(function(s_query) {
 		let m_content_type = R_CONTENT_TYPE.exec(s_query);
 		if(!m_content_type) throw new Error(`invalid content-type string: "${s_query}"`);
@@ -149,43 +122,12 @@ const graphy = module.exports = Object.assign({
 		}
 	}),
 
-	// load triple data from arbitrary parser into memory
-	get load() {
-		// memoize
-		delete graphy.load;
-		return (graphy.load = require('./rdf-loader.js'));  // eslint-disable-line global-require
-	},
-
-	/**
-	* content types:
-	**/
-
-	@*{
-		for(let s_content in h_content_types) {
-			yield `${s_content},\n`;
-		}
-	}
-	// sparql_results,
-	// sparqlResults: sparql_results,
-
-	store: {
-		memory: {
-			get create() {
-				delete graphy.store.memory.create;
-				return (graphy.store.memory.create = require('@{channel('store.memory.create')}'));
-			},
+	util: {
+		dataset: {
+			@{memoize('util.dataset.tree')}
 		},
 	},
 
-	@*{
-		for(let s_package in h_standalones) {
-			yield memoize(s_package)+'\n';
-		}
-	}
-
-	fromSPARQLResult(h_term) {
-		return H_SPARQL_RESULT_TYPES[h_term.type](h_term);
-	},
 @//@
 
 }, require('@{channel('core.data.factory')}'));
@@ -194,40 +136,355 @@ const graphy = module.exports = Object.assign({
 // export graphy to window object if in main thread of browser
 if('undefined' !== typeof window) window.graphy = graphy;
 
-// commands
-let h_commands = {
-	'content.ttl.read': (a_argv) => {
-
-	},
-};
-
 // cli
 if(module === require.main) {
-	let a_argv = process.argv;
-	let n_args = a_argv.length;
-	for(let i_argv=0; i_argv<n_args; i_argv++) {
-		let s_arg = a_argv[i_argv];
+	const fs =require('fs');
+	const mk_yargs = require('yargs/yargs');
 
-		// if(h_commands[s_arg]) {
-			
-		// }
+	const exit = (s_exit) => {
+		console.error(s_exit);
+		process.exit(1);
+	};
+
+	const command = s_command => mk_yargs()
+		.strict()
+		.usage(`Usage: $0 ${s_command} [OPTIONS] [--pipe COMMAND]`);
+
+	const reader = f_reader => (a_args, g_context) => new Promise((fk_resolve) => {
+		let g_argv = command(g_context.command)
+			.boolean('v')
+				.alias('v', 'validate')
+				.describe('v', 'validate all tokens within the RDF document')
+			.string('b')
+				.alias('b', ['base', 'base-uri'])
+				.describe('b', 'set a base URI on the document')
+			.help()
+			.version(false)
+			.parse(a_args);
+
+		let gc_read = {
+			validate: g_argv.validate || false,
+		};
+
+		if(g_argv['base-uri']) {
+			gc_read.baseUri = g_argv['base-uri'];
+		}
+
+		fk_resolve(g_context.inputs.map((ds_input) => {
+			let ds_reader = f_reader({...gc_read});
+			return ds_input.pipe(ds_reader);
+		}));
+	});
+
+	const writer = f_writer => (a_args, g_context) => {
+		let g_argv = command(g_context.command)
+			.help()
+			.parse(a_args);
+
+		let gc_write = {};
+
+		return g_context.inputs.map((ds_input) => {
+			let ds_writer = f_writer({...gc_write});
+			return ds_input.pipe(ds_writer);
+		});
+	};
+
+	// commands
+	let h_commands = {
+		'content.nt.read': reader(graphy.content.nt.read),
+		'content.nq.read': reader(graphy.content.nq.read),
+		'content.ttl.read': reader(graphy.content.ttl.read),
+		'content.trig.read': reader(graphy.content.trig.read),
+
+		'content.nt.write': writer(graphy.content.nt.write),
+		'content.nq.write': writer(graphy.content.nq.write),
+		'content.ttl.write': writer(graphy.content.ttl.write),
+		'content.trig.write': writer(graphy.content.trig.write),
+
+		'util.dataset.tree': async(a_args, g_context) => {
+			const dataset_tree = graphy.util.dataset.tree;
+
+			let a_dual_input_keys = ['u', 'i', 'd', 'm'];
+
+			let s_group_multi_input = 'With multiple inputs:';
+			let s_group_dual_input = 'With exactly two inputs:';
+
+			let g_argv = command(g_context.command)
+				.options({
+					u: {
+						type: 'boolean',
+						alias: 'union',
+						group: s_group_multi_input,
+						describe: 'perform the union of multiple inputs',
+						conflicts: a_dual_input_keys.filter(s => 'u' !== s),
+					},
+					i: {
+						type: 'boolean',
+						alias: ['intersect', 'intersection'],
+						group: s_group_multi_input,
+						describe: 'perform the intersection of multiple inputs',
+						conflicts: a_dual_input_keys.filter(s => 'i' !== s),
+					},
+					d: {
+						type: 'boolean',
+						alias: ['diff', 'difference'],
+						group: s_group_dual_input,
+						describe: 'perform a difference between two inputs',
+						conflicts: a_dual_input_keys.filter(s => 'd' !== s),
+					},
+					m: {
+						type: 'boolean',
+						alias: ['minus', 'subtract', 'subtraction'],
+						group: s_group_dual_input,
+						describe: 'perform a subtraction by removing input-B from input-A',
+						conflicts: a_dual_input_keys.filter(s => 'm' !== s),
+					},
+				})
+				.help()
+				.version(false)
+				.parse(a_args);
+
+			// ref inputs; cache length
+			let a_inputs = g_context.inputs;
+			let n_inputs = a_inputs.length;
+
+			// multi-input stream-output operation
+			if(g_argv.union || g_argv.intersection) {
+				let s_operation = g_argv.union
+					? 'union'
+					: 'intersection';
+
+				// less than 2 inputs; no-op
+				if(n_inputs < 2) return a_inputs;
+
+				// create trees
+				let a_trees = a_inputs.map(() => dataset_tree());
+
+				// initial tree
+				let k_tree_out = a_trees[0];
+
+				// pairwise readiness
+				for(let i_input=0; i_input<n_inputs; i_input++) {
+					let k_tree_b = a_trees[i_input];
+
+					// pipe input stream to tree b
+					a_inputs[i_input].pipe(k_tree_b);
+
+					// wait for input stream to finish writing to b
+					await k_tree_b.until('finish');
+
+					// non-first input
+					if(i_input) {
+						// perform pairwise operation
+						k_tree_out = k_tree_out[s_operation](k_tree_b);
+					}
+				}
+
+				// return readable tree
+				return k_tree_out;
+			}
+			// dual-input stream-output operation
+			else if(g_argv.difference || g_argv.subtraction) {
+				let s_operation =  g_argv.difference
+					? 'difference'
+					: 'minus';
+
+				// not two inputs
+				if(2 !== n_inputs) {
+					exit(`dual input operation expects two inputs but found ${n_inputs}`);
+				}
+
+				// async
+				return new Promise((fk_resolve) => {
+					let operate = () => k_tree_a[s_operation](k_tree_b);
+
+					// wait for a
+					let k_tree_a = dataset_tree();
+					let b_finished_a = false;
+					k_tree_a.on('finish', () => {
+						b_finished_a = true;
+						if(b_finished_b) fk_resolve(operate());
+					});
+
+					// wait for b
+					let k_tree_b = dataset_tree();
+					let b_finished_b = false;
+					k_tree_b.on('finish', () => {
+						b_finished_b = true;
+						if(b_finished_a) fk_resolve(operate());
+					});
+
+					// ref both input streams
+					let [ds_input_a, ds_input_b] = a_inputs;
+
+					// pipe each to its tree
+					ds_input_a.pipe(k_tree_a);
+					ds_input_b.pipe(k_tree_b);
+				});
+			}
+			// reduction; n-to-n
+			else {
+				return g_context.inputs.map(ds_input => ds_input.pipe(dataset_tree()))
+			}
+		},
+	};
+
+	let a_argv = process.argv.slice(2);
+	let n_args = a_argv.length;
+
+	// inputs
+	let a_inputs = [];
+	{
+		for(let i_argv=0; i_argv<n_args; i_argv++) {
+			let s_arg = a_argv[i_argv];
+
+			// input
+			if(s_arg.startsWith('--input')) {
+				let m_input = /^--input=(.+)$/.exec(s_arg);
+				if(!m_input) {
+					exit(`invalid input argument format: ${s_arg}`);
+				}
+				a_argv.shift();
+				let p_input = a_argv[i_argv--];
+				a_argv.shift();
+				a_inputs.push(fs.createReadStream(p_input));
+				continue;
+			}
+
+			break;
+		}
 	}
-	const yargs = require('yargs');
-	let g_args = yargs
-		.command(...[
-			'content.ttl.read',
-			'read a Turtle document',
-			(y_yarg) => y_yarg.options({
-				pipe: {
-					alias: 'p',
-					describe: 'pipe output to another command',
-				},
-			}),
-			(g_argv) => {
-				console.log('ttl_read');
-				debugger;
-			},
-		])
-		.help()
-		.argv;
+
+	// pipeline
+	let a_pipeline = [];
+	{
+		let a_series = [a_argv[0]];
+
+		for(let i_argv=1; i_argv<n_args; i_argv++) {
+			let s_arg = a_argv[i_argv];
+
+			if('--pipe' === s_arg) {
+				a_pipeline.push(a_series);
+				if(i_argv === n_args) {
+					exit(`was expecting pipe destination after --pipe: ${a_argv}`);
+				}
+				a_series = [];
+				continue;
+			}
+
+			a_series.push(s_arg);
+		}
+
+		a_pipeline.push(a_series);
+	}
+
+	// inspect last arguments
+	{
+		let a_series = a_pipeline[a_pipeline.length-1];
+		let n_series = a_series.length;
+
+		// backwards
+		for(let i_end=n_series-1; i_end>=0; i_end--) {
+			// arg is path
+			if(a_series[i_end].startsWith('/')) {
+				// append as input
+				a_inputs.push(fs.createReadStream(a_series.pop()));
+
+				// keep going
+				continue;
+			}
+
+			// stop eating args
+			break;
+		}
+
+		// series now empty; pop from pipeline
+		if(!a_series.length) a_pipeline.pop();
+	}
+
+	// empty command list
+	if(!a_pipeline.length) {
+		exit('no commands given');
+	}
+
+	// const parse_series = a_args => mk_yargs()
+	// 	.command('content.ttl.read', 'read Turtle document', (yargs_read) => {
+	// 		return yargs_read
+	// 			.options({
+	// 				u: {
+	// 					type: 'boolean',
+	// 					default: false,
+	// 					alias: 'union',
+	// 					group: s_group_multi_input,
+	// 					describe: 'perform the union of multiple inputs',
+	// 					conflicts: a_dual_input_keys.filter(s => 'u' !== s),
+	// 				},
+	// 				i: {
+	// 					type: 'boolean',
+	// 					default: false,
+	// 					alias: ['intersect', 'intersection'],
+	// 					group: s_group_multi_input,
+	// 					describe: 'perform the intersection of multiple inputs',
+	// 					conflicts: a_dual_input_keys.filter(s => 'i' !== s),
+	// 				},
+	// 				d: {
+	// 					type: 'boolean',
+	// 					alias: ['diff', 'difference'],
+	// 					group: s_group_dual_input,
+	// 					describe: 'perform a difference between two inputs',
+	// 					conflicts: a_dual_input_keys.filter(s => 'd' !== s),
+	// 				},
+	// 				m: {
+	// 					type: 'boolean',
+	// 					alias: ['minus', 'subtract', 'subtraction'],
+	// 					group: s_group_dual_input,
+	// 					describe: 'perform a subtraction by removing input-B from input-A',
+	// 					conflicts: a_dual_input_keys.filter(s => 'm' !== s),
+	// 				},
+	// 			})
+	// 			.help()
+	// 			.parse();
+	// 	})
+	// 	.command('util.dataset.tree')
+	// 	.help()
+	// 	.parse(a_args);
+
+	(async() => {
+		// starting inputs default to stdin if no explicit inputs given
+		let a_prev = a_inputs.length? a_inputs: [process.stdin];
+
+		// each series in pipeline
+		for(let a_series of a_pipeline) {
+			// start with command string
+			let s_command = a_series[0];
+
+			// no such command
+			if(!(s_command in h_commands)) {
+				exit(`no such command '${s_command}'`);
+			}
+
+			try {
+				// eval command with its args
+				let a_curr = await h_commands[s_command](a_series.slice(1), {
+					command: s_command,
+					inputs: a_prev,
+				});
+
+				// advance inputs
+				a_prev = a_curr;
+			}
+			catch(e_parse) {
+				// console.warn(e_parse.stack);
+				return;
+			}
+		}
+
+		// expect single output
+		if(1 !== a_prev.length) {
+			exit(`expected a single output stream but last command produces ${a_prev.length} streams`);
+		}
+
+		// pipe output to stdout
+		a_prev[0].pipe(process.stdout);
+	})();
 }

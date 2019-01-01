@@ -15,15 +15,13 @@ This documentation covers the following graphy packages:
 ## Contents
  - [A Note About Events](#note_events) -- two different styles for event binding
  - [Accessibility](#accessibility) -- all textual RDF content modules
- - [Datatypes](#datatypes) -- formatting hints or restrictions on primitive ES datatypes
-   - [Structs](#structs) -- a value where `typeof value === 'object' && value.constructor === Object`
  - [Verbs](#verbs) -- the module export functions under each content namespace
    - [`read`](#verb_read) -- for reading RDF from a string or stream
    - [`write`](#verb_write) -- for writing RDF using write event objects
  - [Classes](#classes)
-
  - [Events](#events) -- definitions for event interfaces
  - [Configs](#configs) -- definitions for config interfaces
+ - [Interfaces](#interfaces) -- definitions for all other interfaces
 
 <!--
 - [`scan`](#verb_scan) -- for reading RDF from a string or stream using multiple threads
@@ -121,67 +119,13 @@ The following section describes hinted formatting on ES primitives that are used
 <a name="#string_js-function-map" />
 
  - `#string/js-function-map` -- see [`@string/js-function-*`](#string_js-function-).
-   - **signature:** `function(result_callback: callback(result: any))` : [`ReadConfig_NoInput`](#config_read)
+   - **signature:** `function(result_callback: callback(result: any))` : [`#config/read-no-input`](#config_read)
 
 <a name="#string_js-function-reduce" />
 
  - `#string/js-function-reduce` -- see [`@string/js-function-*`](#string_js-function-).
    - **signature:** `function(result_a: any, result_b: any)` : `any`
 
--->
-
-<a name="structs" />
-
-### Structs:
-A 'struct' refers to an interface for a simple ES Object `value` such that `value.constructor === Object`. The following section documents the definitions for these interfaces.
-
-<a name="struct_input-string" />
-
- - `#struct/input-string` -- indicates a utf8-encoded string to use as input to a reader.
-   - _required properties:_
-     - `.string`: `string`
-
-<a name="struct_input-stream" />
-
- - `#struct/input-stream` -- 
-   - _required properties:_
-     - `.stream`: [`ReadableStream<string>`](core.iso.stream#readable-string)
-
-<a name="struct_writable-data-event" />
-
- - `#struct/writable-data-event` -- 
-   - _required properties:_
-     - `.type`: `string` -- the type of event this object represents, see below
-     - `.value`: `any` -- the value of the object
-   - The string given for `.type` should be one of the following:
-     - `'array'` -- write a series of data events (useful for aggregating events synchronously before going async).
-        - *expects* `.value` to be an `Array<`[`#struct/writable-data-event`](struct_writable-data-event)`>`.
-     - `'c3'` -- write a set of triples to the output.
-        - *expects* `.value` to be a [concise triple hash](concise#hash_c3)
-     - `'c4'` -- write a set of quads to the output.
-        - *expects* `.value` to be a [concise quad hash](concise#hash_c4)
-     - `'triple'` -- write a single RDFJS-compatible triple to the output.
-        - *expects* `.value` to be a [Triple](core.data.factory#class_triple)
-     - `'quad'` -- write a single RDFJS-compatible quad to the output.
-        - *expects* `.value` to be a [Quad](core.data.factory#class_quad)
-     - `'base'`-- sets or updates the current base URI used for relative IRI resolution. Will also cause the writer to output a `@base` statement if supported by the underlying RDF format.
-        - *expects* `.value` to be an IRI `string`.
-     - `'prefixes'` -- updates the current prefix mappings which are used to expand CURIEs found in following concise triple (c3) and concise quad (c4) hashes. Will also cause the writer to output the given prefix mappings if supported by the underlying RDF format.
-        - *expects* `.value` to be a [#struct/prefix-mappings](core.data.factory#struct_prefix-mappings)
-     - `'comment'` -- if the underlying RDF format supports it, a comment will be written to the output document, otherwise this has no effect.
-        - *expects* `.value` to be one of the following:
-           - `string` -- a single-line comment
-           - [#struct/comment-config](#struct_comment-config) -- enhanced comment 
-
-<a name="struct_comment-config" />
-
- - `#struct/comment-config` -- 
-   - _required properties:_
-     - `.contents`: `string` -- the contents of the comment
-   - _optional properties:_
-     - `.width`: `int` -- if specified, breaks comments longer than the given `width` onto multiple lines.
-
-<!--     - `.column`: `int` -- a column number to break long comments by word and wrap onto the next line
 -->
 
 ----
@@ -245,7 +189,7 @@ Read RDF data (in other words, deserialize it) from a document given by an input
       ```
    - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
 
- - `read(config: `[`ReadConfig_WithInput`](#config_read-with-input)`)`
+ - `read(config: `[`#config/read-with-input`](#config_read-with-input)`)`
    - creates a new content reader that will output [Quads](core.data.factory#class_quad).
    - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
 
@@ -341,7 +285,7 @@ Write RDF (in other words, serialize it) to a document for storage, transmission
 **Overloaded variants:**
  - `write([config: `[`WriteConfig`](#config_write)`])`
    - creates a new content writer and returns a transform that operates in object mode on the writable side and emits utf8-encoded strings on the readable side. The types of objects it responds to on the writable side may depend on the capabilities of the format.
-     - **returns** a [new `Transform<#struct/writable-data-event, string>`](#transform_writable-data-event-writable_string-readable)
+     - **returns** a [new `Transform<WritableDataEvent, string>`](#transform_writable-data-event-writable_string-readable)
 
 **Example A**:
 Convert a CSV document into an RDF Turtle document using a custom transform in a pipeline.
@@ -590,16 +534,20 @@ An interface that defines the config object passed to a content reader.
 
 **Options:**
  - ... [see those inlined from ReadEvents](#events_read)
+ - `baseUri | baseURI`: `string` -- sets the starting base URI for the RDF document.
+ - `validate` : `boolean=false` -- whether or not to validate the contents of tokens, such as checking for invalid characters in IRIs, literals, and so on. The stream will emit an `'error'` event if an invalid token is encountered. Enabling validation incurs a performance cost, so each reader defaults to `false`. 
+ - `maxTokenLength` : `number=2048` -- defines the maximum number of characters to expect of any token other than a quoted literal. This option only exists to prevent invalid input from endlessly consuming the reader when using a stream as input. By default, this value is set to **2048**, which is more than the recommended maximum URL length. However, you may wish to set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
+ - `maxStringLength` : `boolean=false` -- defines the maximum number of characters to expect of any quoted literal. This option only exists to prevent invalid input from endlessly consuming the reader (such as a long-quoted literal `""" that never ends...`) when using a stream as input. By default, this value is set to **65536** characters. However, you may set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
 
 <a name="config_read-with-input" />
 
-#### config **read-with-input** _extends_ [ReadConfig_NoInput](#config_read-no-input)
+#### config **read-with-input** _extends_ [#config/read-no-input](#config_read-no-input)
       
 **Options:**
- - ... [see those inheritted from ReadConfig_NoInput](#config_read-no-input)
+ - ... [see those inheritted from #config/read-no-input](#config_read-no-input)
 
 **Required:**
- - `input` : [`#struct/input-string`](#struct_input-string)` | `[`#struct/input-stream`](#struct_input-stream)
+ - `input` : [`UseInputString`](#interface_use-input-string)` | `[`UseInputStream`](#interface_use-input-stream)
 
 
 <a name="config_write" />
@@ -610,6 +558,15 @@ An interface that defines the config object passed to a content writer.
 **Options:**
  - ... [see those inlined from WriteEvents](#events_write)
  - `prefixes` : [`#hash/prefix-mappings`](core.data.factory#hash_prefix-mappings) -- prefix mappings to use in order to expand the concise-term strings within concise-quad hashes as they are written. These prefixes will also be used to create prefix statements and terse terms on the output stream whenever possible (e.g., for Turtle and TriG documents).
+
+
+<a name="config_comment" />
+
+#### config **comment**
+ - _required properties:_
+   - `.contents`: `string` -- the contents of the comment
+ - _optional properties:_
+   - `.width`: `int` -- if specified, breaks comments longer than the given `width` onto multiple lines.
 
 
 <!-- - `coercions` : [`#map/object-coercions`](#map-objectcoercions) -- allows for extending the built-in mappings for coercing objects that are an `instanceof` some class or function to their RDF representation. For example, an instance of the `Date` object will -->
@@ -670,3 +627,54 @@ const nt_turbo = require('@graphy/content.nt.turbo');
 ```
 
 -->
+
+<a name="interfaces" />
+
+## Interfaces
+
+
+<a name="interface_input-string" />
+
+interface **UseInputString**
+Indicates a utf8-encoded string to use as input to a reader.
+
+ - _required properties:_
+   - `.string`: `string`
+
+
+<a name="interface_input-stream" />
+
+interface **UseInputStream**
+Indicates a readable stream to use as input to a reader.
+
+ - _required properties:_
+   - `.stream`: [`ReadableStream<string>`](core.iso.stream#readable-string)
+
+
+<a name="interface_writable-data-event" />
+
+interface **WritableDataEvent**
+An object that describes an event of writable RDF data (including metadata and directives such as prefix mappings, comments, etc.).
+
+ - _required properties:_
+   - `.type`: `string` -- the type of event this object represents, see below
+   - `.value`: `any` -- the value of the object
+ - The string given for `.type` should be one of the following:
+   - `'array'` -- write a series of data events (useful for aggregating events synchronously before going async).
+      - *expects* `.value` to be an `Array<`[`WritableDataEvent`](#interface_writable-data-event)`>`.
+   - `'c3'` -- write a set of triples to the output.
+      - *expects* `.value` to be a [concise triple hash](concise#hash_c3)
+   - `'c4'` -- write a set of quads to the output.
+      - *expects* `.value` to be a [concise quad hash](concise#hash_c4)
+   - `'triple'` -- write a single RDFJS-compatible triple to the output.
+      - *expects* `.value` to be a [Triple](core.data.factory#class_triple)
+   - `'quad'` -- write a single RDFJS-compatible quad to the output.
+      - *expects* `.value` to be a [Quad](core.data.factory#class_quad)
+   - `'base'`-- sets or updates the current base URI used for relative IRI resolution. Will also cause the writer to output a `@base` statement if supported by the underlying RDF format.
+      - *expects* `.value` to be an IRI `string`.
+   - `'prefixes'` -- updates the current prefix mappings which are used to expand CURIEs found in following concise triple (c3) and concise quad (c4) hashes. Will also cause the writer to output the given prefix mappings if supported by the underlying RDF format.
+      - *expects* `.value` to be a [#hash/prefix-mappings](core.data.factory#hash_prefix-mappings)
+   - `'comment'` -- if the underlying RDF format supports it, a comment will be written to the output document, otherwise this has no effect.
+      - *expects* `.value` to be one of the following:
+         - `string` -- a single-line comment
+         - [#config/comment](#config_comment) -- enhanced comment 

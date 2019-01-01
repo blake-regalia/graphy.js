@@ -641,10 +641,10 @@ class reader {
 			after_end_of_statement: this.post_object,
 
 			// maximum length of a token: defaults to 2048 => http://stackoverflow.com/a/417184/1641160
-			max_token_length: g_config.max_token_length || 2048,
+			max_token_length: g_config.max_token_length || g_config.maxTokenLength || 2048,
 
 			// maximum length of a string (overrides max_token_length): defaults to 64 kibibytes
-			max_string_length: g_config.max_string_length || 65536,
+			max_string_length: g_config.max_string_length || g_config.maxStringLength || 65536,
 		});
 
 
@@ -835,6 +835,17 @@ class reader {
 				}
 			},
 		});
+
+		// intercept pipe
+		ds_transform.pipe = function(ds_out) {
+			// non-object mode
+			if(!ds_out._writableState.objectMode) {
+				ds_out = stream.quads_to_json(ds_out);
+			}
+
+			// forward to super
+			return Object.getPrototypeOf(this).pipe.apply(this, [ds_out]);
+		};
 
 		// bind events to transform stream
 		this.bind(g_config);

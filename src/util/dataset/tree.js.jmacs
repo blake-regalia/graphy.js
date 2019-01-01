@@ -657,20 +657,85 @@ class DatasetTree extends stream.Transform {
 		// config-struct event binding
 		this.bind(g_config);
 
+		let h_prefixes = {};
+
+		// source piped to this
+		this.on('pipe', (ds_src) => {
+			ds_src.on('prefix', (s_prefix, p_iri) => {
+				// save/update prefix mapping
+				h_prefixes[s_prefix] = p_iri;
+
+				// graphy output and initial prefix mappings already flushed
+				if(this.flush_graphy && this.prefixes_flushed) {
+					// flush single prefix
+					this.push({
+						type: 'prefixes',
+						value: {
+							[s_prefix]: p_iri,
+						},
+					});
+				}
+
+				// remember data has started flowing
+				this.flowing = true;
+			});
+
+			// once first data is encountered
+			ds_src.once('data', () => {
+				// flush prefixes
+				this.flush_prefixes();
+
+				// remember data has started flowing
+				this.flowing = true;
+			});
+		});
+
 		Object.assign(this, {
 			quad_tree: h_quad_tree || {[$_KEYS]:0, [$_QUADS]:0},
 			digest: null,
 			root_blanks: {},
 			leaf_blanks: {},
+			writable_out: null,
+			prefixes: h_prefixes,
+			prefixes_flushed: false,
+			flowing: false,
 			debug: g_config.debug || false,
 		});
+	}
+
+	flush_prefixes() {
+		// already flushed
+		if(this.prefixes_flushed) return;
+
+		// not graphy output
+		if(this._flush !== this.flush_graphy) return;
+
+		// push prefix mappings
+		this.push({
+			type: 'prefixes',
+			value: this.prefixes,
+		});
+
+		// do not repeat
+		this.prefixes_flushed = true;
 	}
 
 	// on pipe
 	pipe(ds_out) {
 		// deduce write mode
 		if(ds_out.isGraphyWritable) {
+			// change flush mode
 			this._flush = this.flush_graphy;
+
+			// already flowing; flush prefixes immediately
+			if(this.flowing) {
+				// flush prefixes immediately
+				this.flush_prefixes();
+			}
+		}
+		// non-object mode
+		else if(!ds_out._writableState.objectMode) {
+			ds_out = stream.quads_to_json(ds_out);
 		}
 
 		// forward to super
@@ -682,9 +747,9 @@ class DatasetTree extends stream.Transform {
 		this.resume_flush(this.quads(), fk_flush);
 	}
 
-	_final(fk_final) {
-		debugger;
-	}
+	// _final(fk_final) {
+	// 	fk_final();
+	// }
 
 	resume_flush(dg_quads, fk_flush) {
 		// advance iterator

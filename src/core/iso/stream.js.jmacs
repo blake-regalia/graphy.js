@@ -3,7 +3,7 @@ const stream = require('stream');
 @> until()
 	until(s_event) {
 		return new Promise((fk_until, fe_until) => {
-			this.on(s_event, fk_until);
+			this.once(s_event, fk_until);
 		});
 	}
 @;
@@ -34,4 +34,21 @@ module.exports = {
 	Readable,
 	Writable,
 	Transform,
+	quads_to_json(ds_dst) {
+		// serializse json
+		let ds_json = new stream.Transform({
+			writableObjectMode: true,
+			readableObjectMode: false,
+
+			transform(g_quad, s_encoding, fk_transform) {
+				fk_transform(null, JSON.stringify(g_quad.isolate())+'\n');
+			},
+		});
+
+		// pipe thru transform first
+		ds_json.pipe(ds_dst);
+
+		// re-assign output
+		return ds_json;
+	},
 };

@@ -341,6 +341,17 @@ class reader {
 				}
 			},
 		});
+		
+		// intercept pipe
+		ds_transform.pipe = function(ds_out) {
+			// non-object mode
+			if(!ds_out._writableState.objectMode) {
+				ds_out = stream.quads_to_json(ds_out);
+			}
+
+			// forward to super
+			return Object.getPrototypeOf(this).pipe.apply(this, [ds_out]);
+		};
 
 		// data event
 		this.data = g_quad => ds_transform.push(g_quad);
