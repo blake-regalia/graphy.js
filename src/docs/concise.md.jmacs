@@ -32,25 +32,25 @@ let yt_node = factory.c1('>'+p_iri);
 There's not much need to create blank nodes using concise-term strings since you can implicitly create them using [concise triple](#hash/c3) and [concise quad](#hash/c4) hashes. However, if you need to create new triples where the subject is a blank node, or need to use labeled blank nodes, this syntax will allow you to create them explicitly.
 
 ```js
-ley a_triples = [...factory.c3({
-	'_:b1': {
-		// usual blank node label
-		'>http://ex.org/dislikes': '_:b2',
+let a_triples = [...factory.c3({
+    '_:b1': {
+        // usual blank node label
+        '>http://ex.org/dislikes': '_:b2',
 
-		// some custom blank node label
-		'>http://ex.org/pointsTo': '_:someLabeledBlankNode',
+        // some custom blank node label
+        '>http://ex.org/pointsTo': '_:someLabeledBlankNode',
 
-		// automatically creates a unique labeled blank node (using uuidv4)
-		'>http://ex.org/unique': '_:',
+        // automatically creates a unique labeled blank node (using uuidv4)
+        '>http://ex.org/unique': '_:',
 
-		// creates anonymous blank node
-		'>http://ex.org/anonymous': {},
+        // creates anonymous blank node
+        '>http://ex.org/anonymous': {},
 
-		// creates anonymous blank node with its own triples
-		'>http://ex.org/likes': {
-			a: '>http://ex.org/AnonymousBlankNode',
-		},
-	},
+        // creates anonymous blank node with its own triple(s)
+        '>http://ex.org/likes': {
+            a: '>http://ex.org/AnonymousBlankNode',
+        },
+    },
 })];
 ```
 
@@ -146,16 +146,6 @@ A concise triples hash describes a plain object whose keys represent the *subjec
 ### `#hash/c2` -- Concise Pairs Hash
 A concise pairs hash describes a plain object whose keys represent the *predicate* of a set of predicate/object pairs, and whose values are [ConciseObjects](#value_concise-object), which represent the objects, collections, or nested blank nodes related to the predicate in a tree-like structure.
 
-**Example:**
-```js
-@{cat('snippets/concise-triples.js')}
-```
-
-**Outputs:**
-```turtle
-@{exec('snippets/concise-triples.js')}
-```
-
 ----
 
 ## Values 
@@ -164,12 +154,12 @@ A concise pairs hash describes a plain object whose keys represent the *predicat
 
 ### value **ConciseObject**
 A value that must be one of the following types:
- - [#string/c1](#string_c1) -- represents a single RDF term such as a NamedNode, BlankNode, or Literal.
- - [#hash/c2] -- such that `value.constructor === Object`; represents an anonymous nested blank node, allowing you to continue nesting subtrees in the same object literal.
+ - [`#string/c1`](#string_c1) -- represents a single RDF term such as a named node, blank node, or literal.
+ - [`#hash/c2`](#hash_c2) -- such that `value.constructor === Object`; represents an anonymous nested blank node, allowing you to continue nesting subtrees in the same object literal.
  - `Array<`[`ConciseObjectItem`](#value_concise-object-item)`>` -- represents a list of objects, each one belonging to the same graph, subject, and predicate.
- - `number` -- represents an RDF literal with some numeric datatype; calls [factory.number()](core.data.factory#function_number) on `value` to determine the datatype IRI.
+ - `number` -- represents an RDF literal with some numeric datatype; calls [`factory.number()`](core.data.factory#function_number) on `value` to determine the datatype IRI.
  - [GenericTerm](core.data.factory#class_generic-term) | [@RDFJS/Term](https://rdf.js.org/#term-interface) -- a single RDF term
- - _overridable_ `Date` -- represents an RDF literal with datatype `xsd:dateTime`; calls [factory.dateTime()](core.data.factory#function_date-time) on `value` to handle conversion.
+ - _overridable_ `Date` -- represents an RDF literal with datatype `xsd:dateTime`; calls [`factory.dateTime()`](core.data.factory#function_date-time) on `value` to handle conversion.
 @.{/* - *other* -- providers allow for coercions */}
 
 

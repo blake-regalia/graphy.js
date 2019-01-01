@@ -95,7 +95,7 @@ const H_CONTENT_TAGS = {
 	[^\0-\x20()<>@,;:\\"\/[\]?.=]+
 @;
 
-const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS()})(:;.+)$/;
+const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS()})(;.+)*$/i;
 
 const graphy = module.exports = Object.assign({
 
