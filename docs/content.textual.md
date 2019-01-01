@@ -693,7 +693,7 @@ const nt_turbo = require('@graphy/content.nt.turbo');
 
 <a name="interface_input-string" />
 
-interface **UseInputString**
+#### interface **UseInputString**
 Indicates a utf8-encoded string to use as input to a reader.
 
  - _required properties:_
@@ -702,7 +702,7 @@ Indicates a utf8-encoded string to use as input to a reader.
 
 <a name="interface_input-stream" />
 
-interface **UseInputStream**
+#### interface **UseInputStream**
 Indicates a readable stream to use as input to a reader.
 
  - _required properties:_
@@ -711,7 +711,7 @@ Indicates a readable stream to use as input to a reader.
 
 <a name="interface_writable-data-event" />
 
-interface **WritableDataEvent**
+#### interface **WritableDataEvent**
 An object that describes an event of writable RDF data (including metadata and directives such as prefix mappings, comments, etc.).
 
  - _required properties:_

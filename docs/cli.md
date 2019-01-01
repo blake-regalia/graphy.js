@@ -5,10 +5,12 @@ This document describes the command-line interface for the binary `graphy` avail
 
 ### `npm i -g graphy`
 
+<br />
 ## Internal Pipeline
 The `graphy` CLI works by pushing RDF data through a series of [internal transforms](#commands), starting with a single input on `stdin` (or instead, [multiple inputs](#inputs)) and ending with a single output on `stdout`. This internal pipeline feature allows for efficient, high-bandwidth transformation of RDF data.
 
 
+### `Usage: graphy COMMAND [--pipe COMMAND]*`
 
 
 ## Commands
@@ -26,45 +28,27 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
      $ graphy content -t application/n-triples -v read < input.nt
      ```
 
-	
- - `content.nt.read [OPTIONS]`
+ - `content.FORMAT.read [OPTIONS]`
    - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>`: maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
-   - **Options:**
-     - `-b, --base, --base-uri` -- sets the starting base URI for the RDF document, [see more here](content.textual#config_read-no-input).
-     - `-v, --validate` -- whether or not to perform validation on tokens, [see more here](content.textual#config_read-no-input).
- - `content.nq.read [OPTIONS]`
-   - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>`: maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
-   - **Options:**
-     - `-b, --base, --base-uri` -- sets the starting base URI for the RDF document, [see more here](content.textual#config_read-no-input).
-     - `-v, --validate` -- whether or not to perform validation on tokens, [see more here](content.textual#config_read-no-input).
- - `content.ttl.read [OPTIONS]`
-   - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>`: maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
-   - **Options:**
-     - `-b, --base, --base-uri` -- sets the starting base URI for the RDF document, [see more here](content.textual#config_read-no-input).
-     - `-v, --validate` -- whether or not to perform validation on tokens, [see more here](content.textual#config_read-no-input).
- - `content.trig.read [OPTIONS]`
-   - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>`: maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
+   - **Format:**
+     - `nt` -- read N-Triples document(s), e.g., `graphy content.nt.read`
+     - `nq` -- read N-Quads document(s), e.g., `graphy content.nq.read`
+     - `ttl` -- read Turtle document(s), e.g., `graphy content.ttl.read`
+     - `trig` -- read TriG document(s), e.g., `graphy.content.trig.read`
    - **Options:**
      - `-b, --base, --base-uri` -- sets the starting base URI for the RDF document, [see more here](content.textual#config_read-no-input).
      - `-v, --validate` -- whether or not to perform validation on tokens, [see more here](content.textual#config_read-no-input).
 
-	
- - `content.nt.write [OPTIONS]`
+ - `content.FORMAT.write [OPTIONS]`
    - `N-to-1<`[`WritableDataEventStream`](#class_writable-data-event-stream)`, `[`StringStream`](#class_string-stream)`>` -- maps 1 or more object input streams of [WritableDataEvent](content.textual#interface_writable-data-event) objects into 1 utf8-encoded output stream.
+   - **Format:**
+     - `nt` -- write an N-Triples document, e.g., `graphy content.nt.write`
+     - `nq` -- write an N-Quads document, e.g., `graphy content.nq.write`
+     - `ttl` -- write a Turtle document, e.g., `graphy content.ttl.write`
+     - `trig` -- write a TriG document, e.g., `graphy.content.trig.write`
    - **Options:**
-     - _none_
- - `content.nq.write [OPTIONS]`
-   - `N-to-1<`[`WritableDataEventStream`](#class_writable-data-event-stream)`, `[`StringStream`](#class_string-stream)`>` -- maps 1 or more object input streams of [WritableDataEvent](content.textual#interface_writable-data-event) objects into 1 utf8-encoded output stream.
-   - **Options:**
-     - _none_
- - `content.ttl.write [OPTIONS]`
-   - `N-to-1<`[`WritableDataEventStream`](#class_writable-data-event-stream)`, `[`StringStream`](#class_string-stream)`>` -- maps 1 or more object input streams of [WritableDataEvent](content.textual#interface_writable-data-event) objects into 1 utf8-encoded output stream.
-   - **Options:**
-     - _none_
- - `content.trig.write [OPTIONS]`
-   - `N-to-1<`[`WritableDataEventStream`](#class_writable-data-event-stream)`, `[`StringStream`](#class_string-stream)`>` -- maps 1 or more object input streams of [WritableDataEvent](content.textual#interface_writable-data-event) objects into 1 utf8-encoded output stream.
-   - **Options:**
-     - _none_
+     - _none_`;
+
 
  - `util.dataset.tree [OPTIONS] [COMMAND]`
    - use the [DatasetTree](util.dataset.tree) package to perform set algebra or to remove duplicates from a single data source.
@@ -117,10 +101,14 @@ A stream of utf8-encoded strings. This always applies to `stdin` and `stdout`.
 
 
 <a name="class_quad-stream" />
+
+### class **QuadStream**
 A stream of [Quad](core.data.factory#class_quad) objects.
 
 
 <a name="class_writable-data-event-stream" />
+
+### class **WritableDataEventStream**
 A stream of [WritableDataEvent](content.textual#interface_writable-data-event) objects.
 
 
@@ -135,11 +123,11 @@ Automatically determine which mode is best suited for the given destination stre
 <a name="example_reduce" />
 
 ### Pretty-print an RDF document
-The DatasetTree package 
+Piping RDF data through the DatasetTree transform organizes quads into a hierarchy by graph, subject, predicate and object. Piping this result to a writer format that uses a tree-like syntax (such as Turtle or TriG) has the effect of pretty-printing an otherwise "ugly" document.
 
 ```bash
 $ graphy \
 	content.ttl.read --pipe \
 	util.dataset.tree --pipe \
-	content.ttl.write < input.ttl > reduced.ttl
+	content.ttl.write < ugly.ttl > pretty.ttl
 ```

@@ -8,6 +8,8 @@
 
 ## [API Documentation](api)
 
+## [Command Line Interface Documentation](cli)
+
 <br />
 ## Features
  - [Textual Content Handlers](content.textual)
