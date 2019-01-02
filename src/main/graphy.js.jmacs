@@ -281,7 +281,7 @@ if(module === require.main) {
 				}
 
 				// return readable tree
-				return k_tree_out;
+				return [k_tree_out];
 			}
 			// dual-input stream-output operation
 			else if(g_argv.difference || g_argv.subtraction) {
@@ -296,7 +296,7 @@ if(module === require.main) {
 
 				// async
 				return new Promise((fk_resolve) => {
-					let operate = () => k_tree_a[s_operation](k_tree_b);
+					let operate = () => [k_tree_a[s_operation](k_tree_b)];
 
 					// wait for a
 					let k_tree_a = dataset_tree();
@@ -345,9 +345,9 @@ if(module === require.main) {
 					exit(`invalid input argument format: ${s_arg}`);
 				}
 				a_argv.shift();
-				let p_input = a_argv[i_argv--];
-				a_argv.shift();
-				a_inputs.push(fs.createReadStream(p_input));
+				i_argv -= 1;
+				n_args -= 1;
+				a_inputs.push(fs.createReadStream(m_input[1]));
 				continue;
 			}
 

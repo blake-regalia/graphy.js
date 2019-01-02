@@ -18,7 +18,7 @@
  - [Read & write RDF documents](content.textual) using streams. Includes support for N-Triples (.nt), N-Quads (.nq), Turtle (.ttl), and TriG (.trig).
  - [Construct RDF data](concise#hash_c3) using ES object literals that reflect the tree-like structure of quads, `graph -> subject -> predicate -> object`, including nested blank nodes and RDF collections.
 <!-- - [High-performance](#performance) document readers. -->
- - [Compute the union, intersection, difference or subtraction](util.dataset.tree) between multiple RDF graphs as you would with [Set Algebra](https://en.wikipedia.org/wiki/Algebra_of_sets).
+ - [Compute the union, intersection, difference or subtraction](util.dataset.tree) between multiple RDF graphs analagous to [Set Algebra](https://en.wikipedia.org/wiki/Algebra_of_sets).
  - [Compare two RDF graphs](util.dataset.tree) for equivalence, containment, and disjointness by employing the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
  - [Transform RDF data from the command-line](cli) by piping them through a series of sub-commands.
 

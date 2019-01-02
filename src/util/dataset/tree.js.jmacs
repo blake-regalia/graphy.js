@@ -747,10 +747,6 @@ class DatasetTree extends stream.Transform {
 		this.resume_flush(this.quads(), fk_flush);
 	}
 
-	// _final(fk_final) {
-	// 	fk_final();
-	// }
-
 	resume_flush(dg_quads, fk_flush) {
 		// advance iterator
 		let di_next = dg_quads.next();
@@ -759,10 +755,14 @@ class DatasetTree extends stream.Transform {
 		while(!di_next.done) {
 			// stream pausing
 			if(!this.push(di_next.value)) {
-				// wait for drain event
-				this.once('drain', () => {
+				// wait for next read event
+				this.read = () => {  // eslint-disable-line no-loop-func
+					// restore original functionality
+					delete this.read;
+
+					// resume flush
 					this.resume_flush(dg_quads, fk_flush);
-				});
+				};
 
 				// go async
 				return;
@@ -785,7 +785,7 @@ class DatasetTree extends stream.Transform {
 
 	resume_flush_graphy(dg_graphs, di_graph, dg_subjects, fk_flush) {
 		let h_quads = this.quad_tree;
-debugger;
+
 		// continue until iterator is done
 		while(!di_graph.done) {
 			let sv1_graph = di_graph.value;
@@ -810,12 +810,14 @@ debugger;
 						},
 					},
 				})) {
-					debugger;
-					// wait for drain event
-					this.once('drain', () => {  // eslint-disable-line no-loop-func
-						debugger;
-						this.resume_flush(dg_graphs, di_graph, dg_subjects, fk_flush);
-					});
+					// wait for next read event
+					this.read = () => {  // eslint-disable-line no-loop-func
+						// restore original functionality
+						delete this.read;
+
+						// resume flush
+						this.resume_flush_graphy(dg_graphs, di_graph, dg_subjects, fk_flush);
+					};
 
 					// go async
 					return;

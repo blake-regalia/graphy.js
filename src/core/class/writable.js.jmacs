@@ -331,7 +331,6 @@ class CTWriter extends stream.Transform {
 	async dequeue() {
 		// empty queue
 		while(this.queue.length) {
-			debugger;
 			let {
 				method: f_method,
 				args: a_args,
@@ -653,7 +652,6 @@ Object.assign(CTWriter_Quads.prototype, {
 	// create a subject writer
 	subject(sct_node) {
 		let k_serializer = this.serializer;
-		if(!k_serializer) debugger;
 		return new SubWriter_Pairs(k_serializer, this, k_serializer.c1_node(sct_node));
 	}
 
