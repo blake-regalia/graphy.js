@@ -138,6 +138,10 @@ class serializer extends writable.serializer.textual.terse {
 
 	serialize_object(k_leaf, s_object, xm_mode) {
 		let s_write = '';
+		if(!this.state) {
+			s_write = '\n';
+			this.state = 1;
+		}
 
 		@- QUADS
 			// same graph

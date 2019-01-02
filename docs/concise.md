@@ -172,7 +172,6 @@ y_writer.end();
 @prefix dbo: <http://dbpedia.org/ontology/> .
 @prefix demo: <http://ex.org/demo#> .
 
-
 ```
 
 ----
@@ -258,8 +257,8 @@ y_writer.end();
 @prefix dbo: <http://dbpedia.org/ontology/> .
 @prefix demo: <http://ex.org/demo#> .
 @prefix eg: <http://ex.org/owl#> .
-
 # hey look, a comment!
+
 dbr:Banana rdf:type dbo:Plant ;
    rdfs:label "Banana"@en, "Banane"@fr, "Plátano"@es ;
    demo:steps (

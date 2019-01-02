@@ -9,6 +9,9 @@ const factory_from = factory.from;
 
 const RT_VALID_BLANK_NODE_LABEL = /@{MK_RT_VALID_BLANK_NODE_LABEL()}/;
 
+@$ XC_STATE_INITIAL = 0;
+@$ XC_STATE_DATA = 1;
+
 class Serializer {
 	constructor(dc_writer, g_config) {
 		let k_writer = new dc_writer(this, g_config);
@@ -24,6 +27,9 @@ class Serializer {
 
 			// queue
 			queue: [],
+
+			// current state
+			state: @{XC_STATE_INITIAL},
 		});
 	}
 
@@ -108,8 +114,16 @@ class Serializer_Textual_Terse extends Serializer_Textual {
 			s_prefixes += `@prefix ${s_prefix_id}: <${h_prefixes[s_prefix_id]}> .\n`;
 		}
 
+		// previous state is data; close
+		if(@{XC_STATE_DATA} === this.state) {
+			this.writer.push(' .\n\n');
+		}
+
 		// push to output
-		this.writer.push(s_prefixes+'\n');
+		this.writer.push(s_prefixes);
+
+		// remember state
+		this.state = @{XC_STATE_INITIAL};
 	}
 
 	// serialize a term tersely
@@ -421,9 +435,11 @@ class CTWriter extends stream.Transform {
 			}
 			// pressure detected from push
 			else {
-				this.once('drain', () => {
-					fk_push();
-				});
+				fk_push();
+
+				// this.read = () => {
+				// 	fk_push();
+				// });
 			}
 		});
 	}
@@ -563,32 +579,40 @@ class CTWriter extends stream.Transform {
 			s_prefixes += `@prefix ${s_prefix_id}: <${h_prefixes[s_prefix_id]}> .\n`;
 		}
 
+		// previous state is data; close
+		if(@{XC_STATE_DATA} === this.state) {
+			s_prefixes = ' .\n\n'+s_prefixes;
+		}
+
 		// push to output
-		await this.push_async(s_prefixes+'\n');
+		await this.push_async(s_prefixes);
+
+		// remember state
+		this.state = @{XC_STATE_INITIAL};
 	}
 
 	add_c4() {
 		throw new Error('cannot write a concise quads hash to a triple writer');
 	}
 
-	async end(z_chunk, s_encoding, fk_finished) {
-		if(this.busy) {
-			if(z_chunk) await this.push_async(z_chunk, s_encoding);
-			if(fk_finished) this.once('finish', fk_finished);
-			return new Promise((fk_end) => {
-				this.queue.push({
-					method: () => {
-						super.end();
-					},
-					args: [],
-					resolve: fk_end,
-				});
-			});
-		}
-		else {
-			super.end(z_chunk, s_encoding, fk_finished);
-		}
-	}
+	// async end(z_chunk, s_encoding, fk_finished) {
+	// 	if(this.busy) {
+	// 		if(z_chunk) await this.push_async(z_chunk, s_encoding);
+	// 		if(fk_finished) this.once('finish', fk_finished);
+	// 		return new Promise((fk_end) => {
+	// 			this.queue.push({
+	// 				method: () => {
+	// 					super.end();
+	// 				},
+	// 				args: [],
+	// 				resolve: fk_end,
+	// 			});
+	// 		});
+	// 	}
+	// 	else {
+	// 		super.end(z_chunk, s_encoding, fk_finished);
+	// 	}
+	// }
 
 	@{writer_directive()}
 }
@@ -945,7 +969,9 @@ class SubWriter_Objects extends SubWriter {
 
 	// add object using current [graph], subject, predicate
 	async add(z_objects, xm_mode=0) {
-		await this.serializer.writer.push_async(await this.objects(z_objects, xm_mode));
+		let s_write = await this.objects(z_objects, xm_mode);
+
+		await this.serializer.writer.push_async(s_write);
 	}
 }
 
