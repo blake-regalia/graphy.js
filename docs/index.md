@@ -127,9 +127,7 @@ Outputs:
 
 demo:Blake foaf:name "Blake" ;
    demo:id 1 ;
-   demo:likes demo:Banana .
-
-demo:Banana foaf:name "Banana" ;
+   demo:likes demo:Bananademo:Banana foaf:name "Banana" ;
    demo:id 2 ;
    demo:likes demo:Water, demo:Sunlight, demo:Soil .
 

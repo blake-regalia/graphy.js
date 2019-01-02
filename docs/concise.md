@@ -257,18 +257,19 @@ y_writer.end();
 @prefix dbo: <http://dbpedia.org/ontology/> .
 @prefix demo: <http://ex.org/demo#> .
 @prefix eg: <http://ex.org/owl#> .
-# hey look, a comment!
 
+# hey look, a comment!
 dbr:Banana rdf:type dbo:Plant ;
    rdfs:label "Banana"@en, "Banane"@fr, "Plátano"@es ;
    demo:steps (
       demo:Peel
       demo:Slice
       demo:distribute
-   )# hey look, another comment!
- .
+   ) .
 
-eg:HappyPerson rdf:type owl:Class ;
+# hey look, another comment!
+eg:HappyPerson  ;
+   rdf:type owl:Class ;
    owl:equivalentClass [
       rdf:type owl:Class ;
       owl:intersectionOf (
@@ -283,8 +284,7 @@ eg:HappyPerson rdf:type owl:Class ;
                owl:someValuesFrom eg:Happy
          ]
       )
-   ] .
-
+   ]
 ```
 
 ----

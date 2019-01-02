@@ -56,23 +56,37 @@ class serializer extends writable.serializer.textual.terse {
 	// create comment
 	comment(s_comment, g_config={}, xm_mode=0) {
 		let s_write = '';
-
 		let b_newp = this.new_predicate;
 
-		// debugger;
-		if(xm_mode & @{XM_MODE_SUBJECT}) {
-			if(!b_newp) {
-				s_write += ` ;\n${this.indent.repeat(this.nest_level+1)}`;
-				b_newp = !b_newp;
-			}
-			// else if(this.nest_mask && this.nest_mask >= this.nest_level) {
-			else if(this.nest_mask.notEquals(0) && this.nest_mask.greaterOrEquals(this.nest_level)) {
-				s_write += ` ;\n${this.indent.repeat(this.nest_level+1)}`;
-				// this.nest_mask = 0;
-				this.nest_mask = big_integer.zero;
-			}
-			// this.nest_mask = 0;
+		if(@{XC_STATE_INITIAL} === this.state) {
+			s_write = '\n';
 		}
+		else if(@{XC_STATE_DATA} === this.state) {
+			if(xm_mode & @{XM_MODE_SUBJECT}) {
+				if(!b_newp) {
+					s_write += ` ;\n${this.indent.repeat(this.nest_level+1)}`;
+					b_newp = !b_newp;
+				}
+				// else if(this.nest_mask && this.nest_mask >= this.nest_level) {
+				else if(this.nest_mask.notEquals(0) && this.nest_mask.greaterOrEquals(this.nest_level)) {
+					s_write += ` ;\n${this.indent.repeat(this.nest_level+1)}`;
+					// this.nest_mask = 0;
+					this.nest_mask = big_integer.zero;
+				}
+				// this.nest_mask = 0;
+			}
+			else if(@{XM_MODE_GRAPH} === xm_mode) {
+				s_write += ' .\n\n';
+			}
+		}
+		else if(@{XC_STATE_COMMENT} === this.state) {
+			if(@{XM_MODE_GRAPH} === xm_mode) {
+				s_write += '.\n\n';
+			}
+		}
+
+		// update state
+		this.state = @{XC_STATE_COMMENT};
 
 		for(let s_line of s_comment.split(/\n/g)) {
 			// s_write += `# mode:${xm_mode}, nest:${this.nest_level}, nm:${this.nest_mask}, ns:${this.new_subject}, np:${b_newp}, ${s_line}\n`;
@@ -138,10 +152,22 @@ class serializer extends writable.serializer.textual.terse {
 
 	serialize_object(k_leaf, s_object, xm_mode) {
 		let s_write = '';
-		if(!this.state) {
-			s_write = '\n';
-			this.state = 1;
+
+		// coming from non-data state
+		if(@{XC_STATE_DATA} !== this.state) {
+			if(@{XC_STATE_INITIAL} === this.state) {
+				s_write = '\n';
+			}
+
+			// update state
+			this.state = @{XC_STATE_DATA};
+
+			// simply serialize as is
+			return `${s_write}${k_leaf.parent.term} ${this.serialize_pair(k_leaf.term, s_object)}`;
 		}
+
+		// update state
+		this.state = @{XC_STATE_DATA};
 
 		@- QUADS
 			// same graph

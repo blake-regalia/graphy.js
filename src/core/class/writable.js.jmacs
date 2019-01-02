@@ -9,9 +9,6 @@ const factory_from = factory.from;
 
 const RT_VALID_BLANK_NODE_LABEL = /@{MK_RT_VALID_BLANK_NODE_LABEL()}/;
 
-@$ XC_STATE_INITIAL = 0;
-@$ XC_STATE_DATA = 1;
-
 class Serializer {
 	constructor(dc_writer, g_config) {
 		let k_writer = new dc_writer(this, g_config);
@@ -680,27 +677,27 @@ Object.assign(CTWriter_Quads.prototype, {
 	}
 
 	// add triples to output
-	async add(hct_triples, xm_mode=@{XM_MODE_GRAPH}) {
+	async add(hc3_triples, xm_mode=@{XM_MODE_GRAPH}) {
 		// each entry in triples hash
-		for(let s_key in hct_triples) {
+		for(let sv1_subject in hc3_triples) {
 			// directive
-			if('`' === s_key[0]) {
-				await this.serializer.writer.push_async(this.directive(s_key, hct_triples[s_key], xm_mode));
+			if('`' === sv1_subject[0]) {
+				await this.serializer.writer.push_async(this.directive(sv1_subject, hc3_triples[sv1_subject], xm_mode));
 				continue;
 			}
 
 			// [subject] => pairs
-			let z_pairs = hct_triples[s_key];
+			let z_pairs = hc3_triples[sv1_subject];
 
 			// create pairs writer and then write to it
 			try {
-				await this.subject(s_key).add(z_pairs, xm_mode);
+				await this.subject(sv1_subject).add(z_pairs, xm_mode);
 			}
 			catch(e_write) {
-				throw new Error(`...while writing subject '${s_key}':\n${e_write.message}\n${e_write.stack}`);
+				throw new Error(`...while writing subject '${sv1_subject}':\n${e_write.message}\n${e_write.stack}`);
 			}
 
-			// same graph now
+			// same graph now (different subject)
 			xm_mode |= @{XM_MODE_GRAPH};
 		}
 	}
