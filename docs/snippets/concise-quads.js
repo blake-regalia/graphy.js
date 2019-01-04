@@ -9,6 +9,8 @@ let y_writer = trig_write({
 		owl: 'http://www.w3.org/2002/07/owl#',
 		dbr: 'http://dbpedia.org/resource/',
 		dbo: 'http://dbpedia.org/ontology/',
+		dc: 'http://purl.org/dc/terms/',
+		foaf: 'http://xmlns.com/foaf/0.1/',
 		demo: 'http://ex.org/demo#',
 	},
 });
