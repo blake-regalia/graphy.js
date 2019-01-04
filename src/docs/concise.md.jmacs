@@ -148,18 +148,20 @@ A concise pairs hash describes a plain object whose keys represent the *predicat
 
 ----
 
-## Values 
+## Values
+Definitions for the expected types on the values supplied within concise pairs hashes.
 
 <a name="value_concise-object" />
 
 ### value **ConciseObject**
 A value that must be one of the following types:
+ - `boolean` -- represents an RDF literal with an `xsd:boolean` datatype; calls [`factory.boolean()`](core.data.factory#function_boolean) on `value`.
+ - `number` -- represents an RDF literal with some numeric datatype; calls [`factory.number()`](core.data.factory#function_number) on `value` to determine the datatype IRI.
  - [`#string/c1`](#string_c1) -- represents a single RDF term such as a named node, blank node, or literal.
  - [`#hash/c2`](#hash_c2) -- such that `value.constructor === Object`; represents an anonymous nested blank node, allowing you to continue nesting subtrees in the same object literal.
- - `Array<`[`ConciseObjectItem`](#value_concise-object-item)`>` -- represents a list of objects, each one belonging to the same graph, subject, and predicate.
- - `number` -- represents an RDF literal with some numeric datatype; calls [`factory.number()`](core.data.factory#function_number) on `value` to determine the datatype IRI.
- - [GenericTerm](core.data.factory#class_generic-term) | [@RDFJS/Term](https://rdf.js.org/#term-interface) -- a single RDF term
+ - `Array<`[`ConciseObjectItem`](#value_concise-object-item)`> | Set<`[`ConciseObjectItem`](#value_concise-object-item)`>` -- represents a list of objects, each one belonging to the same graph, subject, and predicate.
  - _overridable_ `Date` -- represents an RDF literal with datatype `xsd:dateTime`; calls [`factory.dateTime()`](core.data.factory#function_date-time) on `value` to handle conversion.
+ - [`GenericTerm`](core.data.factory#class_generic-term)` | `[`@RDFJS/Term`](https://rdf.js.org/#term-interface) -- a single RDF term
 @.{/* - *other* -- providers allow for coercions */}
 
 

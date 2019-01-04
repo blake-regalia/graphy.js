@@ -1,0 +1,35 @@
+@./* global FORMAT */
+@//@
+
+@import '../../../share/channel.jmacs'
+
+@$ QUADS = ('nq' === FORMAT);
+
+const writable = require('@@@{S_GRAPHY_CHANNEL}/core.class.writable');
+
+class serializer extends writable.serializer.textual.verbose {
+	constructor(g_config={}) {
+		super(writable.@{QUADS? 'quads': 'triples'}, g_config);
+	}
+
+	get comment() {
+		return this.hash_comment;
+	}
+
+	newlines(n_newlines=1) {
+		return '\n'.repeat(n_newlines);
+	}
+
+	serialize_object(k_leaf, s_object) {
+		@- QUADS
+			let k_parent = k_leaf.parent;
+			return `${k_parent.term} ${k_leaf.term} ${s_object} ${k_parent.parent.term} .\n`;
+		@:
+			return `${k_leaf.parent.term} ${k_leaf.term} ${s_object} .\n`;
+		@;
+	}
+};
+
+module.exports = function(g_config) {
+	return (new serializer(g_config)).writer;
+};

@@ -363,9 +363,12 @@ And get the output:
 
 demo:Blake foaf:name "Blake" ;
    demo:id 1 ;
-   demo:likes demo:Bananademo:Banana foaf:name "Banana" ;
+   demo:likes demo:Banana .
+
+demo:Banana foaf:name "Banana" ;
    demo:id 2 ;
    demo:likes demo:Water, demo:Sunlight, demo:Soil .
+
 
 ```
 
@@ -722,12 +725,10 @@ An object that describes an event of writable RDF data (including metadata and d
       - *expects* `.value` to be a [concise triple hash](concise#hash_c3)
    - `'c4'` -- write a set of quads to the output.
       - *expects* `.value` to be a [concise quad hash](concise#hash_c4)
-   - `'triple'` -- write a single RDFJS-compatible triple to the output.
-      - *expects* `.value` to be a [Triple](core.data.factory#class_triple)
+
    - `'quad'` -- write a single RDFJS-compatible quad to the output.
       - *expects* `.value` to be a [Quad](core.data.factory#class_quad)
-   - `'base'`-- sets or updates the current base URI used for relative IRI resolution. Will also cause the writer to output a `@base` statement if supported by the underlying RDF format.
-      - *expects* `.value` to be an IRI `string`.
+
    - `'prefixes'` -- updates the current prefix mappings which are used to expand CURIEs found in following concise triple (c3) and concise quad (c4) hashes. Will also cause the writer to output the given prefix mappings if supported by the underlying RDF format.
       - *expects* `.value` to be a [#hash/prefix-mappings](core.data.factory#hash_prefix-mappings)
    - `'comment'` -- if the underlying RDF format supports it, a comment will be written to the output document, otherwise this has no effect.

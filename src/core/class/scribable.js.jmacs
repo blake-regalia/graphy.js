@@ -1,0 +1,988 @@
+@import '../../share/channel.jmacs'
+@import '../../share/iris.jmacs'
+@import '../../share/writer.jmacs'
+@import '../../share/tokens.jmacs'
+
+const stream = require('@{channel('core.iso.stream')}');
+const factory = require('@{channel('core.data.factory')}');
+const factory_from = factory.from;
+
+const RT_VALID_BLANK_NODE_LABEL = /@{MK_RT_VALID_BLANK_NODE_LABEL()}/;
+
+class Serializer {
+	constructor(dc_writer, g_config) {
+		let k_writer = new dc_writer(this, g_config);
+
+		Object.assign(this, {
+			writer: k_writer,
+
+			// map for rewriting blank node labels
+			labels: {},
+
+			// anonymous blank node index
+			blank_node_index: 0,
+
+			// queue
+			queue: [],
+
+			// current state
+			state: @{XC_STATE_INITIAL},
+		});
+	}
+
+	// overrideable no-op
+	close() {}  // eslint-disable-line
+}
+
+
+@// for concise-term strings
+@> intercept_blank_nodes(s_var)
+	@//@
+	// blank node; use label
+	if('_' === @{s_var}[0] && ':' === @{s_var}[1]) return this.c1_blank_node(@{s_var}.slice(2));
+@;
+
+
+class Serializer_Textual extends Serializer {
+	// express a blank node in either terse or verbose syntax
+	c1_blank_node(s_label) {
+		// valid label (and not reserved mapping range)
+		if(RT_VALID_BLANK_NODE_LABEL.test(s_label) && !s_label.startsWith('_g')) {
+			return '_:'+s_label;
+		}
+		// invalid label; use map
+		else {
+			let h_labels = this.labels;
+
+			// already mapped; fetch label
+			if(s_label in h_labels) {
+				return '_:_g'+h_labels[s_label];
+			}
+			// not yet mapped; save mapping and return label
+			else {
+				return '_:_g'+(h_labels[s_label] = this.blank_node_index++);
+			}
+		}
+	}
+}
+
+class Serializer_Textual_Verbose extends Serializer_Textual {
+	// serialize a term verbosely
+	rdfjs_term(k_term) {
+		// support verbose serialization method
+		if(k_term.verbose) return k_term.verbose();
+
+		// convert to graphy type then verbosify
+		return factory_from.rdfjs_term(k_term).verbose();
+	}
+	
+	// serialize a node verbosely
+	c1_node(sct_node) {
+		@{intercept_blank_nodes('sct_node')}
+
+		// construct node and verbosify
+		return factory.c1_node(sct_node, this.writer.prefixes).verbose();
+	}
+
+	// serialize a term verbosely
+	c1_term(sct_term) {
+		@{intercept_blank_nodes('sct_term')}
+
+		// construct term and verbosify
+		return factory.c1(sct_term, this.writer.prefixes).verbose();
+	}
+
+	// // create comment
+	// comment(s_comment) {
+	// 	s_comment.split(/\n/g).forEach((s_line) => {
+	// 		this.write(`\n# ${s_line}\n`);
+	// 	});
+	// }
+}
+
+class Serializer_Textual_Terse extends Serializer_Textual {
+	// serialize prefixes
+	serialize_prefixes() {
+		let h_prefixes = this.writer.prefixes;
+
+		// build prefixes string
+		let s_prefixes = '';
+		for(let s_prefix_id in h_prefixes) {
+			s_prefixes += `@prefix ${s_prefix_id}: <${h_prefixes[s_prefix_id]}> .\n`;
+		}
+
+		// previous state is data; close
+		if(@{XC_STATE_DATA} === this.state) {
+			this.writer.push(' .\n\n');
+		}
+
+		// push to output
+		this.writer.push(s_prefixes);
+
+		// remember state
+		this.state = @{XC_STATE_INITIAL};
+	}
+
+	// serialize a term tersely
+	term(k_term) {
+		// support terse serialization method
+		if(k_term.terse) return k_term.terse(this.writer.prefixes);
+
+		// convert to graphy type then tersify
+		return factory_from.rdfjs_term(k_term).terse(this.writer.prefixes);
+	}
+
+	// serialize a node tersely
+	c1_node(sct_node) {
+		@{intercept_blank_nodes('sct_node')}
+
+		// ref prefix map
+		let h_prefixes = this.writer.prefixes;
+
+		// construct node and tersify
+		return factory.c1_node(sct_node, h_prefixes).terse(h_prefixes);
+	}
+
+	// serialize a term tersely
+	c1_term(sct_term) {
+		@{intercept_blank_nodes('sct_term')}
+
+		// ref prefix map
+		let h_prefixes = this.writer.prefixes;
+
+		// construct term and tersify
+		return factory.c1(sct_term, h_prefixes).terse(h_prefixes);
+	}
+
+	// serialize a collection tersely
+	async nested_collection_item(k_leaf, z_item) {
+		// nested collection
+		if(Array.isArray(z_item)) {
+			return await this.serialize_collection(k_leaf, z_item);
+		}
+		// blank node
+		else if('object' === typeof z_item) {
+			// open blank node block
+			let s_blank_node = this.nest_open();
+
+			// each pair
+			for(let s_key in z_item) {
+				// directive
+				if('`' === s_key[0]) {
+					s_blank_node += this.directive(s_key, z_item[s_key], 0);
+					continue;
+				}
+
+				// new subwriter for objects
+				let ksw_objects = new SubWriter_Objects(this, k_leaf, this.c1_node(s_key));
+
+				// add this hash
+				s_blank_node += await ksw_objects.objects(z_item[s_key], @{XM_MODE_GRAPH | XM_MODE_SUBJECT});
+			}
+
+			// close blank node
+			s_blank_node += this.nest_close();
+
+			// return object string
+			return s_blank_node;
+		}
+		// concise-term string
+		else {
+			return this.c1_term(z_item);
+		}
+	}
+}
+
+
+const R_DIRECTIVE_CONTENTS = /^`\[[^\]]+\](.*)$/;
+
+@> writer_directive()
+	@//@class
+	directive(sct_directive, w_value, xm_mode) {
+		// directive contents
+		let m_directive = R_DIRECTIVE_CONTENTS.exec(sct_directive);
+		if(!m_directive) {
+			throw new Error(`invalid directive string: "${sct_directive}"`);
+		}
+
+		// parse as JSON
+		let g_directive;
+		try {
+			g_directive = JSON.parse(m_directive[1]);
+		}
+		catch(e_parse) {
+			throw new Error(`unable to parse write directive JSON: "${m_directive[1]}"`);
+		}
+
+		// directive type
+		let s_type = g_directive.type;
+
+		// deduce directive type
+		switch(s_type) {
+			// comment
+			case 'comment': {
+				// serializer supports commenting; write comment
+				if(this.serializer.comment) {
+					// serialize comment
+					return this.serializer.comment(w_value+'', g_directive, xm_mode);
+				}
+				break;
+			}
+
+			// newlines
+			case 'newlines': {
+				if(this.serializer.newlines) {
+					return this.serializer.newlines(w_value, xm_mode);
+				}
+				break;
+			}
+
+			// other
+			default: {
+				throw new Error(`invalid directive type: '${s_type}'`);
+			}
+		}
+
+		// nothing
+		return '';
+	}
+@;
+@//@
+
+
+const HM_COERCIONS_DEFAULT = new Map([
+	[Date, dt => factory.dateTime(dt)],
+	[Number, x => factory.number(x)],
+]);
+
+
+const custom_collection_transcoder = (g_transcoder) => {
+	let {
+		first: sc1_first=null,
+		rest: sc1_rest=null,
+		nil: sc1_nil=null,
+	} = g_transcoder;
+
+	if(!sc1_first) sc1_first = '>@{P_IRI_RDF}first';
+	if(!sc1_rest) sc1_rest = '>@{P_IRI_RDF}rest';
+	if(!sc1_nil) sc1_nil = '>@{P_IRI_RDF}nil';
+
+	// transcode array to concise-triple structs
+	let f_transcode = function(a_collection) {
+		// empty collection
+		if(!a_collection.length) {
+			return {
+				[sc1_first]: sc1_nil,
+			};
+		}
+		// non-empty collection
+		else {
+			let z_item = a_collection[0];
+			let w_first = z_item;
+
+			// item is nested collection; transcode
+			if(Array.isArray(z_item)) {
+				w_first = f_transcode(z_item);
+			}
+
+			return {
+				// first item
+				[sc1_first]: w_first,
+
+				// rest of items
+				[sc1_rest]: 1 === a_collection.length
+					? sc1_nil
+					: f_transcode(a_collection.slice(1)),
+			};
+		}
+	};
+
+	return f_transcode;
+};
+
+class CTWriter extends stream.Transform {
+	constructor(k_serializer, g_config={}) {
+		super({
+			writableObjectMode: true,
+			readableObjectMode: false,
+		});
+
+		// coercions
+		let hm_coercions = HM_COERCIONS_DEFAULT;
+		if(g_config.coercions) {
+			hm_coercions = new Map(HM_COERCIONS_DEFAULT);
+			for(let [dc_type, f_transform] of g_config.coercions) {
+				hm_coercions.set(dc_type, f_transform);
+			}
+		}
+
+		// collections
+		if(g_config.collections) {
+			// mk custom transcoder
+			let f_transcode = custom_collection_transcoder(g_config.collections);
+
+			// overwrite impl's ability to serialize collection objects
+			k_serializer.serialize_collection_object = async function(ksw_objects, z_item, xm_mode) {
+				return await ksw_objects.objects(f_transcode(z_item), xm_mode);
+			};
+		}
+
+		Object.assign(this, {
+			isGraphyWritable: true,
+			ready: this.ready || false,
+			busy: false,
+			serializer: k_serializer,
+			prefixes: g_config.prefixes || {},
+			coercions: hm_coercions,
+			writable: null,
+			queue: [],
+		});
+	}
+
+	async dequeue() {
+		// empty queue
+		while(this.queue.length) {
+			let {
+				method: f_method,
+				args: a_args,
+				resolve: fk_queued,
+			} = this.queue.shift();
+
+			// apply method
+			await f_method.apply(this, a_args);
+
+			// resolve
+			fk_queued();
+		}
+
+		// no longer busy
+		this.busy = false;
+	}
+
+	_transform(g_event, s_encoding, fk_push) {
+		// back-pressure not properly handled by upstream Readable/Transform implementation (push called before previous chunk drained)
+		if(this.busy) {
+			return new Promise((fk_transform) => {
+				// add to queue
+				this.queue.push({
+					method: this._transform,
+					args: [g_event, s_encoding, fk_push],
+					resolve: fk_transform,
+				});
+			});
+		}
+
+		// queue anything pushed too soon
+		this.busy = true;
+
+		// sort event
+		return new Promise((fk_transform) => {
+			this._transform_event(g_event, s_encoding, async(e_transform, z_push) => {
+				if(e_transform) {
+					fk_push(e_transform);
+					return;
+				}
+
+				// chunk is pushed from callback
+				if(z_push) await this.push_async(z_push);
+
+				// no longer need to queue
+				this.busy = 0 !== this.queue.length;
+
+				// resolve drain
+				fk_push();
+
+				// resolve transform
+				fk_transform();
+
+				// dequeue
+				this.dequeue();
+			});
+		});
+	}
+
+	_transform_event(g_event, s_encoding, fk_transform) {
+		let {
+			type: s_type,
+			value: z_value,
+		} = g_event;
+
+		let s_method = 'transform_'+s_type;
+		if(s_method in this) {
+			if('function' !== typeof this[s_method]) {
+				fk_transform(new Error(`bad ${s_type}; ${this[s_method]}`));
+				return;
+			}
+
+			this[s_method](z_value, s_encoding, () => {
+				fk_transform();
+			});
+		}
+		else {
+			fk_transform(new Error(`no such event type for writable RDF stream: '${s_type}'`));
+		}
+	}
+
+
+	push_async(...a_args) {
+		return new Promise((fk_push) => {
+			// push chunk; no back-pressure
+			if(this.push(...a_args)) {
+				fk_push();
+			}
+			// pressure detected from push
+			else {
+				fk_push();
+
+				// this.read = () => {
+				// 	fk_push();
+				// });
+			}
+		});
+	}
+
+	async transform_array(a_items, s_encoding, fk_transform) {
+		// push each triple hash synchronously
+		for(let g_event of a_items) {
+			await new Promise((fk_push) => {
+				this._transform_event(g_event, s_encoding, async(e_transform, z_push) => {
+					if(e_transform) {
+						fk_transform(e_transform);
+						return;
+					}
+
+					if(z_push) await this.push_async(z_push);
+
+					fk_push();
+				});
+			});
+		}
+
+		fk_transform();
+	}
+
+	async transform_prefixes(h_prefixes, s_encoding, fk_transform) {
+		await this.add_prefixes(h_prefixes, true);
+
+		fk_transform();
+	}
+
+	async transform_comment(s_comment, s_encoding, fk_transform) {
+		await this.add({
+			[factory.comment()]: s_comment,
+		});
+
+		fk_transform();
+	}
+
+	async transform_newlines(n_newlines, s_encoding, fk_transform) {
+		await this.add({
+			[factory.newlines()]: n_newlines,
+		});
+
+		fk_transform();
+	}
+
+	async transform_concise(hct_quads_or_triples, s_encoding, fk_transform) {
+		await this.add(hct_quads_or_triples);
+
+		fk_transform();
+	}
+
+	async transform_rdfjs_triple(g_triple, s_encoding, fk_transform) {
+		await this.serializer.subject(g_triple.subject)
+			.predicate(g_triple.predicate)
+			.object(g_triple.object);
+
+		fk_transform();
+	}
+
+	async transform_rdfjs_quad(g_quad, s_encoding, fk_transform) {
+		await this.serializer.graph(g_quad.graph)
+			.subject(g_quad.subject)
+			.predicate(g_quad.predicate)
+			.object(g_quad.object);
+
+		fk_transform();
+	}
+
+	async transform_ambivalent_quad(z_quad, s_encoding, fk_transform) {
+		// falsy
+		if(!z_quad) {
+			fk_transform(`invalid quad object supplied to content writer: ${z_quad}`);
+			return;
+		}
+		// graphy quad or RDFJS-compatiable quad
+		else if(z_quad.isGraphyQuad
+			|| (z_quad.predicate && z_quad.predicate.termType
+				&& z_quad.graph && z_quad.graph.termType
+				&& z_quad.subject && z_quad.subject.termType
+				&& z_quad.object && z_quad.object.termType))
+		{
+			await this.transform_rdfjs_quad(z_quad, s_encoding, fk_transform);
+		}
+		// concise-term object
+		else {
+			await this.transform_concise(z_quad, s_encoding, fk_transform);
+		}
+
+		fk_transform();
+	}
+
+	async transform_ambivalent_triple(z_triple, s_encoding, fk_transform) {
+		// falsy
+		if(!z_triple) {
+			fk_transform(`invalid triple object supplied to content writer: ${z_triple}`);
+			return;
+		}
+		// graphy quad or RDFJS-compatiable quad
+		else if(z_triple.isGraphyQuad
+			|| (z_triple.predicate && z_triple.predicate.termType
+				&& z_triple.subject && z_triple.subject.termType
+				&& z_triple.object && z_triple.object.termType))
+		{
+			await this.transform_rdfjs_triple(z_triple, s_encoding, fk_transform);
+		}
+		// concise-term object
+		else {
+			await this.transform_concise(z_triple, s_encoding, fk_transform);
+		}
+
+		fk_transform();
+	}
+
+	_flush(fk_flush) {
+		debugger;
+		// close serializer
+		this.serializer.close();
+
+		fk_flush();
+	}
+	
+	async add_prefixes(h_prefixes, b_overwrite=false) {
+		// build prefixes string
+		let s_prefixes = '';
+
+		// each user-defined prefix
+		for(let s_prefix_id in h_prefixes) {
+			// mapping exists and cannot overwrite
+			if(!b_overwrite && (s_prefix_id in this.prefixes)) {
+				throw new Error(`prefix already defined: '${s_prefix_id}'. to accept overwriting, pass a 'true' boolean argument the overwrite parameter`);
+			}
+
+			// set prefix
+			this.prefixes[s_prefix_id] = h_prefixes[s_prefix_id];
+
+			// append to string
+			s_prefixes += `@prefix ${s_prefix_id}: <${h_prefixes[s_prefix_id]}> .\n`;
+		}
+
+		// previous state is data; close
+		if(@{XC_STATE_DATA} === this.state) {
+			s_prefixes = ' .\n\n'+s_prefixes;
+		}
+
+		// push to output
+		await this.push_async(s_prefixes);
+
+		// remember state
+		this.state = @{XC_STATE_INITIAL};
+	}
+
+	add_c4() {
+		throw new Error('cannot write a concise quads hash to a triple writer');
+	}
+
+	// async end(z_chunk, s_encoding, fk_finished) {
+	// 	if(this.busy) {
+	// 		if(z_chunk) await this.push_async(z_chunk, s_encoding);
+	// 		if(fk_finished) this.once('finish', fk_finished);
+	// 		return new Promise((fk_end) => {
+	// 			this.queue.push({
+	// 				method: () => {
+	// 					super.end();
+	// 				},
+	// 				args: [],
+	// 				resolve: fk_end,
+	// 			});
+	// 		});
+	// 	}
+	// 	else {
+	// 		super.end(z_chunk, s_encoding, fk_finished);
+	// 	}
+	// }
+
+	@{writer_directive()}
+}
+
+Object.assign(CTWriter.prototype, {
+	add_c3: CTWriter.prototype.add,
+	transform_c3: CTWriter.prototype.transform_concise,
+	transform_c4: CTWriter.prototype.transform_concise,
+	transform_triple: CTWriter.prototype.transform_rdfjs_triple,
+	transform_quad: CTWriter.prototype.transform_rdfjs_quad,
+});
+
+class CTWriter_Quads extends CTWriter {
+	// create a graph writer
+	graph(sct_node) {
+		let k_serializer = this.serializer;
+		return new SubWriter_Triples(k_serializer, this, k_serializer.c1_node(sct_node));
+	}
+
+	// add triples to output
+	async add(hct_quads) {
+		// each entry in quads hash
+		for(let sct_graph in hct_quads) {
+			// [graph] => triples
+			let z_triples = hct_quads[sct_graph];
+
+			// create triples writer and then write to it
+			try {
+				await this.graph(sct_graph).add(z_triples, 0);
+			}
+			catch(e_write) {
+				throw new Error(`...while writing graph '${sct_graph}':\n${e_write.message}\n${e_write.stack}`);
+			}
+		}
+	}
+
+	async add_c3(hct_triples) {
+		return await this.add_c4({
+			'*': hct_triples,
+		});
+	}
+
+	async transform_c3(hc3_triples, s_encoding, fk_transform) {
+		await this.add({
+			'*': hc3_triples,
+		});
+
+		fk_transform();
+	}
+
+}
+
+Object.assign(CTWriter_Quads.prototype, {
+	add_c4: CTWriter_Quads.prototype.add,
+});
+
+
+@> subwriter_triples()
+	@//@class
+
+	// create a subject writer
+	subject(sct_node) {
+		let k_serializer = this.serializer;
+		return new SubWriter_Pairs(k_serializer, this, k_serializer.c1_node(sct_node));
+	}
+
+	// add triples to output
+	async add(hc3_triples, xm_mode=@{XM_MODE_GRAPH}) {
+		// each entry in triples hash
+		for(let sv1_subject in hc3_triples) {
+			// directive
+			if('`' === sv1_subject[0]) {
+				await this.serializer.writer.push_async(this.directive(sv1_subject, hc3_triples[sv1_subject], xm_mode));
+				continue;
+			}
+
+			// [subject] => pairs
+			let z_pairs = hc3_triples[sv1_subject];
+
+			// create pairs writer and then write to it
+			try {
+				await this.subject(sv1_subject).add(z_pairs, xm_mode);
+			}
+			catch(e_write) {
+				throw new Error(`...while writing subject '${sv1_subject}':\n${e_write.message}\n${e_write.stack}`);
+			}
+
+			// same graph now (different subject)
+			xm_mode |= @{XM_MODE_GRAPH};
+		}
+	}
+@;
+
+@//@
+
+class CTWriter_Triples extends CTWriter {
+	@{subwriter_triples()}
+
+	async transform_c4(hc4_quads, s_encoding, fk_transform) {
+		let a_unions = [];
+
+		for(let sv1_graph in hc4_quads) {
+			// non-default graph; union from dataset
+			if('*' !== sv1_graph) a_unions.push(sv1_graph);
+			
+			// add all quads from graph
+			await this.add(hc4_quads[sv1_graph]);
+		}
+
+		// a union was performed
+		if(a_unions.length) {
+			// warn about implicit union
+			let s_warning = `an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => factory.c1(sc1).verbose()).join(', ')}`;
+
+			// emit warning, wasn't listened to
+			if(!this.emit('warning', s_warning)) {
+				console.warn(s_warning);
+			}
+		}
+
+		fk_transform();
+	}
+}
+
+
+class SubWriter {
+	constructor(k_serializer, k_parent, p_term) {
+		Object.assign(this, {
+			serializer: k_serializer,
+			parent: k_parent,
+			term: p_term,
+		});
+	}
+
+	@{writer_directive()}
+}
+
+class SubWriter_Triples extends SubWriter {
+	@{subwriter_triples()}
+}
+
+class SubWriter_Pairs extends SubWriter {
+	// create an objects writer
+	predicate(sct_node) {
+		let k_serializer = this.serializer;
+		return new SubWriter_Objects(k_serializer, this, k_serializer.c1_node(sct_node));
+	}
+
+	// add predicate/object pairs using this subject
+	async add(h_pairs, xm_mode=0) {
+		// each item in add pairs
+		for(let s_key in h_pairs) {
+			// directive
+			if('`' === s_key[0]) {
+				await this.serializer.writer.push_async(this.directive(s_key, h_pairs[s_key], xm_mode));
+				continue;
+			}
+
+			// [predicate] => objects
+			let w_objects = h_pairs[s_key];
+
+			// create objects writer and then write to it
+			try {
+				await this.predicate(s_key).add(w_objects, xm_mode);
+			}
+			catch(e_write) {
+				throw new Error(`...while writing predicate '${s_key}':\n${e_write.message}\n${e_write.stack}`);
+			}
+
+			// same subject now
+			xm_mode |= @{XM_MODE_SUBJECT};
+		}
+	}
+}
+
+class SubWriter_Objects extends SubWriter {
+	serialize(s_object, xm_mode=0) {
+		return this.serializer.serialize_object(this, s_object, xm_mode);
+	}
+
+	// transcode array to concise-term structs
+	transcode_collection(a_collection) {
+		// empty collection
+		if(!a_collection.length) {
+			return {
+				'>@{P_IRI_RDF}first': '>@{P_IRI_RDF}nil',
+			};
+		}
+		// non-empty collection
+		else {
+			let z_item = a_collection[0];
+			let w_first = z_item;
+
+			// item is nested collection; transcode
+			if(Array.isArray(z_item)) {
+				w_first = this.transcode_collection(z_item);
+			}
+
+			return {
+				// first item
+				'>@{P_IRI_RDF}first': w_first,
+
+				// rest of items
+				'>@{P_IRI_RDF}rest': 1 === a_collection.length
+					? '>@{P_IRI_RDF}nil'
+					: this.transcode_collection(a_collection.slice(1)),
+			};
+		}
+	}
+
+	// for nested blank node objects
+	async pair(p_predicate, z_objects, xm_mode, n_nest_level) {
+		// serialize object
+		let p_object = await this.objects(z_objects, xm_mode, n_nest_level+1);
+
+		// make pair
+		return this.serializer.serialize_pair(p_predicate, p_object, xm_mode);
+	}
+
+	// write objects
+	async objects(z_objects, xm_mode=0, n_nest_level=1) {
+		let k_serializer = this.serializer;
+		// let k_writer = k_serializer.writer;
+		let hm_coercions = k_serializer.writer.coercions;
+
+		// deduce object value type
+		switch(typeof z_objects) {
+			// concise-term string
+			case 'string': return this.serialize(k_serializer.c1_term(z_objects), xm_mode);
+
+			// numeric type
+			case 'number': return this.serialize(k_serializer.term(factory.number(z_objects)), xm_mode);
+
+			// boolean type
+			case 'boolean': return this.serialize(k_serializer.term(factory.boolean(z_objects)), xm_mode);
+
+			// object
+			case 'object': {
+				// null; reject
+				if(null === z_objects) throw new Error('Refusing to serialize null value');
+
+				// array, list of objects
+				if(Array.isArray(z_objects)) {
+					let s_write = '';
+
+					// each object
+					for(let z_item of z_objects) {
+						// item is an array; write RDF collection
+						if(Array.isArray(z_item)) {
+							// serializer can serialize collection
+							if(k_serializer.serialize_collection_object) {
+								s_write += await k_serializer.serialize_collection_object(this, z_item, xm_mode);
+							}
+							// transcode collection
+							else {
+								s_write += await this.objects(this.transcode_collection(z_item), xm_mode);
+							}
+						}
+						// non-array
+						else {
+							// recurse on item
+							s_write += await this.objects(z_item, xm_mode);
+
+							// now they share same graph, subject & predicate
+							xm_mode |= @{XM_MODE_GRAPH | XM_MODE_SUBJECT | XM_MODE_PREDICATE};
+						}
+					}
+
+					return s_write;
+				}
+				// set
+				else if(z_objects instanceof Set) {
+					let s_write = '';
+
+					// each object
+					for(let z_item of z_objects) {
+						// recurse on item
+						s_write += await this.objects(z_item, xm_mode);
+
+						// now they share same graph, subject & predicate
+						xm_mode |= @{XM_MODE_GRAPH | XM_MODE_SUBJECT | XM_MODE_PREDICATE};
+					}
+
+					return s_write;
+				}
+				// plain object, blank node
+				else if(Object === z_objects.constructor) {
+					// serializer supports blank node nesting
+					if(k_serializer.blank_node_nesting) {
+						// save outer mask
+						let xm_outer = xm_mode;
+
+						// open blank node block
+						let s_blank_node = k_serializer.nest_open();
+
+						// all triples under blank node share graph & subject
+						xm_mode = @{XM_MODE_GRAPH | XM_MODE_SUBJECT};
+
+						// each pair
+						for(let s_key in z_objects) {
+							// directive
+							if('`' === s_key[0]) {
+								s_blank_node += this.directive(s_key, z_objects[s_key], xm_mode);
+								continue;
+							}
+
+							// new subwriter for objects
+							let ksw_objects = new SubWriter_Objects(k_serializer, this, k_serializer.c1_node(s_key));
+
+							// add this hash
+							s_blank_node += await ksw_objects.objects(z_objects[s_key], xm_mode);
+						}
+
+						// close blank node
+						s_blank_node += k_serializer.nest_close();
+
+						// serialize current predicate to blank node
+						return this.serialize(s_blank_node, xm_outer);
+					}
+					// must create name for anonymous blank node
+					else {
+						// make blank node label
+						let sct_blank_node = '_g'+(k_serializer.blank_node_index++);
+
+						// create node
+						let k_blank_node = this.parent.parent.subject(sct_blank_node);
+
+						// add pairs normally (same graph tho!)
+						await k_blank_node.add(z_objects, xm_mode & @{XM_MODE_GRAPH});
+
+						// then continue with outer triple where blank node is object
+						return this.serialize(k_blank_node.term, xm_mode);
+					}
+				}
+				// coercable instance
+				else if(hm_coercions.has(z_objects.constructor)) {
+					// convert javascript object to term object
+					let k_term = hm_coercions.get(z_objects.constructor).apply(k_serializer, [z_objects, k_serializer]);
+
+					return this.serialize(k_serializer.term(k_term), xm_mode);
+				}
+				// RDFJS term
+				else if(z_objects.termType) {
+					return this.serialize(k_serializer.term(z_objects), xm_mode);
+				}
+			}
+
+			// fallthrough: other
+			default: {
+				throw new Error(`Bad type for RDF object: [${typeof z_object}] ${z_objects.constructor}`);
+			}
+		}
+	}
+
+	// add object using current [graph], subject, predicate
+	async add(z_objects, xm_mode=0) {
+		let s_write = await this.objects(z_objects, xm_mode);
+
+		await this.serializer.writer.push_async(s_write);
+	}
+}
+
+
+module.exports = {
+	comment: factory.comment,
+	quads: CTWriter_Quads,
+	triples: CTWriter_Triples,
+
+	serializer: {
+		textual: {
+			verbose: Serializer_Textual_Verbose,
+			terse: Serializer_Textual_Terse,
+		},
+	},
+};

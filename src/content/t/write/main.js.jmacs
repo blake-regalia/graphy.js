@@ -1,270 +1,422 @@
 @./* global FORMAT */
+@//
 
-@//@
+@import '../../text.read.jmacs'
 @import '../../../share/channel.jmacs'
+@import '../../../share/iris.jmacs'
 @import '../../../share/writer.jmacs'
 
+@$ B_TTL = 'ttl' === FORMAT;
+@$ B_TRIG = 'trig' === FORMAT;
+@$ B_QUADS = B_TRIG;
+
+@$ S_CONTENT_TYPE = B_TTL? 'text/turtle': 'application/trig';
+
+const factory = require('@{channel('core.data.factory')}');
 const writable = require('@{channel('core.class.writable')}');
-const big_integer = require('big-integer');
 
-@$ QUADS = ('trig' === FORMAT);
+const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
+const N_MAX_STRING_BUFFER = 1 << 12;
 
-class serializer extends writable.serializer.textual.terse {
-	constructor(g_config={}) {
-		super(writable.@{QUADS? 'quads': 'triples'}, g_config);
-		
-		let s_indent = g_config.indent || '\t';
+
+class Writer extends writable {
+	constructor(gc_writer={}) {
+		super(gc_writer);
+
+		let {
+			prefixes: h_prefixes={},
+			indent: s_indent='\t',
+			tokens: gc_tokens=null,
+			collections: gc_collections=null,
+		} = gc_writer;
+
+		@- B_QUADS
+			let s_graph_token = '';
+			if(gc_tokens) {
+				if(gc_tokens.graph) {
+					let z_token = gc_tokens.graph;
+
+					// boolean true
+					if(true === z_token) {
+						s_graph_token = 'GRAPH ';
+					}
+					// invalid type
+					else if('string' !== typeof z_token) {
+						throw new TypeError(`Invalid argument type given for graph token: ${z_token}`);
+					}
+					// invalid token string
+					else if(!/^graph$/i.test(z_token)) {
+						throw new Error(`Graph token must equal case-insensitive "GRAPH"; found: "${z_token}"`);
+					}
+					// valid graph token; append space
+					else {
+						s_graph_token = z_token+' ';
+					}
+				}
+			}
+		@;
 
 		Object.assign(this, {
-			new_graph: true,
-			new_subject: true,
-			new_predicate: true,
-
-			blank_node_nesting: true,
-			nest_mask: big_integer.zero,
-			nest_level: 0,
-
-			// open a nested (anonymous) blank node
-			nest_open(s_char='[') {
-				return `${s_char}\n@{QUADS? '${s_indent}':''}`+s_indent.repeat(++this.nest_level+1);
-			},
-
-			// close a nest
-			nest_close(s_char=']') {
-				// reset nest tracker
-				// this.nest_mask = this.nest_mask & ~(1 << this.nest_level-1);
-				this.nest_mask = this.nest_mask.and(
-					big_integer.one
-						.shiftLeft(this.nest_level-1)
-						.not());
-
-				// this.nest_level -= 1;
-				return `${this.trailing? ' ;': ''}\n@{QUADS? '${s_indent}':''}`+s_indent.repeat(this.nest_level--)+s_char;
-			},
-
-			// indent spacing
 			indent: s_indent,
-
-			// trailing semi-colons
-			trailing: g_config.trailing || false,
+			@- B_QUADS
+				graph_token: s_graph_token,
+			@;
 		});
 
-		// open prefixes
-		this.serialize_prefixes();
+		// custom collection keys
+		if(gc_collections) {
+			// serialize collection object
+			this.collection_object = function(a_collection, n_nest_level) {
+				// transcode collection object
+				let hc2_transcoded = this.transcode_collection(a_collection);
+
+				// serialize object
+				return this.objects(hc2_transcoded, n_nest_level);
+			};
+		}
+
+		// serialize initial prefix mappings
+		let s_prefixes = '';
+		try {
+			// each user-defined prefix
+			for(let s_prefix_id in h_prefixes) {
+				// invalid prefix id
+				if(!RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
+					throw new Error(`Invlalid prefix id for @{S_CONTENT_TYPE} RDF serialization format: '${s_prefix_id}'`);
+				}
+				
+				// append to string
+				s_prefixes += `@prefix ${s_prefix_id}: ${factory.namedNode(h_prefixes[s_prefix_id]).verbose()} .\n`;
+			}
+		}
+		// serialization error
+		catch(e_serialize) {
+			setTimeout(() => {
+				this.emit('error', e_serialize);
+			}, 0);
+		}
+
+		// push prefixes
+		if(s_prefixes) this.push(s_prefixes);
 	}
 
-	// create comment
-	comment(s_comment, g_config={}, xm_mode=0) {
-		let s_write = '';
-		let b_newp = this.new_predicate;
-
-		if(@{XC_STATE_INITIAL} === this.state) {
-			s_write = '\n';
-		}
-		else if(@{XC_STATE_DATA} === this.state) {
-			if(xm_mode & @{XM_MODE_SUBJECT}) {
-				if(!b_newp) {
-					s_write += ` ;\n${this.indent.repeat(this.nest_level+1)}`;
-					b_newp = !b_newp;
-				}
-				// else if(this.nest_mask && this.nest_mask >= this.nest_level) {
-				else if(this.nest_mask.notEquals(0) && this.nest_mask.greaterOrEquals(this.nest_level)) {
-					s_write += ` ;\n${this.indent.repeat(this.nest_level+1)}`;
-					// this.nest_mask = 0;
-					this.nest_mask = big_integer.zero;
-				}
-				// this.nest_mask = 0;
-			}
-			else if(@{XM_MODE_GRAPH} === xm_mode) {
-				s_write += ' .\n\n';
-			}
-		}
-		else if(@{XC_STATE_COMMENT} === this.state) {
-			if(@{XM_MODE_GRAPH} === xm_mode) {
-				s_write += '.\n\n';
-			}
-		}
+	// serialize prefixes
+	serialize_prefixes(h_prefixes) {
+		// build prefixes string
+		let s_prefixes = (@{XC_STATE_DATA} === this.state)? '\n\n': '';
 
 		// update state
-		this.state = @{XC_STATE_COMMENT};
+		this.state = @{XC_STATE_INITIAL};
 
-		for(let s_line of s_comment.split(/\n/g)) {
-			// s_write += `# mode:${xm_mode}, nest:${this.nest_level}, nm:${this.nest_mask}, ns:${this.new_subject}, np:${b_newp}, ${s_line}\n`;
-			s_write += `# ${s_line}\n`;
-		}
-
-		// return to correct column
-		if(this.nest_level) {
-			s_write += this.indent.repeat(this.nest_level+1);
-		}
-		else if(xm_mode & @{XM_MODE_SUBJECT}) {
-			s_write += this.indent;
-		}
-
-		this.new_predicate = b_newp;
-		return s_write;
-	}
-
-	newlines(n_newlines=1, xm_mode=0) {
-		return '\n'.repeat(n_newlines);
-	}
-
-	serialize_pair(s_predicate, s_object, xm_mode=0) {
-		// same predicate
-		if(xm_mode & @{XM_MODE_PREDICATE}) {
-			return `, ${s_object}`;
-		}
-		// new/change of predicate
-		else {
-			// nested
-			if(this.nest_level) {
-				let s_open = '';
-// debugger;
-				// reuse ?
-				// if((this.nest_mask >>> (this.nest_level-1)) & 1) {
-				if((this.nest_mask.shiftRight(this.nest_level-1).and(1)).notEquals(0)) {
-					s_open = ` ;\n${this.indent}${this.indent.repeat(this.nest_level)}`;
-				}
-
-				// s_open += `${this.indent}${this.indent.repeat(this.nest_level)}`;
-
-				// this.nest_mask = this.nest_mask | (1 << (this.nest_level-1));
-				this.nest_mask = this.nest_mask.or(big_integer.one.shiftLeft(this.nest_level-1));
-
-				return `${s_open}${s_predicate} ${s_object}`;
-			}
-			// top scope
-			else {
-				let s_open = '';
-
-				if(!this.new_predicate) {
-					s_open += ` ;\n${this.indent}`;
-				}
-
-				this.new_predicate = false;
-				// this.nest_mask = 0;
-				this.nest_mask = big_integer.zero;
-
-				return `${s_open}${s_predicate} ${s_object}`;
-			}
-		}
-	}
-
-	serialize_object(k_leaf, s_object, xm_mode) {
-		let s_write = '';
-
-		// coming from non-data state
-		if(@{XC_STATE_DATA} !== this.state) {
-			if(@{XC_STATE_INITIAL} === this.state) {
-				s_write = '\n';
+		// each user-defined prefix
+		for(let s_prefix_id in h_prefixes) {
+			// invalid prefix id
+			if(!RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
+				throw new Error(`Invlalid prefix id for @{S_CONTENT_TYPE} RDF serialization format: '${s_prefix_id}'`);
 			}
 
-			// update state
-			this.state = @{XC_STATE_DATA};
+			// append to string
+			s_prefixes += `@prefix ${s_prefix_id}: ${factory.namedNode(h_prefixes[s_prefix_id]).verbose()} .\n`;
 
-			// simply serialize as is
-			return `${s_write}${k_leaf.parent.term} ${this.serialize_pair(k_leaf.term, s_object)}`;
+			// set prefix
+			this.prefixes[s_prefix_id] = h_prefixes[s_prefix_id];
 		}
+
+		// return prefix string
+		return s_prefixes;
+	}
+
+@> serialize_cn(n_n)
+	@.{
+		let b_c4 = false;
+		let s_name = 'triples';
+		if(4 === n_n) {
+			s_name = 'quads';
+			b_c4 = true;
+		}
+	}
+	@//@object-literal
+	// serialize c@{n_n} hash
+	serialize_c@{n_n}(hc@{n_n}_@{s_name}) {
+		@//@
+		let {
+			prefixes: h_prefixes,
+			indent: s_indent,
+		} = this;
+
+		// break line if non-data state
+		let s_write = @{XC_STATE_DATA} !== this.state? '\n': '';
 
 		// update state
 		this.state = @{XC_STATE_DATA};
 
-		@- QUADS
-			// same graph
-			if(xm_mode & @{XM_MODE_GRAPH}) {
+		@- b_c4
+			// graph token
+			let s_graph_token = this.graph_token;
+			
+			// each graph
+			for(let sc1_graph in hc4_quads) {
+				// directive
+				if('`' === sc1_graph[0]) {
+					s_write += this.directive(sc1_graph, hc4_quads[sc1_graph]);
+					continue;
+				}
+
+				// serialize open graph
+				let st_graph = factory.c1(sc1_graph, h_prefixes).terse(h_prefixes);
+				s_write += s_graph_token+(st_graph? st_graph+' ': '')+'{\n';
+
+				// update state
+				this.state = @{XC_STATE_DATA};
+
+				// ref triples
+				let hc3_triples = hc4_quads[sc1_graph];
 		@;
 
-			// same subject
-			if(xm_mode & @{XM_MODE_SUBJECT}) {
-				// same predicate
-				if(xm_mode & @{XM_MODE_PREDICATE}) {
-					return `, ${s_object}`;
+			// triple delimiter
+			let s_delim_triples = '';
+
+			// each subject
+			for(let sc1_subject in hc3_triples) {
+				// directive
+				if('`' === sc1_subject[0]) {
+					s_write += s_delim_triples+@{b_c4? 's_indent+': ''}this.directive(sc1_subject, hc3_triples[sc1_subject]);
+
+					// do not break next line
+					s_delim_triples = '';
+					continue;
 				}
-				// new/change of predicate
-				else {
-					return this.serialize_pair(k_leaf.term, s_object);
-				}
-			}
-			// change of subject
-			else {
-				this.new_predicate = true;
-				if(!this.new_subject) {
-					if(this.trailing) {
-						s_write += ' ;\n'+this.indent;
+
+				// serialize subject
+				s_write += s_delim_triples+@{b_c4? 's_indent+': ''}factory.c1(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
+
+				// pair indent & terminator
+				let s_indent_pairs = '';
+				let s_term_pairs = '';
+
+				// ref pairs
+				let hc2_pairs = hc3_triples[sc1_subject];
+
+				// each predicate
+				for(let sc1_predicate in hc2_pairs) {
+					// directive
+					if('`' === sc1_predicate[0]) {
+						// break line
+						s_write += (s_indent_pairs? s_term_pairs: '\n')+s_indent@{b_c4? '+s_indent': ''};
+
+						// serialize directive
+						s_write += this.directive(sc1_predicate, hc2_pairs[sc1_predicate]);
+
+						// pair already terminated
+						s_term_pairs = '';
+
+						// indent next pair
+						s_indent_pairs = s_indent@{b_c4? '+s_indent': ''};
+						continue;
 					}
-					s_write += ' .\n\n';
+
+					// ref objects
+					let z_objects = hc2_pairs[sc1_predicate];
+
+					// serialize predicate and object(s)
+					s_write += s_term_pairs + s_indent_pairs + factory.c1(sc1_predicate, h_prefixes).terse(h_prefixes)
+						+ ' ' + this.objects(z_objects);
+
+					// update state
+					this.state = @{XC_STATE_DATA};
+
+					// // string buffer became too large
+					// if(s_write.length >= N_MAX_STRING_BUFFER) {
+					// 	debugger;
+					// }
+
+					// terminate next pair
+					s_term_pairs = ' ;\n';
+
+					// indent next pair
+					s_indent_pairs = s_indent@{b_c4? '+s_indent': ''};
 				}
 
-				// write subject
-				s_write += `@{QUADS? '${this.indent}':''}${k_leaf.parent.term} `;
+				// delimit triple(s)
+				s_delim_triples = '\n';
 
-				// write predicate and object
-				s_write += this.serialize_pair(k_leaf.term, s_object);
-
-				this.new_subject = false;
-
-				return s_write;
+				// close triple
+				s_write += `${s_term_pairs? ' ': s_indent_pairs}.\n@{b_c4? '': '\\n'}`;
 			}
 
-		@- QUADS
-			}
-			// new/change of graph
-			else {
-				let k_parent = k_leaf.parent;
-				this.new_predicate = true;
-				let s_new_graph = `${k_parent.parent.term}\n{\n\t${k_parent.term}\n`;
+		@- b_c4
+				// close graph
+				s_write += '}\n\n';
 
-				// change graph
-				if(this.count) {
-					s_write += `\n}\n\n${s_new_graph}`;
-				}
-				// new graph
-				else {
-					s_write += s_new_graph;
-				}
-
-				// add rest
-				s_write += this.serialize_pair(k_leaf.term, s_object)
-
-				this.new_graph = false;
-				this.new_subject = true;
-
-				return s_write;
 			}
 		@;
-	}
 
-	async serialize_collection(k_leaf, a_collection) {
-		let s_indent = this.indent;
-		let n_indent = ++this.nest_level;
-		return `(${
-			(await Promise.all(a_collection
-				.map(async s => `\n@{QUADS? '${s_indent}':''}${
-					s_indent.repeat(n_indent+1)
-				}${
-					await this.nested_collection_item(k_leaf, s)
-				}`))).join('')
-		}\n@{QUADS? '${s_indent}':''}${s_indent.repeat(--this.nest_level+1)})`;
+		return s_write;
 	}
+@;
 
-	async serialize_collection_object(k_leaf, a_collection, xm_mode) {
-		let s_object = await this.serialize_collection(k_leaf, a_collection);
-		return this.serialize_object(k_leaf, s_object, xm_mode);
-	}
+	@{serialize_cn(3)}
 
-	close() {
-		// close previous statement
-		if(!this.new_subject || !this.new_graph) {
-			this.writer.push((this.trailing? ' ;\n'+this.indent: '')+' .\n');
+	@- B_QUADS
+		@{serialize_cn(4)}
+	@;
+
+	@//@object-literal
+	// write objects
+	objects(z_objects, n_nest_level=1) {
+		let {
+			prefixes: h_prefixes,
+			indent: s_indent,
+			coercions: hm_coercions,
+		} = this;
+
+		// deduce object value type
+		switch(typeof z_objects) {
+			// concise-term string
+			case 'string': return factory.c1(z_objects, h_prefixes).terse(h_prefixes);
+
+			// numeric type
+			case 'number': return factory.number(z_objects).terse(h_prefixes);
+
+			// boolean type
+			case 'boolean': return factory.boolean(z_objects).terse(h_prefixes);
+
+			// object
+			case 'object': {
+				// null; reject
+				if(null === z_objects) throw new Error('Refusing to serialize null value given as an object of quad');
+
+				// array, list of objects
+				if(Array.isArray(z_objects) || z_objects instanceof Set) {
+					let s_write = '';
+
+					// object terminator
+					let s_term_object = '';
+
+					// each object
+					for(let z_item of z_objects) {
+						// item is an array; write RDF collection
+						if(Array.isArray(z_item)) {
+							s_write += s_term_object + this.collection_object(z_item, n_nest_level);
+						}
+						// non-array
+						else {
+							// recurse on item
+							s_write += s_term_object + this.objects(z_item, n_nest_level);
+						}
+
+						// terminate next object
+						s_term_object = ', ';
+					}
+
+					return s_write;
+				}
+				// plain object, blank node
+				else if(Object === z_objects.constructor) {
+					// open blank node block
+					let s_write = '[';
+
+					// whether the block is empty
+					let b_empty = true;
+
+					// each pair
+					for(let sc1_predicate in z_objects) {
+						// block is not empty
+						b_empty = false;
+
+						// terminate previous pair
+						s_write += '\n'+s_indent.repeat(@{B_QUADS? 2: 1}+n_nest_level);
+
+						// directive; serialize it
+						if('`' === sc1_predicate[0]) {
+							s_write += this.directive(sc1_predicate, z_objects[sc1_predicate]);
+							continue;
+						}
+
+						// write predicate and object(s)
+						s_write += factory.c1(sc1_predicate, h_prefixes).terse(h_prefixes) + ' '
+							+ this.objects(z_objects[sc1_predicate], n_nest_level+1) +' ;';
+					}
+
+					// close blank node block
+					s_write += (b_empty? '': '\n'+s_indent.repeat(@{B_QUADS? '1+': ''}n_nest_level))+']';
+
+					// serialize current predicate to blank node
+					return s_write;
+				}
+				// coercable instance
+				else if(hm_coercions.has(z_objects.constructor)) {
+					// convert javascript object to term object
+					let kt_converted = hm_coercions.get(z_objects.constructor).apply(this, [z_objects, n_nest_level]);
+
+					// serialize
+					return kt_converted.terse(h_prefixes);
+				}
+				// graphy term
+				else if(z_objects.isGraphyTerm) {
+					return z_objects.terse(h_prefixes);
+				}
+				// RDFJS term
+				else if(z_objects.termType) {
+					return factory.from.term(z_objects).terse(h_prefixes);
+				}
+			}
+
+			// fallthrough: other
+			default: {
+				throw new Error(`Bad type for RDF object: [${typeof z_objects}] ${z_objects.constructor}`);
+			}
 		}
-		@- QUADS
-			if(!this.new_graph) {
-				this.writer.push('}\n');
-			}
-		@;
 	}
-};
 
-module.exports = function(g_config) {
-	return (new serializer(g_config)).writer;
+	// serialize collection object
+	collection_object(a_collection, n_nest_level) {
+		let s_indent = this.indent;
+
+		// open collection block
+		let s_write = '(';
+
+		// each item
+		for(let z_item of a_collection) {
+			s_write += '\n'+s_indent.repeat(@{B_QUADS? 2: 1}+n_nest_level)+this.objects(z_item, n_nest_level+1);
+		}
+
+		// close collection block
+		s_write += '\n'+s_indent.repeat(@{B_QUADS? '1+': ''}n_nest_level)+')';
+
+		return s_write;
+	}
+
+	// rdfjs quad
+	serialize_quad(g_quad) {
+		let h_prefixes = this.prefixes;
+		let kq_quad = factory.from.quad(g_quad);
+
+		@- B_QUADS
+			let st_graph = kq_quad.graph.terse(h_prefixes);
+		@;
+
+		// serialize quad
+		let s_write = (@{XC_STATE_DATA} !== this.state? '\n': '')
+			@- B_QUADS
+				+this.graph_token+(st_graph? st_graph+' ': '')+'{\n\t'
+			@;
+			+kq_quad.subject.terse(h_prefixes)+' '
+			+kq_quad.predicate.terse(h_prefixes)+' '
+			+kq_quad.object.terse(h_prefixes)+' .\n@{B_QUADS? '\'': '\\n\';'}
+			@- B_QUADS
+				+'}\n\n';
+			@;
+			;
+
+		// update state
+		this.state = @{XC_STATE_DATA};
+
+		return s_write;
+	}
+
+}
+
+module.exports = function(gc_writer) {
+	return new Writer(gc_writer);
 };

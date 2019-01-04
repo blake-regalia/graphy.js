@@ -16,7 +16,7 @@ const $_KIDS = Symbol('has-descendents');
 const $_THIN = Symbol('has-thin-keys');
 
 const KT_DEFAULT_GRAPH = factory.defaultGraph();
-
+const F_SORT_LINE = (g_a, g_b) => g_a.line < g_b.line? -1: 1;
 
 class Matcher {
 	constructor(k_set) {
@@ -279,12 +279,12 @@ const permutations = function *(a_list) {
 }
 
 class Canonicalizer_ct {
-	constructor(k_set) {
+	constructor(k_tree) {
 		Object.assign(this, {
-			set: k_set,
+			tree: k_tree,
 			blanks: {},
 			issuer: new Issuer('_r'),
-			quads: [...k_set.ct_quads()],
+			quads: [...k_tree.ct_quads()],
 		});
 	}
 
@@ -300,7 +300,7 @@ class Canonicalizer_ct {
 
 		// each quad
 		for(let a_quad of a_quads) {
-			let [sct_graph, sct_subject, , sct_object] = a_quad;
+			let [sc1_graph, sc1_subject, , sc1_object] = a_quad;
 
 			@> normalize_check(s_var)
 				if('_' === @{s_var}[0]) {
@@ -314,7 +314,7 @@ class Canonicalizer_ct {
 				}
 			@;
 			@*{
-				for(let s_var of A_TERM_ROLES_BLANK_NODES.map(s => `sct_${s}`)) {
+				for(let s_var of A_TERM_ROLES_BLANK_NODES.map(s => `sc1_${s}`)) {
 					yield normalize_check(s_var);
 				}
 			}
@@ -327,14 +327,14 @@ class Canonicalizer_ct {
 
 			h_hashes = {};
 
-			for(let sct_blank in h_non_normal) {
-				let p_blank = this.hash_first_degree_quads(sct_blank);
+			for(let sc1_blank in h_non_normal) {
+				let p_blank = this.hash_first_degree_quads(sc1_blank);
 
 				if(p_blank in h_hashes) {
-					h_hashes[p_blank].push(sct_blank);
+					h_hashes[p_blank].push(sc1_blank);
 				}
 				else {
-					h_hashes[p_blank] = [sct_blank];
+					h_hashes[p_blank] = [sc1_blank];
 				}
 			}
 
@@ -342,10 +342,10 @@ class Canonicalizer_ct {
 				let a_blanks = h_hashes[p_blank];
 				if(a_blanks.length > 1) continue;
 
-				let sct_blank_0 = a_blanks[0];
-				k_issuer.issue(sct_blank_0);
+				let sc1_blank_0 = a_blanks[0];
+				k_issuer.issue(sc1_blank_0);
 
-				delete h_non_normal[sct_blank_0];
+				delete h_non_normal[sc1_blank_0];
 
 				delete h_hashes[p_blank];
 
@@ -355,19 +355,19 @@ class Canonicalizer_ct {
 
 		for(let p_blank of Object.keys(h_hashes).sort()) {
 			let a_paths = [];
-			for(let sct_blank of h_hashes[p_blank]) {
-				if(k_issuer.has(sct_blank)) continue;
+			for(let sc1_blank of h_hashes[p_blank]) {
+				if(k_issuer.has(sc1_blank)) continue;
 
 				let k_issuer_tmp = new Issuer('_g');
-				k_issuer_tmp.issue(sct_blank);
+				k_issuer_tmp.issue(sc1_blank);
 				
 				a_paths.push(
-					this.hash_n_degree_quads(sct_blank, k_issuer_tmp));
+					this.hash_n_degree_quads(sc1_blank, k_issuer_tmp));
 			}
 
 			for(let g_hash_result of a_paths.sort(F_SORT_CANONICALIZER_HASH)) {
-				for(let sct_existing in g_hash_result.issuer.existing) {
-					k_issuer.issue(sct_existing);
+				for(let sc1_existing in g_hash_result.issuer.existing) {
+					k_issuer.issue(sc1_existing);
 				}
 			}
 		}
@@ -375,7 +375,7 @@ class Canonicalizer_ct {
 		let a_normalized = [];
 		let s_issuer_prefix = k_issuer.prefix;
 		for(let a_quad of a_quads) {
-			let [sct_graph, sct_subject, sct_predicate, sct_object] = a_quad;
+			let [sc1_graph, sc1_subject, sc1_predicate, sc1_object] = a_quad;
 
 			@> normalize_update(s_var)
 				if('_' === @{s_var}[0] && !@{s_var}.startsWith(s_issuer_prefix)) {
@@ -384,37 +384,63 @@ class Canonicalizer_ct {
 			@;
 
 			@*{
-				for(let s_var of A_TERM_ROLES_BLANK_NODES.map(s => `sct_${s}`)) {
+				for(let s_var of A_TERM_ROLES_BLANK_NODES.map(s => `sc1_${s}`)) {
 					yield normalize_update(s_var);
 				}
 			}
 
-			a_normalized.push([
-				sct_graph,
-				sct_subject,
-				sct_predicate,
-				sct_object,
-			].join('\0\t')+'\0\n');
+			let [
+				kt_subject,
+				kt_predicate,
+				kt_object,
+				kt_graph,
+			] = [
+				factory.c1(sc1_subject),
+				factory.c1(sc1_predicate),
+				factory.c1(sc1_object),
+				factory.c1(sc1_graph),
+			];
+			
+			a_normalized.push({
+				line: [
+					sc1_graph,
+					sc1_subject,
+					sc1_predicate,
+					sc1_object,
+				].join('\0\t')+'\0\n',
+				quad: factory.quad(kt_subject, kt_predicate, kt_object, kt_graph),
+			});
 		}
 
-		return a_normalized.sort().join('');
+		// sort quads
+		a_normalized.sort(F_SORT_LINE);
+
+		// create dataset reflecting quad order
+		let k_tree_normalized = new DatasetTree();
+		k_tree_normalized.addQuads(a_normalized.map(g => g.quad));
+
+		// return strut
+		return {
+			string: a_normalized.map(g => g.line).join(''),
+			tree: k_tree_normalized,
+		};
 	}
 
-	hash_first_degree_quads(sct_blank) {
+	hash_first_degree_quads(sc1_blank) {
 		let {
 			blanks: h_blanks,
 			quads: a_quads,
 		} = this;
 
-		let g_blank = h_blanks[sct_blank];
+		let g_blank = h_blanks[sc1_blank];
 		if('hash' in g_blank) return g_blank.hash;
 
 		let a_nquads = [];
 		for(let a_quad of a_quads) {
-			let [sct_graph, sct_subject, sct_predicate, sct_object] = a_quad;
+			let [sc1_graph, sc1_subject, sc1_predicate, sc1_object] = a_quad;
 
 			@> normalize_1st_deg(s_var)
-				sct_blank === @{s_var}
+				sc1_blank === @{s_var}
 					? '_i'
 					: ('_' === @{s_var}[0]
 						? '_o'
@@ -422,10 +448,10 @@ class Canonicalizer_ct {
 			@;
 
 			a_nquads.push([
-				@{normalize_1st_deg('sct_graph')}
-				@{normalize_1st_deg('sct_subject')}
-				sct_predicate,
-				@{normalize_1st_deg('sct_object')}
+				@{normalize_1st_deg('sc1_graph')}
+				@{normalize_1st_deg('sc1_subject')}
+				sc1_predicate,
+				@{normalize_1st_deg('sc1_object')}
 			].join('\0\t')+'\0\n');
 		}
 
@@ -438,12 +464,12 @@ class Canonicalizer_ct {
 		return p_hash;
 	}
 
-	hash_n_degree_quads(sct_blank, k_issuer) {
+	hash_n_degree_quads(sc1_blank, k_issuer) {
 		let {
 			issuer: k_issuer_root,
 		} = this;
 
-		let h_related = this.hash_to_related(sct_blank, k_issuer);
+		let h_related = this.hash_to_related(sc1_blank, k_issuer);
 
 		let d_hash = crypto.createHash('sha256');
 		for(let p_related of Object.keys(h_related).sort()) {
@@ -517,16 +543,16 @@ class Canonicalizer_ct {
 		};
 	}
 
-	hash_to_related(sct_blank, k_issuer) {
+	hash_to_related(sc1_blank, k_issuer) {
 		let {
 			blanks: h_blanks,
 		} = this;
 
 		let h_related = {};
-		for(let a_quad of h_blanks[sct_blank].quads) {
-			let [sct_graph, sct_subject, , sct_object] = a_quad;
+		for(let a_quad of h_blanks[sc1_blank].quads) {
+			let [sc1_graph, sc1_subject, , sc1_object] = a_quad;
 			@> normalize_hash_related(s_var, i_var)
-				if('_' === @{s_var}[0] && @{s_var} !== sct_blank) {
+				if('_' === @{s_var}[0] && @{s_var} !== sc1_blank) {
 					let p_related = this.hash_related_blank_node(@{s_var}, a_quad, k_issuer, @{i_var});
 					if(p_related in h_related) {
 						h_related[p_related].push(@{s_var});
@@ -536,25 +562,25 @@ class Canonicalizer_ct {
 					}
 				}
 			@;
-			@{normalize_hash_related('sct_graph', 0)}
-			@{normalize_hash_related('sct_subject', 1)}
-			@{normalize_hash_related('sct_object', 3)}
+			@{normalize_hash_related('sc1_graph', 0)}
+			@{normalize_hash_related('sc1_subject', 1)}
+			@{normalize_hash_related('sc1_object', 3)}
 		}
 
 		return h_related;
 	}
 
-	hash_related_blank_node(sct_blank, a_quad, k_issuer, i_role) {
+	hash_related_blank_node(sc1_blank, a_quad, k_issuer, i_role) {
 		let k_issuer_root = this.issuer;
-		let sct_use;
-		if(k_issuer_root.has(sct_blank)) {
-			sct_use = k_issuer_root.issue(sct_blank);
+		let sc1_use;
+		if(k_issuer_root.has(sc1_blank)) {
+			sc1_use = k_issuer_root.issue(sc1_blank);
 		}
-		else if(k_issuer.has(sct_blank)) {
-			sct_use = k_issuer.issue(sct_blank);
+		else if(k_issuer.has(sc1_blank)) {
+			sc1_use = k_issuer.issue(sc1_blank);
 		}
 		else {
-			sct_use = this.hash_first_degree_quads(sct_blank);
+			sc1_use = this.hash_first_degree_quads(sc1_blank);
 		}
 
 		let d_hash = crypto.createHash('sha256');
@@ -563,7 +589,7 @@ class Canonicalizer_ct {
 			d_hash.update(`<${a_quad[2]}>`);
 		}
 
-		d_hash.update(sct_use);
+		d_hash.update(sc1_use);
 
 		return d_hash.digest('hex');
 	}
@@ -887,7 +913,7 @@ class DatasetTree extends stream.Transform {
 		return h_quads_dst;
 	}
 
-	* iterator() {
+	* [Symbol.iterator]() {
 		yield* this.quads();
 	}
 
@@ -917,14 +943,14 @@ class DatasetTree extends stream.Transform {
 
 	* ct_quads() {
 		let h_quads = this.quad_tree;
-		for(let sct_graph in h_quads) {
-			let h_subjects = h_quads[sct_graph];
-			for(let sct_subject in h_subjects) {
-				let h_predicates = h_subjects[sct_subject];
-				for(let sct_predicate in h_predicates) {
-					let as_objects = h_predicates[sct_predicate];
-					for(let sct_object of as_objects) {
-						yield [sct_graph, sct_subject, sct_predicate, sct_object];
+		for(let sc1_graph in h_quads) {
+			let h_subjects = h_quads[sc1_graph];
+			for(let sc1_subject in h_subjects) {
+				let h_predicates = h_subjects[sc1_subject];
+				for(let sc1_predicate in h_predicates) {
+					let as_objects = h_predicates[sc1_predicate];
+					for(let sc1_object of as_objects) {
+						yield [sc1_graph, sc1_subject, sc1_predicate, sc1_object];
 					}
 				}
 			}
@@ -987,9 +1013,12 @@ class DatasetTree extends stream.Transform {
 			if(z_quads.isGraphyDatasetTree) {
 				this.add_tree(z_quads);
 			}
-			else {
-				let a_quads = [...z_quads.iterator()];
+			else if('function' === typeof z_quads[Symbol.iterator]) {
+				let a_quads = [...z_quads()];
 				this.add_quads(a_quads.map(factory.from.quad));
+			}
+			else {
+				throw new Error(`failed to add quads from non-iterable object: ${z_quads}`);
 			}
 		}
 	}
@@ -1389,6 +1418,10 @@ class DatasetTree extends stream.Transform {
 	}
 
 	equals(k_other) {
+		return 0 === this.difference(k_other).size;
+	}
+
+	equivalent(k_other) {
 		// both have digest precomputed
 		if(this.digest && k_other.digest) {
 			return this.digest === k_other.digest;
@@ -1404,7 +1437,7 @@ class DatasetTree extends stream.Transform {
 		}
 
 		// compare digests
-		return this.canonicalize() === k_other.canonicalize();
+		return this.canonicalize().string === k_other.canonicalize().string;
 	}
 
 	// generate the canonical string representation of a quad
@@ -1424,9 +1457,10 @@ class DatasetTree extends stream.Transform {
 				: h_object.concise())+'\0\n';
 	}
 
+	// canonicalize the dataset
 	canonicalize() {
 		let k_normalize = new Canonicalizer_ct(this);
-		return k_normalize.normalize();
+		return k_normalize.normalize().tree;
 	}
 
 	// create union of two sets
@@ -1910,11 +1944,11 @@ class DatasetTree extends stream.Transform {
 		return new DatasetTree({}, h_quads_r);
 	}
 
-	// tests if another set is included in this set
-	includes(k_other) {
+	// tests if another set is contained by this set
+	contains(k_other) {
 		// compute intersection first
-
 		let k_i = this.intersection(k_other);
+
 		// (A ∩ B) == B
 		return k_i.equals(k_other);
 	}
@@ -1942,6 +1976,7 @@ class DatasetTree extends stream.Transform {
 		return this.minus_subset(k_i)
 			.union(k_other.minus_subset(k_i));
 	}
+
 
 	distinct_subjects() {
 		return this.quad_tree[$_KEYS];

@@ -1,35 +1,245 @@
 @./* global FORMAT */
-@//@
+@//
 
+@import '../../text.read.jmacs'
 @import '../../../share/channel.jmacs'
+@import '../../../share/iris.jmacs'
+@import '../../../share/writer.jmacs'
 
-@$ QUADS = ('nq' === FORMAT);
+@$ B_NT = 'nt' === FORMAT;
+@$ B_NQ = 'nq' === FORMAT;
+@$ B_QUADS = B_NQ;
 
-const writable = require('@@@{S_GRAPHY_CHANNEL}/core.class.writable');
+@$ S_CONTENT_TYPE = B_NT? 'application/n-triples': 'application/n-quads';
 
-class serializer extends writable.serializer.textual.verbose {
-	constructor(g_config={}) {
-		super(writable.@{QUADS? 'quads': 'triples'}, g_config);
+const factory = require('@{channel('core.data.factory')}');
+const writable = require('@{channel('core.class.writable')}');
+
+const N_MAX_STRING_BUFFER = 1 << 12;
+
+class Writer extends writable {
+	constructor(gc_writer={}) {
+		super(gc_writer);
+
+		let {
+			prefixes: h_prefixes={},
+			indent: s_indent='\t',
+			tokens: gc_tokens=null,
+		} = gc_writer;
+
+		Object.assign(this, {
+			indent: s_indent,
+		});
 	}
 
-	get comment() {
-		return this.hash_comment;
+@> serialize_cn(n_n)
+	@.{
+		let b_c4 = false;
+		let s_name = 'triples';
+		if(4 === n_n) {
+			s_name = 'quads';
+			b_c4 = true;
+		}
 	}
+	@//@object-literal
+	// serialize c@{n_n} hash
+	serialize_c@{n_n}(hc@{n_n}_@{s_name}) {
+		@//@
+		let {
+			prefixes: h_prefixes,
+		} = this;
 
-	newlines(n_newlines=1) {
-		return '\n'.repeat(n_newlines);
-	}
+		let s_write = '';
 
-	serialize_object(k_leaf, s_object) {
-		@- QUADS
-			let k_parent = k_leaf.parent;
-			return `${k_parent.term} ${k_leaf.term} ${s_object} ${k_parent.parent.term} .\n`;
+		@- b_c4
+			// each graph
+			for(let sc1_graph in hc4_quads) {
+				// directive
+				if('`' === sc1_graph[0]) {
+					s_write += this.directive(sc1_graph, hc4_quads[sc1_graph]);
+					continue;
+				}
+
+				// post component
+				let st_post = ' '+factory.c1(sc1_graph, h_prefixes).verbose()+' .\n';
+
+				// ref triples
+				let hc3_triples = hc4_quads[sc1_graph];
 		@:
-			return `${k_leaf.parent.term} ${k_leaf.term} ${s_object} .\n`;
+			// post component
+			let st_post = ' .\n';
 		@;
-	}
-};
 
-module.exports = function(g_config) {
-	return (new serializer(g_config)).writer;
+			// each subject
+			for(let sc1_subject in hc3_triples) {
+				// directive; serialize it
+				if('`' === sc1_subject[0]) {
+					s_write += this.directive(sc1_subject, hc3_triples[sc1_subject]);
+					continue;
+				}
+
+				// subject-pre component
+				let st_pre = factory.c1(sc1_subject, h_prefixes).verbose()+' ';
+
+				// pair indent & terminator
+				let s_indent_pairs = '';
+				let s_term_pairs = '';
+
+				// ref pairs
+				let hc2_pairs = hc3_triples[sc1_subject];
+
+				// each predicate
+				for(let sc1_predicate in hc2_pairs) {
+					// directive; serialize it
+					if('`' === sc1_predicate[0]) {
+						s_write += this.directive(sc1_predicate, hc2_pairs[sc1_predicate]);
+						continue;
+					}
+
+					// predicate component
+					let st_predicate = factory.c1(sc1_predicate, h_prefixes).verbose()
+
+					// ref objects
+					let z_objects = hc2_pairs[sc1_predicate];
+
+					// serialize objects
+					s_write += this.objects(st_pre+st_predicate+' ', z_objects, st_post);
+
+					// // string buffer became too large
+					// if(s_write.length >= N_MAX_STRING_BUFFER) {
+					// 	debugger;
+					// }
+				}
+			}
+
+		@- b_c4
+			}
+		@;
+
+		return s_write;
+	}
+@;
+
+	@{serialize_cn(3)}
+
+	@- B_QUADS
+		@{serialize_cn(4)}
+	@;
+
+	@//@object-literal
+
+	// write objects
+	objects(s_pre, z_objects, s_post, n_nest_level=1) {
+		let {
+			prefixes: h_prefixes,
+			coercions: hm_coercions,
+		} = this;
+
+		// deduce object value type
+		switch(typeof z_objects) {
+			// concise-term string
+			case 'string': return s_pre+factory.c1(z_objects, h_prefixes).verbose()+s_post;
+
+			// numeric type
+			case 'number': return s_pre+factory.number(z_objects).verbose()+s_post;
+
+			// boolean type
+			case 'boolean': return s_pre+factory.boolean(z_objects).verbose()+s_post;
+
+			// object
+			case 'object': {
+				// null; reject
+				if(null === z_objects) throw new Error('Refusing to serialize null value given as an object of quad');
+
+				// array, list of objects
+				if(Array.isArray(z_objects) || z_objects instanceof Set) {
+					let s_write = '';
+
+					// each object
+					for(let z_item of z_objects) {
+						// item is an array; write RDF collection
+						if(Array.isArray(z_item)) {
+							// transcode collection
+							let hc2_collection = this.transcode_collection(z_item);
+
+							// serialize transcoded collection
+							s_write += this.objects(s_pre, hc2_collection, s_post, n_nest_level);
+						}
+						// non-array; recurse on item
+						else {
+							s_write += this.objects(s_pre, z_item, s_post, n_nest_level);
+						}
+					}
+
+					return s_write;
+				}
+				// plain object, blank node
+				else if(Object === z_objects.constructor) {
+					// new blank node
+					let st_blank = factory.blankNode();
+					
+					// start with incoming triple
+					let s_write = s_pre+st_blank+s_post;
+
+					// each pair
+					for(let sc1_predicate in z_objects) {
+						// directive; serialize it
+						if('`' === sc1_predicate[0]) {
+							s_write += this.directive(sc1_predicate, z_objects[sc1_predicate]);
+							continue;
+						}
+
+						// pre-string for nested triples
+						let s_pre_nest = st_blank+' '+factory.c1(sc1_predicate, h_prefixes).verbose()+' ';
+
+						// recurse
+						s_write += this.objects(s_pre_nest, z_objects[sc1_predicate], s_post, n_nest_level+1)
+					}
+
+					return s_write;
+				}
+				// coercable instance
+				else if(hm_coercions.has(z_objects.constructor)) {
+					// convert javascript object to term object
+					let kt_converted = hm_coercions.get(z_objects.constructor).apply(this, [z_objects, n_nest_level]);
+
+					// serialize
+					return s_pre+kt_converted.verbose(h_prefixes)+s_post;
+				}
+				// graphy term
+				else if(z_objects.isGraphyTerm) {
+					return s_pre+z_objects.verbose()+s_post;
+				}
+				// RDFJS term
+				else if(z_objects.termType) {
+					return s_pre+factory.from.term(z_objects).verbose()+s_post;
+				}
+			}
+
+			// fallthrough: other
+			default: {
+				throw new Error(`Bad type for RDF object: [${typeof z_objects}] ${z_objects.constructor}`);
+			}
+		}
+	}
+
+	// rdfjs quad
+	serialize_quad(g_quad) {
+		let kq_quad = factory.from.quad(g_quad);
+
+		// serialize quad
+		let s_write = (@{XC_STATE_DATA} !== this.state? '\n': '')
+			+kq_quad.subject.verbose()
+			+' '+kq_quad.predicate.verbose()
+			+' '+kq_quad.object.verbose()
+			@{B_QUADS? /* syntax: js */ `+' '+kq_quad.graph.verbose()`: ''}
+			+' .\n';
+
+		return s_write;
+	}
+
+}
+
+module.exports = function(gc_writer) {
+	return new Writer(gc_writer);
 };

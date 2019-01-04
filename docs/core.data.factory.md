@@ -290,14 +290,14 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_c3" />
 
- - *generator* `factory.c3(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+ - *generator* `* factory.c3(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Triples](#class_triple)
 
 
 
 <a name="function_c4" />
 
- - *generator* `factory.c4(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+ - *generator* `* factory.c4(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
 
 
@@ -385,7 +385,9 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       # this is a comment
       demo:Banana rdf:type dbo:Fruit ;
          # so is this...
-         demo:Banana rdfs:label "Banana"@en
+         rdfs:label "Banana"@en .
+      
+      
       ```
 
 
