@@ -378,7 +378,19 @@ class Writer extends writable {
 
 		// each item
 		for(let z_item of a_collection) {
-			s_write += '\n'+s_indent.repeat(@{B_QUADS? 2: 1}+n_nest_level)+this.objects(z_item, n_nest_level+1);
+			let s_objects = '';
+
+			// item is array; serialize as sub-collection
+			if(Array.isArray(z_item)) {
+				s_objects = this.collection_object(z_item, n_nest_level+1);
+			}
+			// non-array item
+			else {
+				s_objects = this.objects(z_item, n_nest_level+1);
+			}
+			
+			// serialize collection
+			s_write += '\n'+s_indent.repeat(@{B_QUADS? 2: 1}+n_nest_level)+s_objects;
 		}
 
 		// close collection block

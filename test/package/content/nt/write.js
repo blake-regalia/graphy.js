@@ -1,9 +1,11 @@
 /* eslint-env mocha */
-const assert = require('assert');
+const expect = require('chai').expect;
 
 const S_GRAPHY_CHANNEL = `@${process.env.GRAPHY_CHANNEL || 'graphy'}`;
-const data_set = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
+const stream = require(`${S_GRAPHY_CHANNEL}/core.iso.stream`);
+const dataset_tree = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
 const ttl_read = require(`${S_GRAPHY_CHANNEL}/content.ttl.read`);
+const ttl_write = require(`${S_GRAPHY_CHANNEL}/content.ttl.write`);
 const nt_read = require(`${S_GRAPHY_CHANNEL}/content.nt.read`);
 
 const nt_write = require(`${S_GRAPHY_CHANNEL}/content.nt.write`);
@@ -12,57 +14,43 @@ const H_PREFIXES = {
 
 };
 
-const doc_as_set = (f_reader, st_doc) => new Promise((fk_set) => {
-	// parse expected document
-	f_reader({
+const normalize = (st_doc, f_reader) => stream.source(st_doc)
+	// read expected document
+	.pipe(f_reader({
 		prefixes: H_PREFIXES,
-		input: {
-			string: st_doc,
-		},
-	})
-		// create then return set
-		.pipe(data_set({
-			ready(k_set) {
-				fk_set(k_set);
-			},
-		}));
-});
+	}))
+	// canonicalize in dataset
+	.pipe(dataset_tree({
+		canonicalize: true,
+	}))
+	// write to turtle
+	.pipe(ttl_write())
+	// return accumulated result
+	.bucket();
 
-const write = (hc3_input, st_expected, gc_write={}) => new Promise((fk_write) => {
-	let k_writer = nt_write({
-		prefixes: H_PREFIXES,
-		...gc_write,
-	});
-
-	// output string
-	let st_output = '';
-	k_writer.setEncoding('utf8');
-	k_writer
-		.on('data', (s_chunk) => {
-			st_output += s_chunk;
-		})
-		.on('end', async() => {
-			// parse result document
-			let k_result = await doc_as_set(nt_read, st_output);
-
-			// parse expected document
-			let k_expected = await doc_as_set(ttl_read, st_expected);
-
-			// compare
-			assert.strictEqual(k_result.canonicalize(), k_expected.canonicalize());
-
-			fk_write();
-		});
-
-	// write to turtle document
-	k_writer.write({
+const write = async(hc3_input, st_validate, gc_write={}) => {
+	// start with concise-triples hash
+	let st_output = await stream.source({
 		type: 'c3',
 		value: hc3_input,
-	});
+	})
+		// write to n-triples
+		.pipe(nt_write({
+			prefixes: H_PREFIXES,
+			...gc_write,
+		}))
+		// accumulate result
+		.bucket();
 
-	// close document without waiting for drain
-	k_writer.end();
-});
+	// normalize result document
+	let st_result = await normalize(st_output, nt_read);
+
+	// normalize expected document
+	let st_expect = await normalize(st_validate, ttl_read);
+
+	// assertion
+	expect(st_result).to.equal(st_expect);
+};
 
 
 describe('collections', () => {

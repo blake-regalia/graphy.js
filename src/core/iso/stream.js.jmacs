@@ -1,6 +1,7 @@
 const stream = require('stream');
 
 @> until()
+	@//@object-literal
 	until(s_event) {
 		return new Promise((fk_until, fe_until) => {
 			this.once(s_event, fk_until);
@@ -8,6 +9,207 @@ const stream = require('stream');
 	}
 @;
 
+@> thru()
+	@//@object-literal
+	thru(ds_dst) {
+		if(!ds_dst._readableState) throw new TypeError(`Invalid destination stream: ${ds_dst}`);
+
+		let g_readable = ds_dst._readableState;
+
+		// the promise to return
+		let f_thru;
+
+		// whether or not that promise needs accumulation
+		let b_awaiting = true;
+
+		// object mode
+		if(g_readable.objectMode) {
+			// async operation
+			f_thru = () => new Promise((fk_thru, fe_thru) => {
+				// pipe to destination
+				this.pipe(ds_dst)
+					// error
+					.on('error', (e_stream) => {
+						fe_thru(e_stream);
+					})
+					// wait for it to finish
+					.on('finish', () => {
+						fk_thru(a_data);
+					});
+
+				// still awaiting for data
+				if(b_awaiting) {
+					let a_data = [];
+					ds_dst
+						// accumulate data
+						.on('data', (w_event) => {
+							a_data.push(w_event);
+						})
+				}
+			});
+		}
+		// utf8-encoded string
+		else if('utf8' === g_readable.defaultEncoding) {
+			// async operation
+			f_thru = () => new Promise((fk_thru, fe_thru) => {
+				let s_data = '';
+
+				// pipe to destination
+				this.pipe(ds_dst)
+					// accumulate data
+					.on('data', (s_chunk) => {
+						s_data += s_chunk;
+					})
+					// error
+					.on('error', (e_stream) => {
+						fe_thru(e_stream);
+					})
+					// wait for it to finish
+					.on('finish', () => {
+						fk_thru(s_data);
+					});
+			});
+		}
+		// buffer
+		else {
+			// async operation
+			f_thru = () => new Promise((fk_thru, fe_thru) => {
+				let ab_data = Buffer.from([]);
+
+				// pipe to destination
+				this.pipe(ds_dst)
+					// accumulate data
+					.on('data', (ab_chunk) => {
+						ab_data = Buffer.concat([ab_data, ab_chunk], ab_data.length+ab_chunk.length);
+					})
+					// error
+					.on('error', (e_stream) => {
+						fe_thru(e_stream);
+					})
+					// wait for it to finish
+					.on('finish', () => {
+						fk_thru(ab_data);
+					});
+			});
+		}
+
+		// chainable
+		return Object.assign(dp_thru, {
+			async thru(...a_args) {
+				// parent context is no longer await return value
+				b_awaiting = false;
+
+				// setup next promise first
+				let dp_next = ds_dst.thru(...a_args);
+
+				// resolve parent
+				await f_thru();
+
+				// return that
+				return new Promise(async() => {
+					// await parent
+					
+					dp_next;
+				});
+			};
+		});
+	}
+@;
+
+@> bucket()
+	bucket(s_encoding='utf8') {
+		let g_readable = this._readableState;
+
+		// object mode
+		if(g_readable.objectMode) {
+			// async operation
+			return new Promise((fk_bucket, fe_bucket) => {
+				let a_data = [];
+
+				// pipe to writable
+				this.pipe(new stream.Writable({
+					write(w_event, s_write_encoding, fk_write) {
+						a_data.push(w_event);
+						fk_write();
+					},
+
+					writev(a_chunks, fk_writev) {
+						a_data.push(...a_chunks);
+						fk_writev();
+					},
+				}))
+					// error
+					.on('error', (e_stream) => {
+						fe_bucket(e_stream);
+					})
+					// wait for it to finish
+					.on('finish', () => {
+						fk_bucket(a_data);
+					});
+			});
+		}
+		// utf8-encoded strings
+		else if('utf8' === s_encoding || 'utf-8' === s_encoding) {
+			// async operation
+			return new Promise((fk_bucket, fe_bucket) => {
+				let s_data = '';
+
+				// set encoding
+				this.setEncoding(s_encoding);
+
+				// pipe to writable
+				this.pipe(new stream.Writable({
+					decodeStrings: false,
+
+					write(s_chunk, s_write_encoding, fk_write) {
+						s_data += s_chunk;
+						fk_write();
+					},
+
+					writev(a_chunks, fk_writev) {
+						s_data += a_chunks.join('');
+						fk_writev();
+					},
+				}))
+					// error
+					.on('error', (e_stream) => {
+						fe_bucket(e_stream);
+					})
+					// wait for it to finish
+					.on('finish', () => {
+						fk_bucket(s_data);
+					});
+			});
+		}
+		// buffer
+		else if('buffer' === s_encoding) {
+			// async operation
+			return new Promise((fk_bucket, fe_bucket) => {
+				let ab_data = Buffer.from([]);
+
+				// pipe to writable
+				this.pipe(new stream.Writable({
+					decodeStrings: true,
+
+					write(ab_chunk, s_write_encoding, fk_write) {
+						ab_data = Buffer.concat([ab_data, ab_chunk], ab_data.length+ab_chunk.length);
+						fk_write();
+					},
+				}))
+					// error
+					.on('error', (e_stream) => {
+						fe_bucket(e_stream);
+					})
+					// wait for it to finish
+					.on('finish', () => {
+						fk_bucket(ab_data);
+					});
+			});
+		}
+	}
+@;
+
+@//@
 class Readable extends stream.Readable {
 	constructor(gc_readable={}) {
 		super(gc_readable);
@@ -19,24 +221,37 @@ class Readable extends stream.Readable {
 	}
 
 	@{until()}
+
+	@{bucket()}
 }
 
 class Writable extends stream.Writable {
 	@{until()}
 }
 
+class Duplex extends stream.Duplex {
+	@{until()}
+
+	@{bucket()}
+}
+
 class Transform extends stream.Transform {
 	@{until()}
+
+	@{bucket()}
 }
 
 module.exports = {
 	...stream,
 	Readable,
 	Writable,
+	Duplex,
 	Transform,
+
+	// create a transform from quad objects into JSON strings for trivial serialization
 	quads_to_json(ds_dst) {
 		// serializse json
-		let ds_json = new stream.Transform({
+		let ds_json = new Transform({
 			writableObjectMode: true,
 			readableObjectMode: false,
 
@@ -51,4 +266,20 @@ module.exports = {
 		// re-assign output
 		return ds_json;
 	},
+
+	// create a simple, single-event readable stream
+	source(w_push, s_encoding=null) {
+		// encoding not explicit, string given; assume utf8
+		if(!s_encoding && 'string' === typeof w_push) s_encoding = 'utf8';
+
+		// readable
+		return new Readable({
+			objectMode: !s_encoding && 'object' === typeof w_push && !Buffer.isBuffer(w_push),
+
+			read() {
+				this.push(w_push, s_encoding);
+				this.push(null);
+			},
+		});
+	}
 };

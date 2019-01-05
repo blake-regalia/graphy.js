@@ -1,8 +1,6 @@
 @// for counting if/else braces in regex matching
 @$ c_braces = 0;
 
-const FN_TO_STRING_OBJECT = Object.prototype.toString;
-
 @>> R_CHAR_HEX()
 	[0-9A-Fa-f]
 @;
@@ -251,7 +249,7 @@ const FN_TO_STRING_OBJECT = Object.prototype.toString;
 			g_config.input = {stream:z_arg_0};
 		}
 		// config struct
-		else if(z_arg_0 && 'object' === typeof z_arg_0 && '[object Object]' === FN_TO_STRING_OBJECT.call(z_arg_0)) {
+		else if(z_arg_0 && 'object' === typeof z_arg_0 && '[object Object]' === Object.prototype.toString.call(z_arg_0)) {
 			g_config = z_arg_0;
 
 			// more args; invalid

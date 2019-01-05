@@ -283,7 +283,7 @@ class Canonicalizer_ct {
 		Object.assign(this, {
 			tree: k_tree,
 			blanks: {},
-			issuer: new Issuer('_r'),
+			issuer: new Issuer('_:r'),
 			quads: [...k_tree.ct_quads()],
 		});
 	}
@@ -358,7 +358,7 @@ class Canonicalizer_ct {
 			for(let sc1_blank of h_hashes[p_blank]) {
 				if(k_issuer.has(sc1_blank)) continue;
 
-				let k_issuer_tmp = new Issuer('_g');
+				let k_issuer_tmp = new Issuer('_:g');
 				k_issuer_tmp.issue(sc1_blank);
 				
 				a_paths.push(
@@ -441,9 +441,9 @@ class Canonicalizer_ct {
 
 			@> normalize_1st_deg(s_var)
 				sc1_blank === @{s_var}
-					? '_i'
+					? '_:i'
 					: ('_' === @{s_var}[0]
-						? '_o'
+						? '_:o'
 						: @{s_var}),
 			@;
 
@@ -511,7 +511,7 @@ class Canonicalizer_ct {
 
 					s_path += k_issuer_copy.issue(p_other);
 
-					s_path += '_#'+g_hash_result.hash;
+					s_path += '_:#'+g_hash_result.hash;
 
 					k_issuer_copy = g_hash_result.issuer;
 
@@ -660,7 +660,7 @@ const thicken = (h_tree) => {
 	return h_thickened;
 };
 
-class DatasetTree extends stream.Transform {
+class DatasetTree extends stream.Duplex {
 	static from(h_quad_tree, g_config={}) {
 		// JSON import
 		if(h_quad_tree['{KEYS}']) {
@@ -676,7 +676,7 @@ class DatasetTree extends stream.Transform {
 
 	constructor(g_config={}, h_quad_tree=null) {
 		super({
-			// expect quads as input
+			// expect quads as input and write objects as output
 			objectMode: true,
 		});
 
@@ -692,7 +692,7 @@ class DatasetTree extends stream.Transform {
 				h_prefixes[s_prefix] = p_iri;
 
 				// graphy output and initial prefix mappings already flushed
-				if(this.flush_graphy && this.prefixes_flushed) {
+				if(this.prefixes_flushed) {
 					// flush single prefix
 					this.push({
 						type: 'prefixes',
@@ -701,19 +701,18 @@ class DatasetTree extends stream.Transform {
 						},
 					});
 				}
-
-				// remember data has started flowing
-				this.flowing = true;
 			});
 
-			// once first data is encountered
-			ds_src.once('data', () => {
-				// flush prefixes
-				this.flush_prefixes();
-
-				// remember data has started flowing
-				this.flowing = true;
+			// once input ends
+			ds_src.once('end', () => {
+				this.emit('ready', this);
 			});
+		});
+
+		this.once('finish', () => {
+			if(this.push_waiting) {
+				this._read(this.push_waiting);
+			}
 		});
 
 		Object.assign(this, {
@@ -721,42 +720,49 @@ class DatasetTree extends stream.Transform {
 			digest: null,
 			root_blanks: {},
 			leaf_blanks: {},
-			writable_out: null,
 			prefixes: h_prefixes,
 			prefixes_flushed: false,
-			flowing: false,
 			debug: g_config.debug || false,
+			quad_generator: null,
+			graph_generator: null,
+			graph_iterator: null,
+			subject_generator: null,
+			transform_canonicalize: g_config.canonicalize || false,
+			transform_tree: this,
+			push_waiting: 0,
 		});
-	}
-
-	flush_prefixes() {
-		// already flushed
-		if(this.prefixes_flushed) return;
-
-		// not graphy output
-		if(this._flush !== this.flush_graphy) return;
-
-		// push prefix mappings
-		this.push({
-			type: 'prefixes',
-			value: this.prefixes,
-		});
-
-		// do not repeat
-		this.prefixes_flushed = true;
 	}
 
 	// on pipe
 	pipe(ds_out) {
 		// deduce write mode
 		if(ds_out.isGraphyWritable) {
-			// change flush mode
-			this._flush = this.flush_graphy;
+			// change read mode
+			this._read = function(n_size) {
+				// push prefix mappings
+				this.push({
+					type: 'prefixes',
+					value: this.prefixes,
+				});
 
-			// already flowing; flush prefixes immediately
-			if(this.flowing) {
-				// flush prefixes immediately
-				this.flush_prefixes();
+				// if more prefixes come in, push them immediately
+				this.prefixes_flushed = true;
+
+				// ready to start pushing
+				if(this._writableState.finished) {
+					return this.read_graphy_after_finished(n_size);
+				}
+				// not ready yet
+				else {
+					this.push_waiting = n_size;
+					this._read = function(n_size_nry) {
+						// ready to start pushing
+						if(this._writableState.finished) {
+							this.push_waiting = 0;
+							return this.read_graphy_after_finished(n_size_nry);
+						}
+					};
+				}
 			}
 		}
 		// non-object mode
@@ -768,49 +774,80 @@ class DatasetTree extends stream.Transform {
 		return super.pipe(ds_out);
 	}
 
-	// no more incoming data
-	_flush(fk_flush) {
-		this.resume_flush(this.quads(), fk_flush);
+	// default read: quad mode
+	_read(n_quads) {
+		// ready to start pushing
+		if(this._writableState.finished) {
+			let k_tree = this;
+
+			// transform canonicalize option
+			if(this.transform_canonicalize) {
+				k_tree = this.canonicalize();
+			}
+
+			// start new quad iterator
+			this.quad_generator = k_tree.quads();
+
+			// harden read method
+			this._read = this.resume_read;
+
+			// resume reading
+			return this._read(n_quads);
+		}
+		// not ready yet
+		else {
+			this.push_waiting = n_quads;
+		}
 	}
 
-	resume_flush(dg_quads, fk_flush) {
+	// resume default read: quad mode
+	resume_read(n_quads) {
+		let dg_quads = this.quad_generator;
+
 		// advance iterator
 		let di_next = dg_quads.next();
 
 		// continue until iterator is done
 		while(!di_next.done) {
-			// stream pausing
-			if(!this.push(di_next.value)) {
-				// wait for next read event
-				this.read = () => {  // eslint-disable-line no-loop-func
-					// restore original functionality
-					delete this.read;
-
-					// resume flush
-					this.resume_flush(dg_quads, fk_flush);
-				};
-
-				// go async
-				return;
-			}
+			// back-pressure; stop pushing
+			if(!this.push(di_next.value)) return;
 
 			// advance iterator
 			di_next = dg_quads.next();
 		}
 
-		// done flushing
-		fk_flush();
+		// done iterating
+		this.push(null);
 	}
 
-	// graphy flush
-	flush_graphy(fk_flush) {
-		let dg_graphs = this.c1_graphs();
-		let di_graph = dg_graphs.next();
-		this.resume_flush_graphy(dg_graphs, di_graph, null, fk_flush);
+	read_graphy_after_finished(n_size) {
+		let k_tree = this;
+
+		// transform canonicalize option
+		if(this.transform_canonicalize) {
+			k_tree = this.transform_tree = this.canonicalize();
+		}
+
+		// initialize generator(s) & iterator
+		let dg_graphs = this.graph_generator = k_tree.c1_graphs();
+		this.graph_iterator = dg_graphs.next();
+
+		// harden read method
+		this._read = this.resume_read_graphy;
+
+		// resume reading
+		return this._read(n_size);
 	}
 
-	resume_flush_graphy(dg_graphs, di_graph, dg_subjects, fk_flush) {
-		let h_quads = this.quad_tree;
+	resume_read_graphy(n_size) {
+		let {
+			graph_generator: dg_graphs,
+			graph_iterator: di_graph,
+			subject_generator: dg_subjects,
+			transform_tree: k_tree,
+		} = this;
+
+		let h_quads = k_tree.quad_tree;
 
 		// continue until iterator is done
 		while(!di_graph.done) {
@@ -819,33 +856,32 @@ class DatasetTree extends stream.Transform {
 
 			// advance subject iterator
 			if(!dg_subjects) {
-				dg_subjects = this.c1_subjects(sv1_graph);
+				dg_subjects = k_tree.c1_subjects(sv1_graph);
 			}
 
+			// resume iterator
 			let di_subject = dg_subjects.next();
 
 			while(!di_subject.done) {
 				let sv1_subject = di_subject.value;
 
-				// stream pausing
-				if(!this.push({
+				// push writable data event
+				let b_pressure = this.push({
 					type: 'c4',
 					value: {
 						[sv1_graph]: {
 							[sv1_subject]: h_triples[sv1_subject],
 						},
 					},
-				})) {
-					// wait for next read event
-					this.read = () => {  // eslint-disable-line no-loop-func
-						// restore original functionality
-						delete this.read;
+				});
+				
+				// backpressure
+				if(b_pressure) {
+					// update iterators
+					this.graph_iterator = di_graph;
+					this.subject_generator = dg_subjects;
 
-						// resume flush
-						this.resume_flush_graphy(dg_graphs, di_graph, dg_subjects, fk_flush);
-					};
-
-					// go async
+					// stop pushing
 					return;
 				}
 
@@ -857,16 +893,16 @@ class DatasetTree extends stream.Transform {
 			di_graph = dg_graphs.next();
 		}
 
-		// done flushing
-		fk_flush();
+		// done reading
+		this.push(null);
 	}
 
-	_transform(g_quad, s_encdoing, fk_transform) {
+	_write(g_quad, s_encdoing, fk_write) {
 		// add quad to tree
 		this.add(g_quad);
 
 		// done with object
-		fk_transform();
+		fk_write();
 	}
 
 @$ H_PARSE_EVENTS = {

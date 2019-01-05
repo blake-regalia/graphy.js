@@ -1,73 +1,64 @@
 /* eslint-env mocha */
-const assert = require('assert');
+const expect = require('chai').expect;
 
 const S_GRAPHY_CHANNEL = `@${process.env.GRAPHY_CHANNEL || 'graphy'}`;
-const data_set = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
+const factory = require(`${S_GRAPHY_CHANNEL}/core.data.factory`);
+const stream = require(`${S_GRAPHY_CHANNEL}/core.iso.stream`);
+const dataset_tree = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
 const trig_read = require(`${S_GRAPHY_CHANNEL}/content.trig.read`);
 
 const trig_write = require(`${S_GRAPHY_CHANNEL}/content.trig.write`);
 
 const H_PREFIXES = {
-	'': '',
+	'': 'z://y/',
+	xsd: 'http://www.w3.org/2001/XMLSchema#',
 };
 
-const doc_as_set = st_doc => new Promise((fk_set) => {
-	// parse expected document
-	trig_read({
+
+const normalize = st_doc => stream.source(st_doc)
+	// read document
+	.pipe(trig_read({
 		prefixes: H_PREFIXES,
-		input: {
-			string: st_doc,
-		},
-	})
-		// create then return set
-		.pipe(data_set({
-			ready(k_set) {
-				fk_set(k_set);
-			},
-		}));
-});
-
-const write = (hc4_input, st_expected, gc_write={}) => new Promise((fk_write) => {
-	let k_writer = trig_write({
+	}))
+	// canonicalize in dataset
+	.pipe(dataset_tree({
+		canonicalize: true,
+	}))
+	// serialize to turtle
+	.pipe(trig_write({
 		prefixes: H_PREFIXES,
-		...gc_write,
-	});
+	}))
+	// return accumulated result
+	.bucket();
 
-	// output string
-	let st_output = '';
-	k_writer.setEncoding('utf8');
-	k_writer
-		.on('data', (s_chunk) => {
-			st_output += s_chunk;
-		})
-		.on('end', async() => {
-			// parse result document
-			let k_result = await doc_as_set(st_output);
-
-			// parse expected document
-			let k_expected = await doc_as_set(st_expected);
-
-			// compare
-			try {
-				assert.strictEqual(k_result.canonicalize(), k_expected.canonicalize());
-			}
-			catch(e_equal) {
-				// console.warn(k_result);
-				throw e_equal;
-			}
-
-			fk_write();
-		});
-
-	// write to turtle document
-	k_writer.write({
+const write = async(hc4_input, st_validate, gc_write={}) => {
+	// take concise-triples hash
+	let st_output = await stream.source({
 		type: 'c4',
 		value: hc4_input,
-	});
+	})
+		// pipe it thru turtle writer
+		.pipe(trig_write({
+			prefixes: H_PREFIXES,
+			...gc_write,
+		}))
 
-	// close document without waiting for drain
-	k_writer.end();
-});
+		// accumulate its output
+		.bucket();
+
+	// canonicalize output
+	let st_result = await normalize(st_output);
+
+	// canonicalize expectation
+	let st_expect = await normalize(`
+		@prefix : <${H_PREFIXES['']}> .
+		@prefix xsd: <${H_PREFIXES.xsd}> .
+		${st_validate}`);
+
+	// assertion
+	expect(st_result).to.equal(st_expect);
+};
+
 
 
 describe('collections', () => {

@@ -478,9 +478,11 @@ module.exports = async() => {
 
 			if('function' !== typeof ttl_read) continue;
 
-			await new Promise((fk_deps, fe_deps) => {
-				fs.createReadStream(path.join(`build/cache/specs`, si_package, 'manifest.ttl'))
-					.pipe(ttl_read({
+			let ds_manifest = fs.createReadStream(path.join(`build/cache/specs`, si_package, 'manifest.ttl'));
+
+			try {
+				await new Promise((fk_deps, fe_deps) => {
+					ds_manifest.pipe(ttl_read({
 						base_uri: h_packages[si_package].manifest,
 						data(g_quad) {
 							if(A_DEPEDENCY_PREDICATES.includes(g_quad.predicate.value)) {
@@ -497,7 +499,11 @@ module.exports = async() => {
 							fk_deps(h_deps);
 						},
 					}));
-			});
+				});
+			}
+			catch(e_read) {
+				continue;
+			}
 		}
 
 		fk_manifest_deps(h_out);
@@ -516,16 +522,15 @@ module.exports = async() => {
 			content_type_alias: Object.keys(h_content_type_aliases),
 
 			testable: [
-				'core.class.writable',
 				'core.data.factory',
 				'content.nt.read',
-				// 'content.nt.write',
+				'content.nt.write',
 				'content.nq.read',
-				// 'content.nq.write',
+				'content.nq.write',
 				'content.ttl.read',
-				// 'content.ttl.write',
+				'content.ttl.write',
 				'content.trig.read',
-				// 'content.trig.write',
+				'content.trig.write',
 				'util.dataset.tree',
 			],
 
@@ -661,7 +666,7 @@ module.exports = async() => {
 						`prepublish.${si_package}`,
 						'link_to.util.dataset.tree',
 						`test/package/${si_package.replace(/\./g, '/')}.js`,
-						...a_content_subs.includes(si_package)
+						...a_content_subs.filter(s => s.endsWith('.read')).includes(si_package)
 							? [
 								`build/cache/specs/${si_package}/**`,
 								// `build/cache/specs/${si_package}/dependencies/*:{optional:true}`,

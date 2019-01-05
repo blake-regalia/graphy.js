@@ -598,8 +598,8 @@ class Literal_PositiveInfinity extends Literal_Double {
 		this.value = 'INF';
 	}
 
-	terse() {
-		return 'INF';
+	terse(h_prefixes) {
+		return '"INF"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
 } Object.assign(Literal_PositiveInfinity.prototype, {
 	isInfinite: true,
@@ -611,8 +611,8 @@ class Literal_NegativeInfinity extends Literal_Double {
 		this.value = '-INF';
 	}
 
-	terse() {
-		return '-INF';
+	terse(h_prefixes) {
+		return '"-INF"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
 } Object.assign(Literal_NegativeInfinity.prototype, {
 	isInfinite: true,
@@ -624,8 +624,8 @@ class Literal_NaN extends Literal_Double {
 		this.value = 'NaN';
 	}
 
-	terse() {
-		return 'NaN';
+	terse(h_prefixes) {
+		return '"NaN"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
 } Object.assign(Literal_NaN.prototype, {
 	isNaN: true,

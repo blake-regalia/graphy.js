@@ -847,9 +847,6 @@ class reader {
 			return Object.getPrototypeOf(this).pipe.apply(this, [ds_out]);
 		};
 
-		// bind events to transform stream
-		this.bind(g_config);
-
 		// once writable side is piped into
 		ds_transform.once('pipe', (ds_input) => {
 			// input stream has encoding option; ensure stream encoding is utf8
@@ -857,6 +854,23 @@ class reader {
 				ds_input.setEncoding('utf8');
 			}
 		});
+
+		// new listener added
+		ds_transform.on('newListener', (s_event) => {
+			// comment
+			if('comment' === s_event) {
+				this.emit_comments = (s_captured) => {
+					let a_comments = s_captured.slice(1).split(/\n+\s*#/g);
+
+					for(let s_comment of a_comments) {
+						ds_transform.emit('comment', s_comment);
+					}
+				};
+			}
+		});
+
+		// bind events to transform stream
+		this.bind(g_config);
 
 		// no input given, it will be written/piped in later
 		if(null === g_input) {
@@ -1038,11 +1052,12 @@ class reader {
 			let i = this.i;
 			@{whitespace('i', true)}
 			R_COMMENT.lastIndex = i;
-			R_COMMENT.exec(s);
+			let m_comment = R_COMMENT.exec(s);
 
 			// advance beyond comment
 			if(R_COMMENT.lastIndex > i) {
 				this.i = i = R_COMMENT.lastIndex;
+				if(this.emit_comments) this.emit_comments(m_comment[0]);
 			}
 
 			// still unparsed characters
@@ -1082,6 +1097,7 @@ class reader {
 			exit: {},
 		}
 		: {}),
+	comment: {},
 	error: {},
 	read: {once:true},
 	progress: {},
@@ -1290,7 +1306,8 @@ class reader {
 		@;
 
 		// comment
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
 		// not iriref, not prefixed name, not blank node label, not prefix id, not base
@@ -1368,7 +1385,8 @@ class reader {
 				@{goto('statement')}
 
 			// comment
-			@{else_if_match('R_COMMENT', false, true)}
+			@{else_if_match('R_COMMENT', 'm_comment', true)}
+				if(this.emit_comments) this.emit_comments(m_comment[0]);
 				continue;
 
 			// not iriref, not prefixed name, not blank node label, not prefix id, not base
@@ -1430,7 +1448,8 @@ class reader {
 			@{goto('object_list')}
 
 
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
 		// not iriref, not prefixed name, not 'a'
@@ -1518,7 +1537,8 @@ class reader {
 			// commit object iri from resolve prefixed name
 			this.object = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
 
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
 		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
@@ -1592,7 +1612,8 @@ class reader {
 			// next token definitely datatype or langtag, we are just being interrupted by eos
 			@{else_retry()}
 
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
 		// not datatype, not language tag => that's okay! those are optional
@@ -1704,7 +1725,8 @@ class reader {
 		@;
 
 		// comment
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			// do not change state
 			continue;
 
@@ -1745,7 +1767,8 @@ if(this.debug) debugger;
 			@{goto(S_STATE_PRIMARY)}
 
 		// for poorly-placed comments
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			// do not change state
 			continue;
 
@@ -1763,7 +1786,8 @@ if(this.debug) debugger;
 			@{goto('prefix_iri')}
 
 		// for poorly-placed comments
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			// do not change state
 			continue;
 
@@ -1842,7 +1866,8 @@ if(this.debug) debugger;
 			@{goto(S_STATE_PRIMARY)}
 
 		// for poorly-placed comments
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			// do not change state
 			continue;
 
@@ -1857,7 +1882,8 @@ if(this.debug) debugger;
 			@{goto(S_STATE_PRIMARY)}
 
 		// poorly-placed comment
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			// try again
 			continue;
 		
@@ -2121,7 +2147,8 @@ if(this.debug) debugger;
 			// commit object iri from resolve prefixed name
 			this.object = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
 
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
 		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
@@ -2300,7 +2327,8 @@ if(this.debug) debugger;
 			// commit object iri from resolve prefixed name
 			this.object = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
 
-		@{else_if_match('R_COMMENT', false, true)}
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
 		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection

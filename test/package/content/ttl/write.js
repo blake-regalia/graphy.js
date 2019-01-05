@@ -1,68 +1,184 @@
 /* eslint-env mocha */
-const assert = require('assert');
+const expect = require('chai').expect;
 
 const S_GRAPHY_CHANNEL = `@${process.env.GRAPHY_CHANNEL || 'graphy'}`;
-const data_set = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
+const factory = require(`${S_GRAPHY_CHANNEL}/core.data.factory`);
+const stream = require(`${S_GRAPHY_CHANNEL}/core.iso.stream`);
+const dataset_tree = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
 const ttl_read = require(`${S_GRAPHY_CHANNEL}/content.ttl.read`);
 
 const ttl_write = require(`${S_GRAPHY_CHANNEL}/content.ttl.write`);
 
 const H_PREFIXES = {
-
+	'': 'z://y/',
+	xsd: 'http://www.w3.org/2001/XMLSchema#',
 };
 
-const doc_as_set = st_doc => new Promise((fk_set) => {
-	// parse expected document
-	ttl_read({
+const normalize = st_doc => stream.source(st_doc)
+	// read document
+	.pipe(ttl_read())
+	// canonicalize in dataset
+	.pipe(dataset_tree({
+		canonicalize: true,
+	}))
+	// serialize to turtle
+	.pipe(ttl_write({
 		prefixes: H_PREFIXES,
-		input: {
-			string: st_doc,
-		},
-	})
-		// create then return set
-		.pipe(data_set({
-			ready(k_set) {
-				fk_set(k_set);
-			},
-		}));
-});
+	}))
+	// return accumulated result
+	.bucket();
 
-const write = (hc3_input, st_expected, gc_write={}) => new Promise((fk_write) => {
-	let k_writer = ttl_write({
-		prefixes: H_PREFIXES,
-		...gc_write,
-	});
-
-	// output string
-	let st_output = '';
-	k_writer.setEncoding('utf8');
-	k_writer
-		.on('data', (s_chunk) => {
-			st_output += s_chunk;
-		})
-		.on('end', async() => {
-			// parse result document
-			let k_result = await doc_as_set(st_output);
-
-			// parse expected document
-			let k_expected = await doc_as_set(st_expected);
-
-			// compare
-			assert.strictEqual(k_result.canonicalize(), k_expected.canonicalize());
-
-			fk_write();
-		});
-
-	// write to turtle document
-	k_writer.write({
+const write = async(hc3_input, st_validate, gc_write={}) => {
+	// take concise-triples hash
+	let st_output = await stream.source({
 		type: 'c3',
 		value: hc3_input,
+	})
+		// pipe it thru turtle writer
+		.pipe(ttl_write({
+			prefixes: H_PREFIXES,
+			...gc_write,
+		}))
+
+		// accumulate its output
+		.bucket();
+
+	// canonicalize output
+	let st_result = await normalize(st_output);
+
+	// canonicalize expectation
+	let st_expect = await normalize(`
+		@prefix : <${H_PREFIXES['']}> .
+		@prefix xsd: <${H_PREFIXES.xsd}> .
+		${st_validate}`);
+
+	// assertion
+	expect(st_result).to.equal(st_expect);
+};
+
+describe('objects', () => {
+	it('c1 strings', async() => {
+		await write({
+			':subject': {
+				a: ':type',
+				':c1-bn-anon': '_:',
+				':c1-bn-labeled': '_:orange',
+				':c1-pn': ':object',
+				':c1-iri': '>z://object',
+				':c1-literal': '"object',
+				':c1-lang-literal': '@en"object',
+				':c1-dtype-literal-pn': '^:d"object',
+				':c1-dtype-literal-iri': '^>x://d"object',
+			},
+		}, `
+			:subject a :type ;
+				:c1-bn-anon [] ;
+				:c1-bn-labeled _:orange ;
+				:c1-pn :object ;
+				:c1-iri <z://object> ;
+				:c1-literal "object" ;
+				:c1-lang-literal "object"@en ;
+				:c1-dtype-literal-pn "object"^^:d ;
+				:c1-dtype-literal-iri "object"^^<x://d> .
+		`);
 	});
 
-	// close document without waiting for drain
-	k_writer.end();
-});
+	it('es literals', async() => {
+		await write({
+			':subject': {
+				':false': false,
+				':true': true,
+				':zero': 0,
+				':integer': 12,
+				':decimal': 12.1,
+				':infinity': Infinity,
+				':negative-infinity': -Infinity,
+				':NaN': NaN,
+			},
+		}, `
+			:subject
+				:false false ;
+				:true true ;
+				:zero 0 ;
+				:integer 12 ;
+				:decimal 12.1 ;
+				:infinity "INF"^^xsd:double ;
+				:negative-infinity "-INF"^^xsd:double ;
+				:NaN "NaN"^^xsd:double .
+		`);
+	});
 
+	it('special objects', async() => {
+		await write({
+			':subject': {
+				':date': new Date('1990-03-12'),
+				':term-node': factory.namedNode('ex://test'),
+				':term-bn': factory.blankNode('test'),
+				':literal': factory.literal('test'),
+			},
+		}, `
+			:subject
+				:date "1990-03-12T00:00:00.000Z"^^xsd:dateTime ;
+				:term-node <ex://test> ;
+				:term-bn _:test ;
+				:literal "test" .
+		`);
+	});
+
+	it('object lists', async() => {
+		await write({
+			':subject': {
+				':list-c1-nodes': ['_:', '_:orange', ':object', '>z://object'],
+				':list-c1-literals': ['@en"object', '^:d"object', '^>x://d"object'],
+				':list-es-literals': [false, true, 0, 12, 12.1, Infinity, -Infinity, NaN],
+				':es-set-nodes': new Set([':a', ':b', ':c']),
+			},
+		}, `
+			:subject
+				:list-c1-nodes [], _:orange, :object, <z://object> ;
+				:list-c1-literals "object"@en, "object"^^:d, "object"^^<x://d> ;
+				:list-es-literals false, true, 0, 12, 12.1, "INF"^^xsd:double, "-INF"^^xsd:double, "NaN"^^xsd:double ;
+				:es-set-nodes :a, :b, :c .
+		`);
+	});
+
+	it('nested blank nodes', async() => {
+		await write({
+			':subject': {
+				':nested-blank': {},
+				':nested-single': {
+					':prop': ':object',
+				},
+				':nested-multiple': {
+					':prop1': ':object',
+					':prop2': ':object',
+				},
+				':nested-recursive-1': {
+					':prop1': ':object',
+					':prop2': {
+						':recurse1': ':object',
+					},
+				},
+			},
+		}, `
+			:subject
+				:nested-blank [] ;
+				:nested-single [
+					:prop :object ;
+				] ;
+				:nested-multiple [
+					:prop1 :object ;
+					:prop2 :object ;
+				] ;
+				:nested-recursive-1 [
+					:prop1 :object ;
+					:prop2 [
+						:recurse1 :object ;
+					] ;
+				] .
+		`);
+	});
+});
 
 describe('collections', () => {
 	it('long collections', async() => {

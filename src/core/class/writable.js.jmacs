@@ -134,6 +134,7 @@ class Writable extends stream.Transform {
 	_transform(g_event, s_encoding, fke_transform) {
 		// try to serialize input value
 		try {
+			// this.push(this.data_event(g_event), 'utf8');
 			fke_transform(null, this.data_event(g_event));
 		}
 		// serialization error

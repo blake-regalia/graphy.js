@@ -16,8 +16,19 @@ This documentation covers the following graphy packages:
  - [A Note About Events](#note_events) -- two different styles for event binding
  - [Accessibility](#accessibility) -- all textual RDF content modules
  - [Verbs](#verbs) -- the module export functions under each content namespace
-   - [`read`](#verb_read) -- for reading RDF from a string or stream
-   - [`write`](#verb_write) -- for writing RDF using write event objects
+   - [`.read`](#verb_read) -- for reading RDF from a string or stream
+     - Event [`readable(...)`](#event_read-readable)
+     - Event [`base(...)`](#event_read-base)
+     - Event [`prefix(...)`](#event_read-prefix)
+     - Event [`comment(...)`](#event_read-comment)
+     - Event [`data(...)`](#event_read-data)
+     - Event [`enter(...)`](#event_read-enter)
+     - Event [`exit(...)`](#event_read-exit)
+     - Event [`progress(...)`](#event_read-progress)
+     - Event [`eof(...)`](#event_read-eof)
+     - Event [`end(...)`](#event_read-end)
+     - Event [`error(...)`](#event_read-error)
+   - [`.write`](#verb_write) -- for writing RDF using write event objects
  - [Classes](#classes)
  - [Events](#events) -- definitions for event interfaces
  - [Configs](#configs) -- definitions for config interfaces
@@ -378,16 +389,24 @@ demo:Banana foaf:name "Banana" ;
 
 ## Event definitions
 
-<a name="event_read" />
+<a name="events_read" />
 
 #### events **ReadEvents**
 The definition for all possible events emitted during content reading. Please [see this note about events](#note_events) to understand how this definition applies to both the traditional `.on()`-style of event binding as well as the inline-style.
 
 **Events:**
- - `ready()`
-   - Gets called once the input stream is readable. If the input is a string, then this event gets called immediately.
+
+
+<a name="event_read-readable" />
+
+ - `readable()` _via_ [@node.js/stream.Readable#event_readable](https://nodejs.org/api/stream.html#stream_event_readable)
+   - Gets called once there is data available to be read from the stream (automatically emitted by stream mechanics).
+
+
+<a name="event_read-base" />
+
  - `base(iri: string)`
-   - Gets called once for each base statement as soon as it is parsed. `iri` is the full IRI of the new base.
+   - Gets called for each base statement as soon as it is parsed. `iri` is the full IRI of the new base.
    - *example:*
       ```js
       ttl_read('@base <http://example.org/vocabulary/> .', {
@@ -396,8 +415,12 @@ The definition for all possible events emitted during content reading. Please [s
           },
       });
       ```
+
+
+<a name="event_read-prefix" />
+
  - `prefix(id: string, iri: string)`
-   - Gets called once for each prefix statement as soon as it is parsed. `id` will be the name of the prefix without the colon and `iri` will be the full IRI of the associated mapping.
+   - Gets called for each prefix statement as soon as it is parsed. `id` will be the name of the prefix without the colon and `iri` will be the full IRI of the associated mapping.
    - *example:*
       ```js
       ttl_read('@prefix dbr: <http://dbpedia.org/resource/> .', {
@@ -407,8 +430,38 @@ The definition for all possible events emitted during content reading. Please [s
           },
       });
       ```
- - `data(quad: `[`Quad`](core.data.factory#class_quad)`)`
-   - Gets called once for each triple/quad as soon as it is parsed.
+
+
+<a name="event_read-comment" />
+
+ - `comment(comment: string)`
+   - Gets called for each comment (after `#` symbol until end-of-line) as soon as it is parsed.
+   - *examples:*
+      ```js
+      // inline event style (less overhead)
+      ttl_read(`
+        # hello world!
+        <#banana> a <#Fruit> .
+      `, {
+          comment(s_comment) {
+              s_comment;  // 'hello world!'
+          },
+      });
+      
+      // attach event listener style (more overhead)
+      let ds_read = ttl_read(`
+        # hello world!
+        <#banana> a <#Fruit> .
+      `);
+      ds_read.on('comment', (s_comment) => {
+          s_comment;  // 'hello world!'
+      });
+      ```
+
+<a name="event_read-data" />
+
+ - `data(quad: `[`Quad`](core.data.factory#class_quad)`)` _via_ [@node.js/stream.Readable#event_data](https://nodejs.org/api/stream.html#stream_event_data)
+   - Gets called for each triple/quad as soon as it is parsed.
    - *examples:*
       ```js
       // inline event style (less overhead)
@@ -424,6 +477,10 @@ The definition for all possible events emitted during content reading. Please [s
           y_quad.predicate.value;  // 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
       });
       ```
+
+
+<a name="event_read-enter" />
+
  - `enter(graph: `[`Term`](core.data.factory#class_namednode)`)`
    - Gets called each time a graph block is entered as soon as the opening brace character `{` is read. `graph` will either be a [NamedNode](#namednode), [BlankNode](#blanknode) or [DefaultGraph](#defaultgraph).
    - *example:*
@@ -444,17 +501,39 @@ The definition for all possible events emitted during content reading. Please [s
           },
       });
       ```
+
+
+<a name="event_read-exit" />
+
  - `exit(graph: `[`NamedNode`](core.data.factory#class_named-node)`)`
    - Gets called each time a graph block is exitted as soon as the closing brace character `}` is read.       `graph` will either be a [NamedNode](core.data.factory#class_named-node), [BlankNode](core.data.factory#class_blank-node) or       [DefaultGraph](core.data.factory#class_default-graph).
+
+
+<a name="event_read-progress" />
+
   - `progress(delta: integer)`
     - Gets called each time the reader has finished processing a chunk of data and is about to go asynchronous and wait for the next I/O event. `delta` will reflect the number of characters that were consumed from the input which resulted in a change to the reader's internal state (i.e., incomplete tokens must wait for next chunk to be terminated). This event offers a nice way to provide progress updates to the user, however this would require knowing ahead of time how many characters in total are contained by the input. This event also provides hints to resource-hungry applications when it might be an opportunistic time to perform synchronous tasks. This event will also be called right before the `eof()` event with a `delta` equal to `0`.
-  - `error(err: Error)`
-    - Gets called if an error occurs any time during the read process, including malformed syntax errors, unreadable inputs, and so forth. If an error does occur, no other events will be emitted after this one. If you do not include an error event handler, the parser will throw the error.
+
+
+<a name="event_read-eof" />
+
   - `eof(prefixes: `[`#hash/prefix-mappings`](core.data.factory#hash_prefix-mappings)`)`
     - Gets called once the 'end-of-file' has been reached on the input and all other events have been emitted, except for the final `end()` event to indicate the the output stream is done. This event is useful for grabbing the final map of `prefixes`.
-  - `end()`
+
+
+<a name="event_read-end" />
+
+  - `end()` _via_ [@node.js/stream.Readable#event_end](https://nodejs.org/api/stream.html#stream_event_end)
     - Gets called once at the very end of the input. It indicates that the input stream (if any) has been closed and no more events will be emitted.
 
+
+<a name="event_read-error" />
+
+  - `error(err: Error)` _via_ [@node.js/stream.Readable#event_error](https://nodejs.org/api/stream.html#stream_event_error_1)
+    - Gets called if an error occurs any time during the read process, including malformed syntax errors, unreadable inputs, and so forth. If an error does occur, no other events will be emitted after this one. If you do not include an error event handler, the parser will throw the error.
+
+
+----
 
 <a name="events_write" />
 
@@ -462,7 +541,7 @@ The definition for all possible events emitted during content reading. Please [s
 The definition for all possible events emitted during content writing. Please [see this note about events](#note-events) to understand how this definition applies to both the traditional `.on()`-style of event binding as well as the inline-style.
 
 **Events:**
- - ... [see those inherited from @nodejs/stream.Transform](https://nodejs.org/api/stream.html#stream_class_stream_transform) (i.e., events from both @nodejs/stream.Readable and @nodejs/stream.Writable)
+ - ... [see those inherited from @node.js/stream.Transform](https://nodejs.org/api/stream.html#stream_class_stream_transform) (i.e., events from both @node.js/stream.Readable and @node.js/stream.Writable)
 
 
 <!--

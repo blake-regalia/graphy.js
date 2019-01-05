@@ -560,7 +560,7 @@ describe('dataset_tree set methods', () => {
 					['z://k', 'z://l', 'z://m', 'z://g'],
 				],
 			}),
-			'a includes b': () => ({
+			'a contains b': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://a', 'z://b', 'z://d', 'z://g'],
@@ -584,7 +584,7 @@ describe('dataset_tree set methods', () => {
 					['z://k', 'z://l', 'z://m', 'z://g'],
 				],
 			}),
-			'b includes a': () => ({
+			'b contains a': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://a', 'z://b', 'z://d', 'z://g'],
@@ -747,7 +747,7 @@ describe('dataset_tree set methods', () => {
 					['z://d', 'z://e', 'z://f', 'z://g'],
 				],
 			}),
-			'a includes b': () => ({
+			'a contains b': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://a', 'z://b', 'z://d', 'z://g'],
@@ -769,7 +769,7 @@ describe('dataset_tree set methods', () => {
 					['z://d', 'z://e', 'z://f', 'z://g'],
 				],
 			}),
-			'b includes a': () => ({
+			'b contains a': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://a', 'z://b', 'z://d', 'z://g'],
@@ -874,7 +874,7 @@ describe('dataset_tree set methods', () => {
 					['z://k', 'z://l', 'z://m', 'z://g'],
 				],
 			}),
-			'a includes b': () => ({
+			'a contains b': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://a', 'z://b', 'z://d', 'z://g'],
@@ -894,7 +894,7 @@ describe('dataset_tree set methods', () => {
 					['z://k', 'z://l', 'z://m', 'z://g'],
 				],
 			}),
-			'b includes a': () => ({
+			'b contains a': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://a', 'z://b', 'z://d', 'z://g'],
@@ -992,7 +992,7 @@ describe('dataset_tree set methods', () => {
 					['z://a', 'z://e', 'z://f', 'z://g'],
 				],
 			}),
-			'a includes b': () => ({
+			'a contains b': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://a', 'z://b', 'z://d', 'z://g'],
@@ -1012,7 +1012,7 @@ describe('dataset_tree set methods', () => {
 					['z://k', 'z://l', 'z://m', 'z://g'],
 				],
 			}),
-			'b includes a': () => ({
+			'b contains a': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://d', 'z://e', 'z://f', 'z://g'],
@@ -1084,7 +1084,7 @@ describe('dataset_tree set booleans', () => {
 				],
 				expect: false,
 			}),
-			'a includes b': () => ({
+			'a contains b': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://d', 'z://e', 'z://f', 'z://g'],
@@ -1097,7 +1097,7 @@ describe('dataset_tree set booleans', () => {
 				],
 				expect: false,
 			}),
-			'b includes a': () => ({
+			'b contains a': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://d', 'z://e', 'z://f', 'z://g'],
@@ -1112,7 +1112,7 @@ describe('dataset_tree set booleans', () => {
 			}),
 		},
 
-		includes: {
+		contains: {
 			'both blank': () => ({
 				a: [],
 				b: [],
@@ -1173,7 +1173,7 @@ describe('dataset_tree set booleans', () => {
 				],
 				expect: false,
 			}),
-			'a includes b': () => ({
+			'a contains b': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://d', 'z://e', 'z://f', 'z://g'],
@@ -1186,7 +1186,7 @@ describe('dataset_tree set booleans', () => {
 				],
 				expect: true,
 			}),
-			'b includes a': () => ({
+			'b contains a': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://d', 'z://e', 'z://f', 'z://g'],
@@ -1262,7 +1262,7 @@ describe('dataset_tree set booleans', () => {
 				],
 				expect: false,
 			}),
-			'a includes b': () => ({
+			'a contains b': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://d', 'z://e', 'z://f', 'z://g'],
@@ -1275,7 +1275,7 @@ describe('dataset_tree set booleans', () => {
 				],
 				expect: false,
 			}),
-			'b includes a': () => ({
+			'b contains a': () => ({
 				a: [
 					['z://a', 'z://b', 'z://c', 'z://g'],
 					['z://d', 'z://e', 'z://f', 'z://g'],
