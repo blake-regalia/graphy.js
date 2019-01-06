@@ -17,17 +17,17 @@ This documentation covers the following graphy packages:
  - [Accessibility](#accessibility) -- all textual RDF content modules
  - [Verbs](#verbs) -- the module export functions under each content namespace
    - [`.read`](#verb_read) -- for reading RDF from a string or stream
-     - Event [`readable(...)`](#event_read-readable)
-     - Event [`base(...)`](#event_read-base)
-     - Event [`prefix(...)`](#event_read-prefix)
-     - Event [`comment(...)`](#event_read-comment)
-     - Event [`data(...)`](#event_read-data)
-     - Event [`enter(...)`](#event_read-enter)
-     - Event [`exit(...)`](#event_read-exit)
-     - Event [`progress(...)`](#event_read-progress)
-     - Event [`eof(...)`](#event_read-eof)
-     - Event [`end(...)`](#event_read-end)
-     - Event [`error(...)`](#event_read-error)
+     - _event_ [`readable(...)`](#event_read-readable)
+     - _event_ [`base(...)`](#event_read-base)
+     - _event_ [`prefix(...)`](#event_read-prefix)
+     - _event_ [`comment(...)`](#event_read-comment)
+     - _event_ [`data(...)`](#event_read-data)
+     - _event_ [`enter(...)`](#event_read-enter)
+     - _event_ [`exit(...)`](#event_read-exit)
+     - _event_ [`progress(...)`](#event_read-progress)
+     - _event_ [`eof(...)`](#event_read-eof)
+     - _event_ [`end(...)`](#event_read-end)
+     - _event_ [`error(...)`](#event_read-error)
    - [`.write`](#verb_write) -- for writing RDF using write event objects
  - [Classes](#classes)
  - [Events](#events) -- definitions for event interfaces
@@ -385,7 +385,7 @@ The definition for all possible events emitted during content reading. Please [s
         <#banana> a <#Fruit> .
       `, {
           comment(s_comment) {
-              s_comment;  // 'hello world!'
+              s_comment;  // ' hello world!'
           },
       });
       
@@ -395,7 +395,7 @@ The definition for all possible events emitted during content reading. Please [s
         <#banana> a <#Fruit> .
       `);
       ds_read.on('comment', (s_comment) => {
-          s_comment;  // 'hello world!'
+          s_comment;  // ' hello world!'
       });
       ```
 
@@ -453,7 +453,7 @@ The definition for all possible events emitted during content reading. Please [s
 <a name="event_read-progress" />
 
   - `progress(delta: integer)`
-    - Gets called each time the reader has finished processing a chunk of data and is about to go asynchronous and wait for the next I/O event. `delta` will reflect the number of characters that were consumed from the input which resulted in a change to the reader's internal state (i.e., incomplete tokens must wait for next chunk to be terminated). This event offers a nice way to provide progress updates to the user, however this would require knowing ahead of time how many characters in total are contained by the input. This event also provides hints to resource-hungry applications when it might be an opportunistic time to perform synchronous tasks. This event will also be called right before the `eof()` event with a `delta` equal to `0`.
+    - Gets called each time the reader has finished processing a chunk of data and is about to go asynchronous and wait for the next I/O event. `delta` will reflect the number of characters that were consumed from the input which resulted in a change to the reader's internal state (i.e., incomplete tokens must wait for next chunk to be terminated). This event offers a nice way to provide progress updates to the user, however this would require knowing ahead of time how many characters in total are contained by the input, which will always be less than or equal to the total number of bytes of the document depending on how many surrogate pairs are present in the utf8-encoded string. This event also provides hints to resource-hungry applications when it might be an opportunistic time to perform blocking tasks. This event will also be called right before the `eof()` event with a `delta` equal to `0`.
 
 
 <a name="event_read-eof" />

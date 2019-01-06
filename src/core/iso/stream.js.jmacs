@@ -3,119 +3,21 @@ const stream = require('stream');
 @> until()
 	@//@object-literal
 	until(s_event) {
-		return new Promise((fk_until, fe_until) => {
-			this.once(s_event, fk_until);
-		});
-	}
-@;
-
-@> thru()
-	@//@object-literal
-	thru(ds_dst) {
-		if(!ds_dst._readableState) throw new TypeError(`Invalid destination stream: ${ds_dst}`);
-
-		let g_readable = ds_dst._readableState;
-
-		// the promise to return
-		let f_thru;
-
-		// whether or not that promise needs accumulation
-		let b_awaiting = true;
-
-		// object mode
-		if(g_readable.objectMode) {
-			// async operation
-			f_thru = () => new Promise((fk_thru, fe_thru) => {
-				// pipe to destination
-				this.pipe(ds_dst)
-					// error
-					.on('error', (e_stream) => {
-						fe_thru(e_stream);
-					})
-					// wait for it to finish
-					.on('finish', () => {
-						fk_thru(a_data);
-					});
-
-				// still awaiting for data
-				if(b_awaiting) {
-					let a_data = [];
-					ds_dst
-						// accumulate data
-						.on('data', (w_event) => {
-							a_data.push(w_event);
-						})
-				}
-			});
-		}
-		// utf8-encoded string
-		else if('utf8' === g_readable.defaultEncoding) {
-			// async operation
-			f_thru = () => new Promise((fk_thru, fe_thru) => {
-				let s_data = '';
-
-				// pipe to destination
-				this.pipe(ds_dst)
-					// accumulate data
-					.on('data', (s_chunk) => {
-						s_data += s_chunk;
-					})
-					// error
-					.on('error', (e_stream) => {
-						fe_thru(e_stream);
-					})
-					// wait for it to finish
-					.on('finish', () => {
-						fk_thru(s_data);
-					});
-			});
-		}
-		// buffer
-		else {
-			// async operation
-			f_thru = () => new Promise((fk_thru, fe_thru) => {
-				let ab_data = Buffer.from([]);
-
-				// pipe to destination
-				this.pipe(ds_dst)
-					// accumulate data
-					.on('data', (ab_chunk) => {
-						ab_data = Buffer.concat([ab_data, ab_chunk], ab_data.length+ab_chunk.length);
-					})
-					// error
-					.on('error', (e_stream) => {
-						fe_thru(e_stream);
-					})
-					// wait for it to finish
-					.on('finish', () => {
-						fk_thru(ab_data);
-					});
-			});
-		}
-
-		// chainable
-		return Object.assign(dp_thru, {
-			async thru(...a_args) {
-				// parent context is no longer await return value
-				b_awaiting = false;
-
-				// setup next promise first
-				let dp_next = ds_dst.thru(...a_args);
-
-				// resolve parent
-				await f_thru();
-
-				// return that
-				return new Promise(async() => {
-					// await parent
-					
-					dp_next;
+		// special case returns `this`
+		if('end' === s_event) {
+			return new Promise((fk_until, fe_until) => {
+				this.once(s_event, (...a_args) => {
+					fk_until(this, ...a_args);
 				});
-			};
-		});
+			});
+		}
+		else {
+			return new Promise((fk_until, fe_until) => {
+				this.once(s_event, fk_until);
+			});
+		}
 	}
 @;
-
 @> bucket()
 	bucket(s_encoding='utf8') {
 		let g_readable = this._readableState;

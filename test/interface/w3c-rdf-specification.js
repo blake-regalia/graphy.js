@@ -11,6 +11,7 @@ const S_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
 const ttl_read = require(`@${S_CHANNEL}/content.ttl.read`);
 const nt_read = require(`@${S_CHANNEL}/content.nt.read`);
 const nq_read = require(`@${S_CHANNEL}/content.nq.read`);
+const trig_write = require(`@${S_CHANNEL}/content.trig.write`);
 const factory = require(`@${S_CHANNEL}/core.data.factory`);
 const dataset_tree = require(`@${S_CHANNEL}/util.dataset.tree`);
 
@@ -186,26 +187,32 @@ class TestCase_EvalPositive extends TestCase_Positive {
 
 					// ready to compare
 					end() {
-						// expected matches actual; all good
-						if(k_tree_actual.equals(k_tree_expected)) {
-							fke_test();
-						}
-						// mismatch; clarify
-						else {
-							let k_actual_missing = k_tree_expected.minus(k_tree_actual);
-							let k_actual_misplaced = k_tree_actual.minus(k_tree_expected);
+						setTimeout(async() => {
+							k_tree_actual = k_tree_actual.canonicalize();
+							k_tree_expected = k_tree_expected.canonicalize();
 
-							let s_error = '';
-							if(k_actual_missing.count()) {
-								s_error += `actual quad set missing:\n${k_actual_missing.canonicalize()}`;
+							// expected matches actual; all good
+							if(k_tree_actual.equals(k_tree_expected)) {
+								fke_test();
 							}
-							if(k_actual_misplaced.count()) {
-								s_error += `\nactual quad set has quads that don't belong:\n${k_actual_misplaced.canonicalize()}`;
-							}
+							// mismatch; clarify
+							else {
+								let k_actual_missing = k_tree_expected.minus(k_tree_actual);
+								let k_actual_misplaced = k_tree_actual.minus(k_tree_expected);
 
-							debugger;
-							fke_test(new Error(s_error));
-						}
+								let s_error = '';
+								if(k_actual_missing.size) {
+									let st_missing = await k_actual_missing.end().pipe(trig_write()).bucket();
+									s_error += `actual quad set missing:\n${st_missing}`;
+								}
+								if(k_actual_misplaced.size) {
+									let st_misplaced = await k_actual_misplaced.end().pipe(trig_write()).bucket();
+									s_error += `\nactual quad set has quads that don't belong:\n${st_misplaced}`;
+								}
+
+								fke_test(new Error(s_error));
+							}
+						}, 0);
 					},
 				});
 			},
@@ -308,7 +315,7 @@ const collection = (sv1_head, k_tree, a_collection=[]) => {
 };
 
 
-module.exports = (gc_tests={}) => new Promise((fk_describe) => {
+module.exports = async(gc_tests={}) => {
 	let {
 		reader: f_reader,
 		package: si_package,
@@ -318,58 +325,55 @@ module.exports = (gc_tests={}) => new Promise((fk_describe) => {
 	let p_manifest = path.join(pd_root, 'build/cache/specs', si_package, 'manifest.ttl');
 	let p_iri_manifest = pathToFileURL(p_manifest);
 
-	let k_tree = dataset_tree();
-
 	// pipeline for backwards-compat w/ < v10
-	fs.createReadStream(p_manifest)
+	let k_tree = await fs.createReadStream(p_manifest)
 		.pipe(ttl_read({
 			base_uri: p_iri_manifest,
 		}))
-		.pipe(k_tree)
-		.on('error', (e_pipeline) => {
-			if(e_pipeline) throw e_pipeline;
-		})
-		.on('end', () => {
-			let sv1_head = [...k_tree.objects('*', '>'+p_iri_manifest, '>'+H_PREFIXES.mf+'entries', null)][0];
+		.pipe(dataset_tree({
+			error(e_pipeline) {
+				throw e_pipeline;
+			},
+		}))
+		.until('ready');
 
-			let a_entries = collection(sv1_head, k_tree);
+	let sv1_head = [...k_tree.c1_objects('*', '>'+p_iri_manifest, '>'+H_PREFIXES.mf+'entries', null)][0];
 
-			let hv3_triples = k_tree.quad_tree['*'];
+	let a_entries = collection(sv1_head, k_tree);
 
-			let as_empty = new Set();
-			describe('w3c rdf specification manifest', () => {
-				for(let sv1_entry of a_entries) {
-					let {
-						['>'+H_PREFIXES.rdf+'type']: as_types=as_empty,
-						['>'+H_PREFIXES.mf+'name']: as_names=as_empty,
-						['>'+H_PREFIXES.mf+'action']: as_actions=as_empty,
-						['>'+H_PREFIXES.mf+'result']: as_results=as_empty,
-					} = hv3_triples[sv1_entry];
+	let hv3_triples = k_tree.quad_tree['*'];
 
-					let sv1_type = [...as_types][0];
-					let s_name = [...as_names][0].slice(1);
-					let p_action = fileURLToPath([...as_actions][0].slice(1));
+	let as_empty = new Set();
+	describe('w3c rdf specification manifest', () => {
+		for(let sv1_entry of a_entries) {
+			let {
+				['>'+H_PREFIXES.rdf+'type']: as_types=as_empty,
+				['>'+H_PREFIXES.mf+'name']: as_names=as_empty,
+				['>'+H_PREFIXES.mf+'action']: as_actions=as_empty,
+				['>'+H_PREFIXES.mf+'result']: as_results=as_empty,
+			} = hv3_triples[sv1_entry];
 
-					// no route
-					if(!(sv1_type in HV1_TEST_TYPES)) {
-						debugger;
-						throw new Error(`no such test type: ${sv1_type}`);
-					}
+			let sv1_type = [...as_types][0];
+			let s_name = [...as_names][0].slice(1);
+			let p_action = fileURLToPath([...as_actions][0].slice(1));
 
-					// route
-					let k_test_case = new HV1_TEST_TYPES[sv1_type]({
-						reader: f_reader,
-						name: s_name,
-						action: p_action,
-						result: as_results.size? fileURLToPath([...as_results][0].slice(1)): null,
-						base: p_manifest_source.replace(/\/[^/]+$/, '/'+path.basename(p_action)),
-					});
+			// no route
+			if(!(sv1_type in HV1_TEST_TYPES)) {
+				debugger;
+				throw new Error(`no such test type: ${sv1_type}`);
+			}
 
-					// run
-					k_test_case.run();
-				}
+			// route
+			let k_test_case = new HV1_TEST_TYPES[sv1_type]({
+				reader: f_reader,
+				name: s_name,
+				action: p_action,
+				result: as_results.size? fileURLToPath([...as_results][0].slice(1)): null,
+				base: p_manifest_source.replace(/\/[^/]+$/, '/'+path.basename(p_action)),
 			});
 
-			fk_describe();
-		});
-});
+			// run
+			k_test_case.run();
+		}
+	});
+};

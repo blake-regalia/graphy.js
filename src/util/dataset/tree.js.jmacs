@@ -703,13 +703,16 @@ class DatasetTree extends stream.Duplex {
 				}
 			});
 
-			// once input ends
-			ds_src.once('end', () => {
-				this.emit('ready', this);
-			});
+			// // once input ends
+			// ds_src.once('end', () => {
+			// 	debugger;
+			// 	this.emit('ready', this);
+			// });
 		});
 
 		this.once('finish', () => {
+			this.emit('ready', this);
+
 			if(this.push_waiting) {
 				this._read(this.push_waiting);
 			}
@@ -731,6 +734,20 @@ class DatasetTree extends stream.Duplex {
 			transform_tree: this,
 			push_waiting: 0,
 		});
+	}
+
+	// on end input
+	end(...a_args) {
+		// overwrite mutators
+		this.add = this.addAll = this.addQuads = this.add_quads = this.add_tree = this.clear = this.delete = this.deny;
+
+		// end writable stream
+		super.end(...a_args);
+	}
+
+	// deny mutator call
+	deny() {  // eslint-disable-line class-methods-use-this
+		throw new Error('Set mutator call not allowed after writable side of duplex ended');
 	}
 
 	// on pipe
@@ -760,6 +777,10 @@ class DatasetTree extends stream.Duplex {
 						if(this._writableState.finished) {
 							this.push_waiting = 0;
 							return this.read_graphy_after_finished(n_size_nry);
+						}
+						// still not ready yet; append size
+						else {
+							this.push_waiting += n_size_nry;
 						}
 					};
 				}

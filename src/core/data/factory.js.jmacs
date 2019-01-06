@@ -317,6 +317,12 @@ class Literal extends GenericTerm {
 	const KT_XSD_@{s_type_caps} = new NamedNode('@{P_IRI_XSD}@{s_type}');
 	class Literal_@{s_type_proper} extends Literal {
 		@//@class
+		static from(s_literal) {
+			let kt = new Literal_@{s_type_proper}(+s_literal);
+			kt.value = s_literal;
+			return kt;
+		}
+
 		constructor(@{s_arg}) {
 			super(@{s_arg}+'');
 			@- b_boolean
@@ -785,9 +791,12 @@ let g_raw = {
 	},
 	@*{
 		for(let s_type in h_literals) {
+			let s_class = /* syntax: js */ `Literal_${s_type[0].toUpperCase()+s_type.slice(1)}`;
 			yield /* syntax: js */ `
 				${s_type}(w) {
-					return new Literal_${s_type[0].toUpperCase()+s_type.slice(1)}(w);
+					${'boolean' === s_type
+						? /* syntax: js */ `return new ${s_class}(w)`
+						: /* syntax: js */ `return ${s_class}.from(w);`}
 				},
 			`;
 		}
@@ -1195,6 +1204,13 @@ const factory = module.exports = {
 				}
 			}
 		},
+	},
+
+	to: {
+		boolean: s_boolean => Literal_Boolean.from(s_boolean),
+		integer: s_integer => Literal_Integer.from(s_integer),
+		decimal: s_decimal => Literal_Decimal.from(s_decimal),
+		double: s_double => Literal_Double.from(s_double),
 	},
 
 
