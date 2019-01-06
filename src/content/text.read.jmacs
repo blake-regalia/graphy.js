@@ -104,6 +104,10 @@
 	} else @{if_char(a, b)}
 @;
 
+@> else_if_not_char(s)
+	} else if('@{s}' !== x) {
+@;
+
 @// else, test the current character without use of intermediate variable
 @> else_if_char_only(a)
 	} else if (`@{a}` === s[i]) {
@@ -170,6 +174,26 @@
 	} else {
 		@// try next match
 		@{if_match(s_regex, sv_match, b_local)}
+@;
+
+
+
+// try something else
+@> if_call(s_method, sv_match, b_local)
+	@.let s_no_shadow = s_method.replace(/[^a-z0-9]/gi, '_');
+
+	// try match
+	let aw_valid_@{s_no_shadow} = @{s_method}(s, i);
+
+	if(!aw_valid_@{s_no_shadow}) return;
+
+	let [@{sv_match}, i@{sv_match}] = aw_valid_@{s_no_shadow};
+
+	@// test
+	if(@{sv_match}) {
+
+		// advance index
+		@{b_local? '': 'this.'}i = i@{sv_match};
 @;
 
 // try something else

@@ -24,6 +24,7 @@ const R_UNICODE_ANY = /@{R_UNICODE_4()}|@{R_UNICODE_8()}/g;
 const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
 
 const R_CLEAN = /\s*(?:#[^\n]*\n\s*)*\s*/y;
+const R_CLEAN_COMMENTS = /\s*(#[^\n]*\n\s*)*\s*/y;
 const R_LITERAL_ESCAPELESS = /^"([^\\"]*)"(?:\^\^<([^\\>]*)>|@([^ \t.]+)|)?$/;
 const R_LITERAL = /^"(.*)"(?:\^\^<(.*)>|@([^ \t.]+)|)?$/;
 const RT_HAS_ESCAPES = /[\\]/;
@@ -63,7 +64,7 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 
 @>> R_COMMENT()
 	@//@regex
-	\.\s*(?:#[^\n]*\n\s*|\n\s*)+
+	\.\s*(#[^\n]*\n\s*|\n\s*)+
 @;
 
 @>> R_TRIPLE(b_escapeless=false)
@@ -103,7 +104,12 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 @> clean()
 	// remove whitespace & comments from beginning
 	R_CLEAN.lastIndex = 0;
-	R_CLEAN.exec(s);
+	let m_clean = R_CLEAN.exec(s);
+
+	// comments
+	if(this.emit_comments) {
+		this.emit_comments(m_clean[1]);
+	}
 
 	// update index and prepare to match statement
 	let i = R_CLEAN.lastIndex;
@@ -167,6 +173,11 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 		)
 		@//@arguments
 	);
+
+	// comments
+	if(this.emit_comments) {
+		this.emit_comments(@{sv_match}[@{QUADS? 11: 9}]);
+	}
 @;
 
 
@@ -215,6 +226,9 @@ class reader {
 
 			validate: b_validate,
 		});
+
+		// clean regex
+		let r_clean = R_CLEAN;
 
 		// validation
 		Object.assign(this, b_validate
@@ -314,11 +328,14 @@ class reader {
 				let s = this.s += s_chunk;
 
 				// remove whitespace & comments from beginning
-				R_CLEAN.lastIndex = 0;
-				R_CLEAN.exec(s);
+				r_clean.lastIndex = 0;
+				let m_clean = r_clean.exec(s);
+				if(this.emit_comments) {
+					this.emit_comments(m_clean[1]);
+				}
 
 				// update index and prepare to match statement
-				this.i = R_CLEAN.lastIndex;
+				this.i = r_clean.lastIndex;
 
 				// cache chunk length
 				this.n = s.length;
@@ -355,6 +372,21 @@ class reader {
 
 		// data event
 		this.data = g_quad => ds_transform.push(g_quad);
+
+		// new listener added
+		ds_transform.on('newListener', (s_event) => {
+			// comment
+			if('comment' === s_event) {
+				r_clean = R_CLEAN_COMMENTS;
+				this.emit_comments = (s_captured) => {
+					let a_comments = s_captured.slice(1).replace(/\n\s+$/, '').split(/\n+\s*#/g);
+
+					for(let s_comment of a_comments) {
+						ds_transform.emit('comment', s_comment);
+					}
+				};
+			}
+		});
 
 		// bind events to transform stream
 		this.bind(g_config);
@@ -393,6 +425,7 @@ class reader {
 
 @$ H_PARSE_EVENTS = {
 	error: {},
+	comment: {},
 	read: {once:true},
 	progress: {},
 	eof: {once:true},

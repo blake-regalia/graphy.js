@@ -32,9 +32,6 @@ const R_UNICODE_ANY = /@{R_UNICODE_4()}|@{R_UNICODE_8()}/g;
 const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
 
 
-const R_IRIREF_ESCAPELESS = /<([^\\>]*)>\s*/y;
-const R_IRIREF = /<([^>]*)>\s*/y;
-
 
 const H_ESCAPES_JSON = {
 	'\t': '\\t',
@@ -73,7 +70,10 @@ const H_ESCAPES_JSON = {
 	},
 	terminal: {
 		sub: 'object',
-		chars: '.',
+		chars: ''
+			+'.'  // triple
+			+(TRIG? '}': '')  // end-of-graph
+			,
 	},
 	string: {
 		sub: 'terminal',
@@ -87,7 +87,7 @@ const H_ESCAPES_JSON = {
 		chars: ''
 			+'<'  // iri
 			+':'  // prefixed name (only one colon allowed in blank node label)
-			+(TRIG? '}': '')  // end-of-graph
+			+(TRIG? '{': '')  // start-of-graph (subject)
 			,
 	},
 };
@@ -201,6 +201,10 @@ const R_BLANK_NODE_LABEL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node')}/y;
 const R_BLANK_NODE_LABEL_TERMINAL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node', '|(?=\\.[\\s@#<({\\[}])', '\\.?')}/y;
 
 
+const R_IRIREF_ESCAPELESS = /<([^\\>]*)>\s*/y;
+const R_IRIREF = /<([^>]*)>\s*/y;
+
+
 const R_STRING_LITERAL_QUOTE = /"((?:[^"\\]|\\.)*)"@{lookahead('string')}/y;
 const R_STRING_LITERAL_QUOTE_ESCAPELESS = /"([^"\\]*)"@{lookahead('string')}/y;
 const R_STRING_LITERAL_SINGLE_QUOTE = /'((?:[^'\\]|\\.)*)'@{lookahead('string')}/y;
@@ -215,7 +219,7 @@ const R_A = /a@{lookahead('predicate')}/y;
 
 const R_DOUBLE_CARET = /\^\^/y;
 const R_WS = /\s*/y;
-const R_LANGTAG = /@([A-Za-z]+(?:-[A-Za-z0-9-]+)*)@{lookahead('object')}/y;
+const R_LANGTAG = /@([A-Za-z]+(?:-[A-Za-z0-9-]+)*)@{lookahead('terminal')}/y;
 
 // const R_PREFIX = /@?prefix\s*([^#:]*):\s*<([^>]+)>\s*\.?\s*/iy;
 const R_PREFIX_KEYWORD = /(?:(@prefix)|[pP][rR][eE][fF][iI][xX])\s*/y;
@@ -229,6 +233,7 @@ const R_BASE_KEYWORD = /(?:(@base)|[bB][aA][sS][eE])\s*/y;
 	const R_GRAPH_LABELED_BLANK_NODE = /(?:graph)?\s*@{R_BLANK_NODE_LABEL()}\s*\{\s*/iy;
 	const R_GRAPH_ANONYMOUS_BLANK_NODE = /(?:graph)?\s*\[\s*\]\s*\{\s*/iy;
 	const R_GRAPH_IRI = /(?:graph)?\s*<([^>]*)>\s*\{\s*/iy;
+	const R_GRAPH = /(?:graph)?(?:\s+|(?=#<\[{))/iy;
 @;
 
 const R_COMMENT = /(#[^\n]*\n\s*)+/y;
@@ -436,12 +441,6 @@ const match_prefixed_name = (s, i) => {
 
 	// save state before pausing
 	this.state = this.@{s_state};
-
-	// consumer is pausing
-	if(this.n < 0) {
-		// go async
-		return;
-	}
 
 	// store what is unparsed
 	this.pre = @{b_use_field_chunk? 'this.' :''}s.slice(i);
@@ -860,7 +859,7 @@ class reader {
 			// comment
 			if('comment' === s_event) {
 				this.emit_comments = (s_captured) => {
-					let a_comments = s_captured.slice(1).split(/\n+\s*#/g);
+					let a_comments = s_captured.slice(1).replace(/\n\s+$/, '').split(/\n+\s*#/g);
 
 					for(let s_comment of a_comments) {
 						ds_transform.emit('comment', s_comment);
@@ -965,18 +964,6 @@ class reader {
 
 	// end of file
 	eof(b_no_callback) {
-		// paused
-		if(this.n < 0) {
-			// resume here later
-			this.queue_event.push({
-				event: 'eof',
-				data: null,
-			});
-
-			// resume later
-			return;
-		}
-
 		// there are events queued
 		if(this.queue_event.length) {
 			let a_queue = this.queue_event;
@@ -988,18 +975,6 @@ class reader {
 
 				// make event callback
 				this[h_event.event](h_event.data);
-
-				// callback paused stream
-				if(this.n < 0) {
-					// resume here later
-					this.queue_event.push({
-						event: 'eof',
-						data: null,
-					});
-
-					// stop emptying event queue and go async immediately
-					return;
-				}
 			}
 		}
 
@@ -1023,20 +998,6 @@ class reader {
 			if(this.safe_parse()) {
 				// eof has occurred under safe parse
 				if(null === this.s) return;
-
-				// callback paused stream
-				if(this.n < 0) {
-					debugger;
-
-					// resume here later
-					this.queue_event.push({
-						event: 'eof',
-						data: null,
-					});
-
-					// stop emptying event queue and go async immediately
-					return;
-				}
 
 				// still invalid parsing state
 				if(this.@{S_STATE_PRIMARY} !== this.state) {
@@ -1194,6 +1155,13 @@ class reader {
 
 		@// sub-macro for reusing statement productions
 		@def triples(directives=false)
+			@.{
+				let gtg = goto;
+				if(directives) {
+					gtg = () => goto('graph_or_subject');
+				}
+			}
+
 			// prefixed name
 			@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_subject')}
 
@@ -1203,7 +1171,7 @@ class reader {
 				this.subject = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_subject[2]);
 
 				// predicate-object pairs state
-				@{goto('pairs')}
+				@{gtg('pairs')}
 
 			// blank node label
 			@{else_if_match('R_BLANK_NODE_LABEL', 'm_blank_node_label_subject')}
@@ -1214,7 +1182,7 @@ class reader {
 				this.subject = this.blank_node(s_label);
 
 				// predicate-object pairs state
-				@{goto('pairs')}
+				@{gtg('pairs')}
 
 			// anonymous blank node subject
 			@{else_if_match('R_ANONYMOUS_BLANK_NODE')}
@@ -1222,7 +1190,7 @@ class reader {
 				this.subject = this.anonymous_blank_node(this.next_label());
 
 				// goto pairs state for inside property list
-				@{goto('pairs')}
+				@{gtg('pairs')}
 
 			// anonymous blank node property list subject
 			@{else_if_match('R_CHAR_BLANK_NODE')}
@@ -1235,6 +1203,7 @@ class reader {
 				// goto pairs state for inside property list
 				@{goto('pairs')}
 
+			@//@ this token can only be a subject, skip graph check
 			// rdf collection
 			@{else_if_match('R_CHAR_COLLECTION')}
 				// indicate that collection subject should emit an initial statement
@@ -1281,7 +1250,7 @@ class reader {
 				@{iriref('subject', 'm_iriref_subject', true, false, true)}
 
 				// predicate-object pairs state
-				@{goto('pairs')}
+				@{gtg('pairs')}
 
 			// prefixed name
 			@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_subject')}
@@ -1293,7 +1262,7 @@ class reader {
 				this.subject = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
 
 				// predicate-object pairs state
-				@{goto('pairs')}
+				@{gtg('pairs')}
 		@;
 
 		@{triples()}
@@ -1317,7 +1286,7 @@ class reader {
 
 	@- TRIG
 		@{method('block')}
-
+if(this.debug) debugger;
 			@{if_match('R_GRAPH_IRI_ESCAPELESS', 'm_graph_iriref_e_graph')}
 				@{iriref('graph', 'm_graph_iriref_e_graph', true)}
 
@@ -1366,18 +1335,18 @@ class reader {
 				@{goto('statement')}
 
 			// iriref
-			@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_subject')}
-				@{iriref('subject', 'm_iriref_e_subject', true)}
+			@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_graph_subject')}
+				@{iriref('subject', 'm_iriref_e_graph_subject', true)}
 
-				// predicate-object pairs state
-				@{goto('pairs')}
+				// graph or subject
+				@{goto('graph_or_subject')}
 
 			@// try triples productions
 			@{triples(true)}
 
 			@// then try other graph keywords
 			@{else_if_match('R_GRAPH_IRI', 'm_graph_iriref_graph')}
-				@{iriref('graph', 'm_graph_iriref_graph', true)}
+				@{iriref('graph', 'm_graph_iriref_graph', true, false, true)}
 
 				@{emit_graph_open()}
 
@@ -1389,10 +1358,134 @@ class reader {
 				if(this.emit_comments) this.emit_comments(m_comment[0]);
 				continue;
 
+			@{else_if_match('R_GRAPH')}
+				@{goto('graph_keyword')}
+
 			// not iriref, not prefixed name, not blank node label, not prefix id, not base
 			@{else_retry()}
 
 		@{end_method('block')}
+
+
+		@{method('graph_or_subject')}
+			let x = s[i];
+
+			@{if_char('{')}
+				@{whitespace('i+1')}
+
+				// shift placeholder subject
+				this.graph = this.subject;
+
+				@{emit_graph_open()}
+
+				// reset subject in case of collections
+				this.subject = null;
+
+				// statement state
+				@{goto('statement')}
+
+			// non-comment
+			@{else_if_not_char('#')}
+				@{goto('pairs')};
+
+			// comment
+			@{else_if_match('R_COMMENT', 'm_comment', true)}
+				if(this.emit_comments) this.emit_comments(m_comment[0]);
+				continue;
+
+			@{else_retry()}
+
+		@{end_method('graph_or_subject')}
+
+
+		@{method('graph_keyword')}
+
+			// prefixed name
+			@{if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_graph')}
+
+				@{valid_prefix('m_prefixed_named_e_graph')}
+
+				// make subject key
+				this.graph = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_graph[2]);
+
+				// predicate-object pairs state
+				@{goto('graph_post_name')}
+
+			// iriref
+			@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_graph')}
+				@{iriref('graph', 'm_iriref_e_graph', true)}
+
+				// graph
+				@{goto('graph_post_name')}
+
+			// blank node label
+			@{else_if_match('R_BLANK_NODE_LABEL', 'm_blank_node_label_graph')}
+				// extract label
+				let s_label = m_blank_node_label_graph[1];
+
+				// make graph key
+				this.graph = this.blank_node(s_label);
+
+				// predicate-object pairs state
+				@{goto('graph_post_name')}
+
+			// anonymous blank node graph
+			@{else_if_match('R_ANONYMOUS_BLANK_NODE')}
+				// set new blank node as graph
+				this.graph = this.anonymous_blank_node(this.next_label());
+
+				// goto pairs state for inside property list
+				@{goto('graph_post_name')}
+
+			// iriref
+			@{else_if_match('R_IRIREF', 'm_iriref_graph')}
+				@{iriref('graph', 'm_iriref_graph', true, false, true)}
+
+				// predicate-object pairs state
+				@{goto('graph_post_name')}
+
+			// prefixed name
+			@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_graph')}
+				@{valid_prefix('m_prefixed_named_graph')}
+
+				@{suffix('m_prefixed_named_graph')}
+
+				// make subject key
+				this.graph = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
+
+				// predicate-object pairs state
+				@{goto('graph_post_name')}
+
+			// comment
+			@{else_if_match('R_COMMENT', 'm_comment', true)}
+				if(this.emit_comments) this.emit_comments(m_comment[0]);
+				continue;
+
+			// not iriref, not prefixed name, not blank node label, not prefix id, not base
+			@{else_retry()}
+
+		@{end_method('graph_keyword')}
+
+
+		@{method('graph_post_name')}
+			let x = s[i];
+
+			@{if_char('{')}
+				@{whitespace('i+1')}
+
+				@{emit_graph_open()}
+
+				// statement state
+				@{goto('statement')}
+
+			// comment
+			@{else_if_match('R_COMMENT', 'm_comment', true)}
+				if(this.emit_comments) this.emit_comments(m_comment[0]);
+				continue;
+
+			@{else_retry()}
+
+		@{end_method('graph_post_name')}
 	@;
 
 
@@ -1737,7 +1830,6 @@ class reader {
 
 
 	@{method('base_iri')}
-if(this.debug) debugger;
 		// prefix id
 		@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_base')}
 			@// set base url
@@ -1982,7 +2074,7 @@ if(this.debug) debugger;
 		// boolean literal
 		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal', true)}
 			// make literal
-			this.object = factory.literal(m_boolean_literal[1]? true: false);
+			this.object = factory.boolean(m_boolean_literal[1]? true: false);
 
 		// blank node property list
 		@{else_if_char('[')}
@@ -2249,7 +2341,7 @@ if(this.debug) debugger;
 		// boolean literal
 		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal', true)}
 			// make literal
-			this.object = factory.literal(m_boolean_literal[1]? true: false);
+			this.object = factory.booelan(m_boolean_literal[1]? true: false);
 
 		// blank node property list
 		@{else_if_char('[')}
