@@ -254,7 +254,6 @@ const graphy_reader_interface = ({
 		it('.on events', ((fke_test) => {
 			let k_reader = f_reader({
 				input: {string:s_input},
-				debug: true,
 			});
 
 			bind(k_reader, a_events_capture, (e_read, h_events) => {
