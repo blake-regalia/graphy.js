@@ -129,7 +129,7 @@ reader_suite({
 			'langtag': () => [`
 				<z://a> <z://b> "c"@en .
 				<z://d> <z://e> "f"@EN .
-				<z://d> <z://e> "f"@fr _:g .
+				<z://a> <z://b> "c"@fr _:g .
 				<z://d> <z://e> "f"@FR <z://g> .
 			`, [
 				['z://a', 'z://b', '@en"c', '*'],

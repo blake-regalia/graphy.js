@@ -1,0 +1,6 @@
+v3.1.0 (2019-01-06)
+------------------------
+
+# Textual Content Writers
+
+  Introduces textual content writers which accept writable data events such as concise-quad and concise-triples hashes, as well as quad objects.

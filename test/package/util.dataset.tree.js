@@ -2,7 +2,7 @@ const expect = require('chai').expect;
 
 const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
 const dataset_tree = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
-const helper = require('../../../helper.js');
+const util = require('../helper/util.js');
 
 const map_tree = (h_tree, f_onto, a_path=[]) => {
 	for(let s_key in h_tree) {
@@ -32,11 +32,11 @@ const onto_relational = f_relation => (f_leaf, a_path) => {
 	let k_tree_a = dataset_tree();
 	let k_tree_b = dataset_tree();
 
-	for(let g_quad_a of a_a.map(helper.o4)) {
+	for(let g_quad_a of a_a.map(util.o4)) {
 		k_tree_a.add(g_quad_a);
 	}
 
-	for(let g_quad_b of a_b.map(helper.o4)) {
+	for(let g_quad_b of a_b.map(util.o4)) {
 		k_tree_b.add(g_quad_b);
 	}
 
@@ -48,7 +48,7 @@ const onto_relational = f_relation => (f_leaf, a_path) => {
 
 const methods_set = (h_tree) => {
 	map_tree(h_tree, onto_relational((k_tree_out, a_expect) => {
-		helper.validate_quads_unordered(k_tree_out.quads(), a_expect);
+		util.validate_quads_unordered(k_tree_out.quads(), a_expect);
 	}));
 };
 

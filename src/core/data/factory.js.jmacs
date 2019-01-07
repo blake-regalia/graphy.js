@@ -757,6 +757,7 @@ function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 	},
 });
 
+@.{/*
 const H_NO_GRAPH = new NoGraph();
 function Triple(h_subject, h_predicate, h_object) {
 	this.subject = h_subject;
@@ -772,6 +773,7 @@ function Triple(h_subject, h_predicate, h_object) {
 		// 			&& this.predicate.equals(y_other.predicate));
 		// },
 	}));
+*/}
 
 let g_raw = {
 	namedNode(p_iri) {
@@ -803,38 +805,6 @@ let g_raw = {
 	}
 };
 
-@.{/*
-const normalize_ct_hash = (hct_graph, h_prefixes) => {
-	let hvt_graph = {};
-	for(let sct_key of hct_graph) {
-		hvt_graph[factory.ct(sct_key, h_prefixes).verbose()] = normalize_ct_value(hct_graph[sct_key], h_prefixes);
-	}
-	return hvt_graph;
-};
-
-const normalize_ct_value = (z_input, h_prefixes, b_leaf=false) => {
-	if('string' === typeof z_input) {
-		let sct_input = z_input;
-		return [factory.ct(sct_input, h_prefixes).verbose()];
-	}
-	else if(Array.isArray(z_input)) {
-		// an array within an array; a list!
-		if(b_leaf) {
-			throw new Error('list expansion not yet implemented');
-		}
-		else {
-			let a_objects = z_input;
-			return a_objects.map(z_object => normalize_ct_value(z_object, h_prefixes, true)[0]);
-		}
-	}
-	// TODO: coercibles
-	else {
-		// blank node
-		let hct_input = z_input;
-		return [normalize_ct_hash(hct_input, h_prefixes)];
-	}
-};
-*/}
 
 const factory = module.exports = {
 	concise,
@@ -901,8 +871,10 @@ const factory = module.exports = {
 	},
 
 
+	// warn
 	triple(h_subject, h_predicate, h_object) {
-		return new Triple(h_subject, h_predicate, h_object);
+		console.warn(`It is strongly encouraged to use .quad() instead of .triple()`);
+		return new Quad(h_subject, h_predicate, h_object);
 	},
 
 	quad(h_subject, h_predicate, h_object, h_graph) {

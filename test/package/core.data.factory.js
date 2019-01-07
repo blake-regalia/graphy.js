@@ -1,22 +1,11 @@
 const expect = require('chai').expect;
-const assert = require('assert');
 
 const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
-const helper = require('../../../helper.js');
+const util = require('../helper/util.js');
 
 const P_IRI_XSD = 'http://www.w3.org/2001/XMLSchema#';
 const P_IRI_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
 const P_IRI_RDFS = 'http://www.w3.org/2000/01/rdf-schema#';
-
-const eq = assert.strictEqual;
-const deq = assert.deepEqual;
-
-const has = (k, h) => {
-	for(let s_key in h) {
-		assert.notStrictEqual(typeof k[s_key], 'undefined', 'instance missing key {'+s_key+'}');
-		assert.strictEqual(k[s_key], h[s_key], 'instance has wrong value {'+s_key+': "'+k[s_key]+'" should be "'+h[s_key]+'"}');
-	}
-};
 
 const H_PREFIXES = {
 	'': '#',
@@ -24,6 +13,7 @@ const H_PREFIXES = {
 	test_: 'test_#',
 	xsd: P_IRI_XSD,
 	rdf: P_IRI_RDF,
+	rdfs: P_IRI_RDFS,
 };
 
 
@@ -61,9 +51,7 @@ const H_VALIDATORS = {
 		});
 
 		// validate value
-		if(null !== p_value) {
-			expect(kt_actual.value).to.equal(p_value);
-		}
+		expect(kt_actual.value).to.equal(null === p_value? P_IRI_XSD+'string': p_value);
 	},
 
 	literal(kt_actual, g_descriptor={}) {
@@ -83,7 +71,11 @@ const H_VALIDATORS = {
 		}
 
 		// check datatype
-		this.named_node(kt_actual.datatype, g_descriptor.datatype || null);
+		this.named_node(kt_actual.datatype, g_descriptor.language
+			? P_IRI_RDF+'langString'
+			: ('string' === typeof g_descriptor.datatype
+				? g_descriptor.datatype
+				: null));
 	},
 
 	integer(kt_actual, x_value) {
@@ -255,35 +247,36 @@ const validate_factory = (h_methods) => {
 describe('DataFactory:', () => {
 	describe('factory.literal', () => {
 		it('w/o datatype', () => {
-			has(factory.literal('test'), {value:'test'});
-			eq(factory.literal('test').datatype.value, 'http://www.w3.org/2001/XMLSchema#string');
+			H_VALIDATORS.literal(factory.literal('test'), {value:'test'});
 		});
 
 		it('with datatype', () => {
 			let k_datatype = factory.namedNode('yes');
-			has(factory.literal('test', k_datatype), {value:'test', datatype:k_datatype});
+			H_VALIDATORS.literal(factory.literal('test', k_datatype), {value:'test', datatype:'yes'});
 		});
 
 		it('language', () => {
-			has(factory.literal('test', 'en'), {value:'test', language:'en'});
+			H_VALIDATORS.literal(factory.literal('test', 'en'), {value:'test', language:'en'});
 		});
 
 		it('valueOf casts to canonical form', () => {
-			eq(factory.literal('hello', 'en')+'', '@en"hello');
-			eq(factory.literal('hello', factory.namedNode('greeting'))+'', '^>greeting"hello');
+			expect(factory.literal('hello', 'en')+'').to.equal('@en"hello');
+			expect(factory.literal('hello', factory.namedNode('greeting'))+'').to.equal('^>greeting"hello');
 		});
 
 		it('.verbose', () => {
-			eq(factory.literal('hello', 'en').verbose(), '"hello"@en');
-			eq(factory.literal('hello', factory.namedNode('greeting')).verbose(), '"hello"^^<greeting>');
+			expect(factory.literal('hello', 'en').verbose()).to.equal('"hello"@en');
+			expect(factory.literal('hello', factory.namedNode('greeting')).verbose()).to.equal('"hello"^^<greeting>');
 		});
 
 		it('.termType', () => {
-			eq(factory.literal('').termType, 'Literal');
+			expect(factory.literal(''))
+				.to.have.property('termType', 'Literal');
 		});
 
 		it('.isLiteral', () => {
-			eq(factory.literal('').isLiteral, true);
+			expect(factory.literal(''))
+				.to.have.property('isLiteral', true);
 		});
 	});
 
@@ -345,29 +338,29 @@ describe('DataFactory:', () => {
 					'numeric string: 0b101': ['0b101', 0b101],
 					'+Infinity': () => {
 						let kt_actual = factory.double(Infinity);
-						H_VALIDATORS.literal(kt_actual);
+						H_VALIDATORS.literal(kt_actual, {value:'INF', datatype:P_IRI_XSD+'double'});
 						expect(kt_actual).to.include({
-							value: 'INF',
 							number: Infinity,
+							isNumeric: true,
 							isDouble: true,
 							isInfinite: true,
 						});
 					},
 					'-Infinity': () => {
 						let kt_actual = factory.double(-Infinity);
-						H_VALIDATORS.literal(kt_actual);
+						H_VALIDATORS.literal(kt_actual, {value:'-INF', datatype:P_IRI_XSD+'double'});
 						expect(kt_actual).to.include({
-							value: '-INF',
 							number: -Infinity,
+							isNumeric: true,
 							isDouble: true,
 							isInfinite: true,
 						});
 					},
 					NaN: () => {
 						let kt_actual = factory.double(NaN);
-						H_VALIDATORS.literal(kt_actual);
+						H_VALIDATORS.literal(kt_actual, {value:'NaN', datatype:P_IRI_XSD+'double'});
 						expect(kt_actual).to.include({
-							value: 'NaN',
+							isNumeric: true,
 							isDouble: true,
 							isNaN: true,
 						});
@@ -449,29 +442,29 @@ describe('DataFactory:', () => {
 					'-0.1': [-0.1, 'decimal'],
 					'+Infinity': () => {
 						let kt_actual = factory.number(Infinity);
-						H_VALIDATORS.literal(kt_actual);
+						H_VALIDATORS.literal(kt_actual, {value:'INF', datatype:P_IRI_XSD+'double'});
 						expect(kt_actual).to.include({
-							value: 'INF',
 							number: Infinity,
+							isNumeric: true,
 							isDouble: true,
 							isInfinite: true,
 						});
 					},
 					'-Infinity': () => {
 						let kt_actual = factory.number(-Infinity);
-						H_VALIDATORS.literal(kt_actual);
+						H_VALIDATORS.literal(kt_actual, {value:'-INF', datatype:P_IRI_XSD+'double'});
 						expect(kt_actual).to.include({
-							value: '-INF',
 							number: -Infinity,
+							isNumeric: true,
 							isDouble: true,
 							isInfinite: true,
 						});
 					},
 					NaN: () => {
 						let kt_actual = factory.number(NaN);
-						H_VALIDATORS.literal(kt_actual);
+						H_VALIDATORS.literal(kt_actual, {value:'NaN', datatype:P_IRI_XSD+'double'});
 						expect(kt_actual).to.include({
-							value: 'NaN',
+							isNumeric: true,
 							isDouble: true,
 							isNaN: true,
 						});
@@ -572,7 +565,7 @@ describe('DataFactory:', () => {
 
 	describe('factory.c3', () => {
 		it('works', () => {
-			helper.validate_quads(factory.c3({
+			util.validate_quads(factory.c3({
 				'>a': {
 					'>b': '>c',
 					'>d': ['>e', '^>y"f'],
@@ -603,7 +596,7 @@ describe('DataFactory:', () => {
 		});
 
 		it('works w/ prefix-mappings', () => {
-			helper.validate_quads(factory.c3({
+			util.validate_quads(factory.c3({
 				':a': {
 					':b': ':c',
 					':d': [':e', '^:y"f'],
@@ -639,7 +632,7 @@ describe('DataFactory:', () => {
 
 	describe('factory.c4', () => {
 		it('works', () => {
-			helper.validate_quads(factory.c4({
+			util.validate_quads(factory.c4({
 				'*': {
 					'>a': {
 						'>b': '>c',
@@ -674,7 +667,7 @@ describe('DataFactory:', () => {
 		});
 
 		it('works w/ prefix-mappings', () => {
-			helper.validate_quads(factory.c4({
+			util.validate_quads(factory.c4({
 				'*': {
 					':a': {
 						':b': ':c',
