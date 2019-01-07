@@ -106,7 +106,7 @@ Directives allow for special events to be passed to the output serializer at a g
         </tr>
         <tr>
             <td>PrefixedName</td>
-            <td><code>([^_:@"^`][^:]*)? ':' .*</em></code></td>
+            <td><code>([^_:@"^`][^:]*)? ':' .*</code></td>
         </tr>
         <tr>
             <td>TypeAlias</td>
@@ -126,7 +126,11 @@ Directives allow for special events to be passed to the output serializer at a g
         </tr>
         <tr>
             <td>DatatypedLiteral</td>
-            <td><code>'^' NamedNode PlainLiteral</code></td>
+            <td><code>'^' Datatype PlainLiteral</code></td>
+        </tr>
+        <tr>
+            <td>Datatype</td>
+            <td><code>'>' [^"]* | ([^:@"^\`][^:"]*)? ':' [^"]*</code></td>
         </tr>
         <tr>
             <td>LanguagedLiteral</td>
