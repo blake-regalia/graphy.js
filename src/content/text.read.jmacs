@@ -185,7 +185,8 @@
 	// try match
 	let aw_valid_@{s_no_shadow} = @{s_method}(s, i);
 
-	if(!aw_valid_@{s_no_shadow}) return;
+	// stack bail out
+	if(!aw_valid_@{s_no_shadow}) return true;
 
 	let [@{sv_match}, i@{sv_match}] = aw_valid_@{s_no_shadow};
 
@@ -208,7 +209,8 @@
 		// try match
 		let aw_valid_@{s_no_shadow} = @{s_method}(s, i);
 
-		if(!aw_valid_@{s_no_shadow}) return;
+		// stack bail out
+		if(!aw_valid_@{s_no_shadow}) return true;
 
 		let [@{sv_match}, i@{sv_match}] = aw_valid_@{s_no_shadow};
 

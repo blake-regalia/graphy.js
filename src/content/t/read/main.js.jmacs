@@ -908,9 +908,6 @@ class reader {
 
 		// read error occurred
 		if(this.read_error) {
-			// destroy self & stream
-			this.destroy(this.read_error);
-
 			// failure
 			return false;
 		}
@@ -936,15 +933,21 @@ class reader {
 	}
 
 	error(s_message) {
-		this.read_error = new Error(s_message);
+		// already destroyed or a read error
+		if(this.read_error || this.destroyed) return true;
+
+		// store read error
+		let e_read = this.read_error = new Error(s_message);
+
+		// destroy self and stream
+		this.destroy(e_read);
+
+		// bail out w/ non-function return type
 		return true;
 	}
 
 	// parse_error (not meant to be an event callback)
-	parse_error(s_expected, b_eof) {
-		// read error; safe_parse will handle errback
-		if(this.read_error) return true;
-
+	parse_error(s_expected, b_eof=false) {
 		@- T
 			let i = this.i;
 			let i_off = Math.min(i, Math.abs(i-15));
@@ -953,11 +956,9 @@ class reader {
 			let i_off = 0;
 		@;
 		let s = this.s;
-		this.read_error = new Error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
+		return this.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
 			+` ${' '.repeat(i-i_off)}^\n`
 			+`expected ${s_expected} ${b_eof? 'but encountered <<EOF>>': ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
-
-		return true;
 	}
 
 	// end of file
