@@ -83,19 +83,61 @@ Directives allow for special events to be passed to the output serializer at a g
 #### Grammar
 
 
-| State            | Production                                           |
-| ---------------- | ---------------------------------------------------- |
-| Term             | `NamedNode | BlankNode | Literal | Directive`        |
-| NamedNode        | `AbsoluteIRI` | `PrefixedName` | `TypeAlias`         |
-| AbsoluteIRI      | `'>' .*`                                             |
-| PrefixedName     | `([^_:@"^\`][^:]*)? ':' .*`                          |
-| TypeAlias        | `'a'`                                                |
-| BlankNode        | `'_' ':' .*`                                         |
-| Literal          | `PlainLiteral | DatatypedLiteral | LanguagedLiteral` |
-| PlainLiteral     | `'"' .*`                                             |
-| DatatypedLiteral | `'^' NamedNode PlainLiteral`                         |
-| LanguagedLiteral | `'@' [a-zA-Z0-9-]+ PlainLiteral`                     |
-| Directive        | `` '`' '[' uuid_v4 ']' JSON ``                       |
+
+<table class="tabular">
+    <thead>
+        <tr>
+            <th>State</th>
+            <th>Production</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Term</td>
+            <td><code>NamedNode | BlankNode | Literal | Directive</code></td>
+        </tr>
+        <tr>
+            <td>NamedNode</td>
+            <td><code>AbsoluteIRI | PrefixedName | TypeAlias</code></td>
+        </tr>
+        <tr>
+            <td>AbsoluteIRI</td>
+            <td><code>'&gt;' .*</code></td>
+        </tr>
+        <tr>
+            <td>PrefixedName</td>
+            <td><code>([^_:@"^`][^:]*)? ':' .*</em></code></td>
+        </tr>
+        <tr>
+            <td>TypeAlias</td>
+            <td><code>'a'</code></td>
+        </tr>
+        <tr>
+            <td>BlankNode</td>
+            <td><code>'_' ':' .*</code></td>
+        </tr>
+        <tr>
+            <td>Literal</td>
+            <td><code>PlainLiteral | DatatypedLiteral | LanguagedLiteral</code></td>
+        </tr>
+        <tr>
+            <td>PlainLiteral</td>
+            <td><code>'"' .*</code></td>
+        </tr>
+        <tr>
+            <td>DatatypedLiteral</td>
+            <td><code>'^' NamedNode PlainLiteral</code></td>
+        </tr>
+        <tr>
+            <td>LanguagedLiteral</td>
+            <td><code>'@' [a-zA-Z0-9-]+ PlainLiteral</code></td>
+        </tr>
+        <tr>
+            <td>Directive</td>
+            <td><code>'`' '[' uuid_v4 ']' JSON</code></td>
+        </tr>
+    </tbody>
+</table>
 
 
 ----

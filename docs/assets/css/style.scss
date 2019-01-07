@@ -130,3 +130,32 @@ blockquote>p {
 header li {
 	margin-top: 0;
 }
+
+.tabular {
+	display: block;
+	overflow: auto;
+}
+
+.tabular thead {
+	border-top: 1px solid #c6cbd1;
+}
+
+.tabular thead th {
+	border: 1px solid #df32e5;
+	padding: 6px 13px;
+	font-weight: 600;
+}
+
+.tabular tbody tr {
+	border-top: 1px solid #c6cbd1;
+}
+
+.tabular tr:nth-child(2n) {
+	background-color: #f6f8fa;
+}
+
+.tabular tbody td {
+	border: 1px solid #df32e5;
+	padding: 6px 13px;
+}
+
