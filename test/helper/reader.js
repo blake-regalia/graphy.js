@@ -40,10 +40,13 @@ class reader_suite {
 					input: st_input,
 					char: s_char=null,
 					state: s_err_state=null,
+					debug: b_debug=false,
 				} = f_leaf();
 
 				it(s_label, (fke_test) => {
 					this.reader(st_input, {
+						debug: b_debug,
+
 						// ignore data events
 						data() {},
 
@@ -62,6 +65,7 @@ class reader_suite {
 
 						// watch for end
 						end() {
+							debugger;
 							fke_test(new Error('should have caught an error'));
 						},
 					});

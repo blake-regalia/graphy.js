@@ -908,8 +908,8 @@ class reader {
 
 		// read error occurred
 		if(this.read_error) {
-			// destroy stream
-			this.transform.destroy(this.read_error);
+			// destroy self & stream
+			this.destroy(this.read_error);
 
 			// failure
 			return false;
@@ -937,7 +937,7 @@ class reader {
 
 	error(s_message) {
 		this.read_error = new Error(s_message);
-		this.destroy();
+		return true;
 	}
 
 	// parse_error (not meant to be an event callback)
@@ -953,11 +953,9 @@ class reader {
 			let i_off = 0;
 		@;
 		let s = this.s;
-		this.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
+		this.read_error = new Error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
 			+` ${' '.repeat(i-i_off)}^\n`
 			+`expected ${s_expected} ${b_eof? 'but encountered <<EOF>>': ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
-
-		this.transform.destroy(this.read_error);
 
 		return true;
 	}
@@ -2505,7 +2503,7 @@ class reader {
 
 	@//@object-literal
 
-	destroy() {
+	destroy(e_destroy) {
 		@*{
 			for(let s_method of a_methods) {
 				yield /* syntax: js */ `
@@ -2514,6 +2512,7 @@ class reader {
 			}
 		}
 		this.destroyed = true;
+		this.transform.destroy(e_destroy);
 	}
 }
 
