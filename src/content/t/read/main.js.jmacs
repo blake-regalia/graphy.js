@@ -155,9 +155,6 @@ const H_ESCAPES_JSON = {
 
 const R_PREFIXED_NAME_ESCAPELESS = /@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 
-//										/([^\s#:<[("'_][^\s#:<[("']*)?:([^\s#<[("'.;,)\]\\]*)(?:\s+|(?=[<[("';,)\]#]))/y;
-// const R_PREFIXED_NAME_ESCAPELESS_WITH_STOPS = /([^#:<[("'_][^\s#:<[("']*)?:((?:[^\s#<[("'.;,)\]\\]*[^\s#<[("';,)\]\\])?)(?:\s+|(?=[<[("'.;,)\]#]))/y;
-
 @>> R_PREFIXED_NAME(b_lookahead=false)
 	@//@regex
 	(@{R_PREFIX_ID()})? :				@// 1: prefix id
@@ -198,7 +195,7 @@ const R_PN_LOCAL_ESCAPES = /\\(.)/g;
 @;
 
 const R_BLANK_NODE_LABEL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node')}/y;
-const R_BLANK_NODE_LABEL_TERMINAL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node', '|(?=\\.[\\s@#<({\\[}])', '\\.?')}/y;
+const R_BLANK_NODE_LABEL_TERMINAL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node', '|(?=\\.[\\s@#<({[}])', '\\.?')}/y;
 
 
 const R_IRIREF_ESCAPELESS = /<([^\\>]*)>\s*/y;
@@ -213,7 +210,6 @@ const R_STRING_LITERAL_LONG_QUOTE = /"""((?:(?:""?)?(?:[^"\\]|\\.))*)"""\s*/y;
 const R_STRING_LITERAL_LONG_SINGLE_QUOTE = /'''((?:(?:''?)?(?:[^'\\]|\\.))*)'''\s*/y;
 
 const R_NUMERIC_LITERAL = /([+-]?(?:[0-9]+(\.[0-9]+)?|(\.[0-9]+))(\.?[eE][+-]?[0-9]+)?)(?:\s+|(?=\.[^eE0-9]|[;,)\]]))/y;
-// const R_NUMERIC_LITERAL_EOF = /([+\-]?(?:[0-9]+([.]?[0-9]*)|([.][0-9]+))([eE][+\-]?[0-9]+)?)(?:\s*\.\s*)/y;
 const R_BOOLEAN_LITERAL = /(?:(true|TRUE)|false|FALSE)\s*/y;
 const R_A = /a@{lookahead('predicate')}/y;
 
@@ -221,10 +217,8 @@ const R_DOUBLE_CARET = /\^\^/y;
 const R_WS = /\s*/y;
 const R_LANGTAG = /@([A-Za-z]+(?:-[A-Za-z0-9-]+)*)@{lookahead('terminal')}/y;
 
-// const R_PREFIX = /@?prefix\s*([^#:]*):\s*<([^>]+)>\s*\.?\s*/iy;
 const R_PREFIX_KEYWORD = /(?:(@prefix)|[pP][rR][eE][fF][iI][xX])\s*/y;
 const R_PREFIX_ID = /([^#:]*):\s*/iy;
-// const R_BASE = /(?:@base|BASE)\s*<([^>]+)>\s*\.?\s*/iy;
 const R_BASE_KEYWORD = /(?:(@base)|[bB][aA][sS][eE])\s*/y;
 
 @- TRIG
@@ -254,7 +248,6 @@ const R_RELATIVE_URI = /^(\/[^?#]+)([?#].*)?$/;
 	)$
 @;
 const R_BASE_IRI = /@{R_BASE_IRI()}/;
-// const R_QUERYSTRING = /(\/[^/?#]*)([?#].*)$/;
 
 const R_ANONYMOUS_BLANK_NODE = /\[\s*\]\s*/y;
 const R_CHAR_BLANK_NODE = /\[(?:\s+|(?=[^\]]))/y;
@@ -491,6 +484,7 @@ const match_prefixed_name = (s, i) => {
 	return this.after_end_of_statement;
 @;
 
+@.{/*
 // instead of putting this in a macro to be unrolled at every IRI resolution,
 // ... spare the monstrosity from the source and make it a function
 const F_DOT_SEGMENTS = (s_rel_iri) => {
@@ -527,6 +521,7 @@ const F_DOT_SEGMENTS = (s_rel_iri) => {
 
 	return a_output.join('/')+(s_qs_hash || '');
 };
+*/}
 
 
 @- TTL
@@ -835,7 +830,7 @@ class reader {
 			},
 		});
 
-		// intercept pipe
+		// intercept pipe out
 		ds_transform.pipe = function(ds_out) {
 			// non-object mode
 			if(!ds_out._writableState.objectMode) {
@@ -846,8 +841,8 @@ class reader {
 			return Object.getPrototypeOf(this).pipe.apply(this, [ds_out]);
 		};
 
-		// once writable side is piped into
-		ds_transform.once('pipe', (ds_input) => {
+		// when the writable side is piped into
+		ds_transform.on('pipe', (ds_input) => {
 			// input stream has encoding option; ensure stream encoding is utf8
 			if('function' === typeof ds_input.setEncoding) {
 				ds_input.setEncoding('utf8');
@@ -871,31 +866,30 @@ class reader {
 		// bind events to transform stream
 		this.bind(g_config);
 
-		// no input given, it will be written/piped in later
-		if(null === g_input) {
-			return;
-		}
-		// input is stream
-		else if(g_input.stream) {
-			let ds_input = g_input.stream;
+		// input given
+		if(g_input) {
+			// input is stream
+			if(g_input.stream) {
+				let ds_input = g_input.stream;
 
-			// go async so caller has chance to bind event listeners
-			setTimeout(() => {
-				ds_input.pipe(ds_transform);
-			}, 0);
-		}
-		// string
-		else if('string' === typeof g_input.string) {
-			let s_input = g_input.string;
+				// go async so caller has chance to bind event listeners
+				setTimeout(() => {
+					ds_input.pipe(ds_transform);
+				}, 0);
+			}
+			// string
+			else if('string' === typeof g_input.string) {
+				let s_input = g_input.string;
 
-			// go async so caller has chance to bind event listeners
-			setTimeout(() => {
-				ds_transform.end(s_input);
-			}, 0);
-		}
-		// invalid arg
-		else {
-			throw new TypeError('invalid argument for input parameter: '+JSON.stringify(g_input));
+				// go async so caller has chance to bind event listeners
+				setTimeout(() => {
+					ds_transform.end(s_input, 'utf8');
+				}, 0);
+			}
+			// invalid arg
+			else {
+				throw new TypeError(`Invalid argument for input parameter: ${'object' === typeof g_input? JSON.stringify(g_input): g_input}`);
+			}
 		}
 	}
 
@@ -1100,6 +1094,7 @@ class reader {
 		@;
 		@{goto('pairs')}
 	}
+	@. a_methods.push('post_pair');
 
 	// after a blank node subject (either property-list or colleciton)
 	post_blank_subject() {
@@ -1140,6 +1135,7 @@ class reader {
 		@;
 		@{goto('pairs')}
 	}
+	@. a_methods.push('post_blank_subject');
 
 	@// regexes are faster than character[0] switching in this context
 	@{method('statement')}

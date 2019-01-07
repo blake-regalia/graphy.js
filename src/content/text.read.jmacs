@@ -178,7 +178,7 @@
 
 
 
-// try something else
+@// try something else
 @> if_call(s_method, sv_match, b_local)
 	@.let s_no_shadow = s_method.replace(/[^a-z0-9]/gi, '_');
 
@@ -197,7 +197,7 @@
 		@{b_local? '': 'this.'}i = i@{sv_match};
 @;
 
-// try something else
+@// try something else
 @> else_if_call(s_method, sv_match, b_local)
 	@// increment number of else branches we'll need to close
 	@$ c_braces += 1;

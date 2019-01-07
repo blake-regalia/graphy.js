@@ -225,6 +225,8 @@ class reader {
 			debug: b_debug,
 
 			validate: b_validate,
+
+			destroyed: false,
 		});
 
 		// clean regex
@@ -283,15 +285,17 @@ class reader {
 					this.s += '\n';
 
 					// parse safely
-					this.safe_parse();
+					try {
+						this.safe_parse();
+					}
+					// read error occurred; pass to flush errback and exit method
+					catch(e_read) {
+						return ds_transform.destroy(e_read);
+					}
 
-					// still unparsed characters
+					// still unparsed characters; pass to flush errback and exit method
 					if(this.s.length) {
-						// throw parse error
-						fk_flush(new Error(`parsing error occurred in state: statement\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
-
-						// exit method
-						return;
+						return ds_transform.destroy(new Error(`parsing error occurred in state: statement\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
 					}
 				}
 
@@ -319,11 +323,6 @@ class reader {
 					b_init = false;
 				}
 
-				// stream is paused
-				if(this.n < 0) {
-					return this.error('stream received new data while it was supposed to be paused!');
-				}
-
 				// concatenate current chunk to previous chunk
 				let s = this.s += s_chunk;
 
@@ -341,21 +340,19 @@ class reader {
 				this.n = s.length;
 
 				// resume parsing
-				this.safe_parse(true);
-
-				// read error occurred
-				if(this.read_error) {
-					// destroy stream
-					ds_transform.destroy(this.read_error);
+				try {
+					this.safe_parse(true);
 				}
-				// no errors
-				else {
-					// emit progress event updates
-					ds_transform.emit('progress', s_chunk.length);
-
-					// done transforming this chunk
-					fk_chunk();
+				// read error occurred; emit and destroy stream
+				catch(e_read) {
+					return ds_transform.destroy(e_read);
 				}
+
+				// emit progress event updates
+				ds_transform.emit('progress', s_chunk.length);
+
+				// done transforming this chunk
+				fk_chunk();
 			},
 		});
 		
@@ -369,6 +366,14 @@ class reader {
 			// forward to super
 			return Object.getPrototypeOf(this).pipe.apply(this, [ds_out]);
 		};
+
+		// when the writable side is piped into
+		ds_transform.on('pipe', (ds_input) => {
+			// input stream has encoding option; ensure stream encoding is utf8
+			if('function' === typeof ds_input.setEncoding) {
+				ds_input.setEncoding('utf8');
+			}
+		});
 
 		// data event
 		this.data = g_quad => ds_transform.push(g_quad);
@@ -391,35 +396,36 @@ class reader {
 		// bind events to transform stream
 		this.bind(g_config);
 
-		// notify once and never again
-		ds_transform.once('pipe', (ds_input) => {
-			// input stream has encoding option
-			if(ds_input.setEncoding) {
-				// ensure stream is encoding in utf8
-				ds_input.setEncoding('utf8');
-			}
-		});
-
-		// input
+		// input given
 		if(g_input) {
+			// input is stream
 			if(g_input.stream) {
-				g_input.stream.pipe(ds_transform);
+				let ds_input = g_input.stream;
+
+				// go async so caller has chance to bind event listeners
+				setTimeout(() => {
+					ds_input.pipe(ds_transform);
+				}, 0);
 			}
 			// string
-			else if('string' in g_input) {
+			else if('string' === typeof g_input.string) {
+				let s_input = g_input.string;
+
+				// go async so caller has chance to bind event listeners
 				setTimeout(() => {
-					ds_transform.end(g_input.string, 'utf8');
+					ds_transform.end(s_input, 'utf8');
 				}, 0);
 			}
 			// invalid arg
 			else {
-				throw new TypeError('invalid input: '+('object' === typeof g_input? JSON.stringify(g_input): g_input));
+				throw new TypeError(`Invalid argument for input parameter: ${'object' === typeof g_input? JSON.stringify(g_input): g_input}`);
 			}
 		}
 	}
 
 	_error(s_message) {
-		this.read_error = new Error(s_message);
+		this.destroyed = true;
+		throw new Error(s_message);
 	}
 
 
@@ -456,7 +462,7 @@ class reader {
 }
 
 
-const read = module.exports = function(...a_args) {
+module.exports = function(...a_args) {
 	let g_config = {};
 
 	@{normalize_reader_config('g_config')}
