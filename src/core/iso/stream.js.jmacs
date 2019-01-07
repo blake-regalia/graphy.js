@@ -143,6 +143,46 @@ class Transform extends stream.Transform {
 	@{bucket()}
 }
 
+// eslint-disable-next-line no-new-func
+const b_is_node = (new Function(/* syntax: js */ `try {return this===global;}catch(e){return false;}`))();
+
+// node.js
+if(b_is_node) {
+	// patch for node < v10
+	if((+(/^v(\d+)/.exec(process.version)[1])) < 10) {
+		// override destroy methods
+		Transform.prototype.destroy = Duplex.prototype.destroy = function(e_destroy, fke_destroy) {
+			this._readableState.destroyed = true;
+			this._writableState.destroyed = true;
+
+			let f_emit_close = () => {
+				if(!this._writableState.emitClose) return;
+				if(!this._readableState.emitClose) return;
+				this.emit('close');
+			};
+
+			this._destroy(e_destroy || null, (e_destroy_re) => {
+				if(!fke_destroy && e_destroy_re) {
+					process.nextTick(() => {
+						this.emit('error', e_destroy_re);
+						f_emit_close();
+					});
+					this._writableState.errorEmitted = true;
+				}
+				else  {
+					process.nextTick(f_emit_close);
+					if(fke_destroy) fke_destroy(e_destroy_re);
+				}
+			});
+
+			return this;
+		};
+
+		// override default _destroy implementations
+		Transform.prototype._destroy = Duplex.prototype._destroy = (e_destroy, fke_destroy) => fke_destroy(e_destroy);
+	}
+}
+
 module.exports = {
 	...stream,
 	Readable,
