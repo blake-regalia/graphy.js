@@ -143,7 +143,7 @@ class Writer extends writable {
 			prefixes: h_prefixes,
 			indent: s_indent,
 		} = this;
-
+debugger;
 		// break line if non-data state
 		let s_write = @{XC_STATE_DATA} !== this.state? '\n': '';
 
@@ -187,6 +187,9 @@ class Writer extends writable {
 					continue;
 				}
 
+				// position before subject
+				let i_triples = s_write.length;
+
 				// serialize subject
 				s_write += s_delim_triples+@{b_c4? 's_indent+': ''}factory.c1(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
 
@@ -196,6 +199,12 @@ class Writer extends writable {
 
 				// ref pairs
 				let hc2_pairs = hc3_triples[sc1_subject];
+
+				// position before pairs
+				let i_pairs = s_write.length;
+
+				// were objects written?
+				let b_empty = true;
 
 				// each predicate
 				for(let sc1_predicate in hc2_pairs) {
@@ -218,9 +227,18 @@ class Writer extends writable {
 					// ref objects
 					let z_objects = hc2_pairs[sc1_predicate];
 
+					// serialize objects
+					let st_objects = this.objects(z_objects);
+
+					// no objects; skip pair
+					if(!st_objects) continue;
+
+					// not empty
+					b_empty = false;
+
 					// serialize predicate and object(s)
 					s_write += s_term_pairs + s_indent_pairs + factory.c1(sc1_predicate, h_prefixes).terse(h_prefixes)
-						+ ' ' + this.objects(z_objects);
+						+ ' ' + st_objects;
 
 					// update state
 					this.state = @{XC_STATE_DATA};
@@ -235,6 +253,12 @@ class Writer extends writable {
 
 					// indent next pair
 					s_indent_pairs = s_indent@{b_c4? '+s_indent': ''};
+				}
+
+				// empty triples; cut out
+				if(b_empty) {
+					s_write = s_write.slice(0, i_triples)+s_write.slice(i_pairs);
+					continue;
 				}
 
 				// delimit triple(s)
