@@ -6,6 +6,9 @@
     "email": "blake.regalia@gmail.com"
   },
   "main": "main.js",
+  "engines": {
+    "node": ">=8.4.0"
+  },
   "keywords": [
     "rdf",
     "rdfjs",

@@ -633,7 +633,7 @@ module.exports = async() => {
 					`,
 				}),
 
-				docs: ['docs/**'],
+				...(B_DEVELOPMENT? {}: {docs:['docs/**']}),
 			},
 
 			// publish

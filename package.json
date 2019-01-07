@@ -16,6 +16,9 @@
     "ttl",
     "turtle"
   ],
+  "engines": {
+    "node": ">=8.4.0"
+  },
   "license": "ISC",
   "author": {
     "name": "Blake Regalia",
