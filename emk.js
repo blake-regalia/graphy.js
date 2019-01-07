@@ -362,11 +362,11 @@ const src_to_main = (pd_src, s_prefix, h_output={}) => {
 };
 
 
-// bat output config
-let h_output_content_bat = B_DEVELOPMENT? src_to_main('src/content/bat', 'content.bat'): {};
+// // bat output config
+// let h_output_content_bat = B_DEVELOPMENT? src_to_main('src/content/bat', 'content.bat'): {};
 
-// memory store output config
-let h_output_store_mem = B_DEVELOPMENT? src_to_main('src/store/memory', 'store.memory'): {};
+// // memory store output config
+// let h_output_store_mem = B_DEVELOPMENT? src_to_main('src/store/memory', 'store.memory'): {};
 
 
 const h_content_type_aliases = {

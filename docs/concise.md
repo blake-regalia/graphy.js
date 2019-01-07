@@ -112,8 +112,8 @@ A concise quads hash describes a plain object whose keys represent the *graph* o
 **Example:**
 ```js
 // snippets/concise-quads.js
-const factory = require('@graphy/core.data.factory');
-const trig_write = require('@graphy/content.trig.write');
+const factory = require('@graphy-dev/core.data.factory');
+const trig_write = require('@graphy-dev/content.trig.write');
 
 let y_writer = trig_write({
    prefixes: {
@@ -207,8 +207,8 @@ A concise triples hash describes a plain object whose keys represent the *subjec
 **Example:**
 ```js
 // snippets/concise-triples.js
-const factory = require('@graphy/core.data.factory');
-const ttl_write = require('@graphy/content.ttl.write');
+const factory = require('@graphy-dev/core.data.factory');
+const ttl_write = require('@graphy-dev/content.ttl.write');
 
 let y_writer = ttl_write({
    prefixes: {
