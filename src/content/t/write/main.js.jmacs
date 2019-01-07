@@ -393,8 +393,11 @@ class Writer extends writable {
 			s_write += '\n'+s_indent.repeat(@{B_QUADS? 2: 1}+n_nest_level)+s_objects;
 		}
 
+		// break line if anything was written (including comments)
+		if(a_collection.length) s_write += '\n'+s_indent.repeat(@{B_QUADS? '1+': ''}n_nest_level);
+
 		// close collection block
-		s_write += '\n'+s_indent.repeat(@{B_QUADS? '1+': ''}n_nest_level)+')';
+		s_write += ')';
 
 		return s_write;
 	}
