@@ -666,7 +666,6 @@ module.exports = async() => {
 						`prepublish.${si_package}`,
 						'link_to.util.dataset.tree',
 						`test/package/${si_package}.js`,
-						`build/cache/web/${si_package}.js`,
 						...a_content_subs.filter(s => s.endsWith('.read')).includes(si_package)
 							? [
 								`build/cache/specs/${si_package}/**`,
