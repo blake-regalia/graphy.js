@@ -1,7 +1,7 @@
 const expect = require('chai').expect;
 
-const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
-const dataset_tree = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
+const factory = require('@graphy/core.data.factory');
+const dataset_tree = require('@graphy/util.dataset.tree');
 const util = require('../helper/util.js');
 
 const map_tree = (h_tree, f_onto, a_path=[]) => {

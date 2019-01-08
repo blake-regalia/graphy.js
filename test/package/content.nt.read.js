@@ -1,11 +1,11 @@
 /* eslint indent: 0, padded-blocks: 0, quote-props: 0 */
 const expect = require('chai').expect;
 
-const S_GRAPHY_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
-const factory = require(`@${S_GRAPHY_CHANNEL}/core.data.factory`);
-const dataset_tree = require(`@${S_GRAPHY_CHANNEL}/util.dataset.tree`);
+const factory = require('@graphy/core.data.factory');
+const dataset_tree = require('@graphy/util.dataset.tree');
 
-const nt_read = require(`@${S_GRAPHY_CHANNEL}/content.nt.read`);
+const nt_read = require('@graphy/content.nt.read');
+
 
 const reader_suite = require('../helper/reader.js');
 
@@ -79,8 +79,8 @@ reader_suite({
 			`, [
 				['z://y/a', 'z://y/b', '""\\t = \'\t\'"'],
 				['z://y/a', 'z://y/b', '"""""""'],
-				['z://y/a', 'z://y/b', '""Å"'],
-				['z://y/a', 'z://y/b', '""𝄞"\\test"'],
+				['z://y/a', 'z://y/b', '""\u00c5"'],
+				['z://y/a', 'z://y/b', '""\u{0001d11e}"\\test"'],
 			]],
 
 			'langtag': () => [`

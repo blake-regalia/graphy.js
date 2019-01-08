@@ -1,12 +1,10 @@
 /* eslint indent: 0, padded-blocks: 0, quote-props: 0 */
 const expect = require('chai').expect;
 
-const S_GRAPHY_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
+const factory = require('@graphy/core.data.factory');
+const dataset_tree = require('@graphy/util.dataset.tree');
 
-const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
-const dataset_tree = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
-
-const ttl_read = require(`@${S_GRAPHY_CHANNEL}/content.ttl.read`);
+const ttl_read = require('@graphy/content.ttl.read');
 
 const reader_suite = require('../helper/reader.js');
 
@@ -507,8 +505,8 @@ reader_suite({
 			`, [
 				['#a', '#b', '""\\t = \'\t\'"'],
 				['#a', '#b', '"""""""'],
-				['#a', '#b', '""Å"'],
-				['#a', '#b', '""𝄞"\\test"'],
+				['#a', '#b', '""\u00c5"'],
+				['#a', '#b', '""\u{0001d11e}"\\test"'],
 			]],
 
 			'langtag': () => [`

@@ -1,14 +1,12 @@
 /* eslint indent: 0, padded-blocks: 0, quote-props: 0 */
 const expect = require('chai').expect;
 
-const S_GRAPHY_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
-
-const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
-const dataset_tree = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
+const factory = require('@graphy/core.data.factory');
+const dataset_tree = require('@graphy/util.dataset.tree');
 
 const reader_suite = require('../helper/reader.js');
 
-const trig_read = require(`@${S_GRAPHY_CHANNEL || 'graphy'}/content.trig.read`);
+const trig_read = require('@graphy/content.trig.read');
 
 reader_suite({
 	alias: 'trig',

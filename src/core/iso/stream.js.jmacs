@@ -141,6 +141,29 @@ class Transform extends stream.Transform {
 	@{until()}
 
 	@{bucket()}
+
+	demolish(e_destroy) {
+		// do not allow to push
+		this.push = (z_chunk) => {
+			// ignore eof signals from node core
+			if(null === z_chunk) return;
+
+			// anything else is bad
+			throw new Error(`[ERR_STREAM_DESTROYED]: Cannot push after stream was destroyed`);
+		};
+
+		// do not allow to emit 'end'
+		this.emit = function(s_event, ...a_args) {
+			if('end' === s_event) return;
+
+			Object.getPrototypeOf(this).emit.apply(this, [s_event, ...a_args]);
+		};
+
+		// an error was given, destroy the stream as well
+		if(e_destroy) {
+			return this.destroy(e_destroy);
+		}
+	}
 }
 
 // eslint-disable-next-line no-new-func

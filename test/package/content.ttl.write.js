@@ -1,13 +1,12 @@
 /* eslint-env mocha */
 const expect = require('chai').expect;
 
-const S_GRAPHY_CHANNEL = `@${process.env.GRAPHY_CHANNEL || 'graphy'}`;
-const factory = require(`${S_GRAPHY_CHANNEL}/core.data.factory`);
-const stream = require(`${S_GRAPHY_CHANNEL}/core.iso.stream`);
-const dataset_tree = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
-const ttl_read = require(`${S_GRAPHY_CHANNEL}/content.ttl.read`);
+const factory = require('@graphy/core.data.factory');
+const stream = require('@graphy/core.iso.stream');
+const dataset_tree = require('@graphy/util.dataset.tree');
+const ttl_read = require('@graphy/content.ttl.read');
 
-const ttl_write = require(`${S_GRAPHY_CHANNEL}/content.ttl.write`);
+const ttl_write = require('@graphy/content.ttl.write');
 
 const H_PREFIXES = {
 	'': 'z://y/',

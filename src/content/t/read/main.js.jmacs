@@ -817,8 +817,12 @@ class reader {
 
 			// once there's no more data to consume, invoke eof
 			flush: (fke_flush) => {
+				if(this.debug) debugger;
 				// now that input stream has ended, clean up remainder; read error occurred
 				if(this.eof(1)) {
+					// do not allow eof push from core stream
+					ds_transform.demolish();
+
 					// exit gracefully
 					return;
 				}
@@ -2509,7 +2513,7 @@ class reader {
 			}
 		}
 		this.destroyed = true;
-		this.transform.destroy(e_destroy);
+		this.transform.demolish(e_destroy);
 	}
 }
 

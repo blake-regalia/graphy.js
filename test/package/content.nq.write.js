@@ -1,13 +1,12 @@
 /* eslint-env mocha */
 const expect = require('chai').expect;
 
-const S_GRAPHY_CHANNEL = `@${process.env.GRAPHY_CHANNEL || 'graphy'}`;
-const stream = require(`${S_GRAPHY_CHANNEL}/core.iso.stream`);
-const dataset_tree = require(`${S_GRAPHY_CHANNEL}/util.dataset.tree`);
-const trig_read = require(`${S_GRAPHY_CHANNEL}/content.trig.read`);
-const nq_read = require(`${S_GRAPHY_CHANNEL}/content.nq.read`);
+const stream = require('@graphy/core.iso.stream');
+const dataset_tree = require('@graphy/util.dataset.tree');
+const trig_read = require('@graphy/content.trig.read');
+const nq_read = require('@graphy/content.nq.read');
 
-const nq_write = require(`${S_GRAPHY_CHANNEL}/content.nq.write`);
+const nq_write = require('@graphy/content.nq.write');
 
 const H_PREFIXES = {
 

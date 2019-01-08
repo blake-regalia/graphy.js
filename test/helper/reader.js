@@ -1,11 +1,7 @@
 /* eslint indent: 0, padded-blocks: 0 */
 const expect = require('chai').expect;
 
-const S_GRAPHY_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
-
-const factory = require(`@${S_GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
-const stream = require(`@${S_GRAPHY_CHANNEL || 'graphy'}/core.iso.stream`);
-const dataset_tree = require(`@${S_GRAPHY_CHANNEL || 'graphy'}/util.dataset.tree`);
+const stream = require('@graphy/core.iso.stream');
 
 const w3c_rdf_specification = require('../interface/w3c-rdf-specification.js');
 const graphy_reader_interface = require('../interface/content-reader.js');
@@ -29,7 +25,9 @@ class reader_suite {
 			package: `content.${gc_suite.alias}.read`,
 		});
 
-		f_suite(this);
+		describe(this.package, () => {
+			f_suite(this);
+		});
 	}
 
 	errors(h_tree) {
@@ -65,7 +63,7 @@ class reader_suite {
 
 						// watch for end
 						end() {
-							debugger;
+							debugger; st_input;  // for debugging
 							fke_test(new Error('should have caught an error'));
 						},
 					});
@@ -117,7 +115,7 @@ class reader_suite {
 		});
 	}
 
-	interfaces(f_interface) {
+	interfaces(f_interface) {  // eslint-disable-line class-methods-use-this
 		describe('graphy reader interface', () => {
 			f_interface(graphy_reader_interface);
 		});

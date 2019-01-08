@@ -5,7 +5,8 @@ const P_IRI_RDF_NIL = P_IRI_RDF+'nil';
 
 const P_IRI_XSD = 'http://www.w3.org/2001/XMLSchema#';
 
-const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
+// const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
+const factory = require('@graphy/core.data.factory');
 const chai = require('chai');
 const expect = chai.expect;
 chai.use(require('chai-string'));

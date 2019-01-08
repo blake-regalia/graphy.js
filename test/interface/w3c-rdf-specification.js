@@ -7,13 +7,20 @@ const expect = require('chai').expect;
 const pathToFileURL = url.pathToFileURL || (p_path => `file://${p_path}`);
 const fileURLToPath = url.fileURLToPath || (p_url => p_url.replace(/^file:\/\//, ''));
 
-const S_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
-const ttl_read = require(`@${S_CHANNEL}/content.ttl.read`);
-const nt_read = require(`@${S_CHANNEL}/content.nt.read`);
-const nq_read = require(`@${S_CHANNEL}/content.nq.read`);
-const trig_write = require(`@${S_CHANNEL}/content.trig.write`);
-const factory = require(`@${S_CHANNEL}/core.data.factory`);
-const dataset_tree = require(`@${S_CHANNEL}/util.dataset.tree`);
+// const S_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
+// const ttl_read = require(`@${S_CHANNEL}/content.ttl.read`);
+// const nt_read = require(`@${S_CHANNEL}/content.nt.read`);
+// const nq_read = require(`@${S_CHANNEL}/content.nq.read`);
+// const trig_write = require(`@${S_CHANNEL}/content.trig.write`);
+// const factory = require(`@${S_CHANNEL}/core.data.factory`);
+// const dataset_tree = require(`@${S_CHANNEL}/util.dataset.tree`);
+
+const ttl_read = require('@graphy/content.ttl.read');
+const nt_read = require('@graphy/content.nt.read');
+const nq_read = require('@graphy/content.nq.read');
+const trig_write = require('@graphy/content.trig.write');
+const factory = require('@graphy/core.data.factory');
+const dataset_tree = require('@graphy/util.dataset.tree');
 
 // prefixes
 const H_PREFIXES = {
@@ -315,6 +322,15 @@ const collection = (sv1_head, k_tree, a_collection=[]) => {
 };
 
 
+// deduce the runtime environment
+const [B_BROWSER, B_BROWSERIFY] = (() => 'undefined' === typeof process
+	? [true, false]
+	: (process.browser
+		? [true, true]
+		: ('undefined' === process.versions || 'undefined' === process.versions.node
+			? [true, false]
+			: [false, false])))();
+
 module.exports = async(gc_tests={}) => {
 	let {
 		reader: f_reader,
@@ -324,6 +340,9 @@ module.exports = async(gc_tests={}) => {
 
 	let p_manifest = path.join(pd_root, 'build/cache/specs', si_package, 'manifest.ttl');
 	let p_iri_manifest = pathToFileURL(p_manifest);
+
+	// do not use fs in browser
+	if(B_BROWSER) return;
 
 	// pipeline for backwards-compat w/ < v10
 	let k_tree = await fs.createReadStream(p_manifest)

@@ -1,6 +1,6 @@
 const expect = require('chai').expect;
 
-const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
+const factory = require('@graphy/core.data.factory');
 const util = require('../helper/util.js');
 
 const P_IRI_XSD = 'http://www.w3.org/2001/XMLSchema#';

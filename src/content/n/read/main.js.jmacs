@@ -28,6 +28,7 @@ const R_CLEAN_COMMENTS = /\s*(#[^\n]*\n\s*)*\s*/y;
 const R_LITERAL_ESCAPELESS = /^"([^\\"]*)"(?:\^\^<([^\\>]*)>|@([^ \t.]+)|)?$/;
 const R_LITERAL = /^"(.*)"(?:\^\^<(.*)>|@([^ \t.]+)|)?$/;
 const RT_HAS_ESCAPES = /[\\]/;
+const R_EOL = /[^\n]+\n/y;
 
 const RT_ABSOLUTE_IRI_VALID = /^[a-z][a-z0-9+\-.]*:([^\0-\x20<>"{}|^`\\]|@{UCHAR()})*$/;
 const RT_BLANK_NODE_LABEL_VALID = /^(?:[@{RANGE_PN_CHARS_U()}0-9])(?:(?:[@{RANGE_PN_CHARS()}.])*[@{RANGE_PN_CHARS()}])?$/u;
@@ -193,6 +194,9 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 		@{else_if_match(STATEMENT_REGEX, 'm_statement', true)}
 			@{match_body('m_statement', true)}
 
+		@{else_if_match('R_EOL')}
+			this._error(`invalid statement:\n${this.s.substr(0, 50)}\n  ^ starting here`);
+
 		@{else_retry()}
 	} // end of while
 
@@ -290,12 +294,13 @@ class reader {
 					}
 					// read error occurred; pass to flush errback and exit method
 					catch(e_read) {
-						return ds_transform.destroy(e_read);
+						// destroying during flush means overriding push
+						return ds_transform.demolish(e_read);
 					}
 
 					// still unparsed characters; pass to flush errback and exit method
 					if(this.s.length) {
-						return ds_transform.destroy(new Error(`parsing error occurred in state: statement\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
+						return ds_transform.demolish(new Error(`parsing error occurred in state: statement\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
 					}
 				}
 

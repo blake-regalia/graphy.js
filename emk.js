@@ -666,6 +666,7 @@ module.exports = async() => {
 						`prepublish.${si_package}`,
 						'link_to.util.dataset.tree',
 						`test/package/${si_package}.js`,
+						`build/cache/web/${si_package}.js`,
 						...a_content_subs.filter(s => s.endsWith('.read')).includes(si_package)
 							? [
 								`build/cache/specs/${si_package}/**`,
@@ -677,6 +678,19 @@ module.exports = async() => {
 					run: /* syntax: bash */ `
 						npx mocha --colors $3
 					`,
+				}),
+			},
+
+			// web test
+			web: {
+				':testable': ({testable:si_package}) => ({
+					deps: [
+						`build/${s_channel}/test/web/${si_package}.js`,
+						'test/web/runner.html',
+					],
+					// run: /* syntax: bash */ `
+
+					// `,
 				}),
 			},
 
@@ -923,6 +937,19 @@ module.exports = async() => {
 							'main.js': () => jmacs_lint([`src/main/graphy.js.jmacs`]),
 						},
 
+					},
+
+					test: {
+						web: {
+							':testable.js': ({testable:si_package}) => ({
+								deps: [
+									`test/package/${si_package}.js`,
+								],
+								run: /* syntax: bash */ `
+									npx browserify $1 -d -o $@
+								`,
+							}),
+						},
 					},
 				},
 			},
