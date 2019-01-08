@@ -45,13 +45,13 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
    - _examples:_
      ```bash
      # validate an N-Triples document
-     $ graphy content.nt.read --validate < input.nt
+     $ graphy content.nt.read --validate < input.nt > /dev/null
 
      # print line-delimited JSON of quads in N-Quads document
      $ graphy content.nq.read < input.nq
 
-     # validate an Turtle document
-     $ graphy content.ttl.read -v < input.ttl
+     # validate a Turtle document
+     $ graphy content.ttl.read -v < input.ttl > /dev/null
 
      # print line-delimited JSON of quads in TriG document while validating it
      $ graphy content.trig.read -v < input.trig
@@ -161,10 +161,10 @@ By default, `graphy` expects a single input stream on `stdin`, which it will for
 If you are simply piping in multiple input files, you can use the `--inputs` options like so:
 ```bash
 $ graphy content.ttl.read \
-	--pipe util.dataset.tree --difference \
-	--pipe content.ttl.write \
-  --inputs original.ttl modified.ttl \
-	> difference.ttl
+    --pipe util.dataset.tree --difference \
+    --pipe content.ttl.write \
+    --inputs original.ttl modified.ttl \
+	  > difference.ttl
 ```
 
 Keep in mind that each command has its own restrictions on the number of inputs it accepts, which may also depend on the operation being performed (e.g., `util.dataset.tree --diff` accepts exactly 2 input streams while `util.dataset.tree --union` accepts 1 or more).
@@ -177,8 +177,9 @@ $ DBPEDIA_EN_URL="http://downloads.dbpedia.org/2016-10/core-i18n/en"
 $ graphy content.ttl.read \
     --pipe util.dataset.tree --union \
     --pipe content.ttl.write \
-    <(curl "$DBPEDIA_EN_URL/topical_concepts_en.ttl.bz2" | bzip2 -d) \
-    <(curl "$DBPEDIA_EN_URL/uri_same_as_iri_en.ttl.bz2" | bzip2 -d) \
+    --inputs \
+      <(curl "$DBPEDIA_EN_URL/topical_concepts_en.ttl.bz2" | bzip2 -d) \
+      <(curl "$DBPEDIA_EN_URL/uri_same_as_iri_en.ttl.bz2" | bzip2 -d) \
     > union.ttl
 ```
 
@@ -232,7 +233,8 @@ $ curl http://dbpedia.org/data/Red_banana.ttl \
 ```
 
 
-Turns this:
+#### Turns this:
+
 ```turtle
 @prefix dbo:  <http://dbpedia.org/ontology/> .
 @prefix dbr:  <http://dbpedia.org/resource/> .
@@ -309,7 +311,8 @@ dbr:Goldfinger  dbo:wikiPageDisambiguates dbr:Goldfinger_banana .
 ```
 
 
-Into this:
+#### Into this:
+
 ```turtle
 @prefix dbo: <http://dbpedia.org/ontology/> .
 @prefix dbr: <http://dbpedia.org/resource/> .
