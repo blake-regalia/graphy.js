@@ -16,19 +16,6 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
 
 ## Commands
 
- - `content TYPE VERB [OPTIONS]`
-   - select a content handler command by its content-type and verb.
-   - **Type:** `-t, --type`
-     - argument to [super.content()](super#function_content).
-   - **Verb:** `-v, --verb`
-     - which verb to access on the given content handler, e.g., `read`, `write`, etc.
-   - *examples:*
-     ```bash
-     $ graphy content --type=text/turtle --verb=read < input.ttl
-
-     $ graphy content -t application/n-triples -v read < input.nt
-     ```
-
  - `content.FORMAT.read [OPTIONS]`
    - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
    - **Format:**
@@ -41,13 +28,17 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
      - `-v, --validate` -- whether or not to perform validation on tokens, [see more here](content.textual#config_read-no-input).
    - _examples:_
      ```bash
+     # validate an N-Triples document
      $ graphy content.nt.read --validate < input.nt
 
-     $ graphy content.nq.read --validate < input.nq
+     # print line-delimited JSON of quads in N-Quads document
+     $ graphy content.nq.read < input.nq
 
-     $ graphy content.ttl.read --validate < input.ttl
+     # validate an Turtle document
+     $ graphy content.ttl.read -v < input.ttl
 
-     $ graphy content.trig.read --validate < input.trig
+     # print line-delimited JSON of quads in TriG document while validating it
+     $ graphy content.trig.read -v < input.trig
      ```
 
  - `content.FORMAT.write [OPTIONS]`
@@ -61,15 +52,19 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
      - _none_
    - _examples:_
      ```bash
-     $ cat input.nt | graphy content.nt.read \
+     # convert a Turtle document into N-Triples
+     $ cat input.ttl | graphy content.ttl.read \
          --pipe content.nt.write > output.nt
 
-     $ cat input.nq | graphy content.nq.read \
+     # convert a TriG document into N-Quads
+     $ cat input.trig | graphy content.trig.read \
          --pipe content.nq.write > output.nq
 
+     # convert an N-Triples document into Turtle
      $ cat input.nt | graphy content.nt.read \
          --pipe content.ttl.write > output.ttl
 
+     # convert an N-Quads document into TriG
      $ cat input.nq | graphy content.nq.read \
          --pipe content.trig.write > output.trig
      ```
@@ -79,28 +74,85 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
    - use the [DatasetTree](util.dataset.tree) package to perform set algebra or to remove duplicates from a single data source.
    - **Commands:**
      - ` ` -- _(no command)_
-       - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- maps 1 or more object input streams of [Quad](core.data.factory#class_quad) objects into 1 or more object output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s). This transformation puts each dataset into its own tree, effectively removing duplicate quads and organizing quads into a tree of `graph --> subject --> predicate --> object`. [See example](#example_reduce).
+       - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- maps 1 or more object input streams of [Quad](core.data.factory#class_quad) objects into 1 or more object output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
+       - This transformation puts each dataset into its own tree, effectively removing duplicate quads and organizing quads into a tree of `graph --> subject --> predicate --> object`. [See example](#example_pretty-print).
+     - `-c, --canonicalize`
+       - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- maps 1 or more object input streams of [Quad](core.data.factory#class_quad) objects into 1 or more object output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
+       - This transformation puts each dataset into its own tree, effectively removing duplicate quads and organizing quads into a tree of `graph --> subject --> predicate --> object`. [See example](#example_pretty-print).
+       - _example:_
+         ```bash
+         # compute the isomorphic difference between two files
+         $ graphy content.ttl.read \
+             --pipe util.dataset.tree --canonicalize \  # first canonicalize each input
+             --pipe util.dataset.tree --difference \  # then compute their difference
+             --pipe content.ttl.write \
+             --inputs a.ttl b.ttl \
+             > canonical-difference.ttl
+         ```
      - `-u, --union`
        - `N-to-1<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- accepts 1 or more object input streams of [Quad](core.data.factory#class_quad) objects, performs the union of all datasets, and then pipes the result into 1 object output stream of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream.
+       - Performs the union of all inputs.
+       - _example:_
+         ```bash
+         # perform a union on all *.ttl files inside `data/` directory
+         $ graphy content.ttl.read \
+             --pipe util.dataset.tree --union \
+             --pipe content.ttl.write \
+             --inputs input/*.ttl \
+             > union.ttl
+         ```
      - `-i, --intersection`
        - `N-to-1<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- accepts 1 or more object input streams of [Quad](core.data.factory#class_quad) objects, performs the intersection of all datasets, and then pipes the result into 1 object output stream of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream.
-     - `-m, --minus, --subtract, --subtraction`
+       - Performs the intersection of all inputs.
+       - _example:_
+         ```bash
+         # perform an intersection on all *.ttl files inside `data/` directory
+         $ graphy content.ttl.read \
+             --pipe util.dataset.tree --intersection \
+             --pipe content.ttl.write \
+             --inputs input/*.ttl \
+             > intersection.ttl
+         ```
+     - `-m, --minus, --subtraction`
        - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, performs the subtraction of the second input from the first, and then pipes the result into 1 object output stream of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream.
+       - Subtracts the second input from the first.
+       - _example:_
+         ```bash
+         # perform an intersection on all *.ttl files inside `data/` directory
+         $ graphy content.ttl.read \
+             --pipe util.dataset.tree --minus \
+             --pipe content.ttl.write \
+             --inputs union.ttl input/dead.ttl \
+             > leftover.ttl
+         ```
      - `-d, --diff, --difference`
        - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, computes the difference between the two inputs, and then pipes the result into 1 object output stream of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream.
+       - Computes the difference between the two inputs.
+       - _example:_
+         ```bash
+         # compute the difference between `original.ttl` and `modified.ttl`
+         $ graphy content.ttl.read \
+             --pipe util.dataset.tree --difference \
+             --pipe content.ttl.write \
+             --inputs original.ttl modified.ttl \
+             > difference.ttl
+         ```
 
 ## Inputs
 By default, `graphy` expects a single input stream on `stdin`, which it will forward through the internal pipeline. Some commands may allow for or even expect multiple inputs (e.g., for computing the difference between two datasets).
 
-### `--input=[PATH]`
-If you are simply piping in multiple input files, you can use the `--input` options like so:
+### `--inputs FILE ...`
+If you are simply piping in multiple input files, you can use the `--inputs` options like so:
 ```bash
-$ graphy --input=original.ttl --input=modified.ttl \
-	content.ttl.read \
+$ graphy content.ttl.read \
 	--pipe util.dataset.tree --difference \
 	--pipe content.ttl.write \
+  --inputs original.ttl modified.ttl \
 	> difference.ttl
 ```
+
+Keep in mind that each command has its own restrictions on the number of inputs it accepts, which may also depend on the operation being performed (e.g., `util.dataset.tree --diff` accepts exactly 2 input streams while `util.dataset.tree --union` accepts 1 or more).
+
 
 ### Process Substitution
 If you need to execute other commands before passing in multiple inputs, you can use [process substitution](http://www.tldp.org/LDP/abs/html/process-sub.html) (supported in bash) like so:
@@ -150,7 +202,7 @@ Automatically determines which mode is best suited for the destination stream. C
 
 ## Examples
 
-<a name="example_reduce" />
+<a name="example_pretty-print" />
 
 ### Pretty-print an RDF document
 Piping RDF data through the DatasetTree transform organizes quads into a hierarchy by graph, subject, predicate and object. Piping this result to a writer format that uses a tree-like syntax (such as Turtle or TriG) has the effect of pretty-printing an otherwise "ugly" document.
@@ -168,97 +220,76 @@ Turns this:
 ```turtle
 @prefix dbo:  <http://dbpedia.org/ontology/> .
 @prefix dbr:  <http://dbpedia.org/resource/> .
-dbr:Red-purple_bananas  dbo:wikiPageRedirects dbr:Red_banana .
+dbr:FHIA-01 dbo:wikiPageRedirects dbr:Goldfinger_banana .
+dbr:Musa_goldfinger dbo:wikiPageRedirects dbr:Goldfinger_banana .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix wikipedia-en: <http://en.wikipedia.org/wiki/> .
-wikipedia-en:Red_banana foaf:primaryTopic dbr:Red_banana .
-dbr:Red_Dacca_Banana  dbo:wikiPageRedirects dbr:Red_banana .
-dbr:Jamaican_bananas  dbo:wikiPageRedirects dbr:Red_banana .
-dbr:Red_bananas dbo:wikiPageRedirects dbr:Red_banana .
-dbr:Red_Banana  dbo:wikiPageRedirects dbr:Red_banana .
-dbr:Red_Dacca dbo:wikiPageRedirects dbr:Red_banana .
+wikipedia-en:Goldfinger_banana  foaf:primaryTopic dbr:Goldfinger_banana .
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix yago: <http://dbpedia.org/class/yago/> .
-dbr:Red_banana  rdf:type  yago:Abstraction100002137 .
-@prefix wikidata: <http://www.wikidata.org/entity/> .
-dbr:Red_banana  rdf:type  wikidata:Q756 ,
-    dbo:Plant ,
-    yago:Variety108101085 ,
-    yago:PhysicalEntity100001930 ,
-    yago:Whole100003553 ,
-    yago:Object100002684 ,
-    dbo:Species ,
-    yago:LivingThing100004258 ,
-    dbo:Eukaryote ,
-    yago:Cultivar113084834 ,
-    yago:TaxonomicGroup107992450 ,
-    yago:Organism100004475 ,
-    wikidata:Q19088 ,
-    yago:VascularPlant113083586 ,
-    wikidata:Q4886 ,
-    yago:Group100031264 .
+dbr:Goldfinger_banana rdf:type  yago:Whole100003553 ,
+    yago:Abstraction100002137 .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
-dbr:Red_banana  rdf:type  owl:Thing ,
+dbr:Goldfinger_banana rdf:type  owl:Thing ,
+    yago:LivingThing100004258 ,
+    yago:VascularPlant113083586 ,
     yago:Plant100017222 ,
-    dbo:CultivatedVariety ,
+    dbo:Plant ,
+    dbo:Species ,
+    yago:Object100002684 .
+@prefix wikidata: <http://www.wikidata.org/entity/> .
+dbr:Goldfinger_banana rdf:type  wikidata:Q756 ,
+    yago:PhysicalEntity100001930 ,
+    wikidata:Q19088 ,
+    yago:Variety108101085 ,
+    yago:TaxonomicGroup107992450 ,
+    wikidata:Q4886 ,
+    yago:BiologicalGroup107941170 ,
+    yago:Cultivar113084834 ,
     yago:WikicatBananaCultivars ,
-    dbo:Grape ,
-    yago:BiologicalGroup107941170 .
+    dbo:Eukaryote ,
+    dbo:CultivatedVariety ,
+    yago:Group100031264 ,
+    yago:Organism100004475 .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-dbr:Red_banana  rdfs:label  "Red banana"@en ,
-    "Red (banana)"@it ,
-    "Banana vermelha"@pt ,
-    "\u0645\u0648\u0632 \u0623\u062D\u0645\u0631"@ar ,
-    "Rode banaan"@nl ;
-  rdfs:comment  "A banana-vermelha, como \u00E9 popularmente conhecida, \u00E9 um cultivar da banana Musa acuminata. Pertence ao grupo AAA, que \u00E9 o mesmo da banana de Cavendish. \u00C9 origin\u00E1ria do Caribe. Tamb\u00E9m conhecida como Red Dacca( Austr\u00E1lia) , \u00E9 apreciada em v\u00E1rios lugares do mundo, por seu sabor adocicado. O amadurecimento \u00E9 r\u00E1pido, a polpa \u00E9 macia, rica em a\u00E7\u00FAcares, pot\u00E1ssio, muitas fibras e \u00E9 menor que uma banana comum. Al\u00E9m disso, possui mais betacaroteno e vitamina C que outras variedades. Normalmente consumida quando est\u00E1 madura, ela \u00E9 uma \u00F3tima op\u00E7\u00E3o para sobremesas. Cientistas recomendam come-la frita, assada ou cozida."@pt ,
-    "\u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u0648\u0647\u0648 \u0623\u062D\u062F \u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0645\u062D\u062F\u0648\u062F\u0629 \u0627\u0644\u0627\u0646\u062A\u0634\u0627\u0631 \u0630\u0648 \u0637\u0639\u0645 \u0644\u0630\u064A\u0630 \u0642\u0631\u064A\u0628 \u0645\u0646 \u062E\u0644\u064A\u0637 \u0627\u0644\u0645\u0648\u0632 \u0645\u0639 \u0627\u0644\u062A\u0648\u062A \u0643\u062B\u064A\u0641 \u0627\u0644\u0644\u0628 \u0648\u062B\u0645\u0631\u0647 \u0648\u0627\u062D\u062F\u0629 \u0645\u0646\u0647 \u062A\u0643\u0641\u064A \u0639\u0646 3 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u0635\u0641\u0631 \u0648\u062A\u062D\u062A\u0648\u064A \u0627\u0644\u0645\u0648\u0632\u0629 \u0645\u062A\u0648\u0633\u0637\u0629 \u0627\u0644\u062D\u062C\u0645 \u0639\u0644\u0649 400 \u0645\u0644\u063A \u0645\u0646 \u0627\u0644\u0628\u0648\u062A\u0627\u0633\u064A\u0648\u0645. \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u063A\u0646\u064A \u0623\u064A\u0636\u0627 \u0628\u0641\u064A\u062A\u0627\u0645\u064A\u0646 \u0633\u064A. \u0641\u062D\u0628\u0629 \u0648\u0627\u062D\u062F\u0629 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u062A\u063A\u0637\u064A 15\u066A \u0645\u0646 \u062D\u0627\u062C\u0629 \u0627\u0644\u062C\u0633\u0645 \u0644\u0647\u0630\u0627 \u0627\u0644\u0641\u064A\u062A\u0627\u0645\u064A\u0646 \u0643\u0645\u0627 \u0623\u0646\u0647 \u063A\u0646\u064A \u0628\u0627\u0644\u0623\u0644\u064A\u0627\u0641 \u0627\u0644\u063A\u0630\u0627\u0626\u064A\u0629 \u0627\u0644\u062A\u064A \u062A\u0642\u0644\u0644 \u062E\u0637\u0631 \u0627\u0644\u0625\u0635\u0627\u0628\u0629 \u0628\u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0642\u0644\u0628 \u0648\u062F\u0627\u0621 \u0627\u0644\u0633\u0643\u0631\u064A \u0645\u0646 \u0627\u0644\u0646\u0648\u0639 \u0627\u0644\u062B\u0627\u0646\u064A. \u064A\u0632\u0631\u0639 \u0647\u0630\u0627 \u0627\u0644\u0646\u0648\u0639 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0641\u064A \u0627\u0644\u0645\u0646\u0627\u0637\u0642 \u0627\u0644\u0627\u0633\u062A\u0648\u0627\u0626\u064A\u0629 \u0648\u0634\u0628\u0647 \u0627\u0644\u0627\u0633\u062A\u0648\u0627\u0626\u064A\u0629 \u0648\u0639\u0627\u062F\u0629 \u0645\u0627 \u064A\u0633\u062A\u063A\u0631\u0642 \u062D\u0648\u0627\u0644\u064A 9 \u0623\u0634\u0647\u0631 \u062D\u062A\u0649 \u064A\u0635\u0644 \u0644\u0645\u0631\u062D\u0644\u0629 \u0627\u0644\u0646\u0636\u0648\u062C \u0648\u0645\u0646 \u0623\u0634\u0647\u0631 \u0627\u0644\u062F\u0648\u0644 \u0627\u0644\u062A\u064A \u064A\u0632\u0631\u0639 \u0641\u064A\u0647\u0627 \u0643\u0648\u0633\u062A\u0627\u0631\u064A\u0643\u0627 \u0648\u0627\u0644\u0645\u0643\u0633\u064A\u0643 \u0648\u0628\u0639\u0636 \u0627\u0644\u062F\u0648\u0644 \u0627\u0644\u0625\u0641\u0631\u064A\u0642\u064A \u0645\u062B\u0644 \u062A\u0646\u0632\u0627\u0646\u064A\u0627 \u0648\u0632\u0646\u062C\u0628\u0627\u0631."@ar ,
-    "La banana Red \u00E8 un tipo di banana che possiede la buccia di colore rosso o violaceo. Sono in genere pi\u00F9 piccole e pi\u00F9 tozze delle banane Cavendish. Quando sono mature, la polpa assume un colore crema o rosa chiaro. Sono anche pi\u00F9 morbide e dolci della variet\u00E0 Cavendish. Molte di queste banane vengono importate dall'Asia e dall'America meridionale, e sono vendute molto frequentemente in America centrale. Come le banane gialle, le banane rosse diventano mature in qualche giorno a temperatura ambiente. Le prime banane vendute a Toronto erano banane rosse, tra il 1870 e il 1880."@it ,
-    "De rode banaan of Cuba-banaan is een vrucht die behoort tot het geslacht Musa, de sectie Musa en het genoomtype AAA heeft, waartoe ook de gewone dessertbanaan behoort. De naam rode banaan is een synoniem van het ras Red Dacca. Andere synoniemen zijn Cuba-banaan, Venkadali, Green Red, Pisang raja udang (Maleisi\u00EB), Morado, Klue nak (Thailand). De rode banaan wordt aangevoerd vanuit Indonesi\u00EB, maar komt ook voor in heel Azi\u00EB (onder andere in Sri Lanka). De vrucht kan zowel vers als gebakken gegeten worden."@nl ,
-    "Red bananas, are a variety of banana with reddish-purple skin. They are smaller and plumper than the common Cavendish banana. When ripe, raw red bananas have a flesh that is cream to light pink in color. They are also softer and sweeter than the yellow Cavendish varieties, with a slight mango flavor. Many red bananas are imported from producers in East Africa, Asia, South America and the United Arab Emirates. They are a favorite in Central America but are sold throughout the world."@en ;
-  owl:sameAs  <http://it.dbpedia.org/resource/Red_(banana)> .
+dbr:Goldfinger_banana rdfs:label  "FHIA-1"@it ,
+    "Goldfinger banana"@en ;
+  rdfs:comment  "La FHIA-01 nota anche come Goldfinger \u00E8 una cultivar di banana sviluppata dalla Fundaci\u00F3n Hondure\u00F1a de Investigaci\u00F3n Agr\u00EDcola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttivit\u00E0 e la notevole resistenza ai patogeni."@it ,
+    "The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA) by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en ;
+  owl:sameAs  <http://rdf.freebase.com/ns/m.026ytv3> .
 @prefix dbpedia-wikidata: <http://wikidata.dbpedia.org/resource/> .
-dbr:Red_banana  owl:sameAs  dbpedia-wikidata:Q2427471 ,
-    <http://el.dbpedia.org/resource/\u039A\u03CC\u03BA\u03BA\u03B9\u03BD\u03B7_\u03BC\u03C0\u03B1\u03BD\u03AC\u03BD\u03B1> .
-@prefix dbpedia-nl: <http://nl.dbpedia.org/resource/> .
-dbr:Red_banana  owl:sameAs  dbpedia-nl:Rode_banaan .
-@prefix dbpedia-id: <http://id.dbpedia.org/resource/> .
-dbr:Red_banana  owl:sameAs  dbpedia-id:Pisang_susu_merah .
+dbr:Goldfinger_banana owl:sameAs  dbpedia-wikidata:Q5580155 ,
+    wikidata:Q5580155 .
 @prefix yago-res: <http://yago-knowledge.org/resource/> .
-dbr:Red_banana  owl:sameAs  yago-res:Red_banana .
-@prefix dbpedia-pt: <http://pt.dbpedia.org/resource/> .
-dbr:Red_banana  owl:sameAs  dbpedia-pt:Banana_vermelha ,
-    dbr:Red_banana ,
-    <http://rdf.freebase.com/ns/m.03b_nbt> ,
-    wikidata:Q2427471 .
+dbr:Goldfinger_banana owl:sameAs  yago-res:Goldfinger_banana ,
+    dbr:Goldfinger_banana .
+@prefix dbpedia-it: <http://it.dbpedia.org/resource/> .
+dbr:Goldfinger_banana owl:sameAs  dbpedia-it:FHIA-1 .
 @prefix dct:  <http://purl.org/dc/terms/> .
 @prefix dbc:  <http://dbpedia.org/resource/Category:> .
-dbr:Red_banana  dct:subject dbc:Banana_cultivars ;
-  foaf:name "Musa acuminata"@en ;
-  foaf:depiction  <http://commons.wikimedia.org/wiki/Special:FilePath/Red_banana_in_Tanzania_0196_Nevit.jpg> ;
-  foaf:isPrimaryTopicOf wikipedia-en:Red_banana .
-@prefix dbp:  <http://dbpedia.org/property/> .
-dbr:Red_banana  dbp:group dbr:Banana ;
-  dbp:imageWidth  250 .
+dbr:Goldfinger_banana dct:subject dbc:Banana_cultivars ;
+  foaf:name "Musa 'FHIA-01 Goldfinger'"@en ;
+  foaf:isPrimaryTopicOf wikipedia-en:Goldfinger_banana .
 @prefix prov: <http://www.w3.org/ns/prov#> .
-dbr:Red_banana  prov:wasDerivedFrom <http://en.wikipedia.org/wiki/Red_banana?oldid=735323822> ;
-  dbo:origin  dbr:Central_America ,
-    dbr:West_Indies ;
-  dbo:abstract  "\u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u0648\u0647\u0648 \u0623\u062D\u062F \u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0645\u062D\u062F\u0648\u062F\u0629 \u0627\u0644\u0627\u0646\u062A\u0634\u0627\u0631 \u0630\u0648 \u0637\u0639\u0645 \u0644\u0630\u064A\u0630 \u0642\u0631\u064A\u0628 \u0645\u0646 \u062E\u0644\u064A\u0637 \u0627\u0644\u0645\u0648\u0632 \u0645\u0639 \u0627\u0644\u062A\u0648\u062A \u0643\u062B\u064A\u0641 \u0627\u0644\u0644\u0628 \u0648\u062B\u0645\u0631\u0647 \u0648\u0627\u062D\u062F\u0629 \u0645\u0646\u0647 \u062A\u0643\u0641\u064A \u0639\u0646 3 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u0635\u0641\u0631 \u0648\u062A\u062D\u062A\u0648\u064A \u0627\u0644\u0645\u0648\u0632\u0629 \u0645\u062A\u0648\u0633\u0637\u0629 \u0627\u0644\u062D\u062C\u0645 \u0639\u0644\u0649 400 \u0645\u0644\u063A \u0645\u0646 \u0627\u0644\u0628\u0648\u062A\u0627\u0633\u064A\u0648\u0645. \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u063A\u0646\u064A \u0623\u064A\u0636\u0627 \u0628\u0641\u064A\u062A\u0627\u0645\u064A\u0646 \u0633\u064A. \u0641\u062D\u0628\u0629 \u0648\u0627\u062D\u062F\u0629 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0627\u0644\u0623\u062D\u0645\u0631 \u062A\u063A\u0637\u064A 15\u066A \u0645\u0646 \u062D\u0627\u062C\u0629 \u0627\u0644\u062C\u0633\u0645 \u0644\u0647\u0630\u0627 \u0627\u0644\u0641\u064A\u062A\u0627\u0645\u064A\u0646 \u0643\u0645\u0627 \u0623\u0646\u0647 \u063A\u0646\u064A \u0628\u0627\u0644\u0623\u0644\u064A\u0627\u0641 \u0627\u0644\u063A\u0630\u0627\u0626\u064A\u0629 \u0627\u0644\u062A\u064A \u062A\u0642\u0644\u0644 \u062E\u0637\u0631 \u0627\u0644\u0625\u0635\u0627\u0628\u0629 \u0628\u0623\u0645\u0631\u0627\u0636 \u0627\u0644\u0642\u0644\u0628 \u0648\u062F\u0627\u0621 \u0627\u0644\u0633\u0643\u0631\u064A \u0645\u0646 \u0627\u0644\u0646\u0648\u0639 \u0627\u0644\u062B\u0627\u0646\u064A. \u064A\u0632\u0631\u0639 \u0647\u0630\u0627 \u0627\u0644\u0646\u0648\u0639 \u0645\u0646 \u0627\u0644\u0645\u0648\u0632 \u0641\u064A \u0627\u0644\u0645\u0646\u0627\u0637\u0642 \u0627\u0644\u0627\u0633\u062A\u0648\u0627\u0626\u064A\u0629 \u0648\u0634\u0628\u0647 \u0627\u0644\u0627\u0633\u062A\u0648\u0627\u0626\u064A\u0629 \u0648\u0639\u0627\u062F\u0629 \u0645\u0627 \u064A\u0633\u062A\u063A\u0631\u0642 \u062D\u0648\u0627\u0644\u064A 9 \u0623\u0634\u0647\u0631 \u062D\u062A\u0649 \u064A\u0635\u0644 \u0644\u0645\u0631\u062D\u0644\u0629 \u0627\u0644\u0646\u0636\u0648\u062C \u0648\u0645\u0646 \u0623\u0634\u0647\u0631 \u0627\u0644\u062F\u0648\u0644 \u0627\u0644\u062A\u064A \u064A\u0632\u0631\u0639 \u0641\u064A\u0647\u0627 \u0643\u0648\u0633\u062A\u0627\u0631\u064A\u0643\u0627 \u0648\u0627\u0644\u0645\u0643\u0633\u064A\u0643 \u0648\u0628\u0639\u0636 \u0627\u0644\u062F\u0648\u0644 \u0627\u0644\u0625\u0641\u0631\u064A\u0642\u064A \u0645\u062B\u0644 \u062A\u0646\u0632\u0627\u0646\u064A\u0627 \u0648\u0632\u0646\u062C\u0628\u0627\u0631."@ar ,
-    "La banana Red \u00E8 un tipo di banana che possiede la buccia di colore rosso o violaceo. Sono in genere pi\u00F9 piccole e pi\u00F9 tozze delle banane Cavendish. Quando sono mature, la polpa assume un colore crema o rosa chiaro. Sono anche pi\u00F9 morbide e dolci della variet\u00E0 Cavendish. Molte di queste banane vengono importate dall'Asia e dall'America meridionale, e sono vendute molto frequentemente in America centrale. Come le banane gialle, le banane rosse diventano mature in qualche giorno a temperatura ambiente. Le prime banane vendute a Toronto erano banane rosse, tra il 1870 e il 1880."@it ,
-    "De rode banaan of Cuba-banaan is een vrucht die behoort tot het geslacht Musa, de sectie Musa en het genoomtype AAA heeft, waartoe ook de gewone dessertbanaan behoort. De naam rode banaan is een synoniem van het ras Red Dacca. Andere synoniemen zijn Cuba-banaan, Venkadali, Green Red, Pisang raja udang (Maleisi\u00EB), Morado, Klue nak (Thailand). De rode banaan wordt aangevoerd vanuit Indonesi\u00EB, maar komt ook voor in heel Azi\u00EB (onder andere in Sri Lanka). De rode banaan is ongeveer 12 cm lang en daarmee kleiner dan de dessertbanaan. De schil heeft een groenrode tot rode kleur, veroorzaakt door de anti-oxidant b\u00E8tacaroteen. Het vruchtvlees is cr\u00E8me tot lichtroze van kleur. De smaak is iets zoeter dan die van de dessertbanaan. De vrucht kan zowel vers als gebakken gegeten worden. De rode banaan is al zo'n 20/30 jaar in speciale groentezaken in Europa te verkrijgen. Ook groothandels importeren ze af en toe."@nl ,
-    "Red bananas, are a variety of banana with reddish-purple skin. They are smaller and plumper than the common Cavendish banana. When ripe, raw red bananas have a flesh that is cream to light pink in color. They are also softer and sweeter than the yellow Cavendish varieties, with a slight mango flavor. Many red bananas are imported from producers in East Africa, Asia, South America and the United Arab Emirates. They are a favorite in Central America but are sold throughout the world."@en ,
-    "A banana-vermelha, como \u00E9 popularmente conhecida, \u00E9 um cultivar da banana Musa acuminata. Pertence ao grupo AAA, que \u00E9 o mesmo da banana de Cavendish. \u00C9 origin\u00E1ria do Caribe. Tamb\u00E9m conhecida como Red Dacca( Austr\u00E1lia) , \u00E9 apreciada em v\u00E1rios lugares do mundo, por seu sabor adocicado. O amadurecimento \u00E9 r\u00E1pido, a polpa \u00E9 macia, rica em a\u00E7\u00FAcares, pot\u00E1ssio, muitas fibras e \u00E9 menor que uma banana comum. Al\u00E9m disso, possui mais betacaroteno e vitamina C que outras variedades. Normalmente consumida quando est\u00E1 madura, ela \u00E9 uma \u00F3tima op\u00E7\u00E3o para sobremesas. Cientistas recomendam come-la frita, assada ou cozida. Originada de uma planta que pode chegar a 3m de altura e considerada uma das frutas mais antigas do mundo, a banana vermelha \u00E9 cultivada principalmente na \u00C1sia, Am\u00E9rica do Sul e \u00C1frica, e comercializada amplamente nos Estados Unidos. Sua produtividade e resist\u00EAncia \u00E9 algo que chama aten\u00E7\u00E3o dos agricultores, que investem em seu plantio como forma de renda."@pt ;
-  dbo:thumbnail <http://commons.wikimedia.org/wiki/Special:FilePath/Red_banana_in_Tanzania_0196_Nevit.jpg?width=300> ;
-  dbo:wikiPageRevisionID  735323822 ;
-  dbo:wikiPageID  13261606 ;
-  dbo:species dbr:Musa_acuminata .
-@prefix ns18: <http://purl.org/linguistics/gold/> .
-dbr:Red_banana  ns18:hypernym dbr:Variety ;
-  dbp:imageCaption  "Red banana plant from Tanzania showing fruits and inflorescence."^^rdf:langString .
-dbr:Jamaican_banana dbo:wikiPageRedirects dbr:Red_banana .
-dbr:Klue_nak  dbo:wikiPageRedirects dbr:Red_banana .
-dbr:Pisang_raja_udang dbo:wikiPageRedirects dbr:Red_banana .
-dbr:Cuban_Red_Banana  dbo:wikiPageRedirects dbr:Red_banana .
+dbr:Goldfinger_banana prov:wasDerivedFrom <http://en.wikipedia.org/wiki/Goldfinger_banana?oldid=646170541> .
+@prefix dbp:  <http://dbpedia.org/property/> .
+dbr:Goldfinger_banana dbp:group dbr:Banana ;
+  dbo:origin  dbr:Honduras ;
+  dbo:wikiPageExternalLink  <http://www.fhia.org.hn/dowloads/info_hibridos/fhia01.pdf> ,
+    <http://www.promusa.org/tiki-index.php?page=FHIA-01> ,
+    <http://archive.idrc.ca/books/reports/V221/banana.html> ;
+  dbo:abstract  "The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA) by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en ,
+    "La FHIA-01 nota anche come Goldfinger \u00E8 una cultivar di banana sviluppata dalla Fundaci\u00F3n Hondure\u00F1a de Investigaci\u00F3n Agr\u00EDcola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttivit\u00E0 e la notevole resistenza ai patogeni."@it ;
+  dbo:wikiPageRevisionID  646170541 ;
+  dbo:wikiPageID  8279730 ;
+  dbo:hybrid  dbr:Musa_balbisiana ,
+    dbr:Musa_acuminata ,
+    dbr:Banana ;
+  dbp:cultivar  "'FHIA-01 Goldfinger'"^^rdf:langString .
+@prefix ns16: <http://purl.org/linguistics/gold/> .
+dbr:Goldfinger_banana ns16:hypernym dbr:Cultivar ;
+  dbp:imageWidth  250 .
+dbr:Goldfinger  dbo:wikiPageDisambiguates dbr:Goldfinger_banana .
 ```
 
 
@@ -270,60 +301,43 @@ Into this:
 @prefix wikipedia-en: <http://en.wikipedia.org/wiki/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix yago: <http://dbpedia.org/class/yago/> .
-@prefix wikidata: <http://www.wikidata.org/entity/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix wikidata: <http://www.wikidata.org/entity/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix dbpedia-wikidata: <http://wikidata.dbpedia.org/resource/> .
-@prefix dbpedia-nl: <http://nl.dbpedia.org/resource/> .
-@prefix dbpedia-id: <http://id.dbpedia.org/resource/> .
 @prefix yago-res: <http://yago-knowledge.org/resource/> .
-@prefix dbpedia-pt: <http://pt.dbpedia.org/resource/> .
+@prefix dbpedia-it: <http://it.dbpedia.org/resource/> .
 @prefix dct: <http://purl.org/dc/terms/> .
 @prefix dbc: <http://dbpedia.org/resource/Category:> .
-@prefix dbp: <http://dbpedia.org/property/> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
-@prefix ns18: <http://purl.org/linguistics/gold/> .
+@prefix dbp: <http://dbpedia.org/property/> .
+@prefix ns16: <http://purl.org/linguistics/gold/> .
 
-dbr:Red-purple_bananas dbo:wikiPageRedirects dbr:Red_banana .
+dbr:FHIA-01 dbo:wikiPageRedirects dbr:Goldfinger_banana .
 
-wikipedia-en:Red_banana foaf:primaryTopic dbr:Red_banana .
+dbr:Musa_goldfinger dbo:wikiPageRedirects dbr:Goldfinger_banana .
 
-dbr:Red_Dacca_Banana dbo:wikiPageRedirects dbr:Red_banana .
+wikipedia-en:Goldfinger_banana foaf:primaryTopic dbr:Goldfinger_banana .
 
-dbr:Jamaican_bananas dbo:wikiPageRedirects dbr:Red_banana .
-
-dbr:Red_bananas dbo:wikiPageRedirects dbr:Red_banana .
-
-dbr:Red_Banana dbo:wikiPageRedirects dbr:Red_banana .
-
-dbr:Red_Dacca dbo:wikiPageRedirects dbr:Red_banana .
-
-dbr:Red_banana rdf:type yago:Abstraction100002137, wikidata:Q756, dbo:Plant, yago:Variety108101085, yago:PhysicalEntity100001930, yago:Whole100003553, yago:Object100002684, dbo:Species, yago:LivingThing100004258, dbo:Eukaryote, yago:Cultivar113084834, yago:TaxonomicGroup107992450, yago:Organism100004475, wikidata:Q19088, yago:VascularPlant113083586, wikidata:Q4886, yago:Group100031264, owl:Thing, yago:Plant100017222, dbo:CultivatedVariety, yago:WikicatBananaCultivars, dbo:Grape, yago:BiologicalGroup107941170 ;
-  rdfs:label "Red banana"@en, "Red (banana)"@it, "Banana vermelha"@pt, "موز أحمر"@ar, "Rode banaan"@nl ;
-  rdfs:comment "A banana-vermelha, como é popularmente conhecida, é um cultivar da banana Musa acuminata. Pertence ao grupo AAA, que é o mesmo da banana de Cavendish. É originária do Caribe. Também conhecida como Red Dacca( Austrália) , é apreciada em vários lugares do mundo, por seu sabor adocicado. O amadurecimento é rápido, a polpa é macia, rica em açúcares, potássio, muitas fibras e é menor que uma banana comum. Além disso, possui mais betacaroteno e vitamina C que outras variedades. Normalmente consumida quando está madura, ela é uma ótima opção para sobremesas. Cientistas recomendam come-la frita, assada ou cozida."@pt, "الموز الأحمر وهو أحد أنواع الموز المحدودة الانتشار ذو طعم لذيذ قريب من خليط الموز مع التوت كثيف اللب وثمره واحدة منه تكفي عن 3 من الموز الأصفر وتحتوي الموزة متوسطة الحجم على 400 ملغ من البوتاسيوم. الموز الأحمر غني أيضا بفيتامين سي. فحبة واحدة من الموز الأحمر تغطي 15٪ من حاجة الجسم لهذا الفيتامين كما أنه غني بالألياف الغذائية التي تقلل خطر الإصابة بأمراض القلب وداء السكري من النوع الثاني. يزرع هذا النوع من الموز في المناطق الاستوائية وشبه الاستوائية وعادة ما يستغرق حوالي 9 أشهر حتى يصل لمرحلة النضوج ومن أشهر الدول التي يزرع فيها كوستاريكا والمكسيك وبعض الدول الإفريقي مثل تنزانيا وزنجبار."@ar, "La banana Red è un tipo di banana che possiede la buccia di colore rosso o violaceo. Sono in genere più piccole e più tozze delle banane Cavendish. Quando sono mature, la polpa assume un colore crema o rosa chiaro. Sono anche più morbide e dolci della varietà Cavendish. Molte di queste banane vengono importate dall'Asia e dall'America meridionale, e sono vendute molto frequentemente in America centrale. Come le banane gialle, le banane rosse diventano mature in qualche giorno a temperatura ambiente. Le prime banane vendute a Toronto erano banane rosse, tra il 1870 e il 1880."@it, "De rode banaan of Cuba-banaan is een vrucht die behoort tot het geslacht Musa, de sectie Musa en het genoomtype AAA heeft, waartoe ook de gewone dessertbanaan behoort. De naam rode banaan is een synoniem van het ras Red Dacca. Andere synoniemen zijn Cuba-banaan, Venkadali, Green Red, Pisang raja udang (Maleisië), Morado, Klue nak (Thailand). De rode banaan wordt aangevoerd vanuit Indonesië, maar komt ook voor in heel Azië (onder andere in Sri Lanka). De vrucht kan zowel vers als gebakken gegeten worden."@nl, "Red bananas, are a variety of banana with reddish-purple skin. They are smaller and plumper than the common Cavendish banana. When ripe, raw red bananas have a flesh that is cream to light pink in color. They are also softer and sweeter than the yellow Cavendish varieties, with a slight mango flavor. Many red bananas are imported from producers in East Africa, Asia, South America and the United Arab Emirates. They are a favorite in Central America but are sold throughout the world."@en ;
-  owl:sameAs <http://it.dbpedia.org/resource/Red_(banana)>, dbpedia-wikidata:Q2427471, <http://el.dbpedia.org/resource/Κόκκινη_μπανάνα>, dbpedia-nl:Rode_banaan, dbpedia-id:Pisang_susu_merah, yago-res:Red_banana, dbpedia-pt:Banana_vermelha, dbr:Red_banana, <http://rdf.freebase.com/ns/m.03b_nbt>, wikidata:Q2427471 ;
+dbr:Goldfinger_banana rdf:type yago:Whole100003553, yago:Abstraction100002137, owl:Thing, yago:LivingThing100004258, yago:VascularPlant113083586, yago:Plant100017222, dbo:Plant, dbo:Species, yago:Object100002684, wikidata:Q756, yago:PhysicalEntity100001930, wikidata:Q19088, yago:Variety108101085, yago:TaxonomicGroup107992450, wikidata:Q4886, yago:BiologicalGroup107941170, yago:Cultivar113084834, yago:WikicatBananaCultivars, dbo:Eukaryote, dbo:CultivatedVariety, yago:Group100031264, yago:Organism100004475 ;
+  rdfs:label "FHIA-1"@it, "Goldfinger banana"@en ;
+  rdfs:comment "La FHIA-01 nota anche come Goldfinger è una cultivar di banana sviluppata dalla Fundación Hondureña de Investigación Agrícola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttività e la notevole resistenza ai patogeni."@it, "The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA) by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en ;
+  owl:sameAs <http://rdf.freebase.com/ns/m.026ytv3>, dbpedia-wikidata:Q5580155, wikidata:Q5580155, yago-res:Goldfinger_banana, dbr:Goldfinger_banana, dbpedia-it:FHIA-1 ;
   dct:subject dbc:Banana_cultivars ;
-  foaf:name "Musa acuminata"@en ;
-  foaf:depiction <http://commons.wikimedia.org/wiki/Special:FilePath/Red_banana_in_Tanzania_0196_Nevit.jpg> ;
-  foaf:isPrimaryTopicOf wikipedia-en:Red_banana ;
+  foaf:name "Musa 'FHIA-01 Goldfinger'"@en ;
+  foaf:isPrimaryTopicOf wikipedia-en:Goldfinger_banana ;
+  prov:wasDerivedFrom <http://en.wikipedia.org/wiki/Goldfinger_banana?oldid=646170541> ;
   dbp:group dbr:Banana ;
-  dbp:imageWidth "250"^^<http://www.w3.org/2001/XMLSchema#integer> ;
-  prov:wasDerivedFrom <http://en.wikipedia.org/wiki/Red_banana?oldid=735323822> ;
-  dbo:origin dbr:Central_America, dbr:West_Indies ;
-  dbo:abstract "الموز الأحمر وهو أحد أنواع الموز المحدودة الانتشار ذو طعم لذيذ قريب من خليط الموز مع التوت كثيف اللب وثمره واحدة منه تكفي عن 3 من الموز الأصفر وتحتوي الموزة متوسطة الحجم على 400 ملغ من البوتاسيوم. الموز الأحمر غني أيضا بفيتامين سي. فحبة واحدة من الموز الأحمر تغطي 15٪ من حاجة الجسم لهذا الفيتامين كما أنه غني بالألياف الغذائية التي تقلل خطر الإصابة بأمراض القلب وداء السكري من النوع الثاني. يزرع هذا النوع من الموز في المناطق الاستوائية وشبه الاستوائية وعادة ما يستغرق حوالي 9 أشهر حتى يصل لمرحلة النضوج ومن أشهر الدول التي يزرع فيها كوستاريكا والمكسيك وبعض الدول الإفريقي مثل تنزانيا وزنجبار."@ar, "La banana Red è un tipo di banana che possiede la buccia di colore rosso o violaceo. Sono in genere più piccole e più tozze delle banane Cavendish. Quando sono mature, la polpa assume un colore crema o rosa chiaro. Sono anche più morbide e dolci della varietà Cavendish. Molte di queste banane vengono importate dall'Asia e dall'America meridionale, e sono vendute molto frequentemente in America centrale. Come le banane gialle, le banane rosse diventano mature in qualche giorno a temperatura ambiente. Le prime banane vendute a Toronto erano banane rosse, tra il 1870 e il 1880."@it, "De rode banaan of Cuba-banaan is een vrucht die behoort tot het geslacht Musa, de sectie Musa en het genoomtype AAA heeft, waartoe ook de gewone dessertbanaan behoort. De naam rode banaan is een synoniem van het ras Red Dacca. Andere synoniemen zijn Cuba-banaan, Venkadali, Green Red, Pisang raja udang (Maleisië), Morado, Klue nak (Thailand). De rode banaan wordt aangevoerd vanuit Indonesië, maar komt ook voor in heel Azië (onder andere in Sri Lanka). De rode banaan is ongeveer 12 cm lang en daarmee kleiner dan de dessertbanaan. De schil heeft een groenrode tot rode kleur, veroorzaakt door de anti-oxidant bètacaroteen. Het vruchtvlees is crème tot lichtroze van kleur. De smaak is iets zoeter dan die van de dessertbanaan. De vrucht kan zowel vers als gebakken gegeten worden. De rode banaan is al zo'n 20/30 jaar in speciale groentezaken in Europa te verkrijgen. Ook groothandels importeren ze af en toe."@nl, "Red bananas, are a variety of banana with reddish-purple skin. They are smaller and plumper than the common Cavendish banana. When ripe, raw red bananas have a flesh that is cream to light pink in color. They are also softer and sweeter than the yellow Cavendish varieties, with a slight mango flavor. Many red bananas are imported from producers in East Africa, Asia, South America and the United Arab Emirates. They are a favorite in Central America but are sold throughout the world."@en, "A banana-vermelha, como é popularmente conhecida, é um cultivar da banana Musa acuminata. Pertence ao grupo AAA, que é o mesmo da banana de Cavendish. É originária do Caribe. Também conhecida como Red Dacca( Austrália) , é apreciada em vários lugares do mundo, por seu sabor adocicado. O amadurecimento é rápido, a polpa é macia, rica em açúcares, potássio, muitas fibras e é menor que uma banana comum. Além disso, possui mais betacaroteno e vitamina C que outras variedades. Normalmente consumida quando está madura, ela é uma ótima opção para sobremesas. Cientistas recomendam come-la frita, assada ou cozida. Originada de uma planta que pode chegar a 3m de altura e considerada uma das frutas mais antigas do mundo, a banana vermelha é cultivada principalmente na Ásia, América do Sul e África, e comercializada amplamente nos Estados Unidos. Sua produtividade e resistência é algo que chama atenção dos agricultores, que investem em seu plantio como forma de renda."@pt ;
-  dbo:thumbnail <http://commons.wikimedia.org/wiki/Special:FilePath/Red_banana_in_Tanzania_0196_Nevit.jpg?width=300> ;
-  dbo:wikiPageRevisionID "735323822"^^<http://www.w3.org/2001/XMLSchema#integer> ;
-  dbo:wikiPageID "13261606"^^<http://www.w3.org/2001/XMLSchema#integer> ;
-  dbo:species dbr:Musa_acuminata ;
-  ns18:hypernym dbr:Variety ;
-  dbp:imageCaption "Red banana plant from Tanzania showing fruits and inflorescence."^^rdf:langString .
+  dbo:origin dbr:Honduras ;
+  dbo:wikiPageExternalLink <http://www.fhia.org.hn/dowloads/info_hibridos/fhia01.pdf>, <http://www.promusa.org/tiki-index.php?page=FHIA-01>, <http://archive.idrc.ca/books/reports/V221/banana.html> ;
+  dbo:abstract "The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA) by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en, "La FHIA-01 nota anche come Goldfinger è una cultivar di banana sviluppata dalla Fundación Hondureña de Investigación Agrícola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttività e la notevole resistenza ai patogeni."@it ;
+  dbo:wikiPageRevisionID "646170541"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+  dbo:wikiPageID "8279730"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+  dbo:hybrid dbr:Musa_balbisiana, dbr:Musa_acuminata, dbr:Banana ;
+  dbp:cultivar "'FHIA-01 Goldfinger'"^^rdf:langString ;
+  ns16:hypernym dbr:Cultivar ;
+  dbp:imageWidth "250"^^<http://www.w3.org/2001/XMLSchema#integer> .
 
-dbr:Jamaican_banana dbo:wikiPageRedirects dbr:Red_banana .
-
-dbr:Klue_nak dbo:wikiPageRedirects dbr:Red_banana .
-
-dbr:Pisang_raja_udang dbo:wikiPageRedirects dbr:Red_banana .
-
-dbr:Cuban_Red_Banana dbo:wikiPageRedirects dbr:Red_banana .
+dbr:Goldfinger dbo:wikiPageDisambiguates dbr:Goldfinger_banana .
 ```
 

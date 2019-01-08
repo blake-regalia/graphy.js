@@ -190,7 +190,21 @@ if(module === require.main) {
 	};
 
 	// commands
-	let h_commands = {
+	let h_commands = {  // eslint-disable-next-line quote-props
+		// 'content': (a_args, g_context) => {
+		// 	let g_argv = command(g_context.command)
+		// 		.string('t')
+		// 			.alias('t', ['type'])
+		// 			.describe('t', 'argument to `super.content()`; either an RDF Content-Type or format selector')
+		// 		.string('v')
+		// 			.alias('v', 'verb')
+		// 			.describe('v', 'which verb to access on the given content handler, e.g., `read`, `write`, etc.')
+		// 		.help()
+		// 		.version(false)
+		// 		.parse(a_args);
+
+		// },
+
 		'content.nt.read': reader(graphy.content.nt.read),
 		'content.nq.read': reader(graphy.content.nq.read),
 		'content.ttl.read': reader(graphy.content.ttl.read),
@@ -204,40 +218,47 @@ if(module === require.main) {
 		'util.dataset.tree': async(a_args, g_context) => {
 			const dataset_tree = graphy.util.dataset.tree;
 
-			let a_dual_input_keys = ['u', 'i', 'd', 'm'];
+			let a_operation_keys = ['c', 'u', 'i', 'd', 'm'];
 
 			let s_group_multi_input = 'With multiple inputs:';
 			let s_group_dual_input = 'With exactly two inputs:';
 
 			let g_argv = command(g_context.command)
 				.options({
+					c: {
+						type: 'boolean',
+						alias: 'canonicalize',
+						group: s_group_multi_input,
+						describe: 'canonicalize 1 or more inputs',
+						conflicts: a_operation_keys.filter(s => 'c' !== s),
+					},
 					u: {
 						type: 'boolean',
 						alias: 'union',
 						group: s_group_multi_input,
-						describe: 'perform the union of multiple inputs',
-						conflicts: a_dual_input_keys.filter(s => 'u' !== s),
+						describe: 'perform the union of 1 or more inputs',
+						conflicts: a_operation_keys.filter(s => 'u' !== s),
 					},
 					i: {
 						type: 'boolean',
 						alias: ['intersect', 'intersection'],
 						group: s_group_multi_input,
-						describe: 'perform the intersection of multiple inputs',
-						conflicts: a_dual_input_keys.filter(s => 'i' !== s),
+						describe: 'perform the intersection of 1 or more inputs',
+						conflicts: a_operation_keys.filter(s => 'i' !== s),
 					},
 					d: {
 						type: 'boolean',
 						alias: ['diff', 'difference'],
 						group: s_group_dual_input,
 						describe: 'perform a difference between two inputs',
-						conflicts: a_dual_input_keys.filter(s => 'd' !== s),
+						conflicts: a_operation_keys.filter(s => 'd' !== s),
 					},
 					m: {
 						type: 'boolean',
 						alias: ['minus', 'subtract', 'subtraction'],
 						group: s_group_dual_input,
 						describe: 'perform a subtraction by removing input-B from input-A',
-						conflicts: a_dual_input_keys.filter(s => 'm' !== s),
+						conflicts: a_operation_keys.filter(s => 'm' !== s),
 					},
 				})
 				.help()
@@ -322,9 +343,11 @@ if(module === require.main) {
 					ds_input_b.pipe(k_tree_b);
 				});
 			}
-			// reduction; n-to-n
+			// map; n-to-n
 			else {
-				return g_context.inputs.map(ds_input => ds_input.pipe(dataset_tree()))
+				return g_context.inputs.map(ds_input => ds_input.pipe(dataset_tree({
+					canonicalize: g_argv.canonicalize,
+				})));
 			}
 		},
 	};
@@ -334,26 +357,6 @@ if(module === require.main) {
 
 	// inputs
 	let a_inputs = [];
-	{
-		for(let i_argv=0; i_argv<n_args; i_argv++) {
-			let s_arg = a_argv[i_argv];
-
-			// input
-			if(s_arg.startsWith('--input')) {
-				let m_input = /^--input=(.+)$/.exec(s_arg);
-				if(!m_input) {
-					exit(`invalid input argument format: ${s_arg}`);
-				}
-				a_argv.shift();
-				i_argv -= 1;
-				n_args -= 1;
-				a_inputs.push(fs.createReadStream(m_input[1]));
-				continue;
-			}
-
-			break;
-		}
-	}
 
 	// pipeline
 	let a_pipeline = [];
@@ -363,6 +366,7 @@ if(module === require.main) {
 		for(let i_argv=1; i_argv<n_args; i_argv++) {
 			let s_arg = a_argv[i_argv];
 
+			// internal pipe
 			if('--pipe' === s_arg) {
 				a_pipeline.push(a_series);
 				if(i_argv === n_args) {
@@ -370,6 +374,12 @@ if(module === require.main) {
 				}
 				a_series = [];
 				continue;
+			}
+			// inputs follow
+			else if('--inputs' === s_arg) {
+				// convert to readable streams
+				a_inputs.push(...a_argv.slice(i_argv+1).map(p => fs.createReadStream(p)));
+				break;
 			}
 
 			a_series.push(s_arg);
