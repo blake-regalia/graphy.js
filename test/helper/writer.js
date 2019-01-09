@@ -53,12 +53,13 @@ class writer_suite {
 				write: hcn_write,
 				config: w_config={},
 				validate: st_validate,
+				type: s_type=null,
 			} = f_leaf();
 
 			it(s_label, async() => {
 				// take concise-triples hash
 				let st_output = await stream.source({
-					type: this.type,
+					type: s_type || this.type,
 					value: hcn_write,
 				})
 					// pipe it thru turtle writer
@@ -79,6 +80,11 @@ class writer_suite {
 					${st_validate}
 				`);
 
+				// helpful debug
+				if(st_expect !== st_result) {
+					debugger;
+				}
+
 				// assertion
 				expect(st_result).to.equal(st_expect);
 			});
@@ -90,14 +96,16 @@ class writer_suite {
 			util.map_tree(h_tree, (s_label, f_leaf) => {
 				let {
 					write: hcn_write,
+					type: s_type=null,
 					config: w_config={},
 					output: st_expect,
+					debug: b_debug,
 				} = f_leaf();
 
 				it(s_label, async() => {
 					// take concise-triples hash
 					let st_output = await stream.source({
-						type: this.type,
+						type: s_type || this.type,
 						value: hcn_write,
 					})
 						// pipe it thru turtle writer

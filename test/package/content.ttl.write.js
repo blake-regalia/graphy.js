@@ -408,6 +408,17 @@ writer_suite({
 					},
 				},
 			],
+			writer: (k_writer, f_later) => {
+				let c_warns = 0;
+				k_writer.on('warning', (s_warn) => {
+					expect(s_warn).to.include('implicit union');
+					c_warns += 1;
+				});
+
+				f_later(() => {
+					expect(c_warns).to.equal(1);
+				});
+			},
 			events: [
 				['data', (g_quad) => {
 					util.validate_quads([g_quad], [['a', 'b', 'c', '*']]);

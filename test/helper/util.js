@@ -294,7 +294,7 @@ const helper = module.exports = {
 				});
 			}
 			else {
-				throw new TypeError(`unexpected leaf type encountered at path ${a_path.join('/')}: '${z_leaf}'`);
+				throw new TypeError(`unexpected leaf type encountered at path '${a_path.join('/')}': '${z_leaf}'`);
 			}
 		}
 	},

@@ -969,6 +969,15 @@ const factory = module.exports = {
 		return factory.c1_node_explicit(sct_node, h_prefixes);
 	},
 
+	// construct a named node
+	c1_named_node(sc1_node, h_prefixes={}) {
+		// rdf:type shortcut
+		if('a' === sc1_node) return KT_RDF_TYPE;
+
+		// other
+		return factory.c1_node_explicit(sc1_node, h_prefixes);
+	},
+
 	// construct a term object from a concise term string for nodes (no shortcuts)
 	c1_node_explicit(sct_node, h_prefixes={}) {
 		// deduce term type

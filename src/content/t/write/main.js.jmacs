@@ -164,7 +164,8 @@ class @{S_LABEL}_Writer extends writable {
 				}
 
 				// serialize open graph
-				let st_graph = factory.c1(sc1_graph, h_prefixes).terse(h_prefixes);
+				let kt_graph = factory.c1_node(sc1_graph, h_prefixes)
+				let st_graph = kt_graph.isAnonymous? '[]': kt_graph.terse(h_prefixes);
 				s_write += s_graph_token+(st_graph? st_graph+' ': '')+'{\n';
 
 				// update state
@@ -192,7 +193,8 @@ class @{S_LABEL}_Writer extends writable {
 				let i_triples = s_write.length;
 
 				// serialize subject
-				s_write += s_delim_triples+@{b_c4? 's_indent+': ''}factory.c1(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
+				let kt_subject = factory.c1_node(sc1_subject, h_prefixes);
+				s_write += s_delim_triples+@{b_c4? 's_indent+': ''}(kt_subject.isAnonymous? '[]': kt_subject.terse(h_prefixes))+' ';
 
 				// pair indent & terminator
 				let s_indent_pairs = '';
@@ -238,7 +240,7 @@ class @{S_LABEL}_Writer extends writable {
 					b_empty = false;
 
 					// serialize predicate and object(s)
-					s_write += s_term_pairs + s_indent_pairs + factory.c1(sc1_predicate, h_prefixes).terse(h_prefixes)
+					s_write += s_term_pairs + s_indent_pairs + factory.c1_named_node(sc1_predicate, h_prefixes).terse(h_prefixes)
 						+ ' ' + st_objects;
 
 					// update state
@@ -266,7 +268,7 @@ class @{S_LABEL}_Writer extends writable {
 				s_delim_triples = '\n';
 
 				// close triple
-				s_write += `${s_term_pairs? ' ': s_indent_pairs}.\n@{b_c4? '\\n': ''}`;
+				s_write += `${s_term_pairs? ' ': s_indent_pairs}.\n`; // @{b_c4? '\\n': ''}
 			}
 
 		@- b_c4
@@ -298,7 +300,11 @@ class @{S_LABEL}_Writer extends writable {
 		// deduce object value type
 		switch(typeof z_objects) {
 			// concise-term string
-			case 'string': return factory.c1(z_objects, h_prefixes).terse(h_prefixes);
+			case 'string': {
+				let kt_object = factory.c1(z_objects, h_prefixes);
+				if(kt_object.isAnonymous) return '[]';
+				return kt_object.terse(h_prefixes);
+			}
 
 			// numeric type
 			case 'number': return factory.number(z_objects).terse(h_prefixes);
