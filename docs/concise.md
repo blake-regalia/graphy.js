@@ -226,18 +226,22 @@ y_writer.end();
 {
    demo:bob dc:publisher "Bob" .
 
+
    demo:alice dc:publisher "Alice" .
+
 }
 
 demo:bob {
    _:a foaf:name "Bob" ;
       foaf:mbox <mailto:bob@oldcorp.example.org> ;
       foaf:knows _:b .
+
 }
 
 demo:alice {
    _:b foaf:name "Alice" ;
       foaf:mbox <mailto:alice@work.example.org> .
+
 }
 
 
@@ -336,7 +340,6 @@ dbr:Banana rdf:type dbo:Plant ;
       demo:distribute
    ) .
 
-
 # hey look, another comment!
 eg:HappyPerson rdf:type owl:Class ;
    owl:equivalentClass [
@@ -354,7 +357,6 @@ eg:HappyPerson rdf:type owl:Class ;
          ]
       ) ;
    ] .
-
 
 ```
 

@@ -8,6 +8,8 @@
 @$ NQ = 'nq' === FORMAT;
 @$ QUADS = NQ;
 
+@$ S_LABEL = NT? 'NTriples': 'NQuads';
+
 @// import parser macros
 @import '../../text.read.jmacs'
 
@@ -204,6 +206,43 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 	@{b_local? 's': 'this.s'} = s.substr(i);
 @;
 
+class @{S_LABEL}_Reader extends stream.Transform {
+	constructor(g_impls) {
+		super({
+			// do not decode strings into buffers
+			decodeStrings: false,
+
+			// accept strings as input on writable side
+			writableObjectMode: false,
+
+			// output quad objects on readable side
+			readableObjectMode: true,
+
+			// implementations
+			flush: g_impls.flush,
+			transform: g_impls.transform,
+		});
+
+		// when the writable side is piped into
+		this.on('pipe', (ds_input) => {
+			// input stream has encoding option; ensure stream encoding is utf8
+			if('function' === typeof ds_input.setEncoding) {
+				ds_input.setEncoding('utf8');
+			}
+		});
+	}
+
+	// intercept pipe
+	pipe(ds_out) {
+		// non-object mode
+		if(!ds_out._writableState.objectMode) {
+			ds_out = stream.quads_to_json(ds_out);
+		}
+
+		// forward to super
+		return super.pipe(ds_out);
+	}
+}
 
 class reader {
 	constructor(g_config) {
@@ -274,49 +313,7 @@ class reader {
 		let b_init = false;
 
 		// create transform
-		ds_transform = this.transform = new stream.Transform({
-			// do not decode strings into buffers
-			decodeStrings: false,
-
-			// output quad objects on readable side
-			readableObjectMode: true,
-
-			// once there's no more data to consume, invoke eof
-			flush: (fk_flush) => {
-				// there is still unparsed data
-				if(this.s.length) {
-					// append newline to end so we can match token
-					this.s += '\n';
-
-					// parse safely
-					try {
-						this.safe_parse();
-					}
-					// read error occurred; pass to flush errback and exit method
-					catch(e_read) {
-						// destroying during flush means overriding push
-						return ds_transform.demolish(e_read);
-					}
-
-					// still unparsed characters; pass to flush errback and exit method
-					if(this.s.length) {
-						return ds_transform.demolish(new Error(`parsing error occurred in state: statement\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
-					}
-				}
-
-				// make buffer's alloc eligible for gc
-				this.s = null;
-
-				// final progress update: no additional bytes were read
-				ds_transform.emit('progress', 0);
-
-				// call end event listener
-				ds_transform.emit('eof');
-
-				// done flushing, close read stream
-				fk_flush();
-			},
-
+		ds_transform = this.transform = new @{S_LABEL}_Reader({
 			// on data event
 			transform: (s_chunk, s_encoding, fk_chunk) => {
 				// first transform
@@ -359,27 +356,44 @@ class reader {
 				// done transforming this chunk
 				fk_chunk();
 			},
+
+			// once there's no more data to consume, invoke eof
+			flush: (fk_flush) => {
+				// there is still unparsed data
+				if(this.s.length) {
+					// append newline to end so we can match token
+					this.s += '\n';
+
+					// parse safely
+					try {
+						this.safe_parse();
+					}
+					// read error occurred; pass to flush errback and exit method
+					catch(e_read) {
+						// destroying during flush means overriding push
+						return ds_transform.demolish(e_read);
+					}
+
+					// still unparsed characters; pass to flush errback and exit method
+					if(this.s.length) {
+						return ds_transform.demolish(new Error(`parsing error occurred in state: statement\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
+					}
+				}
+
+				// make buffer's alloc eligible for gc
+				this.s = null;
+
+				// final progress update: no additional bytes were read
+				ds_transform.emit('progress', 0);
+
+				// call end event listener
+				ds_transform.emit('eof');
+
+				// done flushing, close read stream
+				fk_flush();
+			},
 		});
 		
-		// intercept pipe
-		ds_transform.pipe = function(ds_out) {
-			// non-object mode
-			if(!ds_out._writableState.objectMode) {
-				ds_out = stream.quads_to_json(ds_out);
-			}
-
-			// forward to super
-			return Object.getPrototypeOf(this).pipe.apply(this, [ds_out]);
-		};
-
-		// when the writable side is piped into
-		ds_transform.on('pipe', (ds_input) => {
-			// input stream has encoding option; ensure stream encoding is utf8
-			if('function' === typeof ds_input.setEncoding) {
-				ds_input.setEncoding('utf8');
-			}
-		});
-
 		// data event
 		this.data = g_quad => ds_transform.push(g_quad);
 

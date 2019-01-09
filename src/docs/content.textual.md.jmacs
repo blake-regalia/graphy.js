@@ -3,12 +3,16 @@
 This documentation covers the following graphy packages:
  - N-Triples
    - reader: `@graphy/content.nt.read`
+   - writer: `@graphy/content.nt.write`
  - N-Quads
    - reader: `@graphy/content.nq.read`
+   - writer: `@graphy/content.nq.write`
  - Turtle
    - reader: `@graphy/content.ttl.read`
+   - writer: `@graphy/content.ttl.write`
  - TriG
    - reader: `@graphy/content.trig.read`
+   - writer: `@graphy/content.trig.write`
 
 ----
 
@@ -17,18 +21,27 @@ This documentation covers the following graphy packages:
  - [Accessibility](#accessibility) -- all textual RDF content modules
  - [Verbs](#verbs) -- the module export functions under each content namespace
    - [`.read`](#verb_read) -- for reading RDF from a string or stream
-     - _event_ [`readable(...)`](#event_read-readable)
-     - _event_ [`base(...)`](#event_read-base)
-     - _event_ [`prefix(...)`](#event_read-prefix)
-     - _event_ [`comment(...)`](#event_read-comment)
-     - _event_ [`data(...)`](#event_read-data)
-     - _event_ [`enter(...)`](#event_read-enter)
-     - _event_ [`exit(...)`](#event_read-exit)
-     - _event_ [`progress(...)`](#event_read-progress)
-     - _event_ [`eof(...)`](#event_read-eof)
-     - _event_ [`end(...)`](#event_read-end)
-     - _event_ [`error(...)`](#event_read-error)
+     - **Events:**
+       - [`readable(...)`](#event_read-readable)
+       - [`base(...)`](#event_read-base)
+       - [`prefix(...)`](#event_read-prefix)
+       - [`comment(...)`](#event_read-comment)
+       - [`data(...)`](#event_read-data)
+       - [`enter(...)`](#event_read-enter)
+       - [`exit(...)`](#event_read-exit)
+       - [`progress(...)`](#event_read-progress)
+       - [`eof(...)`](#event_read-eof)
+       - [`end(...)`](#event_read-end)
+       - [`error(...)`](#event_read-error)
    - [`.write`](#verb_write) -- for writing RDF using write event objects
+     - **Events:**
+       - [`warning(...)`](#event_write-warning)
+     - **WritableDataEvent Types:**
+       - [`'c3'`](#interface_writable-data-event-c3) (including comments and newlines)
+       - [`'c4'`](#interface_writable-data-event-c4) (including comments and newlines)
+       - [`'quad'`](#interface_writable-data-event-quad)
+       - [`'prefixes'`](#interface_writable-data-event-prefixes)
+       - [`'array'`](#interface_writable-data-event-array) (includes all other types)
  - [Classes](#classes)
  - [Events](#events) -- definitions for event interfaces
  - [Configs](#configs) -- definitions for config interfaces
@@ -485,6 +498,13 @@ The definition for all possible events emitted during content writing. Please [s
  - ... [see those inherited from @node.js/stream.Transform](https://nodejs.org/api/stream.html#stream_class_stream_transform) (i.e., events from both @node.js/stream.Readable and @node.js/stream.Writable)
 
 
+<a name="event_write-warning" />
+
+ - `warning(message: string)`
+   - Gets called to emit a warning message to the developer. Currently, this will only happen to warn about an implicit union when trying to write quad(s) with anything other than the default graph to an output format that does not support graphs (essentially drops the graph component in such cases).
+
+
+
 <!--
 
 ----
@@ -637,6 +657,9 @@ An interface that defines the config object passed to a content writer.
 **Options:**
  - ... [see those inlined from WriteEvents](#events_write)
  - `prefixes` : [`#hash/prefix-mappings`](core.data.factory#hash_prefix-mappings) -- prefix mappings to use in order to expand the concise-term strings within concise-quad hashes as they are written. These prefixes will also be used to create prefix statements and terse terms on the output stream whenever possible (e.g., for Turtle and TriG documents).
+ - `tokens` -- configure certain stylistic options if available for the given provider.
+   - **Options:**
+     - `.graph` : `boolean | string=''` -- only supported by TriG writer. If `true`, will write `GRAPH` before each graph open block. If a `string` is given, it must match `/^graph$/i`.
 
 
 <a name="config_comment" />
@@ -739,21 +762,190 @@ An object that describes an event of writable RDF data (including metadata and d
    - `.type`: `string` -- the type of event this object represents, see below
    - `.value`: `any` -- the value of the object
  - The string given for `.type` should be one of the following:
-   - `'array'` -- write a series of data events (useful for aggregating events synchronously before going async).
-      - *expects* `.value` to be an `Array<`[`WritableDataEvent`](#interface_writable-data-event)`>`.
+
+<a name="#interface_writable-data-event-c3" />
+
    - `'c3'` -- write a set of triples to the output.
       - *expects* `.value` to be a [concise triple hash](concise#hash_c3)
+      - _example:_
+        ```js
+        const factory = require('@graphy/core.data.factory');
+        const stream = require('@graphy/core.iso.stream');
+        const ttl_write = require('@graphy/content.ttl.write');
+
+        // `stream.source(data).pipe(dst)` is essentially `dst.write(data).end()`
+        stream.source({
+            type: 'c3',
+            value: {
+                [factory.comment()]: 'banana example'
+                'dbr:Banana': {
+                    'rdfs:label': [
+                       '@en"Banana',
+                       '@fr"Banane',
+                    ],
+                },
+            },
+        }).pipe(ttl_write({
+            prefixes: {
+                dbr: 'http://dbpedia.org/resource/',
+                rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+            },
+        })).pipe(process.stdout);
+        ```
+      - **outputs:**
+        ```turtle
+        @prefix dbr: <http://dbpedia.org/resource/> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+        # banana example
+        dbr:Banana rdfs:label "Banana"@en, "Banane"@fr .
+        ```
+
+<a name="#interface_writable-data-event-c4" />
+
    - `'c4'` -- write a set of quads to the output.
       - *expects* `.value` to be a [concise quad hash](concise#hash_c4)
-@.{/*   - `'triple'` -- write a single RDFJS-compatible triple to the output.
-      - *expects* `.value` to be a [Triple](core.data.factory#class_triple)*/}
+      - _example:_
+        ```js
+        const factory = require('@graphy/core.data.factory');
+        const stream = require('@graphy/core.iso.stream');
+        const trig_write = require('@graphy/content.trig.write');
+
+        // `stream.source(data).pipe(dst)` is essentially `dst.write(data).end()`
+        stream.source({
+            type: 'c4',
+            value: {
+                [factory.comment()]: 'default graph',
+                '*': {
+                    [factory.comment()]: 'banana example',
+                    'dbr:Banana': {
+                        [factory.comment()]: 'did i mention that comments work here too?',
+                        'rdfs:label': [
+                           '@en"Banana',
+                           '@fr"Banane',
+                        ],
+                        [factory.comment()]: 'pretty cool i know ;)',
+                    },
+                },
+
+                [factory.comment()]: 'another graph (blank node)',
+                '_:': {
+                    'dbr:Banana': {
+                        'dbr:color': '"yellow',
+                    },
+                },
+            },
+        }).pipe(trig_write({
+            prefixes: {
+                dbr: 'http://dbpedia.org/resource/',
+                rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+            },
+            tokens: {
+                graph: true,  // output `GRAPH` tokens in TriG format
+            },
+        })).pipe(process.stdout);
+        ```
+      - **outputs:**
+        ```trig
+        @prefix dbr: <http://dbpedia.org/resource/> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+        # default graph
+        GRAPH {
+            # banana example
+            dbr:Banana 
+                # did i mention that comments work here too?
+                rdfs:label "Banana"@en, "Banane"@fr ;
+                # pretty cool i know ;)
+                .
+        }
+
+        # another graph (blank node)
+        GRAPH _:05565745_3fb2_4378_b4d0_bedb24d45d55 {
+            dbr:Banana dbr:color "yellow" .
+        }
+        ```
+
+<a name="#interface_writable-data-event-quad" />
+
    - `'quad'` -- write a single RDFJS-compatible quad to the output.
       - *expects* `.value` to be a [Quad](core.data.factory#class_quad)
-@.{/*   - `'base'`-- sets or updates the current base URI used for relative IRI resolution. Will also cause the writer to output a `@base` statement if supported by the underlying RDF format.
-      - *expects* `.value` to be an IRI `string`.*/}
+      - _example:_
+        ```js
+        const factory = require('@graphy/core.data.factory');
+        const ttl_write = require('@graphy/content.ttl.write');
+
+        // procedural style
+        let y_writer = ttl_write({
+            prefixes: {
+                dbr: 'http://dbpedia.org/resource/',
+                rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+            },
+        });
+
+        // pipe to stdout
+        y_writer.pipe(process.stdout);
+
+        // create RDF terms
+        let yt_subject = factory.namedNode('http://dbpedia.org/resource/Banana');
+        let yt_predicate = factory.namedNode('http://www.w3.org/2000/01/rdf-schema#label');
+        let yt_object = factory.literal('Banana', 'en');
+
+        // create RDF quad
+        let y_quad = factory.quad(yt_subject, yt_predicate, yt_object);
+
+        // write quad
+        y_writer.write({
+            type: 'quad',
+            value: y_quad,
+        });
+
+        // end stream
+        y_writer.end();
+        ```
+      - **outputs:**
+        ```turtle
+        @prefix dbr: <http://dbpedia.org/resource/> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+        dbr:Banana rdfs:label "Banana"@en .
+        ```
+
+
+<a name="#interface_writable-data-event-prefixes" />
+
    - `'prefixes'` -- updates the current prefix mappings which are used to expand CURIEs found in following concise triple (c3) and concise quad (c4) hashes. Will also cause the writer to output the given prefix mappings if supported by the underlying RDF format.
       - *expects* `.value` to be a [#hash/prefix-mappings](core.data.factory#hash_prefix-mappings)
-   - `'comment'` -- if the underlying RDF format supports it, a comment will be written to the output document, otherwise this has no effect.
-      - *expects* `.value` to be one of the following:
-         - `string` -- a single-line comment
-         - [#config/comment](#config_comment) -- enhanced comment 
+      - _example:_
+        ```js
+        const ttl_write = require('@graphy/content.ttl.write');
+
+        // procedural style
+        let y_writer = ttl_write();
+
+        // pipe to stdout
+        y_writer.pipe(process.stdout);
+
+        // write prefix mapping(s)
+        y_writer.write({
+            type: 'prefixes',
+            value: {
+                demo: 'http://ex.org/',
+            },
+        });
+
+        // end stream
+        y_writer.end();
+        ```
+      - **outputs:**
+        ```turtle
+        @prefix dbr: <http://dbpedia.org/resource/> .
+        ```
+
+<a name="#interface_writable-data-event-array" />
+
+   - `'array'` -- write a series of data events (useful for aggregating events synchronously before going async).
+      - *expects* `.value` to be an `Array<`[`WritableDataEvent`](#interface_writable-data-event)`>`.
+
+@.{/*   - `'base'`-- sets or updates the current base URI used for relative IRI resolution. Will also cause the writer to output a `@base` statement if supported by the underlying RDF format.
+      - *expects* `.value` to be an IRI `string`.*/}

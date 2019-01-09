@@ -299,4 +299,13 @@ const helper = module.exports = {
 		}
 	},
 
+	gobble(s_text, s_indent='') {
+		let m_pad = /^(\s+)/.exec(s_text.replace(/^([ \t]*\n)/, ''));
+		if(m_pad) {
+			return s_indent+s_text.replace(new RegExp(`\\n${m_pad[1]}`, 'g'), '\n'+s_indent.trim()).trim();
+		}
+		else {
+			return s_indent+s_text.trim();
+		}
+	},
 };

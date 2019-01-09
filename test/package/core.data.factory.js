@@ -259,6 +259,10 @@ describe('DataFactory:', () => {
 			H_VALIDATORS.literal(factory.literal('test', 'en'), {value:'test', language:'en'});
 		});
 
+		it('language w/ optional @', () => {
+			H_VALIDATORS.literal(factory.literal('test', '@en'), {value:'test', language:'en'});
+		});
+
 		it('valueOf casts to canonical form', () => {
 			expect(factory.literal('hello', 'en')+'').to.equal('@en"hello');
 			expect(factory.literal('hello', factory.namedNode('greeting'))+'').to.equal('^>greeting"hello');

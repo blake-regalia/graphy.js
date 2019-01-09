@@ -244,6 +244,10 @@ class Literal extends GenericTerm {
 		this.value = s_value;
 		if(z_datatype_or_lang) {
 			if('string' === typeof z_datatype_or_lang) {
+				// remove optional '@' character from beginning
+				if('@' === z_datatype_or_lang[0]) z_datatype_or_lang = z_datatype_or_lang.slice(1);
+
+				// save fields
 				this.language = z_datatype_or_lang.toLowerCase();
 				this.datatype = KT_RDF_LANG_STRING;
 			}

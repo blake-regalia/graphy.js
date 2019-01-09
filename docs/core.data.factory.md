@@ -26,7 +26,7 @@
      - [`.double(...)`](#function_double)
      - [`.number(...)`](#function_number)
      - [`.date(...)`](#function_date)
-     - [`.dateTime(...)`](#function_datetime)
+     - [`.dateTime(...)`](#function_date-time)
    - Quad constructors
      - [`.quad(...)`](#function_quad)
    - Concise Term constructors
@@ -86,11 +86,11 @@ The following section describes hinted formatting on ES primitives that are used
 
 <a name="number_integer" />
 
- - `#number/integer` -- any number such that `Numer.isInteger(value) === true`.
+ - [`#number/integer`](#number_integer) -- any number such that `Numer.isInteger(value) === true`.
 
 <a name="number_double" />
 
- - `#number/double` -- any number.
+ - [`#number/double`](#number_double) -- any number.
 
 
 <a name="strings" />
@@ -99,19 +99,19 @@ The following section describes hinted formatting on ES primitives that are used
 
 <a name="string_term-verbose" />
 
- - `#string/term-verbose` -- a string which is conformant with the grammar production `subject`, `predicate`, `object` or `graphLabel` as they are defined in the [N-Triples](https://www.w3.org/TR/n-triples/#n-triples-grammar) and [N-Quads](https://www.w3.org/TR/n-quads/#sec-grammar) specifications.
+ - [`#string/term-verbose`](#string_term-verbose) -- a string which is conformant with the grammar production `subject`, `predicate`, `object` or `graphLabel` as they are defined in the [N-Triples](https://www.w3.org/TR/n-triples/#n-triples-grammar) and [N-Quads](https://www.w3.org/TR/n-quads/#sec-grammar) specifications.
 
 <a name="string_quad-verbose" />
 
- - `#string/quad-verbose` -- a string which is conformant with the grammar production `statement` as is is defined in the [N-Quads](https://www.w3.org/TR/n-quads/#sec-grammar) specification.
+ - [`#string/quad-verbose`](#string_quad-verbose) -- a string which is conformant with the grammar production `statement` as is is defined in the [N-Quads](https://www.w3.org/TR/n-quads/#sec-grammar) specification.
 
 <a name="string_term-terse" />
 
- - `#string/term-terse` -- a string which is conformant with the grammar production `IRIREF`, `RDFLiteral`, or `PrefixedName` as they are defined in the [Turtle](https://www.w3.org/TR/turtle/#sec-grammar) specification.
+ - [`#string/term-terse`](#string_term-terse) -- a string which is conformant with the grammar production `IRIREF`, `RDFLiteral`, or `PrefixedName` as they are defined in the [Turtle](https://www.w3.org/TR/turtle/#sec-grammar) specification.
 
 <a name="string_language-tag" />
 
- - `#string/language-tag` -- a [BCP47 string](https://tools.ietf.org/html/bcp47).
+ - [`#string/language-tag`](#string_language-tag) -- a [BCP47 string](https://tools.ietf.org/html/bcp47).
 
 
 <a name="structs" />
@@ -121,7 +121,7 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 
 <a name="struct_term-isolate" />
 
- - `#struct/term-isolate` -- an object that represents an isolated RDF term.
+ - [`#struct/term-isolate`](#struct_term-isolate) -- an object that represents an isolated RDF term.
    - _required properties:_
      - `.termType`: `string`
      - `.value`: `string`
@@ -131,7 +131,7 @@ A 'struct' refers to an interface for a simple ES Object `value` such that `valu
 
 <a name="struct_quad-isolate" />
 
- - `#struct/quad-isolate` -- an object that represents an isolated RDF quad.
+ - [`#struct/quad-isolate`](#struct_quad-isolate) -- an object that represents an isolated RDF quad.
    - _properties:_
      - `.subject` : [#struct/term-isolate](#struct_term-isolate)
      - `.predicate` : [#struct/term-isolate](#struct_term-isolate)
@@ -153,7 +153,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="hash_prefix-mappings" />
 
- - `#hash/prefix-mappings` -- an object that represents the mappings from a prefix string to its expanded IRI.
+ - [`#hash/prefix-mappings`](#hash_prefix-mappings) -- an object that represents the mappings from a prefix string to its expanded IRI.
    - **definition:**
      ```ts
      interface **PrefixMappings** { [prefix: string]: string; };
@@ -165,7 +165,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_named-node" />
 
-- `factory.namedNode(iri: string)`
+- [`factory.namedNode`](#function_named-node)`(iri: string)`
   - **returns** a [new NamedNode](#class_named-node)
   - *example:*
       ```js
@@ -174,7 +174,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_blank-node" />
 
- - `factory.blankNode(...)`
+ - [`factory.blankNode`](#function_blank-bode)`(...)`
    - *overloaded variants*
      - `()` -- no args constructor will generate a new UUID4 in attempt to avoid label collisions
      - `(label: string)` -- uses the given `label` 
@@ -191,7 +191,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_default-graph" />
 
- - `factory.defaultGraph()`
+ - [`factory.defaultGraph`](#function_default-graph)`()`
    - **returns** a [new DefaultGraph](#class_default-graph)
    - *example:*
        ```js
@@ -201,42 +201,45 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_literal" />
 
- - `factory.literal(contents: string[, datatype_or_lang: `[`NamedNode`](#class_named-node)` | string])`
+ - [`factory.literal`](#function_literal)`(contents: string[, datatype_or_lang: `[`NamedNode`](#class_named-node)` | `[`#string/language-tag`](#string_language-tag)`])`
    - **returns** a [new Literal](#class_literal), optionally using `datatype_or_lang`
    - *example:*
        ```js
        factory.literal('"').verbose();  // '"\""^^<http://www.w3.org/2001/XMLSchema#string>'
        factory.literal('42', 'ex://datatype').verbose();  // '"42"@ex://datatype'
-       factory.literal('hello Mars!', '@en').verbose();  // '"hello Mars!"@@en'
+       factory.literal('hello Mars!', 'en').verbose();  // '"hello Mars!"@en'
+
+       // for backwards-compatibility, the '@' character is also allowed in the language tag argument version
+       factory.literal('hello Mars!', '@en').verbose();  // '"hello Mars!"@en'
        ```
 
 <a name="function_integer" />
 
- - `factory.integer(value: `[`#number/integer`](#number_integer)` | string)`
+ - [`factory.integer`](#function_integer)`(value: `[`#number/integer`](#number_integer)` | string)`
    - **returns** a [new Literal_Integer](#class_literal-integer)
    - *examples:* [See Literal_Integer](#class_literal-integer)
 
 <a name="function_double" />
 
- - `factory.double(value: number | string)`
+ - [`factory.double`](#function_double)`(value: number | string)`
    - **returns** a [new Literal_Double](#class_literal-double)
    - *examples:* [See Literal_Double](#class_literal-double)
 
 <a name="function_decimal" />
 
- - `factory.decimal(value: number | string)`
+ - [`factory.decimal`](#function_decimal)`(value: number | string)`
    - **returns** a [new Literal_Decimal](#class_literal-decimal)
    - *examples:* [See Literal_Decimal](#class_literal-decimal)
 
 <a name="function_boolean" />
 
- - `factory.boolean(value: boolean | string)`
+ - [`factory.boolean`](#function_boolean)`(value: boolean | string)`
    - **returns** a [new Literal_Boolean](#class_literal-boolean)
    - *examples:* [See Literal_Boolean](#class_literal-boolean)
 
 <a name="function_number" />
 
- - `factory.number(value: number)`
+ - [`factory.number`](#function_number)`(value: number)`
    - will return an RDF literal with either an XSD integer datatype or an XSD decimal datatype, depending on if `value` is an integer or not. Otherwise, if `value` is infinite or `NaN`, will return an RDF literal with an XSD double datatype.
    - **returns** a [new Literal_Integer](#class_literal-integer), a new [new Literal_Decimal](#class_literal-decimal), or a [new Literal_Double](#class_literal-double) depending on `value`.
    - *examples:*
@@ -249,7 +252,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_date" />
 
- - `factory.date(date: Date)`
+ - [`factory.date`](#function_date)`(date: Date)`
    - **returns** a [new Literal](#class_literal)
    - *examples:*
       ```js
@@ -258,9 +261,9 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       factory.date(dt_event).terse(h_prefixes);  // '"1995-12-17Z"^^xsd:date'
       ```
 
-<a name="function_dateTime" />
+<a name="function_date-time" />
 
- - `factory.dateTime(dateTime: Date)`
+ - [`factory.dateTime`](#function_date-time)`(dateTime: Date)`
    - **returns** a [new Literal](#class_literal)
    - *examples:*
       ```js
@@ -271,18 +274,18 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_quad" />
 
- - `factory.quad(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
+ - [`factory.quad`](#function_quad)`(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
    - **returns** a [new Quad](#class_quad)
 
 <a name="function_c1" />
 
- - `factory.c1(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+ - [`factory.c1`](#function_c1)`(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **returns** a [new GenericTerm](#class_generic-term)
 
 <!--
 <a name="function_term" />
 
- - `factory.term(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+ - [`factory.term`](#function_term)`(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **returns** a [new GenericTerm](#class_generic-term)
 -->
 
@@ -290,14 +293,14 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_c3" />
 
- - *generator* `* factory.c3(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+ - *generator* `* `[`factory.c3`](#function_c3)`(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Triples](#class_triple)
 
 
 
 <a name="function_c4" />
 
- - *generator* `* factory.c4(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+ - *generator* `* `[`factory.c4`](#function_c4)`(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
 
 
@@ -305,7 +308,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_from-term" />
 
- - `factory.from.term(term: `[`AnyTerm`](#interface_any-term)`)`
+ - [`factory.from.term`](#function_from-term)`(term: `[`AnyTerm`](#interface_any-term)`)`
    - converts an object that represents an RDF term, as long as it includes the expected keys such as an [@RDFJS/Term](https://rdf.js.org/#term-interface) from another library, into a graphy-constructed [GenericTerm](#class_generic-term).
    - **returns** a [new GenericTerm](#class_generic-term)
    - *example:*
@@ -318,7 +321,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_from-quad" />
 
- - `factory.from.quad(term: `[`AnyQuad`](#interface_any-quad)`)`
+ - [`factory.from.quad`](#function_from-quad)`(term: `[`AnyQuad`](#interface_any-quad)`)`
    - converts an object that represents an RDF quad, as long as it includes the expected keys such as an [@RDFJS/Quad](https://rdf.js.org/#quad-interface) from another library, into a graphy-constructed [Quad](#class_quad).
    - **returns** a [new Quad](#class_quad)
    - *example:*
@@ -341,7 +344,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_comment" />
 
- - `factory.comment(config: `[`#config/comment`](#config_comment)`)`
+ - [`factory.comment`](#function_comment)`(config: `[`#config/comment`](#config_comment)`)`
    - creates a special concise term string that tells the RDF writer to interpret the value associated with this key as a comment and to insert it into the output RDF document if the destination RDF format supports comments. Use this function in the predicate, subject or graph position of any concise triples or concise quads hash.
    - **returns** a [`#string/concise-term`](concise#string_c1)
    - *example:*
@@ -387,7 +390,6 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
          # so is this...
          rdfs:label "Banana"@en .
       
-      
       ```
 
 
@@ -399,7 +401,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="class_generic-term" />
 
-### abstract class **GenericTerm** implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
+### abstract class [**GenericTerm**](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 **Properties:**
  - `.isGraphyTerm` : `boolean` = `true`
 
@@ -430,7 +432,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="class_named-node" />
 
-### class **NamedNode** extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
+### class [**NamedNode**](#class_named-node) extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 A class that represents an RDF named node.
 
 **Properties implementing [@RDFJS/NamedNode](https://rdf.js.org/#namednode-interface)**:
@@ -445,7 +447,7 @@ A class that represents an RDF named node.
 
 <a name="class_blank-node" />
 
-### class **BlankNode** extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
+### class [**BlankNode**](#class_blank-node) extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 A class that represents an RDF blank node.
 
 **Properties implementing [@RDFJS/BlankNode](https://rdf.js.org/#blanknode-interface)**:
@@ -474,7 +476,7 @@ graphy.content.ttl.read('_:a <b> [] .', {
 
 <a name="class_default-graph" />
 
-### class **DefaultGraph** extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
+### class [**DefaultGraph**](#class_default-graph) extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 A class that represents an RDF default graph.
 
 **Properties implementing [@RDFJS/DefaultGraph](https://rdf.js.org/#defaultgraph-interface)**:
@@ -489,7 +491,7 @@ A class that represents an RDF default graph.
 
 <a name="class_literal" />
 
-### class **Literal** extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
+### class [**Literal**](#class_literal) extends [GenericTerm](#class_generic-term) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
 A class that represents an RDF literal.
 
 **Properties implementing [@RDFJS/Literal](https://rdf.js.org/#literal-interface)**:
@@ -506,7 +508,7 @@ A class that represents an RDF literal.
 
 <a name="class_literal-boolean" />
 
-### class **Literal_Boolean** extends [Literal](#class_literal)
+### class [**Literal_Boolean**](#class_literal-boolean) extends [Literal](#class_literal)
 A class that represents an RDF literal that is an [xsd:boolean](https://www.w3.org/TR/xmlschema-2/#boolean).
 
 **Properties:**
@@ -521,7 +523,7 @@ A class that represents an RDF literal that is an [xsd:boolean](https://www.w3.o
 
 <a name="class_literal-integer" />
 
-### class **Literal_Integer** extends [Literal](#class_literal)
+### class [**Literal_Integer**](#class_literal-integer) extends [Literal](#class_literal)
 A class that represents an RDF literal that is an [xsd:integer](https://www.w3.org/TR/xmlschema-2/#integer).
 
 **Properties:**
@@ -551,7 +553,7 @@ factory.integer('12.1');  // throws an Error: Invalid integer string: 12.1
 
 <a name="class_literal-decimal" />
 
-### class **Literal_Decimal** extends [Literal](#class_literal)
+### class [**Literal_Decimal**](#class_literal-decimal) extends [Literal](#class_literal)
 A class that represents an RDF literal that is an [xsd:decimal](https://www.w3.org/TR/xmlschema-2/#decimal).
 
 **Properties:**
@@ -565,7 +567,7 @@ A class that represents an RDF literal that is an [xsd:decimal](https://www.w3.o
 
 <a name="class_literal-double" />
 
-### class **Literal_Double** extends [Literal](#class_literal)
+### class [**Literal_Double**](#class_literal-double) extends [Literal](#class_literal)
 A class that represents an RDF literal that is an [xsd:double](https://www.w3.org/TR/xmlschema-2/#double).
 
 **Properties:**
@@ -598,7 +600,7 @@ graphy.content.ttl.read('<ex://unit-circle> <ex://area> 3.141592653589793 .', {
 
 <a name="class_literal-positive-infinity" />
 
-### class **Literal_PositiveInfinity** extends [Literal_Double](#class_literal-double)
+### class [**Literal_PositiveInfinity**](#class_literal-positive-infinity) extends [Literal_Double](#class_literal-double)
 A class that represents an RDF literal that is positive infinity, which is of type [xsd:double](https://www.w3.org/TR/xmlschema-2/#double).
 
 **Overriding properties:**
@@ -614,7 +616,7 @@ A class that represents an RDF literal that is positive infinity, which is of ty
 
 <a name="class_literal-negative-infinity" />
 
-### class **Literal_NegativeInfinity** extends [Literal_Double](#class_literal-double)
+### class [**Literal_NegativeInfinity**](#class_literal-negative-infinity) extends [Literal_Double](#class_literal-double)
 A class that represents an RDF literal that is negative infinity, which is of type [xsd:double](https://www.w3.org/TR/xmlschema-2/#double).
 
 **Overriding properties:**
@@ -630,7 +632,7 @@ A class that represents an RDF literal that is negative infinity, which is of ty
 
 <a name="class_literal-nan" />
 
-### class **Literal_NaN** extends [Literal_Double](#class_literal-double)
+### class [**Literal_NaN**](#class_literal-nan) extends [Literal_Double](#class_literal-double)
 A class that represents an RDF literal that is NaN, which is of type [xsd:double](https://www.w3.org/TR/xmlschema-2/#double).
 
 **Overriding properties:**
@@ -646,7 +648,7 @@ A class that represents an RDF literal that is NaN, which is of type [xsd:double
 
 <a name="class_quad" />
 
-### class **Quad** implements [@RDFJS/Quad](https://rdf.js.org/#quad-interface)
+### class [**Quad**](#class_quad) implements [@RDFJS/Quad](https://rdf.js.org/#quad-interface)
 A class that represents an RDF quad.
 
 **Properties:**
@@ -678,7 +680,7 @@ A class that represents an RDF quad.
 
 <a name="interface_any-term" />
 
-### interface **AnyTerm**
+### interface [**AnyTerm**](#interface_any-term)
 Any object with the given properties defined, including plain objects. By definition, any instance of an [@RDFJS/Term](https://rdf.js.org/#term-interface) or [GenericTerm](#class_generic-term) also meet these criteria.
  - _required properties_:
    - `.termType` : `'NamedNode' | 'BlankNode' | 'Literal' | 'DefaultGraph'`
@@ -691,7 +693,7 @@ Any object with the given properties defined, including plain objects. By defini
 
 <a name="interface_any-quad" />
 
-### interface **AnyQuad**
+### interface [**AnyQuad**](#interface_any-quad)
 Any object with the given properties defined, including plain objects. By definition, any instance of an [@RDFJS/Quad](https://rdf.js.org/#quad-interface) or [Quad](#class_quad) also meet these criteria.
  - _required properties_:
    - `.subject` : [AnyTerm](#interface_any-term)

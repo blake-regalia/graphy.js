@@ -12,12 +12,14 @@
 
 @$ S_CONTENT_TYPE = B_NT? 'application/n-triples': 'application/n-quads';
 
+@$ S_LABEL = B_NT? 'NTriples': 'NQuads';
+
 const factory = require('@{channel('core.data.factory')}');
 const writable = require('@{channel('core.class.writable')}');
 
 const N_MAX_STRING_BUFFER = 1 << 12;
 
-class Writer extends writable {
+class @{S_LABEL}_Writer extends writable {
 	constructor(gc_writer={}) {
 		super(gc_writer);
 
@@ -241,5 +243,5 @@ class Writer extends writable {
 }
 
 module.exports = function(gc_writer) {
-	return new Writer(gc_writer);
+	return new @{S_LABEL}_Writer(gc_writer);
 };

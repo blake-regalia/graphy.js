@@ -10,6 +10,8 @@
 @$ B_TRIG = 'trig' === FORMAT;
 @$ B_QUADS = B_TRIG;
 
+@$ S_LABEL = B_TTL? 'Turtle': 'TriG';
+
 @$ S_CONTENT_TYPE = B_TTL? 'text/turtle': 'application/trig';
 
 const factory = require('@{channel('core.data.factory')}');
@@ -18,8 +20,7 @@ const writable = require('@{channel('core.class.writable')}');
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
 const N_MAX_STRING_BUFFER = 1 << 12;
 
-
-class Writer extends writable {
+class @{S_LABEL}_Writer extends writable {
 	constructor(gc_writer={}) {
 		super(gc_writer);
 
@@ -265,7 +266,7 @@ class Writer extends writable {
 				s_delim_triples = '\n';
 
 				// close triple
-				s_write += `${s_term_pairs? ' ': s_indent_pairs}.\n@{b_c4? '': '\\n'}`;
+				s_write += `${s_term_pairs? ' ': s_indent_pairs}.\n@{b_c4? '\\n': ''}`;
 			}
 
 		@- b_c4
@@ -457,5 +458,5 @@ class Writer extends writable {
 }
 
 module.exports = function(gc_writer) {
-	return new Writer(gc_writer);
+	return new @{S_LABEL}_Writer(gc_writer);
 };

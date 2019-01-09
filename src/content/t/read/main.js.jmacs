@@ -7,6 +7,7 @@
 @$ TRIG = 'trig' === FORMAT;
 @$ QUADS = TRIG;
 
+@$ S_LABEL = TTL? 'Turtle': 'TriG';
 
 @// import parser macros
 @import '../../text.read.jmacs'
@@ -530,6 +531,36 @@ const F_DOT_SEGMENTS = (s_rel_iri) => {
 	@$ S_STATE_PRIMARY = 'block';
 @;
 
+class @{S_LABEL}_Reader extends stream.Transform {
+	constructor(g_impls) {
+		super({
+			// do not decode strings into buffers
+			decodeStrings: false,
+
+			// accept strings as input on writable side
+			writableObjectMode: false,
+
+			// output quad objects on readable side
+			readableObjectMode: true,
+
+			// implementations
+			flush: g_impls.flush,
+			transform: g_impls.transform,
+		});
+	}
+
+	// intercept pipe out
+	pipe(ds_out) {
+		// non-object mode
+		if(!ds_out._writableState.objectMode) {
+			ds_out = stream.quads_to_json(ds_out);
+		}
+
+		// forward to super
+		return super.pipe(ds_out);
+	}
+}
+
 class reader {
 	constructor(g_config={}) {
 		// impl-specific configs
@@ -784,16 +815,7 @@ class reader {
 		}
 
 		// transform stream
-		let ds_transform = this.transform = new stream.Transform({
-			// do not decode strings into buffers
-			decodeStrings: false,
-
-			// accept strings as input on writable side
-			writableObjectMode: false,
-
-			// output quad objects on readable side
-			readableObjectMode: true,
-
+		let ds_transform = this.transform = new @{S_LABEL}_Reader({
 			// on data event
 			transform: (s_chunk, s_encoding, fke_chunk) => {
 				// concatenate current chunk to previous chunk
@@ -817,7 +839,6 @@ class reader {
 
 			// once there's no more data to consume, invoke eof
 			flush: (fke_flush) => {
-				if(this.debug) debugger;
 				// now that input stream has ended, clean up remainder; read error occurred
 				if(this.eof(1)) {
 					// do not allow eof push from core stream
@@ -833,17 +854,6 @@ class reader {
 				}
 			},
 		});
-
-		// intercept pipe out
-		ds_transform.pipe = function(ds_out) {
-			// non-object mode
-			if(!ds_out._writableState.objectMode) {
-				ds_out = stream.quads_to_json(ds_out);
-			}
-
-			// forward to super
-			return Object.getPrototypeOf(this).pipe.apply(this, [ds_out]);
-		};
 
 		// when the writable side is piped into
 		ds_transform.on('pipe', (ds_input) => {
