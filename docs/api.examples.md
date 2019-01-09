@@ -1,6 +1,8 @@
 
 
-# [« Home](https://graphy.link/) / Examples
+# [« API](api) / Examples
+
+Examples demonstrating some common use cases for the `graphy` JavaScript API. For examples showcasing the command-line interface, [see CLI/Examples here](cli.examples).
 
 ## Contents
  - [Count number of statements in Turtle document](#count-statements-turtle)
@@ -16,7 +18,7 @@
 To get started, let's write a simple Node.js script that counts the number of statements in a Turtle document.
 
 ```js
-// count.js
+// count-statements.js
 const ttl_read = require('@graphy/content.ttl.read');
 
 let c_statements = 0;
@@ -45,6 +47,7 @@ Prints:
 
 > Notice how the result from this experiment shows that we are counting the number of _statements_ in the input. We are more likely interested in counting the number of distinct triples or quads, which we show in the next example.
 
+----
 
 <a name="count-triples-turtle" />
 
@@ -54,29 +57,44 @@ Anytime we are dealing with triples in RDF, we are really talking about quads wi
 Let's count the number of distinct triples (or in other words, the number of distinct quads in the default graph) in a Turtle document. In order to get a distinct count, we must load the data into a structure that will remove duplicates, such as the [DatasetTree](util.dataset.tree) package.
 
 ```js
+// count-quads.js
+// since we are using multiple packages from graphy, we can load them from the super module
 const {
-	content: {
-		ttl: read,
-	},
-	util: {
-		dataset: tree,
-	},
+    content: {
+        ttl: {read},
+    },
+    util: {
+        dataset: {tree},
+    },
 } = require('graphy');
 
 // we are going to perform an asynchronous task
 (async() => {
-	// pipe data from stdin thru the Turtle reader
-	let k_tree = await process.stdin.pipe(read())
-		// pipe the RDF data thru the DatasetTree package
-		.pipe(tree())
-		// use `.until(event, true)` to await an event and return the stream
-		.until('finish', true);
+    // pipe data from stdin thru the Turtle reader
+    let k_tree = await process.stdin.pipe(read())
+        // pipe the RDF data thru the DatasetTree package
+        .pipe(tree())
+        // use `.until(event, true)` to await an event and return the stream
+        .until('finish', true);
 
-	// at this point, we have awaited for the tree to emit 'finish' and have loaded all quads
-	console.log(k_tree.size);
+    // at this point, we have awaited for the tree to emit 'finish' and have loaded all quads
+    console.log(`${k_tree.size} triples`);
 })();
 ```
 
+#### Testing it out on real data!
+```bash
+$ curl http://dbpedia.org/data/Banana.ttl | node count.js
+```
+
+Prints:
+```
+214 statements
+```
+
+> You can also use the CLI to quickly count the number of distinct quads/triples with one line of bash code; [see the CLI example here](cli.examples#count-triples-turtle)
+
+----
 
 <a name="validate-turtle" />
 

@@ -171,7 +171,13 @@ if(module === require.main) {
 		}
 
 		fk_resolve(g_context.inputs.map((ds_input) => {
-			let ds_reader = f_reader({...gc_read});
+			let ds_reader = f_reader({
+				...gc_read,
+				error(e_read) {
+					g_context.failure(e_read);
+				},
+			});
+
 			return ds_input.pipe(ds_reader);
 		}));
 	});
@@ -184,7 +190,12 @@ if(module === require.main) {
 		let gc_write = {};
 
 		return g_context.inputs.map((ds_input) => {
-			let ds_writer = f_writer({...gc_write});
+			let ds_writer = f_writer({
+				...gc_write,
+				error(e_write) {
+					g_context.failure(e_write);
+				},
+			});
 			return ds_input.pipe(ds_writer);
 		});
 	};
@@ -355,6 +366,11 @@ if(module === require.main) {
 	let a_argv = process.argv.slice(2);
 	let n_args = a_argv.length;
 
+	// no arguments
+	if(!a_argv.length) {
+		exit('no arguments given');
+	}
+
 	// inputs
 	let a_inputs = [];
 
@@ -385,31 +401,10 @@ if(module === require.main) {
 			a_series.push(s_arg);
 		}
 
-		a_pipeline.push(a_series);
-	}
-
-	// inspect last arguments
-	{
-		let a_series = a_pipeline[a_pipeline.length-1];
-		let n_series = a_series.length;
-
-		// backwards
-		for(let i_end=n_series-1; i_end>=0; i_end--) {
-			// arg is path
-			if(a_series[i_end].startsWith('/')) {
-				// append as input
-				a_inputs.push(fs.createReadStream(a_series.pop()));
-
-				// keep going
-				continue;
-			}
-
-			// stop eating args
-			break;
+		// empty series
+		if(a_series.length) {
+			a_pipeline.push(a_series);
 		}
-
-		// series now empty; pop from pipeline
-		if(!a_series.length) a_pipeline.pop();
 	}
 
 	// empty command list
@@ -460,6 +455,11 @@ if(module === require.main) {
 	// 	.parse(a_args);
 
 	(async() => {
+		// failure handler
+		let f_failure = (e_command) => {
+			exit(e_command.message);
+		};
+
 		// starting inputs default to stdin if no explicit inputs given
 		let a_prev = a_inputs.length? a_inputs: [process.stdin];
 
@@ -478,14 +478,14 @@ if(module === require.main) {
 				let a_curr = await h_commands[s_command](a_series.slice(1), {
 					command: s_command,
 					inputs: a_prev,
+					failure: f_failure,
 				});
 
 				// advance inputs
 				a_prev = a_curr;
 			}
-			catch(e_parse) {
-				// console.warn(e_parse.stack);
-				return;
+			catch(e_command) {
+				exit(e_command.message);
 			}
 		}
 

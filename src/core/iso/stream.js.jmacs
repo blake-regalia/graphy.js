@@ -2,20 +2,23 @@ const stream = require('stream');
 
 @> until()
 	@//@object-literal
-	until(s_event) {
-		// special case returns `this`
-		if('end' === s_event) {
-			return new Promise((fk_until, fe_until) => {
+	until(s_event, b_return_stream) {
+		return new Promise((fk_until, fe_until) => {
+			// convert error to rejected promise
+			this.on('error', (e_stream) => {
+				fe_until(e_stream);
+			});
+
+			// special cases returns `this`
+			if(b_return_stream) {
 				this.once(s_event, (...a_args) => {
 					fk_until(this, ...a_args);
 				});
-			});
-		}
-		else {
-			return new Promise((fk_until, fe_until) => {
+			}
+			else {
 				this.once(s_event, fk_until);
-			});
-		}
+			}
+		});
 	}
 @;
 @> bucket()

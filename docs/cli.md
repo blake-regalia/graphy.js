@@ -16,6 +16,9 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
 
 ## Commands
 
+
+<a name="command_content-format-read" />
+
  - `content.FORMAT.read [OPTIONS]`
    - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
    - **Format:**
@@ -40,6 +43,8 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
      # print line-delimited JSON of quads in TriG document while validating it
      $ graphy content.trig.read -v < input.trig
      ```
+
+<a name="command_content-format-write" />
 
  - `content.FORMAT.write [OPTIONS]`
    - `N-to-1<`[`WritableDataEventStream`](#class_writable-data-event-stream)`, `[`StringStream`](#class_string-stream)`>` -- maps 1 or more object input streams of [WritableDataEvent](content.textual#interface_writable-data-event) objects into 1 utf8-encoded output stream.
@@ -69,6 +74,7 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
          --pipe content.trig.write > output.trig
      ```
 
+<a name="command_util-dataset-tree" />
 
  - `util.dataset.tree [OPTIONS] [COMMAND]`
    - use the [DatasetTree](util.dataset.tree) package to perform set algebra or to remove duplicates from a single data source.
