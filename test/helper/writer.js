@@ -146,12 +146,13 @@ class writer_suite {
 						});
 					}
 
-					// end called?
-					let b_ended = false;
-
 					// create validator
 					let ds_validator = this.validator({
-						eof() {
+						error(e_read) {
+							fke_test(e_read);
+						},
+
+						finish() {
 							// run validator callback?
 							if(fk_validate) fk_validate();
 
@@ -169,23 +170,8 @@ class writer_suite {
 								f_event_validate(...a_event_args);
 							}
 
-							// end of queue
-							setTimeout(() => {
-								// end was not called
-								if(!b_ended) console.warn(`\t${s_label}: 'end' was not emitted`);
-
-								// done
-								fke_test();
-							}, 0);
-						},
-
-						error(e_read) {
-							fke_test(e_read);
-						},
-
-						// why is this not being called?
-						end() {
-							b_ended = true;
+							// end of test
+							fke_test();
 						},
 					});
 

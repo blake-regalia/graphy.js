@@ -31,6 +31,7 @@ This documentation covers the following graphy packages:
        - [`exit(...)`](#event_read-exit)
        - [`progress(...)`](#event_read-progress)
        - [`eof(...)`](#event_read-eof)
+       - [`finish(...)`](#event_read-finish)
        - [`end(...)`](#event_read-end)
        - [`error(...)`](#event_read-error)
    - [`.write`](#verb_write) -- for writing RDF using write event objects
@@ -475,10 +476,16 @@ The definition for all possible events emitted during content reading. Please [s
     - Gets called once the 'end-of-file' has been reached on the input and all other events have been emitted, except for the final `end()` event to indicate the the output stream is done. This event is useful for grabbing the final map of `prefixes`.
 
 
+<a name="event_read-finish" />
+
+  - `finish()` _via_ [@node.js/stream.Writable#event_end](https://nodejs.org/api/stream.html#stream_event_finish)
+    - Gets called once at the very end of the input. It indicates that the writable side of the transform has ended and the input stream has been consumed entirely.
+
 <a name="event_read-end" />
 
   - `end()` _via_ [@node.js/stream.Readable#event_end](https://nodejs.org/api/stream.html#stream_event_end)
-    - Gets called once at the very end of the input. It indicates that the input stream (if any) has been closed and no more events will be emitted.
+    - Gets called once the readable side of the transform has been read entirely. It indicates that no more 'data' events will be emitted, (i.e., no more Quad objects are available). If the trasnsform was not piped somewhere or read to completion, this event will never fire. If you are only interested in consuming the input (e.g., for validation) use the [`'finish'` event](#event_read-finish) instead.
+    > Caution! Be aware that this event only fires if the transform is being read. For a clear indication that the input has been consumed, it is recommended to use the [`'finish'` event](#event_read-finish).
 
 
 <a name="event_read-error" />

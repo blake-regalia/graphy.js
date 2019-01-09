@@ -1071,6 +1071,7 @@ class reader {
 	progress: {},
 	eof: {once:true},
 	end: {once:true},
+	finish: {once:true},
 	data: {},  // attach data listener last
 };
 
