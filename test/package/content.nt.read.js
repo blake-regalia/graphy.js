@@ -136,6 +136,23 @@ reader_suite({
 		'no end of triple': () => ({
 			input: '<z://y/a> <z://y/b> <z://y/c> ',
 		}),
+
+		'invalid escapes': () => ({
+			input: [
+				`${'\\'.repeat(1)}`,
+				`${'\\'.repeat(3)}`,
+				`${'\\'.repeat(5)}`,
+				`  ${'\\'.repeat(1)}`,
+				`  ${'\\'.repeat(3)}`,
+				`  ${'\\'.repeat(5)}`,
+				`${'\\'.repeat(1)}  `,
+				`${'\\'.repeat(3)}  `,
+				`${'\\'.repeat(5)}  `,
+				`  ${'\\'.repeat(1)}  `,
+				`  ${'\\'.repeat(3)}  `,
+				`  ${'\\'.repeat(5)}  `,
+			].map(s => `<z://y/a> <z://y/b> "${s}" .\n`).join(''),
+		}),
 	});
 
 	reader.interfaces((f_interface) => {

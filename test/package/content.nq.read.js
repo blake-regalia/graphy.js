@@ -24,8 +24,8 @@ reader_suite({
 
 		'iris w/o graph': {
 			'iris': () => ['<z://a> <z://b> <z://c> .', a_abc],
-			'iris w/ unicode escapes': () => ['<\\u2713> <like> <\\U0001F5F8> .', [
-				['\u2713', 'like', '\ud83d\uddf8', '*'],
+			'iris w/ unicode escapes': () => ['<z://y/\\u2713> <z://y/like> <z://y/\\U0001F5F8> .', [
+				['z://y/\u2713', 'z://y/like', 'z://y/\ud83d\uddf8', '*'],
 			]],
 			'crammed spaces': () => ['<z://a><z://b>"f"^^<z://g>.', [
 				['z://a', 'z://b', '^z://g"f', '*'],
@@ -34,52 +34,52 @@ reader_suite({
 
 		'iris w/ named graph': {
 			'iris': () => ['<z://a> <z://b> <z://c> <z://d> .', a_abcd],
-			'iris w/ unicode escapes': () => ['<\\u2713> <like> <\\U0001F5F8> <z://d> .', [
-				['\u2713', 'like', '\ud83d\uddf8', 'z://d'],
+			'iris w/ unicode escapes': () => ['<z://y/\\u2713> <z://y/like> <z://y/\\U0001F5F8> <z://d> .', [
+				['z://y/\u2713', 'z://y/like', 'z://y/\ud83d\uddf8', 'z://d'],
 			]],
 		},
 
 		'graphs': {
 			'multiple iri named': () => [`
-				<#a> <#b> <#c> <#g1> .
-				<#d> <#e> <#f> <#g2> .
+				<z://y/a> <z://y/b> <z://y/c> <z://y/g1> .
+				<z://y/d> <z://y/e> <z://y/f> <z://y/g2> .
 			`, [
-				['#a', '#b', '#c', '#g1'],
-				['#d', '#e', '#f', '#g2'],
+				['z://y/a', 'z://y/b', 'z://y/c', 'z://y/g1'],
+				['z://y/d', 'z://y/e', 'z://y/f', 'z://y/g2'],
 			]],
 
 			'multiple labeled blank': () => [`
-				<#a> <#b> <#c> _:g1 .
-				<#d> <#e> <#f> _:g2 .
+				<z://y/a> <z://y/b> <z://y/c> _:g1 .
+				<z://y/d> <z://y/e> <z://y/f> _:g2 .
 			`, [
-				['#a', '#b', '#c', '_g1'],
-				['#d', '#e', '#f', '_g2'],
+				['z://y/a', 'z://y/b', 'z://y/c', '_g1'],
+				['z://y/d', 'z://y/e', 'z://y/f', '_g2'],
 			]],
 
 			'mixed': () => [`
-				<#a> <#b> <#c> _:g0 .
-				<#d> <#e> <#f> _:g1 .
-				<#g> <#h> <#i> <#g2> .
-				<#k> <#l> <#m> <#g3> .
+				<z://y/a> <z://y/b> <z://y/c> _:g0 .
+				<z://y/d> <z://y/e> <z://y/f> _:g1 .
+				<z://y/g> <z://y/h> <z://y/i> <z://y/g2> .
+				<z://y/k> <z://y/l> <z://y/m> <z://y/g3> .
 			`, [
-				['#a', '#b', '#c', '_g0'],
-				['#d', '#e', '#f', '_g1'],
-				['#g', '#h', '#i', '#g2'],
-				['#k', '#l', '#m', '#g3'],
+				['z://y/a', 'z://y/b', 'z://y/c', '_g0'],
+				['z://y/d', 'z://y/e', 'z://y/f', '_g1'],
+				['z://y/g', 'z://y/h', 'z://y/i', 'z://y/g2'],
+				['z://y/k', 'z://y/l', 'z://y/m', 'z://y/g3'],
 			]],
 		},
 
 		'basics': {
 			'basic quads': () => [`
-				<#a> <#b> <#c> <#z> . # comments
-				<#d> <#e> "f"^^<#g> <#z> .
-				<#h> <#i> "j"@k <#z> .
-				<#l> <#m> "n" <#z> .
+				<z://y/a> <z://y/b> <z://y/c> <z://y/z> . # comments
+				<z://y/d> <z://y/e> "f"^^<z://y/g> <z://y/z> .
+				<z://y/h> <z://y/i> "j"@k <z://y/z> .
+				<z://y/l> <z://y/m> "n" <z://y/z> .
 			`, [
-				['#a', '#b', '#c', '#z'],
-				['#d', '#e', '^#g"f', '#z'],
-				['#h', '#i', '@k"j', '#z'],
-				['#l', '#m', '"n', '#z'],
+				['z://y/a', 'z://y/b', 'z://y/c', 'z://y/z'],
+				['z://y/d', 'z://y/e', '^z://y/g"f', 'z://y/z'],
+				['z://y/h', 'z://y/i', '@k"j', 'z://y/z'],
+				['z://y/l', 'z://y/m', '"n', 'z://y/z'],
 			]],
 		},
 
@@ -93,10 +93,10 @@ reader_suite({
 			]],
 
 			'labeled quads': () => [`
-				_:a <z://b> _:c <#g1> .
+				_:a <z://b> _:c <z://y/g1> .
 				_:c <z://d> _:e _:g2.
 			`, [
-				['_a', 'z://b', '_c', '#g1'],
+				['_a', 'z://b', '_c', 'z://y/g1'],
 				['_c', 'z://d', '_e', '_g2'],
 			]],
 		},
@@ -149,8 +149,8 @@ reader_suite({
 
 		'interrupted by end-of-stream': {
 			'triples with tokens': {
-				'iris': () => ['<alpha> <bravo> <charlie> <delta> .', [
-					['alpha', 'bravo', 'charlie', 'delta'],
+				'iris': () => ['<z://y/alpha> <z://y/bravo> <z://y/charlie> <z://y/delta> .', [
+					['z://y/alpha', 'z://y/bravo', 'z://y/charlie', 'z://y/delta'],
 				]],
 
 				'string literals': () => ['<z://a> <z://b> "charlie"^^<z://delta> <z://epsilon> .', [
@@ -160,9 +160,9 @@ reader_suite({
 
 			'comments': () => [`
 				# comment
-				<a> <b> <c> <d> .
+				<z://y/a> <z://y/b> <z://y/c> <z://y/d> .
 			`, [
-				['a', 'b', 'c', 'd'],
+				['z://y/a', 'z://y/b', 'z://y/c', 'z://y/d'],
 			]],
 		},
 	});
@@ -173,11 +173,11 @@ reader_suite({
 		}),
 
 		'blank node predicate': () => ({
-			input: '<a> _:b <c>.',
+			input: '<z://y/a> _:b <z://y/c>.',
 		}),
 
 		'invalid blank node full stop': () => ({
-			input: '[ <a> <b> .',
+			input: '[ <z://y/a> <z://y/b> .',
 		}),
 
 		'no end of triple': () => ({
@@ -187,22 +187,39 @@ reader_suite({
 		'no end of quad': () => ({
 			input: '<z://a> <z://b> <z://c> <z://d> ',
 		}),
+
+		'invalid escapes': () => ({
+			input: [
+				`${'\\'.repeat(1)}`,
+				`${'\\'.repeat(3)}`,
+				`${'\\'.repeat(5)}`,
+				`  ${'\\'.repeat(1)}`,
+				`  ${'\\'.repeat(3)}`,
+				`  ${'\\'.repeat(5)}`,
+				`${'\\'.repeat(1)}  `,
+				`${'\\'.repeat(3)}  `,
+				`${'\\'.repeat(5)}  `,
+				`  ${'\\'.repeat(1)}  `,
+				`  ${'\\'.repeat(3)}  `,
+				`  ${'\\'.repeat(5)}  `,
+			].map(s => `<z://y/a> <z://y/b> "${s}" <z://y/g> .\n`).join(''),
+		}),
 	});
 
 	reader.interfaces((f_setup) => {
 		let k_tree_expect = dataset_tree();
 		k_tree_expect.add(factory.quad(...[
-			factory.namedNode('a'),
-			factory.namedNode('b'),
-			factory.namedNode('c'),
-			factory.namedNode('d'),
+			factory.namedNode('z://y/a'),
+			factory.namedNode('z://y/b'),
+			factory.namedNode('z://y/c'),
+			factory.namedNode('z://y/d'),
 		]));
 
 		f_setup({
 			reader: nq_read,
 			input: /* syntax: nt */ `
 				# hello world!
-				<a> <b> <c> <d> . #
+				<z://y/a> <z://y/b> <z://y/c> <z://y/d> . #
 			`,
 			events: {
 				data(a_events) {
