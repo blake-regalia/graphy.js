@@ -28,10 +28,10 @@ class writer_suite {
 		});
 	}
 
-	normalize(st_doc) {
+	normalize(st_doc, b_interpret=false) {
 		return stream.source(st_doc)
 			// read document
-			.pipe(this.validator())
+			.pipe(((b_interpret && this.interpreter) || this.validator)())
 
 			// canonicalize in dataset
 			.pipe(dataset_tree({
@@ -72,7 +72,7 @@ class writer_suite {
 					.bucket();
 
 				// canonicalize output
-				let st_result = await this.normalize(st_output);
+				let st_result = await this.normalize(st_output, true);
 
 				// canonicalize expectation
 				let st_expect = await this.normalize(`
@@ -154,17 +154,17 @@ class writer_suite {
 						});
 					}
 
-					// create validator
-					let ds_validator = this.validator({
+					// create interpreter
+					let ds_interpreter = (this.interpreter || this.validator)({
 						error(e_read) {
 							fke_test(e_read);
 						},
 
 						finish() {
-							// run validator callback?
+							// run interpreter callback?
 							if(fk_validate) fk_validate();
 
-							// check validator events
+							// check interpreter events
 							expect(a_events_actual).to.have.lengthOf(a_events_expect.length);
 
 							for(let i_event=0; i_event<a_events_actual.length; i_event++) {
@@ -187,14 +187,14 @@ class writer_suite {
 					let as_events_bind = new Set(a_events_expect.map(a => a[0]));
 					for(let s_event of as_events_bind) {
 						// bind listener
-						ds_validator.on(s_event, (...a_args) => {
+						ds_interpreter.on(s_event, (...a_args) => {
 							// push to actual event list
 							a_events_actual.push([s_event, a_args]);
 						});
 					}
 
-					// pipe writer to validator
-					ds_writer.pipe(ds_validator);
+					// pipe writer to interpreter
+					ds_writer.pipe(ds_interpreter);
 
 					// write each writable data event
 					for(let w_write of a_writes) {

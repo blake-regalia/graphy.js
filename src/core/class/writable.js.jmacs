@@ -104,9 +104,10 @@ class Writable extends stream.Transform {
 
 		// empty collection
 		if(!a_collection.length) {
-			return {
-				[g_collections.first]: g_collections.nil,
-			};
+			return g_collections.nil;
+			// return {
+			// 	[g_collections.first]: g_collections.nil,
+			// };
 		}
 		// non-empty collection
 		else {
