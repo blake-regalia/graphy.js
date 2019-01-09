@@ -411,7 +411,7 @@ The definition for all possible events emitted during content reading. Please [s
 
 <a name="event_read-readable" />
 
- - `readable()` _via_ [@node.js/stream.Readable#event_readable](https://nodejs.org/api/stream.html#stream_event_readable)
+ - `readable()` _via_ [@node.js/stream.Readable#event-readable](https://nodejs.org/api/stream.html#stream_event_readable)
    - Gets called once there is data available to be read from the stream (automatically emitted by stream mechanics).
 
 
@@ -472,7 +472,7 @@ The definition for all possible events emitted during content reading. Please [s
 
 <a name="event_read-data" />
 
- - `data(quad: `[`Quad`](core.data.factory#class_quad)`)` _via_ [@node.js/stream.Readable#event_data](https://nodejs.org/api/stream.html#stream_event_data)
+ - `data(quad: `[`Quad`](core.data.factory#class_quad)`)` _via_ [@node.js/stream.Readable#event-data](https://nodejs.org/api/stream.html#stream_event_data)
    - Gets called for each triple/quad as soon as it is parsed.
    - *examples:*
       ```js
@@ -524,30 +524,30 @@ The definition for all possible events emitted during content reading. Please [s
 <a name="event_read-progress" />
 
   - `progress(delta: integer)`
-    - Gets called each time the reader has finished processing a chunk of data and is about to go asynchronous and wait for the next I/O event. `delta` will reflect the number of characters that were consumed from the input which resulted in a change to the reader's internal state (i.e., incomplete tokens must wait for next chunk to be terminated). This event offers a nice way to provide progress updates to the user, however this would require knowing ahead of time how many characters in total are contained by the input, which will always be less than or equal to the total number of bytes of the document depending on how many surrogate pairs are present in the utf8-encoded string. This event also provides hints to resource-hungry applications when it might be an opportunistic time to perform blocking tasks. This event will also be called right before the `eof()` event with a `delta` equal to `0`.
+    - Gets called each time the reader has finished processing a chunk of data and is about to go asynchronous and wait for the next I/O event. `delta` will reflect the number of characters that were consumed from the input which resulted in a change to the reader's internal state (i.e., incomplete tokens must wait for next chunk to be terminated). This event offers a nice way to provide progress updates to the user, however this would require knowing ahead of time how many characters in total are contained by the input, which will always be less than or equal to the total number of bytes of the document depending on how many surrogate pairs are present in the utf8-encoded string. This event also provides hints to resource-hungry applications when it might be an opportunistic time to perform blocking tasks. This event will also be called right before the `'eof'` event with a `delta` equal to `0`.
 
 
 <a name="event_read-eof" />
 
   - `eof(prefixes: `[`#hash/prefix-mappings`](core.data.factory#hash_prefix-mappings)`)`
-    - Gets called once the 'end-of-file' has been reached on the input and all other events have been emitted, except for the final `end()` event to indicate the the output stream is done. This event is useful for grabbing the final map of `prefixes`.
+    - Gets called once the 'end-of-file' has been reached before the [`'finish'` event](#event_read-finish) is emitted; useful for obtaining the final prefix mappings `'prefixes'`. This event indicates that the input has been entirely consumed (i.e., no errors occurred while reading) and the only events that will follow are the [`'finish'`](#event_read-finish) and [`'end'`](#event_read-finish) events.
 
 
 <a name="event_read-finish" />
 
-  - `finish()` _via_ [@node.js/stream.Writable#event_end](https://nodejs.org/api/stream.html#stream_event_finish)
-    - Gets called once at the very end of the input. It indicates that the writable side of the transform has ended and the input stream has been consumed entirely.
+  - `finish()` _via_ [@node.js/stream.Writable#event-finish](https://nodejs.org/api/stream.html#stream_event_finish)
+    - Gets called once the input stream has finished writing. It indicates that the writable side of the transform has ended and the input stream has been consumed entirely.
 
 <a name="event_read-end" />
 
-  - `end()` _via_ [@node.js/stream.Readable#event_end](https://nodejs.org/api/stream.html#stream_event_end)
-    - Gets called once the readable side of the transform has been read entirely. It indicates that no more 'data' events will be emitted, (i.e., no more Quad objects are available). If the trasnsform was not piped somewhere or read to completion, this event will never fire. If you are only interested in consuming the input (e.g., for validation) use the [`'finish'` event](#event_read-finish) instead.
-    > Caution! Be aware that this event only fires if the transform is being read. For a clear indication that the input has been consumed, it is recommended to use the [`'finish'` event](#event_read-finish).
+  - `end()` _via_ [@node.js/stream.Readable#event-end](https://nodejs.org/api/stream.html#stream_event_end)
+    - Gets called once the readable side of the transform has been read entirely. If the trasnsform was not piped somewhere or has not been read to completion (such as by not binding a `'data'` event listener), this event will never fire. If you are only interested in consuming the input (e.g., for validation) use the [`'eof'` event](#event_read-eof) instead.
+    > Caution! Be aware that this event only fires if the transform is being read. For a clear indication that the input has been consumed, it is recommended to use the [`'eof'` event](#event_read-eof).
 
 
 <a name="event_read-error" />
 
-  - `error(err: Error)` _via_ [@node.js/stream.Readable#event_error](https://nodejs.org/api/stream.html#stream_event_error_1)
+  - `error(err: Error)` _via_ [@node.js/stream.Readable#event-error](https://nodejs.org/api/stream.html#stream_event_error_1)
     - Gets called if an error occurs any time during the read process, including malformed syntax errors, unreadable inputs, and so forth. If an error does occur, no other events will be emitted after this one. If you do not include an error event handler, the parser will throw the error.
 
 

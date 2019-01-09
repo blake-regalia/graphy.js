@@ -610,7 +610,6 @@ class reader {
 
 			// reader was destroyed by an error
 			destroyed: false,
-			read_error: null,
 
 			// current @base url
 			base_url: '',
@@ -629,9 +628,6 @@ class reader {
 
 			// hash to keep track of all blank node labels in use
 			labels: h_labels,
-
-			// whether or not eof has been fired already
-			eofed: false,
 
 			// event routing
 			event: this.emit,
@@ -839,19 +835,21 @@ class reader {
 
 			// once there's no more data to consume, invoke eof
 			flush: (fke_flush) => {
-				// now that input stream has ended, clean up remainder; read error occurred
-				if(this.eof(1)) {
+				// now that input stream has ended, clean up remainder
+				try {
+					this.eof(1);
+				}
+				// read error occurred
+				catch(e_eof) {
 					// do not allow eof push from core stream
 					ds_transform.demolish();
 
 					// exit gracefully
 					return;
 				}
-				// no errors
-				else {
-					// done flushing, close read stream
-					fke_flush();
-				}
+
+				// no errors. done flushing, close read stream
+				fke_flush();
 			},
 		});
 
@@ -909,20 +907,20 @@ class reader {
 
 	// begin parsing, keep applying until no more stack bail-outs
 	safe_parse() {
-		let f_sync = this.state();
-		while('function' === typeof f_sync) {
-			f_sync = f_sync.apply(this);
+		try {
+			let f_sync = this.state();
+			while('function' === typeof f_sync) {
+				f_sync = f_sync.apply(this);
+			}
 		}
-
 		// read error occurred
-		if(this.read_error) {
+		catch(e_read) {
 			// failure
 			return false;
 		}
+		
 		// okay
-		else {
-			return true;
-		}
+		return true;
 	}
 
 	emit_data(g_quad) {
@@ -941,17 +939,14 @@ class reader {
 	}
 
 	error(s_message) {
-		// already destroyed or a read error
-		if(this.read_error || this.destroyed) return true;
-
 		// store read error
-		let e_read = this.read_error = new Error(s_message);
+		let e_read = new Error(s_message);
 
 		// destroy self and stream
 		this.destroy(e_read);
 
-		// bail out w/ non-function return type
-		return true;
+		// bail out
+		throw e_read;
 	}
 
 	// parse_error (not meant to be an event callback)
@@ -970,7 +965,7 @@ class reader {
 	}
 
 	// end of file
-	eof(b_no_callback) {
+	eof() {
 		// there are events queued
 		if(this.queue_event.length) {
 			let a_queue = this.queue_event;
@@ -987,14 +982,6 @@ class reader {
 
 		// invalid parsing state
 		if(this.@{S_STATE_PRIMARY} !== this.state) {
-			// already eof'ed
-			if(this.eofed) {
-				return this.parse_error(this.state.name, true);
-			}
-
-			// now we have
-			this.eofed = true;
-
 			// append EOF char
 			this.s += '\0';
 
