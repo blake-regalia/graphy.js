@@ -34,8 +34,8 @@ const R_EOL = /[^\n]+\n/y;
 
 const RT_ABSOLUTE_IRI_VALID = /^[a-z][a-z0-9+\-.]*:([^\0-\x20<>"{}|^`\\]|@{UCHAR()})*$/;
 const RT_BLANK_NODE_LABEL_VALID = /^(?:[@{RANGE_PN_CHARS_U()}0-9])(?:(?:[@{RANGE_PN_CHARS()}.])*[@{RANGE_PN_CHARS()}])?$/u;
-const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
-const RT_LITERAL_CONTENTS_VALID = /^([^"\\\n\r]|\\[tbnrf"'\\]|@{UCHAR()})*$/;
+const RT_ESCAPES_INVALID = /@{RT_ESCAPES_INVALID()}/;
+const RT_LITERAL_CONTENTS_VALID = /@{RT_LITERAL_CONTENTS_VALID('\\n\\r')}/;
 const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 
 @>> R_NAMED_NODE(b_escapeless=false, b_open_cap=false)

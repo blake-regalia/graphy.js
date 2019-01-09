@@ -25,8 +25,8 @@ reader_suite({
 		'irirs': {
 			'iris': () => ['<z://y/a> <z://y/b> <z://y/c> .', a_abc],
 
-			'iris w/ unicode escapes': () => ['<\\u2713> <like> <\\U0001F5F8> .', [
-				['\u2713', 'like', '\ud83d\uddf8'],
+			'iris w/ unicode escapes': () => ['<z://y/\\u2713> <z://y/like> <z://y/\\U0001F5F8> .', [
+				['z://y/\u2713', 'z://y/like', 'z://y/\ud83d\uddf8'],
 			]],
 
 			'crammed spaces': () => [`
@@ -38,15 +38,15 @@ reader_suite({
 
 		'basics': {
 			'basic triples': () => [`
-				<#a> <#b> <#c> . # comments
-				<#d> <#e> "f"^^<#g> .
-				<#h> <#i> "j"@k .
-				<#l> <#m> "n" .
+				<z://y/a> <z://y/b> <z://y/c> . # comments
+				<z://y/d> <z://y/e> "f"^^<z://y/g> .
+				<z://y/h> <z://y/i> "j"@k .
+				<z://y/l> <z://y/m> "n" .
 			`, [
-				['#a', '#b', '#c'],
-				['#d', '#e', '^#g"f'],
-				['#h', '#i', '@k"j'],
-				['#l', '#m', '"n'],
+				['z://y/a', 'z://y/b', 'z://y/c'],
+				['z://y/d', 'z://y/e', '^z://y/g"f'],
+				['z://y/h', 'z://y/i', '@k"j'],
+				['z://y/l', 'z://y/m', '"n'],
 			]],
 		},
 

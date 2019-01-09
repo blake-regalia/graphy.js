@@ -8,6 +8,8 @@ const ttl_read = require('@graphy/content.ttl.read');
 
 const reader_suite = require('../helper/reader.js');
 
+let f_string_literals = s => ['#a', '#b', '"'+s];
+
 reader_suite({
 	alias: 'ttl',
 	reader: ttl_read,
@@ -461,20 +463,20 @@ reader_suite({
 				:a :b 'c' .
 				:a :b '"c\\u002C\\n\\'' .
 			`, [
-				['#a', '#b', '"'],
-				['#a', '#b', '"c'],
-				['#a', '#b', `""c,\n'`],
-			]],
+				'',
+				'c',
+				`"c,\n'`,
+			].map(f_string_literals)],
 
 			'double quotes': () => [`
 				:a :b "" .
 				:a :b "c" .
 				:a :b "'c\\u002C\\n\\"" .
 			`, [
-				['#a', '#b', '"'],
-				['#a', '#b', '"c'],
-				['#a', '#b', `"'c,\n"`],
-			]],
+				'',
+				'c',
+				`'c,\n"`,
+			].map(f_string_literals)],
 
 			'long single quotes': () => [`
 				:a :b '''''' .
@@ -482,32 +484,175 @@ reader_suite({
 				:a :b '''c''' .
 				:a :b '''"c\\u002C''\\n'\n''' .
 			`, [
-				['#a', '#b', '"'],
-				['#a', '#b', '"\r'],
-				['#a', '#b', '"c'],
-				['#a', '#b', `""c,''\n'\n`],
-			]],
+				'',
+				'\r',
+				'c',
+				`"c,''\n'\n`,
+			].map(f_string_literals)],
 
 			'long double quotes': () => [`
 				:a :b """""" .
 				:a :b """c""" .
 				:a :b """'c\\u002C""\\n"\n""" .
 			`, [
-				['#a', '#b', '"'],
-				['#a', '#b', '"c'],
-				['#a', '#b', `"'c,""\n"\n`],
-			]],
+				'',
+				'c',
+				`'c,""\n"\n`,
+			].map(f_string_literals)],
 
 			'escapes & unicode': () => [`
 				:a :b "\\"\\\\t = '\\t'\\"",
 					"\\"\\"\\"\\"\\"\\"",
 					"\\"\\u00C5\\"", "\\"\\U0001D11E\\"\\\\test\\"" .
 			`, [
-				['#a', '#b', '""\\t = \'\t\'"'],
-				['#a', '#b', '"""""""'],
-				['#a', '#b', '""\u00c5"'],
-				['#a', '#b', '""\u{0001d11e}"\\test"'],
-			]],
+				'"\\t = \'\t\'"',
+				'""""""',
+				'"\u00c5"',
+				'"\u{0001d11e}"\\test"',
+			].map(f_string_literals)],
+
+			'valid sequential escapes': () => [`
+				:a :b
+					"\\"",
+					"  \\"",
+					"\\"  ",
+					"  \\"  ",
+					"${'\\'.repeat(2)}",
+					"${'\\'.repeat(4)}",
+					"${'\\'.repeat(6)}",
+					"  ${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(4)}",
+					"  ${'\\'.repeat(6)}",
+					"${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(4)}  ",
+					"${'\\'.repeat(6)}  ",
+					"  ${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(4)}  ",
+					"  ${'\\'.repeat(6)}  " .
+			`, [
+				'"',
+				'  "',
+				'"  ',
+				'  "  ',
+				`${'\\'.repeat(1)}`,
+				`${'\\'.repeat(2)}`,
+				`${'\\'.repeat(3)}`,
+				`  ${'\\'.repeat(1)}`,
+				`  ${'\\'.repeat(2)}`,
+				`  ${'\\'.repeat(3)}`,
+				`${'\\'.repeat(1)}  `,
+				`${'\\'.repeat(2)}  `,
+				`${'\\'.repeat(3)}  `,
+				`  ${'\\'.repeat(1)}  `,
+				`  ${'\\'.repeat(2)}  `,
+				`  ${'\\'.repeat(3)}  `,
+			].map(f_string_literals)],
+
+			'valid escapes next to `t`': () => [`
+				:a :b
+					"${'\\'.repeat(2)}t",
+					"${'\\'.repeat(4)}t",
+					"${'\\'.repeat(6)}t",
+					"  ${'\\'.repeat(2)}t",
+					"  ${'\\'.repeat(4)}t",
+					"  ${'\\'.repeat(6)}t",
+					"${'\\'.repeat(2)}t  ",
+					"${'\\'.repeat(4)}t  ",
+					"${'\\'.repeat(6)}t  ",
+					"  ${'\\'.repeat(2)}t  ",
+					"  ${'\\'.repeat(4)}t  ",
+					"  ${'\\'.repeat(6)}t  ",
+					"${'\\'.repeat(2)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(4)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(6)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(2)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(4)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(6)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(2)}t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(4)}t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(6)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(2)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(4)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(6)}t${'\\'.repeat(2)}  " .
+				`, [
+					`${'\\'.repeat(1)}t`,
+					`${'\\'.repeat(2)}t`,
+					`${'\\'.repeat(3)}t`,
+					`  ${'\\'.repeat(1)}t`,
+					`  ${'\\'.repeat(2)}t`,
+					`  ${'\\'.repeat(3)}t`,
+					`${'\\'.repeat(1)}t  `,
+					`${'\\'.repeat(2)}t  `,
+					`${'\\'.repeat(3)}t  `,
+					`  ${'\\'.repeat(1)}t  `,
+					`  ${'\\'.repeat(2)}t  `,
+					`  ${'\\'.repeat(3)}t  `,
+					`${'\\'.repeat(1)}t\\`,
+					`${'\\'.repeat(2)}t\\`,
+					`${'\\'.repeat(3)}t\\`,
+					`  ${'\\'.repeat(1)}t\\`,
+					`  ${'\\'.repeat(2)}t\\`,
+					`  ${'\\'.repeat(3)}t\\`,
+					`${'\\'.repeat(1)}t\\  `,
+					`${'\\'.repeat(2)}t\\  `,
+					`${'\\'.repeat(3)}t\\  `,
+					`  ${'\\'.repeat(1)}t\\  `,
+					`  ${'\\'.repeat(2)}t\\  `,
+					`  ${'\\'.repeat(3)}t\\  `,
+				].map(f_string_literals)],
+
+			'valid escapes w/ escaped literal (\\t)': () => [`
+				:a :b
+					"${'\\'.repeat(1)}t",
+					"${'\\'.repeat(3)}t",
+					"${'\\'.repeat(5)}t",
+					"  ${'\\'.repeat(1)}t",
+					"  ${'\\'.repeat(3)}t",
+					"  ${'\\'.repeat(5)}t",
+					"${'\\'.repeat(1)}t  ",
+					"${'\\'.repeat(3)}t  ",
+					"${'\\'.repeat(5)}t  ",
+					"  ${'\\'.repeat(1)}t  ",
+					"  ${'\\'.repeat(3)}t  ",
+					"  ${'\\'.repeat(5)}t  ",
+					"${'\\'.repeat(1)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(3)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(5)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(1)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(3)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(5)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(1)}t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(3)}t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(5)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(1)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(3)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(5)}t${'\\'.repeat(2)}  " .
+				`, [
+					`${'\\'.repeat(0)}\t`,
+					`${'\\'.repeat(1)}\t`,
+					`${'\\'.repeat(2)}\t`,
+					`  ${'\\'.repeat(0)}\t`,
+					`  ${'\\'.repeat(1)}\t`,
+					`  ${'\\'.repeat(2)}\t`,
+					`${'\\'.repeat(0)}\t  `,
+					`${'\\'.repeat(1)}\t  `,
+					`${'\\'.repeat(2)}\t  `,
+					`  ${'\\'.repeat(0)}\t  `,
+					`  ${'\\'.repeat(1)}\t  `,
+					`  ${'\\'.repeat(2)}\t  `,
+					`${'\\'.repeat(0)}\t\\`,
+					`${'\\'.repeat(1)}\t\\`,
+					`${'\\'.repeat(2)}\t\\`,
+					`  ${'\\'.repeat(0)}\t\\`,
+					`  ${'\\'.repeat(1)}\t\\`,
+					`  ${'\\'.repeat(2)}\t\\`,
+					`${'\\'.repeat(0)}\t\\  `,
+					`${'\\'.repeat(1)}\t\\  `,
+					`${'\\'.repeat(2)}\t\\  `,
+					`  ${'\\'.repeat(0)}\t\\  `,
+					`  ${'\\'.repeat(1)}\t\\  `,
+					`  ${'\\'.repeat(2)}\t\\  `,
+				].map(f_string_literals)],
 
 			'langtag': () => [`
 				:a :b "c"@en .
@@ -802,6 +947,24 @@ reader_suite({
 			input: '@prefix : <#> . :a :b :c ',
 			char: '\0',
 			state: 'post_object',
+		}),
+
+		'invalid escapes': () => ({
+			input: `
+				:a :b
+					"${'\\'.repeat(1)}",
+					"${'\\'.repeat(3)}",
+					"${'\\'.repeat(5)}",
+					"  ${'\\'.repeat(1)}",
+					"  ${'\\'.repeat(3)}",
+					"  ${'\\'.repeat(5)}",
+					"${'\\'.repeat(1)}  ",
+					"${'\\'.repeat(3)}  ",
+					"${'\\'.repeat(5)}  ",
+					"  ${'\\'.repeat(1)}  ",
+					"  ${'\\'.repeat(3)}  ",
+					"  ${'\\'.repeat(5)}  " .
+			`,
 		}),
 	});
 

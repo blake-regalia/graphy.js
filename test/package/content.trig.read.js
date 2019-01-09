@@ -8,6 +8,8 @@ const reader_suite = require('../helper/reader.js');
 
 const trig_read = require('@graphy/content.trig.read');
 
+let f_string_literals = s => ['#a', '#b', '"'+s, '*'];
+
 reader_suite({
 	alias: 'trig',
 	reader: trig_read,
@@ -456,6 +458,223 @@ reader_suite({
 					<a> <b> <c> .
 				}
 			`, a_abc__],
+		},
+
+		'string literals': {
+			'single quotes': () => [`
+				:a :b '' .
+				:a :b 'c' .
+				:a :b '"c\\u002C\\n\\'' .
+			`, [
+				'',
+				'c',
+				`"c,\n'`,
+			].map(f_string_literals)],
+
+			'double quotes': () => [`
+				:a :b "" .
+				:a :b "c" .
+				:a :b "'c\\u002C\\n\\"" .
+			`, [
+				'',
+				'c',
+				`'c,\n"`,
+			].map(f_string_literals)],
+
+			'long single quotes': () => [`
+				:a :b '''''' .
+				:a :b '''\r''' .
+				:a :b '''c''' .
+				:a :b '''"c\\u002C''\\n'\n''' .
+			`, [
+				'',
+				'\r',
+				'c',
+				`"c,''\n'\n`,
+			].map(f_string_literals)],
+
+			'long double quotes': () => [`
+				:a :b """""" .
+				:a :b """c""" .
+				:a :b """'c\\u002C""\\n"\n""" .
+			`, [
+				'',
+				'c',
+				`'c,""\n"\n`,
+			].map(f_string_literals)],
+
+			'escapes & unicode': () => [`
+				:a :b "\\"\\\\t = '\\t'\\"",
+					"\\"\\"\\"\\"\\"\\"",
+					"\\"\\u00C5\\"", "\\"\\U0001D11E\\"\\\\test\\"" .
+			`, [
+				'"\\t = \'\t\'"',
+				'""""""',
+				'"\u00c5"',
+				'"\u{0001d11e}"\\test"',
+			].map(f_string_literals)],
+
+			'valid sequential escapes': () => [`
+				:a :b
+					"\\"",
+					"  \\"",
+					"\\"  ",
+					"  \\"  ",
+					"${'\\'.repeat(2)}",
+					"${'\\'.repeat(4)}",
+					"${'\\'.repeat(6)}",
+					"  ${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(4)}",
+					"  ${'\\'.repeat(6)}",
+					"${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(4)}  ",
+					"${'\\'.repeat(6)}  ",
+					"  ${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(4)}  ",
+					"  ${'\\'.repeat(6)}  " .
+			`, [
+				'"',
+				'  "',
+				'"  ',
+				'  "  ',
+				`${'\\'.repeat(1)}`,
+				`${'\\'.repeat(2)}`,
+				`${'\\'.repeat(3)}`,
+				`  ${'\\'.repeat(1)}`,
+				`  ${'\\'.repeat(2)}`,
+				`  ${'\\'.repeat(3)}`,
+				`${'\\'.repeat(1)}  `,
+				`${'\\'.repeat(2)}  `,
+				`${'\\'.repeat(3)}  `,
+				`  ${'\\'.repeat(1)}  `,
+				`  ${'\\'.repeat(2)}  `,
+				`  ${'\\'.repeat(3)}  `,
+			].map(f_string_literals)],
+
+			'valid escapes next to `t`': () => [`
+				:a :b
+					"${'\\'.repeat(2)}t",
+					"${'\\'.repeat(4)}t",
+					"${'\\'.repeat(6)}t",
+					"  ${'\\'.repeat(2)}t",
+					"  ${'\\'.repeat(4)}t",
+					"  ${'\\'.repeat(6)}t",
+					"${'\\'.repeat(2)}t  ",
+					"${'\\'.repeat(4)}t  ",
+					"${'\\'.repeat(6)}t  ",
+					"  ${'\\'.repeat(2)}t  ",
+					"  ${'\\'.repeat(4)}t  ",
+					"  ${'\\'.repeat(6)}t  ",
+					"${'\\'.repeat(2)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(4)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(6)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(2)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(4)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(6)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(2)}t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(4)}t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(6)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(2)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(4)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(6)}t${'\\'.repeat(2)}  " .
+				`, [
+					`${'\\'.repeat(1)}t`,
+					`${'\\'.repeat(2)}t`,
+					`${'\\'.repeat(3)}t`,
+					`  ${'\\'.repeat(1)}t`,
+					`  ${'\\'.repeat(2)}t`,
+					`  ${'\\'.repeat(3)}t`,
+					`${'\\'.repeat(1)}t  `,
+					`${'\\'.repeat(2)}t  `,
+					`${'\\'.repeat(3)}t  `,
+					`  ${'\\'.repeat(1)}t  `,
+					`  ${'\\'.repeat(2)}t  `,
+					`  ${'\\'.repeat(3)}t  `,
+					`${'\\'.repeat(1)}t\\`,
+					`${'\\'.repeat(2)}t\\`,
+					`${'\\'.repeat(3)}t\\`,
+					`  ${'\\'.repeat(1)}t\\`,
+					`  ${'\\'.repeat(2)}t\\`,
+					`  ${'\\'.repeat(3)}t\\`,
+					`${'\\'.repeat(1)}t\\  `,
+					`${'\\'.repeat(2)}t\\  `,
+					`${'\\'.repeat(3)}t\\  `,
+					`  ${'\\'.repeat(1)}t\\  `,
+					`  ${'\\'.repeat(2)}t\\  `,
+					`  ${'\\'.repeat(3)}t\\  `,
+				].map(f_string_literals)],
+
+			'valid escapes w/ escaped literal (\\t)': () => [`
+				:a :b
+					"${'\\'.repeat(1)}t",
+					"${'\\'.repeat(3)}t",
+					"${'\\'.repeat(5)}t",
+					"  ${'\\'.repeat(1)}t",
+					"  ${'\\'.repeat(3)}t",
+					"  ${'\\'.repeat(5)}t",
+					"${'\\'.repeat(1)}t  ",
+					"${'\\'.repeat(3)}t  ",
+					"${'\\'.repeat(5)}t  ",
+					"  ${'\\'.repeat(1)}t  ",
+					"  ${'\\'.repeat(3)}t  ",
+					"  ${'\\'.repeat(5)}t  ",
+					"${'\\'.repeat(1)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(3)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(5)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(1)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(3)}t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(5)}t${'\\'.repeat(2)}",
+					"${'\\'.repeat(1)}t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(3)}t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(5)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(1)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(3)}t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(5)}t${'\\'.repeat(2)}  " .
+				`, [
+					`${'\\'.repeat(0)}\t`,
+					`${'\\'.repeat(1)}\t`,
+					`${'\\'.repeat(2)}\t`,
+					`  ${'\\'.repeat(0)}\t`,
+					`  ${'\\'.repeat(1)}\t`,
+					`  ${'\\'.repeat(2)}\t`,
+					`${'\\'.repeat(0)}\t  `,
+					`${'\\'.repeat(1)}\t  `,
+					`${'\\'.repeat(2)}\t  `,
+					`  ${'\\'.repeat(0)}\t  `,
+					`  ${'\\'.repeat(1)}\t  `,
+					`  ${'\\'.repeat(2)}\t  `,
+					`${'\\'.repeat(0)}\t\\`,
+					`${'\\'.repeat(1)}\t\\`,
+					`${'\\'.repeat(2)}\t\\`,
+					`  ${'\\'.repeat(0)}\t\\`,
+					`  ${'\\'.repeat(1)}\t\\`,
+					`  ${'\\'.repeat(2)}\t\\`,
+					`${'\\'.repeat(0)}\t\\  `,
+					`${'\\'.repeat(1)}\t\\  `,
+					`${'\\'.repeat(2)}\t\\  `,
+					`  ${'\\'.repeat(0)}\t\\  `,
+					`  ${'\\'.repeat(1)}\t\\  `,
+					`  ${'\\'.repeat(2)}\t\\  `,
+				].map(f_string_literals)],
+
+			'langtag': () => [`
+				:a :b "c"@en .
+				:d :e "f"@EN .
+			`, [
+				['#a', '#b', '@en"c', '*'],
+				['#d', '#e', '@en"f', '*'],
+			]],
+
+			'datatype': () => [`
+				:a :b "c"^^:x .
+				@base <z://_/> .
+				:d :e "f"^^<y> .
+				:g :h "i"^^<z://_/z> .
+			`, [
+				['#a', '#b', '^#x"c', '*'],
+				['#d', '#e', '^z://_/y"f', '*'],
+				['#g', '#h', '^z://_/z"i', '*'],
+			]],
 		},
 
 		'comments': {

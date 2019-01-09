@@ -73,46 +73,60 @@ class reader_suite {
 	}
 
 	allows(h_tree) {
-		util.map_tree(h_tree, (s_label, f_leaf) => {
-			// destructure leaf node
-			let [st_input, a_validate, b_debug=false] = f_leaf();
+		let g_modes = {
+			'no validation': {
+				validate: false,
+			},
+			'yes validation': {
+				validate: true,
+			},
+		};
 
-			// input wants prefixes
-			if(this.prefix_string && R_WANTS_PREFIX.test(st_input)) {
-				st_input = this.prefix_string+st_input;
-			}
+		for(let [s_mode, gc_read] of Object.entries(g_modes)) {
+			describe(s_mode, () => {
+				util.map_tree(h_tree, (s_label, f_leaf) => {
+					// destructure leaf node
+					let [st_input, a_validate, b_debug=false] = f_leaf();
 
-			// create test case
-			it(s_label, (fke_test) => {
-				let a_quads = [];
+					// input wants prefixes
+					if(this.prefix_string && R_WANTS_PREFIX.test(st_input)) {
+						st_input = this.prefix_string+st_input;
+					}
 
-				// feed input one character at a time
-				let i_char = 0;
-				(new stream.Readable({
-					read() {
-						this.push(st_input[i_char++] || null);
-					},
-				})).pipe(this.reader({
-					debug: b_debug,
+					// create test case
+					it(s_label, (fke_test) => {
+						let a_quads = [];
 
-					// watch for errors
-					error(e_read) {
-						fke_test(e_read);
-					},
+						// feed input one character at a time
+						let i_char = 0;
+						(new stream.Readable({
+							read() {
+								this.push(st_input[i_char++] || null);
+							},
+						})).pipe(this.reader({
+							debug: b_debug,
+							...gc_read,
 
-					// expect data
-					data(g_quad) {
-						a_quads.push(g_quad);
-					},
+							// watch for errors
+							error(e_read) {
+								fke_test(e_read);
+							},
 
-					// wait for end
-					end() {
-						util.validate_quads(a_quads, a_validate);
-						fke_test();
-					},
-				}));
+							// expect data
+							data(g_quad) {
+								a_quads.push(g_quad);
+							},
+
+							// wait for end
+							end() {
+								util.validate_quads(a_quads, a_validate);
+								fke_test();
+							},
+						}));
+					});
+				});
 			});
-		});
+		}
 	}
 
 	interfaces(f_interface) {  // eslint-disable-line class-methods-use-this

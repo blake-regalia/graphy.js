@@ -24,12 +24,34 @@
 	(s_, s_8, s_4) => String.fromCodePoint(parseInt(s_8 || s_4, 16))
 @;
 
+@>> RT_ESCAPES_INVALID()
+	@//@regex
+	(?:
+		(?:^|[^\\])
+		(?:
+			\\(?:\\\\)*
+			[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]
+		)
+		(?:[^\\]|$)
+	)
+	| @{UCHAR('^')}
+@;
+
+@>> RT_LITERAL_CONTENTS_VALID(s_no_chars='')
+	@//@regex
+	^(?:
+		[^\\@{s_no_chars}]
+		| \\[tbnrf"'\\]
+		| @{UCHAR()}
+	)*$
+@;
+
+
 @> H_ESCAPES_JSON()
 	{
 
 	}
 @;
-
 
 
 @>> RANGE_PN_CHARS_BASE()

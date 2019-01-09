@@ -18,13 +18,14 @@ const stream = require('@@@{S_GRAPHY_CHANNEL}/core.iso.stream');
 const factory = require('@@@{S_GRAPHY_CHANNEL}/core.data.factory').raw;
 const quad = h => factory.quad(h.subject, h.predicate, h.object, h.graph);
 
-
-const RT_ESCAPES_INVALID = /\\[^"tbnrfuU\\_~.!$&'()*+,;=/?#@%-]|@{UCHAR('^')}/;
+const RT_ESCAPES_INVALID = /@{RT_ESCAPES_INVALID()}/;
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
 const RT_PREFIXED_NAME_LOCAL_NAME_VALID = /^@{PN_LOCAL()}$/u;
 
 const RT_BLANK_NODE_VALID = /^[@{RANGE_PN_CHARS_U()}0-9]@{PN_CHARS_FS()}$/u;
 const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
+
+const RT_LITERAL_CONTENTS_VALID = /@{RT_LITERAL_CONTENTS_VALID()}/;
 
 const R_ESCAPES = /@{R_ESCAPES()}/g;
 const R_UNICODE_8 = /@{R_UNICODE_8()}/g;
@@ -714,7 +715,7 @@ class reader {
 				},
 
 				unescape_literal_long(s_literal) {
-					if(RT_ESCAPES_INVALID.test(s_literal)) return this.error(`invalid literal: "${s_literal}"`);
+					if(!RT_LITERAL_CONTENTS_VALID.test(s_literal)) return this.error(`invalid escapes in long string literal: "${s_literal}"`);
 					try {
 						return unescape_literal_long(s_literal);
 					}
@@ -724,7 +725,7 @@ class reader {
 				},
 
 				unescape_literal_short(s_literal) {
-					if(RT_ESCAPES_INVALID.test(s_literal)) return this.error(`invalid literal: "${s_literal}"`);
+					if(!RT_LITERAL_CONTENTS_VALID.test(s_literal)) return this.error(`invalid escapes in short string literal: "${s_literal}"`);
 					try {
 						return unescape_literal_short(s_literal);
 					}
