@@ -447,6 +447,8 @@ const reader_performances = () => {
 	};
 };
 
+let a_messages = fs.readdirSync('messages').sort().reverse().map(s => `messages/${s}`);
+
 // emk struct
 module.exports = async() => {
 	// make manifest dependencies
@@ -719,6 +721,16 @@ module.exports = async() => {
 		outputs: {
 			// eslint config
 			'.eslintrc.yaml': () => ({copy:'~/dev/.eslintrc.yaml'}),
+
+			// CHANGELOG.md
+			'CHANGELOG.md': () => ({
+				deps: [
+					...a_messages,
+				],
+				run: /* syntax: bash */ `
+					echo -e "# Changelog\\\\n\\\\n${a_messages.map(s => `$(cat '${s}')`).join('\\\\n'.repeat(3))}" > $@
+				`,
+			}),
 
 			// docs
 			docs: {
