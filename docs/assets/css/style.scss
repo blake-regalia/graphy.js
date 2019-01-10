@@ -41,21 +41,21 @@ pre {
 	margin: initial;
 }
 
-h1 {
+section h1 {
 	border-bottom: 1px solid #eaecef;
 	padding-bottom: .5em;
 }
 
-h2 {
+section h2 {
 	border-bottom: 1px solid #eaecef;
 	padding-bottom: .3em;
 }
 
-h4 {
+section h4 {
 	font-size: 1.1em;
 }
 
-h3, h4, h5, h6 {
+section h3, h4, h5, h6 {
 	color: #000;
 	margin-left: -5px;
 	padding-top: 20px;
@@ -65,7 +65,7 @@ hr {
 	margin-top: 20px;
 }
 
-h3 strong, h4 strong, h5 strong, h6 strong {
+section h3 strong, h4 strong, h5 strong, h6 strong {
 	font-size: 1.1em;
 	color: #000;
 }
