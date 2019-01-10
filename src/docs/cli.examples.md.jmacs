@@ -47,7 +47,7 @@ Prints: _(nothing)_
  
 ```
 
-#### Testing with invalid input (.rdf document is not Turtle):
+#### Testing with invalid input (`Banana.rdf` document is not Turtle):
 ```bash
 $ curl -s http://dbpedia.org/data/Banana.rdf | graphy content.ttl.read --validate > /dev/null
 ```
