@@ -19,6 +19,8 @@ const factory = require('@{channel('core.data.factory')}').raw;
 const KT_DEFAULT_GRAPH = factory.defaultGraph();
 const KT_RDFS_LANG_STRING = factory.namedNode('@{P_IRI_RDFS}langString');
 
+const H_ESCAPES_JSON = @{H_ESCAPES_JSON()};
+
 const R_ESCAPES = /@{R_ESCAPES()}/g;
 const R_UNICODE_8 = /@{R_UNICODE_8()}/g;
 const R_UNICODE_ANY = /@{R_UNICODE_4()}|@{R_UNICODE_8()}/g;

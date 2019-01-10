@@ -35,14 +35,7 @@ const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
 
 
 
-const H_ESCAPES_JSON = {
-	'\t': '\\t',
-	'\u0008': '\\b',
-	'\n': '\\n',
-	'\r': '\\r',
-	'\f': '\\f',
-	'"': '\\"',
-};
+const H_ESCAPES_JSON = @{H_ESCAPES_JSON()};
 
 
 @$ H_LOOKAHEADS = {
@@ -842,8 +835,8 @@ class reader {
 				}
 				// read error occurred
 				catch(e_eof) {
-					// do not allow eof push from core stream
-					ds_transform.demolish();
+					// destroy self and stream
+					this.destroy(e_eof);
 
 					// exit gracefully
 					return;
@@ -916,6 +909,9 @@ class reader {
 		}
 		// read error occurred
 		catch(e_read) {
+			// destroy self and stream
+			this.destroy(e_read);
+
 			// failure
 			return false;
 		}
@@ -940,14 +936,8 @@ class reader {
 	}
 
 	error(s_message) {
-		// store read error
-		let e_read = new Error(s_message);
-
-		// destroy self and stream
-		this.destroy(e_read);
-
 		// bail out
-		throw e_read;
+		throw new Error(s_message);
 	}
 
 	// parse_error (not meant to be an event callback)

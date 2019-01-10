@@ -654,6 +654,59 @@ reader_suite({
 					`  ${'\\'.repeat(2)}\t\\  `,
 				].map(f_string_literals)],
 
+			'valid escapes w/ actual tab character': () => [`
+				:a :b
+					"${'\\'.repeat(2)}\t",
+					"${'\\'.repeat(4)}\t",
+					"${'\\'.repeat(6)}\t",
+					"  ${'\\'.repeat(2)}\t",
+					"  ${'\\'.repeat(4)}\t",
+					"  ${'\\'.repeat(6)}\t",
+					"${'\\'.repeat(2)}\t  ",
+					"${'\\'.repeat(4)}\t  ",
+					"${'\\'.repeat(6)}\t  ",
+					"  ${'\\'.repeat(2)}\t  ",
+					"  ${'\\'.repeat(4)}\t  ",
+					"  ${'\\'.repeat(6)}\t  ",
+					"${'\\'.repeat(2)}\t${'\\'.repeat(2)}",
+					"${'\\'.repeat(4)}\t${'\\'.repeat(2)}",
+					"${'\\'.repeat(6)}\t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(2)}\t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(4)}\t${'\\'.repeat(2)}",
+					"  ${'\\'.repeat(6)}\t${'\\'.repeat(2)}",
+					"${'\\'.repeat(2)}\t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(4)}\t${'\\'.repeat(2)}  ",
+					"${'\\'.repeat(6)}\t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(2)}\t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(4)}\t${'\\'.repeat(2)}  ",
+					"  ${'\\'.repeat(6)}\t${'\\'.repeat(2)}  " .
+				`, [
+					`${'\\'.repeat(1)}\t`,
+					`${'\\'.repeat(2)}\t`,
+					`${'\\'.repeat(3)}\t`,
+					`  ${'\\'.repeat(1)}\t`,
+					`  ${'\\'.repeat(2)}\t`,
+					`  ${'\\'.repeat(3)}\t`,
+					`${'\\'.repeat(1)}\t  `,
+					`${'\\'.repeat(2)}\t  `,
+					`${'\\'.repeat(3)}\t  `,
+					`  ${'\\'.repeat(1)}\t  `,
+					`  ${'\\'.repeat(2)}\t  `,
+					`  ${'\\'.repeat(3)}\t  `,
+					`${'\\'.repeat(1)}\t\\`,
+					`${'\\'.repeat(2)}\t\\`,
+					`${'\\'.repeat(3)}\t\\`,
+					`  ${'\\'.repeat(1)}\t\\`,
+					`  ${'\\'.repeat(2)}\t\\`,
+					`  ${'\\'.repeat(3)}\t\\`,
+					`${'\\'.repeat(1)}\t\\  `,
+					`${'\\'.repeat(2)}\t\\  `,
+					`${'\\'.repeat(3)}\t\\  `,
+					`  ${'\\'.repeat(1)}\t\\  `,
+					`  ${'\\'.repeat(2)}\t\\  `,
+					`  ${'\\'.repeat(3)}\t\\  `,
+				].map(f_string_literals)],
+
 			'langtag': () => [`
 				:a :b "c"@en .
 				:d :e "f"@EN .
@@ -964,6 +1017,18 @@ reader_suite({
 					"  ${'\\'.repeat(1)}  ",
 					"  ${'\\'.repeat(3)}  ",
 					"  ${'\\'.repeat(5)}  " .
+			`,
+		}),
+
+		'escape tab': () => ({
+			input: `
+				:a :b "${'\\'.repeat(1)}\t" .
+			`,
+		}),
+
+		'challenge eof': () => ({
+			input: `
+				:a :b "${'\\'.repeat(2)}\t",
 			`,
 		}),
 	});
