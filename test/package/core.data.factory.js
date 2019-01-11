@@ -32,7 +32,7 @@ const H_VALIDATORS = {
 		});
 	},
 
-	blank_node(kt_actual, s_label=null) {
+	blank_node(kt_actual, s_label=null, b_anonymous=null) {
 		expect(kt_actual).to.include({
 			termType: 'BlankNode',
 			isBlankNode: true,
@@ -41,6 +41,11 @@ const H_VALIDATORS = {
 		// validate value
 		if(null !== s_label) {
 			expect(kt_actual.value).to.equal(s_label);
+		}
+
+		// validate anonymous-ness
+		if(null !== b_anonymous) {
+			expect(kt_actual.isAnonymous).to.equal(b_anonymous);
 		}
 	},
 
@@ -554,8 +559,12 @@ describe('DataFactory:', () => {
 				blank_node: {
 					'_:': () => {
 						let kt_blank = factory.c1('_:');
-						H_VALIDATORS.blank_node(kt_blank);
-						expect(kt_blank.value).to.have.length('fee893ce_d36a_4413_a197_a9f47a3e5991'.length);
+						H_VALIDATORS.blank_node(kt_blank, null, true);
+						expect(kt_blank.value).to.have.length('_fee893ce_d36a_4413_a197_a9f47a3e5991'.length);
+					},
+					'_:_anonymous_hint': () => {
+						let kt_blank = factory.c1('_:_anonymous_hint');
+						H_VALIDATORS.blank_node(kt_blank, '_anonymous_hint', true);
 					},
 					'_:b': 'b',
 					'_:b1': 'b1',
@@ -914,29 +923,29 @@ describe('DataFactory:', () => {
 		});
 
 		it('#concise()', () => {
-			expect(kt_node.concise()).to.startWith('_:').and.have.lengthOf(nl_uuidv4+2);
+			expect(kt_node.concise()).to.startWith('_:_').and.have.lengthOf(nl_uuidv4+3);
 		});
 
 		it('#concise({})', () => {
-			expect(kt_node.concise({})).to.startWith('_:').and.have.lengthOf(nl_uuidv4+2);
+			expect(kt_node.concise({})).to.startWith('_:_').and.have.lengthOf(nl_uuidv4+3);
 		});
 
 		it('#terse()', () => {
-			expect(kt_node.terse()).to.startWith('_:').and.have.lengthOf(nl_uuidv4+2);
+			expect(kt_node.terse()).to.startWith('_:_').and.have.lengthOf(nl_uuidv4+3);
 		});
 
 		it('#terse({})', () => {
-			expect(kt_node.terse({})).to.startWith('_:').and.have.lengthOf(nl_uuidv4+2);
+			expect(kt_node.terse({})).to.startWith('_:_').and.have.lengthOf(nl_uuidv4+3);
 		});
 
 		it('#verbose()', () => {
-			expect(kt_node.verbose()).to.startWith('_:').and.have.lengthOf(nl_uuidv4+2);
+			expect(kt_node.verbose()).to.startWith('_:_').and.have.lengthOf(nl_uuidv4+3);
 		});
 
 		it('#isolate()', () => {
 			expect(kt_node.isolate()).to.include({
 				termType: 'BlankNode',
-			}).and.to.have.property('value').that.has.lengthOf(nl_uuidv4);
+			}).and.to.have.property('value').that.has.lengthOf(nl_uuidv4+1);
 		});
 
 		it('#equals(this)', () => {

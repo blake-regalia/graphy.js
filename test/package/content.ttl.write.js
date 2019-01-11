@@ -102,7 +102,8 @@ writer_suite({
 					':subject': {
 						':date': new Date('1990-03-12'),
 						':term-node': factory.namedNode('ex://test'),
-						':term-bn': factory.blankNode('test'),
+						':term-bn-labeled': factory.blankNode('test'),
+						':term-bn-anonymous': factory.blankNode(),
 						':literal': factory.literal('test'),
 					},
 				},
@@ -110,7 +111,8 @@ writer_suite({
 					:subject
 						:date "1990-03-12T00:00:00.000Z"^^xsd:dateTime ;
 						:term-node <ex://test> ;
-						:term-bn _:test ;
+						:term-bn-labeled _:test ;
+						:term-bn-anonymous [] ;
 						:literal "test" .
 				`,
 			}),
@@ -643,18 +645,18 @@ writer_suite({
 			output: /* syntax: turtle */ `
 				${S_PREFIXES_OUTPUT}
 
-				demo:Banana rdf:type dbo:Fruit ;
+				demo:Banana a dbo:Fruit ;
 					rdfs:label "Banana"@en ;
 					rdfs:comment "Comment"@en .
 
-				demo:Orange rdf:type dbo:Fruit ;
+				demo:Orange a dbo:Fruit ;
 					rdfs:label "Orange"@en .
 
-				demo:Apple rdf:type dbo:Fruit ;
+				demo:Apple a dbo:Fruit ;
 					rdfs:label "Apple"@en ;
 					rdfs:comment "Comment"@en .
 
-				demo:Watermelon rdf:type dbo:Fruit ;
+				demo:Watermelon a dbo:Fruit ;
 					rdfs:label "Watermelon"@en .
 			`,
 		}),
@@ -707,7 +709,7 @@ writer_suite({
 				# above banana
 				demo:Banana 
 					# above type
-					rdf:type dbo:Fruit ;
+					a dbo:Fruit ;
 					# above label
 					rdfs:label "Banana"@en ;
 					# below label
@@ -716,7 +718,7 @@ writer_suite({
 					.
 
 				# below banana
-				demo:Orange rdf:type dbo:Fruit ;
+				demo:Orange a dbo:Fruit ;
 					# below type
 					rdfs:label "Orange"@en .
 
@@ -725,7 +727,7 @@ writer_suite({
 				demo:Apple 
 					# below open
 					# above type
-					rdf:type dbo:Fruit ;
+					a dbo:Fruit ;
 					# below type
 					# above label
 					rdfs:label "Apple"@en ;
@@ -736,7 +738,7 @@ writer_suite({
 					# above close
 					.
 
-				demo:Watermelon rdf:type dbo:Fruit ;
+				demo:Watermelon a dbo:Fruit ;
 					rdfs:label "Watermelon"@en .
 			`,
 		}),
@@ -789,7 +791,7 @@ writer_suite({
 
 				demo:Banana 
 
-					rdf:type dbo:Fruit ;
+					a dbo:Fruit ;
 
 					rdfs:label "Banana"@en ;
 
@@ -798,7 +800,7 @@ writer_suite({
 					.
 
 
-				demo:Orange rdf:type dbo:Fruit ;
+				demo:Orange a dbo:Fruit ;
 
 
 					rdfs:label "Orange"@en .
@@ -808,7 +810,7 @@ writer_suite({
 				demo:Apple 
 
 
-					rdf:type dbo:Fruit ;
+					a dbo:Fruit ;
 
 
 					rdfs:label "Apple"@en ;
@@ -820,7 +822,7 @@ writer_suite({
 
 					.
 
-				demo:Watermelon rdf:type dbo:Fruit ;
+				demo:Watermelon a dbo:Fruit ;
 					rdfs:label "Watermelon"@en .
 			`,
 		}),
@@ -887,7 +889,7 @@ writer_suite({
 				# above banana
 				demo:Banana 
 					# above type
-					rdf:type dbo:Fruit ;
+					a dbo:Fruit ;
 					# between empties
 					# above label
 					rdfs:label "Banana"@en ;
@@ -904,7 +906,7 @@ writer_suite({
 					# below comment
 					.
 
-				demo:Orange rdf:type dbo:Fruit ;
+				demo:Orange a dbo:Fruit ;
 					# below type
 					rdfs:label "Orange"@en .
 
@@ -937,11 +939,86 @@ writer_suite({
 			output: /* syntax: turtle */ `
 				${S_PREFIXES_OUTPUT}
 
-				demo:Grapefruit rdf:type dbo:Fruit ;
+				demo:Grapefruit a dbo:Fruit ;
 					rdfs:label "Grapefruit"@en .
 
-				demo:Watermelon rdf:type dbo:Fruit ;
+				demo:Watermelon a dbo:Fruit ;
 					rdfs:label "Watermelon"@en .
+			`,
+		}),
+
+		'anonymous blank node c1 subjects': () => ({
+			write: {
+				'_:': {
+					a: ':BlankNode',
+				},
+				'_:_anon': {
+					a: ':BlankNode',
+				},
+			},
+			output: /* syntax: turtle */ `
+				${S_PREFIXES_OUTPUT}
+
+				[] a :BlankNode .
+
+				[] a :BlankNode .
+			`,
+		}),
+
+		'anonymous blank node c1 objects': () => ({
+			write: {
+				'demo:BlankNodes': {
+					'demo:refs': ['_:', '_:_anon'],
+				},
+			},
+			output: /* syntax: turtle */ `
+				${S_PREFIXES_OUTPUT}
+
+				demo:BlankNodes demo:refs [], [] .
+			`,
+		}),
+
+		'anonymous blank node factory subjects': () => ({
+			write: {
+				[factory.blankNode()]: {
+					a: ':BlankNode',
+				},
+				[factory.blankNode()]: {
+					a: ':BlankNode',
+				},
+			},
+			output: /* syntax: turtle */ `
+				${S_PREFIXES_OUTPUT}
+
+				[] a :BlankNode .
+
+				[] a :BlankNode .
+			`,
+		}),
+
+		'anonymous blank node factory objects': () => ({
+			write: {
+				'demo:BlankNodes': {
+					'demo:refs': [factory.blankNode(), factory.blankNode()],
+				},
+			},
+			output: /* syntax: turtle */ `
+				${S_PREFIXES_OUTPUT}
+
+				demo:BlankNodes demo:refs [], [] .
+			`,
+		}),
+
+		'use rdf:type': () => ({
+			write: {
+				'demo:Banana': {
+					'rdf:type': 'dbo:Fruit',
+				},
+			},
+			output: /* syntax: turtle */ `
+				${S_PREFIXES_OUTPUT}
+
+				demo:Banana rdf:type dbo:Fruit .
 			`,
 		}),
 	});

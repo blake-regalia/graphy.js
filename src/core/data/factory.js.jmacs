@@ -171,6 +171,10 @@ class GenericTerm {
 		return this.concise();
 	}
 
+	toString() {
+		return this.concise();
+	}
+
 	equals(h_other) {
 		return this === h_other
 			|| (h_other.termType === this.termType && h_other.value === this.value);
@@ -228,6 +232,8 @@ class NamedNode extends GenericTerm {
 });
 
 const KT_RDF_TYPE = new NamedNode('@{P_IRI_RDF}type');
+KT_RDF_TYPE.isRdfTypeAlias = true;  // for serialization
+
 const KT_RDF_LANG_STRING = new NamedNode('@{P_IRI_RDF}langString');
 
 const KT_RDF_FIRST = new NamedNode('@{P_IRI_RDF}first');
@@ -847,7 +853,7 @@ const factory = module.exports = {
 		// no label given, generate a UUID
 		if(!z_label) {
 			// eslint-disable-next-line no-undef
-			return new BlankNode(uuid_v4(), true);
+			return new BlankNode('_'+uuid_v4(), true);
 		}
 		// label given
 		else if('string' === typeof z_label) {
@@ -960,9 +966,16 @@ const factory = module.exports = {
 
 		// blank node
 		if('_' === sct_node[0]) {
-			if(':' !== sct_node[1]) throw new Error(`invliad concise-term string, prefixes are not allowed to start with an underscore: ${sct_node}`);
+			if(':' !== sct_node[1]) throw new Error(`Invliad concise-term string, prefixes are not allowed to start with an underscore: ${sct_node}`);
 
-			return factory.blankNode(sct_node.slice(2));
+			// create blank node
+			let kt_node = factory.blankNode(sct_node.slice(2));
+
+			// interpret anonymous hint
+			if('_' === sct_node[2]) kt_node.isAnonymous = true;
+
+			// return blank node
+			return kt_node;
 		}
 
 		// other

@@ -20,6 +20,10 @@ const writable = require('@{channel('core.class.writable')}');
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
 const N_MAX_STRING_BUFFER = 1 << 12;
 
+@.{/*
+const P_IRI_RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+*/}
+
 class @{S_LABEL}_Writer extends writable {
 	constructor(gc_writer={}) {
 		super(gc_writer);
@@ -31,9 +35,15 @@ class @{S_LABEL}_Writer extends writable {
 			collections: gc_collections=null,
 		} = gc_writer;
 
+		Object.assign(this, {
+			indent: s_indent,
+		});
+
 		@- B_QUADS
-			let s_graph_token = '';
+			// token config
 			if(gc_tokens) {
+				// 'graph' token
+				let s_graph_token = '';
 				if(gc_tokens.graph) {
 					let z_token = gc_tokens.graph;
 
@@ -43,7 +53,7 @@ class @{S_LABEL}_Writer extends writable {
 					}
 					// invalid type
 					else if('string' !== typeof z_token) {
-						throw new TypeError(`Invalid argument type given for graph token: ${z_token}`);
+						throw new TypeError(`Invalid argument type given for 'graph' token: ${z_token}`);
 					}
 					// invalid token string
 					else if(!/^graph$/i.test(z_token)) {
@@ -54,15 +64,32 @@ class @{S_LABEL}_Writer extends writable {
 						s_graph_token = z_token+' ';
 					}
 				}
+
+				// set graph token
+				this.graph_token = s_graph_token;
 			}
 		@;
 
-		Object.assign(this, {
-			indent: s_indent,
-			@- B_QUADS
-				graph_token: s_graph_token,
-			@;
-		});
+			@.{/*
+			// 'a' token
+			let b_alias_rdf_type = false;
+			if(gc_tokens.a) {
+				let z_token = gc_tokens.graph;
+
+				// boolean true
+				if(true === gc_tokens.a) {
+					b_alias_rdf_type = true;
+				}
+				// invalid type
+				else if('boolean' !== typeof z_token) {
+					throw new TypeError(`Expected boolean value; invalid argument type given for 'a' token: ${z_token}`);
+				}
+			}
+
+			// set alias rdf type
+			this.alias_rdf_type = b_alias_rdf_type;
+		}
+			*/}
 
 		// custom collection keys
 		if(gc_collections) {
@@ -143,6 +170,7 @@ class @{S_LABEL}_Writer extends writable {
 		let {
 			prefixes: h_prefixes,
 			indent: s_indent,
+			@.{/*alias_rdf_type: b_alias_rdf_type,*/}
 		} = this;
 
 		// break line if non-data state
@@ -239,9 +267,14 @@ class @{S_LABEL}_Writer extends writable {
 					// not empty
 					b_empty = false;
 
+					// create predicate
+					let kt_predicate = factory.c1_named_node(sc1_predicate, h_prefixes);
+
+					// tersify rdf:type
+					let st_predicate = kt_predicate.isRdfTypeAlias? 'a': kt_predicate.terse(h_prefixes);
+
 					// serialize predicate and object(s)
-					s_write += s_term_pairs + s_indent_pairs + factory.c1_named_node(sc1_predicate, h_prefixes).terse(h_prefixes)
-						+ ' ' + st_objects;
+					s_write += s_term_pairs+s_indent_pairs+st_predicate+' '+st_objects;
 
 					// update state
 					this.state = @{XC_STATE_DATA};
@@ -387,6 +420,10 @@ class @{S_LABEL}_Writer extends writable {
 				}
 				// graphy term
 				else if(z_objects.isGraphyTerm) {
+					// anonymous blank node
+					if(z_objects.isAnonymous) return '[]';
+
+					// anything else
 					return z_objects.terse(h_prefixes);
 				}
 				// RDFJS term
