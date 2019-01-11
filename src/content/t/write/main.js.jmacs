@@ -276,6 +276,8 @@ class @{S_LABEL}_Writer extends writable {
 				s_write += '}\n\n';
 
 			}
+		@:
+			s_write += '\n';
 		@;
 
 		return s_write;

@@ -1,7 +1,7 @@
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
 # graphy.js 🍌
-`graphy` is a collection of RDF libraries for JavaScript developers that focuses on performance and usability. 
+`graphy` is a collection of RDF libraries for JavaScript developers with a focus on performance and usability. 
 
 ## [See API Documentation](https://graphy.link/api)
 

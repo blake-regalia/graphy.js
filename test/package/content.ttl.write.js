@@ -19,6 +19,9 @@ const H_PREFIXES = {
 	'': 'z://y/',
 };
 
+const S_PREFIXES_OUTPUT = Object.entries(H_PREFIXES)
+	.reduce((s_out, [s_prefix_id, p_iri]) => /* syntax: turtle */ `${s_out}@prefix ${s_prefix_id}: <${p_iri}> .\n`, '').replace(/\n$/, '');
+
 let a_prefix_events = Object.entries(H_PREFIXES)
 	.map(([si_prefix_expect, p_iri_expect]) => [
 		'prefix', (si_prefix_actual, p_iri_actual) => {
@@ -638,12 +641,7 @@ writer_suite({
 				},
 			},
 			output: /* syntax: turtle */ `
-				@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-				@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-				@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-				@prefix dbo: <http://dbpedia.org/ontology/> .
-				@prefix demo: <http://ex.org/> .
-				@prefix : <z://y/> .
+				${S_PREFIXES_OUTPUT}
 
 				demo:Banana rdf:type dbo:Fruit ;
 					rdfs:label "Banana"@en ;
@@ -704,12 +702,7 @@ writer_suite({
 				},
 			},
 			output: /* syntax: turtle */ `
-				@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-				@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-				@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-				@prefix dbo: <http://dbpedia.org/ontology/> .
-				@prefix demo: <http://ex.org/> .
-				@prefix : <z://y/> .
+				${S_PREFIXES_OUTPUT}
 
 				# above banana
 				demo:Banana 
@@ -791,12 +784,7 @@ writer_suite({
 				},
 			},
 			output: /* syntax: turtle */ `
-				@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-				@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-				@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-				@prefix dbo: <http://dbpedia.org/ontology/> .
-				@prefix demo: <http://ex.org/> .
-				@prefix : <z://y/> .
+				${S_PREFIXES_OUTPUT}
 
 
 				demo:Banana 
@@ -894,12 +882,7 @@ writer_suite({
 				[factory.comment()]: 'below orange',
 			},
 			output: /* syntax: turtle */ `
-				@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-				@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-				@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-				@prefix dbo: <http://dbpedia.org/ontology/> .
-				@prefix demo: <http://ex.org/> .
-				@prefix : <z://y/> .
+				${S_PREFIXES_OUTPUT}
 
 				# above banana
 				demo:Banana 
@@ -926,6 +909,39 @@ writer_suite({
 					rdfs:label "Orange"@en .
 
 				# below orange
+			`,
+		}),
+
+		'writable data event array': () => ({
+			type: 'array',
+			write: [
+				{
+					type: 'c3',
+					value: {
+						'demo:Grapefruit': {
+							a: 'dbo:Fruit',
+							'rdfs:label': '@en"Grapefruit',
+						},
+					},
+				},
+				{
+					type: 'c3',
+					value: {
+						'demo:Watermelon': {
+							a: 'dbo:Fruit',
+							'rdfs:label': '@en"Watermelon',
+						},
+					},
+				},
+			],
+			output: /* syntax: turtle */ `
+				${S_PREFIXES_OUTPUT}
+
+				demo:Grapefruit rdf:type dbo:Fruit ;
+					rdfs:label "Grapefruit"@en .
+
+				demo:Watermelon rdf:type dbo:Fruit ;
+					rdfs:label "Watermelon"@en .
 			`,
 		}),
 	});

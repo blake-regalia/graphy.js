@@ -95,7 +95,7 @@ class writer_suite {
 		describe('output string', () => {
 			util.map_tree(h_tree, (s_label, f_leaf) => {
 				let {
-					write: hcn_write,
+					write: w_write,
 					type: s_type=null,
 					config: w_config={},
 					output: st_expect,
@@ -106,7 +106,7 @@ class writer_suite {
 					// take concise-triples hash
 					let st_output = await stream.source({
 						type: s_type || this.type,
-						value: hcn_write,
+						value: w_write,
 					})
 						// pipe it thru turtle writer
 						.pipe(this.writer({
