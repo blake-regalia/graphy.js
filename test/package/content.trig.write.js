@@ -10,14 +10,11 @@ const trig_write = require('@graphy/content.trig.write');
 const writer_suite = require('../helper/writer.js');
 const util = require('../helper/util.js');
 
-const H_PREFIXES = {
-	rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-	rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
-	xsd: 'http://www.w3.org/2001/XMLSchema#',
-	dbo: 'http://dbpedia.org/ontology/',
-	demo: 'http://ex.org/',
-	'': 'z://y/',
-};
+const t_family = require('../helper/t-family.js');
+const H_PREFIXES = t_family.prefixes;
+
+const S_PREFIXES_OUTPUT = Object.entries(H_PREFIXES)
+	.reduce((s_out, [s_prefix_id, p_iri]) => /* syntax: turtle */ `${s_out}@prefix ${s_prefix_id}: <${p_iri}> .\n`, '').replace(/\n$/, '');
 
 let a_prefix_events = Object.entries(H_PREFIXES)
 	.map(([si_prefix_expect, p_iri_expect]) => [
@@ -25,12 +22,6 @@ let a_prefix_events = Object.entries(H_PREFIXES)
 			expect(si_prefix_actual).to.equal(si_prefix_expect);
 			expect(p_iri_actual).to.equal(p_iri_expect);
 		}]);
-
-let a_items = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-let f_nt = a_rest => /* syntax: turtle */ `[
-	<first> "${a_rest.shift()}" ;
-	<rest> ${a_rest.length? f_nt(a_rest): '<nil>'} ;
-]`;
 
 const modes = (h_tree) => {
 	let g_mods = {
@@ -45,7 +36,7 @@ const modes = (h_tree) => {
 			},
 			validate: `:graph { ${g.validate} }`,
 		}),
-		'w/ anonymous blank node graph': g => () => ({
+		'w/ ephemeral blank node graph': g => () => ({
 			...g,
 			write: {
 				'_:': g.write,
@@ -100,323 +91,7 @@ writer_suite({
 	validator: trig_read,
 	prefixes: H_PREFIXES,
 }, (writer) => {
-	writer.validates(modes({
-		'objects': {
-			'c1 strings': () => ({
-				write: {
-					':subject': {
-						a: ':type',
-						':c1-bn-anon': '_:',
-						':c1-bn-labeled': '_:orange',
-						':c1-pn': ':object',
-						':c1-iri': '>z://object',
-						':c1-literal': '"object',
-						':c1-lang-literal': '@en"object',
-						':c1-dtype-literal-pn': '^:d"object',
-						':c1-dtype-literal-iri': '^>x://d"object',
-					},
-				},
-				validate: `
-					:subject a :type ;
-						:c1-bn-anon [] ;
-						:c1-bn-labeled _:orange ;
-						:c1-pn :object ;
-						:c1-iri <z://object> ;
-						:c1-literal "object" ;
-						:c1-lang-literal "object"@en ;
-						:c1-dtype-literal-pn "object"^^:d ;
-						:c1-dtype-literal-iri "object"^^<x://d> .
-				`,
-			}),
-
-			'es literals': () => ({
-				write: {
-					':subject': {
-						':false': false,
-						':true': true,
-						':zero': 0,
-						':integer': 12,
-						':decimal': 12.1,
-						':infinity': Infinity,
-						':negative-infinity': -Infinity,
-						':NaN': NaN,
-					},
-				},
-				validate: `
-					:subject
-						:false false ;
-						:true true ;
-						:zero 0 ;
-						:integer 12 ;
-						:decimal 12.1 ;
-						:infinity "INF"^^xsd:double ;
-						:negative-infinity "-INF"^^xsd:double ;
-						:NaN "NaN"^^xsd:double .
-				`,
-			}),
-
-			'special objects': () => ({
-				write: {
-					':subject': {
-						':date': new Date('1990-03-12'),
-						':term-node': factory.namedNode('ex://test'),
-						':term-bn': factory.blankNode('test'),
-						':literal': factory.literal('test'),
-					},
-				},
-				validate: `
-					:subject
-						:date "1990-03-12T00:00:00.000Z"^^xsd:dateTime ;
-						:term-node <ex://test> ;
-						:term-bn _:test ;
-						:literal "test" .
-				`,
-			}),
-
-			'object literals': () => ({
-				write: {
-					':subject': {
-						':list-c1-nodes': ['_:', '_:orange', ':object', '>z://object'],
-						':list-c1-literals': ['@en"object', '^:d"object', '^>x://d"object'],
-						':list-es-literals': [false, true, 0, 12, 12.1, Infinity, -Infinity, NaN],
-						':es-set-nodes': new Set([':a', ':b', ':c']),
-					},
-				},
-				validate: `
-					:subject
-						:list-c1-nodes [], _:orange, :object, <z://object> ;
-						:list-c1-literals "object"@en, "object"^^:d, "object"^^<x://d> ;
-						:list-es-literals false, true, 0, 12, 12.1, "INF"^^xsd:double, "-INF"^^xsd:double, "NaN"^^xsd:double ;
-						:es-set-nodes :a, :b, :c .
-				`,
-			}),
-
-			'nested blank nodes': () => ({
-				write: {
-					':subject': {
-						':nested-blank': {},
-						':nested-single': {
-							':prop': ':object',
-						},
-						':nested-multiple': {
-							':prop1': ':object',
-							':prop2': ':object',
-						},
-						':nested-recursive-1': {
-							':prop1': ':object',
-							':prop2': {
-								':recurse1': ':object',
-							},
-						},
-					},
-				},
-				validate: `
-					:subject
-						:nested-blank [] ;
-						:nested-single [
-							:prop :object ;
-						] ;
-						:nested-multiple [
-							:prop1 :object ;
-							:prop2 :object ;
-						] ;
-						:nested-recursive-1 [
-							:prop1 :object ;
-							:prop2 [
-								:recurse1 :object ;
-							] ;
-						] .
-				`,
-			}),
-		},
-
-		'collections': {
-			'empty collection': () => ({
-				write: {
-					'>a': {
-						'>b': [[]],
-						'>c': [[[]]],
-						'>d': [[[], [[]]]],
-					},
-				},
-				validate: `
-					<a> <b> () .
-					<a> <c> (()) .
-					<a> <d> (() (())) .
-				`,
-			}),
-
-			'long items': () => ({
-				write: {
-					'>a': {
-						'>b': [a_items.slice(0).map(s => `"${s}`)],
-					},
-				},
-				validate: `
-					<a> <b> (${a_items.slice(0).map(s => `"${s}" `).join(' ')}) .
-				`,
-			}),
-
-			'recursive collections': () => ({
-				write: {
-					'>a': {
-						'>b': [[
-							'"a', '"b', '"c', [
-								'"D', '"E', '"F', [
-									'"g', '"h', '"i',
-								],
-								'"G', '"H', '"I',
-							],
-						]],
-					},
-				},
-				validate: /* syntax: turtle */ `
-					<a> <b> (
-						"a" "b" "c" (
-							"D" "E" "F" (
-								"g" "h" "i"
-							) "G" "H" "I"
-						)
-					) .
-				`,
-			}),
-
-			'nested anonymous blank node lists inside collections': () => ({
-				write: {
-					'>a': {
-						'>b': [[
-							{
-								'>c': '>d',
-								'>e': ['>f', '>g'],
-								'>h': [['>i', '>j'], '>k'],
-							},
-						]],
-					},
-				},
-				validate: /* syntax: turtle */ `
-					<a> <b> (
-						[
-							<c> <d> ;
-							<e> <f>, <g> ;
-							<h> (<i> <j>), <k> ;
-						]
-					) .
-				`,
-			}),
-
-			'custom collections': () => ({
-				write: {
-					'>a': {
-						'>b': [[
-							'"a', '"b', '"c', [
-								'"D', '"E', '"F', [
-									'"g', '"h', '"i',
-								],
-								'"G', '"H', '"I',
-							],
-						]],
-					},
-				},
-				config: {
-					collections: {
-						first: '>first',
-						rest: '>rest',
-						nil: '>nil',
-					},
-				},
-				validate: /* syntax: turtle */ `
-					<a> <b> [
-						<first> "a" ;
-						<rest> [
-							<first> "b" ;
-							<rest> [
-								<first> "c" ;
-								<rest> [
-									<first> [
-										<first> "D" ;
-										<rest> [
-											<first> "E" ;
-											<rest> [
-												<first> "F" ;
-												<rest> [
-													<first> [
-														<first> "g" ;
-														<rest> [
-															<first> "h" ;
-															<rest> [
-																<first> "i" ;
-																<rest> <nil> ;
-															] ;
-														] ;
-													] ;
-													<rest> [
-														<first> "G" ;
-														<rest> [
-															<first> "H" ;
-															<rest> [
-																<first> "I" ;
-																<rest> <nil>
-															] ;
-														] ;
-													] ;
-												] ;
-											] ;
-										] ;
-									] ;
-									<rest> <nil> ;
-								] ;
-							] ;
-						] ;
-					] .
-				`,
-			}),
-
-			'long custom collections': () => ({
-				write: {
-					'>a': {
-						'>b': [a_items.slice(0).map(s => '"'+s)],
-					},
-				},
-				config: {
-					collections: {
-						first: '>first',
-						rest: '>rest',
-						nil: '>nil',
-					},
-				},
-				validate: /* syntax: turtle */ `
-					<a> <b> ${f_nt(a_items.slice(0))} .
-				`,
-			}),
-
-			'deep nesting': () => ({
-				write: {
-					'>a': {
-						'>b': [
-							['>c', ['>d', ['>e']]],
-						],
-					},
-				},
-				validate: /* syntax: turtle */ `
-					<a> <b> (<c> (<d> (<e>))) .
-				`,
-			}),
-		},
-
-		'corner cases': {
-			'empty lists': () => ({
-				write: {
-					'>a': {
-						'>b': [],
-						'>c': '>d',
-					},
-				},
-				validate: /* syntax: turtle */ `
-					<a> <c> <d> .
-				`,
-			}),
-		},
-	}));
+	writer.validates(modes(t_family.validates));
 
 	writer.events({
 		'prefixes': () => ({
@@ -672,18 +347,18 @@ writer_suite({
 				@prefix demo: <http://ex.org/> .
 				@prefix : <z://y/> .
 
-				demo:Banana rdf:type dbo:Fruit ;
+				demo:Banana a dbo:Fruit ;
 					rdfs:label "Banana"@en ;
 					rdfs:comment "Comment"@en .
 
-				demo:Orange rdf:type dbo:Fruit ;
+				demo:Orange a dbo:Fruit ;
 					rdfs:label "Orange"@en .
 
-				demo:Apple rdf:type dbo:Fruit ;
+				demo:Apple a dbo:Fruit ;
 					rdfs:label "Apple"@en ;
 					rdfs:comment "Comment"@en .
 
-				demo:Watermelon rdf:type dbo:Fruit ;
+				demo:Watermelon a dbo:Fruit ;
 					rdfs:label "Watermelon"@en .
 			`,
 		}),
@@ -723,18 +398,18 @@ writer_suite({
 				@prefix : <z://y/> .
 
 				{
-					demo:Banana rdf:type dbo:Fruit ;
+					demo:Banana a dbo:Fruit ;
 						rdfs:label "Banana"@en ;
 						rdfs:comment "Comment"@en .
 
-					demo:Orange rdf:type dbo:Fruit ;
+					demo:Orange a dbo:Fruit ;
 						rdfs:label "Orange"@en .
 
-					demo:Apple rdf:type dbo:Fruit ;
+					demo:Apple a dbo:Fruit ;
 						rdfs:label "Apple"@en ;
 						rdfs:comment "Comment"@en .
 
-					demo:Watermelon rdf:type dbo:Fruit ;
+					demo:Watermelon a dbo:Fruit ;
 						rdfs:label "Watermelon"@en .
 				}
 			`,
@@ -837,7 +512,7 @@ writer_suite({
 					# above banana
 					demo:Banana 
 						# above type
-						rdf:type dbo:Fruit ;
+						a dbo:Fruit ;
 						# above label
 						rdfs:label "Banana"@en ;
 						# below label
@@ -846,7 +521,7 @@ writer_suite({
 						.
 
 					# below banana
-					demo:Orange rdf:type dbo:Fruit ;
+					demo:Orange a dbo:Fruit ;
 						# below type
 						rdfs:label "Orange"@en .
 
@@ -855,7 +530,7 @@ writer_suite({
 					demo:Apple 
 						# below open
 						# above type
-						rdf:type dbo:Fruit ;
+						a dbo:Fruit ;
 						# below type
 						# above label
 						rdfs:label "Apple"@en ;
@@ -866,12 +541,12 @@ writer_suite({
 						# above close
 						.
 
-					demo:Watermelon rdf:type dbo:Fruit ;
+					demo:Watermelon a dbo:Fruit ;
 						rdfs:label "Watermelon"@en .
 				}
 
 				demo:graph2 {
-					demo:Banana rdf:type dbo:Fruit ;
+					demo:Banana a dbo:Fruit ;
 						rdfs:label "Banana"@en ;
 						rdfs:comment "Comment"@en .
 				}
@@ -884,7 +559,7 @@ writer_suite({
 					demo:Banana 
 						# below open
 						# above type
-						rdf:type dbo:Fruit ;
+						a dbo:Fruit ;
 						# below type
 						# above label
 						rdfs:label "Banana"@en ;
@@ -897,7 +572,7 @@ writer_suite({
 
 					# below banana
 					# above orange
-					demo:Orange rdf:type dbo:Fruit ;
+					demo:Orange a dbo:Fruit ;
 						# below type
 						rdfs:label "Orange"@en .
 
@@ -962,7 +637,7 @@ writer_suite({
 
 					demo:Banana 
 
-						rdf:type dbo:Fruit ;
+						a dbo:Fruit ;
 
 						rdfs:label "Banana"@en ;
 
@@ -971,7 +646,7 @@ writer_suite({
 						.
 
 
-					demo:Orange rdf:type dbo:Fruit ;
+					demo:Orange a dbo:Fruit ;
 
 
 						rdfs:label "Orange"@en .
@@ -981,7 +656,7 @@ writer_suite({
 					demo:Apple 
 
 
-						rdf:type dbo:Fruit ;
+						a dbo:Fruit ;
 
 
 						rdfs:label "Apple"@en ;
@@ -993,14 +668,13 @@ writer_suite({
 
 						.
 
-					demo:Watermelon rdf:type dbo:Fruit ;
+					demo:Watermelon a dbo:Fruit ;
 						rdfs:label "Watermelon"@en .
 				}
 			`,
 		}),
 
 		'empty objects': () => ({
-			debug: true,
 			write: {
 				'_:': {
 					[factory.comment()]: 'above banana',
@@ -1070,7 +744,7 @@ writer_suite({
 					# above banana
 					demo:Banana 
 						# above type
-						rdf:type dbo:Fruit ;
+						a dbo:Fruit ;
 						# between empties
 						# above label
 						rdfs:label "Banana"@en ;
@@ -1087,11 +761,276 @@ writer_suite({
 						# below comment
 						.
 
-					demo:Orange rdf:type dbo:Fruit ;
+					demo:Orange a dbo:Fruit ;
 						# below type
 						rdfs:label "Orange"@en .
 
 					# below orange
+				}
+			`,
+		}),
+
+		'writable data event array': () => ({
+			type: 'array',
+			write: [
+				{
+					type: 'c3',
+					value: {
+						'demo:Grapefruit': {
+							a: 'dbo:Fruit',
+							'rdfs:label': '@en"Grapefruit',
+						},
+					},
+				},
+				{
+					type: 'c3',
+					value: {
+						'demo:Watermelon': {
+							a: 'dbo:Fruit',
+							'rdfs:label': '@en"Watermelon',
+						},
+					},
+				},
+				{
+					type: 'c4',
+					value: {
+						'demo:graph': {
+							'demo:Grapefruit': {
+								a: 'dbo:Fruit',
+								'rdfs:label': '@en"Grapefruit',
+							},
+						},
+					},
+				},
+				{
+					type: 'c4',
+					value: {
+						'_:graph': {
+							'demo:Watermelon': {
+								a: 'dbo:Fruit',
+								'rdfs:label': '@en"Watermelon',
+							},
+						},
+					},
+				},
+			],
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				demo:Grapefruit a dbo:Fruit ;
+					rdfs:label "Grapefruit"@en .
+
+				demo:Watermelon a dbo:Fruit ;
+					rdfs:label "Watermelon"@en .
+
+				demo:graph {
+					demo:Grapefruit a dbo:Fruit ;
+						rdfs:label "Grapefruit"@en .
+				}
+
+				_:graph {
+					demo:Watermelon a dbo:Fruit ;
+						rdfs:label "Watermelon"@en .
+				}
+			`,
+		}),
+
+		'ephemeral blank node c1 graphs': () => ({
+			write: {
+				'_:': {
+					'demo:Grapefruit': {
+						a: 'dbo:Fruit',
+						'rdfs:label': '@en"Grapefruit',
+					},
+				},
+				'_:#anon': {
+					'demo:Watermelon': {
+						a: 'dbo:Fruit',
+						'rdfs:label': '@en"Watermelon',
+					},
+				},
+			},
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				[] {
+					demo:Grapefruit a dbo:Fruit ;
+						rdfs:label "Grapefruit"@en .
+				}
+
+				[] {
+					demo:Watermelon a dbo:Fruit ;
+						rdfs:label "Watermelon"@en .
+				}
+			`,
+		}),
+
+		'c3 ephemeral blank node c1 subjects': () => ({
+			type: 'c3',
+			write: {
+				'_:': {
+					a: ':BlankNode',
+				},
+				'_:#anon': {
+					a: ':BlankNode',
+				},
+			},
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				[] a :BlankNode .
+
+				[] a :BlankNode .
+			`,
+		}),
+
+		'c4 ephemeral blank node c1 subjects': () => ({
+			write: {
+				'*': {
+					'_:': {
+						a: ':BlankNode',
+					},
+				},
+				'demo:graph': {
+					'_:#anon': {
+						a: ':BlankNode',
+					},
+				},
+			},
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				{
+					[] a :BlankNode .
+				}
+
+				demo:graph {
+					[] a :BlankNode .
+				}
+			`,
+		}),
+
+		'c3 ephemeral blank node c1 objects': () => ({
+			type: 'c3',
+			write: {
+				'demo:BlankNodes': {
+					'demo:refs': ['_:', '_:#anon'],
+				},
+			},
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				demo:BlankNodes demo:refs [], [] .
+			`,
+		}),
+
+		'c4 ephemeral blank node c1 objects': () => ({
+			write: {
+				'*': {
+					'demo:BlankNodes': {
+						'demo:refs': ['_:', '_:#anon'],
+					},
+				},
+				'demo:graph': {
+					'demo:BlankNodes': {
+						'demo:refs': ['_:', '_:#anon'],
+					},
+				},
+			},
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				{
+					demo:BlankNodes demo:refs [], [] .
+				}
+
+				demo:graph {
+					demo:BlankNodes demo:refs [], [] .
+				}
+			`,
+		}),
+
+		'c3 ephemeral blank node factory subjects': () => ({
+			type: 'c3',
+			write: {
+				[factory.ephemeral()]: {
+					a: ':BlankNode',
+				},
+				[factory.ephemeral()]: {
+					a: ':BlankNode',
+				},
+			},
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				[] a :BlankNode .
+
+				[] a :BlankNode .
+			`,
+		}),
+
+		'c4 ephemeral blank node factory subjects': () => ({
+			write: {
+				'*': {
+					[factory.ephemeral()]: {
+						a: ':BlankNode',
+					},
+				},
+				'demo:graph': {
+					[factory.ephemeral()]: {
+						a: ':BlankNode',
+					},
+				},
+			},
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				{
+					[] a :BlankNode .
+				}
+
+				demo:graph {
+					[] a :BlankNode .
+				}
+			`,
+		}),
+
+		'c3 ephemeral blank node factory objects': () => ({
+			type: 'c3',
+			write: {
+				'demo:BlankNodes': {
+					'demo:refs': [factory.ephemeral(), factory.ephemeral()],
+				},
+			},
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				demo:BlankNodes demo:refs [], [] .
+			`,
+		}),
+
+		'c4 ephemeral blank node factory objects': () => ({
+			write: {
+				'*': {
+					'demo:BlankNodes': {
+						'demo:refs': [factory.ephemeral(), factory.ephemeral()],
+					},
+				},
+				'demo:graph': {
+					'demo:BlankNodes': {
+						'demo:refs': [factory.ephemeral(), factory.ephemeral()],
+					},
+				},
+			},
+			output: /* syntax: trig */ `
+				${S_PREFIXES_OUTPUT}
+
+				{
+					demo:BlankNodes demo:refs [], [] .
+				}
+
+				demo:graph {
+					demo:BlankNodes demo:refs [], [] .
 				}
 			`,
 		}),

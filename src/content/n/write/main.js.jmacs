@@ -31,6 +31,7 @@ class @{S_LABEL}_Writer extends writable {
 
 		Object.assign(this, {
 			indent: s_indent,
+			state: @{XC_STATE_DATA},
 		});
 	}
 
@@ -62,8 +63,11 @@ class @{S_LABEL}_Writer extends writable {
 					continue;
 				}
 
+				// graph component
+				let kt_graph = factory.c1(sc1_graph, h_prefixes);
+
 				// post component
-				let st_post = ' '+factory.c1(sc1_graph, h_prefixes).verbose()+' .\n';
+				let st_post = (kt_graph.isDefaultGraph? '': ' '+kt_graph.verbose())+' .\n';
 
 				// ref triples
 				let hc3_triples = hc4_quads[sc1_graph];
@@ -234,8 +238,11 @@ class @{S_LABEL}_Writer extends writable {
 			+kq_quad.subject.verbose()
 			+' '+kq_quad.predicate.verbose()
 			+' '+kq_quad.object.verbose()
-			@{B_QUADS? /* syntax: js */ `+' '+kq_quad.graph.verbose()`: ''}
+			@{B_QUADS? /* syntax: js */ `+(kq_quad.graph.isDefaultGraph? '': ' '+kq_quad.graph.verbose())`: ''}
 			+' .\n';
+
+		// update state
+		this.state = @{XC_STATE_DATA};
 
 		return s_write;
 	}

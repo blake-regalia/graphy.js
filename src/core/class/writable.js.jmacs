@@ -66,6 +66,48 @@ class Writable extends stream.Transform {
 			coercions: hm_coercions,
 			collections: g_collections,
 		});
+
+		// one new sources
+		this.on('pipe', (ds_src) => {
+			// listen for prefix events
+			ds_src.on('prefix', (s_prefix_id, p_iri) => {
+				this.write({
+					type: 'prefixes',
+					value: {
+						[s_prefix_id]: p_iri,
+					},
+				})
+			});
+
+			// listen for comment events
+			ds_src.on('comment', (s_comment) => {
+				this.write({
+					type: 'c3',
+					value: {
+						[factory.comment()]: s_comment,
+					},
+				});
+			});
+		});
+
+		// bind event listeners
+		@*{
+			const H_WRITE_EVENTS = {
+				close: {once:true},
+				drain: {},
+				error: {},
+				finish: {once:true},
+				data: {},  // attach data listener last
+				end: {once:true},
+				warning: {},
+			};
+
+			for(let [s_event, g_event] of Object.entries(H_WRITE_EVENTS)) {
+				yield /* syntax: js */ `
+					if(gc_writable.${s_event}) this.${g_event.once? 'once': 'on'}('${s_event}', gc_writable.${s_event});
+					`.trim()+'\n';
+			}
+		}
 	}
 
 	// overrideable no-ops

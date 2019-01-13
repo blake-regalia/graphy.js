@@ -416,8 +416,14 @@ class Canonicalizer_ct {
 		a_normalized.sort(F_SORT_LINE);
 
 		// create dataset reflecting quad order
-		let k_tree_normalized = new DatasetTree();
+		let k_tree_normalized = new DatasetTree({
+			// merge prefixes; this instance has precedence
+			prefixes: this.prefixes,
+		});
 		k_tree_normalized.addQuads(a_normalized.map(g => g.quad));
+
+		// end writable side of stream
+		k_tree_normalized.end();
 
 		// return strut
 		return {
@@ -683,10 +689,12 @@ class DatasetTree extends stream.Duplex {
 		// config-struct event binding
 		this.bind(g_config);
 
-		let h_prefixes = {};
+		let h_prefixes = g_config.prefixes || {};
 
 		// source piped to this
 		this.on('pipe', (ds_src) => {
+			this.src = ds_src;
+
 			ds_src.on('prefix', (s_prefix, p_iri) => {
 				// save/update prefix mapping
 				h_prefixes[s_prefix] = p_iri;
@@ -703,15 +711,17 @@ class DatasetTree extends stream.Duplex {
 				}
 			});
 
-			// // once input ends
-			// ds_src.once('end', () => {
-			// 	debugger;
-			// 	this.emit('ready', this);
-			// });
+			// once input ends
+			ds_src.once('eof', () => {
+				this.eofd = true;
+				// debugger;
+				// this.emit('ready', this);
+			});
 		});
 
 		this.once('finish', () => {
 			this.emit('ready', this);
+			this.finishedd = true;
 
 			if(this.push_waiting) {
 				this._read(this.push_waiting);
@@ -734,6 +744,14 @@ class DatasetTree extends stream.Duplex {
 			transform_tree: this,
 			push_waiting: 0,
 		});
+
+		// data given
+		if(h_quad_tree) {
+			// auto-end writable side of duplex
+			setTimeout(() => {
+				this.end();
+			}, 0);
+		}
 	}
 
 	// on end input
@@ -752,7 +770,22 @@ class DatasetTree extends stream.Duplex {
 
 	// on pipe
 	pipe(ds_out) {
-		// deduce write mode
+		// // graphy dataset tree
+		// if(ds_out.isGraphyDatasetTree) {
+		// 	debugger;
+
+		// 	// change read moe
+		// 	this._read = function(n_size) {
+		// 		this.push({
+
+		// 		});
+
+		// 		// eos
+		// 		this.push(null);
+		// 	};
+		// }
+
+		// graphy writable
 		if(ds_out.isGraphyWritable) {
 			// change read mode
 			this._read = function(n_size) {
@@ -788,7 +821,16 @@ class DatasetTree extends stream.Duplex {
 		}
 		// non-object mode
 		else if(!ds_out._writableState.objectMode) {
-			ds_out = stream.quads_to_json(ds_out);
+			let ds_dst = ds_out;
+
+			// transform to JSON strings first
+			ds_out = stream.quads_to_json();
+
+			// forward to super
+			super.pipe(ds_out);
+
+			// pipe to destination
+			return ds_out.pipe(ds_dst);
 		}
 
 		// forward to super
@@ -1769,7 +1811,10 @@ class DatasetTree extends stream.Duplex {
 		}
 
 		// always return new instance
-		return new DatasetTree({}, h_quads_u);
+		return new DatasetTree({
+			// merge prefixes; this instance has precedence
+			prefixes: Object.assign({}, k_other.prefixes, this.prefixes),
+		}, h_quads_u);
 	}
 
 	// compute intersection of two sets
@@ -1885,7 +1930,10 @@ class DatasetTree extends stream.Duplex {
 			}
 		}
 
-		return new DatasetTree({}, h_quads_i);
+		return new DatasetTree({
+			// merge prefixes; this instance has precedence
+			prefixes: Object.assign({}, k_other.prefixes, this.prefixes),
+		}, h_quads_i);
 	}
 
 	// subtract a subset from this
@@ -1998,7 +2046,10 @@ class DatasetTree extends stream.Duplex {
 		}
 
 		// return new dataset tree
-		return new DatasetTree({}, h_quads_r);
+		return new DatasetTree({
+			// merge prefixes; this instance has precedence
+			prefixes: Object.assign({}, k_subset.prefixes, this.prefixes),
+		}, h_quads_r);
 	}
 
 	// tests if another set is contained by this set

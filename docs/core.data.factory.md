@@ -20,6 +20,7 @@
      - [`.defaultGraph(...)`](#function_default-graph)
      - [`.literal(...)`](#function_literal)
    - Specialized Literal Term constructors
+     - [`.ephemeral(...)`](#function_ephemeral)
      - [`.boolean(...)`](#function_boolean)
      - [`.integer(...)`](#function_integer)
      - [`.decimal(...)`](#function_decimal)
@@ -43,6 +44,7 @@
    - [GenericTerm](#class_generic-term)
      - [NamedNode](#class_named-node)
      - [BlankNode](#class_blank-node)
+       - [EphemeralBlankNode](#class_ephemeral-blank-node)
      - [Literal](#class_literal)
        - [Literal_Boolean](#class_literal-boolean)
        - [Literal_Integer](#class_literal-integer)
@@ -176,13 +178,13 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
  - [`factory.blankNode`](#function_blank-bode)`(...)`
    - *overloaded variants*
-     - `()` -- no args constructor will generate a new UUID4 in attempt to avoid label collisions
+     - `()` -- 'auto'-version (no args constructor) will generate a new UUID4 in attempt to avoid label collisions
      - `(label: string)` -- uses the given `label` 
    - **returns** a [new BlankNode](#class_blank-node)
    - *examples:*
        ```js
        // no-args constructor
-       factory.blankNode().verbose();  // '_:439e14ae_1531_4683_ac96_b9f091da9595'
+       factory.blankNode().verbose();  // '_:_439e14ae_1531_4683_ac96_b9f091da9595'
 
        // use given label constructor
        factory.blankNode('label').verbose();  // '_:label'
@@ -213,6 +215,39 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
        factory.literal('hello Mars!', '@en').verbose();  // '"hello Mars!"@en'
        ```
 
+<a name="function_ephemeral" />
+
+ - [`factory.ephemeral`](#function_ephemeral)`()`
+   - **returns** a [new BlankNode](#class_blank-node) with `.isAnonymous` set to `true`.
+   - *examples:*
+       ```js
+       let kt_ephemeral = factory.ephemeral();
+
+       // returns a different label each time `.value` is accessed to ensure it is not reusable
+       kt_ephemeral.label;  // '_:_1110a7e0_39fa_45ed_88c3_03912da0d93c'
+       kt_ephemeral.label;  // '_:645ed417_7e99_40c2_81cc_aee177b4d9e9'
+
+       // same thing happens with `.verbose()`
+       kt_ephemeral.verbose();  // '_:82d116e8_352b_4ec3_8e3a_3b100a53b557'
+       kt_ephemeral.verbose();  // '_:72b4a5ab_f4f0_494c_a432_c82b9d5aed50'
+
+       // using with `.terse()`
+       kt_ephemeral.terse();  // '[]'
+
+       // can also be used in c3/c4 hashes
+       [...factory.c3({
+           [factory.ephemeral()]: {
+               'demo:refs': factory.ephemeral(),
+           },
+       })].map(g => g.terse()).join('');  // '[] demo:refs [] .'
+       ```
+
+<a name="function_boolean" />
+
+ - [`factory.boolean`](#function_boolean)`(value: boolean | string)`
+   - **returns** a [new Literal_Boolean](#class_literal-boolean)
+   - *examples:* [See Literal_Boolean](#class_literal-boolean)
+
 <a name="function_integer" />
 
  - [`factory.integer`](#function_integer)`(value: `[`#number/integer`](#number_integer)` | string)`
@@ -230,12 +265,6 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
  - [`factory.decimal`](#function_decimal)`(value: number | string)`
    - **returns** a [new Literal_Decimal](#class_literal-decimal)
    - *examples:* [See Literal_Decimal](#class_literal-decimal)
-
-<a name="function_boolean" />
-
- - [`factory.boolean`](#function_boolean)`(value: boolean | string)`
-   - **returns** a [new Literal_Boolean](#class_literal-boolean)
-   - *examples:* [See Literal_Boolean](#class_literal-boolean)
 
 <a name="function_number" />
 
@@ -386,9 +415,10 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
       
       # this is a comment
-      demo:Banana rdf:type dbo:Fruit ;
+      demo:Banana a dbo:Fruit ;
          # so is this...
          rdfs:label "Banana"@en .
+      
       
       ```
 
@@ -456,15 +486,26 @@ A class that represents an RDF blank node.
 
 **Properties:**
  - `.isBlankNode` : `boolean` = `true` -- a faster alternative to test for BlankNode term types
- - `.isAnonymous` : `boolean` -- whether or not this term was constructed anonymously
+ - `.isAnonymous` : `boolean` -- whether or not this term was constructed from an _anonymous_ blank node
 
 **Methods:**
  - ... [see those inherited from GenericTerm](#class_generic-term)
 
 **Examples:**
 ```js
-factory.blankNode().isAnonymous;  // true
-factory.blankNode('label').isAnonymous;  // false
+let kt_auto = factory.blankNode();
+let kt_labeled = factory.blankNode('label');
+let kt_ephemeral = factory.ephemeral();
+
+kt_auto.isAnonymous;  // false
+kt_label.isAnonymous;  // false
+kt_ephemeral.isAnonymous;  // true
+
+kt_auto.value;  // '_f4b39957_4619_459e_b954_a26f7b6da4a'
+kt_label.value;  // 'label'
+kt_ephemeral.value;  // '_66f0cc19_e551_4d82_8bf2_73329fb578b2'
+kt_ephemeral.value;  // '_12ebb618_981b_45c9_a63b_a1e30170fcd1'
+kt_ephemeral.value;  // '_4335c2d1_b7e2_4a43_ae81_a9f3a73e31ab'
 
 graphy.content.ttl.read('_:a <b> [] .', {
     data(y_quad) {
@@ -472,6 +513,40 @@ graphy.content.ttl.read('_:a <b> [] .', {
         y_quad.object.isAnonymous;  // true
     },
 });
+```
+
+<a name="class_ephemeral-blank-node" />
+
+### class [**EphemeralBlankNode**](#class_ephemeral-blank-node) extends [BlankNode](#class_blank-node) implements [AnyTerm](#interface_any-term), [@RDFJS/Term](https://rdf.js.org/#term-interface)
+A class that represents an anonymous RDF blank node with ephemeral qualities. Primarily used for [writing](content.textual#verb_write).
+
+**Properties implementing [@RDFJS/BlankNode](https://rdf.js.org/#blanknode-interface)**:
+ - `.termType` : `string` = `'BlankNode'`
+ - `.value` : `string` -- the label of a blank node (i.e., without leading `'_:'`) which changes everytime it is accessed
+
+**Properties:**
+ - ... [see those inherited from BlankNode](#class_blank-node)
+ - `.isAnonymous` : `boolean` = `true` -- indicates this represents an anonymous blank node
+ - `.isEphemeral` : `boolean` = `true` -- used to help indicate to interested parties that this blank node is ephemeral
+
+**Methods:**
+ - ... [see those inherited from BlankNode](#class_blank-node)
+ - `equals(other: `[`AnyTerm`](#interface_any-term)`)`
+   - these instances will never `.equals()` any other term no matter what
+   - **returns** `false`
+
+**Examples:**
+```js
+let kt_ephemeral = factory.ephemeral();
+
+kt_ephemeral.isAnonymous;  // true
+
+// changes everytime it is accessed
+kt_ephemeral.value;  // '_66f0cc19_e551_4d82_8bf2_73329fb578b2'
+kt_ephemeral.value;  // '_12ebb618_981b_45c9_a63b_a1e30170fcd1'
+kt_ephemeral.value;  // '_4335c2d1_b7e2_4a43_ae81_a9f3a73e31ab'
+
+kt_ephemeral.equals(kt_ephemeral);  // '_4335c2d1_b7e2_4a43_ae81_a9f3a73e31ab'
 ```
 
 <a name="class_default-graph" />

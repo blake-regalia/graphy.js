@@ -33,17 +33,20 @@ class @{S_LABEL}_Writer extends writable {
 			indent: s_indent='\t',
 			tokens: gc_tokens=null,
 			collections: gc_collections=null,
+			debug: b_debug=false,
 		} = gc_writer;
 
 		Object.assign(this, {
 			indent: s_indent,
+			debug: b_debug,
 		});
 
 		@- B_QUADS
+			let s_graph_token = '';
+
 			// token config
 			if(gc_tokens) {
 				// 'graph' token
-				let s_graph_token = '';
 				if(gc_tokens.graph) {
 					let z_token = gc_tokens.graph;
 
@@ -64,10 +67,10 @@ class @{S_LABEL}_Writer extends writable {
 						s_graph_token = z_token+' ';
 					}
 				}
-
-				// set graph token
-				this.graph_token = s_graph_token;
 			}
+
+			// set graph token
+			this.graph_token = s_graph_token;
 		@;
 
 			@.{/*
@@ -192,8 +195,7 @@ class @{S_LABEL}_Writer extends writable {
 				}
 
 				// serialize open graph
-				let kt_graph = factory.c1_node(sc1_graph, h_prefixes)
-				let st_graph = kt_graph.isAnonymous? '[]': kt_graph.terse(h_prefixes);
+				let st_graph = factory.c1_node(sc1_graph, h_prefixes).terse(h_prefixes);
 				s_write += s_graph_token+(st_graph? st_graph+' ': '')+'{\n';
 
 				// update state
@@ -221,8 +223,7 @@ class @{S_LABEL}_Writer extends writable {
 				let i_triples = s_write.length;
 
 				// serialize subject
-				let kt_subject = factory.c1_node(sc1_subject, h_prefixes);
-				s_write += s_delim_triples+@{b_c4? 's_indent+': ''}(kt_subject.isAnonymous? '[]': kt_subject.terse(h_prefixes))+' ';
+				s_write += s_delim_triples+@{b_c4? 's_indent+': ''}factory.c1_node(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
 
 				// pair indent & terminator
 				let s_indent_pairs = '';
@@ -266,6 +267,11 @@ class @{S_LABEL}_Writer extends writable {
 
 					// not empty
 					b_empty = false;
+
+					// cannot use blank node in predicate position
+					if('_' === sc1_predicate[0] && ':' === sc1_predicate[1]) {
+						throw new Error(`Cannot use blank node in predicate position of c@{n_n} hash;@{b_c4? ` graph:'\${sc1_graph}',`: ''} subject:'${sc1_subject}', predicate:'${sc1_predicate}'`);
+					}
 
 					// create predicate
 					let kt_predicate = factory.c1_named_node(sc1_predicate, h_prefixes);
@@ -335,11 +341,7 @@ class @{S_LABEL}_Writer extends writable {
 		// deduce object value type
 		switch(typeof z_objects) {
 			// concise-term string
-			case 'string': {
-				let kt_object = factory.c1(z_objects, h_prefixes);
-				if(kt_object.isAnonymous) return '[]';
-				return kt_object.terse(h_prefixes);
-			}
+			case 'string': return factory.c1(z_objects, h_prefixes).terse(h_prefixes);
 
 			// numeric type
 			case 'number': return factory.number(z_objects).terse(h_prefixes);
@@ -420,10 +422,6 @@ class @{S_LABEL}_Writer extends writable {
 				}
 				// graphy term
 				else if(z_objects.isGraphyTerm) {
-					// anonymous blank node
-					if(z_objects.isAnonymous) return '[]';
-
-					// anything else
 					return z_objects.terse(h_prefixes);
 				}
 				// RDFJS term
@@ -499,8 +497,11 @@ class @{S_LABEL}_Writer extends writable {
 
 		return s_write;
 	}
-
 }
+
+Object.assign(@{S_LABEL}_Writer.prototype, {
+	anonymous_blank_nodes: true,
+});
 
 module.exports = function(gc_writer) {
 	return new @{S_LABEL}_Writer(gc_writer);

@@ -20,7 +20,7 @@ class writer_suite {
 		Object.assign(this, {
 			...gc_suite,
 			prefix_string: s_prefix_string,
-			package: `content.${gc_suite.alias}.read`,
+			package: `content.${gc_suite.alias}.write`,
 		});
 
 		describe(this.package, () => {
@@ -50,6 +50,7 @@ class writer_suite {
 	validates(h_tree) {
 		util.map_tree(h_tree, (s_label, f_leaf) => {
 			let {
+				debug: b_debug=false,
 				write: hcn_write,
 				config: w_config={},
 				validate: st_validate,
@@ -72,7 +73,13 @@ class writer_suite {
 					.bucket();
 
 				// canonicalize output
-				let st_result = await this.normalize(st_output, true);
+				let st_result;
+				try {
+					st_result = await this.normalize(st_output, true);
+				}
+				catch(e_interpret) {
+					throw new Error(`error while validating writer output string: ${e_interpret.stack}\n\n${st_output}`)
+				}
 
 				// canonicalize expectation
 				let st_expect = await this.normalize(`
@@ -99,7 +106,6 @@ class writer_suite {
 					type: s_type=null,
 					config: w_config={},
 					output: st_expect,
-					debug: b_debug,
 				} = f_leaf();
 
 				it(s_label, async() => {
@@ -200,6 +206,55 @@ class writer_suite {
 					for(let w_write of a_writes) {
 						ds_writer.write(w_write);
 					}
+
+					// end stream
+					ds_writer.end();
+				});
+			});
+		});
+	}
+
+	throws(h_tree) {
+		describe('throws', () => {
+			util.map_tree(h_tree, (s_label, f_leaf) => {
+				let {
+					write: w_write,
+					type: s_type=null,
+					config: w_config={},
+					match: r_match=null,
+				} = f_leaf();
+
+				it(s_label, (fke_test) => {
+					// create writer
+					let ds_writer = this.writer({
+						prefixes: this.prefixes,
+						...w_config,
+
+						// pipe to null
+						data() {},
+
+						// listen for error, caught error
+						error(e_write) {
+							// expect message match
+							if(r_match) {
+								expect(e_write.message).to.match(r_match);
+							}
+
+							// done
+							fke_test();
+						},
+
+						// should not have reached
+						eof() {
+							fke_test(new Error('never threw an error'));
+						},
+					});
+
+					// write data to it
+					ds_writer.write({
+						type: s_type || this.type,
+						value: w_write,
+					});
 
 					// end stream
 					ds_writer.end();

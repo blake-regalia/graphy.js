@@ -308,4 +308,15 @@ const helper = module.exports = {
 			return s_indent+s_text.trim();
 		}
 	},
+
+	serialize_collection_turtle(a_collection, st_first, st_rest, st_nil) {
+		return a_collection.length
+			? /* syntax: trig */ `
+				[
+					${st_first} ${a_collection.shift()} ;
+					${st_rest} ${helper.serialize_collection_turtle(a_collection, st_first, st_rest, st_nil)} ;
+				]
+			`
+			: st_nil;
+	},
 };

@@ -209,6 +209,43 @@ if(b_is_node) {
 	}
 }
 
+class Quads_To_Other extends Transform {
+	constructor() {
+		super({
+			writableObjectMode: true,
+			readableObjectMode: true,
+		});
+
+		// forward prefix and comment events
+		this.on('pipe', (ds_src) => {
+			ds_src
+				.on('prefix', (...a_args) => {
+					this.emit('prefix', ...a_args);
+				})
+				.on('comment', (...a_args) => {
+					this.emit('comment', ...a_args);
+				});
+		});
+	}
+}
+
+class Quads_To_JSON_Transform extends Quads_To_Other {
+	// serializse json
+	_transform(g_quad, s_encoding, fk_transform) {
+		fk_transform(null, JSON.stringify(g_quad.isolate())+'\n');
+	}
+}
+
+class Quads_To_Writable extends Quads_To_Other {
+	_transform(g_quad, s_encoding, fk_transform) {
+		fk_transform(null, {
+			type: 'quad',
+			value: g_quad,
+		});
+	}
+}
+
+
 module.exports = {
 	...stream,
 	Readable,
@@ -217,22 +254,13 @@ module.exports = {
 	Transform,
 
 	// create a transform from quad objects into JSON strings for trivial serialization
-	quads_to_json(ds_dst) {
-		// serializse json
-		let ds_json = new Transform({
-			writableObjectMode: true,
-			readableObjectMode: false,
+	quads_to_json() {
+		return new Quads_To_JSON_Transform();
+	},
 
-			transform(g_quad, s_encoding, fk_transform) {
-				fk_transform(null, JSON.stringify(g_quad.isolate())+'\n');
-			},
-		});
-
-		// pipe thru transform first
-		ds_json.pipe(ds_dst);
-
-		// re-assign output
-		return ds_json;
+	// create a transform from quad objects into writable data events
+	quads_to_writable() {
+		return new Quads_To_Writable();
 	},
 
 	// create a simple, single-event readable stream
@@ -242,7 +270,7 @@ module.exports = {
 
 		// readable
 		return new Readable({
-			objectMode: !s_encoding && 'object' === typeof w_push && !Buffer.isBuffer(w_push),
+			objectMode: !s_encoding && 'string' !== typeof w_push && !Buffer.isBuffer(w_push),
 
 			read() {
 				this.push(w_push, s_encoding);

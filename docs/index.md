@@ -1,7 +1,7 @@
 
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
-# `graphy` is a collection of JavaScript packages for RDF that focuses on performance and usability.
+# `graphy` is a collection of RDF libraries for JavaScript developers with a focus on performance and usability.
 > Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
 
 <br />
@@ -128,9 +128,11 @@ Outputs:
 demo:Blake foaf:name "Blake" ;
    demo:id 1 ;
    demo:likes demo:Banana .
+
 demo:Banana foaf:name "Banana" ;
    demo:id 2 ;
    demo:likes demo:Water, demo:Sunlight, demo:Soil .
+
 
 ```
 

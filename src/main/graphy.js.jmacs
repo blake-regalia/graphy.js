@@ -1,6 +1,16 @@
 #!/usr/bin/env node
 @import '../share/channel.jmacs'
 
+const gobble = (s_text, s_indent='') => {
+	let m_pad = /^(\s+)/.exec(s_text.replace(/^([ \t]*\n)/, ''));
+	if(m_pad) {
+		return s_indent+s_text.replace(new RegExp(`\\n${m_pad[1]}`, 'g'), '\n'+s_indent.trim()).trim();
+	}
+	else {
+		return s_indent+s_text.trim();
+	}
+};
+
 @.{
 	let h_content_types = {
 		ttl: {},
@@ -100,15 +110,16 @@ const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS()})(;.+)*$/i;
 const graphy = module.exports = Object.assign({
 
 	content: Object.assign(function(s_query) {
+		if(s_query in H_CONTENT_TAGS) {
+			return H_CONTENT_TAGS[s_query];
+		}
+
 		let m_content_type = R_CONTENT_TYPE.exec(s_query);
 		if(!m_content_type) throw new Error(`invalid content-type string: "${s_query}"`);
 		let [, s_content_type, s_parameters] = m_content_type;
 		let s_content_type_normal = s_content_type.toLowerCase();
 
-		if(s_content_type_normal in H_CONTENT_TAGS) {
-			return H_CONTENT_TAGS[s_content_type_normal];
-		}
-		else if(s_content_type_normal in H_CONTENT_MIMES) {
+		if(s_content_type_normal in H_CONTENT_MIMES) {
 			return H_CONTENT_MIMES[s_content_type_normal];
 		}
 		else {
@@ -122,11 +133,48 @@ const graphy = module.exports = Object.assign({
 		}
 	}),
 
+	core: {
+		data: {
+			@{memoize('core.data.factory')}
+		},
+	},
+
+	get 'core.data.factory'() {
+		delete graphy['core.data.factory'];
+		return (graphy['core.data.factory'] = require('@{channel('core.data.factory')}'));
+	},
+
+	get 'util.dataset.tree'() {
+		delete graphy['util.dataset.tree'];
+		return (graphy['util.dataset.tree'] = require('@{channel('util.dataset.tree')}'));
+	},
+
 	util: {
 		dataset: {
 			@{memoize('util.dataset.tree')}
 		},
 	},
+
+	@*{
+		for(let s_content in h_content_types) {
+			yield /* syntax: js */ `
+				get 'content.${s_content}.read' () {
+					// memoize
+					delete graphy['content.${s_content}.read'];
+					return graphy['content.${s_content}.read'] = require('${channel(`content.${s_content}.read`)}');  // eslint-disable-line global-require
+				},
+			`;
+
+			yield /* syntax: js */ `
+				get 'content.${s_content}.write' () {
+					// memoize
+					delete graphy['content.${s_content}.write'];
+					return graphy['content.${s_content}.write'] = require('${channel(`content.${s_content}.write`)}');  // eslint-disable-line global-require
+				},
+			`;
+		}
+	}
+
 
 @//@
 
@@ -139,7 +187,40 @@ if('undefined' !== typeof window) window.graphy = graphy;
 // cli
 if(module === require.main) {
 	const fs =require('fs');
+	const path = require('path');
 	const mk_yargs = require('yargs/yargs');
+	const stream = require('@{channel('core.iso.stream')}');
+
+	class answer_source extends require('stream').Readable {
+		constructor(w_datum) {
+			super({
+				objectMode: true,
+			});
+
+			this.datum = w_datum;
+		}
+
+		// intercept pipe
+		pipe(ds_dst) {
+			// string out
+			if(!ds_dst._writableState.objectMode) {
+				// change read mode; push as JSON
+				this._read = () => {
+					this.push(JSON.stringify(this.datum)+'\n', 'utf8');
+					this.push(null);
+				};
+			}
+
+			// forward to super
+			return super.pipe(ds_dst);
+		}
+
+		// push object
+		_read() {
+			this.push(this.datum);
+			this.push(this.null);
+		}
+	}
 
 	const exit = (s_exit) => {
 		console.error(s_exit);
@@ -229,49 +310,68 @@ if(module === require.main) {
 		'util.dataset.tree': async(a_args, g_context) => {
 			const dataset_tree = graphy.util.dataset.tree;
 
-			let a_operation_keys = ['c', 'u', 'i', 'd', 'm'];
+			let s_group_multi_input = 'Transform 1 or more inputs to 1 output:';
+			let s_group_dual_input = 'Transform exactly 2 inputs into 1 output:';
+			let s_group_boolean = 'Test exactly 2 inputs to get `true` or `false`:';
 
-			let s_group_multi_input = 'With multiple inputs:';
-			let s_group_dual_input = 'With exactly two inputs:';
+			let h_operations = {
+				z: {
+					type: 'boolean',
+					alias: ['canonicalize'],
+					group: s_group_multi_input,
+					describe: 'canonicalize 1 or more inputs',
+				},
+				u: {
+					type: 'boolean',
+					alias: ['union'],
+					group: s_group_multi_input,
+					describe: 'perform the union of 1 or more inputs',
+				},
+				i: {
+					type: 'boolean',
+					alias: ['intersect', 'intersection'],
+					group: s_group_multi_input,
+					describe: 'perform the intersection of 1 or more inputs',
+				},
+				d: {
+					type: 'boolean',
+					alias: ['diff', 'difference'],
+					group: s_group_dual_input,
+					describe: 'perform a difference between two inputs',
+				},
+				m: {
+					type: 'boolean',
+					alias: ['minus', 'subtract', 'subtraction'],
+					group: s_group_dual_input,
+					describe: 'perform a subtraction by removing input-B from input-A',
+				},
+				c: {
+					type: 'boolean',
+					alias: ['contains'],
+					group: s_group_boolean,
+					describe: 'test if input-A completely contains input-B, i.e., if B is a subset of A',
+				},
+				j: {
+					type: 'boolean',
+					alias: ['disjoint'],
+					group: s_group_boolean,
+					describe: 'test if input-A is disjoint with input-B',
+				},
+				e: {
+					type: 'boolean',
+					alias: ['equals'],
+					group: s_group_boolean,
+					describe: 'test if input-A is exactly equal to input-B (you can test for isomorphism by piping thru --canonicalize first)',
+				},
+			};
+
+			let a_operation_keys = Object.keys(h_operations);
+			for(let s_operation of a_operation_keys) {
+				h_operations[s_operation].conflicts = a_operation_keys.filter(s => s_operation !== s);
+			}
 
 			let g_argv = command(g_context.command)
-				.options({
-					c: {
-						type: 'boolean',
-						alias: 'canonicalize',
-						group: s_group_multi_input,
-						describe: 'canonicalize 1 or more inputs',
-						conflicts: a_operation_keys.filter(s => 'c' !== s),
-					},
-					u: {
-						type: 'boolean',
-						alias: 'union',
-						group: s_group_multi_input,
-						describe: 'perform the union of 1 or more inputs',
-						conflicts: a_operation_keys.filter(s => 'u' !== s),
-					},
-					i: {
-						type: 'boolean',
-						alias: ['intersect', 'intersection'],
-						group: s_group_multi_input,
-						describe: 'perform the intersection of 1 or more inputs',
-						conflicts: a_operation_keys.filter(s => 'i' !== s),
-					},
-					d: {
-						type: 'boolean',
-						alias: ['diff', 'difference'],
-						group: s_group_dual_input,
-						describe: 'perform a difference between two inputs',
-						conflicts: a_operation_keys.filter(s => 'd' !== s),
-					},
-					m: {
-						type: 'boolean',
-						alias: ['minus', 'subtract', 'subtraction'],
-						group: s_group_dual_input,
-						describe: 'perform a subtraction by removing input-B from input-A',
-						conflicts: a_operation_keys.filter(s => 'm' !== s),
-					},
-				})
+				.options(h_operations)
 				.help()
 				.version(false)
 				.parse(a_args);
@@ -286,8 +386,8 @@ if(module === require.main) {
 					? 'union'
 					: 'intersection';
 
-				// less than 2 inputs; no-op
-				if(n_inputs < 2) return a_inputs;
+				// // less than 2 inputs; no-op
+				// if(n_inputs < 2) return a_inputs;
 
 				// create trees
 				let a_trees = a_inputs.map(() => dataset_tree());
@@ -323,12 +423,53 @@ if(module === require.main) {
 
 				// not two inputs
 				if(2 !== n_inputs) {
-					exit(`dual input operation expects two inputs but found ${n_inputs}`);
+					exit(`operation '${s_operation}' expects two inputs but found ${n_inputs}`);
 				}
 
 				// async
 				return new Promise((fk_resolve) => {
 					let operate = () => [k_tree_a[s_operation](k_tree_b)];
+
+					// wait for a
+					let k_tree_a = dataset_tree();
+					let b_finished_a = false;
+					k_tree_a.on('finish', () => {
+						b_finished_a = true;
+						if(b_finished_b) fk_resolve(operate());
+					});
+
+					// wait for b
+					let k_tree_b = dataset_tree();
+					let b_finished_b = false;
+					k_tree_b.on('finish', () => {
+						b_finished_b = true;
+						if(b_finished_a) fk_resolve(operate());
+					});
+
+					// ref both input streams
+					let [ds_input_a, ds_input_b] = a_inputs;
+
+					// pipe each to its tree
+					ds_input_a.pipe(k_tree_a);
+					ds_input_b.pipe(k_tree_b);
+				});
+			}
+			// boolean
+			else if(g_argv.contains || g_argv.disjoint || g_argv.equals) {
+				let s_operation =  g_argv.contains
+					? 'contains'
+					: (g_argv.disjoint
+						? 'disjoint'
+						: 'equals');
+
+				// not two inputs
+				if(2 !== n_inputs) {
+					exit(`boolean operation '${s_operation}' expects two inputs but found ${n_inputs}`);
+				}
+
+				// async
+				return new Promise((fk_resolve) => {
+					let operate = () => [new answer_source(k_tree_a[s_operation](k_tree_b))];
 
 					// wait for a
 					let k_tree_a = dataset_tree();
@@ -377,25 +518,56 @@ if(module === require.main) {
 	// pipeline
 	let a_pipeline = [];
 	{
-		let a_series = [a_argv[0]];
+		let a_series = [];
 
-		for(let i_argv=1; i_argv<n_args; i_argv++) {
+		for(let i_argv=0; i_argv<n_args; i_argv++) {
 			let s_arg = a_argv[i_argv];
 
-			// internal pipe
-			if('--pipe' === s_arg) {
-				a_pipeline.push(a_series);
-				if(i_argv === n_args) {
-					exit(`was expecting pipe destination after --pipe: ${a_argv}`);
+			// after first arg
+			if(i_argv) {
+				// internal pipe
+				if('--pipe' === s_arg) {
+					a_pipeline.push(a_series);
+					if(i_argv === n_args) {
+						exit(`was expecting pipe destination after --pipe: ${a_argv}`);
+					}
+					a_series = [];
+					continue;
 				}
-				a_series = [];
-				continue;
+				// inputs follow
+				else if('--inputs' === s_arg) {
+					// convert to readable streams
+					a_inputs.push(...a_argv.slice(i_argv+1).map(p => fs.createReadStream(p)));
+					break;
+				}
 			}
-			// inputs follow
-			else if('--inputs' === s_arg) {
-				// convert to readable streams
-				a_inputs.push(...a_argv.slice(i_argv+1).map(p => fs.createReadStream(p)));
-				break;
+
+			// help
+			if('-h' === s_arg || '--help' === s_arg) {
+				// eslint-disable-next-line no-console
+				console.log('\n'+gobble(`
+					Usage: graphy COMMAND [--pipe COMMAND]*
+
+					Commands:
+					  content.nt.read       Read an N-Triples document
+					  content.nt.write      Write to N-Triples format
+					  content.nq.read       Read an N-Quads document
+					  content.nq.write      Write to N-Quads format
+					  content.ttl.read      Read a Turtle document
+					  content.ttl.write     Write to Turtle format
+					  content.trig.read     Read a TriG document
+					  content.trig.write    Write to TriG format
+					  util.dataset.tree     Perform some transformation on a datset
+
+					Run 'graphy COMMAND --help' for more information on a command.
+				`));
+				process.exit(0);
+			}
+			// version
+			else if('-v' === s_arg || '--version' === s_arg) {
+				// eslint-disable-next-line no-console
+				console.log(require(path.join(__dirname, './package.json')).version);
+				process.exit(0);
 			}
 
 			a_series.push(s_arg);

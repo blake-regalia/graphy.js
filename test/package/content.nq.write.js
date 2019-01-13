@@ -21,10 +21,6 @@ const H_PREFIXES = {
 };
 
 let a_items = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-let f_nt = a_rest => /* syntax: turtle */ `[
-	<first> "${a_rest.shift()}" ;
-	<rest> ${a_rest.length? f_nt(a_rest): '<nil>'} ;
-]`;
 
 const modes = (h_tree) => {
 	let g_mods = {
@@ -380,7 +376,7 @@ writer_suite({
 					},
 				},
 				validate: /* syntax: turtle */ `
-					<a> <b> ${f_nt(a_items.slice(0))} .
+					<a> <b> ${util.serialize_collection_turtle(a_items.slice(0).map(s => `"${s}"`), '<first>', '<rest>', '<nil>')} .
 				`,
 			}),
 
@@ -698,16 +694,16 @@ writer_suite({
 				},
 			},
 			output: /* syntax: n-quads */ `
-				<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit>  .
-				<http://ex.org/Banana> <http://www.w3.org/2000/01/rdf-schema#label> "Banana"@en  .
-				<http://ex.org/Banana> <http://www.w3.org/2000/01/rdf-schema#comment> "Comment"@en  .
-				<http://ex.org/Orange> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit>  .
-				<http://ex.org/Orange> <http://www.w3.org/2000/01/rdf-schema#label> "Orange"@en  .
-				<http://ex.org/Apple> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit>  .
-				<http://ex.org/Apple> <http://www.w3.org/2000/01/rdf-schema#label> "Apple"@en  .
-				<http://ex.org/Apple> <http://www.w3.org/2000/01/rdf-schema#comment> "Comment"@en  .
-				<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit>  .
-				<http://ex.org/Watermelon> <http://www.w3.org/2000/01/rdf-schema#label> "Watermelon"@en  .
+				<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit> .
+				<http://ex.org/Banana> <http://www.w3.org/2000/01/rdf-schema#label> "Banana"@en .
+				<http://ex.org/Banana> <http://www.w3.org/2000/01/rdf-schema#comment> "Comment"@en .
+				<http://ex.org/Orange> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit> .
+				<http://ex.org/Orange> <http://www.w3.org/2000/01/rdf-schema#label> "Orange"@en .
+				<http://ex.org/Apple> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit> .
+				<http://ex.org/Apple> <http://www.w3.org/2000/01/rdf-schema#label> "Apple"@en .
+				<http://ex.org/Apple> <http://www.w3.org/2000/01/rdf-schema#comment> "Comment"@en .
+				<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit> .
+				<http://ex.org/Watermelon> <http://www.w3.org/2000/01/rdf-schema#label> "Watermelon"@en .
 			`,
 		}),
 
@@ -896,33 +892,33 @@ writer_suite({
 				},
 			},
 			output: /* syntax: n-quads */ `
-				<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit>  .
+				<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit> .
 
-				<http://ex.org/Banana> <http://www.w3.org/2000/01/rdf-schema#label> "Banana"@en  .
+				<http://ex.org/Banana> <http://www.w3.org/2000/01/rdf-schema#label> "Banana"@en .
 
-				<http://ex.org/Banana> <http://www.w3.org/2000/01/rdf-schema#comment> "Comment"@en  .
-
-
-				<http://ex.org/Orange> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit>  .
+				<http://ex.org/Banana> <http://www.w3.org/2000/01/rdf-schema#comment> "Comment"@en .
 
 
-				<http://ex.org/Orange> <http://www.w3.org/2000/01/rdf-schema#label> "Orange"@en  .
+				<http://ex.org/Orange> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit> .
 
 
-
-
-				<http://ex.org/Apple> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit>  .
-
-
-				<http://ex.org/Apple> <http://www.w3.org/2000/01/rdf-schema#label> "Apple"@en  .
-
-
-				<http://ex.org/Apple> <http://www.w3.org/2000/01/rdf-schema#comment> "Comment"@en  .
+				<http://ex.org/Orange> <http://www.w3.org/2000/01/rdf-schema#label> "Orange"@en .
 
 
 
-				<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit>  .
-				<http://ex.org/Watermelon> <http://www.w3.org/2000/01/rdf-schema#label> "Watermelon"@en  .
+
+				<http://ex.org/Apple> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit> .
+
+
+				<http://ex.org/Apple> <http://www.w3.org/2000/01/rdf-schema#label> "Apple"@en .
+
+
+				<http://ex.org/Apple> <http://www.w3.org/2000/01/rdf-schema#comment> "Comment"@en .
+
+
+
+				<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Fruit> .
+				<http://ex.org/Watermelon> <http://www.w3.org/2000/01/rdf-schema#label> "Watermelon"@en .
 			`,
 		}),
 

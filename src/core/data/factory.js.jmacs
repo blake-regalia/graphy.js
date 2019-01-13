@@ -672,6 +672,37 @@ function BlankNode(s_value, b_anonymous=false) {
 		},
 	});
 
+
+function EphemeralBlankNode() {}
+EphemeralBlankNode.prototype = Object.assign(
+	Object.create(BlankNode.prototype), {
+		isAnonymous: true,
+		isEphemeral: true,
+		concise() {
+			return '_:#'+this.value;
+		},
+		terse() {
+			return '[]';
+		},
+		verbose() {
+			return '_:'+this.value;
+		},
+		isolate() {
+			return {
+				termType: 'BlankNode',
+				value: this.value,
+			};
+		},
+		equals() {
+			return false;
+		},
+	});
+Object.defineProperty(EphemeralBlankNode.prototype, 'value', {
+	get() {
+		return '_'+uuid_v4();
+	},
+})
+
 function DefaultGraph() {}
 DefaultGraph.prototype = Object.assign(
 	Object.create(GenericTerm.prototype), {
@@ -849,6 +880,14 @@ const factory = module.exports = {
 		return new NamedNode(p_iri);
 	},
 
+	ephemeral() {
+		return new EphemeralBlankNode();
+	},
+
+	anonymous() {
+		return new EphemeralBlankNode();
+	},
+
 	blankNode(z_label) {
 		// no label given, generate a UUID
 		if(!z_label) {
@@ -968,14 +1007,11 @@ const factory = module.exports = {
 		if('_' === sct_node[0]) {
 			if(':' !== sct_node[1]) throw new Error(`Invliad concise-term string, prefixes are not allowed to start with an underscore: ${sct_node}`);
 
+			// interpret ephemeral hint
+			if('#' === sct_node[2] || 2 === sct_node.length) return factory.ephemeral();
+
 			// create blank node
-			let kt_node = factory.blankNode(sct_node.slice(2));
-
-			// interpret anonymous hint
-			if('_' === sct_node[2]) kt_node.isAnonymous = true;
-
-			// return blank node
-			return kt_node;
+			return factory.blankNode(sct_node.slice(2));
 		}
 
 		// other
@@ -1069,7 +1105,7 @@ const factory = module.exports = {
 		}
 		// more remain
 		else {
-			// anonymous blank node
+			// auto blank node
 			let k_hop = factory.blankNode();
 
 			// incoming triple
@@ -1102,7 +1138,7 @@ const factory = module.exports = {
 				if(Array.isArray(z_objects)) {
 					// RDF collection
 					if(b_nested) {
-						// anonymous blank node
+						// auto blank node
 						let k_hop = factory.blankNode();
 
 						// incoming triple
@@ -1120,7 +1156,7 @@ const factory = module.exports = {
 				}
 				// simple object
 				else {
-					// anonymous blank node
+					// auto blank node
 					let k_hop = factory.blankNode();
 
 					// incoming triple

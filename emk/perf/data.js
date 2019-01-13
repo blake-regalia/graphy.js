@@ -60,6 +60,12 @@ let a_dbpedia_files_ttl = [
 	'template_parameters_en',
 ];
 
+let a_dbr_files = [
+	'Banana',
+	'Grapefruit',
+	'Watermelon',
+];
+
 module.exports = {
 	'text/turtle': {
 		dbpedia: a_dbpedia_files_ttl.reduce((h_out, s_label) => ({
@@ -73,5 +79,11 @@ module.exports = {
 			'names.ttl': () => 'http://usgs-stko.geog.ucsb.edu/resource/usgs-ld.ttl',
 			'units.ttl': () => 'http://usgs-stko.geog.ucsb.edu/resource/usgs-ld.ttl',
 		},
+
+		dbr: a_dbr_files.reduce((h_out, s_label) => ({
+			...h_out,
+			// [s_label+'.nt']: () => `http://dbpedia.org/data/${s_label}.nt`,
+			[s_label+'.ttl']: () => `http://dbpedia.org/data/${s_label}.ttl`,
+		}), {}),
 	},
 };

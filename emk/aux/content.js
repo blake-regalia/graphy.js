@@ -50,8 +50,8 @@ module.exports = {
 		read: {
 			description: s => `Single-threaded ${s} content reader`,
 			links: [
-				'core.iso.stream',
 				'core.data.factory',
+				'core.iso.stream',
 			],
 			dependencies: [
 				'uri-js',
@@ -75,6 +75,7 @@ module.exports = {
 		write: {
 			description: s => `${s} content writer`,
 			links: [
+				'core.data.factory',
 				'core.class.writable',
 			],
 			dependencies: [

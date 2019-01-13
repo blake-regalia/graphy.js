@@ -680,6 +680,18 @@ module.exports = async() => {
 						npx mocha --colors $3
 					`,
 				}),
+
+				graphy: () => ({
+					deps: [
+						'test/package/graphy.js',
+						'prepublish.graphy',
+						'build/cache/data/dbr/**',
+					],
+
+					run: /* syntax: bash */ `
+						npx mocha --colors $1
+					`,
+				}),
 			},
 
 			// web test

@@ -1,5 +1,5 @@
-@import '../../../share/channel.jmacs'
 @import '../../../share/iris.jmacs'
+@import '../../../share/channel.jmacs'
 @./* global FORMAT */
 @//@
 
@@ -14,8 +14,8 @@
 
 const uri = require('uri-js');
 
-const stream = require('@@@{S_GRAPHY_CHANNEL}/core.iso.stream');
-const factory = require('@@@{S_GRAPHY_CHANNEL}/core.data.factory').raw;
+const stream = require('@{channel('core.iso.stream')}');
+const factory = require('@{channel('core.data.factory')}').raw;
 const quad = h => factory.quad(h.subject, h.predicate, h.object, h.graph);
 
 const RT_ESCAPES_INVALID = /@{RT_ESCAPES_INVALID()}/;
@@ -543,15 +543,33 @@ class @{S_LABEL}_Reader extends stream.Transform {
 		});
 	}
 
-	// intercept pipe out
+	// intercept pipe
 	pipe(ds_out) {
+		let ds_dst = ds_out;
+
 		// non-object mode
-		if(!ds_out._writableState.objectMode) {
-			ds_out = stream.quads_to_json(ds_out);
+		if(!ds_dst._writableState.objectMode) {
+			// transform to JSON
+			ds_out = stream.quads_to_json();
+		}
+		// yet object mode and graphy writable
+		else if(ds_out.isGraphyWritable) {
+			// transform to writable data events
+			ds_out = stream.quads_to_writable();
 		}
 
-		// forward to super
-		return super.pipe(ds_out);
+		// interim stream created
+		if(ds_out !== ds_dst) {
+			// forward output to super
+			super.pipe(ds_out);
+
+			// pipe outpu to destination
+			return ds_out.pipe(ds_dst);
+		}
+		// forward as-is to super
+		else {
+			return super.pipe(ds_dst);
+		}
 	}
 }
 

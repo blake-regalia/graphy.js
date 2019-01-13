@@ -20,10 +20,6 @@ const H_PREFIXES = {
 };
 
 let a_items = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-let f_nt = a_rest => /* syntax: turtle */ `[
-	<first> "${a_rest.shift()}" ;
-	<rest> ${a_rest.length? f_nt(a_rest): '<nil>'} ;
-]`;
 
 writer_suite({
 	alias: 'nt',
@@ -92,7 +88,9 @@ writer_suite({
 					':subject': {
 						':date': new Date('1990-03-12'),
 						':term-node': factory.namedNode('ex://test'),
-						':term-bn': factory.blankNode('test'),
+						':term-bn-label': factory.blankNode('test'),
+						':term-bn-auto': factory.blankNode(),
+						':term-bn-ephemeral': factory.ephemeral(),
 						':literal': factory.literal('test'),
 					},
 				},
@@ -100,7 +98,9 @@ writer_suite({
 					:subject
 						:date "1990-03-12T00:00:00.000Z"^^xsd:dateTime ;
 						:term-node <ex://test> ;
-						:term-bn _:test ;
+						:term-bn-label _:test ;
+						:term-bn-auto _:_auto ;
+						:term-bn-ephemeral [] ;
 						:literal "test" .
 				`,
 			}),
@@ -304,6 +304,7 @@ writer_suite({
 			}),
 
 			'long custom collections': () => ({
+				debug: true,
 				write: {
 					'>a': {
 						'>b': [a_items.map(s => '"'+s)],
@@ -317,7 +318,7 @@ writer_suite({
 					},
 				},
 				validate: /* syntax: turtle */ `
-					<a> <b> ${f_nt(a_items)} .
+					<a> <b> ${util.serialize_collection_turtle(a_items.slice(0).map(s => `"${s}"`), '<first>', '<rest>', '<nil>')} .
 				`,
 			}),
 
