@@ -218,28 +218,38 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 <a name="function_ephemeral" />
 
  - [`factory.ephemeral`](#function_ephemeral)`()`
-   - **returns** a [new BlankNode](#class_blank-node) with `.isAnonymous` set to `true`.
+   - **returns** a [new EphemeralBlankNode](#class_ephemeral-blank-node) which is primarily used as a means to write syntactic anonymous blank nodes in Turtle and TriG.
    - *examples:*
        ```js
        let kt_ephemeral = factory.ephemeral();
 
-       // returns a different label each time `.value` is accessed to ensure it is not reusable
-       kt_ephemeral.label;  // '_:_1110a7e0_39fa_45ed_88c3_03912da0d93c'
-       kt_ephemeral.label;  // '_:645ed417_7e99_40c2_81cc_aee177b4d9e9'
+       kt_ephemeral.isAnonymous;  // true
+       kt_ephemeral.isEphemeral;  // true
 
-       // same thing happens with `.verbose()`
-       kt_ephemeral.verbose();  // '_:82d116e8_352b_4ec3_8e3a_3b100a53b557'
-       kt_ephemeral.verbose();  // '_:72b4a5ab_f4f0_494c_a432_c82b9d5aed50'
+       // returns a different label each time `.value` is accessed to ensure it is not accidentally reused
+       kt_ephemeral.value;  // '_66f0cc19_e551_4d82_8bf2_73329fb578b2'
+       kt_ephemeral.value;  // '_12ebb618_981b_45c9_a63b_a1e30170fcd1'
+       kt_ephemeral.value;  // '_4335c2d1_b7e2_4a43_ae81_a9f3a73e31ab'
 
-       // using with `.terse()`
+       // same thing happens with `.verbose()` string
+       kt_ephemeral.verbose();  // '_:_82d116e8_352b_4ec3_8e3a_3b100a53b557'
+       kt_ephemeral.verbose();  // '_:_72b4a5ab_f4f0_494c_a432_c82b9d5aed50'
+       kt_ephemeral.verbose();  // '_:_1110a7e0_39fa_45ed_88c3_03912da0d93c'
+
+       // the `.terse()` string is the anonymous blank node token!
        kt_ephemeral.terse();  // '[]'
 
-       // can also be used in c3/c4 hashes
+       // will never equal itself
+       kt_ephemeral.equals(kt_ephemeral);  // false
+
+       // demonstration being used in c3/c4 hashes
        [...factory.c3({
+           // create a non-reusable blank node as the subject of some triples
            [factory.ephemeral()]: {
+               a: 'owl:Thing',
                'demo:refs': factory.ephemeral(),
            },
-       })].map(g => g.terse()).join('');  // '[] demo:refs [] .'
+       }, h_prefixes)].map(g => g.terse()).join('');  // '[] a owl:Thing; demo:refs [] .'
        ```
 
 <a name="function_boolean" />
@@ -322,14 +332,14 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_c3" />
 
- - *generator* `* `[`factory.c3`](#function_c3)`(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
-   - **yields** a series of [Triples](#class_triple)
+ - *generator* [`*factory.c3`](#function_c3)`(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+   - **yields** a series of [Quads](#class_quad)
 
 
 
 <a name="function_c4" />
 
- - *generator* `* `[`factory.c4`](#function_c4)`(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+ - *generator* [`*factory.c4`](#function_c4)`(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
 
 
@@ -358,17 +368,22 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       factory.from.quad({
           subject: {
               termType: 'NamedNode',
-              value: 'z://a',
+              value: 'z://y/a',
           },
           predicate: {
               termType: 'NamedNode',
-              value: 'z://b',
+              value: 'z://y/b',
           },
           object: {
               termType: 'NamedNode',
-              value: 'z://c',
+              value: 'z://y/c',
           },
-      }).verbose();  // '<z://a> <z://b> <z://c> .'
+          // optional
+          graph: {
+              termType: 'NamedNode',
+              value: 'z://y/g',
+          },
+      }).verbose();  // '<z://y/a> <z://y/b> <z://y/c> <z://y/g> .'
       ```
 
 <a name="function_comment" />
@@ -495,17 +510,12 @@ A class that represents an RDF blank node.
 ```js
 let kt_auto = factory.blankNode();
 let kt_labeled = factory.blankNode('label');
-let kt_ephemeral = factory.ephemeral();
 
 kt_auto.isAnonymous;  // false
 kt_label.isAnonymous;  // false
-kt_ephemeral.isAnonymous;  // true
 
 kt_auto.value;  // '_f4b39957_4619_459e_b954_a26f7b6da4a'
 kt_label.value;  // 'label'
-kt_ephemeral.value;  // '_66f0cc19_e551_4d82_8bf2_73329fb578b2'
-kt_ephemeral.value;  // '_12ebb618_981b_45c9_a63b_a1e30170fcd1'
-kt_ephemeral.value;  // '_4335c2d1_b7e2_4a43_ae81_a9f3a73e31ab'
 
 graphy.content.ttl.read('_:a <b> [] .', {
     data(y_quad) {
@@ -540,13 +550,23 @@ A class that represents an anonymous RDF blank node with ephemeral qualities. Pr
 let kt_ephemeral = factory.ephemeral();
 
 kt_ephemeral.isAnonymous;  // true
+kt_ephemeral.isEphemeral;  // true
 
 // changes everytime it is accessed
 kt_ephemeral.value;  // '_66f0cc19_e551_4d82_8bf2_73329fb578b2'
 kt_ephemeral.value;  // '_12ebb618_981b_45c9_a63b_a1e30170fcd1'
 kt_ephemeral.value;  // '_4335c2d1_b7e2_4a43_ae81_a9f3a73e31ab'
 
-kt_ephemeral.equals(kt_ephemeral);  // '_4335c2d1_b7e2_4a43_ae81_a9f3a73e31ab'
+// same applies to the verbose string
+kt_ephemeral.verbose();  // '_:_82d116e8_352b_4ec3_8e3a_3b100a53b557'
+kt_ephemeral.verbose();  // '_:_72b4a5ab_f4f0_494c_a432_c82b9d5aed50'
+kt_ephemeral.verbose();  // '_:_1110a7e0_39fa_45ed_88c3_03912da0d93c'
+
+// the terse string is the anonymous blank node token
+kt_ephemeral.terse();  // '[]'
+
+// will never equal itself
+kt_ephemeral.equals(kt_ephemeral);  // false
 ```
 
 <a name="class_default-graph" />

@@ -328,7 +328,7 @@ y_writer.end();
 @prefix eg: <http://ex.org/owl#> .
 
 # hey look, a comment!
-dbr:Banana rdf:type dbo:Plant ;
+dbr:Banana a dbo:Plant ;
    rdfs:label "Banana"@en, "Banane"@fr, "Plátano"@es ;
    demo:steps (
       demo:Peel
@@ -337,7 +337,7 @@ dbr:Banana rdf:type dbo:Plant ;
    ) .
 
 # hey look, another comment!
-eg:HappyPerson rdf:type owl:Class ;
+eg:HappyPerson a owl:Class ;
    owl:equivalentClass [
       rdf:type owl:Class ;
       owl:intersectionOf (
@@ -353,6 +353,7 @@ eg:HappyPerson rdf:type owl:Class ;
          ]
       ) ;
    ] .
+
 
 ```
 
