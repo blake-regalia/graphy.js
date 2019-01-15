@@ -1,7 +1,7 @@
 {
   "name": "@graphy/super-repo",
   "version": "3.0.6",
-  "devVersion": "0.0.30",
+  "devVersion": "0.0.31",
   "description": "A collection of RDF libraries for JavaScript developers that focus on performance and usability",
   "keywords": [
     "linked-data",
@@ -43,6 +43,7 @@
   "devDependencies": {
     "@rdfjs/data-model": "^1.1.1",
     "chai": "^4.2.0",
+    "chai-iterator": "^3.0.0",
     "chai-string": "^1.5.0",
     "csv-parse": "^4.3.0",
     "detective": "^5.1.0",

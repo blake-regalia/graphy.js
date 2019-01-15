@@ -10,6 +10,8 @@ const factory = require('@graphy/core.data.factory');
 const chai = require('chai');
 const expect = chai.expect;
 chai.use(require('chai-string'));
+chai.use(require('chai-iterator'));
+
 
 const F_BRANCH_DEFAULT = (s, f) => describe(s, f);
 
@@ -196,8 +198,7 @@ const helper = module.exports = {
 	},
 
 	validate_quads(dg_actual, a_expect) {
-		expect(dg_actual).to.have.property(Symbol.iterator);
-			// .that.equals(((function *() {})()).constructor);
+		expect(dg_actual).to.be.iterable;
 
 		a_expect = a_expect.map(a => helper.e4(a));
 		let a_actual = [...dg_actual];
@@ -260,8 +261,7 @@ const helper = module.exports = {
 	},
 
 	validate_quads_unordered(dg_actual, a_expect) {
-		expect(dg_actual).to.have.property(Symbol.iterator);
-			// .that.equals(((function *() {})()).constructor);
+		expect(dg_actual).to.be.iterable;
 
 		a_expect = a_expect.map(a => helper.e4(a));
 		let a_actual = [...dg_actual];

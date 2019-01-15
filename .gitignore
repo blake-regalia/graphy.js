@@ -19,6 +19,7 @@ package-lock.json
 # developer scrap files
 /scrap
 /serd
+/docs/examples/
 
 # ignore files
 *.ignore

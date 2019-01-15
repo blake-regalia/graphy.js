@@ -417,8 +417,7 @@ class Canonicalizer_ct {
 
 		// create dataset reflecting quad order
 		let k_tree_normalized = new DatasetTree({
-			// merge prefixes; this instance has precedence
-			prefixes: this.prefixes,
+			prefixes: Object.assign({}, this.prefixes),
 		});
 		k_tree_normalized.addQuads(a_normalized.map(g => g.quad));
 
@@ -648,6 +647,42 @@ class Canonicalizer_ct {
 
 // 	return h_thickened;
 // };
+// 
+
+const thin_copy = (h_src) => {
+	// create new hash
+	let h_dst = Object.create(h_src);
+
+	// src has weak descendents
+	h_src[$_KIDS] = 1;
+
+	// dst has weak keys
+	h_dst[$_THIN] = 1;
+
+	return h_dst;
+};
+
+// const thin_copy_paste = (h_src, h_dst_parent, s_dst_key) => {
+// 	// create parent
+// 	if(null === h_dst_parent) {
+// 		h_dst_parent = {
+// 			[$_KEYS]: 0,
+// 			[$_QUADS]: 0,
+// 		};
+// 	}
+
+// 	// append to new quad tree
+// 	h_dst_parent[s_dst_key] = h_dst;
+
+// 	// adds single key to parent tree
+// 	h_dst_parent[$_KEYS] += 1;
+
+// 	// all quad count from pairs hash
+// 	h_dst_parent[$_QUADS] += h_src[$_QUADS];
+
+// 	// return dst
+// 	return h_dst;
+// };
 
 
 const thicken = (h_tree) => {
@@ -753,6 +788,13 @@ class DatasetTree extends stream.Duplex {
 			}, 0);
 		}
 	}
+
+	offspring(h_quad_tree=null) {
+		return new DatasetTree({
+			prefixes: Object.assign({}, this.prefixes),
+		}, h_quad_tree);
+	}
+
 
 	// on end input
 	end(...a_args) {
@@ -1087,8 +1129,797 @@ class DatasetTree extends stream.Duplex {
 		}
 	}
 
-	match(z_subject, z_predicate, z_object, z_graph=null) {
-		return (new Matcher(this)).match(z_subject, z_predicate, z_object, z_graph);
+	// match(z_subject, z_predicate, z_object, z_graph=null) {
+	// 	return (new Matcher(this)).match(z_subject, z_predicate, z_object, z_graph);
+	// }
+
+	match(z_subject=null, z_predicate=null, z_object=null, z_graph=null) {
+		let h_quads_src = this.quad_tree;
+
+		// +graph
+		if(z_graph) {
+			// convert graph to c1
+			let sc1_graph_target = factory.from.term(z_graph).concise();
+
+			// no such graph; return new empty tree
+			if(!(sc1_graph_target in h_quads_src)) return this.offspring();
+
+			// ref triples hash
+			let h_triples_src = h_quads_src[sc1_graph_target];
+
+			// +grraph, +subject
+			if(z_subject) {
+				// convert subject to c1
+				let sc1_subject_target = factory.from.term(z_subject).concise();
+
+				// no such subject; return new empty tree
+				if(!(sc1_subject_target in h_triples_src)) return this.offspring();
+
+				// ref pairs hash
+				let h_pairs_src = h_triples_src[sc1_subject_target];
+
+				// +graph, +subject, +predicate
+				if(z_predicate) {
+					// convert predicate to c1
+					let sc1_predicate_target = factory.from.term(z_predicate).concise();
+
+					// no such predicate; return new empty tree
+					if(!(sc1_predicate_target in h_pairs_src)) return this.offspring();
+
+					// ref objects set
+					let as_objects_src = h_pairs_src[sc1_predicate_target];
+
+					// for both paths
+					let n_quads_objects;
+					let as_objects_dst;
+
+					// +graph, +subject, +predicate, +object
+					if(z_object) {
+						// convert object to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// no such object; return new empty tree
+						if(!as_objects_src.has(z_object)) return this.offspring();
+						
+						// create set
+						as_objects_dst = new Set([sc1_object_target]);
+
+						// sole quad
+						n_quads_objects = 1;
+					}
+					// +graph, +subject, +predicate, -object
+					else {
+						// copy set
+						as_objects_dst = new Set(as_objects_src);
+
+						// quad count
+						n_quads_objects = as_objects_src.size;
+					}
+
+					// path merge; create new tree
+					return this.offspring({
+						[$_KEYS]: 1,
+						[$_QUADS]: n_quads_objects,
+						[sc1_graph_target]: {
+							[$_KEYS]: 1,
+							[$_QUADS]: n_quads_objects,
+							[sc1_subject_target]: {
+								[$_KEYS]: 1,
+								[$_QUADS]: n_quads_objects,
+								[sc1_predicate_target]: as_objects_dst,
+							},
+						},
+					});
+				}
+				// +graph, +subject, -predicate, +object
+				else if(z_object) {
+					// convert object to c1
+					let sc1_object_target = factory.from.term(z_object).concise();
+
+					// prepare for loading into set multiple times
+					let a_object_load = [sc1_object_target];
+
+					// how many distinct pairs are added
+					let c_pairs = 0;
+
+					// dst pairs hash
+					let h_pairs_dst = {
+						[$_KEYS]: 0,
+						[$_QUADS]: 0,
+					};
+
+					// each pairs
+					for(let sc1_predicate in h_pairs_src) {
+						// object exists under pairs tree
+						if(h_pairs_src[sc1_predicate].has(sc1_object_target)) {
+							// create new objects set and save to dst pairs hash
+							h_pairs_dst[sc1_predicate] = new Set(a_object_load);
+
+							// increment pairs count
+							c_pairs += 1;
+						}
+					}
+
+					// save keys and quads count
+					h_pairs_dst[$_KEYS] = c_pairs;
+					h_pairs_dst[$_QUADS] = c_pairs;
+
+					// create new tree
+					return this.offspring({
+						[$_KEYS]: 1,
+						[$_QUADS]: c_pairs,
+						[sc1_graph_target]: {
+							[$_KEYS]: 1,
+							[$_QUADS]: c_pairs,
+							[sc1_subject_target]: h_pairs_dst,
+						},
+					});
+				}
+				// +graph, +subject -predicate, -object
+				else {
+					// quad count
+					let n_quads_pairs = h_pairs_src[$_QUADS];
+
+					// create new tree
+					return this.offspring({
+						[$_KEYS]: 1,
+						[$_QUADS]: n_quads_pairs,
+						[sc1_graph_target]: {
+							[$_KEYS]: 1,
+							[$_QUADS]: n_quads_pairs,
+							[sc1_subject_target]: thin_copy(h_pairs_src),
+						},
+					});
+				}
+			}
+			// +graph, -subject, +predicate
+			else if(z_predicate) {
+				// convert predicate to c1
+				let sc1_predicate_target = factory.from.term(z_predicate).concise();
+
+				// how many subject-keys and quads are added
+				let c_subjects = 0;
+				let c_quads = 0;
+
+				// init dst triples hash
+				let h_triples_dst = {
+					[$_KEYS]: 0,
+					[$_QUADS]: 0,
+				};
+
+				// +graph, -subject, +predicate, +object
+				if(z_object) {
+					// convert object to c1
+					let sc1_object_target = factory.from.term(z_object).concise();
+
+					// prepare for loading into set multiple times
+					let a_object_load = [sc1_object_target];
+
+					// each triples
+					for(let sc1_subject in h_triples_src) {
+						// ref src pairs hash
+						let h_pairs_src = h_triples_src[sc1_subject];
+
+						// no such predicate; skip
+						if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+						// ref src objects set
+						let as_objects_src = h_pairs_src[sc1_predicate_target];
+
+						// no such object; skip
+						if(!as_objects_src.has(sc1_object_target)) continue;
+
+						// create pairs subtree
+						h_triples_dst[sc1_subject] = {
+							[$_KEYS]: 1,
+							[$_QUADS]: 1,
+							[sc1_predicate_target]: new Set(a_object_load),
+						};
+
+						// increment quads count
+						c_quads += 1;
+					}
+
+					// key count matches added quads count
+					c_subjects = c_quads;
+				}
+				// +graph, -subject, +predicate, -object
+				else {
+					// each triples
+					for(let sc1_subject in h_triples_src) {
+						// ref src pairs hash
+						let h_pairs_src = h_triples_src[sc1_subject];
+
+						// no such predicate; skip
+						if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+						// create dst objects set
+						let as_objects_dst = new Set(h_pairs_src[sc1_predicate_target]);
+
+						// create pairs subtree
+						h_triples_dst[sc1_subject] = {
+							[$_KEYS]: 1,
+							[$_QUADS]: as_objects_dst.size,
+							[sc1_predicate_target]: as_objects_dst,
+						};
+
+						// increment quads & subject-keys count
+						c_quads += as_objects_dst.size;
+						c_subjects += 1;
+					}
+				}
+
+				// save quads and subject-keys counts to dst triples hash
+				h_triples_dst[$_KEYS] = c_subjects;
+				h_triples_dst[$_QUADS] = c_quads;
+
+				// create new tree
+				return this.offspring({
+					[$_KEYS]: 1,
+					[$_QUADS]: c_quads,
+					[sc1_graph_target]: h_triples_dst,
+				});
+			}
+			// +graph, -subject, -predicate, +object
+			else if(z_object) {
+				// convert object to c1
+				let sc1_object_target = factory.from.term(z_object).concise();
+
+				// prepare for loading into set multiple times
+				let a_object_load = [sc1_object_target];
+
+				// how many subject keys and quads are added
+				let c_subjects = 0;
+				let c_quads = 0;
+
+				// init dst triples hash
+				let h_triples_dst = {
+					[$_KEYS]: 0,
+					[$_QUADS]: 0,
+				};
+
+				// each triples
+				for(let sc1_subject in h_triples_src) {
+					// ref src pairs hash
+					let h_pairs_src = h_triples_src[sc1_subject];
+
+					// count distinct pairs
+					let c_pairs = 0;
+
+					// dst pairs hash
+					let h_pairs_dst = {
+						[$_KEYS]: 0,
+						[$_QUADS]: 0,
+					};
+
+					// each pairs
+					for(let sc1_predicate in h_pairs_src) {
+						// ref src objects set
+						let as_objects_src = h_pairs_src[sc1_predicate];
+
+						// set has target object
+						if(as_objects_src.has(sc1_object_target)) {
+							// create object set
+							h_pairs_dst[sc1_predicate] = new Set(a_object_load);
+
+							// increment pair count
+							c_pairs += 1;
+						}
+					}
+
+					// save quads and predicate-keys count
+					h_pairs_dst[$_KEYS] = c_pairs;
+					h_pairs_dst[$_QUADS] = c_pairs;
+
+					// increment super quads count
+					c_quads += c_pairs;
+
+					// increment subject-keys count
+					c_subjects += 1;
+				}
+
+				// save quads and subject-keys count
+				h_triples_dst[$_KEYS] = c_subjects;
+				h_triples_dst[$_QUADS] = c_quads;
+
+				// create dataset tree
+				return this.offspring({
+					[$_KEYS]: 1,
+					[$_QUADS]: c_quads,
+					[sc1_graph_target]: h_triples_dst,
+				});
+			}
+			// +graph, -subject, -predicate, -object
+			else {
+				// create dataset tree
+				return this.offspring({
+					[$_KEYS]: 1,
+					[$_QUADS]: h_triples_src[$_QUADS],
+					[sc1_graph_target]: thin_copy(h_triples_src),
+				});
+			}
+		}
+		// -graph
+		else {
+			// init dst quads hash
+			let h_quads_dst = {
+				[$_KEYS]: 0,
+				[$_QUADS]: 0,
+			};
+
+			/*eslint-disable no-lonely-if*/
+			// -graph, +subject
+			if(z_subject) {
+				// convert subject to c1
+				let sc1_subject_target = factory.from.term(z_subject).concise();
+
+				// -graph, +subject, +predicate
+				if(z_predicate) {
+					// convert predicate to c1
+					let sc1_predicate_target = factory.from.term(z_predicate).concise();
+
+					// graph-keys and quads counts
+					let c_graphs = 0;
+					let c_quads = 0;
+
+					// -graph, +subject, +predicate, +object
+					if(z_object) {
+						// convert object to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// prepare for loading into set multiple times
+						let a_object_load = [sc1_object_target];
+
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// no such subject; skip
+							if(!(sc1_subject_target in h_triples_src)) continue;
+
+							// ref src pairs hash
+							let h_pairs_src = h_triples_src[sc1_predicate_target];
+
+							// no such predicate; skip
+							if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+							// ref src objects set
+							let as_objects_src = h_pairs_src[sc1_predicate_target];
+
+							// no such object; skip
+							if(!as_objects_src.has(sc1_object_target)) continue;
+
+							// create dst object set
+							let as_objects_dst = new Set(a_object_load);
+
+							// create dst triples tree
+							h_quads_dst[sc1_graph] = {
+								[$_KEYS]: 1,
+								[$_QUADS]: 1,
+								[sc1_subject_target]: {
+									[$_KEYS]: 1,
+									[$_QUADS]: 1,
+									[sc1_predicate_target]: as_objects_dst,
+								},
+							};
+
+							// increment graph-keys & quads count
+							c_quads += 1;
+						}
+
+						// graph-keys count matches quads count
+						c_graphs = c_quads;
+					}
+					// -graph, +subject, +predicate, -object
+					else {
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// no such subject; skip
+							if(!(sc1_subject_target in h_triples_src)) continue;
+
+							// ref src pairs hash
+							let h_pairs_src = h_triples_src[sc1_predicate_target];
+
+							// no such predicate; skip
+							if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+							// create dst objects set
+							let as_objects_dst = new Set(h_pairs_src[sc1_predicate_target]);
+
+							// how many objects are in set
+							let n_objects = as_objects_dst.size;
+
+							// create dst triples tree
+							h_quads_dst[sc1_graph] = {
+								[$_KEYS]: 1,
+								[$_QUADS]: n_objects,
+								[sc1_subject_target]: {
+									[$_KEYS]: 1,
+									[$_QUADS]: n_objects,
+									[sc1_predicate_target]: as_objects_dst,
+								},
+							};
+
+							// increment graph-keys & quads count
+							c_graphs += 1;
+							c_quads += n_objects;
+						}
+					}
+
+					// save quads and graph-keys counts
+					h_quads_dst[$_KEYS] = c_graphs;
+					h_quads_dst[$_QUADS] = c_quads;
+
+					// create dataset tree
+					return this.offspring(h_quads_dst);
+				}
+				// -graph, +subject, -predicate
+				else {
+					// count graph-keys and quads
+					let c_graphs = 0;
+					let c_quads = 0;
+
+					// -graph, +subject, -predicate, +object
+					if(z_object) {
+						// convert object to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// prepare for loading into set multiple times
+						let a_object_load = [sc1_object_target];
+
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// no such subject; skip
+							if(!(sc1_subject_target in h_triples_src)) continue;
+
+							// ref src pairs hash
+							let h_pairs_src = h_triples_src[sc1_subject_target];
+
+							// count pairs
+							let c_pairs = 0;
+
+							// init dst pairs hash
+							let h_pairs_dst =  {
+								[$_KEYS]: 0,
+								[$_QUADS]: 0,
+							};
+
+							// each predicate
+							for(let sc1_predicate in h_pairs_src) {
+								// ref src objets set
+								let as_objects_src = h_triples_src[sc1_predicate];
+
+								// no such object; skip
+								if(!as_objects_src.has(sc1_object_target)) continue;
+
+								// create dst objects set
+								h_pairs_dst[sc1_predicate] = new Set(a_object_load);
+
+								// increment pairs count
+								c_pairs += 1;
+							}
+
+							// no pairs hash to add; skip graph
+							if(!c_pairs) continue;
+
+							// save predicate-keys and quads counts
+							h_pairs_dst[$_KEYS] = c_pairs;
+							h_pairs_dst[$_QUADS] = c_pairs;
+
+							// save pairs hash tree
+							h_quads_dst[sc1_graph] = {
+								[$_KEYS]: 1,
+								[$_QUADS]: c_pairs,
+								[sc1_subject_target]: h_pairs_dst,
+							};
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += c_pairs;
+						}
+					}
+					// -graph, +subject, -predicate, -object
+					else {
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// no such subject; skip
+							if(!(sc1_subject_target in h_triples_src)) continue;
+
+							// ref src pairs hash
+							let h_pairs_src = h_triples_src[sc1_subject_target];
+
+							// quads under pairs tree
+							let n_quads = h_pairs_src[$_QUADS];
+
+							// save thin copy of pairs hash to dst quads hash
+							h_quads_dst[sc1_graph] = {
+								[$_KEYS]: 1,
+								[$_QUADS]: n_quads,
+								[sc1_subject_target]: thin_copy(h_pairs_src),
+							};
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += n_quads;
+						}
+					}
+
+					// save graph-keys and quads count
+					h_quads_dst[$_KEYS] = c_graphs;
+					h_quads_dst[$_QUADS] = c_quads;
+
+					// save graph-keys and quads counts
+					return this.offspring(h_quads_dst);
+				}
+			}
+			// -graph, -subject
+			else {
+				// -graph, -subject, +predicate
+				if(z_predicate) {
+					// convert predicate to c1
+					let sc1_predicate_target = factory.from.term(z_predicate).concise();
+
+					// graph-keys and quads count
+					let c_graphs = 0;
+					let c_quads = 0;
+
+					// -graph, -subject, +predicate, +object
+					if(z_object) {
+						// convert predicate to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// prepare for loading into set multiple times
+						let a_object_load = [sc1_object_target];
+
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// subjet-keys count
+							let c_subjects = 0;
+
+							// init dst triples hash
+							let h_triples_dst = {
+								[$_KEYS]: 0,
+								[$_QUADS]: 0,
+							};
+
+							// each subject
+							for(let sc1_subject in h_triples_src) {
+								// ref src pairs hash
+								let h_pairs_src = h_triples_src[sc1_subject];
+
+								// no such predicate; skip
+								if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+								// ref src objects set
+								let as_objects_src = h_pairs_src[sc1_predicate_target];
+
+								// no such object; skip
+								if(!as_objects_src.has(sc1_object_target)) continue;
+
+								// create dst triples tree
+								h_triples_dst[sc1_subject] ={
+									[$_KEYS]: 1,
+									[$_QUADS]: 1,
+									[sc1_predicate_target]: new Set(a_object_load),
+								};
+
+								// increment subject-keys and quads count
+								c_subjects += 1;
+							}
+
+							// no triples trees to add; skip graph
+							if(!c_subjects) continue;
+
+							// save subject-keys and quads count
+							h_triples_dst[$_KEYS] = c_subjects;
+							h_triples_dst[$_QUADS] = c_subjects;
+
+							// save triples hash tree
+							h_quads_dst[sc1_graph] = h_triples_dst;
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += c_subjects;
+						}
+
+						// save graph-keys and quads count
+						h_quads_dst[$_KEYS] = c_graphs;
+						h_quads_dst[$_QUADS] = c_quads
+
+						// create dataset tree
+						return this.offspring(h_quads_dst);
+					}
+					// -graph, -subject, +predicate, -object
+					else {
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// subjet-keys and quads count
+							let c_subjects = 0;
+							let c_triples = 0;
+
+							// init dst triples hash
+							let h_triples_dst = {
+								[$_KEYS]: 0,
+								[$_QUADS]: 0,
+							};
+
+							// each subject
+							for(let sc1_subject in h_triples_src) {
+								// ref src pairs hash
+								let h_pairs_src = h_triples_src[sc1_subject];
+
+								// no such predicate; skip
+								if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+								// create dst objects set
+								let as_objects_dst = new Set(h_pairs_src[sc1_predicate_target]);
+
+								// objects count
+								let n_objects = as_objects_dst.size;
+
+								// create dst triples tree
+								h_triples_dst[sc1_subject] ={
+									[$_KEYS]: 1,
+									[$_QUADS]: n_objects,
+									[sc1_predicate_target]: as_objects_dst,
+								};
+
+								// increment subject-keys and quads count
+								c_subjects += 1;
+								c_triples += n_objects;
+							}
+
+							// no triples trees to add; skip graph
+							if(!c_subjects) continue;
+
+							// save subject-keys and quads count
+							h_triples_dst[$_KEYS] = c_subjects;
+							h_triples_dst[$_QUADS] = c_triples;
+
+							// save triples hash tree
+							h_quads_dst[sc1_graph] = h_triples_dst;
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += c_triples;
+						}
+
+						// save graph-keys and quads counts
+						h_quads_dst[$_KEYS] = c_graphs;
+						h_quads_dst[$_QUADS] = c_quads;
+
+						// create dataset tree
+						return this.offspring(h_quads_dst);
+					}
+				}
+				// -graph, -subject, -predicate
+				else {
+					// -graph, -subject, -predicate, +object
+					if(z_object) {
+						// convert predicate to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// prepare for loading into set multiple times
+						let a_object_load = [sc1_object_target];
+
+						// graph-keys and quads count
+						let c_graphs = 0;
+						let c_quads = 0;
+
+						// // init dst triples hash
+						// let h_quads_dst = {
+						// 	[$_KEYS]: 0,
+						// 	[$_QUADS]: 0,
+						// };
+
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// subject-keys and quads count
+							let c_subjects = 0;
+							let c_triples = 0;
+
+							// init dst triples hash
+							let h_triples_dst = {
+								[$_KEYS]: 0,
+								[$_QUADS]: 0,
+							};
+
+							// each subject
+							for(let sc1_subject in h_triples_src) {
+								// ref src pairs hash
+								let h_pairs_src = h_triples_src[sc1_subject];
+
+								// predicate-keys count
+								let c_predicates = 0;
+
+								// init dst pairs hash
+								let h_pairs_dst = {
+									[$_KEYS]: 0,
+									[$_QUADS]: 0,
+								};
+
+								// each predicate
+								for(let sc1_predicate in h_pairs_src) {
+									// ref src objects set
+									let as_objects_src = h_pairs_src[sc1_predicate];
+
+									// no such object; skip
+									if(!as_objects_src.has(sc1_object_target)) continue;
+
+									// create dst pairs hash
+									h_pairs_dst[sc1_predicate] = new Set(a_object_load);
+
+									// increment predicate-keys count
+									c_predicates += 1;
+								}
+
+								// no quads
+								if(!c_predicates) continue;
+
+								// save predicate-keys and quads count
+								h_pairs_dst[$_KEYS] = c_predicates;
+								h_pairs_dst[$_QUADS] = c_predicates;
+
+								// increment subject-keys and triples count
+								c_subjects += 1;
+								c_triples += c_predicates;
+
+								// save to triples hash tree
+								h_triples_dst[sc1_subject] = h_pairs_dst;
+							}
+
+							// no quads
+							if(!c_subjects) continue;
+
+							// save subject-keys and quads count
+							h_triples_dst[$_KEYS] = c_subjects;
+							h_triples_dst[$_QUADS] = c_triples;
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += c_triples;
+
+							// save triples hash tree
+							h_quads_dst[sc1_graph] = h_triples_dst;
+						}
+
+						// no quads; empty tree
+						if(!c_graphs) return this.offspring({});
+
+						// save subject-keys and quads count
+						h_quads_dst[$_KEYS] = c_graphs;
+						h_quads_dst[$_QUADS] = c_quads;
+
+						// create dataset tree
+						return this.offspring(h_quads_dst);
+					}
+					// -graph, -subject, -predicate, -object
+					else {
+						// same quad tree (clone)
+						return this.union(new DatasetTree());
+					}
+				}
+			}
+		}
 	}
 
 	get size() {
@@ -1113,13 +1944,15 @@ class DatasetTree extends stream.Duplex {
 				this.add_tree(z_quads);
 			}
 			else if('function' === typeof z_quads[Symbol.iterator]) {
-				let a_quads = [...z_quads()];
+				let a_quads = [...z_quads];
 				this.add_quads(a_quads.map(factory.from.quad));
 			}
 			else {
 				throw new Error(`failed to add quads from non-iterable object: ${z_quads}`);
 			}
 		}
+
+		return this;
 	}
 
 	// add quads from sibling
@@ -2233,6 +3066,9 @@ Object.assign(DatasetTree, {
 	isGraphyDatasetTree: true,
 });
 
-module.exports = function(...a_args) {
+module.exports = Object.assign(function(...a_args) {
 	return new DatasetTree(...a_args);
-};
+}, {
+	keys: $_KEYS,
+	quads: $_QUADS,
+});
