@@ -922,7 +922,8 @@ const factory = module.exports = {
 
 	// warn
 	triple(h_subject, h_predicate, h_object) {
-		console.warn(`It is strongly encouraged to use .quad() instead of .triple()`);
+		let e_stack = new Error('It is strongly encouraged to use .quad() instead of .triple()');
+		console.warn(e_stack.stack.replace(/^(\s*)Error:/, '$1Warning:'));
 		return new Quad(h_subject, h_predicate, h_object);
 	},
 
