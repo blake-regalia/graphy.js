@@ -1863,6 +1863,12 @@ describe('util.dataset.tree', () => {
 					a: ':Fruit',
 				},
 			},
+			':g1': {
+				':Watermelon': {
+					a: ':Fruit',
+					':label': '"Watermelon',
+				},
+			},
 		}, {
 			'': 'z://y/',
 		}));
@@ -1886,7 +1892,6 @@ describe('util.dataset.tree', () => {
 				if(g_match.predicate) a_args[1] = factory.c1(g_match.predicate, h_prefixes);
 				if(g_match.object) a_args[2] = factory.c1(g_match.object, h_prefixes);
 
-				debugger;
 				let k_matched = k_tree.match(...a_args);
 				let h_quads_act = k_matched.quad_tree;
 
@@ -1959,69 +1964,368 @@ describe('util.dataset.tree', () => {
 					},
 					quads: {},
 				}),
+
+				'subject': () => ({
+					match: {
+						subject: ':absent',
+					},
+					quads: {},
+				}),
+
+				'predicate': () => ({
+					match: {
+						predicate: ':absent',
+					},
+					quads: {},
+				}),
+
+				'object': () => ({
+					match: {
+						object: ':absent',
+					},
+					quads: {},
+				}),
+
+				'graph, subject': () => ({
+					match: {
+						graph: ':g0',
+						subject: ':absent',
+					},
+					quads: {},
+				}),
+
+				'graph, predicate': () => ({
+					match: {
+						graph: ':g0',
+						predicate: ':absent',
+					},
+					quads: {},
+				}),
+
+				'graph, object': () => ({
+					match: {
+						graph: ':g0',
+						object: ':absent',
+					},
+					quads: {},
+				}),
+
+				'subject, predicate': () => ({
+					match: {
+						subject: ':Banana',
+						predicate: ':absent',
+					},
+					quads: {},
+				}),
+
+				'subject, object': () => ({
+					match: {
+						subject: ':Banana',
+						object: ':absent',
+					},
+					quads: {},
+				}),
+
+				'predicate, object': () => ({
+					match: {
+						predicate: 'a',
+						object: ':absent',
+					},
+					quads: {},
+				}),
+
+				'graph, subject, predicate': () => ({
+					match: {
+						graph: ':g0',
+						subject: ':Banana',
+						predicate: ':absent',
+					},
+					quads: {},
+				}),
+
+				'graph, subject, object': () => ({
+					match: {
+						graph: ':g0',
+						subject: ':Banana',
+						object: ':absent',
+					},
+					quads: {},
+				}),
+
+				'graph, predicate, object': () => ({
+					match: {
+						graph: ':g0',
+						predicate: 'a',
+						object: ':absent',
+					},
+					quads: {},
+				}),
+
+				'subject, predicate, object': () => ({
+					match: {
+						subject: ':Banana',
+						predicate: 'a',
+						object: ':absent',
+					},
+					quads: {},
+				}),
+
+				'graph, subject, predicate, object': () => ({
+					match: {
+						graph: ':g0',
+						subject: ':Banana',
+						predicate: 'a',
+						object: ':absent',
+					},
+					quads: {},
+				}),
 			},
+
 			'positives': {
-				'single': {
-					'graph': () => ({
-						match: {
-							graph: ':g0',
-						},
-						quads: {
-							':g0': {
-								':Banana': {
-									a: ':Fruit',
-									':label': '"Banana',
-								},
-								':Grapefruit': {
-									a: ':Fruit',
-								},
+				'graph': () => ({
+					match: {
+						graph: ':g0',
+					},
+					quads: {
+						':g0': {
+							':Banana': {
+								a: ':Fruit',
+								':label': '"Banana',
+							},
+							':Grapefruit': {
+								a: ':Fruit',
 							},
 						},
-					}),
-					'subject': () => ({
-						match: {
-							subject: ':Banana',
-						},
-						quads: {
-							':g0': {
-								':Banana': {
-									a: ':Fruit',
-									':label': '"Banana',
-								},
+					},
+				}),
+
+				'subject': () => ({
+					match: {
+						subject: ':Banana',
+					},
+					quads: {
+						':g0': {
+							':Banana': {
+								a: ':Fruit',
+								':label': '"Banana',
 							},
 						},
-					}),
-					'predicate': () => ({
-						match: {
-							predicate: 'a',
-						},
-						quads: {
-							':g0': {
-								':Banana': {
-									a: ':Fruit',
-								},
-								':Grapefruit': {
-									a: ':Fruit',
-								},
+					},
+				}),
+
+				'predicate': () => ({
+					match: {
+						predicate: ':label',
+					},
+					quads: {
+						':g0': {
+							':Banana': {
+								':label': '"Banana',
 							},
 						},
-					}),
-					'object': () => ({
-						match: {
-							object: ':Fruit',
-						},
-						quads: {
-							':g0': {
-								':Banana': {
-									a: ':Fruit',
-								},
-								':Grapefruit': {
-									a: ':Fruit',
-								},
+						':g1': {
+							':Watermelon': {
+								':label': '"Watermelon',
 							},
 						},
-					}),
-				},
+					},
+				}),
+
+				'object': () => ({
+					match: {
+						object: ':Fruit',
+					},
+					quads: {
+						':g0': {
+							':Banana': {
+								a: ':Fruit',
+							},
+							':Grapefruit': {
+								a: ':Fruit',
+							},
+						},
+						':g1': {
+							':Watermelon': {
+								a: ':Fruit',
+							},
+						},
+					},
+				}),
+
+				'graph, subject': () => ({
+					match: {
+						graph: ':g0',
+						subject: ':Banana',
+					},
+					quads: {
+						':g0': {
+							':Banana': {
+								a: ':Fruit',
+								':label': '"Banana',
+							},
+						},
+					},
+				}),
+
+				'graph, predicate': () => ({
+					match: {
+						graph: ':g0',
+						predicate: 'a',
+					},
+					quads: {
+						':g0': {
+							':Banana': {
+								a: ':Fruit',
+							},
+							':Grapefruit': {
+								a: ':Fruit',
+							},
+						},
+					},
+				}),
+
+				'graph, object': () => ({
+					match: {
+						graph: ':g0',
+						object: ':Fruit',
+					},
+					quads: {
+						':g0': {
+							':Banana': {
+								a: ':Fruit',
+							},
+							':Grapefruit': {
+								a: ':Fruit',
+							},
+						},
+					},
+				}),
+
+				'subject, predicate': () => ({
+					match: {
+						subject: ':Banana',
+						predicate: ':label',
+					},
+					quads: {
+						':g0': {
+							':Banana': {
+								':label': '"Banana',
+							},
+						},
+					},
+				}),
+
+				'subject, object': () => ({
+					match: {
+						subject: ':Watermelon',
+						object: ':Fruit',
+					},
+					quads: {
+						':g1': {
+							':Watermelon': {
+								a: ':Fruit',
+							},
+						},
+					},
+				}),
+
+				'predicate, object': () => ({
+					match: {
+						predicate: 'a',
+						object: ':Fruit',
+					},
+					quads: {
+						':g0': {
+							':Banana': {
+								a: ':Fruit',
+							},
+							':Grapefruit': {
+								a: ':Fruit',
+							},
+						},
+						':g1': {
+							':Watermelon': {
+								a: ':Fruit',
+							},
+						},
+					},
+				}),
+
+				'graph, subject, predicate': () => ({
+					match: {
+						graph: ':g1',
+						subject: ':Watermelon',
+						predicate: 'a',
+					},
+					quads: {
+						':g1': {
+							':Watermelon': {
+								a: ':Fruit',
+							},
+						},
+					},
+				}),
+
+				'graph, subject, object': () => ({
+					match: {
+						graph: ':g1',
+						subject: ':Watermelon',
+						object: '"Watermelon',
+					},
+					quads: {
+						':g1': {
+							':Watermelon': {
+								':label': '"Watermelon',
+							},
+						},
+					},
+				}),
+
+				'graph, predicate, object': () => ({
+					match: {
+						graph: ':g1',
+						predicate: ':label',
+						object: '"Watermelon',
+					},
+					quads: {
+						':g1': {
+							':Watermelon': {
+								':label': '"Watermelon',
+							},
+						},
+					},
+				}),
+
+				'subject, predicate, object': () => ({
+					match: {
+						subject: ':Watermelon',
+						predicate: ':label',
+						object: '"Watermelon',
+					},
+					quads: {
+						':g1': {
+							':Watermelon': {
+								':label': '"Watermelon',
+							},
+						},
+					},
+				}),
+
+				'graph, subject, predicate, object': () => ({
+					match: {
+						graph: ':g1',
+						subject: ':Watermelon',
+						predicate: ':label',
+						object: '"Watermelon',
+					},
+					quads: {
+						':g1': {
+							':Watermelon': {
+								':label': '"Watermelon',
+							},
+						},
+					},
+				}),
 			},
 		});
 	});

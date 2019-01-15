@@ -1493,9 +1493,20 @@ class factory_suite {
 		});
 
 		describe('RDFJS', () => {
+			let d_warn = console.warn;
+
+			// capture warn messages
+			console.warn = (s_warn) => {
+				// silence
+				if(/^\s*Warning:/.test(s_warn)) return;
+
+				// otherwise echo
+				d_warn.apply(console, [s_warn]);
+			};
+
 			// RDFJS Data Model test suite
-			// the data test suite has been disabled due to disagreement over falsy Term values and the graph component of `Triple`
-			// require('@rdfjs/data-model/test')(factory);
+			// the data test suite is currently in disagreement over falsy Term values and the graph component of `Triple`
+			require('@rdfjs/data-model/test')(factory);
 		});
 	}
 }
