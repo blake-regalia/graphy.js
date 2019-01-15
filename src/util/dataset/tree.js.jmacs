@@ -961,7 +961,7 @@ class DatasetTree extends stream.Duplex {
 
 			// advance subject iterator
 			if(!dg_subjects) {
-				dg_subjects = k_tree.c1_subjects(sv1_graph);
+				dg_subjects = this.subject_generator = k_tree.c1_subjects(sv1_graph);
 			}
 
 			// resume iterator
@@ -980,22 +980,15 @@ class DatasetTree extends stream.Duplex {
 					},
 				});
 				
-				// backpressure
-				if(b_pressure) {
-					// update iterators
-					this.graph_iterator = di_graph;
-					this.subject_generator = dg_subjects;
-
-					// stop pushing
-					return;
-				}
+				// backpressure; stop pushing
+				if(b_pressure) return;
 
 				// advance subject iterator
 				di_subject = dg_subjects.next();
 			}
 
 			// advance graph iterator
-			di_graph = dg_graphs.next();
+			di_graph = this.graph_iterator = dg_graphs.next();
 		}
 
 		// done reading
@@ -1179,7 +1172,7 @@ class DatasetTree extends stream.Duplex {
 						let sc1_object_target = factory.from.term(z_object).concise();
 
 						// no such object; return new empty tree
-						if(!as_objects_src.has(z_object)) return this.offspring();
+						if(!as_objects_src.has(sc1_object_target)) return this.offspring();
 						
 						// create set
 						as_objects_dst = new Set([sc1_object_target]);
@@ -1239,6 +1232,9 @@ class DatasetTree extends stream.Duplex {
 							c_pairs += 1;
 						}
 					}
+
+					// no quads; empty tree
+					if(!c_pairs) return this.offspring();
 
 					// save keys and quads count
 					h_pairs_dst[$_KEYS] = c_pairs;
@@ -1349,6 +1345,9 @@ class DatasetTree extends stream.Duplex {
 					}
 				}
 
+				// no quads; empty tree
+				if(!c_subjects) return this.offspring();
+
 				// save quads and subject-keys counts to dst triples hash
 				h_triples_dst[$_KEYS] = c_subjects;
 				h_triples_dst[$_QUADS] = c_quads;
@@ -1407,9 +1406,15 @@ class DatasetTree extends stream.Duplex {
 						}
 					}
 
+					// no pairs; skip
+					if(!c_pairs) continue;
+
 					// save quads and predicate-keys count
 					h_pairs_dst[$_KEYS] = c_pairs;
 					h_pairs_dst[$_QUADS] = c_pairs;
+
+					// save pairs hash tree
+					h_triples_dst[sc1_subject] = h_pairs_dst;
 
 					// increment super quads count
 					c_quads += c_pairs;
@@ -1417,6 +1422,9 @@ class DatasetTree extends stream.Duplex {
 					// increment subject-keys count
 					c_subjects += 1;
 				}
+
+				// no quads; empty tree
+				if(!c_subjects) return this.offspring();
 
 				// save quads and subject-keys count
 				h_triples_dst[$_KEYS] = c_subjects;
@@ -1447,7 +1455,6 @@ class DatasetTree extends stream.Duplex {
 				[$_QUADS]: 0,
 			};
 
-			/*eslint-disable no-lonely-if*/
 			// -graph, +subject
 			if(z_subject) {
 				// convert subject to c1
@@ -1479,7 +1486,7 @@ class DatasetTree extends stream.Duplex {
 							if(!(sc1_subject_target in h_triples_src)) continue;
 
 							// ref src pairs hash
-							let h_pairs_src = h_triples_src[sc1_predicate_target];
+							let h_pairs_src = h_triples_src[sc1_subject_target];
 
 							// no such predicate; skip
 							if(!(sc1_predicate_target in h_pairs_src)) continue;
@@ -1522,7 +1529,7 @@ class DatasetTree extends stream.Duplex {
 							if(!(sc1_subject_target in h_triples_src)) continue;
 
 							// ref src pairs hash
-							let h_pairs_src = h_triples_src[sc1_predicate_target];
+							let h_pairs_src = h_triples_src[sc1_subject_target];
 
 							// no such predicate; skip
 							if(!(sc1_predicate_target in h_pairs_src)) continue;
@@ -1549,6 +1556,9 @@ class DatasetTree extends stream.Duplex {
 							c_quads += n_objects;
 						}
 					}
+
+					// no quads; empty tree
+					if(!c_graphs) return this.offspring();
 
 					// save quads and graph-keys counts
 					h_quads_dst[$_KEYS] = c_graphs;
@@ -1594,7 +1604,7 @@ class DatasetTree extends stream.Duplex {
 							// each predicate
 							for(let sc1_predicate in h_pairs_src) {
 								// ref src objets set
-								let as_objects_src = h_triples_src[sc1_predicate];
+								let as_objects_src = h_pairs_src[sc1_predicate];
 
 								// no such object; skip
 								if(!as_objects_src.has(sc1_object_target)) continue;
@@ -1653,6 +1663,9 @@ class DatasetTree extends stream.Duplex {
 							c_quads += n_quads;
 						}
 					}
+
+					// no quads; empty tree
+					if(!c_graphs) return this.offspring();
 
 					// save graph-keys and quads count
 					h_quads_dst[$_KEYS] = c_graphs;
@@ -1735,6 +1748,9 @@ class DatasetTree extends stream.Duplex {
 							c_quads += c_subjects;
 						}
 
+						// no quads; empty tree
+						if(!c_graphs) return this.offspring();
+
 						// save graph-keys and quads count
 						h_quads_dst[$_KEYS] = c_graphs;
 						h_quads_dst[$_QUADS] = c_quads
@@ -1800,6 +1816,9 @@ class DatasetTree extends stream.Duplex {
 							c_quads += c_triples;
 						}
 
+						// no quads; empty tree
+						if(!c_graphs) return this.offspring();
+
 						// save graph-keys and quads counts
 						h_quads_dst[$_KEYS] = c_graphs;
 						h_quads_dst[$_QUADS] = c_quads;
@@ -1821,12 +1840,6 @@ class DatasetTree extends stream.Duplex {
 						// graph-keys and quads count
 						let c_graphs = 0;
 						let c_quads = 0;
-
-						// // init dst triples hash
-						// let h_quads_dst = {
-						// 	[$_KEYS]: 0,
-						// 	[$_QUADS]: 0,
-						// };
 
 						// each graph
 						for(let sc1_graph in h_quads_src) {
@@ -1903,7 +1916,7 @@ class DatasetTree extends stream.Duplex {
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return this.offspring({});
+						if(!c_graphs) return this.offspring();
 
 						// save subject-keys and quads count
 						h_quads_dst[$_KEYS] = c_graphs;
