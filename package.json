@@ -41,7 +41,7 @@
     "worker": "^0.3.12"
   },
   "devDependencies": {
-    "@rdfjs/data-model": "^1.1.1",
+    "@rdfjs/data-model": "git://github.com/rdfjs/data-model.git#remove-falsy-tests",
     "chai": "^4.2.0",
     "chai-iterator": "^3.0.0",
     "chai-string": "^1.5.0",
