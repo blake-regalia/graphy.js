@@ -3,16 +3,14 @@ const csv_parse = require('csv-parse');
 const stream = require('@graphy/core.iso.stream');
 const ttl_write = require('@graphy/content.ttl.write');
 
-// a series of streams to pipe together
-stream.pipeline(...[
-	// read from standard input
-	process.stdin,
 
+// read from standard input
+process.stdin
 	// parse string chunks from CSV into row objects
-	csv_parse(),
+	.pipe(csv_parse())
 
 	// transform each row
-	new stream.Transform({
+	.pipe(new stream.Transform({
 		// this transform both expects objects as input and outputs object
 		objectMode: true,
 
@@ -34,21 +32,20 @@ stream.pipeline(...[
 				},
 			});
 		},
-	}),
+	}))
 
 	// serialize each triple
-	ttl_write({
+	.pipe(ttl_write({
 		prefixes: {
 			demo: 'http://ex.org/',
 			foaf: 'http://xmlns.com/foaf/0.1/',
 		},
-	}),
+	}))
 
 	// write to standard output
-	process.stdout,
+	.pipe(process.stdout)
 
 	// listen for errors; throw them
-	(e_stream) => {
-		throw e_stream;
-	},
-]);
+	.on('error', (e_pipeline) => {
+		throw e_pipeline;
+	});

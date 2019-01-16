@@ -6,7 +6,9 @@
   const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#'};
 }
 @{api_title('Data Factory')}
-### `@graphy/core.data.factory`
+<div class="package-heading">
+  <code>@graphy/core.data.factory</code>
+</div>
 
 ## Primer
  - `factory` is used throughout this document to refer to this module's export.
@@ -179,7 +181,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_named-node" />
 
-- [`factory.namedNode`](#function_named-node)`(iri: string)`
+### [`factory.namedNode`](#function_named-node)`(iri: string)`
   - **returns** a [new NamedNode](#class_named-node)
   - *example:*
       ```js
@@ -188,7 +190,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_blank-node" />
 
- - [`factory.blankNode`](#function_blank-bode)`(...)`
+### [`factory.blankNode`](#function_blank-bode)`(...)`
    - *overloaded variants*
      - `()` -- 'auto'-version (no args constructor) will generate a new UUID4 in attempt to avoid label collisions
      - `(label: string)` -- uses the given `label` 
@@ -211,7 +213,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_default-graph" />
 
- - [`factory.defaultGraph`](#function_default-graph)`()`
+### [`factory.defaultGraph`](#function_default-graph)`()`
    - **returns** a [new DefaultGraph](#class_default-graph)
    - *example:*
        ```js
@@ -221,7 +223,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_literal" />
 
- - [`factory.literal`](#function_literal)`(contents: string[, datatype_or_lang: `[`NamedNode`](#class_named-node)` | `[`#string/language-tag`](#string_language-tag)`])`
+### [`factory.literal`](#function_literal)`(contents: string[, datatype_or_lang: `[`NamedNode`](#class_named-node)` | `[`#string/language-tag`](#string_language-tag)`])`
    - **returns** a [new Literal](#class_literal), optionally using `datatype_or_lang`
    - *example:*
        ```js
@@ -235,7 +237,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_ephemeral" />
 
- - [`factory.ephemeral`](#function_ephemeral)`()`
+### [`factory.ephemeral`](#function_ephemeral)`()`
    - **returns** a [new EphemeralBlankNode](#class_ephemeral-blank-node) which is primarily used as a means to write syntactic anonymous blank nodes in Turtle and TriG.
    - *examples:*
        ```js
@@ -272,31 +274,31 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_boolean" />
 
- - [`factory.boolean`](#function_boolean)`(value: boolean | string)`
+### [`factory.boolean`](#function_boolean)`(value: boolean | string)`
    - **returns** a [new Literal_Boolean](#class_literal-boolean)
    - *examples:* [See Literal_Boolean](#class_literal-boolean)
 
 <a name="function_integer" />
 
- - [`factory.integer`](#function_integer)`(value: `[`#number/integer`](#number_integer)` | string)`
+### [`factory.integer`](#function_integer)`(value: `[`#number/integer`](#number_integer)` | string)`
    - **returns** a [new Literal_Integer](#class_literal-integer)
    - *examples:* [See Literal_Integer](#class_literal-integer)
 
 <a name="function_double" />
 
- - [`factory.double`](#function_double)`(value: number | string)`
+### [`factory.double`](#function_double)`(value: number | string)`
    - **returns** a [new Literal_Double](#class_literal-double)
    - *examples:* [See Literal_Double](#class_literal-double)
 
 <a name="function_decimal" />
 
- - [`factory.decimal`](#function_decimal)`(value: number | string)`
+### [`factory.decimal`](#function_decimal)`(value: number | string)`
    - **returns** a [new Literal_Decimal](#class_literal-decimal)
    - *examples:* [See Literal_Decimal](#class_literal-decimal)
 
 <a name="function_number" />
 
- - [`factory.number`](#function_number)`(value: number)`
+### [`factory.number`](#function_number)`(value: number)`
    - will return an RDF literal with either an XSD integer datatype or an XSD decimal datatype, depending on if `value` is an integer or not. Otherwise, if `value` is infinite or `NaN`, will return an RDF literal with an XSD double datatype.
    - **returns** a [new Literal_Integer](#class_literal-integer), a new [new Literal_Decimal](#class_literal-decimal), or a [new Literal_Double](#class_literal-double) depending on `value`.
    - *examples:*
@@ -310,7 +312,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 <a name="function_date" />
 
 @. let dt_event = new Date('December 17, 1995 03:24:00');
- - [`factory.date`](#function_date)`(date: Date)`
+### [`factory.date`](#function_date)`(date: Date)`
    - **returns** a [new Literal](#class_literal)
    - *examples:*
       ```js
@@ -321,7 +323,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_date-time" />
 
- - [`factory.dateTime`](#function_date-time)`(dateTime: Date)`
+### [`factory.dateTime`](#function_date-time)`(dateTime: Date)`
    - **returns** a [new Literal](#class_literal)
    - *examples:*
       ```js
@@ -332,25 +334,25 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_quad" />
 
- - [`factory.quad`](#function_quad)`(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
+### [`factory.quad`](#function_quad)`(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
    - **returns** a [new Quad](#class_quad)
 
 <a name="function_c1" />
 
- - [`factory.c1`](#function_c1)`(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+### [`factory.c1`](#function_c1)`(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **returns** a [new GenericTerm](#class_generic-term)
 
 <!--
 <a name="function_term" />
 
- - [`factory.term`](#function_term)`(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+### [`factory.term`](#function_term)`(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **returns** a [new GenericTerm](#class_generic-term)
 -->
 
 @.{/*
 <a name="function_triple" />
 
- - [`factory.triple`](#function_triple)`(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`)`
+### [`factory.triple`](#function_triple)`(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`)`
    - **returns** a [new Triple](#class_triple)
 */}
 
@@ -381,7 +383,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_from-term" />
 
- - [`factory.from.term`](#function_from-term)`(term: `[`AnyTerm`](#interface_any-term)`)`
+### [`factory.from.term`](#function_from-term)`(term: `[`AnyTerm`](#interface_any-term)`)`
    - converts an object that represents an RDF term, as long as it includes the expected keys such as an [@RDFJS/Term](https://rdf.js.org/#term-interface) from another library, into a graphy-constructed [GenericTerm](#class_generic-term).
    - **returns** a [new GenericTerm](#class_generic-term)
    - *example:*
@@ -397,7 +399,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_from-quad" />
 
- - [`factory.from.quad`](#function_from-quad)`(term: `[`AnyQuad`](#interface_any-quad)`)`
+### [`factory.from.quad`](#function_from-quad)`(term: `[`AnyQuad`](#interface_any-quad)`)`
    - converts an object that represents an RDF quad, as long as it includes the expected keys such as an [@RDFJS/Quad](https://rdf.js.org/#quad-interface) from another library, into a graphy-constructed [Quad](#class_quad).
    - **returns** a [new Quad](#class_quad)
    - *example:*
@@ -442,7 +444,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_comment" />
 
- - [`factory.comment`](#function_comment)`(config: `[`#config/comment`](#config_comment)`)`
+### [`factory.comment`](#function_comment)`(config: `[`#config/comment`](#config_comment)`)`
    - creates a special concise term string that tells the RDF writer to interpret the value associated with this key as a comment and to insert it into the output RDF document if the destination RDF format supports comments. Use this function in the predicate, subject or graph position of any concise triples or concise quads hash.
    - **returns** a [`#string/concise-term`](concise#string_c1)
    - *example:*
@@ -459,7 +461,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 @.{/*
 <a name="function_newlines" />
 
- - [`factory.newlines`](#function_newlines)`(config: `[`#config/newlines`](#config_newlines)`)`
+### [`factory.newlines`](#function_newlines)`(config: `[`#config/newlines`](#config_newlines)`)`
    - creates a special concise term string that tells the RDF writer to interpret the value associated with this key as the number of newlines to insert into the output RDF document if the destination RDF format supports empty newlines. Value must be an integer. Use this function in the predicate, subject or graph position of any concise triples or concise quads hash.
    - **returns** a [`#string/concise-term`](concise#string_c1)
 */}

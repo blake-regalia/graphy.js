@@ -13,7 +13,7 @@
    - [`.size`](#property_size) -- number of quads in the tree.
  - [Prototype Methods](#methods) -- 
    - Iterators
-     - [`* [Symbol.iterator](...)`](#method_iterator) -- for iterating over the dataset
+     - [`* [Symbol.iterator](...)`](#method_symbol-iterator) -- instances are iterable
    - Canonicalization
      - [`.canonicalize(...)`](#method_canonicalize)
    - Set Mutators
@@ -83,71 +83,71 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 ## Methods
 
-<a name="method_iterator" />
+<a name="method_symbol-iterator" />
 
-### * **[Symbol.iterator]**()
+### [`* [Symbol.iterator]`](#method_symbol-iterator)`()`
  - create an iterator to traverse each quad in `this`.
  - **yields** [Quads](core.data.factory#class_quad).
 
 
 <a name="method_canonicalize" />
 
-### **.canonicalize**()
+### [`.canonicalize`](#method_canonicalize)`()`
  - create a new DatasetTree by applying the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/) (URDNA2015). If you want isomorphism to hold under the usual DatasetTree methods, you should use this method on both dataset instances prior to testing [`.equals()`](#method_equals), [`.contains()`](#method_contains), [`.disjoint()`](#method_disjoint), and prior to using [`.union()`](#method_union), [`.intersection()`](#method_intersection), [`.minus()`](#method_minus), and [`.difference()`](#method_difference).
  - **returns** a [new DatasetTree](#methods).
 
 
 <a name="method_add" />
 
-### **.add**(quad: [AnyQuad](core.data.factory#interface_any-quad)) _implements_ [@RDFJS/dataset.add](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-add)
+### [`.add`](#method_add)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/dataset.add](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-add)
  - add a single quad to the tree; will only succeed if the quad is not already present.
  - **returns** `this`.
 
 
 <a name="method_add-all" />
 
-### **.addAll**(quads: [@RDFJS/dataset](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset) | sequence<[AnyQuad](core.data.factory#interface_any-quad)>) _implements_ [@RDFJS/dataset.addAll](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-addall)
+### [`.addAll`](#method_addAll)`(quads: `[`@RDFJS/dataset`](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset)` | sequence<`[`AnyQuad`](core.data.factory#interface_any-quad)`>)` _implements_ [@RDFJS/dataset.addAll](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-addall)
  - add quads to the tree; will only add each quad that is not already present. 
  - **returns** `this`
 
 
 <a name="method_add-quads" />
 
-### **.addQuads**(quads: [Iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator)<[Quad](core.data.factory#class_quad)>)
+### [`.addQuads`](#method_addQuads)`(quads: `[`Iterable`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator)`<`[`Quad`](core.data.factory#class_quad)`>)`
  - add quads to the tree; will only add each quad that is not already present. Bypass the internal overhead of checking and needlessly converting each quad to graphy-safe objects. Notice that `quads` must be an [Iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator) sequence of graphy [Quads](core.data.factory#class_quad).
  - **returns** a [`#number/integer`](core.data.factory#number_integer) indicating how many quads were successfully added to the tree.
 
 
 <a name="method_delete" />
 
-### **.delete**(Quad quad) _implements_ [@RDFJS/dataset.delete](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-delete)
+### [`.delete`](#method_delete)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/dataset.delete](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-delete)
  - delete the given `quad` from the tree if it exists.
  - **returns** `this`
 
 <a name="method_delete-quads" />
 
-### **deleteQuads**(quads: list<[Quad](core.data.factory#class_quad)>)
+### [`.deleteQuads`](#method_deleteQuads)`(quads: list<`[`Quad`](core.data.factory#class_quad)`>)`
  - delete the given `quads` from the tree if they exist.
  - **returns** a [`#number/integer`](core.data.factory#number_integer) indicating how many quads were successfully deleted from the tree.
 
 
 <a name="method_clear" />
 
-### **.clear**()
+### [`.clear`](#method_clear)`()`
  - remove all quads from the tree.
  - **returns** `undefined`.
 
 
 <a name="method_has" />
 
-### **.has**(quad: [AnyQuad](core.data.factory#interface_any-quad)) _implements_ [@RDFJS/dataset.has](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-has)
+### [`.has`](#method_has)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/dataset.has](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-has)
  - tests if this contains the given `quad`.
  - **returns** a `boolean`.
 
 
 <a name="method_equals" />
 
-### **.equals**(other: [DatasetTree](#methods)>) _implements_ [@RDFJS/dataset.equals](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-equals)
+### [`.equals`](#method_equals)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.equals](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-equals)
  - `A = B`
  - tests if `this` and `other` are equivalent graphs using [URDNA2015](https://json-ld.github.io/normalization/spec/).
  - **returns** a `boolean`
@@ -155,7 +155,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_contains" />
 
-### **contains**(other: [DatasetTree](#methods)>)
+### [`.contains`](#method_contains)`(other: `[`DatasetTree`](#methods)`)`
  - `(A ∩ B) = B`
  - tests if `this` contains all quads in `other`.
  - **returns** a `boolean`.
@@ -163,7 +163,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_disjoint" />
 
-### **.disjoint**(other: [DatasetTree](#methods)>)
+### [`.disjoint`](#method_disjoint)`(other: `[`DatasetTree`](#methods)`)`
  - `(A ∩ B) = Ø`
  - tests if `this` is disjoint with `other`.
  - **returns** a `boolean`.
@@ -171,14 +171,14 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_union" />
 
-### **.union**(other: [DatasetTree](#methods)>)
+### [`.union`](#method_union)`(other: `[`DatasetTree`](#methods)`)`
  - create a new DatasetTree by combining the quads from both `this` and `other`.
  - **returns** a [new DatasetTree](#methods).
 
 
 <a name="method_intersection" />
 
-### **.intersection**(other: [DatasetTree](#methods)>)
+### [`.intersection`](#method_intersection)`(other: `[`DatasetTree`](#methods)`)`
  - `A ∩ B`
  - create a new DatasetTree by intersecting the quads between `this` and `other`.
  - **returns** a [new DatasetTree](#methods).
@@ -186,7 +186,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_minus" />
 
-### **.minus**(other: [DatasetTree](#methods)>)
+### [`.minus`](#method_minus)`(other: `[`DatasetTree`](#methods)`)`
  - `(A - (A ∩ B))`
  - create a new DatasetTree by subtracting the quads in `other` from `this`.
  - **returns** a [new DatasetTree](#methods).
@@ -194,7 +194,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_difference" />
 
-### **.difference**(other: [DatasetTree](#methods)>)
+### [`.difference`](#method_difference)`(other: `[`DatasetTree`](#methods)`)`
  - `(A - (A ∩ B)) ∪ (B - (A ∩ B))`
  - create a new DatasetTree by taking the difference between `this` and `other`.
  - **returns** a [new DatasetTree](#methods).

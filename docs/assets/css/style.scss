@@ -177,3 +177,21 @@ section {
 body {
 	font: 16px/1.4 Lato, "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
+
+h3>code {
+	font-size: initial;
+}
+
+h3>*>code {
+	font-size: initial;
+}
+
+.package-heading {
+	font-size: 1.2em;
+	margin: 15pt 10pt;
+}
+
+.package-heading code {
+	font-size: inherit;
+	padding: 3pt 10pt;
+}
