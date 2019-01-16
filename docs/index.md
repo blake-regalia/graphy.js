@@ -10,23 +10,22 @@
 
 ## [API Reference](api)
 <div class="larger">
-  Documentation for the `graphy` JavaScript API. Includes API examples.
+  Documentation for the <code>graphy</code> JavaScript API. Includes API examples.
 </div>
 
 ## [Command Line Interface](cli)
 <div class="larger">
-  Documentation for the `$ graphy` command-line interface. Includes CLI examples.
+  Documentation for the <code>$ graphy</code> command-line interface. Includes CLI examples.
 </div>
 
 ## Features
-<div class="larger">
- - [Read & write RDF documents](content.textual) using streams. Includes support for N-Triples (.nt), N-Quads (.nq), Turtle (.ttl), and TriG (.trig).
+ - [Read RDF documents](content.textual#verb_read) using streams. Includes support for N-Triples (.nt), N-Quads (.nq), Turtle (.ttl), and TriG (.trig).
+ - [Write RDF ]
  - [Construct RDF data](concise#hash_c3) using ES object literals that reflect the tree-like structure of quads, `graph -> subject -> predicate -> object`, including nested blank nodes and RDF collections.
 <!-- - [High-performance](#performance) document readers. -->
  - [Compute the union, intersection, difference or subtraction](util.dataset.tree) between multiple RDF graphs analagous to [Set Algebra](https://en.wikipedia.org/wiki/Algebra_of_sets).
- - [Compare two RDF graphs](util.dataset.tree) for equivalence, containment, and disjointness by employing the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
+ - [Compare two RDF graphs](util.dataset.tree#method_canonicalize) for isomoprhic equivalence, containment, and disjointness by first canonicalizing them with the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
  - [Transform RDF data from the command-line](cli) by piping them through a series of sub-commands.
-</div>
 
 
 ## Package Tree
@@ -59,88 +58,7 @@ graphy/:
 
 <br />
 
-## Examples
 
-#### Covert a CSV document to a Turtle document
-```js
-// snippets/transform-csv.js
-const csv_parse = require('csv-parse');
-const stream = require('@graphy/core.iso.stream');
-const ttl_write = require('@graphy/content.ttl.write');
-
-
-// read from standard input
-process.stdin
-   // parse string chunks from CSV into row objects
-   .pipe(csv_parse())
-
-   // transform each row
-   .pipe(new stream.Transform({
-      // this transform both expects objects as input and outputs object
-      objectMode: true,
-
-      // each row
-      transform(a_row, s_encoding, fk_transform) {
-         // destructure row into cells
-         let [s_id, s_name, s_likes] = a_row;
-
-         // structure data into concise-triple hash
-         fk_transform(null, {
-            type: 'c3',
-            value: {
-               ['demo:'+s_name]: {
-                  'foaf:name': '"'+s_name,
-                  'demo:id': parseInt(s_id),
-                  'demo:likes': s_likes.split(/\s+/g)
-                     .map(s => `demo:${s}`),
-               },
-            },
-         });
-      },
-   }))
-
-   // serialize each triple
-   .pipe(ttl_write({
-      prefixes: {
-         demo: 'http://ex.org/',
-         foaf: 'http://xmlns.com/foaf/0.1/',
-      },
-   }))
-
-   // write to standard output
-   .pipe(process.stdout)
-
-   // listen for errors; throw them
-   .on('error', (e_pipeline) => {
-      throw e_pipeline;
-   });
-```
-
-Run from the command line with:
-```sh
-cat <<EOF | node snippets/transform-csv.js
-> 1,Blake,Banana
-> 2,Banana,Water Sunlight Soil
-> EOF
-```
-
-Outputs:
-```turtle
-@prefix demo: <http://ex.org/> .
-@prefix foaf: <http://xmlns.com/foaf/0.1/> .
-
-demo:Blake foaf:name "Blake" ;
-   demo:id 1 ;
-   demo:likes demo:Banana .
-
-demo:Banana foaf:name "Banana" ;
-   demo:id 2 ;
-   demo:likes demo:Water, demo:Sunlight, demo:Soil .
-
-
-```
-
-<br />
 
 ## License
 

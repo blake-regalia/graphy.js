@@ -19,7 +19,7 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
 
 <a name="command_content-format-read" />
 
- - `content.FORMAT.read [OPTIONS]`
+### [`content.FORMAT.read`](#command_content-format-read)` [OPTIONS]`
    - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
    - **Format:**
      - `nt` -- read N-Triples document(s)
@@ -46,7 +46,7 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
 
 <a name="command_content-format-write" />
 
- - `content.FORMAT.write [OPTIONS]`
+### [`content.FORMAT.write`](#command_content-format-write)` [OPTIONS]`
    - `N-to-1<`[`WritableDataEventStream`](#class_writable-data-event-stream)`, `[`StringStream`](#class_string-stream)`>` -- maps 1 or more object input streams of [WritableDataEvent](content.textual#interface_writable-data-event) objects into 1 utf8-encoded output stream.
    - **Format:**
      - `nt` -- write an N-Triples document
@@ -76,9 +76,9 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
 
 <a name="command_util-dataset-tree" />
 
- - `util.dataset.tree [OPTIONS] [COMMAND]`
-   - use the [DatasetTree](util.dataset.tree) package to perform set algebra or to remove duplicates from a single data source.
-   - **Commands:**
+### [`util.dataset.tree`](#command_util-dataset-tree)` [OPTIONS] [SUBCOMMAND]`
+   - use the [DatasetTree](util.dataset.tree) package to perform set algebra or simply to remove duplicates from a single data source.
+   - **Subcommands:**
      - ` ` -- _(no command)_
        - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- maps 1 or more object input streams of [Quad](core.data.factory#class_quad) objects into 1 or more object output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
        - This transformation puts each dataset into its own tree, effectively removing duplicate quads and organizing quads into a tree of `graph --> subject --> predicate --> object`. [See example](#example_pretty-print).
@@ -207,146 +207,4 @@ Automatically determines which mode is best suited for the destination stream. C
 
 <a name="examples /">
 
-## Examples
-
-<a name="example_pretty-print" />
-
-### Pretty-print an RDF document
-Piping RDF data through the DatasetTree transform organizes quads into a hierarchy by graph, subject, predicate and object. Piping this result to a writer format that uses a tree-like syntax (such as Turtle or TriG) has the effect of pretty-printing an otherwise "ugly" document.
-
-```bash
-$ curl http://dbpedia.org/data/Red_banana.ttl \
-    | graphy content.ttl.read \
-        --pipe util.dataset.tree \
-        --pipe content.ttl.write \
-        > pretty.ttl
-```
-
-
-#### Turns this:
-
-```turtle
-@prefix dbo:  <http://dbpedia.org/ontology/> .
-@prefix dbr:  <http://dbpedia.org/resource/> .
-dbr:FHIA-01 dbo:wikiPageRedirects dbr:Goldfinger_banana .
-dbr:Musa_goldfinger dbo:wikiPageRedirects dbr:Goldfinger_banana .
-@prefix foaf: <http://xmlns.com/foaf/0.1/> .
-@prefix wikipedia-en: <http://en.wikipedia.org/wiki/> .
-wikipedia-en:Goldfinger_banana  foaf:primaryTopic dbr:Goldfinger_banana .
-@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix yago: <http://dbpedia.org/class/yago/> .
-dbr:Goldfinger_banana rdf:type  yago:Whole100003553 ,
-    yago:Abstraction100002137 .
-@prefix owl:  <http://www.w3.org/2002/07/owl#> .
-dbr:Goldfinger_banana rdf:type  owl:Thing ,
-    yago:LivingThing100004258 ,
-    yago:VascularPlant113083586 ,
-    yago:Plant100017222 ,
-    dbo:Plant ,
-    dbo:Species ,
-    yago:Object100002684 .
-@prefix wikidata: <http://www.wikidata.org/entity/> .
-dbr:Goldfinger_banana rdf:type  wikidata:Q756 ,
-    yago:PhysicalEntity100001930 ,
-    wikidata:Q19088 ,
-    yago:Variety108101085 ,
-    yago:TaxonomicGroup107992450 ,
-    wikidata:Q4886 ,
-    yago:BiologicalGroup107941170 ,
-    yago:Cultivar113084834 ,
-    yago:WikicatBananaCultivars ,
-    dbo:Eukaryote ,
-    dbo:CultivatedVariety ,
-    yago:Group100031264 ,
-    yago:Organism100004475 .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-dbr:Goldfinger_banana rdfs:label  "FHIA-1"@it ,
-    "Goldfinger banana"@en ;
-  rdfs:comment  "La FHIA-01 nota anche come Goldfinger \u00E8 una cultivar di banana sviluppata dalla Fundaci\u00F3n Hondure\u00F1a de Investigaci\u00F3n Agr\u00EDcola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttivit\u00E0 e la notevole resistenza ai patogeni."@it ,
-    "The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA) by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en ;
-  owl:sameAs  <http://rdf.freebase.com/ns/m.026ytv3> .
-@prefix dbpedia-wikidata: <http://wikidata.dbpedia.org/resource/> .
-dbr:Goldfinger_banana owl:sameAs  dbpedia-wikidata:Q5580155 ,
-    wikidata:Q5580155 .
-@prefix yago-res: <http://yago-knowledge.org/resource/> .
-dbr:Goldfinger_banana owl:sameAs  yago-res:Goldfinger_banana ,
-    dbr:Goldfinger_banana .
-@prefix dbpedia-it: <http://it.dbpedia.org/resource/> .
-dbr:Goldfinger_banana owl:sameAs  dbpedia-it:FHIA-1 .
-@prefix dct:  <http://purl.org/dc/terms/> .
-@prefix dbc:  <http://dbpedia.org/resource/Category:> .
-dbr:Goldfinger_banana dct:subject dbc:Banana_cultivars ;
-  foaf:name "Musa 'FHIA-01 Goldfinger'"@en ;
-  foaf:isPrimaryTopicOf wikipedia-en:Goldfinger_banana .
-@prefix prov: <http://www.w3.org/ns/prov#> .
-dbr:Goldfinger_banana prov:wasDerivedFrom <http://en.wikipedia.org/wiki/Goldfinger_banana?oldid=646170541> .
-@prefix dbp:  <http://dbpedia.org/property/> .
-dbr:Goldfinger_banana dbp:group dbr:Banana ;
-  dbo:origin  dbr:Honduras ;
-  dbo:wikiPageExternalLink  <http://www.fhia.org.hn/dowloads/info_hibridos/fhia01.pdf> ,
-    <http://www.promusa.org/tiki-index.php?page=FHIA-01> ,
-    <http://archive.idrc.ca/books/reports/V221/banana.html> ;
-  dbo:abstract  "The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA) by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en ,
-    "La FHIA-01 nota anche come Goldfinger \u00E8 una cultivar di banana sviluppata dalla Fundaci\u00F3n Hondure\u00F1a de Investigaci\u00F3n Agr\u00EDcola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttivit\u00E0 e la notevole resistenza ai patogeni."@it ;
-  dbo:wikiPageRevisionID  646170541 ;
-  dbo:wikiPageID  8279730 ;
-  dbo:hybrid  dbr:Musa_balbisiana ,
-    dbr:Musa_acuminata ,
-    dbr:Banana ;
-  dbp:cultivar  "'FHIA-01 Goldfinger'"^^rdf:langString .
-@prefix ns16: <http://purl.org/linguistics/gold/> .
-dbr:Goldfinger_banana ns16:hypernym dbr:Cultivar ;
-  dbp:imageWidth  250 .
-dbr:Goldfinger  dbo:wikiPageDisambiguates dbr:Goldfinger_banana .
-```
-
-
-#### Into this:
-
-```turtle
-@prefix dbo: <http://dbpedia.org/ontology/> .
-@prefix dbr: <http://dbpedia.org/resource/> .
-@prefix foaf: <http://xmlns.com/foaf/0.1/> .
-@prefix wikipedia-en: <http://en.wikipedia.org/wiki/> .
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix yago: <http://dbpedia.org/class/yago/> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix wikidata: <http://www.wikidata.org/entity/> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix dbpedia-wikidata: <http://wikidata.dbpedia.org/resource/> .
-@prefix yago-res: <http://yago-knowledge.org/resource/> .
-@prefix dbpedia-it: <http://it.dbpedia.org/resource/> .
-@prefix dct: <http://purl.org/dc/terms/> .
-@prefix dbc: <http://dbpedia.org/resource/Category:> .
-@prefix prov: <http://www.w3.org/ns/prov#> .
-@prefix dbp: <http://dbpedia.org/property/> .
-@prefix ns16: <http://purl.org/linguistics/gold/> .
-
-dbr:FHIA-01 dbo:wikiPageRedirects dbr:Goldfinger_banana .
-
-dbr:Musa_goldfinger dbo:wikiPageRedirects dbr:Goldfinger_banana .
-
-wikipedia-en:Goldfinger_banana foaf:primaryTopic dbr:Goldfinger_banana .
-
-dbr:Goldfinger_banana rdf:type yago:Whole100003553, yago:Abstraction100002137, owl:Thing, yago:LivingThing100004258, yago:VascularPlant113083586, yago:Plant100017222, dbo:Plant, dbo:Species, yago:Object100002684, wikidata:Q756, yago:PhysicalEntity100001930, wikidata:Q19088, yago:Variety108101085, yago:TaxonomicGroup107992450, wikidata:Q4886, yago:BiologicalGroup107941170, yago:Cultivar113084834, yago:WikicatBananaCultivars, dbo:Eukaryote, dbo:CultivatedVariety, yago:Group100031264, yago:Organism100004475 ;
-  rdfs:label "FHIA-1"@it, "Goldfinger banana"@en ;
-  rdfs:comment "La FHIA-01 nota anche come Goldfinger è una cultivar di banana sviluppata dalla Fundación Hondureña de Investigación Agrícola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttività e la notevole resistenza ai patogeni."@it, "The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA) by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en ;
-  owl:sameAs <http://rdf.freebase.com/ns/m.026ytv3>, dbpedia-wikidata:Q5580155, wikidata:Q5580155, yago-res:Goldfinger_banana, dbr:Goldfinger_banana, dbpedia-it:FHIA-1 ;
-  dct:subject dbc:Banana_cultivars ;
-  foaf:name "Musa 'FHIA-01 Goldfinger'"@en ;
-  foaf:isPrimaryTopicOf wikipedia-en:Goldfinger_banana ;
-  prov:wasDerivedFrom <http://en.wikipedia.org/wiki/Goldfinger_banana?oldid=646170541> ;
-  dbp:group dbr:Banana ;
-  dbo:origin dbr:Honduras ;
-  dbo:wikiPageExternalLink <http://www.fhia.org.hn/dowloads/info_hibridos/fhia01.pdf>, <http://www.promusa.org/tiki-index.php?page=FHIA-01>, <http://archive.idrc.ca/books/reports/V221/banana.html> ;
-  dbo:abstract "The Goldfinger banana (FHIA-01) is a banana cultivar developed in Honduras. The cultivar, developed at the Honduran Foundation for Agricultural Research (FHIA) by a team of scientists led by Phillip Rowe and Franklin Rosales, has been bred to be pest-resistant (specifically against the black sigatoka) and crop-yielding."@en, "La FHIA-01 nota anche come Goldfinger è una cultivar di banana sviluppata dalla Fundación Hondureña de Investigación Agrícola nel 1988. Questa banana si distingue per il suo netto sapore di mela, grande produttività e la notevole resistenza ai patogeni."@it ;
-  dbo:wikiPageRevisionID "646170541"^^<http://www.w3.org/2001/XMLSchema#integer> ;
-  dbo:wikiPageID "8279730"^^<http://www.w3.org/2001/XMLSchema#integer> ;
-  dbo:hybrid dbr:Musa_balbisiana, dbr:Musa_acuminata, dbr:Banana ;
-  dbp:cultivar "'FHIA-01 Goldfinger'"^^rdf:langString ;
-  ns16:hypernym dbr:Cultivar ;
-  dbp:imageWidth "250"^^<http://www.w3.org/2001/XMLSchema#integer> .
-
-dbr:Goldfinger dbo:wikiPageDisambiguates dbr:Goldfinger_banana .
-```
-
+## [See Examples](cli.exampels)
