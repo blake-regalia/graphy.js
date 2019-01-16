@@ -151,7 +151,7 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
              > difference.ttl
          ```
      - `-e, --equals`
-       - `2-to-Boolean<`[`QuadStream`](#class_quad-stream)`, `[`ResultValue`](#class_result-value)`>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests them for strict equality, and then pipes the boolean result value into 1 output stream.
+       - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream`](#class_result-value-stream)`<boolean>>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests them for strict equality, and then pipes the boolean result value into 1 output stream.
        - Tests for strict equality between the two inputs.
        - _example:_
          ```bash
@@ -167,7 +167,7 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
              --inputs original.ttl modified.ttl
          ```
      - `-j, --disjoint`
-       - `2-to-Boolean<`[`QuadStream`](#class_quad-stream)`, `[`ResultValue`](#class_result-value)`>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests them for strict disjointess, and then pipes the boolean result value into 1 output stream.
+       - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream`](#class_result-value-stream)`<boolean>>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests them for strict disjointess, and then pipes the boolean result value into 1 output stream.
        - Tests for strict disjointess between the two inputs.
        - _example:_
          ```bash
@@ -177,7 +177,7 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
              --inputs original.ttl modified.ttl
          ```
      - `-c, --contains`
-       - `2-to-Boolean<`[`QuadStream`](#class_quad-stream)`, `[`ResultValue`](#class_result-value)`>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests if the first input strictly contains the second, and then pipes the boolean result value into 1 output stream.
+       - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream`](#class_result-value-stream)`<boolean>>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests if the first input strictly contains the second, and then pipes the boolean result value into 1 output stream.
        - Tests if the first input strictly contains the second.
        - _example:_
          ```bash
@@ -224,25 +224,29 @@ $ graphy content.ttl.read \
 
 <a name="class_string-stream" />
 
-### class **StringStream**
+### class [**StringStream**](#class_string-stream)
 A stream of utf8-encoded strings. This always applies to `stdin` and `stdout`.
 
 
 <a name="class_quad-stream" />
 
-### class **QuadStream**
+### class [**QuadStream**](#class_quad-stream)
 A stream of [Quad](core.data.factory#class_quad) objects.
 
 
 <a name="class_writable-data-event-stream" />
 
-### class **WritableDataEventStream**
+### class [**WritableDataEventStream**](#class_writable-data-event-stream)
 A stream of [WritableDataEvent](content.textual#interface_writable-data-event) objects.
 
 
 <a name="class_any-destination" />
 
-### class **AnyDestination**
+### class [**AnyDestination**](#class_any-destination) _adapts_ [QuadStream](#class_quad-stream), [StringStream](#class_string-stream)
 Automatically determines which mode is best suited for the destination stream. Compatible with [QuadStream](#class_quad-stream), [WritableDataEventStream](#class_writable-data-event-stream) and [StringStream](#class_string-stream). In the case of StringStream, each object is converted to its JSON equivalent on a single line, followed by a newline `'\n'` (i.e., [Line-delimited JSON](https://en.wikipedia.org/wiki/JSON_streaming#Line-delimited_JSON)). 
 
+<a name="class_result-value" />
+
+### class [**ResultValueStream**](#class_result-value) _adapts_ [StringStream](#class_string-stream)
+A stream that will emit a single `'data'` event which is the result of some test or computation (e.g., a single `boolean` or `number` value). Compatible with [StringStream](#class_string-stream), in which case the value will be converted to JSON and then terminated by a newline `'\n'`.
 
