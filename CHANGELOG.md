@@ -1,11 +1,11 @@
 # Changelog
 
-## v3.1.0 (2019-01-13)
+## v3.1.0 (2019-01-16)
 ------------------------
 
 #### Textual Content Writers
 
-  Introduces textual content writers which accept writable data events such as concise-quads and concise-triples hashes, prefix mappings, quad objects, and so on. This update also includes several patches for content reader corner cases that were not covered by W3C manifest, as well as some fixes to situational stream handling.
+  Introduces textual content writers which accept writable data events such as concise-quads and concise-triples hashes, prefix mappings, quad objects, and so on. This update also includes several patches for content reader corner cases that were not covered by W3C manifest, as well as some fixes to situational stream handling and dataset tree.
 
 
 ## v3.0.6 (2018-12-30)

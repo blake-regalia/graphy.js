@@ -354,7 +354,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_c3" />
 
- - *generator* [`*factory.c3`](#function_c3)`(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+### *generator* [`*factory.c3`](#function_c3)`(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
    - *examples:* [See Concise Triples Hash](concise#hash_c3)
 
@@ -362,7 +362,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_c4" />
 
- - *generator* [`*factory.c4`](#function_c4)`(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+### *generator* [`*factory.c4`](#function_c4)`(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
    - *examples:* [See Concise Quads Hash](concise#hash_c4)
 
