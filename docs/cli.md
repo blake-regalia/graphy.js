@@ -6,11 +6,11 @@
   This document describes the command-line interface for the binary <code>graphy</code> available from npm.
 </div>
 
-<div class="larger">
-  <a href="cli.examples">See examples here.</a>
-</div>
-
 ### `npm i -g graphy`
+
+<div class="larger">
+  <a href="cli.examples">See some examples here.</a>
+</div>
 
 <br />
 ## Internal Pipeline
@@ -89,7 +89,7 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
      - ` ` -- _(no command)_
        - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- maps 1 or more object input streams of [Quad](core.data.factory#class_quad) objects into 1 or more object output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
        - This transformation puts each dataset into its own tree, effectively removing duplicate quads and organizing quads into a tree of `graph --> subject --> predicate --> object`. [See example](#example_pretty-print).
-     - `-c, --canonicalize`
+     - `-z, --canonicalize`
        - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- maps 1 or more object input streams of [Quad](core.data.factory#class_quad) objects into 1 or more object output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
        - This transformation puts each dataset into its own tree, effectively removing duplicate quads and organizing quads into a tree of `graph --> subject --> predicate --> object`. [See example](#example_pretty-print).
        - _example:_
@@ -149,6 +149,42 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
              --pipe content.ttl.write \
              --inputs original.ttl modified.ttl \
              > difference.ttl
+         ```
+     - `-e, --equals`
+       - `2-to-Boolean<`[`QuadStream`](#class_quad-stream)`, `[`ResultValue`](#class_result-value)`>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests them for strict equality, and then pipes the boolean result value into 1 output stream.
+       - Tests for strict equality between the two inputs.
+       - _example:_
+         ```bash
+         # test if `original.ttl` and `modified.ttl` are strictly equal
+         $ graphy content.ttl.read \
+             --pipe util.dataset.tree --equals \
+             --inputs original.ttl modified.ttl
+
+         # test if `original.ttl` and `modified.ttl` are isomorphically equivalent
+         $ graphy content.ttl.read \
+             --pipe util.dataset.tree --canonicalize \
+             --pipe util.dataset.tree --equals \
+             --inputs original.ttl modified.ttl
+         ```
+     - `-j, --disjoint`
+       - `2-to-Boolean<`[`QuadStream`](#class_quad-stream)`, `[`ResultValue`](#class_result-value)`>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests them for strict disjointess, and then pipes the boolean result value into 1 output stream.
+       - Tests for strict disjointess between the two inputs.
+       - _example:_
+         ```bash
+         # test if `original.ttl` and `modified.ttl` are strictly disjoint
+         $ graphy content.ttl.read \
+             --pipe util.dataset.tree --disjoint \
+             --inputs original.ttl modified.ttl
+         ```
+     - `-c, --contains`
+       - `2-to-Boolean<`[`QuadStream`](#class_quad-stream)`, `[`ResultValue`](#class_result-value)`>` -- accepts exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests if the first input strictly contains the second, and then pipes the boolean result value into 1 output stream.
+       - Tests if the first input strictly contains the second.
+       - _example:_
+         ```bash
+         # test if `superset.ttl` strictly contains `subset.ttl`
+         $ graphy content.ttl.read \
+             --pipe util.dataset.tree --contains \
+             --inputs superset.ttl subset.ttl
          ```
 
 ## Inputs
