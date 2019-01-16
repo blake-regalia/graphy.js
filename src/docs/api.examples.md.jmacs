@@ -2,7 +2,17 @@
 
 # [« API](api) / Examples
 
-Examples demonstrating some common use cases for the `graphy` JavaScript API. For examples showcasing the command-line interface, [see CLI/Examples here](cli.examples).
+<div class="larger">
+    Examples demonstrating some common use cases for the <code>graphy</code> JavaScript API.
+</div>
+
+<div class="larger">
+    For examples showcasing the command-line interface, <a href="cli.examples">see CLI/Examples here</a>.
+</div>
+
+<div class="larger">
+    <a href="api">The API reference documentation is available here.</a>
+</div>
 
 ## Contents
  - [Count number of statements in Turtle document](#count-statements-turtle)

@@ -2,7 +2,17 @@
 
 # [« CLI](cli) / Examples
 
-Examples demonstrating some common use cases for the `graphy` command-line interface. For examples showcasing the JavaScript API, [see API/Examples here](api.examples).
+<div class="larger">
+	Examples demonstrating some common use cases for the <code>$ graphy</code> command-line interface.
+</div>
+
+<div class="larger">
+	For examples showcasing the JavaScript API, <a href="api.examples">see API/Examples here</a>.
+</div>
+
+<div class="larger">
+	<a href="cli">The CLI reference documentation is available here.</a>
+</div>
 
 ## Contents
  - [Count number of distinct triples in Turtle document](#count-triples-turtle)
@@ -65,7 +75,7 @@ invalid IRI: "?xml version="1.0" encoding="utf-8" ?"
 
 <a name="pretty-print" />
 
-### Pretty-print an RDF document
+### [Pretty-print an RDF document](#pretty-print)
 Piping RDF data through the [`util.dataset.tree`](cli#command_util-dataset-tree) command organizes quads into a hierarchy by graph, subject, predicate and object. Piping this result to a writer format that uses a tree-like syntax (such as Turtle or TriG) has the effect of pretty-printing an otherwise "ugly" document.
 
 ```bash

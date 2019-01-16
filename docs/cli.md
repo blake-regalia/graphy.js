@@ -1,7 +1,14 @@
 
 
 # [« Home](https://graphy.link/) / Command Line Interface
-This document describes the command-line interface for the binary `graphy` available from npm.
+
+<div class="larger">
+  This document describes the command-line interface for the binary <code>graphy</code> available from npm.
+</div>
+
+<div class="larger">
+  <a href="cli.examples">See examples here.</a>
+</div>
 
 ### `npm i -g graphy`
 
@@ -203,8 +210,3 @@ A stream of [WritableDataEvent](content.textual#interface_writable-data-event) o
 Automatically determines which mode is best suited for the destination stream. Compatible with [QuadStream](#class_quad-stream), [WritableDataEventStream](#class_writable-data-event-stream) and [StringStream](#class_string-stream). In the case of StringStream, each object is converted to its JSON equivalent on a single line, followed by a newline `'\n'` (i.e., [Line-delimited JSON](https://en.wikipedia.org/wiki/JSON_streaming#Line-delimited_JSON)). 
 
 
-<br />
-
-<a name="examples /">
-
-## [See Examples](cli.exampels)
