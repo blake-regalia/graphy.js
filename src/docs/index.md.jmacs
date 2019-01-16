@@ -1,7 +1,9 @@
 @import './docs.jmacs'
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
-# `graphy` is a collection of RDF libraries for JavaScript developers with a focus on performance and usability.
+<h1>
+  <code class="super-graphy">graphy</code> is a collection of RDF libraries for JavaScript developers with a focus on performance and usability.
+</h1>
 > Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
 
 <br />
