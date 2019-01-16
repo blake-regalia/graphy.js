@@ -190,6 +190,10 @@ h3 code {
 	padding: 4px 2px;
 }
 
+h3 code+em {
+	margin-left: 6px;
+}
+
 h3>code:first-child, h3>a:first-child>code {
 	padding-left: 6px;
 }
@@ -206,4 +210,15 @@ h3>code:last-child, h3>a:last-child>code {
 .package-heading code {
 	font-size: inherit;
 	padding: 3pt 10pt;
+}
+
+.larger {
+	font-size: 1.1em;
+	margin-bottom: 2em;
+}
+
+.larger code {
+	font-size: 11pt;
+	padding: 2pt 4pt;
+	margin: 0px 2px;
 }

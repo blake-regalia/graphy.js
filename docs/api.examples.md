@@ -59,14 +59,9 @@ Let's count the number of distinct triples (or in other words, the number of dis
 ```js
 // count-quads.js
 // since we are using multiple packages from graphy, we can load them from the super module
-const {
-    content: {
-        ttl: {read},
-    },
-    util: {
-        dataset: {tree},
-    },
-} = require('graphy');
+const graphy = require('graphy');
+const read = graphy.content.ttl.read;
+const tree = graphy.util.dataset.tree;
 
 // we are going to perform an asynchronous task
 (async() => {

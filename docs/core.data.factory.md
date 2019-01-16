@@ -173,7 +173,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
   - **returns** a [new NamedNode](#class_named-node)
   - *example:*
       ```js
-      factory.namedNode('ex://test').verbose();  // '<ex://test>'
+      factory.namedNode('http://ex.org/test').verbose();  // '<http://ex.org/test>'
       ```
 
 <a name="function_blank-node" />
@@ -210,7 +210,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
    - *example:*
        ```js
        factory.literal('"').verbose();  // '"\""^^<http://www.w3.org/2001/XMLSchema#string>'
-       factory.literal('42', 'ex://datatype').verbose();  // '"42"@ex://datatype'
+       factory.literal('42', 'http://ex.org/datatype').verbose();  // '"42"@http://ex.org/datatype'
        factory.literal('hello Mars!', 'en').verbose();  // '"hello Mars!"@en'
 
        // for backwards-compatibility, the '@' character is also allowed in the language tag argument version
@@ -319,11 +319,29 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 ### [`factory.quad`](#function_quad)`(subject: `[`Term`](#interface_term)`, predicate: `[`Term`](#interface_term)`, object: `[`Term`](#interface_term)`, graph: `[`Term`](#interface_term)`)`
    - **returns** a [new Quad](#class_quad)
+   - *examples:*
+      ```js
+      let kt_banana = factory.namedNode('http://ex.org/Banana');
+      let kt_color = factory.namedNode('http://ex.org/color');
+      let kt_yellow = factory.literal('yellow', factory.namedNode('http://ex.org/Color'));
+      let kt_graph = factory.namedNode('http://ex.org/graph');
+      factory.quad(kt_banana, kt_color, kt_yellow, kt_graph).terse({ex:'http://ex.org/'});  // ex:graph { ex:Banana ex:color "yellow" . }
+
+      // recommended way using `factory.c4`
+      [...factory.c4({
+          'ex:graph': {
+              'ex:Banana': {
+                  'ex:color': 'ex:Color^"yellow',
+              },
+          },
+      }, {ex:'http://ex.org/'})].map(k_quad => k_quad.terse({ex:'http://ex.org/'}));  // ['ex:graph { ex:Banana ex:color <http://ex.org/Color%5E%22yellow> . }']
+      ```
 
 <a name="function_c1" />
 
 ### [`factory.c1`](#function_c1)`(term: `[`#string/concise-term`](concise#string_c1)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **returns** a [new GenericTerm](#class_generic-term)
+   - *examples:* [See Concise Term String](concise#string_c1)
 
 <!--
 <a name="function_term" />
@@ -338,6 +356,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
  - *generator* [`*factory.c3`](#function_c3)`(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
+   - *examples:* [See Concise Triples Hash](concise#hash_c3)
 
 
 
@@ -345,6 +364,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
  - *generator* [`*factory.c4`](#function_c4)`(quads: `[`#hash/concise-quads`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
+   - *examples:* [See Concise Quads Hash](concise#hash_c4)
 
 
 
@@ -467,7 +487,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
    - **returns** [`#struct/term-isolate`](#struct_term-isolate)
    - *example:*
       ```js
-      factory.namedNode('ex://test').isolate();  // {termType:'NamedNode', value:'ex://test'}
+      factory.namedNode('http://ex.org/test').isolate();  // {termType:'NamedNode', value:'http://ex.org/test'}
       factory.blankNode('yellow').isolate();  // {termType:'BlankNode', value:'yellow'}
       factory.integer(42).isolate();  /* {
           termType: 'Literal',
@@ -714,7 +734,7 @@ yt_pi.isDouble;  // true
 yt_pi.isInteger;  // undefined
 yt_pi.number * 2;  // 6.283185307179586
 
-graphy.content.ttl.read('<ex://unit-circle> <ex://area> 3.141592653589793 .', {
+graphy.content.ttl.read('<http://ex.org/unit-circle> <http://ex.org/area> 3.141592653589793 .', {
     data(y_quad) {
         y_quad.object.value;  // '3.141592653589793'
         y_quad.object.number;  // 3.141592653589793
@@ -842,12 +862,12 @@ A class that represents an RDF quad.
 
 **Examples:**
 ```js
-graphy.content.ttl.read('<ex://unit-circle> <ex://area> 3.141592653589793 .', {
+graphy.content.ttl.read('<http://ex.org/unit-circle> <http://ex.org/area> 3.141592653589793 .', {
     data(y_quad) {
-        y_quad.isolate();  // {subject:{termType:'NamedNode', value:'ex://unit-circle', }, predicate:{termType:'NamedNode', value:'ex://area', }, object:{termType:'Literal', value:'3.141592653589793', language:'', datatype:{termType:'NamedNode', value:'http://www.w3.org/2001/XMLSchema#decimal', }, }, graph:{termType:'DefaultGraph', value:'', }, }
-        y_quad.verbose();  // <ex://unit-circle> <ex://area> "3.141592653589793"^^<http://www.w3.org/2001/XMLSchema#decimal> .
-        y_quad.terse();  // <ex://unit-circle> <ex://area> 3.141592653589793 .
-        y_quad.terse({ex:'ex://'});  // ex:unit-circle ex:area 3.141592653589793 .
+        y_quad.isolate();  // {subject:{termType:'NamedNode', value:'http://ex.org/unit-circle', }, predicate:{termType:'NamedNode', value:'http://ex.org/area', }, object:{termType:'Literal', value:'3.141592653589793', language:'', datatype:{termType:'NamedNode', value:'http://www.w3.org/2001/XMLSchema#decimal', }, }, graph:{termType:'DefaultGraph', value:'', }, }
+        y_quad.verbose();  // <http://ex.org/unit-circle> <http://ex.org/area> "3.141592653589793"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+        y_quad.terse();  // <http://ex.org/unit-circle> <http://ex.org/area> 3.141592653589793 .
+        y_quad.terse({ex:'http://ex.org/'});  // ex:unit-circle ex:area 3.141592653589793 .
     },
 });
 ```

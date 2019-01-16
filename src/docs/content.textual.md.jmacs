@@ -170,8 +170,9 @@ This section documents the 'verb' part of each content module. A 'verb' refers t
 
 <a name="verb_read" />
 
-### read
-Read RDF data (in other words, deserialize it) from a document given by an input stream, input string or via duplexing. Uses a single thread.
+### [`read`](#verb_read)`([input: string | stream][, config: #config-read-*])`
+ - Read RDF data (in other words, deserialize it) from a document given by an input stream, input string or via duplexing. Uses a single thread.
+ - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable) (accepts utf8-encoded strings on its writable side, pushes [Quad](core.data.factory#class_quad) objects on its readable side)
 
 **Accessible via the following modules:**
  - N-Triples (.nt) -- `@graphy/content.nt.read`
@@ -179,127 +180,61 @@ Read RDF data (in other words, deserialize it) from a document given by an input
  - Turtle (.ttl) -- `@graphy/content.ttl.read`
  - TriG (.trig) -- `@graphy/content.trig.read`
 
+#### Usage examples
+
+**Read from a Turtle file in Node.js:**
+```js
+cons fs = require('fs');
+const read = require('graphy').content.ttl.read;
+
+fs.createReadStream('input.ttl')
+    .pipe(read())
+    .on('data', (y_quad) => {
+       console.dir(y_quad.isolate());
+    })
+    .on('eof', () => {
+        console.log('done!');
+    });
+```
+
+**Read a Turtle string:**
+```js
+const read = require('graphy').content.ttl.read;
+
+read(`
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+    <#spiderman> a foaf:Person ;
+        foaf:name "Spiderman" .
+`, {
+    // whew! simplified inline events style  ;)
+    data(y_quad) {
+        console.dir(y_quad);
+    },
+
+    eof(h_prefixes) {
+        console.log('done!');
+    },
+})
+```
+
 **Overloaded variants:**
  - `read([config: `[`#config/read-no-input`](#config_read-no-input)`])`
-   - creates a new content reader that will act as a transform, accepting utf8-encoded strings on the writable side and outputting [Quads](core.data.factory#class-quad) on the readable side.
-   - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
-
  - `read(input_string: string[, config: `[`#config/read-no-input`](#config_read-no-input)`])`
-   - shortcut for:
-      ```js
-      read(config)
-        .end(input_string, 'utf-8');
-      ```
-   - equivalent to:
-      ```js
-      read({
-        ...config,
-        input: {string:input_string},
-      });
-      ```
-   - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
- 
+   - shortcut for: `read(config).end(input_string, 'utf-8');`
+   - equivalent to: `read({...config, input: {string:input_string}});`
  - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#config/read-no-input`](#config_read-no-input)`])`
-   - shortcut for:
-      ```js
-      input_stream
-        .pipe(read(config));
-      ```
-   - equivalent to:
-      ```js
-      read({
-        ...config,
-        input: {stream:input_stream},
-      });
-      ```
-   - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
-
+   - shortcut for: `input_stream.pipe(read(config));`
+   - equivalent to: `read({...config, input: {stream:input_stream}});`
  - `read(config: `[`#config/read-with-input`](#config_read-with-input)`)`
-   - creates a new content reader that will output [Quads](core.data.factory#class_quad).
-   - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable)
-
-**Examples**:
-```js
-const nt_read = require('@graphy/content.nt.read');
-
-// input string
-nt_read('<a> <b> <c> .', {
-    data(y_quad) {
-        y_quad.predicate.value;  // 'b'
-    },
-});
-
-// -----
-
-// equivalent to above
-nt_read({
-    input: {
-        string: '<a> <b> <c> .',
-    },
-    data(y_quad) {
-        y_quad.predicate.value;  // 'b'
-    },
-});
-
-// -----
-
-// also equivalent to above
-nt_read('<a> <b> <c> .')
-    .on('data', (y_quad) => {
-        y_quad.predicate.value;  // 'b'
-    });
-
-// -----
-
-// input stream
-let ds_input = fs.createReadStream('./input.nt');
-nt_read(ds_input, {
-    data(y_quad) { /* ... */ },
-});
-
-// -----
-
-// equivalent to above
-nt_read({
-    input: {
-        stream: fs.createReadStream('./input.nt'),
-    },
-    data(y_quad) { /* ... */ },
-});
-
-// -----
-
-// also equivalent to above
-nt_read(fs.createReadStream('./input.nt'))
-    .on('data', () => { /* ... */ });
-
-// -----
-
-// no input given yet
-let ds_reader = nt_read({
-    data(y_quad) { /* ... */ },
-});
-
-// pipe in data later
-fs.createReadStream('./input.nt').pipe(ds_reader);
-
-// -----
-
-// no input given yet
-let ds_reader = nt_read({
-    data(y_quad) { /* ... */ },
-});
-
-// write data later
-ds_reader.write('<a> <b> <c> .');
-```
 
 ----
 
 <a name="verb_write" />
 
-### write
-Write RDF (in other words, serialize it) to a document for storage, transmission, etc. Uses a single thread.
+### [`write`](#verb_write)`([config: `[`WriteConfig`](#config_write)`])`
+ - Write RDF data (in other words, serialize it) from objects in memory into utf8-encoded strings for storage, transmission, etc. 
+ - **returns** a [`new Transform<WritableDataEvent, string>`]() (accepts [WritableDataEvent objects](#interface_writable-data-event) on the writable side and pushes utf8-encoded strings on the readable side. The transformation an object undergoes from the writable side to the readable side will vary depending on the capabilities of the specific output RDF format.
 
 **Accessible via the following modules:**
  - N-Triples (.nt) -- `@graphy/content.nt.write`
@@ -307,35 +242,39 @@ Write RDF (in other words, serialize it) to a document for storage, transmission
  - Turtle (.ttl) -- `@graphy/content.ttl.write`
  - TriG (.trig) -- `@graphy/content.trig.write`
 
-**Overloaded variants:**
- - `write([config: `[`WriteConfig`](#config_write)`])`
-   - creates a new content writer and returns a transform that operates in object mode on the writable side and emits utf8-encoded strings on the readable side. The types of objects it responds to on the writable side may depend on the capabilities of the format.
-     - **returns** a [new `Transform<WritableDataEvent, string>`](#transform_writable-data-event-writable_string-readable)
+### Usage examples
 
-**Example A**:
-Convert a CSV document into an RDF Turtle document using a custom transform in a pipeline.
+**Serialize some RDF data to Turtle on-the-fly:**
 ```js
-@{cat('snippets/transform-csv.js')}
+const graphy = require('graphy');
+
+let ds_writer = graphy.content.ttl.write({
+    prefixes: {
+        dbr: 'http://dbpedia.org/resource/',
+        ex: 'http://ex.org/',
+    },
+});
+
+ds_writer.on('data', (s_turtle) => {
+    console.log(s_turtle+'');
+});
+
+ds_writer.write({
+    type: 'c3',
+    value: {
+        'dbr:Banana': {
+            'ex:lastSeen': new Date(),
+        },
+    },
+});
 ```
 
-<br /><br />
-Then, we can run the following command:
-```sh
-cat <<EOF | node snippets/transform-csv.js
-> 1,Blake,Banana
-> 2,Banana,Water Sunlight Soil
-> EOF
-```
-
-<br /><br />
-And get the output:
+Prints:
 ```turtle
-@{exec('snippets/transform-csv.js', {
-  input: [
-    '1,Blake,Banana',
-    '2,Banana,Water Sunlight Soil',
-  ].join('\n'),
-})}
+@prefix dbr: <http://dbpedia.org/resource/> .
+@prefix ex: <http://ex.org/> .
+
+dbr:Banana ex:lastSeen "2019-01-16T06:59:53.401Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
 ```
 
 ----

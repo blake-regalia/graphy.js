@@ -1,7 +1,9 @@
 
 
 # [« API](api) / Dataset Tree
-### `@graphy/util.dataset.tree`
+<div class="package-heading">
+  <code>@graphy/util.dataset.tree</code>
+</div>
 
 ## Primer
  - `dataset_tree` is used throughout examples in this document's code sections to refer to the module's export.
@@ -35,6 +37,8 @@
    - Set Algebra Derivatives
      - [`.minus(...)`](#method_minus) -- `A - (A ∩ B)`
      - [`.difference(...)`](#method_difference) -- `(A - (A ∩ B)) ∪ (B - (A ∩ B))`
+   - Selection
+     - [`.match(...)`](#method_match)
      
 
 ----
@@ -51,7 +55,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="property_size" />
 
-### **.size**
+### [`.size`](#property_size)
  - get the number of quads in the tree.
  - **returns** a [`#number/integer`](core.data.factory#number_integer)
  - *examples:*
@@ -85,7 +89,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_symbol-iterator" />
 
-### [`* [Symbol.iterator]`](#method_symbol-iterator)`()`
+### [`* [Symbol.iterator]`](#method_symbol-iterator)`()` _per_ [@RDFJS/dataset](https://rdf.js.org/dataset-spec/dataset-spec.html#datasetcore-interface)
  - create an iterator to traverse each quad in `this`.
  - **yields** [Quads](core.data.factory#class_quad).
 
@@ -106,7 +110,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_add-all" />
 
-### [`.addAll`](#method_addAll)`(quads: `[`@RDFJS/dataset`](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset)` | sequence<`[`AnyQuad`](core.data.factory#interface_any-quad)`>)` _implements_ [@RDFJS/dataset.addAll](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-addall)
+### [`.addAll`](#method_addAll)`(quads: `[`@RDFJS/dataset`](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset)` | sequence<`[`AnyQuad`](core.data.factory#interface_any-quad)`>)` _implements_ [@RDFJS/dataset.addAll](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-addall)
  - add quads to the tree; will only add each quad that is not already present. 
  - **returns** `this`
 
@@ -147,9 +151,9 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_equals" />
 
-### [`.equals`](#method_equals)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.equals](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-equals)
+### [`.equals`](#method_equals)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.equals](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-equals)
  - `A = B`
- - tests if `this` and `other` are equivalent graphs using [URDNA2015](https://json-ld.github.io/normalization/spec/).
+ - tests if `this` and `other` are strictly equal graphs.
  - **returns** a `boolean`
 
 
@@ -171,14 +175,14 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_union" />
 
-### [`.union`](#method_union)`(other: `[`DatasetTree`](#methods)`)`
+### [`.union`](#method_union)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.union](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-union)
  - create a new DatasetTree by combining the quads from both `this` and `other`.
  - **returns** a [new DatasetTree](#methods).
 
 
 <a name="method_intersection" />
 
-### [`.intersection`](#method_intersection)`(other: `[`DatasetTree`](#methods)`)`
+### [`.intersection`](#method_intersection)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.intersection](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-intersection)
  - `A ∩ B`
  - create a new DatasetTree by intersecting the quads between `this` and `other`.
  - **returns** a [new DatasetTree](#methods).
@@ -194,8 +198,15 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_difference" />
 
-### [`.difference`](#method_difference)`(other: `[`DatasetTree`](#methods)`)`
+### [`.difference`](#method_difference)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.difference](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-difference)
  - `(A - (A ∩ B)) ∪ (B - (A ∩ B))`
  - create a new DatasetTree by taking the difference between `this` and `other`.
  - **returns** a [new DatasetTree](#methods).
+
+<a name="method_match" />
+
+### [`.match`](#method_match)`([subject: null | `[`AnyTerm`](core.data.factory#class_any-term)`[, predicate: null | `[`AnyTerm`](core.data.factory#class_any-term)`[, object: null | `[`AnyTerm`](core.data.factory#class_any-term)`[, graph: null | `[`AnyTerm`](core.data.factory#class_any-term)`]]]])` _implements_ [@RDFJS/dataset.match](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-match)
+ - create a new DatasetTree by matching the specified `subject`, `predicate`, `object`, and/or `graph`, or any quads if `null` is given for any role.
+ - **returns** a [new DatasetTree](#methods).
+
 
