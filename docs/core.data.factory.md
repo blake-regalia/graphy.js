@@ -256,7 +256,9 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_boolean" />
 
-### [`factory.boolean`](#function_boolean)`(value: boolean | string)`
+
+### [`factory.boolean`](#function_boolean)`(value: boolean | number | string)`
+   - create an RDF literal with an XSD boolean datatype. Will serialize as a literal boolean value in writers that support them. If `value` is a number, it must be either `1` or `0`. If `value` is a string, it must match `/^([Tt](rue)?|TRUE)$/` or `/^([Ff](alse)?|FALSE)$/`.
    - **returns** a [new Literal_Boolean](#class_literal-boolean)
    - *examples:* [See Literal_Boolean](#class_literal-boolean)
 
@@ -616,6 +618,29 @@ A class that represents an RDF literal that is an [xsd:boolean](https://www.w3.o
 **Methods:**
  - ... [see those inherited from Literal](#class_literal)
 
+**Examples:**
+```js
+let kt_true = factory.boolean(true);
+kt_true = factory.boolean(1);
+kt_true = factory.boolean('t');
+kt_true = factory.boolean('true');
+kt_true = factory.boolean('True');
+kt_true = factory.boolean('TRUE');
+
+let kt_false = factory.boolean(false);
+kt_false = factory.boolean(0);
+kt_false = factory.boolean('f');
+kt_false = factory.boolean('false');
+kt_false = factory.boolean('False');
+kt_false = factory.boolean('FALSE');
+
+kt_true.isolate();  // {termType:'Literal', value:'true', language:'', datatype:{termType:'NamedNode', value:'http://www.w3.org/2001/XMLSchema#boolean', }, }
+kt_true.verbose();  // "true"^^<http://www.w3.org/2001/XMLSchema#boolean>
+kt_true.terse();  // true
+kt_true.isBoolean;  // true
+kt_true.boolean;  // true
+kt_true.value;  // true
+```
 
 
 <a name="class_literal-integer" />
@@ -680,7 +705,10 @@ A class that represents an RDF literal that is an [xsd:double](https://www.w3.or
 **Examples:**
 ```js
 let yt_pi = factory.double(Math.PI);
+yt_pi.value;  // '3.141592653589793'
+yt_pi.isolate();  // '{termType:'Literal', value:'3.141592653589793', language:'', datatype:{termType:'NamedNode', value:'http://www.w3.org/2001/XMLSchema#double', }, }'
 yt_pi.verbose();  // '"3.141592653589793"^^<http://www.w3.org/2001/XMLSchema#double>'
+yt_pi.terse();  // '"3.141592653589793"^^<http://www.w3.org/2001/XMLSchema#double>'
 yt_pi.isNumeric;  // true
 yt_pi.isDouble;  // true
 yt_pi.isInteger;  // undefined
@@ -711,6 +739,19 @@ A class that represents an RDF literal that is positive infinity, which is of ty
 **Methods:**
  - ... [see those inherited from Literal_Double](#class_literal-double)
 
+**Examples:**
+```js
+let yt_pos_inf = factory.double(Infinity);
+yt_pos_inf.value;  // INF
+yt_pos_inf.isolate();  // '{termType:'Literal', value:'INF', language:'', datatype:{termType:'NamedNode', value:'http://www.w3.org/2001/XMLSchema#double', }, }'
+yt_pos_inf.verbose();  // '"INF"^^<http://www.w3.org/2001/XMLSchema#double>'
+yt_pos_inf.terse();  // '"INF"^^<http://www.w3.org/2001/XMLSchema#double>'
+yt_pos_inf.isNumeric;  // true
+yt_pos_inf.isDouble;  // true
+yt_pos_inf.isInfinite;  // true
+yt_pos_inf.number;  // Infinity
+```
+
 <a name="class_literal-negative-infinity" />
 
 ### class [**Literal_NegativeInfinity**](#class_literal-negative-infinity) extends [Literal_Double](#class_literal-double)
@@ -727,6 +768,19 @@ A class that represents an RDF literal that is negative infinity, which is of ty
 **Methods:**
  - ... [see those inherited from Literal_Double](#class_literal-double)
 
+**Examples:**
+```js
+let yt_neg_inf = factory.double(-Infinity);
+yt_neg_inf.value;  // -INF
+yt_neg_inf.isolate();  // '{termType:'Literal', value:'-INF', language:'', datatype:{termType:'NamedNode', value:'http://www.w3.org/2001/XMLSchema#double', }, }'
+yt_neg_inf.verbose();  // '"-INF"^^<http://www.w3.org/2001/XMLSchema#double>'
+yt_neg_inf.terse();  // '"-INF"^^<http://www.w3.org/2001/XMLSchema#double>'
+yt_neg_inf.isNumeric;  // true
+yt_neg_inf.isDouble;  // true
+yt_neg_inf.isInfinite;  // true
+yt_neg_inf.number;  // -Infinity
+```
+
 <a name="class_literal-nan" />
 
 ### class [**Literal_NaN**](#class_literal-nan) extends [Literal_Double](#class_literal-double)
@@ -742,6 +796,19 @@ A class that represents an RDF literal that is NaN, which is of type [xsd:double
  
 **Methods:**
  - ... [see those inherited from Literal_Double](#class_literal-double)
+
+**Examples:**
+```js
+let yt_nan = factory.double(NaN);
+yt_nan.value;  // NaN
+yt_nan.isolate();  // '{termType:'Literal', value:'NaN', language:'', datatype:{termType:'NamedNode', value:'http://www.w3.org/2001/XMLSchema#double', }, }'
+yt_nan.verbose();  // '"NaN"^^<http://www.w3.org/2001/XMLSchema#double>'
+yt_nan.terse();  // '"NaN"^^<http://www.w3.org/2001/XMLSchema#double>'
+yt_nan.isNumeric;  // true
+yt_nan.isDouble;  // true
+yt_nan.isNaN;  // true
+yt_nan.number;  // NaN
+```
 
 <a name="class_quad" />
 
@@ -770,6 +837,20 @@ A class that represents an RDF quad.
      - `.graph`: [#string/quad-term](#string_term-concise)
  - `isolate()`
    - **returns** a [#struct/quad-isolate](#struct_quad-isolate)
+
+
+
+**Examples:**
+```js
+graphy.content.ttl.read('<ex://unit-circle> <ex://area> 3.141592653589793 .', {
+    data(y_quad) {
+        y_quad.isolate();  // {subject:{termType:'NamedNode', value:'ex://unit-circle', }, predicate:{termType:'NamedNode', value:'ex://area', }, object:{termType:'Literal', value:'3.141592653589793', language:'', datatype:{termType:'NamedNode', value:'http://www.w3.org/2001/XMLSchema#decimal', }, }, graph:{termType:'DefaultGraph', value:'', }, }
+        y_quad.verbose();  // <ex://unit-circle> <ex://area> "3.141592653589793"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+        y_quad.terse();  // <ex://unit-circle> <ex://area> 3.141592653589793 .
+        y_quad.terse({ex:'ex://'});  // ex:unit-circle ex:area 3.141592653589793 .
+    },
+});
+```
 
 ---
 

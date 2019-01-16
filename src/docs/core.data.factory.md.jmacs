@@ -273,8 +273,13 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
        ```
 
 <a name="function_boolean" />
+@.{
+  let kt_true = factory.boolean(true);
+  let kt_false = factory.boolean(false);
+}
 
-### [`factory.boolean`](#function_boolean)`(value: boolean | string)`
+### [`factory.boolean`](#function_boolean)`(value: boolean | number | string)`
+   - create an RDF literal with an XSD boolean datatype. Will serialize as a literal boolean value in writers that support them. If `value` is a number, it must be either `1` or `0`. If `value` is a string, it must match `/^([Tt](rue)?|TRUE)$/` or `/^([Ff](alse)?|FALSE)$/`.
    - **returns** a [new Literal_Boolean](#class_literal-boolean)
    - *examples:* [See Literal_Boolean](#class_literal-boolean)
 
@@ -641,6 +646,29 @@ A class that represents an RDF literal that is an [xsd:boolean](https://www.w3.o
 **Methods:**
  - ... [see those inherited from Literal](#class_literal)
 
+**Examples:**
+```js
+let kt_true = factory.boolean(true);
+kt_true = factory.boolean(1);
+kt_true = factory.boolean('t');
+kt_true = factory.boolean('true');
+kt_true = factory.boolean('True');
+kt_true = factory.boolean('TRUE');
+
+let kt_false = factory.boolean(false);
+kt_false = factory.boolean(0);
+kt_false = factory.boolean('f');
+kt_false = factory.boolean('false');
+kt_false = factory.boolean('False');
+kt_false = factory.boolean('FALSE');
+
+kt_true.isolate();  // @{kt_true.isolate()}
+kt_true.verbose();  // @{kt_true.verbose()}
+kt_true.terse();  // @{kt_true.terse()}
+kt_true.isBoolean;  // @{kt_true.isBoolean}
+kt_true.boolean;  // @{kt_true.boolean}
+kt_true.value;  // @{kt_true.value}
+```
 
 
 <a name="class_literal-integer" />
@@ -717,7 +745,10 @@ A class that represents an RDF literal that is an [xsd:double](https://www.w3.or
 ```js
 @. let yt_pi = factory.double(Math.PI);
 let yt_pi = factory.double(Math.PI);
+yt_pi.value;  // '@{yt_pi.value}'
+yt_pi.isolate();  // '@{yt_pi.isolate()}'
 yt_pi.verbose();  // '@{yt_pi.verbose()}'
+yt_pi.terse();  // '@{yt_pi.verbose()}'
 yt_pi.isNumeric;  // @{yt_pi.isNumeric}
 yt_pi.isDouble;  // @{yt_pi.isDouble}
 yt_pi.isInteger;  // @{yt_pi.isInteger || 'undefined'}
@@ -748,6 +779,20 @@ A class that represents an RDF literal that is positive infinity, which is of ty
 **Methods:**
  - ... [see those inherited from Literal_Double](#class_literal-double)
 
+**Examples:**
+```js
+@. let yt_pos_inf = factory.double(Infinity);
+let yt_pos_inf = factory.double(Infinity);
+yt_pos_inf.value;  // @{yt_pos_inf.value}
+yt_pos_inf.isolate();  // '@{yt_pos_inf.isolate()}'
+yt_pos_inf.verbose();  // '@{yt_pos_inf.verbose()}'
+yt_pos_inf.terse();  // '@{yt_pos_inf.terse()}'
+yt_pos_inf.isNumeric;  // @{yt_pos_inf.isNumeric}
+yt_pos_inf.isDouble;  // @{yt_pos_inf.isDouble}
+yt_pos_inf.isInfinite;  // @{yt_pos_inf.isInfinite || 'undefined'}
+yt_pos_inf.number;  // @{yt_pos_inf.number}
+```
+
 <a name="class_literal-negative-infinity" />
 
 ### class [**Literal_NegativeInfinity**](#class_literal-negative-infinity) extends [Literal_Double](#class_literal-double)
@@ -764,6 +809,20 @@ A class that represents an RDF literal that is negative infinity, which is of ty
 **Methods:**
  - ... [see those inherited from Literal_Double](#class_literal-double)
 
+**Examples:**
+```js
+@. let yt_neg_inf = factory.double(-Infinity);
+let yt_neg_inf = factory.double(-Infinity);
+yt_neg_inf.value;  // @{yt_neg_inf.value}
+yt_neg_inf.isolate();  // '@{yt_neg_inf.isolate()}'
+yt_neg_inf.verbose();  // '@{yt_neg_inf.verbose()}'
+yt_neg_inf.terse();  // '@{yt_neg_inf.terse()}'
+yt_neg_inf.isNumeric;  // @{yt_neg_inf.isNumeric}
+yt_neg_inf.isDouble;  // @{yt_neg_inf.isDouble}
+yt_neg_inf.isInfinite;  // @{yt_neg_inf.isInfinite || 'undefined'}
+yt_neg_inf.number;  // @{yt_neg_inf.number}
+```
+
 <a name="class_literal-nan" />
 
 ### class [**Literal_NaN**](#class_literal-nan) extends [Literal_Double](#class_literal-double)
@@ -779,6 +838,20 @@ A class that represents an RDF literal that is NaN, which is of type [xsd:double
  
 **Methods:**
  - ... [see those inherited from Literal_Double](#class_literal-double)
+
+**Examples:**
+```js
+@. let yt_nan = factory.double(NaN);
+let yt_nan = factory.double(NaN);
+yt_nan.value;  // @{yt_nan.value}
+yt_nan.isolate();  // '@{yt_nan.isolate()}'
+yt_nan.verbose();  // '@{yt_nan.verbose()}'
+yt_nan.terse();  // '@{yt_nan.terse()}'
+yt_nan.isNumeric;  // @{yt_nan.isNumeric}
+yt_nan.isDouble;  // @{yt_nan.isDouble}
+yt_nan.isNaN;  // @{yt_nan.isNaN || 'undefined'}
+yt_nan.number;  // @{yt_nan.number}
+```
 
 <a name="class_quad" />
 
@@ -807,6 +880,26 @@ A class that represents an RDF quad.
      - `.graph`: [#string/quad-term](#string_term-concise)
  - `isolate()`
    - **returns** a [#struct/quad-isolate](#struct_quad-isolate)
+
+@.{
+  let y_quad_ex = [...factory.c3({
+    '>ex://unit-circle': {
+      '>ex://area': 3.141592653589793,
+    },
+  })][0];
+}
+
+**Examples:**
+```js
+graphy.content.ttl.read('<ex://unit-circle> <ex://area> 3.141592653589793 .', {
+    data(y_quad) {
+        y_quad.isolate();  // @{y_quad_ex.isolate()}
+        y_quad.verbose();  // @{y_quad_ex.verbose()}
+        y_quad.terse();  // @{y_quad_ex.terse()}
+        y_quad.terse({ex:'ex://'});  // @{y_quad_ex.terse({ex:'ex://'})}
+    },
+});
+```
 
 ---
 
