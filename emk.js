@@ -388,14 +388,23 @@ const performance_data = () => {
 			s_decompress = /* syntax: bash */ `| bzip2 -d`;
 		}
 
-		h_host[g_input.basename] = () => ({
-			deps: [
-				g_input.url,
-			],
-			run: /* syntax: bash */ `
-				curl "$1" ${s_decompress} > $@
-			`,
-		});
+		h_host[g_input.basename] = g_input.url
+			? () => ({
+				deps: [
+					g_input.url,
+				],
+				run: /* syntax: bash */ `
+					curl "$1" ${s_decompress} > $@
+				`,
+			})
+			: () => ({
+				deps: [
+					g_input.path,
+				],
+				run: /* syntax: bash */ `
+					echo "$1"
+				`,
+			});
 	}
 
 	return h_out;
@@ -685,27 +694,40 @@ module.exports = async() => {
 					deps: [
 						'test/package/graphy.js',
 						'prepublish.graphy',
-						'build/cache/data/dbr/**',
+						// 'build/cache/data/dbr/**',
 					],
 
 					run: /* syntax: bash */ `
 						npx mocha --colors $1
 					`,
 				}),
-			},
-
-			// web test
-			web: {
-				':testable': ({testable:si_package}) => ({
+				
+				// web test
+				web: () => ({
 					deps: [
-						`build/${s_channel}/test/web/${si_package}.js`,
 						'test/web/runner.html',
+						`build/${s_channel}/test/web/**`,
 					],
-					// run: /* syntax: bash */ `
-
-					// `,
+					run: /* syntax: bash */ `
+						npx mocha-chrome $1
+					`,
 				}),
 			},
+
+			// // web test
+			// web: {
+			// 	':testable': ({testable:si_package}) => ({
+			// 		deps: [
+			// 			'test/web/runner.html',
+			// 			`build/${s_channel}/test/web/${si_package}.js`,
+			// 		],
+			// 		run: /* syntax: bash */ `
+			// 			npx mocha-chrome $1
+			// 		`,
+			// 	}),
+			// },
+			// 
+
 
 			// performance evaluation
 			perf: {

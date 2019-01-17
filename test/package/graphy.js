@@ -105,614 +105,626 @@ describe('graphy API', () => {
 	});
 });
 
-describe('graphy CLI', () => {
-	const exec = async(g_exec) => {
-		let {
-			cmd: s_cmd,
-			exit: z_exit=null,
-			out: z_out=null,
-			err: z_err=null,
-		} = g_exec;
 
-		let g_stdio;
-		s_cmd = s_cmd.trim().split(/\n/g).map(s => s.trim()).join(' ');
-		try {
-			g_stdio = await cp_exec(s_cmd, {
-				shell: '/bin/bash',
-			});
-		}
-		catch(e_script) {
+// deduce the runtime environment
+const [B_BROWSER, B_BROWSERIFY] = (() => 'undefined' === typeof process
+	? [true, false]
+	: (process.browser
+		? [true, true]
+		: ('undefined' === process.versions || 'undefined' === process.versions.node
+			? [true, false]
+			: [false, false])))();
+
+if(B_BROWSER) {
+	describe('graphy CLI', () => {
+		const exec = async(g_exec) => {
 			let {
-				stderr: s_stderr,
-				code: xc_exit,
-			} = e_script;
+				cmd: s_cmd,
+				exit: z_exit=null,
+				out: z_out=null,
+				err: z_err=null,
+			} = g_exec;
 
-			// error expected
-			if(z_exit) {
-				// validate exit code
-				if(true === z_exit) {
-					expect(xc_exit).to.not.equal(0);
-				}
-				else {
-					expect(xc_exit).to.equal(z_exit);
-				}
-
-				// validate stderr
-				if('string' === typeof z_err) {
-					expect(s_stderr.replace(/\n$/, '')).to.equal(z_err);
-				}
-				else if(z_err instanceof RegExp) {
-					expect(s_stderr).to.match(z_err);
-				}
-			}
-			// error not expected
-			else {
-				throw e_script;
-			}
-
-			// exit test
-			return;
-		}
-
-		// expected non-zero exit code
-		if(z_exit) throw new Error('expected non-zero exit code');
-
-		let {
-			// error: e_script,
-			stdout: s_stdout,
-			stderr: s_stderr,
-		} = g_stdio;
-
-		s_stdout = s_stdout.replace(/\n{1,2}$/, '');
-
-		// validate stdout
-		if('string' === typeof z_out) {
-			expect(s_stdout).to.equal(z_out);
-		}
-		else if(z_out instanceof RegExp) {
-			expect(s_stdout).to.match(z_out);
-		}
-		else if('function' === typeof z_out) {
-			z_out(s_stdout);
-		}
-	};
-
-	const execs = h_tree => util.map_tree(h_tree, (s_label, f_leaf) => {
-		it(s_label, async() => {
-			await exec(f_leaf());
-		});
-	});
-
-	const validate_json = f_validate_rows => s_stdout => {
-		s_stdout = s_stdout.trim();
-		if(!s_stdout) return f_validate_rows([]);
-
-		let a_lines = s_stdout.split(/\n/g);
-
-		let a_rows = [];
-		for(let s_line of a_lines) {
+			let g_stdio;
+			s_cmd = s_cmd.trim().split(/\n/g).map(s => s.trim()).join(' ');
 			try {
-				a_rows.push(JSON.parse(s_line));
+				g_stdio = await cp_exec(s_cmd, {
+					shell: '/bin/bash',
+				});
 			}
-			catch(e_parse) {
-				throw new Error(`reader output invalid line-delimited JSON on line '${s_line}'\n${e_parse.message}`);
-			}
-		}
+			catch(e_script) {
+				let {
+					stderr: s_stderr,
+					code: xc_exit,
+				} = e_script;
 
-		f_validate_rows(a_rows);
-	};
-
-	let st_left = /* syntax: turtle */ `
-		@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-		@prefix demo: <http://ex.org/> .
-
-		demo:Banana a demo:Fruit .
-
-		demo:Fruit a demo:Food .
-	`;
-
-	let st_right = /* syntax: turtle */ `
-		@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-		@prefix demo: <http://ex.org/> .
-
-		demo:Watermelon a demo:Fruit .
-
-		demo:Fruit a demo:Food .
-	`;
-
-	let st_blank_1 = /* syntax: turtle */ `
-		@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-		@prefix demo: <http://ex.org/> .
-
-		_:blank a _:other ;
-			demo:self _:blank .
-
-		_:other a demo:BlankNode .
-	`;
-
-	let st_blank_2 = /* syntax: turtle */ `
-		@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-		@prefix demo: <http://ex.org/> .
-
-		_:otra a demo:BlankNode .
-
-		_:bnode demo:self _:bnode ;
-		 	a _:otra .
-	`;
-
-	let triples = hc3_triples => a_rows => expect(a_rows).to.have.deep.members([
-		...factory.c3(hc3_triples, {demo:'http://ex.org/'}),
-	].map(kq => kq.isolate()));
-
-	execs({
-		'-h': () => ({
-			cmd: /* syntax: bash */ `
-				npx graphy -h
-			`,
-			out: /Usage/,
-		}),
-
-		'--help': () => ({
-			cmd: /* syntax: bash */ `
-				npx graphy --help
-			`,
-			out: /Usage/,
-		}),
-
-		'-v': () => ({
-			cmd: /* syntax: bash */ `
-				npx graphy -v
-			`,
-			out: require('../../package.json').version,
-		}),
-
-		'--version': () => ({
-			cmd: /* syntax: bash */ `
-				npx graphy --version
-			`,
-			out: require('../../package.json').version,
-		}),
-
-		'dbr data': {
-			'validate': () => ({
-				cmd: /* syntax: bash */ `
-					cat build/cache/data/dbr/Banana.ttl
-						| npx graphy content.ttl.read --validate
-				`,
-			}),
-
-			'reader outputs line-delimited JSON to stdout': () => ({
-				cmd: /* syntax: bash */ `
-					cat build/cache/data/dbr/Banana.ttl
-						| npx graphy content.ttl.read --validate
+				// error expected
+				if(z_exit) {
+					// validate exit code
+					if(true === z_exit) {
+						expect(xc_exit).to.not.equal(0);
 					}
+					else {
+						expect(xc_exit).to.equal(z_exit);
+					}
+
+					// validate stderr
+					if('string' === typeof z_err) {
+						expect(s_stderr.replace(/\n$/, '')).to.equal(z_err);
+					}
+					else if(z_err instanceof RegExp) {
+						expect(s_stderr).to.match(z_err);
+					}
+				}
+				// error not expected
+				else {
+					throw e_script;
+				}
+
+				// exit test
+				return;
+			}
+
+			// expected non-zero exit code
+			if(z_exit) throw new Error('expected non-zero exit code');
+
+			let {
+				// error: e_script,
+				stdout: s_stdout,
+				stderr: s_stderr,
+			} = g_stdio;
+
+			s_stdout = s_stdout.replace(/\n{1,2}$/, '');
+
+			// validate stdout
+			if('string' === typeof z_out) {
+				expect(s_stdout).to.equal(z_out);
+			}
+			else if(z_out instanceof RegExp) {
+				expect(s_stdout).to.match(z_out);
+			}
+			else if('function' === typeof z_out) {
+				z_out(s_stdout);
+			}
+		};
+
+		const execs = h_tree => util.map_tree(h_tree, (s_label, f_leaf) => {
+			it(s_label, async() => {
+				await exec(f_leaf());
+			});
+		});
+
+		const validate_json = f_validate_rows => s_stdout => {
+			s_stdout = s_stdout.trim();
+			if(!s_stdout) return f_validate_rows([]);
+
+			let a_lines = s_stdout.split(/\n/g);
+
+			let a_rows = [];
+			for(let s_line of a_lines) {
+				try {
+					a_rows.push(JSON.parse(s_line));
+				}
+				catch(e_parse) {
+					throw new Error(`reader output invalid line-delimited JSON on line '${s_line}'\n${e_parse.message}`);
+				}
+			}
+
+			f_validate_rows(a_rows);
+		};
+
+		let st_left = /* syntax: turtle */ `
+			@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+			@prefix demo: <http://ex.org/> .
+
+			demo:Banana a demo:Fruit .
+
+			demo:Fruit a demo:Food .
+		`;
+
+		let st_right = /* syntax: turtle */ `
+			@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+			@prefix demo: <http://ex.org/> .
+
+			demo:Watermelon a demo:Fruit .
+
+			demo:Fruit a demo:Food .
+		`;
+
+		let st_blank_1 = /* syntax: turtle */ `
+			@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+			@prefix demo: <http://ex.org/> .
+
+			_:blank a _:other ;
+				demo:self _:blank .
+
+			_:other a demo:BlankNode .
+		`;
+
+		let st_blank_2 = /* syntax: turtle */ `
+			@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+			@prefix demo: <http://ex.org/> .
+
+			_:otra a demo:BlankNode .
+
+			_:bnode demo:self _:bnode ;
+			 	a _:otra .
+		`;
+
+		let triples = hc3_triples => a_rows => expect(a_rows).to.have.deep.members([
+			...factory.c3(hc3_triples, {demo:'http://ex.org/'}),
+		].map(kq => kq.isolate()));
+
+		execs({
+			'-h': () => ({
+				cmd: /* syntax: bash */ `
+					npx graphy -h
 				`,
-				out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				out: /Usage/,
 			}),
-		},
 
-		...['nt', 'ttl'].reduce((h_out, s_variant) => ({
-			...h_out,
-			['data variant: '+s_variant]: {
-				'read error': () => ({
+			'--help': () => ({
+				cmd: /* syntax: bash */ `
+					npx graphy --help
+				`,
+				out: /Usage/,
+			}),
+
+			'-v': () => ({
+				cmd: /* syntax: bash */ `
+					npx graphy -v
+				`,
+				out: require('../../package.json').version,
+			}),
+
+			'--version': () => ({
+				cmd: /* syntax: bash */ `
+					npx graphy --version
+				`,
+				out: require('../../package.json').version,
+			}),
+
+			'dbr data': {
+				'validate': () => ({
 					cmd: /* syntax: bash */ `
-						echo "invalid"
-							| npx graphy content.${s_variant}.read
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --validate
 					`,
-					exit: true,
-					...('ttl' === s_variant
-						? {err:/expected statement/i}
-						: {}),
 				}),
 
-				'invalid': () => ({
+				'reader outputs line-delimited JSON to stdout': () => ({
 					cmd: /* syntax: bash */ `
-						echo "<z://y/This> <z://y/is> <z://y/Bad input> ."
-							| npx graphy content.${s_variant}.read --validate
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --validate
+						}
 					`,
-					exit: true,
-				}),
-
-				'allowed': () => ({
-					cmd: /* syntax: bash */ `
-						echo "<z://y/This> <z://y/is> <z://y/allowed input> ."
-							| npx graphy content.${s_variant}.read
-					`,
-					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(1)),
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 				}),
 			},
-		}), {}),
 
-		'util.dataset.tree': {
-			'outputs line-delimited JSON to stdout': () => ({
-				cmd: /* syntax: bash */ `
-					cat build/cache/data/dbr/Banana.ttl
-						| npx graphy content.ttl.read
-							--pipe util.dataset.tree
-				`,
-				out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
-			}),
+			...['nt', 'ttl'].reduce((h_out, s_variant) => ({
+				...h_out,
+				['data variant: '+s_variant]: {
+					'read error': () => ({
+						cmd: /* syntax: bash */ `
+							echo "invalid"
+								| npx graphy content.${s_variant}.read
+						`,
+						exit: true,
+						...('ttl' === s_variant
+							? {err:/expected statement/i}
+							: {}),
+					}),
 
-			'.union()': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --union
-						--inputs <(echo '${st_left}') <(echo '${st_right}')
-				`,
-				out: validate_json(triples({
-					'demo:Banana': {
-						a: 'demo:Fruit',
-					},
-					'demo:Fruit': {
-						a: 'demo:Food',
-					},
-					'demo:Watermelon': {
-						a: 'demo:Fruit',
-					},
-				})),
-			}),
+					'invalid': () => ({
+						cmd: /* syntax: bash */ `
+							echo "<z://y/This> <z://y/is> <z://y/Bad input> ."
+								| npx graphy content.${s_variant}.read --validate
+						`,
+						exit: true,
+					}),
 
-			'.intersection()': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --intersection
-						--inputs <(echo '${st_left}') <(echo '${st_right}')
-				`,
-				out: validate_json(triples({
-					'demo:Fruit': {
-						a: 'demo:Food',
-					},
-				})),
-			}),
+					'allowed': () => ({
+						cmd: /* syntax: bash */ `
+							echo "<z://y/This> <z://y/is> <z://y/allowed input> ."
+								| npx graphy content.${s_variant}.read
+						`,
+						out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(1)),
+					}),
+				},
+			}), {}),
 
-			'.difference()': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --difference
-						--inputs <(echo '${st_left}') <(echo '${st_right}')
-				`,
-				out: validate_json(triples({
-					'demo:Banana': {
-						a: 'demo:Fruit',
-					},
-					'demo:Watermelon': {
-						a: 'demo:Fruit',
-					},
-				})),
-			}),
-
-			'.minus()': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --minus
-						--inputs <(echo '${st_left}') <(echo '${st_right}')
-				`,
-				out: validate_json(triples({
-					'demo:Banana': {
-						a: 'demo:Fruit',
-					},
-				})),
-			}),
-
-			'.canonicalize()': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --canonicalize
-						--pipe util.dataset.tree --difference
-						--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
-				`,
-				out: validate_json(a_rows => expect(a_rows).to.be.empty),
-			}),
-
-			'.contains() = false': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --contains
-						--inputs <(echo '${st_left}') <(echo '${st_right}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
-			}),
-
-			'.contains() = true': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --contains
-						--inputs <(echo '${st_left}') <(echo '${st_left}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
-			}),
-
-			'.disjoint() = false': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --disjoint
-						--inputs <(echo '${st_left}') <(echo '${st_right}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
-			}),
-
-			'.disjoint() = true': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --disjoint
-						--inputs <(echo '${st_left}') <(echo '${st_blank_1}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
-			}),
-
-			'.equals() = false': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --equals
-						--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
-			}),
-
-			'.equals() = true': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree --equals
-						--inputs <(echo '${st_blank_1}') <(echo '${st_blank_1}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
-			}),
-
-			'.canonicalize/.contains() = false': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree -z
-						--pipe util.dataset.tree --contains
-						--inputs <(echo '${st_left}') <(echo '${st_right}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
-			}),
-
-			'.canonicalize/.contains() = true': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree -z
-						--pipe util.dataset.tree --contains
-						--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
-			}),
-
-			'.canonicalize/.disjoint() = false': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree -z
-						--pipe util.dataset.tree --disjoint
-						--inputs <(echo '${st_left}') <(echo '${st_right}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
-			}),
-
-			'.canonicalize/.disjoint() = true': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree -z
-						--pipe util.dataset.tree --disjoint
-						--inputs <(echo '${st_left}') <(echo '${st_blank_1}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
-			}),
-
-			'.canonicalize/.equals() = false': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree -z
-						--pipe util.dataset.tree --equals
-						--inputs <(echo '${st_blank_1}') <(echo '${st_right}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
-			}),
-
-			'.canonicalize/.equals() = true': () => ({
-				cmd: /* syntax: bash */ `
-					npx graphy content.ttl.read
-						--pipe util.dataset.tree -z
-						--pipe util.dataset.tree --equals
-						--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
-				`,
-				out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
-			}),
-		},
-
-		...['nt', 'nq', 'ttl', 'trig'].reduce((h_out, s_variant) => ({
-			...h_out,
-			['content.'+s_variant+'.write']: {
-				'direct': () => ({
+			'util.dataset.tree': {
+				'outputs line-delimited JSON to stdout': () => ({
 					cmd: /* syntax: bash */ `
-						npx graphy content.ttl.read
-							--pipe content.${s_variant}.write
-							--inputs <(echo '${st_left}')
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read
+								--pipe util.dataset.tree
 					`,
-					out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
-						nt: /* syntax: n-triples */ `
-							<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-							<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
-						`,
-						nq: /* syntax: n-quads */ `
-							<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-							<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
-						`,
-						ttl: /* syntax: turtle */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
-
-							demo:Banana rdf:type demo:Fruit .
-							
-							demo:Fruit rdf:type demo:Food .
-						`,
-						trig: /* syntax: trig */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
-
-							{
-								demo:Banana rdf:type demo:Fruit .
-							}
-
-							{
-								demo:Fruit rdf:type demo:Food .
-							}
-						`,
-					})[s_variant])),
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 				}),
 
-				'after union': () => ({
+				'.union()': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy content.ttl.read
 							--pipe util.dataset.tree --union
-							--pipe content.${s_variant}.write
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
-					out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
-						nt: /* syntax: n-triples */ `
-							<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
-							<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-							<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-						`,
-						nq: /* syntax: n-quads */ `
-							<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
-							<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-							<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-						`,
-						ttl: /* syntax: turtle */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
-
-							demo:Fruit rdf:type demo:Food .
-							
-							demo:Watermelon rdf:type demo:Fruit .
-
-							demo:Banana rdf:type demo:Fruit .
-						`,
-						trig: /* syntax: trig */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
-
-							{
-								demo:Fruit rdf:type demo:Food .
-							}
-							
-							{
-								demo:Watermelon rdf:type demo:Fruit .
-							}
-
-							{
-								demo:Banana rdf:type demo:Fruit .
-							}
-						`,
-					})[s_variant])),
+					out: validate_json(triples({
+						'demo:Banana': {
+							a: 'demo:Fruit',
+						},
+						'demo:Fruit': {
+							a: 'demo:Food',
+						},
+						'demo:Watermelon': {
+							a: 'demo:Fruit',
+						},
+					})),
 				}),
 
-				'after intersection': () => ({
+				'.intersection()': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy content.ttl.read
 							--pipe util.dataset.tree --intersection
-							--pipe content.${s_variant}.write
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
-					out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
-						nt: /* syntax: n-triples */ `
-							<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
-						`,
-						nq: /* syntax: n-quads */ `
-							<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
-						`,
-						ttl: /* syntax: turtle */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
-
-							demo:Fruit rdf:type demo:Food .
-						`,
-						trig: /* syntax: trig */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
-
-							{
-								demo:Fruit rdf:type demo:Food .
-							}
-						`,
-					})[s_variant])),
+					out: validate_json(triples({
+						'demo:Fruit': {
+							a: 'demo:Food',
+						},
+					})),
 				}),
 
-				'after difference': () => ({
+				'.difference()': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy content.ttl.read
 							--pipe util.dataset.tree --difference
-							--pipe content.${s_variant}.write
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
-					out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
-						nt: /* syntax: n-triples */ `
-							<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-							<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-						`,
-						nq: /* syntax: n-quads */ `
-							<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-							<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-						`,
-						ttl: /* syntax: turtle */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
-
-							demo:Watermelon rdf:type demo:Fruit .
-
-							demo:Banana rdf:type demo:Fruit .
-						`,
-						trig: /* syntax: trig */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
-
-							{
-								demo:Watermelon rdf:type demo:Fruit .
-							}
-
-							{
-								demo:Banana rdf:type demo:Fruit .
-							}
-						`,
-					})[s_variant])),
+					out: validate_json(triples({
+						'demo:Banana': {
+							a: 'demo:Fruit',
+						},
+						'demo:Watermelon': {
+							a: 'demo:Fruit',
+						},
+					})),
 				}),
 
-				'after minus': () => ({
+				'.minus()': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy content.ttl.read
 							--pipe util.dataset.tree --minus
-							--pipe content.${s_variant}.write
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
-					out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
-						nt: /* syntax: n-triples */ `
-							<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-						`,
-						nq: /* syntax: n-quads */ `
-							<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
-						`,
-						ttl: /* syntax: turtle */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
+					out: validate_json(triples({
+						'demo:Banana': {
+							a: 'demo:Fruit',
+						},
+					})),
+				}),
 
-							demo:Banana rdf:type demo:Fruit .
-						`,
-						trig: /* syntax: trig */ `
-							@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-							@prefix demo: <http://ex.org/> .
+				'.canonicalize()': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree --canonicalize
+							--pipe util.dataset.tree --difference
+							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.be.empty),
+				}),
 
-							{
-								demo:Banana rdf:type demo:Fruit .
-							}
-						`,
-					})[s_variant])),
+				'.contains() = false': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree --contains
+							--inputs <(echo '${st_left}') <(echo '${st_right}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
+				}),
+
+				'.contains() = true': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree --contains
+							--inputs <(echo '${st_left}') <(echo '${st_left}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
+				}),
+
+				'.disjoint() = false': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree --disjoint
+							--inputs <(echo '${st_left}') <(echo '${st_right}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
+				}),
+
+				'.disjoint() = true': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree --disjoint
+							--inputs <(echo '${st_left}') <(echo '${st_blank_1}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
+				}),
+
+				'.equals() = false': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree --equals
+							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
+				}),
+
+				'.equals() = true': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree --equals
+							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_1}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
+				}),
+
+				'.canonicalize/.contains() = false': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree -z
+							--pipe util.dataset.tree --contains
+							--inputs <(echo '${st_left}') <(echo '${st_right}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
+				}),
+
+				'.canonicalize/.contains() = true': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree -z
+							--pipe util.dataset.tree --contains
+							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
+				}),
+
+				'.canonicalize/.disjoint() = false': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree -z
+							--pipe util.dataset.tree --disjoint
+							--inputs <(echo '${st_left}') <(echo '${st_right}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
+				}),
+
+				'.canonicalize/.disjoint() = true': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree -z
+							--pipe util.dataset.tree --disjoint
+							--inputs <(echo '${st_left}') <(echo '${st_blank_1}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
+				}),
+
+				'.canonicalize/.equals() = false': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree -z
+							--pipe util.dataset.tree --equals
+							--inputs <(echo '${st_blank_1}') <(echo '${st_right}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
+				}),
+
+				'.canonicalize/.equals() = true': () => ({
+					cmd: /* syntax: bash */ `
+						npx graphy content.ttl.read
+							--pipe util.dataset.tree -z
+							--pipe util.dataset.tree --equals
+							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
+					`,
+					out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
 				}),
 			},
-		}), {}),
 
-		'boolean results': {
+			...['nt', 'nq', 'ttl', 'trig'].reduce((h_out, s_variant) => ({
+				...h_out,
+				['content.'+s_variant+'.write']: {
+					'direct': () => ({
+						cmd: /* syntax: bash */ `
+							npx graphy content.ttl.read
+								--pipe content.${s_variant}.write
+								--inputs <(echo '${st_left}')
+						`,
+						out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
+							nt: /* syntax: n-triples */ `
+								<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+								<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
+							`,
+							nq: /* syntax: n-quads */ `
+								<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+								<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
+							`,
+							ttl: /* syntax: turtle */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
 
-		},
+								demo:Banana rdf:type demo:Fruit .
+								
+								demo:Fruit rdf:type demo:Food .
+							`,
+							trig: /* syntax: trig */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
+
+								{
+									demo:Banana rdf:type demo:Fruit .
+								}
+
+								{
+									demo:Fruit rdf:type demo:Food .
+								}
+							`,
+						})[s_variant])),
+					}),
+
+					'after union': () => ({
+						cmd: /* syntax: bash */ `
+							npx graphy content.ttl.read
+								--pipe util.dataset.tree --union
+								--pipe content.${s_variant}.write
+								--inputs <(echo '${st_left}') <(echo '${st_right}')
+						`,
+						out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
+							nt: /* syntax: n-triples */ `
+								<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
+								<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+								<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+							`,
+							nq: /* syntax: n-quads */ `
+								<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
+								<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+								<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+							`,
+							ttl: /* syntax: turtle */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
+
+								demo:Fruit rdf:type demo:Food .
+								
+								demo:Watermelon rdf:type demo:Fruit .
+
+								demo:Banana rdf:type demo:Fruit .
+							`,
+							trig: /* syntax: trig */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
+
+								{
+									demo:Fruit rdf:type demo:Food .
+								}
+								
+								{
+									demo:Watermelon rdf:type demo:Fruit .
+								}
+
+								{
+									demo:Banana rdf:type demo:Fruit .
+								}
+							`,
+						})[s_variant])),
+					}),
+
+					'after intersection': () => ({
+						cmd: /* syntax: bash */ `
+							npx graphy content.ttl.read
+								--pipe util.dataset.tree --intersection
+								--pipe content.${s_variant}.write
+								--inputs <(echo '${st_left}') <(echo '${st_right}')
+						`,
+						out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
+							nt: /* syntax: n-triples */ `
+								<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
+							`,
+							nq: /* syntax: n-quads */ `
+								<http://ex.org/Fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Food> .
+							`,
+							ttl: /* syntax: turtle */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
+
+								demo:Fruit rdf:type demo:Food .
+							`,
+							trig: /* syntax: trig */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
+
+								{
+									demo:Fruit rdf:type demo:Food .
+								}
+							`,
+						})[s_variant])),
+					}),
+
+					'after difference': () => ({
+						cmd: /* syntax: bash */ `
+							npx graphy content.ttl.read
+								--pipe util.dataset.tree --difference
+								--pipe content.${s_variant}.write
+								--inputs <(echo '${st_left}') <(echo '${st_right}')
+						`,
+						out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
+							nt: /* syntax: n-triples */ `
+								<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+								<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+							`,
+							nq: /* syntax: n-quads */ `
+								<http://ex.org/Watermelon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+								<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+							`,
+							ttl: /* syntax: turtle */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
+
+								demo:Watermelon rdf:type demo:Fruit .
+
+								demo:Banana rdf:type demo:Fruit .
+							`,
+							trig: /* syntax: trig */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
+
+								{
+									demo:Watermelon rdf:type demo:Fruit .
+								}
+
+								{
+									demo:Banana rdf:type demo:Fruit .
+								}
+							`,
+						})[s_variant])),
+					}),
+
+					'after minus': () => ({
+						cmd: /* syntax: bash */ `
+							npx graphy content.ttl.read
+								--pipe util.dataset.tree --minus
+								--pipe content.${s_variant}.write
+								--inputs <(echo '${st_left}') <(echo '${st_right}')
+						`,
+						out: s_stdout => expect(s_stdout).to.equal(util.gobble(({
+							nt: /* syntax: n-triples */ `
+								<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+							`,
+							nq: /* syntax: n-quads */ `
+								<http://ex.org/Banana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://ex.org/Fruit> .
+							`,
+							ttl: /* syntax: turtle */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
+
+								demo:Banana rdf:type demo:Fruit .
+							`,
+							trig: /* syntax: trig */ `
+								@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+								@prefix demo: <http://ex.org/> .
+
+								{
+									demo:Banana rdf:type demo:Fruit .
+								}
+							`,
+						})[s_variant])),
+					}),
+				},
+			}), {}),
+
+			'boolean results': {
+
+			},
+		});
+
 	});
-
-});
+}
