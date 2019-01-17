@@ -354,7 +354,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_c3" />
 
-### *generator* [`*factory.c3`](#function_c3)`(triples: `[`#hash/concise-triples`](concise#hash_c4)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
+### *generator* [`*factory.c3`](#function_c3)`(triples: `[`#hash/concise-triples`](concise#hash_c3)`[, prefixes: `[`#hash/prefix-mappings`](#hash_prefix-mappings)`])`
    - **yields** a series of [Quads](#class_quad)
    - *examples:* [See Concise Triples Hash](concise#hash_c3)
 
@@ -421,7 +421,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       const factory = require('@graphy/core.data.factory');
       const ttl_write = require('@graphy/content.ttl.write');
       
-      let y_writer = ttl_write({
+      let ds_writer = ttl_write({
          prefixes: {
             demo: 'http://ex.org/',
             dbo: 'http://dbpedia.org/ontology/',
@@ -430,9 +430,9 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
          },
       });
       
-      y_writer.pipe(process.stdout);
+      ds_writer.pipe(process.stdout);
       
-      y_writer.write({
+      ds_writer.write({
          type: 'c3',
          value: {
             [factory.comment()]: 'this is a comment',
@@ -444,7 +444,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
          },
       });
       
-      y_writer.end();
+      ds_writer.end();
       ```
    - *outputs:*
       ```turtle

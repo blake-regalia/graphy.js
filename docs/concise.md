@@ -161,7 +161,8 @@ A concise quads hash describes a plain object whose keys represent the *graph* o
 const factory = require('@graphy/core.data.factory');
 const trig_write = require('@graphy/content.trig.write');
 
-let y_writer = trig_write({
+// create a TriG content writer
+let ds_writer = trig_write({
    prefixes: {
       rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
       rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
@@ -174,13 +175,13 @@ let y_writer = trig_write({
    },
 });
 
-y_writer.pipe(process.stdout);
+// pipe to stdout
+ds_writer.pipe(process.stdout);
 
-// the following demonstrates the use of a concise quads hash
-y_writer.write({
+// write some quads using a concise quads hash
+ds_writer.write({
    type: 'c4',
-   value: {
-      // example 2 from TriG: https://www.w3.org/TR/trig/
+   value: {  // example 2 from TriG: https://www.w3.org/TR/trig/
       [factory.comment()]: 'default graph',
       '*': {
          'demo:bob': {
@@ -208,7 +209,8 @@ y_writer.write({
    },
 });
 
-y_writer.end();
+// end the writable side of the transform
+ds_writer.end();
 ```
 
 **Outputs:**
@@ -256,7 +258,8 @@ A concise triples hash describes a plain object whose keys represent the *subjec
 const factory = require('@graphy/core.data.factory');
 const ttl_write = require('@graphy/content.ttl.write');
 
-let y_writer = ttl_write({
+// create a Turtle content writer
+let ds_writer = ttl_write({
    prefixes: {
       rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
       rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
@@ -268,10 +271,11 @@ let y_writer = ttl_write({
    },
 });
 
-y_writer.pipe(process.stdout);
+// pipe to stdout
+ds_writer.pipe(process.stdout);
 
-// the following demonstrates the use of a concise triples hash
-y_writer.write({
+// write some triples using a concise triples hash
+ds_writer.write({
    type: 'c3',
    value: {
       // triples about dbr:Banana
@@ -314,7 +318,8 @@ y_writer.write({
    },
 });
 
-y_writer.end();
+// end the writable side of the transform
+ds_writer.end();
 ```
 
 **Outputs:**

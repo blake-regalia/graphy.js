@@ -2,7 +2,8 @@
 const factory = require('@graphy/core.data.factory');
 const trig_write = require('@graphy/content.trig.write');
 
-let y_writer = trig_write({
+// create a TriG content writer
+let ds_writer = trig_write({
 	prefixes: {
 		rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
 		rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
@@ -15,13 +16,13 @@ let y_writer = trig_write({
 	},
 });
 
-y_writer.pipe(process.stdout);
+// pipe to stdout
+ds_writer.pipe(process.stdout);
 
-// the following demonstrates the use of a concise quads hash
-y_writer.write({
+// write some quads using a concise quads hash
+ds_writer.write({
 	type: 'c4',
-	value: {
-		// example 2 from TriG: https://www.w3.org/TR/trig/
+	value: {  // example 2 from TriG: https://www.w3.org/TR/trig/
 		[factory.comment()]: 'default graph',
 		'*': {
 			'demo:bob': {
@@ -49,4 +50,5 @@ y_writer.write({
 	},
 });
 
-y_writer.end();
+// end the writable side of the transform
+ds_writer.end();

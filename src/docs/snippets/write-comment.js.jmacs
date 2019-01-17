@@ -2,7 +2,7 @@
 const factory = require('@{channel('core.data.factory')}');
 const ttl_write = require('@{channel('content.ttl.write')}');
 
-let y_writer = ttl_write({
+let ds_writer = ttl_write({
 	prefixes: {
 		demo: 'http://ex.org/',
 		dbo: 'http://dbpedia.org/ontology/',
@@ -11,9 +11,9 @@ let y_writer = ttl_write({
 	},
 });
 
-y_writer.pipe(process.stdout);
+ds_writer.pipe(process.stdout);
 
-y_writer.write({
+ds_writer.write({
 	type: 'c3',
 	value: {
 		[factory.comment()]: 'this is a comment',
@@ -25,4 +25,4 @@ y_writer.write({
 	},
 });
 
-y_writer.end();
+ds_writer.end();

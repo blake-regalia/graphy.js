@@ -5,7 +5,7 @@ const ttl_write = require('@{channel('content.ttl.write')}');
 
 @// >= v10
 @- parseInt(process.version.replace(/^v(\d+)\..*$/, '$1')) >= 10
-// a series of streams to pipe together
+// a series of streams to pipe together (stream.pipeline is supported by node.js >= v10)
 stream.pipeline(...[
 	// read from standard input
 	process.stdin,
