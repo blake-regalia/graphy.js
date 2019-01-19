@@ -155,7 +155,7 @@ for(let [s_content, g_content] of Object.entries(h_content_packages)) {
 
 
 // normalize packages
-let h_super_deps = g_package_json_super.dependencies;
+let h_super_deps = Object.assign(g_package_json_super.dependencies, g_package_json_super.devDependencies);
 for(let [si_package, g_package] of Object.entries(h_packages)) {
 	// auto-default ref package.json struct
 	let g_json = g_package.json = g_package.json || {};
@@ -376,86 +376,6 @@ const h_content_type_aliases = {
 	trig: 'application/trig',
 };
 
-const performance_data = () => {
-	const evaluator = require('emk/perf/evaluator.js');
-
-	let h_out = {};
-	for(let g_input of evaluator.inputs()) {
-		let s_host = g_input.source_host;
-		let h_host = h_out[s_host] = h_out[s_host] || {};
-		let s_decompress = '';
-		if(g_input.compressed) {
-			s_decompress = /* syntax: bash */ `| bzip2 -d`;
-		}
-
-		h_host[g_input.basename] = g_input.url
-			? () => ({
-				deps: [
-					g_input.url,
-				],
-				run: /* syntax: bash */ `
-					curl "$1" ${s_decompress} > $@
-				`,
-			})
-			: () => ({
-				deps: [
-					g_input.path,
-				],
-				run: /* syntax: bash */ `
-					echo "$1"
-				`,
-			});
-	}
-
-	return h_out;
-};
-
-//
-const reader_performances = () => {
-	const p_gen_src = 'emk/perf/reader.js';
-	const gen = require('./'+p_gen_src);
-
-	let h_out = {};
-	for(let g_target of gen.targets()) {
-		let {
-			host: s_host,
-			mode: s_mode,
-			content_type: s_content_type,
-		} = g_target;
-
-		// let h_host = h_out[s_host] = h_out[s_host] || {};
-		h_out[g_target.file] = () => ({
-			deps: [p_gen_src],
-			run: /* syntax: bash */ `
-				node $1 \
-					--content_type='${s_content_type}' \
-					--host='${s_host}' \
-					--mode='${s_mode}' \
-					> $@
-			`,
-		});
-	}
-
-	return {
-		runner: h_out,
-		report: {
-			':content_type_alias.json': ({content_type_alias:s_alias}) => (p_mime => ({
-				deps: [
-					'emk/perf/evaluator.js',
-					'perf.data',
-					...[...gen.targets({
-						content_type: p_mime,
-					})].map(g_target => `build/${s_channel}/performance/reader/runner/${g_target.file}`),
-				],
-
-				run: (p_out, p_eval, _ignore, ...a_runners) => /* syntax: bash */ `
-					node $1 reader '${p_mime}' ${a_runners.map(p => `'${p}'`).join(' ')} > $@
-				`,
-			}))(h_content_type_aliases[s_alias]),
-		},
-	};
-};
-
 let a_messages = fs.readdirSync('messages').sort().reverse().map(s => `messages/${s}`);
 
 // emk struct
@@ -577,6 +497,8 @@ module.exports = async() => {
 			// docs markdown
 			markdown: fs.readdirSync('src/docs/')
 				.filter(s => s.endsWith('.md.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+
+			bench_statements: [...Array(10).keys()].map(i => `${i+1}m`),
 		},
 
 		tasks: {
@@ -701,7 +623,7 @@ module.exports = async() => {
 						npx mocha --colors $1
 					`,
 				}),
-				
+
 				// web test
 				web: () => ({
 					deps: [
@@ -713,43 +635,6 @@ module.exports = async() => {
 					`,
 				}),
 			},
-
-			// // web test
-			// web: {
-			// 	':testable': ({testable:si_package}) => ({
-			// 		deps: [
-			// 			'test/web/runner.html',
-			// 			`build/${s_channel}/test/web/${si_package}.js`,
-			// 		],
-			// 		run: /* syntax: bash */ `
-			// 			npx mocha-chrome $1
-			// 		`,
-			// 	}),
-			// },
-			// 
-
-
-			// performance evaluation
-			perf: {
-				reader: {
-					':content_type_alias': ({content_type_alias:s_alias}) => ({
-						deps: [`build/${s_channel}/performance/reader/report/${s_alias}.json`],
-					}),
-				},
-
-				data: () => ({
-					deps: ['build/cache/data/**'],
-				}),
-			},
-
-			// // 
-			// perf: () => ({
-			// 	deps: [],
-
-			// 	run: /* syntax: bash */ `
-			// 		node $1 < $2 >
-			// 	`,
-			// }),
 		},
 
 		outputs: {
@@ -793,8 +678,6 @@ module.exports = async() => {
 			// package builds
 			build: {
 				cache: {
-					data: performance_data(),
-
 					specs: {
 						':content_sub': [si_package => ({
 							...(si_package.endsWith('.read')
@@ -833,10 +716,6 @@ module.exports = async() => {
 				},
 
 				[s_channel]: {
-					performance: {
-						reader: reader_performances(),
-					},
-
 					package: {
 						// ...(B_DEVELOPMENT
 						// 	? {
