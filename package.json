@@ -1,7 +1,7 @@
 {
   "name": "@graphy/super-repo",
   "version": "3.1.0",
-  "devVersion": "0.0.32",
+  "devVersion": "0.0.33",
   "description": "A collection of RDF libraries for JavaScript developers that focus on performance and usability",
   "keywords": [
     "linked-data",

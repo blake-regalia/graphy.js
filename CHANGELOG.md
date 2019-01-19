@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.1.1 (2019-01-18)
+------------------------
+
+#### Fix Missing CLI Dependency and Patch for Browser Stream Polyfill
+
+  The CLI `package.json` was missing a dependency to `yargs`. The [`stream` polyfill](https://github.com/browserify/stream-browserify) used by both Webpack and Browserify improperly pushes `null` and emits an `'end'` event during the call to `.destroy()` -- the same bug exists for node.js <v10. This patch includes an overriding destroy implementation for the stream polyfill when bundled.
+
+
 ## v3.1.0 (2019-01-16)
 ------------------------
 
