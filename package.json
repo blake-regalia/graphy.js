@@ -30,22 +30,19 @@
     "coverage": "nyc --reporter=text mocha test/package"
   },
   "dependencies": {
-    "async": "^2.6.1",
-    "big-integer": "^1.6.40",
-    "bkit": "^1.4.0",
-    "buffer": "^5.2.1",
-    "performance-now": "^2.1.0",
-    "rdf-test-suite": "^1.2.0",
-    "uri": "^0.1.0",
     "uri-js": "^4.2.2",
-    "worker": "^0.3.12"
+    "yargs": "^12.0.5"
   },
   "devDependencies": {
     "@rdfjs/data-model": "git://github.com/rdfjs/data-model.git#remove-falsy-tests",
+    "big-integer": "^1.6.40",
+    "bkit": "^1.4.1",
     "chai": "^4.2.0",
     "chai-iterator": "^3.0.0",
     "chai-string": "^1.5.0",
     "csv-parse": "^4.3.0",
+    "d3": "^5.7.0",
+    "d3plus-viz": "^0.12.6",
     "detective": "^5.1.0",
     "emk": "^1.6.0",
     "eslint": "^5.12.0",
@@ -59,7 +56,12 @@
     "n3": "^1.0.3",
     "nyc": "^13.1.0",
     "plotly": "^1.0.6",
+    "pug-cli": "^1.0.0-alpha6",
+    "rdf-test-suite": "^1.2.0",
     "request": "^2.87.0",
-    "sort-package-json": "^1.17.1"
+    "sort-package-json": "^1.17.1",
+    "webpack": "^4.28.4",
+    "webpack-cli": "^3.2.1",
+    "worker": "^0.3.12"
   }
 }
