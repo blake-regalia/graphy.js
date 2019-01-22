@@ -20,7 +20,7 @@
 
 ## Features
  - [Read RDF documents](content.textual#verb_read) using streams. Includes support for N-Triples (.nt), N-Quads (.nq), Turtle (.ttl), and TriG (.trig).
- - [Write RDF ]
+ - [Write RDF data](content.textual#verb_write) using streaming transforms with the awesome and intuitive [concise triples and concise quads language](concise).
  - [Construct RDF data](concise#hash_c3) using ES object literals that reflect the tree-like structure of quads, `graph -> subject -> predicate -> object`, including nested blank nodes and RDF collections.
 <!-- - [High-performance](#performance) document readers. -->
  - [Compute the union, intersection, difference or subtraction](util.dataset.tree) between multiple RDF graphs analagous to [Set Algebra](https://en.wikipedia.org/wiki/Algebra_of_sets).
@@ -30,7 +30,7 @@
 
 ## Package Tree
 <div class="larger">
-  The [graphy GitHub repository](https://github.com/blake-regalia/graphy.js) contains source code for all of the packages published on npm under the `@graphy` org. Each package is namespaced according to its category, sub-category, and function. They are enumerated here for clarity:
+  The <a href="https://github.com/blake-regalia/graphy.js">graphy GitHub repository</a> contains source code for all of the packages published on npm under the <code>@graphy</code> org. Each package is namespaced according to its category, sub-category, and function. They are enumerated here for clarity:
 </div>
 
 ```yaml

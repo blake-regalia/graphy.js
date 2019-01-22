@@ -8,12 +8,12 @@
 
 ## [Data Factory](core.data.factory)
 <div class="larger">
-	Documentation for the `@graphy/core.data.factory` package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
+	Documentation for the <code>@graphy/core.data.factory</code> package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
 </div>
 
 ## [Dataset Tree](util.dataset.tree)
 <div class="larger">
-	Documentation for the `@graphy/util.dataset.tree` package which allows for union, 
+	Documentation for the <code>@graphy/util.dataset.tree</code> package which allows for union, 
 	intersection, inclusion, canonicalization, reduction and so forth.
 </div>
 
@@ -25,10 +25,20 @@
 ## [Textual Content Handlers](content.textual)
 <div class="larger">
 	Covers all functionality exposed by packages prefixed with the following prefixes:
- - `@graphy/content.nt.*`
- - `@graphy/content.nq.*`
- - `@graphy/content.ttl.*`
- - `@graphy/content.trig.*`
+	<ul>
+		<li>
+			<code>@graphy/content.nt.*</code>
+		</li>
+		<li>
+			<code>@graphy/content.nq.*</code>
+		</li>
+		<li>
+			<code>@graphy/content.ttl.*</code>
+		</li>
+		<li>
+			<code>@graphy/content.trig.*</code>
+		</li>
+	</ul>
 </div>
 
 <style>
