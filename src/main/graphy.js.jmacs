@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 @import '../share/channel.jmacs'
 
+const factory = require('@{channel('core.data.factory')}');
+
 const gobble = (s_text, s_indent='') => {
 	let m_pad = /^(\s+)/.exec(s_text.replace(/^([ \t]*\n)/, ''));
 	if(m_pad) {
@@ -178,7 +180,7 @@ const graphy = module.exports = Object.assign({
 
 @//@
 
-}, require('@{channel('core.data.factory')}'));
+}, factory);
 
 
 // export graphy to window object if in main thread of browser
@@ -234,11 +236,23 @@ if(module === require.main) {
 	const reader = f_reader => (a_args, g_context) => new Promise((fk_resolve) => {
 		let g_argv = command(g_context.command)
 			.boolean('v')
-				.alias('v', 'validate')
+				.alias('v', ['validate'])
 				.describe('v', 'validate all tokens within the RDF document')
 			.string('b')
 				.alias('b', ['base', 'base-uri'])
 				.describe('b', 'set a base URI on the document')
+			.string('s')
+				.alias('s', ['subject'])
+				.describe('s', 'filter quads by subject (must be a concise-term string)')
+			.string('p')
+				.alias('p', ['predicate'])
+				.describe('p', 'filter quads by predicate (must be a concise-term string)')
+			.string('o')
+				.alias('o', ['object'])
+				.describe('o', 'filter quads by object (must be a concise-term string)')
+			.string('g')
+				.alias('g', ['graph'])
+				.describe('g', 'filter quads by graph (must be a concise-term string)')
 			.help()
 			.version(false)
 			.parse(a_args);
@@ -252,14 +266,171 @@ if(module === require.main) {
 		}
 
 		fk_resolve(g_context.inputs.map((ds_input) => {
-			let ds_reader = f_reader({
+			let ds_reader = ds_input.pipe(f_reader({
 				...gc_read,
 				error(e_read) {
 					g_context.failure(e_read);
 				},
-			});
+			}));
 
-			return ds_input.pipe(ds_reader);
+			// filters
+			if(g_argv.subject || g_argv.predicate || g_argv.object || g_argv.graph) {
+				let {
+					subject: sc1_subject=null,
+					predicate: sc1_predicate=null,
+					object: sc1_object=null,
+					graph: sc1_graph=null,
+				} = g_argv;
+
+				// create sv1 test strings
+				let sv1_subject = null;
+				let sv1_predicate = null;
+				let sv1_object = null;
+				let sv1_graph = null;
+
+				// prefix mappings
+				let h_prefixes = {};
+
+				// graph optimzation
+				let b_skip_graph = false;
+
+				// skip graphs that do not match filter
+				let f_enter = (yt_graph) => {
+					b_skip_graph = (sv1_graph !== yt_graph.concise());
+				};
+
+				// only skip triples in filter is not the default graph
+				let f_exit = () => {
+					b_skip_graph = (sv1_graph !== '*');
+				};
+
+				// when prefix mappings change, populate filter strings
+				let f_update_filters = () => {
+					// filter subject
+					if(sc1_subject) {
+						try {
+							sv1_subject = factory.c1(sc1_subject, h_prefixes).concise();
+						}
+						catch(e_convert) {
+							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
+							sv1_subject = '`void';
+						}
+					}
+
+					// filter predicate
+					if(sc1_predicate) {
+						try {
+							sv1_predicate = factory.c1(sc1_predicate, h_prefixes).concise();
+						}
+						catch(e_convert) {
+							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
+							sv1_predicate = '`void';
+						}
+					}
+
+					// filter object
+					if(sc1_object) {
+						try {
+							sv1_object = factory.c1(sc1_object, h_prefixes).concise();
+						}
+						catch(e_convert) {
+							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
+							sv1_object = '`void';
+						}
+					}
+
+					// filter graph
+					if(sc1_graph) {
+						// listeners already set, remove them
+						if(sv1_graph) {
+							ds_reader.removeListener('enter', f_enter);
+							ds_reader.removeListener('exit', f_exit);
+						}
+
+						try {
+							sv1_graph = factory.c1(sc1_graph, h_prefixes).concise();
+						}
+						catch(e_convert) {
+							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
+							sv1_graph = '`void';
+						}
+
+						// setup graph filter
+						ds_reader
+							.on('enter', f_enter)
+							.on('exit', f_exit);
+					}
+				};
+
+				// listen for prefix events
+				ds_reader.on('prefix', (s_prefix_id, p_prefix_iri) => {
+					// update hash
+					h_prefixes[s_prefix_id] = p_prefix_iri;
+
+					// update filters
+					f_update_filters();
+				});
+
+				// create filter transform
+				let ds_filter = new (class extends stream.Transform {
+					constructor() {
+						super({
+							objectMode: true,
+						});
+					}
+
+					// eslint-disable-next-line class-methods-use-this
+					_transform(y_quad, s_encoding, fk_transform) {
+						// skip graph
+						if(b_skip_graph) return fk_transform();
+
+						// apply filter
+						if(sv1_subject && sv1_subject !== y_quad.subject.concise()) return fk_transform();
+						else if(sv1_predicate && sv1_predicate !== y_quad.predicate.concise()) return fk_transform();
+						else if(sv1_object && sv1_object !== y_quad.object.concise()) return fk_transform();
+						else if(sv1_graph && sv1_graph !== y_quad.graph.concise()) return fk_transform();
+
+						// quad passed filter
+						fk_transform(null, y_quad);
+					}
+
+					// intercept pipe
+					pipe(ds_out) {
+						let ds_dst = ds_out;
+
+						// non-object mode
+						if(!ds_dst._writableState.objectMode) {
+							// transform to JSON
+							ds_out = stream.quads_to_json();
+						}
+						// yet object mode and graphy writable
+						else if(ds_out.isGraphyWritable) {
+							// transform to writable data events
+							ds_out = stream.quads_to_writable();
+						}
+
+						// interim stream created
+						if(ds_out !== ds_dst) {
+							// forward output to super
+							super.pipe(ds_out);
+
+							// pipe outpu to destination
+							return ds_out.pipe(ds_dst);
+						}
+						// forward as-is to super
+						else {
+							return super.pipe(ds_dst);
+						}
+					}
+				})();
+
+				// pipe thru filter
+				return ds_reader.pipe(ds_filter);
+			}
+			// no filter
+			else {
+				return ds_reader;
+			}
 		}));
 	});
 

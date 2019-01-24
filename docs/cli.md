@@ -36,6 +36,10 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
    - **Options:**
      - `-b, --base, --base-uri` -- sets the starting base URI for the RDF document, [see more here](content.textual#config_read-no-input).
      - `-v, --validate` -- whether or not to perform validation on tokens, [see more here](content.textual#config_read-no-input).
+     - `-s, --subject SUBJECT_FILTER` -- filter quads by subject. `SUBJECT_FILTER` must be a [concise-term string](concise#string_c1).
+     - `-p, --predicate PREDICATE_FILTER` -- filter quads by predicate. `PREDICATE_FILTER` must be a [concise-term string](concise#string_c1).
+     - `-o, --object OBJECT_FILTER` -- filter quads by object. `OBJECT_FILTER` must be a [concise-term string](concise#string_c1).
+     - `-g, --graph GRAPH_FILTER` -- filter quads by graph. `GRAPH_FILTER` must be a [concise-term string](concise#string_c1).
    - _examples:_
      ```bash
      # validate an N-Triples document
@@ -49,6 +53,18 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
 
      # print line-delimited JSON of quads in TriG document while validating it
      $ graphy content.trig.read -v < input.trig
+
+     # filter by subject: 'dbr:Banana' using prefix mappings embedded in document
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -s 'dbr:Banana_split'
+
+     # filter by predicate: 'rdf:type' alias
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -p 'a'
+
+     # filter by object: '"Banana"@en'
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -o '@en"Banana'
+
+     # filter by graph using absolute IRI ref
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -g '>http://ex.org/some-absolute-graph-iri'
      ```
 
 <a name="command_content-format-write" />

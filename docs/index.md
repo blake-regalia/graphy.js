@@ -6,6 +6,7 @@
 </h1>
 > Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
 
+<code>npm install --save graphy</code>
 <br />
 
 ## [API Reference](api)

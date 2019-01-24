@@ -115,7 +115,7 @@ const [B_BROWSER, B_BROWSERIFY] = (() => 'undefined' === typeof process
 			? [true, false]
 			: [false, false])))();
 
-if(B_BROWSER) {
+if(!B_BROWSER) {
 	describe('graphy CLI', () => {
 		const exec = async(g_exec) => {
 			let {
@@ -299,6 +299,126 @@ if(B_BROWSER) {
 						}
 					`,
 					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'+filter subject terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --subject="dbr:Banana"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'-filter subject terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --subject="dbr:absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
+				}),
+
+				'+filter predicate terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --predicate="rdf:type"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'-filter predicate terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --predicate="rdf:absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
+				}),
+
+				'+filter object terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --object="dbr:Banana"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'-filter object terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --object="dbr:absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
+				}),
+
+				'+filter graph terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --graph="*"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'-filter graph terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --subject="dbo:absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
+				}),
+
+				'+filter subject verbose': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --subject=">http://dbpedia.org/resource/Banana"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'-filter subject verbose': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --subject=">http://dbpedia.org/resource/absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
+				}),
+
+				'+filter predicate verbose': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --predicate=">http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'-filter predicate verbose': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --predicate=">http://www.w3.org/1999/02/22-rdf-syntax-ns#absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
+				}),
+
+				'+filter object verbose': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --object=">http://dbpedia.org/resource/Banana"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'-filter object verbose': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --object=">http://dbpedia.org/resource/absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
+				}),
+
+				'-filter graph verbose': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --graph=">http://dbpedia.org/ontology/absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
 				}),
 			},
 
