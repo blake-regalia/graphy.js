@@ -77,11 +77,11 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
      # filter by subject: 'dbr:Banana_split' using prefix mappings embedded in document
      $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -s 'dbr:Banana_split'
 
-     # select quads that *do not have* the subject: 'dbr:Banana'
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -S 'dbr:Banana'
-
      # filter by predicate: 'rdf:type' alias
      $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -p 'a'
+
+     # select quads that *do not have* the predicate: 'owl:sameAs' nor `dbo:wikiPageRedirects`
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -P 'owl:sameAs' 'dbo:wikiPageRedirects'
 
      # filter by object: '"Banana"@en'
      $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -o '@en"Banana'
