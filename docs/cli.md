@@ -36,14 +36,16 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
    - **Options:**
      - `-b, --base, --base-uri` -- sets the starting base URI for the RDF document, [see more here](content.textual#config_read-no-input).
      - `-v, --validate` -- whether or not to perform validation on tokens, [see more here](content.textual#config_read-no-input).
-     - `-s, --subject SUBJECT_FILTER` -- filter quads by only allowing those that match the given subject. `SUBJECT_FILTER` must be a [concise-term string](concise#string_c1).
-     - `-p, --predicate PREDICATE_FILTER` -- filter quads by only allowing those that match the given predicate. `PREDICATE_FILTER` must be a [concise-term string](concise#string_c1).
-     - `-o, --object OBJECT_FILTER` -- filter quads by only allowing those that match the given object. `OBJECT_FILTER` must be a [concise-term string](concise#string_c1).
-     - `-g, --graph GRAPH_FILTER` -- filter quads by only allowing those that match the given graph. `GRAPH_FILTER` must be a [concise-term string](concise#string_c1).
-     - `-S, --not-subject NOT_SUBJECTS_FILTER+` -- filter quads by allowing any that **do not match** the given subject(s). `NOT_SUBJECTS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-     - `-P, --not-predicate NOT_PREDICATE_FILTER+` -- filter quads by allowing any that **do not match** the given predicate(s). `NOT_PREDICATES_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-     - `-O, --not-object NOT_OBJECT_FILTER+` -- filter quads by allowing any that **do not match** the given object(s). `NOT_OBJECTS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-     - `-G, --not-graph NOT_GRAPH_FILTER+` -- filter quads by allowing any that **do not match** the given graph(s). `NOT_GRAPHS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
+     - **Whitelist Filtering:**
+       - `-s, --subject SUBJECT_FILTER` -- only allow quads that match the given subject. `SUBJECT_FILTER` must be a [concise-term string](concise#string_c1).
+       - `-p, --predicate PREDICATE_FILTER` -- only allow quads that match the given predicate. `PREDICATE_FILTER` must be a [concise-term string](concise#string_c1).
+       - `-o, --object OBJECT_FILTER` -- only allow quads that match the given object. `OBJECT_FILTER` must be a [concise-term string](concise#string_c1).
+       - `-g, --graph GRAPH_FILTER` -- only allow quads that match the given graph. `GRAPH_FILTER` must be a [concise-term string](concise#string_c1).
+     - **Blacklist Filtering:**
+       - `-S, --not-subject NOT_SUBJECTS_FILTER+` -- allow any quads that **do not match** the given subject(s). `NOT_SUBJECTS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
+       - `-P, --not-predicate NOT_PREDICATE_FILTER+` -- allow any quads that **do not match** the given predicate(s). `NOT_PREDICATES_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
+       - `-O, --not-object NOT_OBJECT_FILTER+` -- allow any quads that **do not match** the given object(s). `NOT_OBJECTS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
+       - `-G, --not-graph NOT_GRAPH_FILTER+` -- allow any quads that **do not match** the given graph(s). `NOT_GRAPHS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
    - _examples:_
      ```bash
      # validate an N-Triples document
