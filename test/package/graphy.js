@@ -420,6 +420,95 @@ if(!B_BROWSER) {
 					`,
 					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
 				}),
+
+				'+filter not 1 subject terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-subject="dbr:Banana"
+					`,
+					out: validate_json(a_rows => expect(a_rows.filter(g => 'http://dbpedia.org/resource/Banana' === g.subject)).to.have.lengthOf(0)),
+				}),
+
+				'+filter not 2 subjects terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-subject="dbr:Banana" --not-subject="dbr:Bananas"
+					`,
+					out: validate_json(a_rows => expect(a_rows.filter(g => 'http://dbpedia.org/resource/Banana' === g.subject || 'http://dbpedia.org/resource/Bananas' === g.subject)).to.have.lengthOf(0)),
+				}),
+
+				'-filter not 1 subject terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-subject="dbr:absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'+filter not 1 predicate terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-subject="rdf:type"
+					`,
+					out: validate_json(a_rows => expect(a_rows.filter(g => 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' === g.predicate)).to.have.lengthOf(0)),
+				}),
+
+				'+filter not 2 predicates terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-subject="rdf:type" --not-subject="rdfs:label"
+					`,
+					out: validate_json(a_rows => expect(a_rows.filter(g => 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' === g.subject || 'http://www.w3.org/2000/01/rdf-schema#label' === g.subject)).to.have.lengthOf(0)),
+				}),
+
+				'-filter not 1 predicate terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-predicate="rdf:absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'+filter not 1 object terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-object="dbr:Banana"
+					`,
+					out: validate_json(a_rows => expect(a_rows.filter(g => 'http://dbpedia.org/resource/Banana' === g.object)).to.have.lengthOf(0)),
+				}),
+
+				'+filter not 2 objects terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-object="dbr:Banana" --not-object="dbr:Bananas"
+					`,
+					out: validate_json(a_rows => expect(a_rows.filter(g => 'http://dbpedia.org/resource/Banana' === g.object || 'http://dbpedia.org/resource/Bananas' === g.object)).to.have.lengthOf(0)),
+				}),
+
+				'-filter not 1 object terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-object="dbr:absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'+filter not 1 graph terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-graph="*"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf(0)),
+				}),
+
+				'-filter not 1 graph terse': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy content.ttl.read --not-graph="dbr:absent"
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
 			},
 
 			...['nt', 'ttl'].reduce((h_out, s_variant) => ({

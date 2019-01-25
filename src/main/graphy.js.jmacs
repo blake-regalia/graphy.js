@@ -235,24 +235,66 @@ if(module === require.main) {
 
 	const reader = f_reader => (a_args, g_context) => new Promise((fk_resolve) => {
 		let g_argv = command(g_context.command)
-			.boolean('v')
-				.alias('v', ['validate'])
-				.describe('v', 'validate all tokens within the RDF document')
-			.string('b')
-				.alias('b', ['base', 'base-uri'])
-				.describe('b', 'set a base URI on the document')
-			.string('s')
-				.alias('s', ['subject'])
-				.describe('s', 'filter quads by subject (must be a concise-term string)')
-			.string('p')
-				.alias('p', ['predicate'])
-				.describe('p', 'filter quads by predicate (must be a concise-term string)')
-			.string('o')
-				.alias('o', ['object'])
-				.describe('o', 'filter quads by object (must be a concise-term string)')
-			.string('g')
-				.alias('g', ['graph'])
-				.describe('g', 'filter quads by graph (must be a concise-term string)')
+			.options({
+				v: {
+					type: 'boolean',
+					alias: ['validate'],
+					describe: 'validate all tokens within the RDF document',
+				},
+				b: {
+					type: 'string',
+					alias: ['base', 'base-uri'],
+					describe: 'set a base URI on the document',
+				},
+				s: {
+					type: 'string',
+					alias: ['subject'],
+					describe: 'filter quads by only allowing those that match the given subject (must be a concise-term string)',
+					conflicts: ['S'],
+				},
+				p: {
+					type: 'string',
+					alias: ['predicate'],
+					describe: 'filter quads by only allowing those that match the given predicate (must be a concise-term string)',
+					conflicts: ['P'],
+				},
+				o: {
+					type: 'string',
+					alias: ['object'],
+					describe: 'filter quads by only allowing those that match the given object (must be a concise-term string)',
+					conflicts: ['O'],
+				},
+				g: {
+					type: 'string',
+					alias: ['graph'],
+					describe: 'filter quads by only allowing those that match the given graph (must be a concise-term string)',
+					conflicts: ['G'],
+				},
+				S: {
+					type: 'array',
+					alias: ['not-subject'],
+					describe: 'filter quads by allowing any that *do not match* the given subject(s) (must be concise-term string(s))',
+					conflicts: ['s'],
+				},
+				P: {
+					type: 'array',
+					alias: ['not-predicate'],
+					describe: 'filter quads by allowing any that *do not match* the given predicate(s) (must be a concise-term string(s))',
+					conflicts: ['p'],
+				},
+				O: {
+					type: 'array',
+					alias: ['not-object'],
+					describe: 'filter quads by allowing any that *do not match* the given object(s) (must be a concise-term string(s))',
+					conflicts: ['o'],
+				},
+				G: {
+					type: 'array',
+					alias: ['not-graph'],
+					describe: 'filter quads by allowing any that *do not match* the given graph(s) (must be a concise-term string(s))',
+					conflicts: ['g'],
+				},
+			})
 			.help()
 			.version(false)
 			.parse(a_args);
@@ -274,12 +316,17 @@ if(module === require.main) {
 			}));
 
 			// filters
-			if(g_argv.subject || g_argv.predicate || g_argv.object || g_argv.graph) {
+			if(g_argv.subject || g_argv.predicate || g_argv.object || g_argv.graph
+				|| g_argv['not-subject'] || g_argv['not-predicate'] || g_argv['not-object'] || g_argv['not-graph']) {
 				let {
 					subject: sc1_subject=null,
 					predicate: sc1_predicate=null,
 					object: sc1_object=null,
 					graph: sc1_graph=null,
+					'not-subject': a_not_subjects_src=null,
+					'not-predicate': a_not_predicates_src=null,
+					'not-object': a_not_objects_src=null,
+					'not-graph': a_not_graphs_src=null,
 				} = g_argv;
 
 				// create sv1 test strings
@@ -287,6 +334,12 @@ if(module === require.main) {
 				let sv1_predicate = null;
 				let sv1_object = null;
 				let sv1_graph = null;
+
+				// create not filter arrays
+				let a_not_subjects = null;
+				let a_not_predicates = null;
+				let a_not_objects = null;
+				let a_not_graphs = null;
 
 				// prefix mappings
 				let h_prefixes = {};
@@ -299,9 +352,19 @@ if(module === require.main) {
 					b_skip_graph = (sv1_graph !== yt_graph.concise());
 				};
 
-				// only skip triples in filter is not the default graph
+				// only skip triples if filter is not the default graph
 				let f_exit = () => {
-					b_skip_graph = (sv1_graph !== '*');
+					b_skip_graph = ('*' !== sv1_graph);
+				};
+
+				// skip graphs that match not filter
+				let f_enter_not = (yt_graph) => {
+					b_skip_graph = a_not_graphs.includes(yt_graph.concise());
+				};
+
+				// only skip triples if not filter is the default graph
+				let f_exit_not = () => {
+					b_skip_graph = a_not_graphs.includes('*');
 				};
 
 				// when prefix mappings change, populate filter strings
@@ -309,23 +372,47 @@ if(module === require.main) {
 					// filter subject
 					if(sc1_subject) {
 						try {
-							sv1_subject = factory.c1(sc1_subject, h_prefixes).concise();
+							sv1_subject = factory.c1_node(sc1_subject, h_prefixes).concise();
 						}
 						catch(e_convert) {
 							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
 							sv1_subject = '`void';
 						}
 					}
+					// filter not subject
+					else if(a_not_subjects_src) {
+						a_not_subjects = a_not_subjects_src.map((sc1_not_subject) => {
+							try {
+								return factory.c1_node(sc1_not_subject, h_prefixes).concise();
+							}
+							catch(e_convert) {
+								if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
+								return null;
+							}
+						});
+					}
 
 					// filter predicate
 					if(sc1_predicate) {
 						try {
-							sv1_predicate = factory.c1(sc1_predicate, h_prefixes).concise();
+							sv1_predicate = factory.c1_named_node(sc1_predicate, h_prefixes).concise();
 						}
 						catch(e_convert) {
 							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
 							sv1_predicate = '`void';
 						}
+					}
+					// filter not predicate
+					else if(a_not_predicates_src) {
+						a_not_predicates = a_not_predicates_src.map((sc1_not_predicate) => {
+							try {
+								return factory.c1_node(sc1_not_predicate, h_prefixes).concise();
+							}
+							catch(e_convert) {
+								if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
+								return null;
+							}
+						});
 					}
 
 					// filter object
@@ -338,6 +425,18 @@ if(module === require.main) {
 							sv1_object = '`void';
 						}
 					}
+					// filter not object
+					else if(a_not_objects) {
+						a_not_objects = a_not_objects_src.map((sc1_not_object) => {
+							try {
+								return factory.c1(sc1_not_object, h_prefixes).concise();
+							}
+							catch(e_convert) {
+								if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
+								return null;
+							}
+						});
+					}
 
 					// filter graph
 					if(sc1_graph) {
@@ -348,7 +447,7 @@ if(module === require.main) {
 						}
 
 						try {
-							sv1_graph = factory.c1(sc1_graph, h_prefixes).concise();
+							sv1_graph = factory.c1_node(sc1_graph, h_prefixes).concise();
 						}
 						catch(e_convert) {
 							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
@@ -359,6 +458,29 @@ if(module === require.main) {
 						ds_reader
 							.on('enter', f_enter)
 							.on('exit', f_exit);
+					}
+					// filter not graph
+					else if(a_not_graphs_src) {
+						// listeners might already set, remove them
+						if(a_not_graphs) {
+							ds_reader.removeListener('enter', f_enter_not);
+							ds_reader.removeListener('exit', f_exit_not);
+						}
+
+						a_not_graphs = a_not_graphs_src.map((sc1_not_graph) => {
+							try {
+								return factory.c1_node(sc1_not_graph, h_prefixes).concise();
+							}
+							catch(e_convert) {
+								if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
+								return null;
+							}
+						});
+
+						// setup graph filter
+						ds_reader
+							.on('enter', f_enter_not)
+							.on('exit', f_exit_not);
 					}
 				};
 
@@ -389,6 +511,12 @@ if(module === require.main) {
 						else if(sv1_predicate && sv1_predicate !== y_quad.predicate.concise()) return fk_transform();
 						else if(sv1_object && sv1_object !== y_quad.object.concise()) return fk_transform();
 						else if(sv1_graph && sv1_graph !== y_quad.graph.concise()) return fk_transform();
+
+						// apply not filter
+						if(a_not_subjects && a_not_subjects.includes(y_quad.subject.concise())) return fk_transform();
+						else if(a_not_predicates && a_not_predicates.includes(y_quad.predicate.concise())) return fk_transform();
+						else if(a_not_objects && a_not_objects.includes(y_quad.object.concise())) return fk_transform();
+						else if(a_not_graphs && a_not_graphs.includes(y_quad.graph.concise())) return fk_transform();
 
 						// quad passed filter
 						fk_transform(null, y_quad);
