@@ -42,9 +42,6 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
 
 <a name="command_content-format-read" />
 
-          describe: 'filter quads by allowing any that *do not match* the given subject(s) (must be concise-term string(s))',
-          conflicts: ['s'],
-        },
 ### [`content.FORMAT.read`](#command_content-format-read)` [OPTIONS]`
    - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
    - **Format:**
