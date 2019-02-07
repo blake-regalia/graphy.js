@@ -284,7 +284,7 @@ if(!B_BROWSER) {
 				out: require('../../package.json').version,
 			}),
 
-			'dbr data': {
+			'dbr data': process.env.GRAPHY_SKIP_DBR_TESTS? {}: {
 				'validate': () => ({
 					cmd: /* syntax: bash */ `
 						cat build/cache/data/dbr/Banana.ttl
@@ -544,14 +544,18 @@ if(!B_BROWSER) {
 			}), {}),
 
 			'util.dataset.tree': {
-				'outputs line-delimited JSON to stdout': () => ({
-					cmd: /* syntax: bash */ `
-						cat build/cache/data/dbr/Banana.ttl
-							| npx graphy content.ttl.read
-								--pipe util.dataset.tree
-					`,
-					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
-				}),
+				...process.env.GRAPHY_SKIP_DBR_TESTS
+					? {}
+					: {
+						'outputs line-delimited JSON to stdout': () => ({
+							cmd: /* syntax: bash */ `
+								cat build/cache/data/dbr/Banana.ttl
+									| npx graphy content.ttl.read
+										--pipe util.dataset.tree
+							`,
+							out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+						}),
+					},
 
 				'.union()': () => ({
 					cmd: /* syntax: bash */ `
