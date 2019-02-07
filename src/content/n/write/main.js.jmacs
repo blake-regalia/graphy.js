@@ -224,7 +224,7 @@ class @{S_LABEL}_Writer extends writable {
 
 			// fallthrough: other
 			default: {
-				throw new Error(`Bad type for RDF object: [${typeof z_objects}] ${z_objects.constructor}`);
+				throw new Error(`Bad type for RDF object: [${typeof z_objects}] ${z_objects? z_objects.constructor: z_objects}`);
 			}
 		}
 	}
