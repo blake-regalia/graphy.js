@@ -369,13 +369,6 @@ const src_to_main = (pd_src, s_prefix, h_output={}) => {
 // let h_output_store_mem = B_DEVELOPMENT? src_to_main('src/store/memory', 'store.memory'): {};
 
 
-const h_content_type_aliases = {
-	nt: 'application/n-triples',
-	nq: 'application/n-quads',
-	ttl: 'text/turtle',
-	trig: 'application/trig',
-};
-
 let a_messages = fs.readdirSync('messages').sort().reverse().map(s => `messages/${s}`);
 
 // emk struct
@@ -450,8 +443,6 @@ module.exports = async() => {
 				[si_key]: Object.keys(h_deps),
 			}), {})),
 
-			content_type_alias: Object.keys(h_content_type_aliases),
-
 			testable: [
 				'core.data.factory',
 				'content.nt.read',
@@ -497,8 +488,6 @@ module.exports = async() => {
 			// docs markdown
 			markdown: fs.readdirSync('src/docs/')
 				.filter(s => s.endsWith('.md.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
-
-			bench_statements: [...Array(10).keys()].map(i => `${i+1}m`),
 		},
 
 		tasks: {
