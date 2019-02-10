@@ -155,7 +155,7 @@ for(let [s_content, g_content] of Object.entries(h_content_packages)) {
 
 
 // normalize packages
-let h_super_deps = Object.assign(g_package_json_super.dependencies, g_package_json_super.devDependencies);
+let h_super_deps = Object.assign(g_package_json_super.dependencies);  // , g_package_json_super.devDependencies);
 for(let [si_package, g_package] of Object.entries(h_packages)) {
 	// auto-default ref package.json struct
 	let g_json = g_package.json = g_package.json || {};
@@ -173,7 +173,7 @@ for(let [si_package, g_package] of Object.entries(h_packages)) {
 	// auto-default ref dependencies
 	let h_dependencies = g_json.dependencies = (g_package.dependencies || [])
 		.reduce((h_deps, si_dep) => {
-			if(!(si_dep in h_super_deps)) throw new Error(`super repository missing sub-package dependency: ${si_dep}`);
+			if(!(si_dep in h_super_deps)) throw new Error(`super repository missing sub-package (${si_package}) dependency: ${si_dep}`);
 			return {
 				[si_dep]: h_super_deps[si_dep],
 			};
