@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.2 (2019-02-09)
+------------------------
+
+#### Removed Dependencies From `graphy`
+
+  The build script was accidentally assigning devDependencies from the super-repo to the `graphy` package, adding unnecessary bulk to the package install; those dependencies have been removed.
+
+
 ## v3.2.1 (2019-02-07)
 ------------------------
 
