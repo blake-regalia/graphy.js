@@ -1092,24 +1092,73 @@ class reader {
 
 	// a resume-only state to handle eos interupting ';'
 	post_pair() {
-		let {s, i} = this;
-		let x = s[i];
-		if('.' === x || ']' === x) {
-			@{whitespace('i+1')}
-		@- QUADS
-			@{else_if_match('R_CHAR_CLOSE')}
-				// emit graph_close event
-				@{emit_graph_close()}
+		debugger;
+		let {s, i, n} = this;
 
-				// reset graph
-				this.graph = KT_DEFAULT_GRAPH;
+		// eos
+		if(i >= n) {
+			// save state before pausing
+			this.state = this.post_pair;
 
-				// goto block state
-				@{goto('block')}
-			@{end_else()}
-		@:
+			// store what is unparsed
+			this.pre = s.slice(i);
+
+			// if we're not parsing a stream, then this is an error
+			if(this.eos) this.eos();
+
+			return;
+		}
+
+		// eat comments
+		for(;;) {
+			let x = s[i];
+
+			if('.' === x || ']' === x) {
+				this.i = i;
+
+				// goto post-object state
+				@{goto('post_object')}
 			}
-		@;
+			// comment
+			else if('#' === x) {
+				@{if_match('R_COMMENT', 'm_comment', true)}
+					if(this.emit_comments) this.emit_comments(m_comment[0]);
+					// retry
+					continue;
+				@{end_else()}
+				// no eol to end comment token (yet); try again next fragment
+				else {
+					// save state before pausing
+					this.state = this.post_pair;
+			
+					// store what is unparsed
+					this.pre = s.slice(i);
+
+					// if we're not parsing a stream, then this is an error
+					if(this.eos) this.eos();
+
+					this.i = i;
+					return;
+				}
+			}
+			@- QUADS
+				@{if_match('R_CHAR_CLOSE')}
+					// emit graph_close event
+					@{emit_graph_close()}
+
+					// reset graph
+					this.graph = KT_DEFAULT_GRAPH;
+
+					// goto block state
+					@{goto('block')}
+				@{end_else()}
+			@;
+			else {
+				break;
+			}
+		}
+
+		this.i = i;
 		@{goto('pairs')}
 	}
 	@. a_methods.push('post_pair');
@@ -1835,18 +1884,37 @@ class reader {
 
 		// ';' more predicate-object pairs
 		@{else_if_char(';')}
-			// next token is end of outer section
-			let x1 = s[this.i];
-			if('.' === x1 || ']' === x1 || ';' === x1 @{QUADS? /* syntax: js */ `|| '}' === x1`: ''}) {
-				// goto post-object state
-				@{goto('post_object')}
+			for(;;) {
+				// next token is end of outer section
+				let x1 = s[this.i];
+				if('.' === x1 || ']' === x1 || ';' === x1 @{QUADS? /* syntax: js */ `|| '}' === x1`: ''}) {
+					// goto post-object state
+					@{goto('post_object')}
+				}
+				// comment
+				else if('#' === x1) {
+					// comment
+					i = this.i;
+					@{if_match('R_COMMENT', 'm_comment')}
+						if(this.emit_comments) this.emit_comments(m_comment[0]);
+						// retry
+						continue;
+					@{end_else()}
+					// no eol to close comment (yet)
+					else {
+						// resume at post-pair state
+						this.state = this.post_pair;
+						return;
+					}
+				}
+				// eos
+				else if(this.i === n) {
+					// resume at post-pair state
+					this.state = this.post_pair;
+					return;
+				}
+				@{goto('pairs')}
 			}
-			// eos
-			else if(this.i === n) {
-				// go to post-pair state
-				@{goto('post_pair')}
-			}
-			@{goto('pairs')}
 
 		// '.' end of statement
 		@{else_if_char('.')}
