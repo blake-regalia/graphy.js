@@ -177,6 +177,36 @@ reader_suite({
 				['z://y/a', 'z://y/b', 'z://y/d'],
 				['z://y/a', 'z://y/e', '^z://y/g"f'],
 			]],
+
+			'before predicate-object pair separator': () => [`
+				@prefix p: <z://y/> .
+				p:a p:b p:c
+					#comment
+					;
+					.
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
+			]],
+
+			'at end of predicate-object pairs': () => [`
+				@prefix p: <z://y/> .
+				p:a p:b p:c ;
+					#comment
+					.
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
+			]],
+
+			'within predicate-object pairs': () => [`
+				@prefix p: <z://y/> .
+				p:a p:b p:c ;
+					#comment
+					p:b p:d ;
+					.
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
+				['z://y/a', 'z://y/b', 'z://y/d'],
+			]],
 		},
 
 		'blank nodes': {
@@ -1082,7 +1112,11 @@ reader_suite({
 				},
 
 				eof(a_eofs) {
-					expect(a_eofs).to.have.length(1);
+					expect(a_eofs).to.have.lengthOf(1);
+					expect(a_eofs[0][0]).to.eql({
+						'': 'test://',
+						test: 'test://test#',
+					});
 				},
 			},
 		});

@@ -579,10 +579,10 @@ An interface that defines the config object passed to a content reader.
 
 **Options:**
  - ... [see those inlined from ReadEvents](#events_read)
- - `baseUri | baseURI`: `string` -- sets the starting base URI for the RDF document.
- - `validate` : `boolean=false` -- whether or not to validate the contents of tokens, such as checking for invalid characters in IRIs, literals, and so on. The stream will emit an `'error'` event if an invalid token is encountered. Enabling validation incurs a performance cost, so each reader defaults to `false`. 
+ - `baseIRI | baseIri`: `string` -- sets the starting base IRI for the RDF document.
+ - `relax` : `boolean=false` -- by default, the contents of tokens are validated, e.g., checking for invalid characters in IRIs, literals, and so on. The stream will emit an `'error'` event if an invalid token is encountered. Setting the `relax` option to `true` will permit as wide a character range within tokens as possible (i.e., it will allow any characters *not* in the lookahead table). Using the `relax` option may be useful when trying to recover improperly formatted Turtle documents, however it also yields slightly faster parsing for valid documents as well since normal validation adds overhead to reading.
  - `maxTokenLength` : `number=2048` -- defines the maximum number of characters to expect of any token other than a quoted literal. This option only exists to prevent invalid input from endlessly consuming the reader when using a stream as input. By default, this value is set to **2048**, which is more than the recommended maximum URL length. However, you may wish to set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
- - `maxStringLength` : `boolean=false` -- defines the maximum number of characters to expect of any quoted literal. This option only exists to prevent invalid input from endlessly consuming the reader (such as a long-quoted literal `""" that never ends...`) when using a stream as input. By default, this value is set to **65536** characters. However, you may set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
+ - `maxStringLength` : `number=65536` -- defines the maximum number of characters to expect of any quoted literal. This option only exists to prevent invalid input from endlessly consuming the reader (such as a long-quoted literal `""" that never ends...`) when using a stream as input. By default, this value is set to **65536** characters. However, you may set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
 
 <a name="config_read-with-input" />
 

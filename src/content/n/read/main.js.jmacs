@@ -149,7 +149,7 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 		// otherwise, set language tag if present
 		else if(@{sv_match}[8]) {
 			let s_language = w_object.language = @{sv_match}[8].toLowerCase();
-			if(this.validate && !RT_LANGUAGE_VALID.test(s_language)) return this._error(`invalid literal language tag: ${s_language}`);
+			if(!this.relax && !RT_LANGUAGE_VALID.test(s_language)) return this._error(`invalid literal language tag: ${s_language}`);
 			w_object.datatype = KT_RDFS_LANG_STRING;
 		}
 	}
@@ -270,8 +270,8 @@ class reader {
 			// input medium
 			input: g_input=null,
 
-			// validate iris
-			validate: b_validate=false,
+			// relax validation
+			relax: b_relax=false,
 
 			// debug
 			debug: b_debug=false,
@@ -287,7 +287,7 @@ class reader {
 
 			debug: b_debug,
 
-			validate: b_validate,
+			relax: b_relax,
 
 			destroyed: false,
 		});
@@ -295,8 +295,15 @@ class reader {
 		// clean regex
 		let r_clean = R_CLEAN;
 
+		if(g_config.relaxed) {
+			console.warn((new Error(`no such option 'relaxed'; did you mean 'relax' ?`)).stack.replace(/^Error:/, 'Warning:'));
+		}
+		if('validate' in g_config) {
+			console.warn((new Error(`option 'validate' has been removed and validation is now on by default. Use 'relax' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+		}
+
 		// validation
-		Object.assign(this, b_validate
+		Object.assign(this, !b_relax
 			? {
 				namedNode(s_iri) {
 					if(!RT_ABSOLUTE_IRI_VALID.test(s_iri)) return this._error(`invalid absolute IRI: "${s_iri}"`);

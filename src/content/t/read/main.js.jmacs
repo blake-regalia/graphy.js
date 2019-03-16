@@ -680,6 +680,13 @@ class reader {
 			max_string_length: g_config.max_string_length || g_config.maxStringLength || 65536,
 		});
 
+	if(g_config.relaxed) {
+		console.warn((new Error(`no such option 'relaxed'; did you mean 'relax' ?`)).stack.replace(/^Error:/, 'Warning:'));
+	}
+	if('validate' in g_config) {
+		console.warn((new Error(`option 'validate' has been removed and validation is now on by default. Use 'relax' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+	}
+
 
 @// ensure there are no conflicting blank node labels
 @> no_label_conflict()
@@ -707,7 +714,7 @@ class reader {
 @;
 
 		// term constructors
-		Object.assign(this, g_config.validate
+		Object.assign(this, !g_config.relax
 			? {
 				blank_node(s_label) {
 					// test valid blank node label

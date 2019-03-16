@@ -155,7 +155,7 @@ for(let [s_content, g_content] of Object.entries(h_content_packages)) {
 
 
 // normalize packages
-let h_super_deps = Object.assign(g_package_json_super.dependencies);  // , g_package_json_super.devDependencies);
+let h_super_deps = Object.assign(g_package_json_super.dependencies);
 for(let [si_package, g_package] of Object.entries(h_packages)) {
 	// auto-default ref package.json struct
 	let g_json = g_package.json = g_package.json || {};

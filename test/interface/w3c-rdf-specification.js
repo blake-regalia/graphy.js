@@ -104,16 +104,7 @@ class TestCase_Positive extends TestCase {
 	run() {
 		let s_input = fs.readFileSync(this.action, 'utf8');
 
-		it(this.name+'; input:stream; validate=true', (fke_test) => {
-			this.reader({
-				input: {stream:fs.createReadStream(this.action)},
-				base_uri: this.base,
-				validate: true,
-				...this.config(fke_test),
-			});
-		});
-
-		it(this.name+'; input:stream; validate=false', (fke_test) => {
+		it(this.name+'; input:stream; relax=false', (fke_test) => {
 			this.reader({
 				input: {stream:fs.createReadStream(this.action)},
 				base_uri: this.base,
@@ -121,16 +112,16 @@ class TestCase_Positive extends TestCase {
 			});
 		});
 
-		it(this.name+'; input:string; validate=true', (fke_test) => {
+		it(this.name+'; input:stream; relax=true', (fke_test) => {
 			this.reader({
-				input: {string:s_input},
+				input: {stream:fs.createReadStream(this.action)},
 				base_uri: this.base,
-				validate: true,
+				relax: true,
 				...this.config(fke_test),
 			});
 		});
 
-		it(this.name+'; input:string; validate=false', (fke_test) => {
+		it(this.name+'; input:string; relax=false', (fke_test) => {
 			this.reader({
 				input: {string:s_input},
 				base_uri: this.base,
@@ -138,16 +129,26 @@ class TestCase_Positive extends TestCase {
 			});
 		});
 
-		it(this.name+'; input:none; validate=true', (fke_test) => {
+		it(this.name+'; input:string; relax=true', (fke_test) => {
+			this.reader({
+				input: {string:s_input},
+				base_uri: this.base,
+				relax: true,
+				...this.config(fke_test),
+			});
+		});
+
+		it(this.name+'; input:none; relax=false', (fke_test) => {
 			fs.createReadStream(this.action).pipe(this.reader({
 				base_uri: this.base,
 				...this.config(fke_test),
 			}));
 		});
 
-		it(this.name+'; input:none; validate=false', (fke_test) => {
+		it(this.name+'; input:none; relax=true', (fke_test) => {
 			fs.createReadStream(this.action).pipe(this.reader({
 				base_uri: this.base,
+				relax: true,
 				...this.config(fke_test),
 			}));
 		});
@@ -232,9 +233,6 @@ class TestCase_Negative extends TestCase {
 		let k_test = this;
 
 		return {
-			// enable validation for these tests
-			validate: true,
-
 			// ignore data events
 			data() {},
 
@@ -258,6 +256,9 @@ class TestCase_SyntaxPositive extends TestCase_Positive {
 		let k_test = this;
 
 		return {
+			// disable validation for these tests
+			relax: true,
+
 			// ignore data events
 			data() {},
 

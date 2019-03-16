@@ -1273,4 +1273,6 @@ const factory = module.exports = {
 Object.assign(factory, {
 	c3: factory.triples,
 	c4: factory.quads,
+	fromTerm: factory.from.term,
+	fromQuad: factory.from.quad,
 });

@@ -894,6 +894,30 @@ reader_suite({
 				[' g1', 'z://y/b', ' g2', ' g0'],
 				[' g4', 'z://y/b', ' g5', ' g3'],
 			]],
+
+			'at end of predicate-object pairs': () => [`
+				@prefix p: <z://y/> .
+				{
+					p:a p:b p:c ;
+						#comment
+						.
+				}
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
+			]],
+
+			'within predicate-object pairs': () => [`
+				@prefix p: <z://y/> .
+				{
+					p:a p:b p:c ;
+						#comment
+						p:b p:d ;
+						.
+				}
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
+				['z://y/a', 'z://y/b', 'z://y/d'],
+			]],
 		},
 
 		'graphs': {
@@ -1095,7 +1119,11 @@ reader_suite({
 				},
 
 				eof(a_eofs) {
-					expect(a_eofs).to.have.length(1);
+					expect(a_eofs).to.have.lengthOf(1);
+					expect(a_eofs[0]).to.eql({
+						'': 'test://',
+						test: 'test://test#',
+					});
 				},
 			},
 		});

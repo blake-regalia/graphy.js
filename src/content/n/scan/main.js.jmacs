@@ -3,11 +3,11 @@
 @import '../../text.read.jmacs'
 
 const worker = require('worker');
-const read = require('@@@{S_GRAPHY_CHANNEL}/content.nt.read');
+const read = require('@{channel('content.nt.read')}');
 
 const R_METHOD = /^\s*([^(\s]+)\s*\(/;
 
-const turbo_read_file = async(g_config) => {
+const scan_read_file = async(g_config) => {
 	// lazy requires
 	const fs = require('fs');
 	const NL_CPUS = require('os').cpus().length;
@@ -74,12 +74,12 @@ const turbo_read_file = async(g_config) => {
 
 	// check map is a string
 	if('string' !== typeof sf_map) {
-		throw new Error(`turbo mode requires a 'map' string that represents a function which returns a reader config object incuding inline event callback struct that containing handlers for 'data', 'error' and 'end'`);
+		throw new Error(`scan mode requires a 'map' string that represents a function which returns a reader config object incuding inline event callback struct that containing handlers for 'data', 'error' and 'end'`);
 	}
 
 	// check reduce is a string
 	if('string' !== typeof sf_reduce) {
-		throw new Error(`turbo mode requires a 'reduce' string that represents a function which accepts two arguments and returns their merged result. this function may also be async`);
+		throw new Error(`scan mode requires a 'reduce' string that represents a function which accepts two arguments and returns their merged result. this function may also be async`);
 	}
 
 	// cast map to function
@@ -101,7 +101,7 @@ const turbo_read_file = async(g_config) => {
 		// // check events
 		// if(!g_config.data || !g_config.error || !g_config.end) {
 		// 	let a_supplied = Object.keys(g_config).filter(s => s in ['data', 'error', 'end']);
-		// 	throw new Error(`turbo mode requires supplying the inline event callbacks 'data', 'error' and 'end'; however only the following were supplied: ${a_supplied}`);
+		// 	throw new Error(`scan mode requires supplying the inline event callbacks 'data', 'error' and 'end'; however only the following were supplied: ${a_supplied}`);
 		// }
 
 	// worker group
@@ -145,7 +145,7 @@ const turbo_read_file = async(g_config) => {
 
 
 // multithreaded parsing
-const turbo = module.exports = (...a_args) => {
+const scan = module.exports = (...a_args) => {
 	let g_config = {};
 
 	@{normalize_reader_config('g_config', {
@@ -157,10 +157,10 @@ const turbo = module.exports = (...a_args) => {
 
 	// file input
 	if(g_input.file) {
-		return turbo_read_file(g_config);
+		return scan_read_file(g_config);
 	}
 	// unnacceptable input medium
 	else {
-		throw new Error(`turbo mode only performs better when it can read source data in parallel; try using the 'file' or 'url' input option instead of '${g_input? Object.keys(g_input): 'null'}'`);
+		throw new Error(`scan mode only performs better when it can read source data in parallel; try using the 'file' or 'url' input option instead of '${g_input? Object.keys(g_input): 'null'}'`);
 	};
 };

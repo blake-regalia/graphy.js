@@ -74,11 +74,11 @@ class reader_suite {
 
 	allows(h_tree) {
 		let g_modes = {
-			'no validation': {
-				validate: false,
+			'validation enabled (not relaxed)': {
+				relax: false,
 			},
-			'yes validation': {
-				validate: true,
+			'validation disabled (relaxed)': {
+				relax: true,
 			},
 		};
 
