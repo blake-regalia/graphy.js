@@ -895,6 +895,18 @@ reader_suite({
 				[' g4', 'z://y/b', ' g5', ' g3'],
 			]],
 
+			'before predicate-object pair separator': () => [`
+				@prefix p: <z://y/> .
+				{
+					p:a p:b p:c
+						#comment
+						;
+						.
+				}
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
+			]],
+
 			'at end of predicate-object pairs': () => [`
 				@prefix p: <z://y/> .
 				{
@@ -917,6 +929,36 @@ reader_suite({
 			`, [
 				['z://y/a', 'z://y/b', 'z://y/c'],
 				['z://y/a', 'z://y/b', 'z://y/d'],
+			]],
+
+			'before opening graph': () => [`
+				@prefix p: <z://y/> .
+				{
+					p:a p:b p:c .
+					# comment
+				}
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
+			]],
+
+			'before closing graph': () => [`
+				@prefix p: <z://y/> .
+				{
+					p:a p:b p:c .
+					# comment
+				}
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
+			]],
+
+			'after closing graph': () => [`
+				@prefix p: <z://y/> .
+				{
+					p:a p:b p:c .
+				}
+				# comment
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
 			]],
 		},
 
