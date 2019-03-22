@@ -122,13 +122,13 @@
 
 
 @// test the current character
-@> if_char(a, b)
-	if(`@{a}` === @{b?'x || `':'x'}@{b?b:''}@{b?'` === x':''}) {
+@> if_char(...a_chars)
+	if(@{a_chars.map(s => `'${s.replace(/'/g, '\\\'')}' === x`).join(' || ')}) {
 @;
 
 @// else, test the current character
-@> else_if_char(a, b)
-	} else @{if_char(a, b)}
+@> else_if_char(...a_chars)
+	} else @{if_char(...a_chars)}
 @;
 
 @> else_if_not_char(s)
@@ -263,6 +263,13 @@
 
 	@// reset match counter
 	@$ c_braces = 0;
+@;
+
+
+@// all matches failed, pause reader
+@> else_any()
+	// match counter: @{c_braces}
+	} else {
 @;
 
 

@@ -406,8 +406,10 @@ const match_prefixed_name = (s, i) => {
 @> end_method(s_name, max_token)
 		}
 
-		// ran out of characters
-		@{resume_state(s_name, false, max_token)}
+		@- s_name
+			// ran out of characters
+			@{resume_state(s_name, false, max_token)}
+		@;
 	}
 @;
 
@@ -1089,79 +1091,6 @@ class reader {
 			}
 		}
 	}
-
-	// a resume-only state to handle eos interupting ';'
-	post_pair() {
-		debugger;
-		let {s, i, n} = this;
-
-		// eos
-		if(i >= n) {
-			// save state before pausing
-			this.state = this.post_pair;
-
-			// store what is unparsed
-			this.pre = s.slice(i);
-
-			// if we're not parsing a stream, then this is an error
-			if(this.eos) this.eos();
-
-			return;
-		}
-
-		// eat comments
-		for(;;) {
-			let x = s[i];
-
-			if('.' === x || ']' === x) {
-				this.i = i;
-
-				// goto post-object state
-				@{goto('post_object')}
-			}
-			// comment
-			else if('#' === x) {
-				@{if_match('R_COMMENT', 'm_comment', true)}
-					if(this.emit_comments) this.emit_comments(m_comment[0]);
-					// retry
-					continue;
-				@{end_else()}
-				// no eol to end comment token (yet); try again next fragment
-				else {
-					// save state before pausing
-					this.state = this.post_pair;
-			
-					// store what is unparsed
-					this.pre = s.slice(i);
-
-					// if we're not parsing a stream, then this is an error
-					if(this.eos) this.eos();
-
-					this.i = i;
-					return;
-				}
-			}
-			@- QUADS
-				@{if_match('R_CHAR_CLOSE')}
-					// emit graph_close event
-					@{emit_graph_close()}
-
-					// reset graph
-					this.graph = KT_DEFAULT_GRAPH;
-
-					// goto block state
-					@{goto('block')}
-				@{end_else()}
-			@;
-			else {
-				break;
-			}
-		}
-
-		this.i = i;
-		@{goto('pairs')}
-	}
-	@. a_methods.push('post_pair');
 
 	// after a blank node subject (either property-list or colleciton)
 	post_blank_subject() {
@@ -1872,6 +1801,8 @@ class reader {
 
 
 	@{method('post_object')}
+		let i_reset = i;
+
 		// benchmarks confirm: character ref faster than regexes in this context
 		let x = s[i];
 
@@ -1886,13 +1817,13 @@ class reader {
 		@{else_if_char(';')}
 			for(;;) {
 				// next token is end of outer section
-				let x1 = s[this.i];
-				if('.' === x1 || ']' === x1 || ';' === x1 @{QUADS? /* syntax: js */ `|| '}' === x1`: ''}) {
+				let s_peek = s[this.i];
+				if('.' === s_peek || ']' === s_peek || ';' === s_peek @{QUADS? /* syntax: js */ `|| '}' === s_peek`: ''}) {
 					// goto post-object state
 					@{goto('post_object')}
 				}
 				// comment
-				else if('#' === x1) {
+				else if('#' === s_peek) {
 					// comment
 					i = this.i;
 					@{if_match('R_COMMENT', 'm_comment')}
@@ -1902,19 +1833,23 @@ class reader {
 					@{end_else()}
 					// no eol to close comment (yet)
 					else {
-						// resume at post-pair state
-						this.state = this.post_pair;
-						return;
+						// already consumed 
+						break;
 					}
 				}
 				// eos
 				else if(this.i === n) {
-					// resume at post-pair state
-					this.state = this.post_pair;
-					return;
+					break;
 				}
-				@{goto('pairs')}
+				// something else
+				else {
+					@{goto('pairs')}
+				}
 			}
+
+			// rather than pushing a dedicated state, just try again next chunk
+			i = i_reset;
+			break;
 
 		// '.' end of statement
 		@{else_if_char('.')}
