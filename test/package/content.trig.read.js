@@ -1120,7 +1120,7 @@ reader_suite({
 
 				eof(a_eofs) {
 					expect(a_eofs).to.have.lengthOf(1);
-					expect(a_eofs[0]).to.eql({
+					expect(a_eofs[0][0]).to.eql({
 						'': 'test://',
 						test: 'test://test#',
 					});
