@@ -534,7 +534,7 @@ class Literal extends GenericTerm {
 			terse: /* syntax: js */ `
 				return this.value.includes('e')
 					? \`"\${this.value}"^^<${P_IRI_XSD}decimal>\`
-					: this.value+(Number.isInteger(this.number)? '.0': '');
+					: this.value+(this.value.includes('.')? '': '.0');
 			`,
 		},
 
