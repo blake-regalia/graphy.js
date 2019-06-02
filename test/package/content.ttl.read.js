@@ -767,9 +767,10 @@ reader_suite({
 			]],
 
 			'decimals': () => [`
-				:a :b .0, -0.2, +20.0 .
+				:a :b .0, 0.0, -0.2, +20.0 .
 			`, [
 				['#a', '#b', factory.to.decimal('.0')],
+				['#a', '#b', factory.to.decimal('0.0')],
 				['#a', '#b', factory.to.decimal('-0.2')],
 				['#a', '#b', factory.to.decimal('+20.0')],
 			]],
