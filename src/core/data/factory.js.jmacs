@@ -858,8 +858,8 @@ const factory = module.exports = {
 		if('number' === typeof x && (!Number.isFinite(x) || Number.isNaN(x))) {
 			return factory.double(x);
 		}
-		// integer
-		else if(Number.isInteger(x)) {
+		// integer or bigint
+		else if(Number.isInteger(x) || 'bigint' === typeof x) {  // eslint-disable-line valid-typeof
 			return factory.integer(x);
 		}
 		// non-integer
@@ -884,6 +884,7 @@ const factory = module.exports = {
 		return new EphemeralBlankNode();
 	},
 
+	// @deprecated
 	anonymous() {
 		return new EphemeralBlankNode();
 	},
