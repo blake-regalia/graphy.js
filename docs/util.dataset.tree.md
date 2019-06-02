@@ -205,7 +205,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 
 <a name="method_match" />
 
-### [`.match`](#method_match)`([subject: null | `[`AnyTerm`](core.data.factory#class_any-term)`[, predicate: null | `[`AnyTerm`](core.data.factory#class_any-term)`[, object: null | `[`AnyTerm`](core.data.factory#class_any-term)`[, graph: null | `[`AnyTerm`](core.data.factory#class_any-term)`]]]])` _implements_ [@RDFJS/dataset.match](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-match)
+### [`.match`](#method_match)`([subject: null | `[`AnyTerm`](core.data.factory#interface_any-term)`[, predicate: null | `[`AnyTerm`](core.data.factory#interface_any-term)`[, object: null | `[`AnyTerm`](core.data.factory#interface_any-term)`[, graph: null | `[`AnyTerm`](core.data.factory#interface_any-term)`]]]])` _implements_ [@RDFJS/dataset.match](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-match)
  - create a new DatasetTree by matching the specified `subject`, `predicate`, `object`, and/or `graph`, or any quads if `null` is given for any role.
  - **returns** a [new DatasetTree](#methods).
 
