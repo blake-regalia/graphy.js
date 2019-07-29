@@ -167,7 +167,7 @@ reader_suite({
 			reader: nt_read,
 			input: /* syntax: nt */ `
 				# hello world!
-				<a> <b> <c> . #
+				<z://y/a> <z://y/b> <z://y/c> . #
 			`,
 			events: {
 				data(a_events) {
