@@ -9,6 +9,7 @@ module.exports = {
 			modes: [
 				'read',
 				'write',
+				'scan',
 			],
 			manifest: 'http://w3c.github.io/rdf-tests/ntriples/manifest.ttl',
 			mime: 'application/n-triples',
