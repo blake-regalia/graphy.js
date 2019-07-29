@@ -115,8 +115,10 @@ const clean_iri = p_iri_dirty => uri.serialize(uri.parse(p_iri_dirty), {iri:true
 @;
 
 
-
+// eslint-disable-next-line no-misleading-character-class
 const RT_AVOID_PNAME_NS = /@{MK_RT_AVOID_PNAME_NS()}/;
+
+// eslint-disable-next-line no-misleading-character-class
 const RT_AVOID_PNAME_LOCAL = /@{MK_RT_AVOID_PNAME_LOCAL()}/;
 
 const RT_BOOLEAN_TRUE = /^([Tt](rue)?|TRUE)$/;
@@ -282,6 +284,7 @@ class Literal extends GenericTerm {
 		if(this.language) {
 			return '@'+this.language+'"'+this.value;
 		}
+		// eslint-disable-next-line no-prototype-builtins
 		else if(this.hasOwnProperty('datatype')) {
 			return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
 		}
