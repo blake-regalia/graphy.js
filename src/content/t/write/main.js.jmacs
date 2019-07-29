@@ -17,6 +17,7 @@
 const factory = require('@{channel('core.data.factory')}');
 const writable = require('@{channel('core.class.writable')}');
 
+// eslint-disable-next-line no-misleading-character-class
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
 const N_MAX_STRING_BUFFER = 1 << 12;
 

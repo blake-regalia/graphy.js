@@ -22,7 +22,7 @@ ds_writer.pipe(process.stdout);
 // write some quads using a concise quads hash
 ds_writer.write({
 	type: 'c4',
-	value: {  // example 2 from TriG: https://www.w3.org/TR/trig/
+	value: {// example 2 from TriG: https://www.w3.org/TR/trig/
 		[factory.comment()]: 'default graph',
 		'*': {
 			'demo:bob': {
