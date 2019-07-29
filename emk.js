@@ -878,8 +878,14 @@ module.exports = async() => {
 								],
 
 								run: /* syntax: bash */ `
+									# package directory relative to project root
+									PACKAGE_DIR='build/${s_channel}/package/${si_package}'
+
+									# copy .npmrc to package dir
+									cp .npmrc "$PACKAGE_DIR"
+									
 									# enter package directory
-									cd build/${s_channel}/package/${si_package}
+									cd "$PACKAGE_DIR"
 
 									# remove package lock
 									rm -f package-lock.json
