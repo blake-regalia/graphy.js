@@ -1,5 +1,7 @@
 @import '../../share/channel.jmacs'
 
+/* eslint-disable no-prototype-builtins */
+
 @.{
 	const B_HARDEN_PROTOTYPE = true;
 }
@@ -237,7 +239,8 @@ const permutations = function *(a_list) {
 	}
 
 	do {
-		yield a_list;
+		// copy list to avoid race condition
+		yield a_list.slice();
 
 		let s_k = null;
 		let i_pos = 0;
@@ -259,8 +262,8 @@ const permutations = function *(a_list) {
 		}
 		else {
 			let i_swap = h_left[s_k]? i_pos-1: i_pos+1;
-			a_list[i_pos] = a_list[i_swap];
-			a_list[i_swap] = s_k;
+			a_list[i_pos] = a_list[i_swap];  // eslint-disable-line require-atomic-updates
+			a_list[i_swap] = s_k;  // eslint-disable-line require-atomic-updates
 
 			// reverse direction of all elements larger thn k
 			for(let s_item of a_list) {
