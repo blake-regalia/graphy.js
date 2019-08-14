@@ -19,9 +19,11 @@ const factory = require('@{channel('core.data.factory')}').raw;
 const quad = h => factory.quad(h.subject, h.predicate, h.object, h.graph);
 
 const RT_ESCAPES_INVALID = /@{RT_ESCAPES_INVALID()}/;
+// eslint-disable-next-line no-misleading-character-class
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
+// eslint-disable-next-line no-misleading-character-class
 const RT_PREFIXED_NAME_LOCAL_NAME_VALID = /^@{PN_LOCAL()}$/u;
-
+// eslint-disable-next-line no-misleading-character-class
 const RT_BLANK_NODE_VALID = /^[@{RANGE_PN_CHARS_U()}0-9]@{PN_CHARS_FS()}$/u;
 const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
 
@@ -33,7 +35,7 @@ const R_UNICODE_ANY = /@{R_UNICODE_4()}|@{R_UNICODE_8()}/g;
 
 const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
 
-
+const OPHOP = Object.prototype.hasOwnProperty;
 
 const H_ESCAPES_JSON = @{H_ESCAPES_JSON()};
 
@@ -305,7 +307,7 @@ const match_prefixed_name = (s, i) => {
 	let s_prefix_id = @{match}[1] || '';
 
 	// invalid prefix
-	if(!this.prefixes.hasOwnProperty(s_prefix_id)) return this.error(`no such prefix "${s_prefix_id}"`);
+	if(!OPHOP.call(this.prefixes, s_prefix_id)) return this.error(`no such prefix "${s_prefix_id}"`);
 @;
 
 
@@ -686,7 +688,7 @@ class reader {
 		console.warn((new Error(`no such option 'relaxed'; did you mean 'relax' ?`)).stack.replace(/^Error:/, 'Warning:'));
 	}
 	if('validate' in g_config) {
-		console.warn((new Error(`option 'validate' has been removed and validation is now on by default. Use 'relax' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+		console.warn((new Error(`option 'validate' has been deprecated. Validation is now enabled by default. Use the 'relax' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
 	}
 
 

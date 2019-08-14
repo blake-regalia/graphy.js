@@ -1,22 +1,17 @@
 @import '../../../share/channel.jmacs'
 
 const fs = require('fs');
-const stream = require('stream');
+const stream = require('@power-io/stream');
 
 const worker = require('worker');
-const read = require('@{channel('content.nt.read')}');
-
-const evalu = (s_script) => {
-	// eslint-disable-next-line no-new, no-new-func
-	new Function(`return (${s_script})`);
-};
+const nt_read = require('@{channel('content.nt.read')}');
 
 worker.dedicated({
 	read_file(a_range, p_input, g_stat, sf_map) {
 		let k_worker = this;
 
 		// open file by path
-		let if_input = fs.openSync(p_input, 'r');
+		let df_input = fs.openSync(p_input, 'r');
 
 		// stat file via file descriptor
 		let {
@@ -24,7 +19,7 @@ worker.dedicated({
 			size: nb_input,
 			mode: xm_mode,
 			mtimeMs: x_mtime,
-		} = fs.fstatSync(if_input);
+		} = fs.fstatSync(df_input);
 
 		// make sure we acquired same file
 		if(ni_inode !== g_stat.ino
@@ -35,162 +30,44 @@ worker.dedicated({
 			throw new Error('worker was unable to open the identical file for reading');
 		}
 
-		// usual chunk size
-		let nb_ideal = 1 << 16;
-		let ab_buffer = Buffer.allocUnsafe(nb_ideal);
-		let nb_buffer = nb_ideal;
-		let [ib_lower, ib_upper, b_debug] = a_range;
-
-		// 
-		let b_tardy = 0 !== a_range[0];
-		let s_head = '';
-
 		// async
 		return new Promise((fk_result) => {
 			let ds_document;
 
-			// surrogate overflow
-			let ab_overflow = Buffer.allocUnsafe(3);
-			let nb_overflow = 0;
-
-			// make stream
-			let ib_read = ib_lower;
-			let ds_range = new stream.Readable({
-				highWaterMark: nb_ideal,
-
-				read(nb_request) {
-					// size of chunk to make
-					let nb_chunk = Math.min(nb_request, ib_upper - ib_read);
-
-					// need to grow buffer
-					if(nb_chunk > nb_buffer) {
-						ab_buffer = Buffer.allocUnsafe(nb_chunk);
-						nb_buffer = nb_chunk;
-					}
-					// end of range
-					else if(nb_chunk <= 0) {
-						setImmediate(() => {
-							// close file descriptor
-							fs.closeSync(if_input);
-
-							// // no more parsing in this thread
-							// this.push(null);
-
-							// return head/tail to master thread
-							k_worker.emit('remainder', {
-								head: s_head,
-								tail: ds_document._graphy_reader.s,
-							});
-
-							// coerce stream to emit eot
-							ds_document.emit('end');
-						});
-
-						return;
-					}
-
-					// read from file into buffer
-					let nb_read = fs.readSync(if_input, ab_buffer, 0, nb_chunk, ib_read);
-
-					// buffer view
-					let ab_view = ab_buffer;
-
-					// truncate buffer
-					if(nb_read < nb_buffer) {
-						ab_view = ab_buffer.slice(0, nb_read);
-					}
-
-					// prepend overflow
-					let nb_view = nb_read;
-					if(nb_overflow) {
-						nb_view += ab_overflow.byteLength;
-						ab_view = Buffer.concat([ab_overflow, ab_view], nb_view);
-					}
-
-					// last character is surrogated
-					if(0x80 & ab_view[nb_view-1]) {
-						if(0x80 & ab_view[nb_view-2]) {
-							if(0x80 & ab_view[nb_view-3]) {
-								ab_view.copy(ab_overflow, 0, nb_view-3);
-								nb_overflow = 3;
-								ab_view = ab_view.slice(0, nb_view-3);
-							}
-							else {
-								ab_view.copy(ab_overflow, 0, nb_view-2);
-								nb_overflow = 2;
-								ab_view = ab_view.slice(0, nb_view-2);
-							}
-						}
-						else {
-							ab_view.copy(ab_overflow, 0, nb_view-1);
-							nb_overflow = 1;
-							ab_view = ab_view.slice(0, nb_view-1);
-						}
-					}
-					else {
-						nb_overflow = 0;
-					}
-
-					// decode utf-8
-					let s_chunk = ab_view.toString('utf-8');
-
-					// start of chunk could be mid-statement
-					if(b_tardy) {
-						let i_post_newline = s_chunk.indexOf('\n')+1;
-
-						// preserve data from beginning
-						s_head = s_chunk.slice(0, i_post_newline);
-
-						// begin parsing after first newline
-						s_chunk = s_chunk.slice(i_post_newline);
-
-						// don't do this again
-						b_tardy = false;
-					}
-
-					// increment pointer
-					ib_read += nb_read;
-
-					// push chunk to stream
-					this.push(s_chunk);
-				},
-			});
-
+			// prep user-defined function to generate config struct
 			let f_config = eval(`(${sf_map})`);
+
+			// invoke with promise resolve callback
 			let g_config = f_config(fk_result);
-			g_config.input = {stream:ds_range};
 
-			ds_document = read(g_config);
+			// set/overwrite the input option
+			g_config.input = {
+				stream: stream.Readable.Buffer.Delimited_EOL.from({
+					input: {
+						// open file by path
+						fd: df_input,
+
+						// pass byte range of read
+						range: [a_range[0], a_range[1]],
+					},
+
+					// 'remainder' event listener
+					remainder(g_remainder) {
+						// close file descriptor
+						fs.closeSync(df_input);
+
+						// return head/tail to master thread
+						k_worker.emit('remainder', g_remainder);
+
+						// coerce stream to emit eot
+						ds_document.emit('end');
+					},
+				}),
+			};
+
+			// call reader on custom input stream
+			ds_document = nt_read(g_config);
 		});
-
-		// for(let ib_start=ib_lower; ib_start<Math.max(ib_upper-nb_ideal, ib_lower+1); ib_start+=nb_ideal) {
-		// 	// eslint-disable-next-line no-loop-func
-		// 	await new Promise((fk_chunk) => {
-		// 		let nb_chunk = Math.min(nb_ideal, ib_upper - ib_start);
-
-		// 		let ab_buffer = Buffer.allocUnsafe(nb_chunk);
-
-		// 		let f_bind = eval(`(${sf_bind})()`);
-
-		// 		let h_bind = f_bind((c_triples_sub) => {
-		// 			c_triples += c_triples_sub;
-		// 			fk_chunk();
-		// 		});
-
-		// 		let nb_read = fs.readSync(if_input, ab_buffer, 0, nb_chunk, ib_start);
-
-		// 		let s_chunk = ab_buffer.slice(0, nb_read).toString('utf-8');
-		// 		let s_input = s_chunk.slice(s_chunk.indexOf('\n')+1);
-
-		// 		let k_parser = new Parser({
-		// 			input: s_input,
-
-		// 			...h_bind,
-		// 		});
-		// 	});
-		// }
-
-		// return c_triples;
 	},
 
 	merge(z_a, z_b, sf_reduce) {

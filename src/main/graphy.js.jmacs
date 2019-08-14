@@ -239,7 +239,14 @@ if(module === require.main) {
 				v: {
 					type: 'boolean',
 					alias: ['validate'],
+					default: undefined,  // eslint-disable-line no-undefined
 					describe: 'validate all tokens within the RDF document',
+				},
+				r: {
+					type: 'boolean',
+					alias: ['relax'],
+					default: undefined,  // eslint-disable-line no-undefined
+					describe: 'relax validation of tokens within the RDF document',
 				},
 				b: {
 					type: 'string',
@@ -300,9 +307,20 @@ if(module === require.main) {
 			.parse(a_args);
 
 		let gc_read = {
-			validate: g_argv.validate || false,
+			relax: g_argv.relax || false,
 		};
 
+		// 'validate' option is set
+		if('undefined' !== typeof g_argv.validate) {
+			console.warn((new Error(`option 'validate' has been deprecated. Validation is now enabled by default. Use the 'relax' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+
+			// infer validation value from flag
+			if('undefined' === typeof g_argv.relax) {
+				gc_read.relax = !g_argv.validate;
+			}
+		}
+
+		// 'base-uri' => 'baseUri'
 		if(g_argv['base-uri']) {
 			gc_read.baseUri = g_argv['base-uri'];
 		}
