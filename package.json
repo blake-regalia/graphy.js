@@ -43,7 +43,7 @@
     "chai-string": "^1.5.0",
     "csv-parse": "^4.4.3",
     "d3": "^5.9.7",
-    "d3plus-viz": "^0.12.36",
+    "d3plus-viz": "^0.12.37",
     "detective": "^5.2.0",
     "emk": "^1.7.2",
     "eslint": "^6.1.0",
@@ -61,7 +61,7 @@
     "rdf-test-suite": "^1.9.3",
     "request": "^2.88.0",
     "sort-package-json": "^1.22.1",
-    "webpack": "^4.37.0",
+    "webpack": "^4.38.0",
     "webpack-cli": "^3.3.6"
   }
 }

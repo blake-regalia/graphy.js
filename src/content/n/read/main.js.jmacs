@@ -35,6 +35,7 @@ const RT_HAS_ESCAPES = /[\\]/;
 const R_EOL = /[^\n]+\n/y;
 
 const RT_ABSOLUTE_IRI_VALID = /^[a-z][a-z0-9+\-.]*:([^\0-\x20<>"{}|^`\\]|@{UCHAR()})*$/;
+// eslint-disable-next-line no-misleading-character-class
 const RT_BLANK_NODE_LABEL_VALID = /^(?:[@{RANGE_PN_CHARS_U()}0-9])(?:(?:[@{RANGE_PN_CHARS()}.])*[@{RANGE_PN_CHARS()}])?$/u;
 const RT_ESCAPES_INVALID = /@{RT_ESCAPES_INVALID()}/;
 const RT_LITERAL_CONTENTS_VALID = /@{RT_LITERAL_CONTENTS_VALID('\\n\\r')}/;
@@ -468,6 +469,8 @@ class reader {
 				throw new TypeError(`Invalid argument for input parameter: ${'object' === typeof g_input? JSON.stringify(g_input): g_input}`);
 			}
 		}
+
+		ds_transform._graphy_reader = this;
 	}
 
 	_error(s_message) {

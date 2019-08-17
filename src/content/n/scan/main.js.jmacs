@@ -3,14 +3,14 @@
 @import '../../text.read.jmacs'
 
 const worker = require('worker');
-const read = require('@{channel('content.nt.read')}');
+const read = require('@{channel(`content.${FORMAT}.read`)}');
 
 const R_METHOD = /^\s*([^(\s]+)\s*\(/;
 
 const scan_read_file = async(g_config) => {
 	// lazy requires
 	const fs = require('fs');
-	const NL_CPUS = require('os').cpus().length;
+	const NL_WORKERS = process.env.WORKER_COUNT || require('os').cpus().length;
 
 	// destructure config
 	let {
@@ -28,7 +28,7 @@ const scan_read_file = async(g_config) => {
 	} = g_config;
 
 	// input file path
-	let p_input = g_input.file;
+	let p_input = g_input.path;
 
 	// stat file
 	let {
@@ -50,13 +50,13 @@ const scan_read_file = async(g_config) => {
 	let a_ranges = [];
 	let ib_prev = 0;
 
-	// remainder text
+	// remainder buffer bytes
 	let a_remainders = [];
 
-	// each cpu
-	for(let i_cpu=1; i_cpu<=NL_CPUS; i_cpu++) {
+	// each worker
+	for(let i_cpu=1; i_cpu<=NL_WORKERS; i_cpu++) {
 		// byte position to end this range
-		let ib_curr = Math.floor((i_cpu / NL_CPUS) * nb_input);
+		let ib_curr = Math.floor((i_cpu / NL_WORKERS) * nb_input);
 
 		// add range
 		a_ranges.push([
@@ -64,9 +64,6 @@ const scan_read_file = async(g_config) => {
 			ib_curr,
 			1 === i_cpu,
 		]);
-
-		// add empty remainder text
-		a_remainders.push('');
 
 		// advance byte position
 		ib_prev = ib_curr;
@@ -105,19 +102,25 @@ const scan_read_file = async(g_config) => {
 		// }
 
 	// worker group
-	let k_group = worker.group('./worker.js', {
-		inspect: {
-			brk: true,
-			range: [9230, 9242],
-		},
+	let k_group = worker.group('./worker.js', NL_WORKERS, {
+		node_args: (process.env.WORKER_NODE_ARGS || '').split(' '),
+		...(process.env.WORKER_INSPECT
+			? {
+				inspect: {
+					brk: true,
+					range: [9230, 9242],
+				},
+			}
+			: {}),
 	});
+
 
 	// deploy
 	let z_merged = await k_group
 		.use(a_ranges)
 		.map('read_file', [p_input, g_stat, sf_map], {
-			remainder(i_subset, {head:s_head, tail:s_tail}) {
-				a_remainders[i_subset] = s_head + s_tail;
+			remainder(i_subset, {head:ab_head, tail:ab_tail}) {
+				a_remainders[i_subset] = Buffer.concat([ab_head, ab_tail], ab_head.length+ab_tail.length);
 			},
 		})
 		.reduce('merge', [sf_reduce]);
@@ -125,7 +128,8 @@ const scan_read_file = async(g_config) => {
 	// done with workers
 	k_group.kill();
 
-	return new Promise((fk_read) => {
+	// go async
+	return await new Promise((fk_read) => {
 		// generate read config
 		let g_read = f_map((z_remainder) => {
 			// final result
@@ -136,7 +140,9 @@ const scan_read_file = async(g_config) => {
 		});
 
 		// input string
-		g_read.input = {string:a_remainders.join('')};
+		g_read.input = {
+			string: Buffer.concat(a_remainders).toString('utf8'),
+		};
 
 		// read remainder
 		read(g_read);
@@ -145,22 +151,22 @@ const scan_read_file = async(g_config) => {
 
 
 // multithreaded parsing
-const scan = module.exports = (...a_args) => {
+module.exports = (...a_args) => {
 	let g_config = {};
 
 	@{normalize_reader_config('g_config', {
-		string: s => /* syntax: js */ `worker.browser? {url:${s}}: {file:${s}}`,
+		string: s => /* syntax: js */ `worker.browser? {url:${s}}: {path:${s}}`,
 	})}
 
-	// input
+	// input path
 	let g_input = g_config.input;
 
 	// file input
-	if(g_input.file) {
+	if(g_input.path) {
 		return scan_read_file(g_config);
 	}
 	// unnacceptable input medium
 	else {
-		throw new Error(`scan mode only performs better when it can read source data in parallel; try using the 'file' or 'url' input option instead of '${g_input? Object.keys(g_input): 'null'}'`);
+		throw new Error(`scan mode only performs better when it can read source data in parallel; try using the 'path' or 'url' input option instead of '${g_input? Object.keys(g_input): 'null'}'`);
 	};
 };

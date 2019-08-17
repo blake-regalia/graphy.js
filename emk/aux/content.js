@@ -9,6 +9,7 @@ module.exports = {
 			modes: [
 				'read',
 				'write',
+				'scan',
 			],
 			manifest: 'http://w3c.github.io/rdf-tests/ntriples/manifest.ttl',
 			mime: 'application/n-triples',
@@ -19,6 +20,7 @@ module.exports = {
 			modes: [
 				'read',
 				'write',
+				'scan',
 			],
 			manifest: 'http://w3c.github.io/rdf-tests/nquads/manifest.ttl',
 			mime: 'application/n-quads',
@@ -29,6 +31,7 @@ module.exports = {
 			modes: [
 				'read',
 				'write',
+				'scan',
 			],
 			manifest: 'http://w3c.github.io/rdf-tests/turtle/manifest.ttl',
 			mime: 'text/turtle',

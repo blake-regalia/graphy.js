@@ -216,13 +216,11 @@ const package_json = si_package => () => ({
 
 // recipe to make .npmrc file
 const npmrc = () => ({
-	deps: [
-		'.npmrc',
-	],
+	deps: [],
 
 	run: /* syntax: bash */ `
 		# write .npmrc file
-		echo "prefix = ../../../../.npm-packages" >> $@
+		echo "prefix=$PWD/.npm-packages" > $@
 	`,
 });
 
@@ -289,7 +287,7 @@ const package_node_modules = si_package => ({
 
 
 const scoped_package = si_package => ({
-	// '.npmrc': npmrc,
+	'.npmrc': npmrc,
 
 	'package.json': package_json(si_package),
 
@@ -880,9 +878,6 @@ module.exports = async() => {
 								run: /* syntax: bash */ `
 									# package directory relative to project root
 									PACKAGE_DIR='build/${s_channel}/package/${si_package}'
-
-									# copy .npmrc to package dir
-									cp .npmrc "$PACKAGE_DIR"
 									
 									# enter package directory
 									cd "$PACKAGE_DIR"
