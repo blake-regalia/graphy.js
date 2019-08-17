@@ -117,7 +117,7 @@ const h_packages = {};
 		}
 	}
 })(h_package_tree);
-
+debugger;
 
 // list of content subs
 let a_content_subs = [];
@@ -464,7 +464,7 @@ module.exports = async() => {
 				.filter(s => !a_content_subs.includes(s)
 					&& !s.startsWith('content.n')
 					&& !s.startsWith('content.t')
-					&& !s.startsWith('content.bat')
+					// && !s.startsWith('content.bat')
 					&& !s.startsWith('schema.')
 					&& !s.startsWith('store.memory.query')),
 

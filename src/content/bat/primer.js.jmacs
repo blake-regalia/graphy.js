@@ -328,7 +328,7 @@ class primer {
 				i_o = this.save_language_literal(g_object.value, g_object.language);
 			}
 			// ... a datatyped literal
-			else if(g_object.hasOwnProperty('datatype')) {
+			else if(g_object.hasOwnProperty('datatype')) {  // eslint-disable-line no-prototype-builtins
 				// datatype is always a named node
 				i_o = this.save_datatyped_literal(g_object.value, g_object.datatype.value);
 			}

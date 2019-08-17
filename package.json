@@ -31,12 +31,13 @@
   },
   "dependencies": {
     "big-integer": "^1.6.44",
+    "bkit": "^1.4.1",
     "uri-js": "^4.2.2",
+    "worker": "^0.3.12",
     "yargs": "^13.3.0"
   },
   "devDependencies": {
     "@rdfjs/data-model": "git://github.com/rdfjs/data-model.git#remove-falsy-tests",
-    "bkit": "^1.4.1",
     "chai": "^4.2.0",
     "chai-iterator": "^3.0.2",
     "chai-string": "^1.5.0",
@@ -61,7 +62,6 @@
     "request": "^2.88.0",
     "sort-package-json": "^1.22.1",
     "webpack": "^4.37.0",
-    "webpack-cli": "^3.3.6",
-    "worker": "^0.3.12"
+    "webpack-cli": "^3.3.6"
   }
 }

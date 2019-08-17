@@ -41,7 +41,7 @@ module.exports = {
 			: {}),
 	},
 
-	...('graphy-ignore' === process.env.GRAPHY_CHANNEL
+	...('graphy' === process.env.GRAPHY_CHANNEL
 		? {
 			content: {
 				bat: {
