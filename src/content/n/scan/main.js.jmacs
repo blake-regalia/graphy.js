@@ -3,7 +3,7 @@
 @import '../../text.read.jmacs'
 
 const worker = require('worker');
-const read = require('@{channel('content.nt.read')}');
+const read = require('@{channel(`content.${FORMAT}.read`)}');
 
 const R_METHOD = /^\s*([^(\s]+)\s*\(/;
 
@@ -28,7 +28,7 @@ const scan_read_file = async(g_config) => {
 	} = g_config;
 
 	// input file path
-	let p_input = g_input.file;
+	let p_input = g_input.path;
 
 	// stat file
 	let {
@@ -103,12 +103,17 @@ const scan_read_file = async(g_config) => {
 
 	// worker group
 	let k_group = worker.group('./worker.js', NL_WORKERS, {
-		node_args: process.env.WORKER_NODE_ARGS.split(' '),
-		// inspect: {
-		// 	brk: true,
-		// 	range: [9230, 9242],
-		// },
+		node_args: (process.env.WORKER_NODE_ARGS || '').split(' '),
+		...(process.env.WORKER_INSPECT
+			? {
+				inspect: {
+					brk: true,
+					range: [9230, 9242],
+				},
+			}
+			: {}),
 	});
+
 
 	// deploy
 	let z_merged = await k_group
@@ -154,7 +159,7 @@ module.exports = (...a_args) => {
 	})}
 
 	// input path
-	let g_input = g_config.path;
+	let g_input = g_config.input;
 
 	// file input
 	if(g_input.path) {
@@ -162,6 +167,6 @@ module.exports = (...a_args) => {
 	}
 	// unnacceptable input medium
 	else {
-		throw new Error(`scan mode only performs better when it can read source data in parallel; try using the 'file' or 'url' input option instead of '${g_input? Object.keys(g_input): 'null'}'`);
+		throw new Error(`scan mode only performs better when it can read source data in parallel; try using the 'path' or 'url' input option instead of '${g_input? Object.keys(g_input): 'null'}'`);
 	};
 };

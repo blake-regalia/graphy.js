@@ -1,0 +1,85 @@
+@import '../../../share/channel.jmacs'
+
+const fs = require('fs');
+const stream = require('@power-io/stream');
+
+const worker = require('worker');
+const read_fuzzy = require('@{channel(`content.${FORMAT}.read.fuzzy`)}');
+
+worker.dedicated({
+	read_file(a_range, p_input, g_stat, sf_map) {
+		let k_worker = this;
+
+		// open file by path
+		let df_input = fs.openSync(p_input, 'r');
+
+		// stat file via file descriptor
+		let {
+			ino: ni_inode,
+			size: nb_input,
+			mode: xm_mode,
+			mtimeMs: x_mtime,
+		} = fs.fstatSync(df_input);
+
+		// make sure we acquired same file
+		if(ni_inode !== g_stat.ino
+			|| nb_input !== g_stat.size
+			|| xm_mode !== g_stat.mode
+			|| x_mtime !== g_stat.mtimeMs
+		) {
+			throw new Error('worker was unable to open the identical file for reading');
+		}
+
+		// async
+		return new Promise((fk_result) => {
+			let ds_document;
+
+			// prep user-defined function to generate config struct
+			let f_config = eval(`(${sf_map})`);
+
+			// invoke with promise resolve callback
+			let g_config = f_config(fk_result);
+
+			// set/overwrite the input option
+			g_config.input = {
+				// readable stream from file-descriptor
+				stream: stream.Readable.from({
+					// input medium
+					input: {
+						// open file by path
+						fd: df_input,
+
+						// pass byte range of read
+						range: [a_range[0], a_range[1]],
+
+						// align chunks
+						align: {
+							// respect multibyte character boundaries
+							multibyte: true,
+
+							// 'remainder' event listener
+							remainder(g_remainder) {
+								// close file descriptor
+								fs.closeSync(df_input);
+
+								// return head/tail to master thread
+								k_worker.emit('remainder', g_remainder);
+
+								// coerce stream to emit eot
+								ds_document.emit('end');
+							},
+						}
+					},
+				}),
+			};
+
+			// call reader on custom input stream
+			ds_document = read_fuzzy(g_config);
+		});
+	},
+
+	merge(z_a, z_b, sf_reduce) {
+		let f_reduce = eval(`(${sf_reduce})`);
+		return f_reduce(z_a, z_b);
+	},
+});

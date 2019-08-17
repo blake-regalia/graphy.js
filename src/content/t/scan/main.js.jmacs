@@ -1,0 +1,216 @@
+@// import parser macros
+@import '../../../share/channel.jmacs'
+@import '../../text.read.jmacs'
+
+const worker = require('worker');
+const read = require('@{channel(`content.${FORMAT}.read`)}');
+
+const R_METHOD = /^\s*([^(\s]+)\s*\(/;
+
+const scan_read_file = async(g_config) => {
+	// lazy requires
+	const fs = require('fs');
+	const NL_WORKERS = process.env.WORKER_COUNT || require('os').cpus().length;
+
+	// destructure config
+	let {
+		// input medium
+		input: g_input,
+
+		// imports
+		imports: f_imports,
+
+		// how to map onto workers
+		map: sf_map,
+
+		// reduce function
+		reduce: sf_reduce,
+	} = g_config;
+
+	// input file path
+	let p_input = g_input.path;
+
+	// open file
+	let dh_input = fs.openSync(p_input, 'r');
+
+	// stat file
+	let {
+		ino: ni_inode,
+		size: nb_input,
+		mode: xm_mode,
+		mtimeMs: x_mtime,
+	} = fs.fstatSync(dh_input);
+
+	// make relevant stat info struct
+	let g_stat = {
+		ino: ni_inode,
+		size: nb_input,
+		mode: xm_mode,
+		mtimeMs: x_mtime,
+	};
+
+	let p_base = '';
+	let h_prefixes = {};
+
+	// start reading from file to establish initial base and prefix map
+	let ds_input = fs.createReadStream(null, {
+		fd: dh_input,
+	});
+
+	let ib_data = await new Promise((fk_resolve, fe_fail) => {
+		debugger;
+		let ds_read = read({
+			// track byte offset
+			byteTracking: true,
+
+			// each prefix
+			prefix(s_prefix_id, p_prefix_iri) {
+				h_prefixes[s_prefix_id] = p_prefix_iri;
+			},
+
+			// base
+			base(_p_base) {
+				p_base = _p_base;
+			},
+
+			// first data event
+			data(g_quad) {
+				debugger;
+				ds_read.destroy();
+
+				// done
+				fk_resolve(g_quad.byteRange[0]);
+			},
+		});
+
+		ds_input.pipe(ds_read);
+	});
+
+	// divide document by ranges
+	let a_ranges = [];
+	let ib_prev = ib_data;
+	let nb_data = nb_input - ib_data;
+
+	// remainder buffer bytes
+	let a_remainders = [];
+
+	// each worker
+	for(let i_cpu=1; i_cpu<=NL_WORKERS; i_cpu++) {
+		// byte position to end this range
+		let ib_curr = Math.floor((i_cpu / NL_WORKERS) * nb_data);
+
+		// add range
+		a_ranges.push([
+			ib_prev,
+			ib_curr,
+			1 === i_cpu,
+		]);
+
+		// advance byte position
+		ib_prev = ib_curr;
+	}
+
+	// check map is a string
+	if('string' !== typeof sf_map) {
+		throw new Error(`scan mode requires a 'map' string that represents a function which returns a reader config object incuding inline event callback struct that containing handlers for 'data', 'error' and 'end'`);
+	}
+
+	// check reduce is a string
+	if('string' !== typeof sf_reduce) {
+		throw new Error(`scan mode requires a 'reduce' string that represents a function which accepts two arguments and returns their merged result. this function may also be async`);
+	}
+
+	// cast map to function
+	let f_map = eval(`(${sf_map})`);
+
+	// cast reduce to function
+	let f_reduce = eval(`(${sf_reduce})`);
+
+	// check map is a function
+	if('function' !== typeof f_map) {
+		throw new Error(`the 'map' string given should evaluate to a function, instead got: ${f_map}`);
+	}
+
+	// check reduce is a function
+	if('function' !== typeof f_reduce) {
+		throw new Error(`the 'reduce' string given should evaluate to a function, instead got: ${f_reduce}`);
+	}
+
+		// // check events
+		// if(!g_config.data || !g_config.error || !g_config.end) {
+		// 	let a_supplied = Object.keys(g_config).filter(s => s in ['data', 'error', 'end']);
+		// 	throw new Error(`scan mode requires supplying the inline event callbacks 'data', 'error' and 'end'; however only the following were supplied: ${a_supplied}`);
+		// }
+
+	// worker group
+	let k_group = worker.group('./worker.js', NL_WORKERS, {
+		node_args: (process.env.WORKER_NODE_ARGS || '').split(' '),
+		...(process.env.WORKER_INSPECT
+			? {
+				inspect: {
+					brk: true,
+					range: [9230, 9242],
+				},
+			}
+			: {}),
+	});
+
+
+	// deploy
+	let z_merged = await k_group
+		.use(a_ranges)
+		.map('read_file', [p_input, g_stat, sf_map, {
+			base: p_base,
+			prefixes: h_prefixes,
+		}], {
+			remainder(i_subset, {head:ab_head, tail:ab_tail}) {
+				a_remainders[i_subset] = Buffer.concat([ab_head, ab_tail], ab_head.length+ab_tail.length);
+			},
+		})
+		.reduce('merge', [sf_reduce]);
+
+	// done with workers
+	k_group.kill();
+
+	// // go async
+	// return await new Promise((fk_read) => {
+	// 	// generate read config
+	// 	let g_read = f_map((z_remainder) => {
+	// 		// final result
+	// 		let z_result = f_reduce(z_merged, z_remainder);
+
+	// 		// resolve
+	// 		fk_read(z_result);
+	// 	});
+
+	// 	// input string
+	// 	g_read.input = {
+	// 		string: Buffer.concat(a_remainders).toString('utf8'),
+	// 	};
+
+	// 	// read remainder
+	// 	read(g_read);
+	// });
+};
+
+
+// multithreaded parsing
+module.exports = (...a_args) => {
+	let g_config = {};
+
+	@{normalize_reader_config('g_config', {
+		string: s => /* syntax: js */ `worker.browser? {url:${s}}: {path:${s}}`,
+	})}
+
+	// input path
+	let g_input = g_config.input;
+
+	// file input
+	if(g_input.path) {
+		return scan_read_file(g_config);
+	}
+	// unnacceptable input medium
+	else {
+		throw new Error(`scan mode only performs better when it can read source data in parallel; try using the 'path' or 'url' input option instead of '${g_input? Object.keys(g_input): 'null'}'`);
+	};
+};

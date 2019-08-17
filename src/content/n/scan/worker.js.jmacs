@@ -4,7 +4,7 @@ const fs = require('fs');
 const stream = require('@power-io/stream');
 
 const worker = require('worker');
-const nt_read = require('@{channel('content.nt.read')}');
+const read = require('@{channel(`content.${FORMAT}.read`)}');
 
 worker.dedicated({
 	read_file(a_range, p_input, g_stat, sf_map) {
@@ -42,31 +42,39 @@ worker.dedicated({
 
 			// set/overwrite the input option
 			g_config.input = {
-				stream: stream.Readable.Buffer.Delimited_EOL.from({
+				// readable stream from file-descriptor
+				stream: stream.Readable.from({
+					// input medium
 					input: {
 						// open file by path
 						fd: df_input,
 
 						// pass byte range of read
 						range: [a_range[0], a_range[1]],
-					},
 
-					// 'remainder' event listener
-					remainder(g_remainder) {
-						// close file descriptor
-						fs.closeSync(df_input);
+						// align chunks
+						align: {
+							// align with EOLs
+							byte: 0x0a,
 
-						// return head/tail to master thread
-						k_worker.emit('remainder', g_remainder);
+							// 'remainder' event listener
+							remainder(g_remainder) {
+								// close file descriptor
+								fs.closeSync(df_input);
 
-						// coerce stream to emit eot
-						ds_document.emit('end');
+								// return head/tail to master thread
+								k_worker.emit('remainder', g_remainder);
+
+								// coerce stream to emit eot
+								ds_document.emit('end');
+							},
+						},
 					},
 				}),
 			};
 
 			// call reader on custom input stream
-			ds_document = nt_read(g_config);
+			ds_document = read(g_config);
 		});
 	},
 

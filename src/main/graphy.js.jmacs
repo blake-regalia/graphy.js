@@ -87,6 +87,7 @@ const H_CONTENT_TAGS = {
 @> memoize(s_package)
 	@//@object-literal
 	get @{s_package.replace(/^.*\.([^.]+)$/, '$1')}() {
+		@//@
 		// memoize
 		delete graphy.@{s_package};
 		return (graphy.@{s_package} = require('@{channel(s_package)}'));
@@ -107,6 +108,7 @@ const H_CONTENT_TAGS = {
 	[^\0-\x20()<>@,;:\\"\/[\]?.=]+
 @;
 
+@//@
 const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS()})(;.+)*$/i;
 
 const graphy = module.exports = Object.assign({
@@ -130,7 +132,7 @@ const graphy = module.exports = Object.assign({
 	}, {
 		@*{
 			for(let s_content in h_content_types) {
-				yield /* syntax: js */ `${s_content},\n`;
+				yield /* syntax: js.object-literal */ `${s_content},\n`;
 			}
 		}
 	}),
@@ -159,7 +161,7 @@ const graphy = module.exports = Object.assign({
 
 	@*{
 		for(let s_content in h_content_types) {
-			yield /* syntax: js */ `
+			yield /* syntax: js.object-literal */ `
 				get 'content.${s_content}.read' () {
 					// memoize
 					delete graphy['content.${s_content}.read'];
@@ -167,7 +169,7 @@ const graphy = module.exports = Object.assign({
 				},
 			`;
 
-			yield /* syntax: js */ `
+			yield /* syntax: js.object-literal */ `
 				get 'content.${s_content}.write' () {
 					// memoize
 					delete graphy['content.${s_content}.write'];
@@ -178,10 +180,11 @@ const graphy = module.exports = Object.assign({
 	}
 
 
-@//@
+@//@object-literal
 
 }, factory);
 
+@//@
 
 // export graphy to window object if in main thread of browser
 if('undefined' !== typeof window) window.graphy = graphy;
