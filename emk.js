@@ -11,14 +11,13 @@ const {
 	modes: h_content_modes,
 } = require('./emk/aux/content.js');
 
-const B_DEVELOPMENT = 'graphy-dev' === process.env.GRAPHY_CHANNEL;
-const s_channel = process.env.GRAPHY_CHANNEL || 'graphy';
+const s_super = 'graphy';
 
 const g_package_json_super = require('./package.json');
-const P_PACKAGE_JSON_BASE = `emk/aux/base-package-${s_channel}.json`;
+const P_PACKAGE_JSON_BASE = `emk/aux/base-package-${s_super}.json`;
 
-const s_base_version = g_package_json_super[B_DEVELOPMENT? 'devVersion': 'version'];
-const s_semver = B_DEVELOPMENT? s_base_version: `^${s_base_version}`;
+const s_base_version = g_package_json_super.version;
+const s_semver = `^${s_base_version}`;
 
 const P_PACKAGE_PREFIX = process.env.GRAPHY_PACKAGE_PREFIX || '.npm-packages';
 
@@ -117,7 +116,6 @@ const h_packages = {};
 		}
 	}
 })(h_package_tree);
-debugger;
 
 // list of content subs
 let a_content_subs = [];
@@ -162,7 +160,7 @@ for(let [si_package, g_package] of Object.entries(h_packages)) {
 
 	// no name, use default
 	if(!g_json.name) {
-		g_json.name = `@${s_channel}/${si_package}`;
+		g_json.name = `@${s_super}/${si_package}`;
 	}
 
 	// copy-by-value fields
@@ -181,11 +179,11 @@ for(let [si_package, g_package] of Object.entries(h_packages)) {
 
 	// convert links to dependencies
 	for(let si_link of g_package.links) {
-		h_dependencies[`@${s_channel}/${si_link}`] = s_semver;
+		h_dependencies[`@${s_super}/${si_link}`] = s_semver;
 	}
 
 	// add package dependency to root library
-	h_lib_root_package_json.dependencies[`@${s_channel}/${si_package}`] = s_semver;
+	h_lib_root_package_json.dependencies[`@${s_super}/${si_package}`] = s_semver;
 }
 
 
@@ -251,7 +249,7 @@ const jmacs_lint = (a_deps=[], a_deps_strict=[]) => ({
 
 // create intra-library links for development & testing
 const package_node_modules = si_package => ({
-	[`@${s_channel}`]: {
+	[`@${s_super}`]: {
 		...h_packages[si_package].links.reduce((h, si_link) => Object.assign(h, {
 			[si_link]: () => ({
 				deps: [
@@ -260,10 +258,10 @@ const package_node_modules = si_package => ({
 				],
 
 				run: /* syntax: bash */ `
-					cd build/${s_channel}/package/${si_package}
+					cd build/graphy/package/${si_package}
 
 					# link to dep
-					npm link @${s_channel}/${si_link}
+					npm link @${s_super}/${si_link}
 				`,
 			}),
 		}), {}),
@@ -278,7 +276,7 @@ const package_node_modules = si_package => ({
 					'package.json',
 				],
 				run: /* syntax: bash */ `
-					cd "build/${s_channel}/package/${si_package}/node_modules"
+					cd "build/graphy/package/${si_package}/node_modules"
 					ln -sf "../../../../../$1" ${si_dep}
 				`,
 			}),
@@ -294,23 +292,30 @@ const scoped_package = si_package => ({
 	node_modules: package_node_modules(si_package),
 });
 
-
 // carry files from a main source file's subdirectory
-const carry_sub = (pd_src, h_recipe={}) => {
+const carry_sub = (pd_src, h_recipe={}, pdr_package=null) => {
 	// scan directory
 	let a_files = fs.readdirSync(pd_src);
+
+	// deps
+	let a_deps = [];
+	let a_direct = [];
 
 	// each file
 	for(let s_file of a_files) {
 		let p_src = `${pd_src}/${s_file}`;
+		let pd_dst = `build/graphy/package/${pdr_package}`;
 
 		// *.js files
 		if(s_file.endsWith('.js')) {
 			h_recipe[s_file] = () => ({copy:p_src});
+			a_deps.push(`${pd_dst}/${s_file}`);
 		}
 		// *.jmacs files
 		else if(s_file.endsWith('.js.jmacs')) {
-			h_recipe[s_file.slice(0, -'.jmacs'.length)] = () => jmacs_lint([p_src]);
+			let s_dst = s_file.slice(0, -'.jmacs'.length);
+			h_recipe[s_dst] = () => jmacs_lint([p_src]);
+			a_deps.push(`${pd_dst}/${s_dst}`);
 		}
 		// subdirectory
 		else if(fs.statSync(p_src).isDirectory()) {
@@ -318,9 +323,15 @@ const carry_sub = (pd_src, h_recipe={}) => {
 			let h_subrecipe = h_recipe[s_file] = {};
 
 			// recurse
-			carry_sub(p_src, h_subrecipe);
+			a_deps.push(...carry_sub(p_src, h_subrecipe, `${pdr_package}/${s_file}`));
+
+			// simple deps
+			a_direct.push(`${pd_dst}/${s_file}/**`);
 		}
 	}
+
+	return a_direct.length? a_direct: a_deps;
+	// return a_deps;
 };
 
 
@@ -341,17 +352,23 @@ const src_to_main = (pd_src, s_prefix, h_output={}) => {
 			// package id
 			let si_package = `${s_prefix}.${s_verb}`;
 
-			// make recipe
-			let h_recipe = h_output[si_package] = {
-				...scoped_package(si_package),
-
-				'main.js': () => jmacs_lint([`${pd_src}/${s_verb}.js.jmacs`]),
-			};
+			// prep recipe holder
+			let h_recipe = {};
 
 			// it has a 'carry' dir; add to recipe
+			let a_deps_carry = [];
 			if(a_files.includes(s_verb)) {
-				carry_sub(`${pd_src}/${s_verb}`, h_recipe);
+				a_deps_carry.push(...carry_sub(`${pd_src}/${s_verb}`, h_recipe, si_package));
 			}
+
+			// make recipe
+			h_output[si_package] = {
+				...scoped_package(si_package),
+
+				...h_recipe,
+
+				'main.js': () => jmacs_lint([`${pd_src}/${s_verb}.js.jmacs`], a_deps_carry),
+			};
 		}
 	}
 
@@ -360,11 +377,11 @@ const src_to_main = (pd_src, s_prefix, h_output={}) => {
 };
 
 
-// // bat output config
-// let h_output_content_bat = B_DEVELOPMENT? src_to_main('src/content/bat', 'content.bat'): {};
+// bat output config
+let h_output_content_bat = src_to_main('src/content/bat', 'content.bat');
 
-// // memory store output config
-// let h_output_store_mem = B_DEVELOPMENT? src_to_main('src/store/memory', 'store.memory'): {};
+// memory store output config
+let h_output_store_mem = src_to_main('src/store/memory', 'store.memory');
 
 
 let a_messages = fs.readdirSync('messages').sort().reverse().map(s => `messages/${s}`);
@@ -383,7 +400,7 @@ module.exports = async() => {
 			let h_deps = h_out[`manifest_deps_${si_package.replace(/\./g, '_')}`] = {};
 
 			try {
-				fs.accessSync(`build/${s_channel}/package/content.ttl.read/main.js`, fs.constants.F_OK);
+				fs.accessSync(`build/graphy/package/content.ttl.read/main.js`, fs.constants.F_OK);
 				fs.accessSync(`build/cache/specs/${si_package}/manifest.ttl`, fs.constants.F_OK);
 			}
 			catch(e_access) {
@@ -392,7 +409,7 @@ module.exports = async() => {
 
 			let ttl_read;
 			try {
-				ttl_read = require(`@${s_channel}/content.ttl.read`);
+				ttl_read = require(`@${s_super}/content.ttl.read`);
 			}
 			catch(e_require) {
 				continue;
@@ -462,22 +479,19 @@ module.exports = async() => {
 				.filter(s => !a_content_subs.includes(s)
 					&& !s.startsWith('content.n')
 					&& !s.startsWith('content.t')
-					// && !s.startsWith('content.bat')
+					&& !s.startsWith('content.bat')
 					&& !s.startsWith('schema.')
-					&& !s.startsWith('store.memory.query')),
+					&& !s.startsWith('store.memory.query')
+				),
 
 			// // bat schema file
 			// bat_schema_file: Object.keys(h_schema_bat).map(s => `schema.bat.${s}`),
 
-			// ...(B_DEVELOPMENT
-			// 	? {
-			// 		bat_protocol: fs.readdirSync('src/gen/bat-schema/decoders')
-			// 			.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
+			bat_protocol: fs.readdirSync('src/gen/bat-schema/decoders')
+				.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
 
-			// 		bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
-			// 			.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
-			// 	}
-			// 	: {}),
+			bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
+				.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
 
 			// docs snippet
 			snippet: fs.readdirSync('src/docs/snippets')
@@ -498,34 +512,34 @@ module.exports = async() => {
 			clean: () => ({
 				run: /* syntax: bash */ `
 					rm -rf \
-						'${P_PACKAGE_PREFIX}/lib/node_modules/${s_channel}' \
-						'${P_PACKAGE_PREFIX}/lib/node_modules/@${s_channel}' \
-						'${P_PACKAGE_PREFIX}/bin/${s_channel}' \
-						'build/${s_channel}' \
-						'node_modules/${s_channel}' \
-						'node_modules/@${s_channel}'
+						'${P_PACKAGE_PREFIX}/lib/node_modules/${s_super}' \
+						'${P_PACKAGE_PREFIX}/lib/node_modules/@${s_super}' \
+						'${P_PACKAGE_PREFIX}/bin/${s_super}' \
+						'build/graphy' \
+						'node_modules/${s_super}' \
+						'node_modules/@${s_super}'
 				`,
 			}),
 
 			// link alias
 			link: {
 				':package': h => ([
-					`${P_PACKAGE_PREFIX}/lib/node_modules/@${s_channel}/${h.package}`,
+					`${P_PACKAGE_PREFIX}/lib/node_modules/@${s_super}/${h.package}`,
 				]),
 
-				[s_channel]: () => ([
-					`${P_PACKAGE_PREFIX}/lib/node_modules/${s_channel}`,
+				[s_super]: () => ([
+					`${P_PACKAGE_PREFIX}/lib/node_modules/${s_super}`,
 				]),
 			},
 
 			// link-to alias
 			link_to: {
 				':package': h => ({
-					deps: [`node_modules/@${s_channel}/${h.package}`],
+					deps: [`node_modules/@${s_super}/${h.package}`],
 				}),
 
-				[s_channel]: () => ({
-					deps: [`node_modules/${s_channel}`],
+				[s_super]: () => ({
+					deps: [`node_modules/${s_super}`],
 				}),
 			},
 
@@ -534,26 +548,26 @@ module.exports = async() => {
 				':package': h => ({
 					deps: [`link_to.${h.package}`],
 					run: /* syntax: bash */ `
-						cd build/${s_channel}/package/${h.package}
+						cd build/graphy/package/${h.package}
 
 						# defer README to GitHub
 						rm -rf README.md
-						cat <(echo "#@${s_channel}/${h.package}") ../../../../emk/aux/README-defer.md > README.md
+						cat <(echo "#@${s_super}/${h.package}") ../../../../emk/aux/README-defer.md > README.md
 					`,
 				}),
 
-				[s_channel]: () => ({
-					deps: [`link_to.${s_channel}`],
+				[s_super]: () => ({
+					deps: [`link_to.${s_super}`],
 					run: /* syntax: bash */ `
-						cd build/${s_channel}/package/${s_channel}
+						cd build/graphy/package/${s_super}
 
 						# defer README to GitHub
 						rm -rf README.md
-						cat <(echo "#${s_channel}") ../../../../emk/aux/README-defer.md > README.md
+						cat <(echo "#${s_super}") ../../../../emk/aux/README-defer.md > README.md
 					`,
 				}),
 
-				...(B_DEVELOPMENT? {}: {docs:['docs/**']}),
+				docs: ['docs/**'],
 			},
 
 			// publish
@@ -561,17 +575,17 @@ module.exports = async() => {
 				':package': h => ({
 					deps: [`prepublish.${h.package}`],
 					run: /* syntax: bash */ `
-						cd build/${s_channel}/package/${h.package}
+						cd build/graphy/package/${h.package}
 
 						# publish to npm
 						npm publish --access=public
 					`,
 				}),
 
-				[s_channel]: () => ({
-					deps: [`prepublish.${s_channel}`],
+				[s_super]: () => ({
+					deps: [`prepublish.${s_super}`],
 					run: /* syntax: bash */ `
-						cd build/${s_channel}/package/${s_channel}
+						cd build/graphy/package/${s_super}
 
 						# publish to npm
 						npm publish --access=public
@@ -615,7 +629,7 @@ module.exports = async() => {
 				web: () => ({
 					deps: [
 						'test/web/runner.html',
-						`build/${s_channel}/test/web/**`,
+						`build/graphy/test/web/**`,
 					],
 					run: /* syntax: bash */ `
 						npx mocha-chrome $1
@@ -702,59 +716,55 @@ module.exports = async() => {
 					},
 				},
 
-				[s_channel]: {
+				graphy: {
 					package: {
-						// ...(B_DEVELOPMENT
-						// 	? {
-						// 		// content.bat.*
-						// 		...h_output_content_bat,
+						// content.bat.*
+						...h_output_content_bat,
 
-						// 		// store.memory.*
-						// 		...h_output_store_mem,
+						// store.memory.*
+						...h_output_store_mem,
 
-						// 		// bat schema
-						// 		'schema.bat.default': {
-						// 			...scoped_package('schema.bat.default'),
+						// bat schema
+						'schema.bat.default': {
+							...scoped_package('schema.bat.default'),
 
-						// 			'main.js': () => jmacs_lint([
-						// 				'src/gen/bat-schema/default.js.jmacs',
-						// 				'src/gen/bat-schema/datatypes',  // directory
-						// 				'src/gen/bat-schema/decoders',  // directory
-						// 			]),
+							'main.js': () => jmacs_lint([
+								'src/gen/bat-schema/default.js.jmacs',
+								'src/gen/bat-schema/datatypes',  // directory
+								'src/gen/bat-schema/decoders',  // directory
+							]),
 
-						// 			decoders: {
-						// 				':bat_protocol': h => jmacs_lint([
-						// 					`src/gen/bat-schema/decoders/${h.bat_protocol}.jmacs`,
-						// 					'src/gen/bat-schema/schema.js.jmacs',
-						// 				]),
-						// 			},
+							decoders: {
+								':bat_protocol': h => jmacs_lint([
+									`src/gen/bat-schema/decoders/${h.bat_protocol}.jmacs`,
+									'src/gen/bat-schema/schema.js.jmacs',
+								]),
+							},
 
-						// 			datatypes: {
-						// 				':bat_datatype': h => jmacs_lint([
-						// 					`src/gen/bat-schema/datatypes/${h.bat_datatype}.jmacs`,
-						// 					'src/gen/bat-schema/schema.js.jmacs',
-						// 				]),
-						// 			},
+							datatypes: {
+								':bat_datatype': h => jmacs_lint([
+									`src/gen/bat-schema/datatypes/${h.bat_datatype}.jmacs`,
+									'src/gen/bat-schema/schema.js.jmacs',
+								]),
+							},
 
-						// 			// ':bat_schema_file': h => ({
-						// 			// 	deps: [
-						// 			// 		'src/gen/schema/output.js.jmacs',
-						// 			// 		'link_to.core.data.factory',
-						// 			// 		'link_to.content.ttl.write',
-						// 			// 	],
+							// ':bat_schema_file': h => ({
+							// 	deps: [
+							// 		'src/gen/bat-schema/output.js.jmacs',
+							// 		'link_to.core.data.factory',
+							// 		'link_to.content.ttl.write',
+							// 	],
 
-						// 			// 	run: /* syntax: bash */ `
-						// 			// 		npx jmacs $1 -g '${
-						// 			// 			/* eslint-disable indent */
-						// 			// 			JSON.stringify({
-						// 			// 				iri: h_schema_bat[h.bat_schema_file],
-						// 			// 			})
-						// 			// 		/* eslint-enable */}' > $@
-						// 			// 	`,
-						// 			// }),
-						// 		},
-						// 	}
-						// 	: {}),
+							// 	run: /* syntax: bash */ `
+							// 		npx jmacs $1 -g '${
+							// 			/* eslint-disable indent */
+							// 			JSON.stringify({
+							// 				iri: h_schema_bat[h.bat_schema_file],
+							// 			})
+							// 		/* eslint-enable */}' > $@
+							// 	`,
+							// }),
+						},
 
 						// content subs
 						':content_sub': [si_package => ({
@@ -786,14 +796,14 @@ module.exports = async() => {
 								'main.js': () => jmacs_lint([
 									`src/${si_package.replace(/\./g, '/')}.js.jmacs`,
 								], [
-									`build/${s_channel}/package/${si_package}/package.json`,
+									`build/graphy/package/${si_package}/package.json`,
 								]),
 							},
 						})],
 
 						// the super module
-						[s_channel]: {
-							// '.npmrc': npmrc,
+						[s_super]: {
+							'.npmrc': npmrc,
 
 							'package.json': () => ({
 								deps: [
@@ -807,16 +817,16 @@ module.exports = async() => {
 											/* syntax: js */`
 											// load package info
 											let g_package_json = ${JSON.stringify({
-												name: s_channel,
+												name: s_super,
 												dependencies: {
 													...g_package_json_super.dependencies,
 													...Object.keys(h_packages).reduce((h, si_link) => Object.assign(h, {
-														[`@${s_channel}/${si_link}`]: s_base_version,
+														[`@${s_super}/${si_link}`]: s_base_version,
 													}), {}),
 												},
 												description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
 												bin: {
-													[s_channel]: 'main.js',
+													[s_super]: 'main.js',
 												},
 											})};
 
@@ -831,15 +841,16 @@ module.exports = async() => {
 							}),
 
 							node_modules: {
-								[`@${s_channel}`]: {
+								[`@graphy`]: {
 									':package': ({package:si_package}) => ({
 										deps: [
+											`build/graphy/package/${s_super}/.npmrc`,
 											`link_to.${si_package}`,
 										],
 
 										run: /* syntax: bash */ `
-											cd build/${s_channel}/package/${s_channel}
-											npm link @${s_channel}/${si_package}
+											cd build/graphy/package/graphy
+											npm link @graphy/${si_package}
 										`,
 									}),
 								},
@@ -869,15 +880,15 @@ module.exports = async() => {
 			[P_PACKAGE_PREFIX]: {
 				lib: {
 					node_modules: {
-						[`@${s_channel}`]: {
+						[`@${s_super}`]: {
 							':package': ({package:si_package}) => ({
 								deps: [
-									`build/${s_channel}/package/${si_package}/**`,
+									`build/graphy/package/${si_package}/**`,
 								],
 
 								run: /* syntax: bash */ `
 									# package directory relative to project root
-									PACKAGE_DIR='build/${s_channel}/package/${si_package}'
+									PACKAGE_DIR='build/graphy/package/${si_package}'
 									
 									# enter package directory
 									cd "$PACKAGE_DIR"
@@ -891,16 +902,16 @@ module.exports = async() => {
 							}),
 						},
 
-						[s_channel]: () => ({
+						[s_super]: () => ({
 							deps: [
-								`build/${s_channel}/package/${s_channel}/**`,
+								`build/graphy/package/${s_super}/**`,
 
 								...Object.keys(h_packages).map(s_dep => `link.${s_dep}`),
 							],
 
 							run: /* syntax: bash */ `
 								# enter package directory
-								cd build/${s_channel}/package/${s_channel}
+								cd build/graphy/package/${s_super}
 
 								# remove package lock
 								rm -f package-lock.json
@@ -915,25 +926,25 @@ module.exports = async() => {
 
 			// mono-repo testing
 			node_modules: {
-				[`@${s_channel}`]: {
+				[`@${s_super}`]: {
 					':package': ({package:si_package}) => ({
 						deps: [
 							`link.${si_package}`,
 						],
 
 						run: /* syntax: bash */ `
-							npm link @${s_channel}/${si_package}
+							npm link @${s_super}/${si_package}
 						`,
 					}),
 				},
 
-				[s_channel]: () => ({
+				[s_super]: () => ({
 					deps: [
-						`link.${s_channel}`,
+						`link.${s_super}`,
 					],
 
 					run: /* syntax: bash */ `
-						npm link ${s_channel}
+						npm link ${s_super}
 					`,
 				}),
 			},

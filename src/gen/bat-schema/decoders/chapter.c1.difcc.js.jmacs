@@ -6,8 +6,8 @@ module.exports = {
 	/* eslint-disable quotes, quote-props */
 	...@{
 		JSON.stringify(
-			bat_define('protocol', 'brp:chapter.concise-term:dfc', {
-				implements: 'bri:chapter.concise-term',
+			bat_define('protocol', 'brp:chapter.c1:difcc', {
+				implements: 'bri:chapter.c1',
 				datatypes: {
 					string: 'brdt:ntu8-string',
 					vuint: 'brdt:vuint',

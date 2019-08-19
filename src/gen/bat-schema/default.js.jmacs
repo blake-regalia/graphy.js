@@ -13,7 +13,7 @@ let h_schema = {};
 let a_decoders = @{a_decoders.map(s => s.replace(/\.jmacs$/, ''))};
 for(let s_decoder of a_decoders) {
 	let g_decoder = require('./decoders/'+s_decoder);
-	let p_subject = factory.ct(g_decoder.subject, g_decoder.prefixes).value;
+	let p_subject = factory.c1(g_decoder.subject, g_decoder.prefixes).value;
 	h_schema[p_subject] = g_decoder;
 }
 
@@ -21,7 +21,7 @@ for(let s_decoder of a_decoders) {
 let a_datatypes = @{a_datatypes.map(s => s.replace(/\.jmacs$/, ''))};
 for(let s_datatype of a_datatypes) {
 	let g_datatype = require('./datatypes/'+s_datatype);
-	let p_subject = factory.ct(g_datatype.subject, g_datatype.prefixes).value;
+	let p_subject = factory.c1(g_datatype.subject, g_datatype.prefixes).value;
 	h_schema[p_subject] = g_datatype;
 }
 

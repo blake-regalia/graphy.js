@@ -4,10 +4,10 @@ module.exports = {
 	/* eslint-disable quotes, quote-props */
 	...@{
 		JSON.stringify(
-			bat_define('protocol', 'brp:dataset.concise-term:dq', {
-				implements: 'bri:dataset.concise-term',
+			bat_define('protocol', 'brp:dataset.c1:dq', {
+				implements: 'bri:dataset.c1',
 				members: {
-					dictionary: 'bri:dictionary.concise-term',
+					dictionary: 'bri:dictionary.c1',
 					quads: 'bri:quads',
 				},
 			}), null, '\t')},

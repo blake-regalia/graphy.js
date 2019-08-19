@@ -21,9 +21,9 @@
 @$ P_IRI_BAT_ENCODING = 'https://bat-rdf.link/v1.0/protocol/';
 
 @$ H_BAT_ENCODINGS = [
-		'dataset.concise-term:dq',
-			'dictionary.concise-term:pp12oc',
-				'chapter.concise-term:dfc',
+		'dataset.c1:dq',
+			'dictionary.c1:pp12oc',
+				'chapter.c1:difcc',
 			'quads:t3i',  // bitmap, wavelet, adajacency list, matrix  (s, p, o, g)
 				'triples:rl',
 					'bitmap:ab',

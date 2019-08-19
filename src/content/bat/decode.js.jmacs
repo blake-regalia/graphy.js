@@ -16,8 +16,8 @@ const H_PREFIXES = {
 	rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
 };
 
-const expand = (sct, h_prefixes=H_PREFIXES) => {
-	let k_term = factory.ct(sct, h_prefixes);
+const expand = (sc1_term, h_prefixes=H_PREFIXES) => {
+	let k_term = factory.c1(sc1_term, h_prefixes);
 	if(k_term.isNamedNode) {
 		return k_term.value;
 	}
@@ -63,7 +63,7 @@ const expand_ct_triples = (hct_triples, h_prefixes) => {
 };
 
 let pp_type = expand('rdf:type');
-let pi_datset = expand('bri:dataset.concise-term');
+let pi_datset = expand('bri:dataset.c1');
 let pp_implements = expand('bat:implements');
 let pp_datatype = expand('bat:datatype');
 let pp_member = expand('bat:member');

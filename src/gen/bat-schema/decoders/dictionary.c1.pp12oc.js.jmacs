@@ -21,13 +21,13 @@ module.exports = {
 	/* eslint-disable quotes, quote-props */
 	...@{
 		JSON.stringify(
-			bat_define('protocol', 'brp:dictionary.concise-term:pp12oc', {
-				implements: 'bri:dictionary.concise-term',
+			bat_define('protocol', 'brp:dictionary.c1:pp12oc', {
+				implements: 'bri:dictionary.c1',
 				datatypes: {
 					vuint: 'brdt:vuint',
 				},
 				members: {
-					chapter: 'bri:chapter.concise-term',
+					chapter: 'bri:chapter.c1',
 				},
 			}), null, '\t')},
 	/* eslint-enable */

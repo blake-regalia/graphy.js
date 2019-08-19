@@ -2,7 +2,7 @@
 
 const bkit = require('bkit');
 
-class chapter_dfc {
+class chapter_difcc {
 	constructor(h_opt={}) {
 		let {
 			offset: i_offset=0,
@@ -37,7 +37,7 @@ class chapter_dfc {
 		// close indices
 		let at_block_indices = bkit.uint_array(nl_contents).from(a_block_indices);
 
-		let nb_header_estimate = @{H_BAT_ENCODINGS.PE_CHAPTER_CONCISE_TERM_DFC.length} + 1 + (4 * 4);
+		let nb_header_estimate = @{H_BAT_ENCODINGS.PE_CHAPTER_C1_DIFCC.length} + 1 + (4 * 4);
 
 		// payload section
 		let kbe_payload = new bkit.buffer_encoder({size:64});
@@ -64,7 +64,7 @@ class chapter_dfc {
 		let kbe_container = new bkit.buffer_encoder({size:nb_header_estimate+at_payload.length});
 
 		// chapter encoding
-		kbe_container.ntu8_string('@{H_BAT_ENCODINGS.PE_CHAPTER_CONCISE_TERM_DFC}');
+		kbe_container.ntu8_string('@{H_BAT_ENCODINGS.PE_CHAPTER_C1_DIFCC}');
 
 		// payload byte count
 		kbe_container.vuint(at_payload.byteLength);
@@ -496,4 +496,4 @@ class chapter_dfc {
 	}
 }
 
-module.exports = chapter_dfc;
+module.exports = chapter_difcc;

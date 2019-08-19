@@ -9,8 +9,8 @@ const {
 	PE_DATASET,
 	PE_DICTIONARY_PP12OC,
 } = {
-	PE_DATASET: '@{H_BAT_ENCODINGS.PE_DATASET}',
-	PE_DATASET_PP12OC: '@{H_BAT_ENCODINGS.PE_DATASET_PP12OC}',
+	PE_DATASET: '@{H_BAT_ENCODINGS.PE_DATASET_C1_DQ}',
+	PE_DICTIONARY_PP12OC: '@{H_BAT_ENCODINGS.PE_DICTIONARY_C1_PP12OC}',
 };
 
 const bat_struct = bat.struct;
@@ -112,7 +112,7 @@ function auto(h_create) {
 	return new H_ASYNC_IMPLEMENTATIONS[p_encoding](h_create);
 }
 
-async function expand(kav_head, kbd_head, fe_expand) {
+async function self$expand(k_this, kav_head, kbd_head, fe_expand) {
 	// current buffer length
 	let nb_decoder = kbd_head.contents.length;
 
@@ -128,7 +128,7 @@ async function expand(kav_head, kbd_head, fe_expand) {
 	let at_head = await kav_head.fetch(0, nb_head);
 
 	// update buffer decoder
-	this.kbd = new bkit.buffer_decoder(at_head);
+	k_this.kbd = new bkit.buffer_decoder(at_head);
 }
 
 // 	// initialize
@@ -168,7 +168,7 @@ class async_dataset {
 			// classify header
 // kaz.is('rdfs:subClassOf', 'bat:Header')
 			if(kaz instanceof bat_struct.header) {
-
+				debugger;
 			}
 			// classify dictionary
 			else if(kaz instanceof bat_struct.dictionary) {
@@ -201,7 +201,7 @@ Object.assign(async_dataset.prototype, {
 
 
 class async_dictionary extends bat_struct.dictionary {
-	async init() {}
+	// async init() {}
 }
 
 
@@ -293,6 +293,8 @@ class async_pointers extends bat_struct.pointers {
 		return a_insts;
 	}
 }
+
+class async_prefixes {}
 
 // pp12oc - pointers, prefixes, and 12 optional chapters
 class async_dictionary_pp12oc extends async_dictionary {
@@ -405,7 +407,7 @@ class async_prefix {
 // chapter with indices and contents
 class async_chapter_ic {
 	constructor(h_create) {
-		super();
+		// super();
 
 		Object.assign(this, {
 			kav: h_create.kav,
@@ -442,7 +444,7 @@ class async_chapter_ic {
 
 		return {
 			label: s_label,
-			range: h_range,
+			// range: h_range,
 			chapter: ka_contents,
 		};
 	}
@@ -460,7 +462,7 @@ class async_chapter_indices_direct extends bat_struct.chapter_indices {
 
 	async init(kav_data) {
 		// create typed array
-		this.kat = frag.typed_array(kav_data.fresh(), this.type);
+		this.kat = await frag.typed_array(kav_data.fresh(), this.type);
 
 		// discard head view and buffer decoder
 		delete this.kav;
@@ -470,11 +472,11 @@ class async_chapter_indices_direct extends bat_struct.chapter_indices {
 	async select(i_block) {
 		// first block
 		if(!i_block) {
-			return [0, this.kat.at(0)];
+			return [0, await this.kat.at(0)];
 		}
 		// any other block
 		else {
-			return this.kat.slice(i_block-1, i_block+1);
+			return await this.kat.slice(i_block-1, i_block+1);
 		}
 	}
 }
@@ -512,7 +514,7 @@ class async_chapter_contents_pfc extends bat_struct.chapter {
 		// ran out of bytes
 		catch(e_decode) {
 			// expand head
-			this.kbd = expand(kav_head, kbd_head, () => {
+			this.kbd = self$expand(this, kav_head, kbd_head, () => {
 				throw new Error(`ran out of bytes while trying to decode head of ${s_label} chapter`);
 			});
 
@@ -625,11 +627,11 @@ class async_triples extends bat_struct.triples {}
 
 
 const H_ASYNC_IMPLEMENTATIONS = {
-	[PE_DATASET]: async_dataset,
-	[PE_DICTIONARY_PP12OC]: async_dictionary_pp12oc,
-	[PE_POINTERS]: async_pointers_uint8,
-	[PE_CHAPTER_IC]: async_chapter_ic,
-	[PE_CHAPTER_INDICES_DIRECT]: async_chapter_indices_direct,
-	[PE_CHAPTER_CONTENTS_PFC]: async_chapter_contents_pfc,
+// 	[PE_DATASET]: async_dataset,
+// 	[PE_DICTIONARY_PP12OC]: async_dictionary_pp12oc,
+// 	[PE_POINTERS]: async_pointers_uint8,
+// 	[PE_CHAPTER_IC]: async_chapter_ic,
+// 	[PE_CHAPTER_INDICES_DIRECT]: async_chapter_indices_direct,
+// 	[PE_CHAPTER_CONTENTS_PFC]: async_chapter_contents_pfc,
 };
 

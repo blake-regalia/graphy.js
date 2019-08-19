@@ -7,7 +7,7 @@ const worker = require('worker').scopify(require, () => {
 	require('./workers/encoder.js');
 }, 'undefined' !== typeof arguments && arguments);  // eslint-disable-line no-undef
 
-const encoder_chapter = require('./encoders/chapter-dfc.js');
+const encoder_chapter = require('./encoders/chapter-difcc.js');
 const encoder_bitmap = require('./encoders/bitmap-ab.js');
 const encoder_bitsequence = require('./encoders/bitsequence-plain.js');
 
@@ -306,12 +306,12 @@ class serializer {
 			literals_datatyped_prefixed: [],
 
 			workers: worker.group('./workers/encoder.js', null, {
-				inspect: process.execArgv.includes('--inspect-brk')
-					? {
-						range: [9230, 9242],
-						brk: true,
-					}
-					: false,
+				// inspect: process.execArgv.includes('--inspect-brk')
+				// 	? {
+				// 		range: [9230, 9242],
+				// 		brk: true,
+				// 	}
+				// 	: false,
 			}),
 
 			// front_coder_config: H_CONFIG_DEFAULT_FRONT_CODER,
@@ -791,7 +791,7 @@ class serializer {
 		let kbe_header = new bkit.buffer_encoder({size:64});
 
 		// dictionary encoding
-		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DICTIONARY_CONCISE_TERM_PP12OC}');
+		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DICTIONARY_C1_PP12OC}');
 
 		// payload byte length
 		kbe_header.vuint(cb_payload);
@@ -1389,7 +1389,7 @@ class serializer {
 		let kbe_header = new bkit.buffer_encoder({size:512});
 
 		// dataset encoding
-		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_CONCISE_TERM_DQ}');
+		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_C1_DQ}');
 
 		// payload byte length
 		kbe_header.vuint(cb_payload);

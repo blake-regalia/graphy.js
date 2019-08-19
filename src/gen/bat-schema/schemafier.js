@@ -1,22 +1,22 @@
 
-const explode_list = (a_list, sct_list='bat:List', sct_first='bat:first', sct_rest='bat:rest', sct_nil='bat:nil') => ({
-	a: sct_list,
-	[sct_first]: a_list.shift(),
-	[sct_rest]: a_list.length
-		? explode_list(a_list, sct_list, sct_first, sct_rest, sct_nil)
-		: sct_nil,
+const explode_list = (a_list, sc1_list='bat:List', sc1_first='bat:first', sc1_rest='bat:rest', sc1_nil='bat:nil') => ({
+	a: sc1_list,
+	[sc1_first]: a_list.shift(),
+	[sc1_rest]: a_list.length
+		? explode_list(a_list, sc1_list, sc1_first, sc1_rest, sc1_nil)
+		: sc1_nil,
 });
 
 
 class bat_datatype {
-	constructor(k_bundle, sct_datatype, z_datatype) {
+	constructor(k_bundle, sc1_datatype, z_datatype) {
 		let g_rdf = {
 			a: 'bat:Datatype',
 		};
 
 		// primitive datatype
 		if('string' === typeof z_datatype) {
-			g_rdf['rdfs:subClassOf'] = sct_datatype;
+			g_rdf['rdfs:subClassOf'] = sc1_datatype;
 		}
 		// union
 		else if(Array.isArray(z_datatype)) {
@@ -35,7 +35,7 @@ class bat_datatype {
 
 		Object.assign(this, {
 			bundle: k_bundle,
-			iri: sct_datatype,
+			iri: sc1_datatype,
 			rdf: g_rdf,
 		});
 	}
@@ -52,12 +52,12 @@ class bat_datatype {
 }
 
 class bat_encoding {
-	constructor(k_bundle, sct_encoding, g_descriptor) {
+	constructor(k_bundle, sc1_encoding, g_descriptor) {
 		let k_datatype = k_bundle.fetch(g_descriptor.datatype);
 
 		Object.assign(this, {
 			bundle: k_bundle,
-			iri: sct_encoding,
+			iri: sc1_encoding,
 			datatype: k_datatype,
 			call: g_descriptor.call,
 		});
@@ -74,11 +74,11 @@ class bat_encoding {
 }
 
 class bat_member {
-	constructor(k_bundle, s_member, sct_member) {
+	constructor(k_bundle, s_member, sc1_member) {
 		Object.assign(this, {
 			bundle: k_bundle,
 			name: s_member,
-			object: sct_member,
+			object: sc1_member,
 		});
 	}
 
@@ -102,10 +102,10 @@ class bat_member {
 }
 
 class bat_overridable {
-	constructor(k_bundle, sct_interface, s_name, g_function) {
+	constructor(k_bundle, sc1_interface, s_name, g_function) {
 		Object.assign(this, {
 			bundle: k_bundle,
-			interface: sct_interface,
+			interface: sc1_interface,
 			name: s_name,
 			...g_function,
 		});
@@ -159,15 +159,15 @@ class bat_method extends bat_overridable {
 }
 
 class bat_interface {
-	constructor(k_bundle, sct_interface, g_interface) {
+	constructor(k_bundle, sc1_interface, g_interface) {
 		// super
 		let k_super = k_bundle.fetch(g_interface.extends);
 
 		// create members
 		let a_members = [];
 		if(g_interface.members) {
-			for(let [s_member, sct_member] of Object.entries(g_interface.members)) {
-				a_members.push(new bat_member(k_bundle, s_member, sct_member));
+			for(let [s_member, sc1_member] of Object.entries(g_interface.members)) {
+				a_members.push(new bat_member(k_bundle, s_member, sc1_member));
 			}
 		}
 
@@ -175,7 +175,7 @@ class bat_interface {
 		let a_methods = [];
 		if(g_interface.methods) {
 			for(let [s_method, g_method] of Object.entries(g_interface.methods)) {
-				a_methods.push(new bat_method(k_bundle, sct_interface, s_method, g_method));
+				a_methods.push(new bat_method(k_bundle, sc1_interface, s_method, g_method));
 			}
 		}
 
@@ -183,14 +183,14 @@ class bat_interface {
 		let a_generators = [];
 		if(g_interface.generators) {
 			for(let [s_generator, g_generator] of Object.entries(g_interface.generators)) {
-				a_generators.push(new bat_generator(k_bundle, sct_interface, s_generator, g_generator));
+				a_generators.push(new bat_generator(k_bundle, sc1_interface, s_generator, g_generator));
 			}
 		}
 
 		// save fields
 		Object.assign(this, {
 			bundle: k_bundle,
-			iri: sct_interface,
+			iri: sc1_interface,
 			members: a_members.length? a_members: null,
 			methods: a_methods.length? a_methods: null,
 			generators: a_generators.length? a_methods: null,
@@ -273,11 +273,11 @@ class bat_interface {
 }
 
 class bat_field {
-	constructor(k_bundle, s_field, sct_field) {
+	constructor(k_bundle, s_field, sc1_field) {
 		Object.assign(this, {
 			bundle: k_bundle,
 			name: s_field,
-			object: sct_field,
+			object: sc1_field,
 		});
 	}
 
@@ -307,7 +307,7 @@ class bat_class {
 }
 
 class bat_protocol {
-	constructor(k_bundle, sct_protocol, g_protocol) {
+	constructor(k_bundle, sc1_protocol, g_protocol) {
 		let a_fields = [];
 
 		for(let [s_field, g_field] of Object.entries(g_protocol.fields)) {
@@ -322,7 +322,7 @@ class bat_protocol {
 
 		Object.assign(this, {
 			bundle: k_bundle,
-			iri: sct_protocol,
+			iri: sc1_protocol,
 			fields: a_fields.length? a_fields: [],
 		});
 	}
@@ -375,14 +375,14 @@ class bat_format {
 
 		// all things
 		Object.assign(this, {
-			datatypes: this.sct_instance_map(bat_datatype, g_bundle.datatypes),
-			encodings: this.sct_instance_map(bat_encoding, g_bundle.encodings),
-			interfaces: this.sct_instance_map(bat_interface, g_bundle.interfaces),
-			protocols: this.sct_instance_map(bat_protocol, g_bundle.protocols),
+			datatypes: this.sc1_instance_map(bat_datatype, g_bundle.datatypes),
+			encodings: this.sc1_instance_map(bat_encoding, g_bundle.encodings),
+			interfaces: this.sc1_instance_map(bat_interface, g_bundle.interfaces),
+			protocols: this.sc1_instance_map(bat_protocol, g_bundle.protocols),
 		});
 	}
 
-	sct_instance_map(dc_thing, a_things) {
+	sc1_instance_map(dc_thing, a_things) {
 		let {
 			refs: h_refs,
 			prefixes: h_prefixes,
@@ -391,12 +391,12 @@ class bat_format {
 		const factory = require('@graphy/core.data.factory');  // eslint-disable-line global-require
 
 		let a_instances = [];
-		for(let [sct_thing, w_thing] of a_things) {
+		for(let [sc1_thing, w_thing] of a_things) {
 			// create datatype instance
-			let k_instance = new dc_thing(this, sct_thing, w_thing);
+			let k_instance = new dc_thing(this, sc1_thing, w_thing);
 
 			// expand to full iri and save association to map
-			h_refs[factory.ct(sct_thing, h_prefixes)] = k_instance;
+			h_refs[factory.c1(sc1_thing, h_prefixes)] = k_instance;
 
 			// add datatype instance to list
 			a_instances.push(k_instance);
@@ -405,26 +405,29 @@ class bat_format {
 		return a_instances;
 	}
 
-	fetch(sct_ref) {
+	fetch(sc1_ref) {
 		const factory = require('@graphy/core.data.factory');  // eslint-disable-line global-require
 
-		return this.refs[factory.ct(sct_ref, this.prefixes)];
+		return this.refs[factory.c1(sc1_ref, this.prefixes)];
 	}
 
 	triplify() {
 		// writer
-		let k_writer = require('@graphy/content.ttl.write')({  // eslint-disable-line global-require
+		let ds_writer = require('@graphy/content.ttl.write')({  // eslint-disable-line global-require
 			prefixes: this.prefixes,
 		});
 
 		// output
-		k_writer.pipe(process.stdout);
+		ds_writer.pipe(process.stdout);
 
 		// self
-		k_writer.add({
-			['>'+this.iri]: {
-				a: 'bat:Format',
-				...this.rdf,
+		ds_writer.write({
+			type: 'c3',
+			value: {
+				['>'+this.iri]: {
+					a: 'bat:Format',
+					...this.rdf,
+				},
 			},
 		});
 
@@ -434,7 +437,7 @@ class bat_format {
 		}
 
 		// close writer
-		k_writer.end();
+		ds_writer.end();
 	}
 
 	* sourcify() {

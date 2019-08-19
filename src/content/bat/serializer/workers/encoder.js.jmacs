@@ -6,7 +6,7 @@ const bkit = require('bkit');
 const worker = require('worker');
 // const performance_now = require('performance-now');
 
-const encoder_chapter = require('../encoders/chapter-dfc.js');
+const encoder_chapter = require('../encoders/chapter-difcc.js');
 
 const F_SORT_BUFFER = (ab_a, ab_b) => {
 	let nl_a = ab_a.length;
@@ -148,6 +148,8 @@ const classify_nodes_list = (a_nodes) => {
 };
 
 
+let c_merge_task = 0;
+
 
 worker.dedicated({
 
@@ -242,7 +244,8 @@ worker.dedicated({
 	},
 
 	merge_word_buffers(h_a, h_b, i_uli_max, b_debug=false) {
-		console.time('merge word buffers');
+		let si_task = `merge word buffers ${++c_merge_task}`;
+		console.time(si_task);
 
 		let {
 			contents: at_a,
@@ -338,7 +341,7 @@ worker.dedicated({
 		// sanity check
 		console.assert(i_write_c === nl_c, 'bug alert: sorted null-terminated word buffers were not thoroughly merged');
 
-		console.timeEnd('merge word buffers');
+		console.timeEnd(si_task);
 
 		// if(b_debug) debugger;
 		return {
