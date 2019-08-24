@@ -5,17 +5,29 @@ const stream = require('@{channel('core.iso.stream')}');
 const primer = require('@{channel('content.bat.primer')}');
 const serializer = require('@{channel('content.bat.serializer')}');
 
-class creator extends stream.Writable {
+function self$ready(k_self, at_serialized=null) {
+	if(k_self._ready) {
+		k_self.push(at_serialized);
+		k_self.push(null);
+	}
+	else {
+		k_self._serialized = at_serialized;
+	}
+}
+
+class creator extends stream.Duplex {
 	constructor(g_config={}) {
 		super({
-			objectMode: true,
+			writableObjectMode: true,
+			readableObjectMode: false,
 		});
 
 		let k_primer = new primer();
 
 		Object.assign(this, {
 			primer: k_primer,
-			ready: g_config.ready,
+			_serialized: null,
+			_ready: true,
 		});
 
 		this.on('finish', async() => {
@@ -23,7 +35,7 @@ class creator extends stream.Writable {
 
 			let at_serialized = await k_serializer.buffer();
 
-			this.ready(at_serialized);
+			self$ready(this, at_serialized);
 		});
 	}
 
@@ -39,6 +51,16 @@ class creator extends stream.Writable {
 		}
 
 		fk_write();
+	}
+
+	_read() {
+		this._ready = true;
+
+		if(null !== this._serialized) {
+			let at_serialized = this._serialized;
+			self$ready(this, at_serialized);
+			this._serialized = null;
+		}
 	}
 }
 

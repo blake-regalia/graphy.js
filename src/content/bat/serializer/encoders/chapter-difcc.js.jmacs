@@ -12,7 +12,7 @@ class chapter_difcc {
 		Object.assign(this, {
 			offset: i_offset,
 			block_size: 1 << n_block_size_k,
-			contents: new bkit.buffer_writer(),
+			contents: new bkit.BufferWriter(),
 			block_indices: [],
 			word_count: 0,
 			defer: null,
@@ -35,12 +35,12 @@ class chapter_difcc {
 		a_block_indices.unshift(0);
 
 		// close indices
-		let at_block_indices = bkit.uint_array(nl_contents).from(a_block_indices);
+		let at_block_indices = bkit.fitUintArray(nl_contents).from(a_block_indices);
 
 		let nb_header_estimate = @{H_BAT_ENCODINGS.PE_CHAPTER_C1_DIFCC.length} + 1 + (4 * 4);
 
 		// payload section
-		let kbe_payload = new bkit.buffer_encoder({size:64});
+		let kbe_payload = new bkit.BufferEncoder({size:64});
 
 		// chapter label
 		kbe_payload.ntu8_string(s_label);
@@ -61,7 +61,7 @@ class chapter_difcc {
 		let at_payload = kbe_payload.close();
 
 		// container
-		let kbe_container = new bkit.buffer_encoder({size:nb_header_estimate+at_payload.length});
+		let kbe_container = new bkit.BufferEncoder({size:nb_header_estimate+at_payload.length});
 
 		// chapter encoding
 		kbe_container.ntu8_string('@{H_BAT_ENCODINGS.PE_CHAPTER_C1_DIFCC}');
@@ -94,7 +94,7 @@ class chapter_difcc {
 			: 0;
 		let n_contents_word = n_words - n_deferments;
 		// if(!n_contents_word) debugger;
-		let at_block_indices = bkit.new_uint_array(nl_contents, a_block_indices.length);
+		let at_block_indices = bkit.newUintArray(nl_contents, a_block_indices.length);
 		at_block_indices.set(a_block_indices);
 		return {
 			offset: this.offset,
@@ -413,7 +413,7 @@ class chapter_difcc {
 		}
 
 		// encode to buffer
-		let kbe_contents = bkit.buffer_encoder.from_buffer(kb_contents);
+		let kbe_contents = bkit.BufferEncoder.from_buffer(kb_contents);
 
 		for(;;) {
 			// front-code remainder of block

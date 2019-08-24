@@ -212,7 +212,7 @@ worker.dedicated({
 		// console.time('concat-encode');
 		let s_super = '';
 
-		let at_ids = bkit.new_uint_array(i_uli_max, nl_words);
+		let at_ids = bkit.newUintArray(i_uli_max, nl_words);
 
 		// each word
 		for(let i_word=0; i_word<nl_words; i_word++) {
@@ -228,7 +228,7 @@ worker.dedicated({
 		}
 
 		// encode all at once
-		let at_contents = bkit.encode_utf_8(s_super);
+		let at_contents = bkit.encodeUtf8(s_super);
 		// console.timeEnd('concat-encode');
 
 		return {
@@ -245,7 +245,7 @@ worker.dedicated({
 
 	merge_word_buffers(h_a, h_b, i_uli_max, b_debug=false) {
 		let si_task = `merge word buffers ${++c_merge_task}`;
-		console.time(si_task);
+		// console.time(si_task);
 
 		let {
 			contents: at_a,
@@ -268,7 +268,7 @@ worker.dedicated({
 
 		let nl_c = nl_a + nl_b;
 		let at_c = new Uint8Array(nl_c);
-		let at_ids_c = bkit.new_uint_array(i_uli_max, at_ids_a.length+at_ids_b.length);
+		let at_ids_c = bkit.newUintArray(i_uli_max, at_ids_a.length+at_ids_b.length);
 
 		let av_src_a = new DataView(at_a.buffer, at_a.byteOffset, at_a.byteLength);
 		let av_src_b = new DataView(at_b.buffer, at_b.byteOffset, at_b.byteLength);
@@ -341,7 +341,7 @@ worker.dedicated({
 		// sanity check
 		console.assert(i_write_c === nl_c, 'bug alert: sorted null-terminated word buffers were not thoroughly merged');
 
-		console.timeEnd(si_task);
+		// console.timeEnd(si_task);
 
 		// if(b_debug) debugger;
 		return {

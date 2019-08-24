@@ -544,7 +544,7 @@ class serializer {
 		k_primer.prefix_groups = null;
 
 		// encode super string
-		let at_contents = bkit.encode_utf_8(s_super);
+		let at_contents = bkit.encodeUtf8(s_super);
 
 		// front code prefix chapter
 		let k_chapter = new encoder_chapter(H_CONFIG_DEFAULT_FRONT_CODER);
@@ -771,7 +771,7 @@ class serializer {
 		let nl_chapters = a_chapters.length;
 
 		// info section
-		let kbe_info = new bkit.buffer_encoder({size:64});
+		let kbe_info = new bkit.BufferEncoder({size:64});
 
 		// chapter count
 		kbe_info.vuint(nl_chapters);
@@ -788,7 +788,7 @@ class serializer {
 		}
 
 		// header section
-		let kbe_header = new bkit.buffer_encoder({size:64});
+		let kbe_header = new bkit.BufferEncoder({size:64});
 
 		// dictionary encoding
 		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DICTIONARY_C1_PP12OC}');
@@ -814,7 +814,7 @@ class serializer {
 			workers: k_group,
 		} = this;
 
-		this.uti_map = bkit.new_uint_array(i_uti, i_uti);
+		this.uti_map = bkit.newUintArray(i_uti, i_uti);
 
 		let h_utis = this.utis;
 
@@ -1106,8 +1106,8 @@ class serializer {
 
 		let i_term_adj_sp_o = 0;
 		let i_write_adj_sp_o = 0;
-		let at_adj_sp_o = bkit.new_uint_array(h_utis.literals_datatyped_prefixed, c_triples);
-		let kbs_sp_o = new bkit.bitsequence_writer(c_triples);
+		let at_adj_sp_o = bkit.newUintArray(h_utis.literals_datatyped_prefixed, c_triples);
+		let kbs_sp_o = new bkit.BitsequenceWriter(c_triples);
 
 		// let i_write_idx_sp_o = 0;
 		// let at_idx_sp_o = bat.new_uint_array(c_triples+c_pairs, c_pairs);
@@ -1115,8 +1115,8 @@ class serializer {
 
 		let i_term_adj_s_p = 0;
 		let i_write_adj_s_p = 0;
-		let at_adj_s_p = bkit.new_uint_array(h_utis.predicates_prefixed, c_pairs);
-		let kbs_s_p = new bkit.bitsequence_writer(c_pairs);
+		let at_adj_s_p = bkit.newUintArray(h_utis.predicates_prefixed, c_pairs);
+		let kbs_s_p = new bkit.BitsequenceWriter(c_pairs);
 
 		// let i_write_idx_s_p = 0;
 		// let at_idx_s_p = bat.new_uint_array(c_pairs, c_subjects);
@@ -1220,7 +1220,7 @@ class serializer {
 			let nb_payload = atu8_bitmap_roots.byteLength + atu8_bitmap_leafs.byteLength;
 
 			// create payload
-			let kbw_payload = new bkit.buffer_writer({size:nb_payload});
+			let kbw_payload = new bkit.BufferEncoder({size:nb_payload});
 
 			// write to payload: roots
 			kbw_payload.append(atu8_bitmap_roots);
@@ -1233,7 +1233,7 @@ class serializer {
 
 
 			// create header
-			let kbe_header = new bkit.buffer_encoder({size:512});
+			let kbe_header = new bkit.BufferEncoder({size:512});
 
 			// write to header: encoding scheme
 			kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_TRIPLES_RL}');
@@ -1269,8 +1269,8 @@ class serializer {
 
 			let i_term_adj_o_p = 0;
 			let i_write_adj_o_p = 0;
-			let at_adj_o_p = bkit.new_uint_array(i_write_adj_sp_o, i_write_adj_sp_o);
-			let kbs_o_p = new bkit.bitsequence_writer(i_write_adj_sp_o);
+			let at_adj_o_p = bkit.newUintArray(i_write_adj_sp_o, i_write_adj_sp_o);
+			let kbs_o_p = new bkit.BitsequenceWriter(i_write_adj_sp_o);
 
 			// in order
 			for(let i_to=0, nl_op_keys=a_op_keys.length; i_to<nl_op_keys; i_to++) {
@@ -1360,7 +1360,7 @@ class serializer {
 /* <Quads> */
 		{
 			// create section header
-			let kbe_header = new bkit.buffer_encoder({size:512});
+			let kbe_header = new bkit.BufferEncoder({size:512});
 
 			// encoding scheme
 			kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_QUADS_T3I}');
@@ -1386,7 +1386,7 @@ class serializer {
 		}
 
 		// encode header
-		let kbe_header = new bkit.buffer_encoder({size:512});
+		let kbe_header = new bkit.BufferEncoder({size:512});
 
 		// dataset encoding
 		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_DATASET_C1_DQ}');

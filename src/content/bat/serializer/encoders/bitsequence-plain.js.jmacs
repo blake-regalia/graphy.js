@@ -17,7 +17,7 @@ module.exports = class bitsequence_plain {
 		let nb_payload = atu8_bs.byteLength;
 
 		// create payload
-		let kbe_payload = new bkit.buffer_encoder({size:nb_payload});
+		let kbe_payload = new bkit.BufferEncoder({size:nb_payload});
 
 		// write to payload: bitsequence
 		kbe_payload.buffer.append(atu8_bs);
@@ -27,7 +27,7 @@ module.exports = class bitsequence_plain {
 
 
 		// create section header
-		let kbe_header = new bkit.buffer_encoder({size:512});
+		let kbe_header = new bkit.BufferEncoder({size:512});
 
 		// encoding scheme
 		kbe_header.ntu8_string('@{H_BAT_ENCODINGS.PE_BITSEQUENCE_PLAIN}');
@@ -43,7 +43,7 @@ module.exports = class bitsequence_plain {
 		let nb_bundle = at_header.byteLength + at_payload.byteLength;
 
 		// create bundle
-		let kbe_bundle = new bkit.buffer_writer({size:nb_bundle});
+		let kbe_bundle = new bkit.BufferWriter({size:nb_bundle});
 
 		// write to bundle: header
 		kbe_bundle.append(at_header);

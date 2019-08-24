@@ -264,7 +264,7 @@ class protocol extends implementation {
 		} = this;
 
 		// create buffer decoder for contents
-		let kbd = new bkit.buffer_decoder(at_payload);
+		let kbd = new bkit.BufferDecoder(at_payload);
 
 		// create decoder for datatypes
 		let kd_datatypes = Object.create(kbd);
@@ -332,7 +332,7 @@ class datatype extends implementation {
 
 	decode(k_self, ...a_args) {
 		// create buffer decoder for contents
-		let kbd = new bkit.buffer_decoder(k_self.contents);
+		let kbd = new bkit.BufferDecoder(k_self.contents);
 
 		// create decoder for datatypes
 		let kd_datatypes = Object.create(kbd);
@@ -361,7 +361,7 @@ module.exports = function(at_data, hvt_schema=HVT_SCHEMA_DEFAULT) {
 	let k_schema = new schema(hvt_schema);
 
 	// create buffer decoder to read serialized data
-	let kbd = new bkit.buffer_decoder(at_data);
+	let kbd = new bkit.BufferDecoder(at_data);
 
 	// fetch the root encoding
 	let p_root = kbd.ntu8_string();

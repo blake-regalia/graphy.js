@@ -51,7 +51,7 @@ class decoders {
 		}
 
 		// create buffer decoder on payload
-		let kbd_child = new bkit.buffer_decoder(at_payload);
+		let kbd_child = new bkit.BufferDecoder(at_payload);
 
 		// instantiate decoder
 		return [new h_decoders[pe_payload](kbd_child, this), pe_payload];
