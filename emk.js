@@ -335,54 +335,6 @@ const carry_sub = (pd_src, h_recipe={}, pdr_package=null) => {
 };
 
 
-// convert a src directory to a set of packages
-const src_to_main = (pd_src, s_prefix, h_output={}) => {
-	// package extension
-	let sx_package = '.js.jmacs';
-
-	// bat content root directory
-	let a_files = fs.readdirSync(pd_src);
-
-	// each file
-	for(let s_file of a_files) {
-		// package file
-		if(s_file.endsWith(sx_package)) {
-			let s_verb = s_file.slice(0, -sx_package.length);
-
-			// package id
-			let si_package = `${s_prefix}.${s_verb}`;
-
-			// prep recipe holder
-			let h_recipe = {};
-
-			// it has a 'carry' dir; add to recipe
-			let a_deps_carry = [];
-			if(a_files.includes(s_verb)) {
-				a_deps_carry.push(...carry_sub(`${pd_src}/${s_verb}`, h_recipe, si_package));
-			}
-
-			// make recipe
-			h_output[si_package] = {
-				...scoped_package(si_package),
-
-				...h_recipe,
-
-				'main.js': () => jmacs_lint([`${pd_src}/${s_verb}.js.jmacs`], a_deps_carry),
-			};
-		}
-	}
-
-	// return output
-	return h_output;
-};
-
-
-// bat output config
-let h_output_content_bat = src_to_main('src/content/bat', 'content.bat');
-
-// memory store output config
-let h_output_store_mem = src_to_main('src/store/memory', 'store.memory');
-
 
 let a_messages = fs.readdirSync('messages').sort().reverse().map(s => `messages/${s}`);
 
@@ -479,19 +431,8 @@ module.exports = async() => {
 				.filter(s => !a_content_subs.includes(s)
 					&& !s.startsWith('content.n')
 					&& !s.startsWith('content.t')
-					&& !s.startsWith('content.bat')
-					&& !s.startsWith('schema.')
 					&& !s.startsWith('store.memory.query')
 				),
-
-			// // bat schema file
-			// bat_schema_file: Object.keys(h_schema_bat).map(s => `schema.bat.${s}`),
-
-			bat_protocol: fs.readdirSync('src/gen/bat-schema/decoders')
-				.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
-
-			bat_datatype: fs.readdirSync('src/gen/bat-schema/datatypes')
-				.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
 
 			// docs snippet
 			snippet: fs.readdirSync('src/docs/snippets')
@@ -718,54 +659,6 @@ module.exports = async() => {
 
 				graphy: {
 					package: {
-						// content.bat.*
-						...h_output_content_bat,
-
-						// store.memory.*
-						...h_output_store_mem,
-
-						// bat schema
-						'schema.bat.default': {
-							...scoped_package('schema.bat.default'),
-
-							'main.js': () => jmacs_lint([
-								'src/gen/bat-schema/default.js.jmacs',
-								'src/gen/bat-schema/datatypes',  // directory
-								'src/gen/bat-schema/decoders',  // directory
-							]),
-
-							decoders: {
-								':bat_protocol': h => jmacs_lint([
-									`src/gen/bat-schema/decoders/${h.bat_protocol}.jmacs`,
-									'src/gen/bat-schema/schema.js.jmacs',
-								]),
-							},
-
-							datatypes: {
-								':bat_datatype': h => jmacs_lint([
-									`src/gen/bat-schema/datatypes/${h.bat_datatype}.jmacs`,
-									'src/gen/bat-schema/schema.js.jmacs',
-								]),
-							},
-
-							// ':bat_schema_file': h => ({
-							// 	deps: [
-							// 		'src/gen/bat-schema/output.js.jmacs',
-							// 		'link_to.core.data.factory',
-							// 		'link_to.content.ttl.write',
-							// 	],
-
-							// 	run: /* syntax: bash */ `
-							// 		npx jmacs $1 -g '${
-							// 			/* eslint-disable indent */
-							// 			JSON.stringify({
-							// 				iri: h_schema_bat[h.bat_schema_file],
-							// 			})
-							// 		/* eslint-enable */}' > $@
-							// 	`,
-							// }),
-						},
-
 						// content subs
 						':content_sub': [si_package => ({
 							[si_package]: (g_package => ({
