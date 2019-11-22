@@ -52,17 +52,17 @@ module.exports = {
 		},
 	},
 
-	store: {
-		memory: {
-			query: () => ({
-				description: 'Query an in-memory quadstore using GTAR, the Graph Traversal API for RDF',
-			}),
-			create: () => ({
-				links: [
-					'store.memory.query',
-				],
-				description: 'Create a quadstore in memory from a graphy event stream',
-			}),
-		},
-	},
+	// store: {
+	// 	memory: {
+	// 		query: () => ({
+	// 			description: 'Query an in-memory quadstore using GTAR, the Graph Traversal API for RDF',
+	// 		}),
+	// 		create: () => ({
+	// 			links: [
+	// 				'store.memory.query',
+	// 			],
+	// 			description: 'Create a quadstore in memory from a graphy event stream',
+	// 		}),
+	// 	},
+	// },
 };
