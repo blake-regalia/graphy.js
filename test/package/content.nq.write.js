@@ -224,34 +224,34 @@ writer_suite({
 		'collections': {
 			'empty collection': () => ({
 				write: {
-					'>a': {
-						'>b': [[]],
-						'>c': [[[]]],
-						'>d': [[[], [[]]]],
+					'>z://y/a': {
+						'>z://y/b': [[]],
+						'>z://y/c': [[[]]],
+						'>z://y/d': [[[], [[]]]],
 					},
 				},
 				validate: `
-					<a> <b> () .
-					<a> <c> (()) .
-					<a> <d> (() (())) .
+					<z://y/a> <z://y/b> () .
+					<z://y/a> <z://y/c> (()) .
+					<z://y/a> <z://y/d> (() (())) .
 				`,
 			}),
 
 			'long items': () => ({
 				write: {
-					'>a': {
-						'>b': [a_items.slice(0).map(s => `"${s}`)],
+					'>z://y/a': {
+						'>z://y/b': [a_items.slice(0).map(s => `"${s}`)],
 					},
 				},
 				validate: `
-					<a> <b> (${a_items.slice(0).map(s => `"${s}" `).join(' ')}) .
+					<z://y/a> <z://y/b> (${a_items.slice(0).map(s => `"${s}" `).join(' ')}) .
 				`,
 			}),
 
 			'recursive collections': () => ({
 				write: {
-					'>a': {
-						'>b': [[
+					'>z://y/a': {
+						'>z://y/b': [[
 							'"a', '"b', '"c', [
 								'"D', '"E', '"F', [
 									'"g', '"h', '"i',
@@ -262,7 +262,7 @@ writer_suite({
 					},
 				},
 				validate: /* syntax: turtle */ `
-					<a> <b> (
+					<z://y/a> <z://y/b> (
 						"a" "b" "c" (
 							"D" "E" "F" (
 								"g" "h" "i"
@@ -274,22 +274,22 @@ writer_suite({
 
 			'nested anonymous blank node lists inside collections': () => ({
 				write: {
-					'>a': {
-						'>b': [[
+					'>z://y/a': {
+						'>z://y/b': [[
 							{
-								'>c': '>d',
-								'>e': ['>f', '>g'],
-								'>h': [['>i', '>j'], '>k'],
+								'>z://y/c': '>z://y/d',
+								'>z://y/e': ['>z://y/f', '>z://y/g'],
+								'>z://y/h': [['>z://y/i', '>z://y/j'], '>z://y/k'],
 							},
 						]],
 					},
 				},
 				validate: /* syntax: turtle */ `
-					<a> <b> (
+					<z://y/a> <z://y/b> (
 						[
-							<c> <d> ;
-							<e> <f>, <g> ;
-							<h> (<i> <j>), <k> ;
+							<z://y/c> <z://y/d> ;
+							<z://y/e> <z://y/f>, <z://y/g> ;
+							<z://y/h> (<z://y/i> <z://y/j>), <z://y/k> ;
 						]
 					) .
 				`,
@@ -297,8 +297,8 @@ writer_suite({
 
 			'custom collections': () => ({
 				write: {
-					'>a': {
-						'>b': [[
+					'>z://y/a': {
+						'>z://y/b': [[
 							'"a', '"b', '"c', [
 								'"D', '"E', '"F', [
 									'"g', '"h', '"i',
@@ -310,43 +310,43 @@ writer_suite({
 				},
 				config: {
 					collections: {
-						first: '>first',
-						rest: '>rest',
-						nil: '>nil',
+						first: '>z://y/first',
+						rest: '>z://y/rest',
+						nil: '>z://y/nil',
 					},
 				},
 				validate: /* syntax: turtle */ `
-					<a> <b> [
-						<first> "a" ;
-						<rest> [
-							<first> "b" ;
-							<rest> [
-								<first> "c" ;
-								<rest> [
-									<first> [
-										<first> "D" ;
-										<rest> [
-											<first> "E" ;
-											<rest> [
-												<first> "F" ;
-												<rest> [
-													<first> [
-														<first> "g" ;
-														<rest> [
-															<first> "h" ;
-															<rest> [
-																<first> "i" ;
-																<rest> <nil> ;
+					<z://y/a> <z://y/b> [
+						<z://y/first> "a" ;
+						<z://y/rest> [
+							<z://y/first> "b" ;
+							<z://y/rest> [
+								<z://y/first> "c" ;
+								<z://y/rest> [
+									<z://y/first> [
+										<z://y/first> "D" ;
+										<z://y/rest> [
+											<z://y/first> "E" ;
+											<z://y/rest> [
+												<z://y/first> "F" ;
+												<z://y/rest> [
+													<z://y/first> [
+														<z://y/first> "g" ;
+														<z://y/rest> [
+															<z://y/first> "h" ;
+															<z://y/rest> [
+																<z://y/first> "i" ;
+																<z://y/rest> <z://y/nil> ;
 															] ;
 														] ;
 													] ;
-													<rest> [
-														<first> "G" ;
-														<rest> [
-															<first> "H" ;
-															<rest> [
-																<first> "I" ;
-																<rest> <nil>
+													<z://y/rest> [
+														<z://y/first> "G" ;
+														<z://y/rest> [
+															<z://y/first> "H" ;
+															<z://y/rest> [
+																<z://y/first> "I" ;
+																<z://y/rest> <z://y/nil>
 															] ;
 														] ;
 													] ;
@@ -354,7 +354,7 @@ writer_suite({
 											] ;
 										] ;
 									] ;
-									<rest> <nil> ;
+									<z://y/rest> <z://y/nil> ;
 								] ;
 							] ;
 						] ;
@@ -364,32 +364,32 @@ writer_suite({
 
 			'long custom collections': () => ({
 				write: {
-					'>a': {
-						'>b': [a_items.slice(0).map(s => '"'+s)],
+					'>z://y/a': {
+						'>z://y/b': [a_items.slice(0).map(s => '"'+s)],
 					},
 				},
 				config: {
 					collections: {
-						first: '>first',
-						rest: '>rest',
-						nil: '>nil',
+						first: '>z://y/first',
+						rest: '>z://y/rest',
+						nil: '>z://y/nil',
 					},
 				},
 				validate: /* syntax: turtle */ `
-					<a> <b> ${util.serialize_collection_turtle(a_items.slice(0).map(s => `"${s}"`), '<first>', '<rest>', '<nil>')} .
+					<z://y/a> <z://y/b> ${util.serialize_collection_turtle(a_items.slice(0).map(s => `"${s}"`), '<z://y/first>', '<z://y/rest>', '<z://y/nil>')} .
 				`,
 			}),
 
 			'deep nesting': () => ({
 				write: {
-					'>a': {
-						'>b': [
-							['>c', ['>d', ['>e']]],
+					'>z://y/a': {
+						'>z://y/b': [
+							['>z://y/c', ['>z://y/d', ['>z://y/e']]],
 						],
 					},
 				},
 				validate: /* syntax: turtle */ `
-					<a> <b> (<c> (<d> (<e>))) .
+					<z://y/a> <z://y/b> (<z://y/c> (<z://y/d> (<z://y/e>))) .
 				`,
 			}),
 		},
@@ -397,13 +397,13 @@ writer_suite({
 		'corner cases': {
 			'empty lists': () => ({
 				write: {
-					'>a': {
-						'>b': [],
-						'>c': '>d',
+					'>z://y/a': {
+						'>z://y/b': [],
+						'>z://y/c': '>z://y/d',
 					},
 				},
 				validate: /* syntax: turtle */ `
-					<a> <c> <d> .
+					<z://y/a> <z://y/c> <z://y/d> .
 				`,
 			}),
 		},
@@ -427,15 +427,15 @@ writer_suite({
 				{
 					type: 'c3',
 					value: {
-						'>a': {
-							'>b': '>c',
+						'>z://y/a': {
+							'>z://y/b': '>z://y/c',
 						},
 					},
 				},
 			],
 			events: [
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'c', '*']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/c', '*']]);
 				}],
 			],
 		}),
@@ -445,14 +445,14 @@ writer_suite({
 				{
 					type: 'c4',
 					value: {
-						'>g': {
-							'>a': {
-								'>b': '>c',
+						'>z://y/g': {
+							'>z://y/a': {
+								'>z://y/b': '>z://y/c',
 							},
 						},
 						'*': {
-							'>a': {
-								'>b': '>d',
+							'>z://y/a': {
+								'>z://y/b': '>z://y/d',
 							},
 						},
 					},
@@ -460,10 +460,10 @@ writer_suite({
 			],
 			events: [
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'c', 'g']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/c', 'z://y/g']]);
 				}],
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'd', '*']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/d', '*']]);
 				}],
 			],
 		}),
@@ -503,8 +503,8 @@ writer_suite({
 						{
 							type: 'c3',
 							value: {
-								'>a': {
-									'>b': '>c',
+								'>z://y/a': {
+									'>z://y/b': '>z://y/c',
 								},
 							},
 						},
@@ -513,7 +513,7 @@ writer_suite({
 			],
 			events: [
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'c', '*']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/c', '*']]);
 				}],
 			],
 		}),
@@ -530,22 +530,22 @@ writer_suite({
 						{
 							type: 'c3',
 							value: {
-								'>a': {
-									'>b': '>c',
+								'>z://y/a': {
+									'>z://y/b': '>z://y/c',
 								},
 							},
 						},
 						{
 							type: 'c4',
 							value: {
-								'>g': {
-									'>a': {
-										'>b': '>cg',
+								'>z://y/g': {
+									'>z://y/a': {
+										'>z://y/b': '>z://y/cg',
 									},
 								},
 								'*': {
-									'>a': {
-										'>b': '>d',
+									'>z://y/a': {
+										'>z://y/b': '>z://y/d',
 									},
 								},
 							},
@@ -555,13 +555,13 @@ writer_suite({
 			],
 			events: [
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'c', '*']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/c', '*']]);
 				}],
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'cg', 'g']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/cg', 'z://y/g']]);
 				}],
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'd', '*']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/d', '*']]);
 				}],
 			],
 		}),
@@ -583,8 +583,8 @@ writer_suite({
 				{
 					type: 'c3',
 					value: {
-						'>a': {
-							'>b': '>c',
+						'>z://y/a': {
+							'>z://y/b': '>z://y/c',
 						},
 					},
 				},
@@ -595,14 +595,14 @@ writer_suite({
 				{
 					type: 'c4',
 					value: {
-						'>g': {
-							'>a': {
-								'>b': '>cg',
+						'>z://y/g': {
+							'>z://y/a': {
+								'>z://y/b': '>z://y/cg',
 							},
 						},
 						'*': {
-							'>a': {
-								'>b': ['>d'],
+							'>z://y/a': {
+								'>z://y/b': ['>z://y/d'],
 								'>empty': [],
 							},
 						},
@@ -615,13 +615,13 @@ writer_suite({
 			],
 			events: [
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'c', '*']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/c', '*']]);
 				}],
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'cg', 'g']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/cg', 'z://y/g']]);
 				}],
 				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['a', 'b', 'd', '*']]);
+					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/d', '*']]);
 				}],
 			],
 		}),
