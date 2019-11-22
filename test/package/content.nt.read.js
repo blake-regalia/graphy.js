@@ -158,9 +158,9 @@ reader_suite({
 	reader.interfaces((f_interface) => {
 		let k_tree_expect = dataset_tree();
 		k_tree_expect.add(factory.quad(...[
-			factory.namedNode('a'),
-			factory.namedNode('b'),
-			factory.namedNode('c'),
+			factory.namedNode('z://y/a'),
+			factory.namedNode('z://y/b'),
+			factory.namedNode('z://y/c'),
 		]));
 
 		f_interface({
