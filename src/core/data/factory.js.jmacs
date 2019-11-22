@@ -256,12 +256,17 @@ class Literal extends GenericTerm {
 				if('@' === z_datatype_or_lang[0]) z_datatype_or_lang = z_datatype_or_lang.slice(1);
 
 				// save fields
-				this.language = z_datatype_or_lang.toLowerCase();
 				this.datatype = KT_RDF_LANG_STRING;
+				this.language = z_datatype_or_lang.toLowerCase();
 			}
 			else {
 				this.datatype = z_datatype_or_lang;
+				this.isSimple = z_datatype_or_lang.equals(KT_XSD_STRING);
 			}
+		}
+		// simple literal
+		else {
+			this.isSimple = true;
 		}
 	}
 
@@ -275,7 +280,7 @@ class Literal extends GenericTerm {
 		return JSON.stringify(this.value)
 			+ (this.language
 				? '@'+this.language
-				: (!this.datatype.equals(KT_XSD_STRING)
+				: (!this.isSimple
 					? '^^'+this.datatype.verbose()
 					: ''));
 	}
@@ -301,7 +306,7 @@ class Literal extends GenericTerm {
 		return JSON.stringify(this.value)
 			+ (this.language
 				? '@'+this.language
-				: (!this.datatype.equals(KT_XSD_STRING)
+				: (!this.isSimple
 					? '^^'+st_datatype
 					: ''));
 	}
@@ -319,6 +324,7 @@ class Literal extends GenericTerm {
 	language: '',
 	termType: 'Literal',
 	isLiteral: true,
+	isSimple: false,
 });
 
 
