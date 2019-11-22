@@ -177,9 +177,11 @@ class GenericTerm {
 		return this.concise();
 	}
 
-	equals(h_other) {
-		return this === h_other
-			|| (h_other.termType === this.termType && h_other.value === this.value);
+	equals(z_other) {
+		return z_other
+			? this === z_other
+				|| (z_other.termType === this.termType && z_other.value === this.value)
+			: false;
 	}
 } Object.assign(GenericTerm.prototype, {
 	isGraphyTerm: true,
@@ -237,6 +239,7 @@ const KT_RDF_TYPE = new NamedNode('@{P_IRI_RDF}type');
 KT_RDF_TYPE.isRdfTypeAlias = true;  // for serialization
 
 const KT_RDF_LANG_STRING = new NamedNode('@{P_IRI_RDF}langString');
+const G_ISOLATE_RDF_LANG_STRING = KT_RDF_LANG_STRING.isolate();
 
 const KT_RDF_FIRST = new NamedNode('@{P_IRI_RDF}first');
 const KT_RDF_REST = new NamedNode('@{P_IRI_RDF}rest');
@@ -246,55 +249,28 @@ const KT_XSD_DATE = new NamedNode('@{P_IRI_XSD}date');
 const KT_XSD_DATETIME = new NamedNode('@{P_IRI_XSD}dateTime');
 const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 
-class Literal extends GenericTerm {
-	constructor(s_value, z_datatype_or_lang) {
-		super();
-		this.value = s_value;
-		if(z_datatype_or_lang) {
-			if('string' === typeof z_datatype_or_lang) {
-				// remove optional '@' character from beginning
-				if('@' === z_datatype_or_lang[0]) z_datatype_or_lang = z_datatype_or_lang.slice(1);
-
-				// save fields
-				this.datatype = KT_RDF_LANG_STRING;
-				this.language = z_datatype_or_lang.toLowerCase();
-			}
-			else {
-				this.datatype = z_datatype_or_lang;
-				this.isSimple = z_datatype_or_lang.equals(KT_XSD_STRING);
-			}
-		}
-		// simple literal
-		else {
-			this.isSimple = true;
-		}
-	}
-
-	equals(h_other) {
-		return this === h_other
-			|| ('Literal' === h_other.termType && h_other.value === this.value
-				&& this.datatype.equals(h_other.datatype) && h_other.language === this.language);
+class GenericLiteral extends GenericTerm {
+	equals(z_other) {
+		return z_other
+			? this === z_other
+				|| ('Literal' === z_other.termType && z_other.value === this.value
+					&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
+			: false;
 	}
 
 	verbose() {
 		return JSON.stringify(this.value)
 			+ (this.language
 				? '@'+this.language
-				: (!this.isSimple
-					? '^^'+this.datatype.verbose()
-					: ''));
+				: '^^'+this.datatype.verbose());
 	}
 
 	concise(h_prefixes) {
 		if(this.language) {
 			return '@'+this.language+'"'+this.value;
 		}
-		// eslint-disable-next-line no-prototype-builtins
-		else if(this.hasOwnProperty('datatype')) {
-			return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
-		}
 		else {
-			return '"'+this.value;
+			return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
 		}
 	}
 
@@ -306,9 +282,7 @@ class Literal extends GenericTerm {
 		return JSON.stringify(this.value)
 			+ (this.language
 				? '@'+this.language
-				: (!this.isSimple
-					? '^^'+st_datatype
-					: ''));
+				: '^^'+st_datatype);
 	}
 
 	isolate() {
@@ -319,12 +293,174 @@ class Literal extends GenericTerm {
 			datatype: this.datatype.isolate(),
 		};
 	}
-} Object.assign(Literal.prototype, {
+} Object.assign(GenericLiteral.prototype, {
 	datatype: KT_XSD_STRING,
 	language: '',
 	termType: 'Literal',
 	isLiteral: true,
 	isSimple: false,
+});
+
+class LanguagedLiteral extends GenericLiteral {
+	constructor(s_value, s_lang) {
+		super();
+		this.value = s_value;
+
+		// remove optional '@' character from beginning
+		this.language = ('@' === s_lang[0]? s_lang.slice(1): s_lang).toLowerCase();
+	}
+
+	verbose() {
+		return JSON.stringify(this.value)+'@'+this.language;
+	}
+
+	concise() {
+		return '@'+this.language+'"'+this.value;
+	}
+
+	terse() {
+		// stringify literal
+		return JSON.stringify(this.value)+'@'+this.language;
+	}
+
+	isolate() {
+		return {
+			termType: 'Literal',
+			value: this.value,
+			language: this.language,
+			datatype: G_ISOLATE_RDF_LANG_STRING,
+		};
+	}
+} Object.assign(LanguagedLiteral.prototype, {
+	datatype: KT_RDF_LANG_STRING,
+	isLanguaged: true,
+});
+
+
+class DatatypedLiteral extends GenericLiteral {
+	verbose() {
+		return JSON.stringify(this.value)+'^^'+this.datatype.verbose();
+	}
+
+	concise(h_prefixes) {
+		return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+	}
+
+	terse(h_prefixes={}) {
+		// turn into terse
+		let st_datatype = this.datatype.terse(h_prefixes);
+
+		// stringify literal
+		return JSON.stringify(this.value)+'^^'+st_datatype;
+	}
+
+	isolate() {
+		return {
+			termType: 'Literal',
+			value: this.value,
+			language: this.language,
+			datatype: this.datatype.isolate(),
+		};
+	}
+} Object.assign(DatatypedLiteral.prototype, {
+	isDatatyped: true,
+});
+
+class ExplicitlyDatatypedLiteral extends DatatypedLiteral {
+	constructor(s_value, kt_datatype) {
+		super();
+		this.value = s_value;
+		this.datatype = kt_datatype;
+	}
+}
+
+class RawLiteral extends GenericTerm {
+	constructor(s_value) {
+		super();
+		this.value = s_value;
+	}
+
+	get isSimple() {
+		return !this.language && !this.datatype.equals(KT_XSD_STRING);
+	}
+
+	get isLanguaged() {
+		return !!this.language;
+	}
+
+	get isDatatyped() {
+		return KT_XSD_STRING.equals(this.datatype);
+	}
+
+	equals(z_other) {
+		return z_other
+			? this === z_other
+				|| ('Literal' === z_other.termType && z_other.value === this.value
+					&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
+			: false;
+	}
+
+	verbose() {
+		return JSON.stringify(this.value)
+			+ (this.language
+				? '@'+this.language
+				: '^^'+this.datatype.verbose());
+	}
+
+	concise(h_prefixes) {
+		if(this.language) {
+			return '@'+this.language+'"'+this.value;
+		}
+		else {
+			return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+		}
+	}
+
+	terse(h_prefixes={}) {
+		// turn into terse
+		let st_datatype = this.datatype.terse(h_prefixes);
+
+		// stringify literal
+		return JSON.stringify(this.value)
+			+ (this.language
+				? '@'+this.language
+				: '^^'+st_datatype);
+	}
+
+	isolate() {
+		return {
+			termType: 'Literal',
+			value: this.value,
+			language: this.language,
+			datatype: this.datatype.isolate(),
+		};
+	}
+} Object.assign(RawLiteral.prototype, {
+	datatype: KT_XSD_STRING,
+	language: '',
+	termType: 'Literal',
+	isLiteral: true,
+});
+
+class SimpleLiteral extends GenericLiteral {
+	constructor(s_value) {
+		super();
+		this.value = s_value;
+	}
+
+	verbose() {
+		return JSON.stringify(this.value);
+	}
+
+	concise() {
+		return '"'+this.value;
+	}
+
+	terse() {
+		return JSON.stringify(this.value);
+	}
+} Object.assign(SimpleLiteral.prototype, {
+	isSimple: true,
 });
 
 
@@ -334,7 +470,7 @@ class Literal extends GenericTerm {
 	@.let s_type_caps = s_type.toUpperCase();
 	@.let s_type_proper = s_type_caps.slice(0, 1)+s_type.slice(1);
 	const KT_XSD_@{s_type_caps} = new NamedNode('@{P_IRI_XSD}@{s_type}');
-	class Literal_@{s_type_proper} extends Literal {
+	class Literal_@{s_type_proper} extends DatatypedLiteral {
 		@//@class
 		static from(s_literal) {
 			let kt = new Literal_@{s_type_proper}(+s_literal);
@@ -343,7 +479,8 @@ class Literal extends GenericTerm {
 		}
 
 		constructor(@{s_arg}) {
-			super(@{s_arg}+'');
+			super();
+			this.value = @{s_arg}+'';
 			@- b_boolean
 				this.boolean = @{s_arg};
 			@:
@@ -765,12 +902,14 @@ function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 	this.graph = h_graph;
 } Object.assign(Quad.prototype, {
 	isGraphyQuad: true,
-	equals(y_other) {
-		return this === y_other
-			|| (this.object.equals(y_other.object)
-				&& this.subject.equals(y_other.subject)
-				&& this.predicate.equals(y_other.predicate)
-				&& this.graph.equals(y_other.graph));
+	equals(z_other) {
+		return z_other
+			? this === z_other
+				|| (this.object.equals(z_other.object)
+					&& this.subject.equals(z_other.subject)
+					&& this.predicate.equals(z_other.predicate)
+					&& this.graph.equals(z_other.graph))
+			: false;
 	},
 	valueOf() {
 		return this.verbose();
@@ -832,8 +971,8 @@ let g_raw = {
 	blankNode(s_label, b_anonymous) {
 		return new BlankNode(s_label, b_anonymous);
 	},
-	literal(s_value, w_datatype_or_lang) {
-		return new Literal(s_value, w_datatype_or_lang);
+	literal(s_value) {
+		return new RawLiteral(s_value);
 	},
 	defaultGraph() {
 		return new DefaultGraph();
@@ -912,8 +1051,16 @@ const factory = module.exports = {
 		throw new TypeError(`factory.blankNode(label) expects 'label' parameter to be falsy or a string; instead found: ${z_label}`);
 	},
 
-	literal(s_value, w_datatype_or_lang) {
-		return new Literal(s_value, w_datatype_or_lang);
+	literal(s_value, z_datatype_or_lang) {
+		if(!z_datatype_or_lang || KT_XSD_STRING.equals(z_datatype_or_lang)) {
+			return new SimpleLiteral(s_value);
+		}
+		else if('string' === typeof z_datatype_or_lang) {
+			return new LanguagedLiteral(s_value, z_datatype_or_lang);
+		}
+		else {
+			return new ExplicitlyDatatypedLiteral(s_value, z_datatype_or_lang);
+		}
 	},
 
 	@*{
@@ -1209,7 +1356,7 @@ const factory = module.exports = {
 			switch(g_term.termType) {
 				case 'NamedNode': return new NamedNode(g_term.value);
 				case 'BlankNode': return new BlankNode(g_term.value);
-				case 'Literal': return new Literal(g_term.value, g_term.language
+				case 'Literal': return factory.literal(g_term.value, g_term.language
 					? g_term.language
 					: (g_term.datatype
 						? new NamedNode(g_term.datatype.value)
@@ -1230,13 +1377,13 @@ const factory = module.exports = {
 				case 'literal':
 				case 'typed-literal': {
 					if('xml:lang' in g_term) {
-						return new Literal(g_term.value, g_term['xml:lang']);
+						return new LanguagedLiteral(g_term.value, g_term['xml:lang']);
 					}
-					else if('datatype' in g_term) {
-						return new Literal(g_term.value, new NamedNode(g_term.datatype));
+					else if('datatype' in g_term && '@{P_IRI_XSD}string' !== g_term.datatype) {
+						return new ExplicitlyDatatypedLiteral(g_term.value, new NamedNode(g_term.datatype));
 					}
 					else {
-						return new Literal(g_term.value);
+						return new SimpleLiteral(g_term.value);
 					}
 				}
 
