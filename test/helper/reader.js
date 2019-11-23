@@ -36,14 +36,23 @@ class reader_suite {
 				// destructure leaf node
 				let {
 					input: st_input,
+					config: gc_read={},
 					char: s_char=null,
 					state: s_err_state=null,
 					debug: b_debug=false,
 				} = f_leaf();
 
 				it(s_label, (fke_test) => {
-					this.reader(st_input, {
+
+					// feed input one character at a time
+					let i_char = 0;
+					(new stream.Readable({
+						read() {
+							this.push(st_input[i_char++] || null);
+						},
+					})).pipe(this.reader({
 						debug: b_debug,
+						...gc_read,
 
 						// ignore data events
 						data() {},
@@ -66,7 +75,33 @@ class reader_suite {
 							debugger; st_input;  // for debugging
 							fke_test(new Error('should have caught an error'));
 						},
-					});
+					}));
+
+					// this.reader(st_input, {
+					// 	debug: b_debug,
+
+					// 	// ignore data events
+					// 	data() {},
+
+					// 	// expect error
+					// 	error(e_parse) {
+					// 		expect(e_parse).to.be.an('error');
+					// 		if(s_char) {
+					// 			let s_match = 'failed to parse a valid token'; // starting at '+('string' === typeof s_err_char? '"'+s_err_char+'"': '<<EOF>>');
+					// 			expect(e_parse.message).to.have.string(s_match);
+					// 			if(s_err_state) {
+					// 				expect(/expected (\w+)/.exec(e_parse.message)[1]).to.equal(s_err_state);
+					// 			}
+					// 		}
+					// 		fke_test();
+					// 	},
+
+					// 	// watch for end
+					// 	end() {
+					// 		debugger; st_input;  // for debugging
+					// 		fke_test(new Error('should have caught an error'));
+					// 	},
+					// });
 				});
 			});
 		});

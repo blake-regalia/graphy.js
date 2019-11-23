@@ -1062,6 +1062,46 @@ reader_suite({
 				:a :b "${'\\'.repeat(2)}\t",
 			`,
 		}),
+
+		...(['\'', '"'].reduce((h_out, s_quote) => ({
+			...h_out,
+
+			[`invalid empty string literal (${s_quote}) terminator`]: () => ({
+				input: `<a> <b> ${s_quote}${s_quote}y .`,
+				char: 'y',
+				state: 'string_literal',
+			}),
+
+			[`invalid non-empty string literal (${s_quote}) terminator`]: () => ({
+				input: `<a> <b> ${s_quote}s${s_quote}y .`,
+				char: 'y',
+				state: 'string_literal',
+			}),
+
+			[`invalid linebreak at start of string literal (${s_quote}) contents`]: () => ({
+				input: `<a> <b> ${s_quote}\nworld${s_quote} .`,
+				char: 'y',
+				state: 'string_literal',
+			}),
+
+			[`invalid escape sequence at start of string literal (${s_quote}) contents`]: () => ({
+				input: `<a> <b> ${s_quote}\\\nworld${s_quote}y .`,
+				char: 'y',
+				state: 'string_literal',
+			}),
+
+			[`invalid linebreak within string literal (${s_quote}) contents`]: () => ({
+				input: `<a> <b> ${s_quote}helo\nworld${s_quote} .`,
+				char: 'y',
+				state: 'string_literal',
+			}),
+
+			[`invalid escape sequence within string literal (${s_quote}) contents`]: () => ({
+				input: `<a> <b> ${s_quote}hello\\\nworld${s_quote}y .`,
+				char: 'y',
+				state: 'string_literal',
+			}),
+		}), {})),
 	});
 
 	reader.interfaces((f_interface) => {

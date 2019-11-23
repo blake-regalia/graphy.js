@@ -20,6 +20,24 @@
 	(\\[\\])|\\([^tbnrfuU\\])
 @;
 
+@>> R_STRING_LITERAL_INVALID_START(s_quote)
+	@//@regex
+	^@{s_quote}(?:
+		(?:
+			@{s_quote}?(?!@{s_quote})                 @// single quote variant
+			(?:
+				[^@{s_quote}\\\r\n]*          @// valid characters
+				(?:\\[^\r\n])*       @// optional escape sequence(s)
+			)*
+			(?:
+				@{s_quote}([^\s@@^.,;\])#])   @// <-- bad termination
+				| (\\[\r\n]|[\r\n])  @// <-- bad character
+			)
+		)
+	)
+@;
+
+
 @> F_REPLACE_UNICODE_ANY()
 	(s_, s_8, s_4) => String.fromCodePoint(parseInt(s_8 || s_4, 16))
 @;

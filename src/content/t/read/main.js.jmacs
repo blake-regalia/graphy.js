@@ -17,7 +17,7 @@ const string_decoder = require('string_decoder');
 
 const stream = require('@{channel('core.iso.stream')}');
 const factory = require('@{channel('core.data.factory')}').raw;
-const quad = h => factory.quad(h.subject, h.predicate, h.object, h.graph);
+const quad = k => factory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
 
 const RT_ESCAPES_INVALID = /@{RT_ESCAPES_INVALID()}/;
 // eslint-disable-next-line no-misleading-character-class
@@ -29,6 +29,9 @@ const RT_BLANK_NODE_VALID = /^[@{RANGE_PN_CHARS_U()}0-9]@{PN_CHARS_FS()}$/u;
 const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
 
 const RT_LITERAL_CONTENTS_VALID = /@{RT_LITERAL_CONTENTS_VALID()}/;
+
+const R_STRING_LITERAL_QUOTE_INVALID_START = /@{R_STRING_LITERAL_INVALID_START('"')}/y;
+const R_STRING_LITERAL_SINGLE_QUOTE_INVALID_START = /@{R_STRING_LITERAL_INVALID_START('\'')}/y;
 
 const R_ESCAPES = /@{R_ESCAPES()}/g;
 const R_UNICODE_8 = /@{R_UNICODE_8()}/g;
@@ -284,12 +287,12 @@ const match_prefixed_name = (s, i) => {
 
 @// will only be used by TriG
 @> emit_graph_open()
-	this.emit('enter', this.graph);
+	this.emit('enter', this._kt_graph);
 @;
 
 @// will only be used by TriG
 @> emit_graph_close()
-	this.emit('exit', this.graph);
+	this.emit('exit', this._kt_graph);
 @;
 
 
@@ -308,14 +311,14 @@ const match_prefixed_name = (s, i) => {
 	let s_prefix_id = @{match}[1] || '';
 
 	// invalid prefix
-	if(!OPHOP.call(this.prefixes, s_prefix_id)) return this.error(`no such prefix "${s_prefix_id}"`);
+	if(!OPHOP.call(this._h_prefixes, s_prefix_id)) return this.error(`no such prefix "${s_prefix_id}"`);
 @;
 
 
 @// extract uri from absolute / relative iri refs
 @> iriref(sv_term, sv_match, b_object, b_set_base, b_has_escapes, b_not_this=false)
 	@.{
-		let sv_set = (b_not_this? '': 'this.')+sv_term;
+		let sv_set = (b_not_this? '': ('this.'+(b_object? '_kt_': '_s_')))+sv_term;
 		let set = b_object
 			? s => `${sv_set} = this.named_node(${s});`
 			: s => `${sv_set} = ${s};`;
@@ -324,22 +327,22 @@ const match_prefixed_name = (s, i) => {
 	let s_iri = @{sv_match}[1]@{b_has_escapes? `.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)`: ''};
 
 	// absolute iri
-	if(!this.base_url || RT_IRI_ABSOLUTE.test(s_iri)) {
+	if(!this._s_base_url || RT_IRI_ABSOLUTE.test(s_iri)) {
 		// set @{sv_term}
 		@{set(/* syntax: js */ `s_iri`)}
 	}
 	// relative iri
 	else {
-		@{set(/* syntax: js */ `uri.resolve(this.base_url, s_iri)`)}
+		@{set(/* syntax: js */ `uri.resolve(this._s_base_url, s_iri)`)}
 	}
 
 	@// update the base iri
 	@- b_set_base
-		let m_base_iri = R_BASE_IRI.exec(this.base_url);
-		this.@{sv_term} = m_base_iri[1];
-		this.@{sv_term}_root = m_base_iri[2] || '';
-		this.@{sv_term}_scheme = m_base_iri[3] || '';
-		this.@{sv_term}_path = m_base_iri[4] || ''; 
+		let m_base_iri = R_BASE_IRI.exec(this._s_base_url);
+		this._s_@{sv_term} = m_base_iri[1];
+		this._s_@{sv_term}_root = m_base_iri[2] || '';
+		this._s_@{sv_term}_scheme = m_base_iri[3] || '';
+		this._s_@{sv_term}_path = m_base_iri[4] || ''; 
 	@;
 @;
 
@@ -348,34 +351,34 @@ const match_prefixed_name = (s, i) => {
 @> numeric_literal()
 	// it has exponent term, xsd:double
 	if(m_numeric_literal[4]) {
-		this.object = factory.double(m_numeric_literal[1]);
+		this._kt_object = factory.double(m_numeric_literal[1]);
 	}
 	// contains decimal point, xsd:decimal
 	else if(m_numeric_literal[2] || m_numeric_literal[3]) {
-		this.object = factory.decimal(m_numeric_literal[1]);
+		this._kt_object = factory.decimal(m_numeric_literal[1]);
 	}
 	// otherwise, it is an integer
 	else {
-		this.object = factory.integer(m_numeric_literal[1]);
+		this._kt_object = factory.integer(m_numeric_literal[1]);
 	}
 @;
 
 @// set object value and datatype for boolean literal
 @> boolean_literal()
 	// make literal
-	this.object = factory.boolean(m_boolean_literal[1]? true: false);
+	this._kt_object = factory.boolean(m_boolean_literal[1]? true: false);
 @;
 
 
 @// save current state to stack
 @> push_state(state)
-	this.nested.push([this.subject, this.predicate, '@{state}']);
+	this._a_nested.push([this._kt_subject, this._kt_predicate, '@{state}']);
 @;
 
 @// restore previous state from stack
 @> pop_state()
 	let s_resume_state;
-	[this.subject, this.predicate, s_resume_state] = this.nested.pop();
+	[this._kt_subject, this._kt_predicate, s_resume_state] = this._a_nested.pop();
 	return this[s_resume_state]();
 @;
 
@@ -433,7 +436,7 @@ const match_prefixed_name = (s, i) => {
 	}
 
 	// save state before pausing
-	this.state = this.@{s_state};
+	this._f_state = this.@{s_state};
 
 	// store what is unparsed
 	this.pre = @{b_use_field_chunk? 'this.' :''}s.slice(i);
@@ -469,7 +472,7 @@ const match_prefixed_name = (s, i) => {
 @;
 
 @> full_stop()
-	if(this.expecting_full_stop) {
+	if(this._b_expecting_full_stop) {
 		// change state
 		@{goto('full_stop')}
 	}
@@ -522,6 +525,16 @@ const F_DOT_SEGMENTS = (s_rel_iri) => {
 	return a_output.join('/')+(s_qs_hash || '');
 };
 */}
+
+function Reader$syntax_error(k_self, i, si_state, s_info) {
+	let i_off = Math.min(i, Math.abs(i-15));
+
+	let s = k_self.s;
+
+	return k_self.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
+		+` ${' '.repeat(i-i_off)}^\n`
+		+`expected ${si_state} ${s_info || ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
+}
 
 
 @- TTL
@@ -578,7 +591,7 @@ class @{S_LABEL}_Reader extends stream.Transform {
 	}
 }
 
-class reader {
+class Reader {
 	constructor(g_config={}) {
 		// impl-specific configs
 		let {
@@ -617,34 +630,34 @@ class reader {
 			pre: g_config.prepend || '',
 
 			// debug state
-			debug: g_config.debug || false,
+			_b_debug: g_config.debug || false,
 
 			// current reader state
-			state: this.@{S_STATE_PRIMARY},
+			_f_state: this.@{S_STATE_PRIMARY},
 
 			// map of current prefix ids => iris
-			prefixes: h_prefixes,
+			_h_prefixes: h_prefixes,
 
 			// reader was destroyed by an error
-			destroyed: false,
+			_b_destroyed: false,
 
 			// current @base url
-			base_url: '',
-			base_url_scheme: '',
-			base_url_root: '',
-			base_url_path: '',
+			_s_base_url: '',
+			_s_base_url_scheme: '',
+			_s_base_url_root: '',
+			_s_base_url_path: '',
 
 			// current data
-			subject: null,
-			predicate: KT_RDF_FIRST,
-			object: null,
-			graph: KT_DEFAULT_GRAPH,
+			_kt_subject: null,
+			_kt_predicate: KT_RDF_FIRST,
+			_kt_object: null,
+			_kt_graph: KT_DEFAULT_GRAPH,
 
 			// queue of nested subject, predicate, state for blanknodes and collections
-			nested: [],
+			_a_nested: [],
 
 			// hash to keep track of all blank node labels in use
-			labels: h_labels,
+			_h_labels: h_labels,
 
 			// event routing
 			event: this.emit,
@@ -654,7 +667,11 @@ class reader {
 			restore_data: this.emit_data,
 
 			// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
-			queue_event: [],
+			_a_queue_event: [],
+
+			// helper states
+			_b_expecting_full_stop: false,
+			_s_temp_prefix_id: null,
 
 			anonymous_blank_node: s_label => factory.blankNode(s_label, true),
 
@@ -663,10 +680,10 @@ class reader {
 				let s_label = '';
 				do {
 					s_label = 'g'+(i_anon++);
-				} while(this.labels[s_label]);
+				} while(this._h_labels[s_label]);
 
 				// claim this label, and remember that we invented it
-				this.labels[s_label] = 2;
+				this._h_labels[s_label] = 2;
 
 				// return the label
 				return s_label;
@@ -679,16 +696,16 @@ class reader {
 			after_end_of_statement: this.post_object,
 
 			// maximum length of a token: defaults to 2048 => http://stackoverflow.com/a/417184/1641160
-			max_token_length: g_config.max_token_length || g_config.maxTokenLength || 2048,
+			_n_max_token_length: g_config.max_token_length || g_config.maxTokenLength || 2048,
 
-			// maximum length of a string (overrides max_token_length): defaults to 64 kibibytes
-			max_string_length: g_config.max_string_length || g_config.maxStringLength || 65536,
+			// maximum length of a string (overrides max_token_length): defaults to Infinity
+			_n_max_string_length: g_config.max_string_length || g_config.maxStringLength || Infinity,
 
 			// byte tracking
-			byte_tracking: g_config.byte_tracking || g_config.byteTracking || false,
-			bytes_seen: 0,
-			bytes_last: 0,
-			bytes_curr: 0,
+			_b_byte_tracking: g_config.byte_tracking || g_config.byteTracking || false,
+			_nb_seen: 0,
+			_nb_last: 0,
+			_nb_curr: 0,
 		});
 
 	if(g_config.relaxed) {
@@ -702,25 +719,25 @@ class reader {
 @// ensure there are no conflicting blank node labels
 @> no_label_conflict()
 	// not first time use of label
-	let z_label_state = this.labels[s_label];
+	let z_label_state = this._h_labels[s_label];
 	if(z_label_state) {
 		// label was used previously by document and has no conflict
 		if(1 === z_label_state) {}  // eslint-disable-line no-empty
 		// label is in use by invention, this would cause a conflict
 		else if(2 === z_label_state) {
 			// so create a redirect mapping for this actual label & use it instead
-			s_label = this.labels[s_label] = this.next_label();
+			s_label = this._h_labels[s_label] = this.next_label();
 		}
 		// label already has a redirect mapping
 		else {
 			// use redirected label
-			s_label = this.labels[s_label];
+			s_label = this._h_labels[s_label];
 		}
 	}
 	// first time use of label
 	else {
 		// store label in hash so we avoid future collisions
-		this.labels[s_label] = 1;
+		this._h_labels[s_label] = 1;
 	}
 @;
 
@@ -830,10 +847,10 @@ class reader {
 		let p_set_base_uri = g_config.base_uri || g_config.baseUri || g_config.baseURI;
 		if(p_set_base_uri) {
 			let m_base_iri = R_BASE_IRI.exec(p_set_base_uri);
-			this.base_url = m_base_iri[1];
-			this.base_url_root = m_base_iri[2] || '';
-			this.base_url_scheme = m_base_iri[3] || '';
-			this.base_url_path = m_base_iri[4] || ''; 
+			this._s_base_url = m_base_iri[1];
+			this._s_base_url_root = m_base_iri[2] || '';
+			this._s_base_url_scheme = m_base_iri[3] || '';
+			this._s_base_url_path = m_base_iri[4] || ''; 
 		}
 		// not set; 'url' variant is
 		else if(g_config.base_url || g_config.baseUrl || g_config.baseURL) {
@@ -885,7 +902,7 @@ class reader {
 
 		// when the writable side is piped into
 		ds_transform.on('pipe', (ds_input) => {
-			let b_byte_tracking = this.byte_tracking;
+			let b_byte_tracking = this._b_byte_tracking;
 
 			// byte-tracking is disable & input stream has encoding option; ensure stream encoding is utf8
 			if(!b_byte_tracking && 'function' === typeof ds_input.setEncoding) {
@@ -899,14 +916,14 @@ class reader {
 				let f_write_track = (s_chunk, s_encoding, fk_write) => {
 					// TODO: optimize by testing for multibyte chars and using string length instead?
 					let nb_chunk = Buffer.from(s_chunk, 'utf8').length;
-					this.bytes_seen += nb_chunk;
-					this.bytes_last = nb_chunk;
+					this._nb_seen += nb_chunk;
+					this._nb_last = nb_chunk;
 					return f_write.call(ds_transform, s_chunk, s_encoding, fk_write);
 				};
 
 				let f_decode_write_track = (ab_chunk, s_encoding, fk_write) => {
-					let nb_chunk = this.bytes_last = ab_chunk.length;
-					this.bytes_seen += nb_chunk;
+					let nb_chunk = this._nb_last = ab_chunk.length;
+					this._nb_seen += nb_chunk;
 					return f_write.call(ds_transform, d_decoder.write(ab_chunk), s_encoding, fk_write);
 				};
 
@@ -939,9 +956,9 @@ class reader {
 					// overwrite emit_data method
 					this.emit_data = this.data = this.restore_data = function(g_quad) {
 						let nb_post = Buffer.from(this.s.slice(this.i)).length;
-						let ib_post = this.bytes_seen - nb_post;
-						g_quad.byteRange = [this.bytes_curr, ib_post];
-						this.bytes_curr = ib_post;
+						let ib_post = this._nb_seen - nb_post;
+						g_quad.byteRange = [this._nb_curr, ib_post];
+						this._nb_curr = ib_post;
 						this.transform.push(g_quad);
 					};
 				}
@@ -995,7 +1012,7 @@ class reader {
 	// begin parsing, keep applying until no more stack bail-outs
 	safe_parse() {
 		try {
-			let f_sync = this.state();
+			let f_sync = this._f_state();
 			while('function' === typeof f_sync) {
 				f_sync = f_sync.apply(this);
 			}
@@ -1022,7 +1039,7 @@ class reader {
 	}
 
 	queue(s_event, ...a_args) {
-		this.queue_event.push({
+		this._a_queue_event.push({
 			event: s_event,
 			args: a_args,
 		});
@@ -1035,14 +1052,12 @@ class reader {
 
 	// parse_error (not meant to be an event callback)
 	parse_error(s_expected, b_eof=false) {
-		@- T
-			let i = this.i;
-			let i_off = Math.min(i, Math.abs(i-15));
-		@:
-			let i = 0;
-			let i_off = 0;
-		@;
+		let i = this.i;
+
+		let i_off = Math.min(i, Math.abs(i-15));
+
 		let s = this.s;
+
 		return this.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
 			+` ${' '.repeat(i-i_off)}^\n`
 			+`expected ${s_expected} ${b_eof? 'but encountered <<EOF>>': ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
@@ -1051,8 +1066,8 @@ class reader {
 	// end of file
 	eof() {
 		// there are events queued
-		if(this.queue_event.length) {
-			let a_queue = this.queue_event;
+		if(this._a_queue_event.length) {
+			let a_queue = this._a_queue_event;
 
 			// drain event queue
 			while(a_queue.length) {
@@ -1065,7 +1080,7 @@ class reader {
 		}
 
 		// invalid parsing state
-		if(this.@{S_STATE_PRIMARY} !== this.state) {
+		if(this.@{S_STATE_PRIMARY} !== this._f_state) {
 			// append EOF char
 			this.s += '\0';
 
@@ -1078,8 +1093,8 @@ class reader {
 				if(null === this.s) return;
 
 				// still invalid parsing state
-				if(this.@{S_STATE_PRIMARY} !== this.state) {
-					return this.parse_error(this.state.name, true);
+				if(this.@{S_STATE_PRIMARY} !== this._f_state) {
+					return this.parse_error(this._f_state.name, true);
 				}
 			}
 		}
@@ -1104,7 +1119,7 @@ class reader {
 				// not EOF
 				if(!(i === this.n - 1 && '\0' === s[i])) {
 					// bad input; parse error
-					return this.parse_error(this.state.name);
+					return this.parse_error(this._f_state.name);
 				}
 			}
 		}
@@ -1119,7 +1134,7 @@ class reader {
 		ds_transform.emit('progress', 0);
 
 		// call end event listener
-		ds_transform.emit('eof', this.prefixes);
+		ds_transform.emit('eof', this._h_prefixes);
 
 		// close write stream (EOF-signaling)
 		ds_transform.push(null);
@@ -1166,7 +1181,7 @@ class reader {
 
 			@-QUADS
 				// not inside block
-				if(KT_DEFAULT_GRAPH === this.graph) {
+				if(KT_DEFAULT_GRAPH === this._kt_graph) {
 					@{goto('block')}
 				}
 				// inside block
@@ -1179,7 +1194,7 @@ class reader {
 		@- QUADS
 			@{else_if_match('R_CHAR_CLOSE')}
 				// empty collection
-				if(KT_RDF_NIL === this.subject) {
+				if(KT_RDF_NIL === this._kt_subject) {
 					return this.error('empty collection');
 				}
 
@@ -1187,7 +1202,7 @@ class reader {
 				@{emit_graph_close()}
 
 				// reset graph
-				this.graph = KT_DEFAULT_GRAPH;
+				this._kt_graph = KT_DEFAULT_GRAPH;
 
 				// goto block state
 				@{goto('block')}
@@ -1225,7 +1240,7 @@ class reader {
 				@{valid_prefix('m_prefixed_named_e_subject')}
 
 				// make subject key
-				this.subject = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_subject[2]);
+				this._kt_subject = this.named_node(this._h_prefixes[s_prefix_id] + m_prefixed_named_e_subject[2]);
 
 				// predicate-object pairs state
 				@{gtg()}
@@ -1236,7 +1251,7 @@ class reader {
 				let s_label = m_blank_node_label_subject[1];
 
 				// make subject key
-				this.subject = this.blank_node(s_label);
+				this._kt_subject = this.blank_node(s_label);
 
 				// predicate-object pairs state
 				@{gtg()}
@@ -1244,7 +1259,7 @@ class reader {
 			// anonymous blank node subject
 			@{else_if_match('R_ANONYMOUS_BLANK_NODE')}
 				// set new blank node as subject
-				this.subject = this.anonymous_blank_node(this.next_label());
+				this._kt_subject = this.anonymous_blank_node(this.next_label());
 
 				// goto pairs state for inside property list
 				@{gtg()}
@@ -1252,7 +1267,7 @@ class reader {
 			// anonymous blank node property list subject
 			@{else_if_match('R_CHAR_BLANK_NODE')}
 				// enter blank node
-				this.subject = this.anonymous_blank_node(this.next_label());
+				this._kt_subject = this.anonymous_blank_node(this.next_label());
 
 				// how to resume when we pop state
 				@{push_state('post_blank_subject')}
@@ -1264,7 +1279,7 @@ class reader {
 			// rdf collection
 			@{else_if_match('R_CHAR_COLLECTION')}
 				// indicate that collection subject should emit an initial statement
-				this.subject = null;
+				this._kt_subject = null;
 				
 				// (don't push state, we don't have a subject yet)
 
@@ -1275,7 +1290,7 @@ class reader {
 				// prefix with interupt (e.g., a comment)
 				@{else_if_match('R_PREFIX_KEYWORD', 'm_prefix_keyword')}
 					// save whether or not to expect a full stop
-					this.expecting_full_stop = m_prefix_keyword[1]? true: false;
+					this._b_expecting_full_stop = m_prefix_keyword[1]? true: false;
 
 					// goto prefix state
 					@{goto('prefix_id')}
@@ -1283,7 +1298,7 @@ class reader {
 				// base with interupt (e.g., a comment)
 				@{else_if_match('R_BASE_KEYWORD', 'm_base_keyword')}
 					// save whether or not to expect a full stop
-					this.expecting_full_stop = m_base_keyword[1]? true: false;
+					this._b_expecting_full_stop = m_base_keyword[1]? true: false;
 
 					// goto base state
 					@{goto('base_iri')}
@@ -1296,7 +1311,7 @@ class reader {
 					@{emit_graph_close()}
 
 					// reset graph
-					this.graph = KT_DEFAULT_GRAPH;
+					this._kt_graph = KT_DEFAULT_GRAPH;
 
 					// goto block state
 					@{goto('block')}
@@ -1316,7 +1331,7 @@ class reader {
 				@{suffix('m_prefixed_named_subject')}
 
 				// make subject key
-				this.subject = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
+				this._kt_subject = this.named_node(this._h_prefixes[s_prefix_id] + s_suffix);
 
 				// predicate-object pairs state
 				@{gtg()}
@@ -1327,7 +1342,7 @@ class reader {
 		@// for trig only
 		@- TRIG
 			@{else_if_match('R_CHAR_CLOSE')}
-				this.graph = KT_DEFAULT_GRAPH;
+				this._kt_graph = KT_DEFAULT_GRAPH;
 				@{goto('block')}
 		@;
 
@@ -1356,7 +1371,7 @@ class reader {
 				@{valid_prefix('m_graph_prefixed_name')}
 
 				// make subject key
-				this.graph = this.named_node(this.prefixes[s_prefix_id] + m_graph_prefixed_name[2]);
+				this._kt_graph = this.named_node(this._h_prefixes[s_prefix_id] + m_graph_prefixed_name[2]);
 
 				@{emit_graph_open()}
 
@@ -1365,7 +1380,7 @@ class reader {
 
 			@{else_if_match('R_CHAR_OPEN')}
 				// make new default graph
-				this.graph = factory.defaultGraph();
+				this._kt_graph = factory.defaultGraph();
 
 				@{emit_graph_open()}
 
@@ -1374,7 +1389,7 @@ class reader {
 
 			@{else_if_match('R_GRAPH_ANONYMOUS_BLANK_NODE', 'm_graph_anonymous_blank_node')}
 				// make new label & set graph to blank node
-				this.graph = this.anonymous_blank_node(this.next_label());
+				this._kt_graph = this.anonymous_blank_node(this.next_label());
 
 				@{emit_graph_open()}
 
@@ -1384,7 +1399,7 @@ class reader {
 			@{else_if_match('R_GRAPH_LABELED_BLANK_NODE', 'm_graph_labeled_blank_node')}
 				let s_label = m_graph_labeled_blank_node[1];
 
-				this.graph = this.blank_node(s_label);
+				this._kt_graph = this.blank_node(s_label);
 
 				@{emit_graph_open()}
 
@@ -1431,12 +1446,12 @@ class reader {
 				@{whitespace('i+1')}
 
 				// shift placeholder subject
-				this.graph = this.subject;
+				this._kt_graph = this._kt_subject;
 
 				@{emit_graph_open()}
 
 				// reset subject in case of collections
-				this.subject = null;
+				this._kt_subject = null;
 
 				// statement state
 				@{goto('statement')}
@@ -1484,15 +1499,15 @@ class reader {
 				@{whitespace('i+1')}
 
 				// shift placeholder subject
-				this.graph = this.subject;
+				this._kt_graph = this._kt_subject;
 
 				@{emit_graph_open()}
 
 				// reset subject in case of collections
-				this.subject = null;
+				this._kt_subject = null;
 
 				// pop dummy state
-				this.nested.pop();
+				this._a_nested.pop();
 
 				// statement state
 				@{goto('statement')}
@@ -1518,7 +1533,7 @@ class reader {
 				@{valid_prefix('m_prefixed_named_e_graph')}
 
 				// make subject key
-				this.graph = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_graph[2]);
+				this._kt_graph = this.named_node(this._h_prefixes[s_prefix_id] + m_prefixed_named_e_graph[2]);
 
 				// predicate-object pairs state
 				@{goto('graph_post_name')}
@@ -1536,7 +1551,7 @@ class reader {
 				let s_label = m_blank_node_label_graph[1];
 
 				// make graph key
-				this.graph = this.blank_node(s_label);
+				this._kt_graph = this.blank_node(s_label);
 
 				// predicate-object pairs state
 				@{goto('graph_post_name')}
@@ -1544,7 +1559,7 @@ class reader {
 			// anonymous blank node graph
 			@{else_if_match('R_ANONYMOUS_BLANK_NODE')}
 				// set new blank node as graph
-				this.graph = this.anonymous_blank_node(this.next_label());
+				this._kt_graph = this.anonymous_blank_node(this.next_label());
 
 				// goto pairs state for inside property list
 				@{goto('graph_post_name')}
@@ -1563,7 +1578,7 @@ class reader {
 				@{suffix('m_prefixed_named_graph')}
 
 				// make subject key
-				this.graph = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
+				this._kt_graph = this.named_node(this._h_prefixes[s_prefix_id] + s_suffix);
 
 				// predicate-object pairs state
 				@{goto('graph_post_name')}
@@ -1616,7 +1631,7 @@ class reader {
 			@{valid_prefix('m_prefixed_named_e_predicate')}
 
 			// make predicate key
-			this.predicate = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_predicate[2]);
+			this._kt_predicate = this.named_node(this._h_prefixes[s_prefix_id] + m_prefixed_named_e_predicate[2]);
 
 			// object-list state
 			@{goto('object_list')}
@@ -1624,7 +1639,7 @@ class reader {
 		// 'a'
 		@{else_if_match('R_A')}
 			// make predicate key
-			this.predicate = KT_RDF_TYPE;
+			this._kt_predicate = KT_RDF_TYPE;
 
 			// object-list state
 			@{goto('object_list')}
@@ -1647,7 +1662,7 @@ class reader {
 			@{suffix('m_prefixed_named_predicate')}
 
 			// make predicate key
-			this.predicate = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
+			this._kt_predicate = this.named_node(this._h_prefixes[s_prefix_id] + s_suffix);
 
 			// object-list state
 			@{goto('object_list')}
@@ -1676,7 +1691,7 @@ class reader {
 			@{valid_prefix('m_prefixed_named_e_object')}
 
 			// commit object iri from resolve prefixed name
-			this.object = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_object[2]);
+			this._kt_object = this.named_node(this._h_prefixes[s_prefix_id] + m_prefixed_named_e_object[2]);
 
 		// string literal
 		@{else_if_char('"', "'")}
@@ -1696,7 +1711,7 @@ class reader {
 			@{whitespace('i+1')}
 
 			// make object
-			let kt_blank_node = this.object = this.anonymous_blank_node(this.next_label());
+			let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
 
 			// emit statement event
 			@{emit_statement()}
@@ -1705,7 +1720,7 @@ class reader {
 			@{push_state('post_object')}
 
 			// set new subject
-			this.subject = kt_blank_node;
+			this._kt_subject = kt_blank_node;
 
 			// goto parsing pairs state
 			@{goto('pairs')}
@@ -1716,7 +1731,7 @@ class reader {
 			let s_label = m_blank_node_label_object[1];
 
 			// make object
-			this.object = this.blank_node(s_label);
+			this._kt_object = this.blank_node(s_label);
 
 		// collection
 		@{else_if_char('(')}
@@ -1740,7 +1755,7 @@ class reader {
 			@{suffix('m_prefixed_named_object')}
 
 			// commit object iri from resolve prefixed name
-			this.object = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
+			this._kt_object = this.named_node(this._h_prefixes[s_prefix_id] + s_suffix);
 
 		@{else_if_match('R_COMMENT', 'm_comment', true)}
 			if(this.emit_comments) this.emit_comments(m_comment[0]);
@@ -1756,7 +1771,7 @@ class reader {
 
 	@{method('string_literal')}
 		// we know this is going to be a literal
-		let h_literal = this.object = factory.literal();
+		let h_literal = this._kt_object = factory.literal();
 
 		// ref character
 		let x = s[i];
@@ -1775,6 +1790,18 @@ class reader {
 			@{else_if_match('R_STRING_LITERAL_QUOTE', 'm_string_literal_quote')}
 				@{set_string_literal('m_string_literal_quote', 'single-dirk')}
 
+			// `"` string literal quote invalid start
+			@{else_if_match('R_STRING_LITERAL_QUOTE_INVALID_START', 'm_invalid', true)}
+				if(m_invalid[1]) {
+					return Reader$syntax_error(this, i-1, 'string_literal', 'but encountered invalid character after string literal terminator');
+				}
+				else if(1 === m_invalid[2].length) {
+					return Reader$syntax_error(this, i-1, 'string_literal', 'but encountered invalid linebreak character within string literal contents');
+				}
+				else {
+					return Reader$syntax_error(this, i-2, 'string_literal', 'but encountered invalid escape sequence within string literal contents');
+				}
+
 			// not string long literal quote, not string literal quote
 			@{else_retry()}
 
@@ -1789,6 +1816,18 @@ class reader {
 		// `'` string literal single quote w/ escapes
 		@{else_if_match('R_STRING_LITERAL_SINGLE_QUOTE', 'm_string_literal_single_quote')}
 			@{set_string_literal('m_string_literal_single_quote', 'single-irk')}
+
+		// `'` string literal single quote invalid start
+		@{else_if_match('R_STRING_LITERAL_SINGLE_QUOTE_INVALID_START', 'm_invalid', true)}
+			if(m_invalid[1]) {
+				return Reader$syntax_error(this, i-1, 'string_literal', 'but encountered invalid character after string literal terminator');
+			}
+			else if(1 === m_invalid[2].length) {
+				return Reader$syntax_error(this, i-1, 'string_literal', 'but encountered invalid linebreak character within string literal contents');
+			}
+			else {
+				return Reader$syntax_error(this, i-2, 'string_literal', 'but encountered invalid escape sequence within string literal contents');
+			}
 
 		// not string literal long single quote, not string literal single quote
 		@{else_retry()}
@@ -1811,8 +1850,8 @@ class reader {
 			// '@' language tag
 			@{else_if_match('R_LANGTAG', 'm_langtag')}
 				// set literal language type
-				this.object.language = m_langtag[1].toLowerCase();
-				this.object.datatype = KT_RDF_LANG_STRING;
+				this._kt_object.language = m_langtag[1].toLowerCase();
+				this._kt_object.datatype = KT_RDF_LANG_STRING;
 
 			// next token definitely datatype or langtag, we are just being interrupted by eos
 			@{else_retry()}
@@ -1836,14 +1875,14 @@ class reader {
 			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, false, true)}
 
 			// set literal datatype
-			this.object.datatype = this.named_node(p_datatype);
+			this._kt_object.datatype = this.named_node(p_datatype);
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_datatype')}
 			@{valid_prefix('m_prefixed_named_e_datatype')}
 
 			// set literal datatype
-			this.object.datatype = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_datatype[2]);
+			this._kt_object.datatype = this.named_node(this._h_prefixes[s_prefix_id] + m_prefixed_named_e_datatype[2]);
 
 		// iriref
 		@{else_if_match('R_IRIREF', 'm_iriref_datatype')}
@@ -1856,7 +1895,7 @@ class reader {
 			@{suffix('m_prefixed_named_datatype')}
 
 			// set literal datatype
-			this.object.datatype = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
+			this._kt_object.datatype = this.named_node(this._h_prefixes[s_prefix_id] + s_suffix);
 
 		// not iriref, not prefixed name
 		@{else_retry()}
@@ -1920,7 +1959,7 @@ class reader {
 		// '.' end of statement
 		@{else_if_char('.')}
 			// assert not nested
-			if(this.nested.length) {
+			if(this._a_nested.length) {
 				// reset index to that character
 				this.i = i;
 
@@ -1930,7 +1969,7 @@ class reader {
 			@- TTL
 				@{goto(S_STATE_PRIMARY)}
 			@:
-				return (KT_DEFAULT_GRAPH === this.graph)? this.@{S_STATE_PRIMARY}(): this.statement();
+				return (KT_DEFAULT_GRAPH === this._kt_graph)? this.@{S_STATE_PRIMARY}(): this.statement();
 			@;
 
 		// ']' end of property-object pairs
@@ -1940,7 +1979,7 @@ class reader {
 		// ')' end of collection
 		@{else_if_char(')')}
 			// should not be here
-			return this.parse_error('unexpected end of collection');
+			return Reader$syntax_error(this, i, 'post_object', 'but encountered end of collection');
 
 		@- QUADS
 			// closing graph '}'
@@ -1949,7 +1988,7 @@ class reader {
 				@{emit_graph_close()}
 
 				// reset graph
-				this.graph = KT_DEFAULT_GRAPH;
+				this._kt_graph = KT_DEFAULT_GRAPH;
 
 				@{goto('block')}
 		@;
@@ -1973,7 +2012,7 @@ class reader {
 			@{iriref('base_url', 'm_iriref_e_base', false, true)}
 
 			// emit base event
-			this.emit('base', this.base_url);
+			this.emit('base', this._s_base_url);
 
 			@// handle full stop
 			@{full_stop()}
@@ -1987,7 +2026,7 @@ class reader {
 			@{iriref('base_url', 'm_iriref_base', false, true, true)}
 
 			// emit base event
-			this.emit('base', this.base_url);
+			this.emit('base', this._s_base_url);
 
 			@// handle full stop
 			@{full_stop()}
@@ -2009,7 +2048,7 @@ class reader {
 		// prefix id
 		@{if_match('R_PREFIX_ID', 'm_prefix_id')}
 			// set temp prefix id
-			this.temp_prefix_id = m_prefix_id[1];
+			this._s_temp_prefix_id = m_prefix_id[1];
 
 			// goto prefix iri state
 			@{goto('prefix_iri')}
@@ -2026,8 +2065,8 @@ class reader {
 
 
 	@{method('prefix_iri')}
-		let h_prefixes = this.prefixes;
-		let s_prefix_id = this.temp_prefix_id;
+		let h_prefixes = this._h_prefixes;
+		let s_prefix_id = this._s_temp_prefix_id;
 		let p_prefix_iri;
 
 		// prefix iri
@@ -2131,9 +2170,9 @@ class reader {
 			@{whitespace('i+1')}
 
 			// no items in collection subject
-			if(null === this.subject) {
+			if(null === this._kt_subject) {
 				// prepare subject
-				this.subject = KT_RDF_NIL;
+				this._kt_subject = KT_RDF_NIL;
 
 				// state was never pushed to stack, jump to post_subject state
 				@{goto('post_blank_subject')}
@@ -2141,7 +2180,7 @@ class reader {
 			// otherwise, there must be items in collection
 
 			// commit collection end
-			this.object = KT_RDF_NIL;
+			this._kt_object = KT_RDF_NIL;
 			@{emit_statement()}
 
 			// restore state from stack
@@ -2154,13 +2193,13 @@ class reader {
 
 		// very first collection object
 		let b_pushed = false;
-		if(null === this.subject) {
+		if(null === this._kt_subject) {
 			// set quasi subject (really for resume state)
 			s_pointer_label = this.next_label();
-			this.subject = this.anonymous_blank_node(s_pointer_label);
+			this._kt_subject = this.anonymous_blank_node(s_pointer_label);
 			@{push_state('pairs')}
 			// reset subject for later conditional branch
-			this.subject = null;
+			this._kt_subject = null;
 			b_pushed = true;
 		}
 
@@ -2174,31 +2213,31 @@ class reader {
 			@{valid_prefix('m_prefixed_named_e_object')}
 
 			// commit object iri from resolve prefixed name
-			this.object = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_object[2]);
+			this._kt_object = this.named_node(this._h_prefixes[s_prefix_id] + m_prefixed_named_e_object[2]);
 
 		// string literal
 		@{else_if_char('"', "'")}
 			// first item in list
-			if(null === this.subject) {
+			if(null === this._kt_subject) {
 				s_pointer_label = this.next_label();
-				this.subject = this.anonymous_blank_node(s_pointer_label);
-				this.predicate = KT_RDF_FIRST;
+				this._kt_subject = this.anonymous_blank_node(s_pointer_label);
+				this._kt_predicate = KT_RDF_FIRST;
 			}
 			// not first item in list
 			else {
 				// make nest list item
 				s_pointer_label = this.next_label();
-				let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+				let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
 				@{emit_statement()}
 
 				// setup for object literal
-				this.subject = kt_blank_node;
-				this.predicate = KT_RDF_FIRST;
+				this._kt_subject = kt_blank_node;
+				this._kt_predicate = KT_RDF_FIRST;
 			}
 
 			// how to resume collection subject state after object literal
 			this.after_end_of_statement = function() {
-				this.predicate = KT_RDF_REST;
+				this._kt_predicate = KT_RDF_REST;
 				this.after_end_of_statement = this.post_object;
 				return this.collection_subject();
 			};
@@ -2211,7 +2250,7 @@ class reader {
 		// boolean literal
 		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal', true)}
 			// make literal
-			this.object = factory.boolean(m_boolean_literal[1]? true: false);
+			this._kt_object = factory.boolean(m_boolean_literal[1]? true: false);
 
 		// blank node property list
 		@{else_if_char('[')}
@@ -2221,26 +2260,26 @@ class reader {
 			// this blank node is just the next item in the list
 			s_pointer_label = this.next_label();
 			let kt_blank_node;
-			if(null !== this.subject) {
-				kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+			if(null !== this._kt_subject) {
+				kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
 				@{emit_statement()}
 			}
 
 			// subject needs to be set
-			this.subject = kt_blank_node || this.anonymous_blank_node(s_pointer_label);
-			this.predicate = KT_RDF_FIRST;
+			this._kt_subject = kt_blank_node || this.anonymous_blank_node(s_pointer_label);
+			this._kt_predicate = KT_RDF_FIRST;
 			let s_label = this.next_label();
-			kt_blank_node = this.object = this.anonymous_blank_node(s_label);
+			kt_blank_node = this._kt_object = this.anonymous_blank_node(s_label);
 			@{emit_statement()}
 
 			// when resume
-			this.predicate = KT_RDF_REST;
+			this._kt_predicate = KT_RDF_REST;
 
 			// push state
 			@{push_state('collection_subject')}
 
 			// prepare next triple
-			this.subject = kt_blank_node;
+			this._kt_subject = kt_blank_node;
 
 			// goto parsing pairs state
 			@{goto('pairs')}
@@ -2252,10 +2291,10 @@ class reader {
 			// empty collection
 			if(')' === s[i]) {
 				this.i = i;
-				this.subject = this.nested[this.nested.length-1][0];
-				this.predicate = KT_RDF_FIRST;
-				this.nested.push([
-					this.subject,
+				this._kt_subject = this._a_nested[this._a_nested.length-1][0];
+				this._kt_predicate = KT_RDF_FIRST;
+				this._a_nested.push([
+					this._kt_subject,
 					KT_RDF_REST,
 					'collection_subject',
 				]);
@@ -2264,20 +2303,20 @@ class reader {
 
 @.{/*
 			// commit list item pointer
-			if(null !== this.subject) {
+			if(null !== this._kt_subject) {
 				s_pointer_label = this.next_label();
-				let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+				let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
 				@{emit_statement()}
 
 				// add this list as an item to the outer list
-				this.subject = kt_blank_node;
-				this.predicate = KT_RDF_REST;
+				this._kt_subject = kt_blank_node;
+				this._kt_predicate = KT_RDF_REST;
 
 				@{push_state('collection_object')}
 			}
 			else {
-				this.nested.push([
-					this.nested[this.nested.length-1][0],
+				this._a_nested.push([
+					this._a_nested[this._a_nested.length-1][0],
 					KT_RDF_REST,
 					'collection_object',
 				]);
@@ -2285,23 +2324,23 @@ class reader {
 
 
 			// prepare next triple
-			this.predicate = KT_RDF_FIRST;
+			this._kt_predicate = KT_RDF_FIRST;
 */}
 
 
 
 			// commit list item pointer
 			s_pointer_label = this.next_label();
-			let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+			let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
 			@{emit_statement()}
 
 			// add this list as an item to the outer list
-			this.subject = kt_blank_node;
-			this.predicate = KT_RDF_REST;
+			this._kt_subject = kt_blank_node;
+			this._kt_predicate = KT_RDF_REST;
 			@{push_state('collection_object')}
 
 			// prepare next triple
-			this.predicate = KT_RDF_FIRST;
+			this._kt_predicate = KT_RDF_FIRST;
 
 
 
@@ -2309,46 +2348,46 @@ class reader {
 
 			// commit list item pointer
 			s_pointer_label = this.next_label();
-			let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
-			if(null === this.subject) {
-				let a_recent = this.nested[this.nested.length-1];
-				this.subject = a_recent[0];
-				this.predicate = a_recent[1];
+			let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
+			if(null === this._kt_subject) {
+				let a_recent = this._a_nested[this._a_nested.length-1];
+				this._kt_subject = a_recent[0];
+				this._kt_predicate = a_recent[1];
 			}
 			@{emit_statement()}
 
 			// add this list as an item to the outer list
-			this.subject = kt_blank_node;
-			this.predicate = KT_RDF_REST;
+			this._kt_subject = kt_blank_node;
+			this._kt_predicate = KT_RDF_REST;
 			@{push_state('collection_object')}
 
 			// prepare next triple
-			this.predicate = KT_RDF_FIRST;
+			this._kt_predicate = KT_RDF_FIRST;
 
 
 			// this blank node is just the next item in the list
 			s_pointer_label = this.next_label();
 			let kt_blank_node;
-			if(null !== this.subject) {
-				kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
+			if(null !== this._kt_subject) {
+				kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
 				@{emit_statement()}
 			}
 
 			// subject needs to be set
-			this.subject = kt_blank_node || this.anonymous_blank_node(s_pointer_label);
-			this.predicate = KT_RDF_FIRST;
+			this._kt_subject = kt_blank_node || this.anonymous_blank_node(s_pointer_label);
+			this._kt_predicate = KT_RDF_FIRST;
 			let s_label = this.next_label();
-			kt_blank_node = this.object = this.anonymous_blank_node(s_label);
+			kt_blank_node = this._kt_object = this.anonymous_blank_node(s_label);
 			@{emit_statement()}
 
 			// when resume
-			this.predicate = KT_RDF_REST;
+			this._kt_predicate = KT_RDF_REST;
 
 			// push state
 			@{push_state('collection_subject')}
 
 			// prepare next triple
-			this.subject = kt_blank_node;
+			this._kt_subject = kt_blank_node;
 */}
 
 			// flowing
@@ -2360,7 +2399,7 @@ class reader {
 			let s_label = m_blank_node_label_object[1];
 
 			// make object
-			this.object = this.blank_node(s_label);
+			this._kt_object = this.blank_node(s_label);
 
 		// iriref
 		@{else_if_match('R_IRIREF', 'm_iriref_object', true)}
@@ -2374,7 +2413,7 @@ class reader {
 			@{suffix('m_prefixed_named_object')}
 
 			// commit object iri from resolve prefixed name
-			this.object = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
+			this._kt_object = this.named_node(this._h_prefixes[s_prefix_id] + s_suffix);
 
 		@{else_if_match('R_COMMENT', 'm_comment', true)}
 			if(this.emit_comments) this.emit_comments(m_comment[0]);
@@ -2383,34 +2422,34 @@ class reader {
 		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
 		@{else_retry(/* syntax: js */ `
 			// ran out of characters after pushing state, pop it
-			if(b_pushed) this.nested.pop();
+			if(b_pushed) this._a_nested.pop();
 		`)}
 
 		let kt_blank_node_outer;
 		if(!s_pointer_label) s_pointer_label = this.next_label();
 
 		// not the very first item of collection subject
-		if(this.subject !== null) {
+		if(this._kt_subject !== null) {
 			// ref object
-			let w_object = this.object;
+			let w_object = this._kt_object;
 
 			// create blanknode to embed list
-			kt_blank_node_outer = this.object = this.anonymous_blank_node(s_pointer_label);
+			kt_blank_node_outer = this._kt_object = this.anonymous_blank_node(s_pointer_label);
 
 			// emit statement that functions as collection's head "pointer"
 			@{emit_statement()}
 
 			// swap back object
-			this.object = w_object;
+			this._kt_object = w_object;
 		}
 
 		// emit statement that is item
-		this.subject = kt_blank_node_outer || this.anonymous_blank_node(s_pointer_label);
-		this.predicate = KT_RDF_FIRST;
+		this._kt_subject = kt_blank_node_outer || this.anonymous_blank_node(s_pointer_label);
+		this._kt_predicate = KT_RDF_FIRST;
 		@{emit_statement()}
 
 		// prepare next predicate
-		this.predicate = KT_RDF_REST;
+		this._kt_predicate = KT_RDF_REST;
 
 	@{end_method('collection_subject')}
 
@@ -2426,7 +2465,7 @@ class reader {
 			@{whitespace('i+1')}
 
 			// make & emit collection's tail "pointer"
-			this.object = KT_RDF_NIL;
+			this._kt_object = KT_RDF_NIL;
 			@{emit_statement()}
 
 			// restore previous state
@@ -2447,7 +2486,7 @@ class reader {
 			@{valid_prefix('m_prefixed_named_e_object')}
 
 			// commit object iri from resolve prefixed name
-			this.object = this.named_node(this.prefixes[s_prefix_id] + m_prefixed_named_e_object[2]);
+			this._kt_object = this.named_node(this._h_prefixes[s_prefix_id] + m_prefixed_named_e_object[2]);
 
 		// string literal
 		@{else_if_char('"', "'")}
@@ -2455,17 +2494,17 @@ class reader {
 			this.i = i;
 
 			// create blanknode to embed list
-			let kt_blank_node = this.object = this.anonymous_blank_node(this.next_label());
+			let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
 
 			// emit statement that functions as collection's head "pointer"
 			@{emit_statement()}
 
 			// prepare statement that is item
-			this.subject = kt_blank_node;
-			this.predicate = KT_RDF_FIRST;
+			this._kt_subject = kt_blank_node;
+			this._kt_predicate = KT_RDF_FIRST;
 
 			this.after_end_of_statement = function() {
-				this.predicate = KT_RDF_REST;
+				this._kt_predicate = KT_RDF_REST;
 				this.after_end_of_statement = this.post_object;
 				return this.collection_object();
 			};
@@ -2478,7 +2517,7 @@ class reader {
 		// boolean literal
 		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal', true)}
 			// make literal
-			this.object = factory.booelan(m_boolean_literal[1]? true: false);
+			this._kt_object = factory.booelan(m_boolean_literal[1]? true: false);
 
 		// blank node property list
 		@{else_if_char('[')}
@@ -2486,22 +2525,22 @@ class reader {
 			@{whitespace('i+1')}
 
 			// commit head of list pointer
-			let kt_blank_node = this.object = this.anonymous_blank_node(this.next_label());
+			let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
 			@{emit_statement()}
 
 			// setup state to resume and push
-			this.subject = kt_blank_node;
-			this.predicate = KT_RDF_REST;
+			this._kt_subject = kt_blank_node;
+			this._kt_predicate = KT_RDF_REST;
 			@{push_state('collection_object')}
 
 			// enter blank node
-			this.predicate = KT_RDF_FIRST;
-			kt_blank_node = this.object = this.anonymous_blank_node(this.next_label());
+			this._kt_predicate = KT_RDF_FIRST;
+			kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
 			@{emit_statement()}
 
 			// prepare next triple
-			this.subject = kt_blank_node;
-			this.predicate = KT_RDF_FIRST;
+			this._kt_subject = kt_blank_node;
+			this._kt_predicate = KT_RDF_FIRST;
 
 			// goto parsing pairs state
 			@{goto('pairs')}
@@ -2512,21 +2551,21 @@ class reader {
 
 			// commit list item pointer
 			s_pointer_label = this.next_label();
-			let kt_blank_node = this.object = this.anonymous_blank_node(s_pointer_label);
-			if(null === this.subject) {
-				let a_recent = this.nested[this.nested.length-1];
-				this.subject = a_recent[0];
-				this.predicate = a_recent[1];
+			let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
+			if(null === this._kt_subject) {
+				let a_recent = this._a_nested[this._a_nested.length-1];
+				this._kt_subject = a_recent[0];
+				this._kt_predicate = a_recent[1];
 			}
 			@{emit_statement()}
 
 			// add this list as an item to the outer list
-			this.subject = kt_blank_node;
-			this.predicate = KT_RDF_REST;
+			this._kt_subject = kt_blank_node;
+			this._kt_predicate = KT_RDF_REST;
 			@{push_state('collection_object')}
 
 			// prepare next triple
-			this.predicate = KT_RDF_FIRST;
+			this._kt_predicate = KT_RDF_FIRST;
 
 			// flowing
 			continue;
@@ -2540,7 +2579,7 @@ class reader {
 			s_pointer_label = this.next_label();
 
 			// make object
-			this.object = this.blank_node(s_label);
+			this._kt_object = this.blank_node(s_label);
 
 		// iriref
 		@{else_if_match('R_IRIREF', 'm_iriref_object', true)}
@@ -2554,7 +2593,7 @@ class reader {
 			@{suffix('m_prefixed_named_object')}
 
 			// commit object iri from resolve prefixed name
-			this.object = this.named_node(this.prefixes[s_prefix_id] + s_suffix);
+			this._kt_object = this.named_node(this._h_prefixes[s_prefix_id] + s_suffix);
 
 		@{else_if_match('R_COMMENT', 'm_comment', true)}
 			if(this.emit_comments) this.emit_comments(m_comment[0]);
@@ -2565,23 +2604,23 @@ class reader {
 
 
 		// ref object
-		let w_object = this.object;
+		let w_object = this._kt_object;
 
 		// create blanknode to embed list
 		if(!s_pointer_label) s_pointer_label = this.next_label();
-		let kt_blank_node_outer = this.object = this.anonymous_blank_node(s_pointer_label);
+		let kt_blank_node_outer = this._kt_object = this.anonymous_blank_node(s_pointer_label);
 
 		// emit statement that functions as collection's head "pointer"
 		@{emit_statement()}
 
 		// emit statement that is item
-		this.subject = kt_blank_node_outer;
-		this.predicate = KT_RDF_FIRST;
-		this.object = w_object;
+		this._kt_subject = kt_blank_node_outer;
+		this._kt_predicate = KT_RDF_FIRST;
+		this._kt_object = w_object;
 		@{emit_statement()}
 
 		// prepare next predicate
-		this.predicate = KT_RDF_REST;
+		this._kt_predicate = KT_RDF_REST;
 
 	@{end_method('collection_object')}
 
@@ -2595,7 +2634,7 @@ class reader {
 				`;
 			}
 		}
-		this.destroyed = true;
+		this._b_destroyed = true;
 		this.transform.demolish(e_destroy);
 	}
 }
@@ -2606,5 +2645,5 @@ module.exports = function(...a_args) {
 	@{normalize_reader_config('g_config')}
 
 	// create reader, return transform stream
-	return (new reader(g_config)).transform;
+	return (new Reader(g_config)).transform;
 };
