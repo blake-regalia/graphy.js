@@ -256,6 +256,11 @@ if(module === require.main) {
 					alias: ['base', 'base-uri'],
 					describe: 'set a base URI on the document',
 				},
+				// f: {
+				// 	type: 'string',
+				// 	alias: ['filter'],
+				// 	describe: 'filter quads by matching the given expression',
+				// },
 				s: {
 					type: 'string',
 					alias: ['subject'],
@@ -336,6 +341,10 @@ if(module === require.main) {
 				},
 			}));
 
+			// // filter expression
+			// if(g_argv.filter) {
+			// 	parse_filter(g_argv.filter);
+			// }
 			// filters
 			if(g_argv.subject || g_argv.predicate || g_argv.object || g_argv.graph
 				|| g_argv['not-subject'] || g_argv['not-predicate'] || g_argv['not-object'] || g_argv['not-graph']) {
@@ -824,6 +833,11 @@ if(module === require.main) {
 		},
 	};
 
+	// command aliases
+	h_commands.read = h_commands['content.trig.read'];
+	h_commands.write = h_commands['content.trig.write'];
+	h_commands.tree = h_commands['util.dataset.tree'];
+
 	let a_argv = process.argv.slice(2);
 	let n_args = a_argv.length;
 
@@ -854,6 +868,15 @@ if(module === require.main) {
 					a_series = [];
 					continue;
 				}
+				// shorthand internal pipe
+				else if('/' === s_arg) {
+					a_pipeline.push(a_series);
+					if(i_argv === n_args) {
+						exit(`was expecting pipe destination after internal pipe character '/': ${a_argv}`);
+					}
+					a_series = [];
+					continue;
+				}
 				// inputs follow
 				else if('--inputs' === s_arg) {
 					// convert to readable streams
@@ -878,6 +901,11 @@ if(module === require.main) {
 					  content.trig.read     Read a TriG document
 					  content.trig.write    Write to TriG format
 					  util.dataset.tree     Perform some transformation on a datset
+
+					Command aliases:
+					  read     -> content.trig.read
+					  write    -> content.trig.write
+					  tree     -> util.dataset.tree
 
 					Run 'graphy COMMAND --help' for more information on a command.
 				`));
