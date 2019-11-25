@@ -156,6 +156,12 @@ const H_ESCAPES_JSON = @{H_ESCAPES_JSON()};
 
 const R_PREFIXED_NAME_ESCAPELESS = /@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 
+@$ B_OPTIMIZE_PAIRS = false;
+@- B_OPTIMIZE_PAIRS
+	const R_OPTIMIZED_PAIRS = /@{R_PREFIXED_NAME_ESCAPELESS()}@{R_PREFIXED_NAME_ESCAPELESS()}/y;
+@;
+
+
 @>> R_PREFIXED_NAME(b_lookahead=false)
 	@//@regex
 	(@{R_PREFIX_ID()})? :				@// 1: prefix id
@@ -306,12 +312,14 @@ const match_prefixed_name = (s, i) => {
 
 
 @// assert the prefix found in prefixed name is valid
-@> valid_prefix(match)
+@> valid_prefix(match, n_group)
+	@. let sj_var = `s_prefix_id${n_group? '_'+n_group: ''}`;
+
 	// check valid prefix
-	let s_prefix_id = @{match}[1] || '';
+	let @{sj_var} = @{match}[@{n_group || 1}] || '';
 
 	// invalid prefix
-	if(!OPHOP.call(this._h_prefixes, s_prefix_id)) return this.error(`no such prefix "${s_prefix_id}"`);
+	if(!OPHOP.call(this._h_prefixes, @{sj_var})) return this.error(`no such prefix "${@{sj_var}}"`);
 @;
 
 
@@ -1619,12 +1627,35 @@ class Reader {
 	@{method('pairs')}
 		// benchmarks indicate: regex for end of blank node property list faster than ch
 
-		// iriref
-		@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_predicate')}
-			@{iriref('predicate', 'm_iriref_e_predicate', true)}
+		@- B_OPTIMIZE_PAIRS
+			// optimize
+			@{if_match('R_OPTIMIZED_PAIRS', 'm_prefixed_named_pairs')}
+				@{valid_prefix('m_prefixed_named_pairs', 1)}
+				@{valid_prefix('m_prefixed_named_pairs', 3)}
 
-			// object-list state
-			@{goto('object_list')}
+				// make predicate key
+				this._kt_predicate = this.named_node(this._h_prefixes[s_prefix_id_1] + m_prefixed_named_pairs[2]);
+
+				// make object
+				this._kt_object = this.named_node(this._h_prefixes[s_prefix_id_3] + m_prefixed_named_pairs[4]);
+
+				//
+				@{goto('post_object')}
+
+			// iriref
+			@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_predicate')}
+				@{iriref('predicate', 'm_iriref_e_predicate', true)}
+
+				// object-list state
+				@{goto('object_list')}
+		@:
+			// iriref
+			@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_predicate')}
+				@{iriref('predicate', 'm_iriref_e_predicate', true)}
+
+				// object-list state
+				@{goto('object_list')}
+		@;
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_predicate')}
@@ -1924,7 +1955,7 @@ class Reader {
 				// next token is end of outer section
 				let s_peek = s[this.i];
 				if('.' === s_peek || ']' === s_peek || ';' === s_peek @{QUADS? /* syntax: js */ `|| '}' === s_peek`: ''}) {
-					// goto post-object state
+					// goto post_object state
 					@{goto('post_object')}
 				}
 				// comment

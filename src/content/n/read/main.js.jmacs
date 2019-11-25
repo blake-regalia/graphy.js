@@ -150,7 +150,7 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 		// otherwise, set language tag if present
 		else if(@{sv_match}[8]) {
 			let s_language = w_object.language = @{sv_match}[8].toLowerCase();
-			if(!this.relax && !RT_LANGUAGE_VALID.test(s_language)) return this._error(`invalid literal language tag: ${s_language}`);
+			if(!this._b_relax && !RT_LANGUAGE_VALID.test(s_language)) return this._error(`invalid literal language tag: ${s_language}`);
 			w_object.datatype = KT_RDFS_LANG_STRING;
 		}
 	}
@@ -265,7 +265,7 @@ class @{S_LABEL}_Reader extends stream.Transform {
 	}
 }
 
-class reader {
+class Reader {
 	constructor(g_config) {
 		let {
 			// input medium
@@ -286,11 +286,11 @@ class reader {
 			// string buffer length
 			n: 0,
 
-			debug: b_debug,
+			_b_debug: b_debug,
 
-			relax: b_relax,
+			_b_relax: b_relax,
 
-			destroyed: false,
+			_b_destroyed: false,
 		});
 
 		// clean regex
@@ -474,7 +474,7 @@ class reader {
 	}
 
 	_error(s_message) {
-		this.destroyed = true;
+		this._b_destroyed = true;
 		throw new Error(s_message);
 	}
 
@@ -519,5 +519,5 @@ module.exports = function(...a_args) {
 	@{normalize_reader_config('g_config')}
 
 	// create reader, return transform stream
-	return (new reader(g_config)).transform;
+	return (new Reader(g_config)).transform;
 };

@@ -40,6 +40,7 @@ class @{S_LABEL}_Writer extends writable {
 		Object.assign(this, {
 			indent: s_indent,
 			debug: b_debug,
+			_b_simplify_default_graph: false,
 		});
 
 		@- B_QUADS
@@ -67,6 +68,11 @@ class @{S_LABEL}_Writer extends writable {
 					else {
 						s_graph_token = z_token+' ';
 					}
+				}
+
+				// default graph simplification
+				if(gc_tokens.simplifyDefaultGraph || gc_tokens.simplify_default_graph) {
+					this._b_simplify_default_graph = true;
 				}
 			}
 
@@ -184,6 +190,9 @@ class @{S_LABEL}_Writer extends writable {
 		this.state = @{XC_STATE_DATA};
 
 		@- b_c4
+			// force default graph brace
+			let b_simplify_default_graph = this._b_simplify_default_graph;
+
 			// graph token
 			let s_graph_token = this.graph_token;
 			
@@ -197,7 +206,13 @@ class @{S_LABEL}_Writer extends writable {
 
 				// serialize open graph
 				let st_graph = factory.c1_node(sc1_graph, h_prefixes).terse(h_prefixes);
-				s_write += s_graph_token+(st_graph? st_graph+' ': '')+'{\n';
+				s_write += s_graph_token+(st_graph
+					? st_graph+' {'
+					: (b_simplify_default_graph? '': '{')
+				)+'\n';
+
+				// simplify default graph implies no indent
+				let s_indent_root = (!st_graph && b_simplify_default_graph)? '': s_indent;
 
 				// update state
 				this.state = @{XC_STATE_DATA};
@@ -213,7 +228,7 @@ class @{S_LABEL}_Writer extends writable {
 			for(let sc1_subject in hc3_triples) {
 				// directive
 				if('`' === sc1_subject[0]) {
-					s_write += s_delim_triples+@{b_c4? 's_indent+': ''}this.directive(sc1_subject, hc3_triples[sc1_subject]);
+					s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}this.directive(sc1_subject, hc3_triples[sc1_subject]);
 
 					// do not break next line
 					s_delim_triples = '';
@@ -224,7 +239,7 @@ class @{S_LABEL}_Writer extends writable {
 				let i_triples = s_write.length;
 
 				// serialize subject
-				s_write += s_delim_triples+@{b_c4? 's_indent+': ''}factory.c1_node(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
+				s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}factory.c1_node(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
 
 				// pair indent & terminator
 				let s_indent_pairs = '';
@@ -244,7 +259,7 @@ class @{S_LABEL}_Writer extends writable {
 					// directive
 					if('`' === sc1_predicate[0]) {
 						// break line
-						s_write += (s_indent_pairs? s_term_pairs: '\n')+s_indent@{b_c4? '+s_indent': ''};
+						s_write += (s_indent_pairs? s_term_pairs: '\n')+s_indent@{b_c4? '+s_indent_root': ''};
 
 						// serialize directive
 						s_write += this.directive(sc1_predicate, hc2_pairs[sc1_predicate]);
@@ -253,7 +268,7 @@ class @{S_LABEL}_Writer extends writable {
 						s_term_pairs = '';
 
 						// indent next pair
-						s_indent_pairs = s_indent@{b_c4? '+s_indent': ''};
+						s_indent_pairs = s_indent@{b_c4? '+s_indent_root': ''};
 						continue;
 					}
 
@@ -295,7 +310,7 @@ class @{S_LABEL}_Writer extends writable {
 					s_term_pairs = ' ;\n';
 
 					// indent next pair
-					s_indent_pairs = s_indent@{b_c4? '+s_indent': ''};
+					s_indent_pairs = s_indent@{b_c4? '+s_indent_root': ''};
 				}
 
 				// empty triples; cut out
@@ -313,7 +328,7 @@ class @{S_LABEL}_Writer extends writable {
 
 		@- b_c4
 				// close graph
-				s_write += '}\n\n';
+				s_write += ((st_graph || !b_simplify_default_graph)? '}\n': '')+'\n';
 
 			}
 		@:

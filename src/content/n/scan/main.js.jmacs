@@ -100,7 +100,7 @@ const scan_read_file = async(g_config) => {
 		// 	let a_supplied = Object.keys(g_config).filter(s => s in ['data', 'error', 'end']);
 		// 	throw new Error(`scan mode requires supplying the inline event callbacks 'data', 'error' and 'end'; however only the following were supplied: ${a_supplied}`);
 		// }
-
+debugger;
 	// worker group
 	let k_group = worker.group('./worker.js', NL_WORKERS, {
 		node_args: (process.env.WORKER_NODE_ARGS || '').split(' '),
