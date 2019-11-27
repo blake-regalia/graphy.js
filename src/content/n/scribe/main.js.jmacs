@@ -7,7 +7,7 @@
 
 const writable = require('@@@{S_GRAPHY_CHANNEL}/core.class.writable');
 
-class serializer extends writable.serializer.textual.verbose {
+class Serializer extends writable.serializer.textual.verbose {
 	constructor(g_config={}) {
 		super(writable.@{QUADS? 'quads': 'triples'}, g_config);
 	}
@@ -31,5 +31,5 @@ class serializer extends writable.serializer.textual.verbose {
 };
 
 module.exports = function(g_config) {
-	return (new serializer(g_config)).writer;
+	return (new Serializer(g_config)).writer;
 };

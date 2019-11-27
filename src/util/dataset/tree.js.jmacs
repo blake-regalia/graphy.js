@@ -975,7 +975,7 @@ class DatasetTree extends stream.Duplex {
 
 				// push writable data event
 				let b_pressure = this.push({
-					type: 'c4',
+					type: 'c4x',
 					value: {
 						[sv1_graph]: {
 							[sv1_subject]: h_triples[sv1_subject],

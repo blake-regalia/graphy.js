@@ -1,3 +1,22 @@
+const G_MODES_N_FAMILY = {
+	read: {},
+	write: {},
+	// scan: {},
+};
+
+const G_MODES_T_FAMILY = {
+	read: {
+		dependencies: [
+			'uri-js',
+		],
+	},
+	write: {
+		dependencies: [
+			'big-integer',
+		],
+	},
+	scribe: {},
+};
 
 // content
 module.exports = {
@@ -6,43 +25,28 @@ module.exports = {
 		nt: {
 			super: 'n',
 			description: 'RDF N-Triples',
-			modes: [
-				'read',
-				'write',
-				'scan',
-			],
+			modes: G_MODES_N_FAMILY,
 			manifest: 'http://w3c.github.io/rdf-tests/ntriples/manifest.ttl',
 			mime: 'application/n-triples',
 		},
 		nq: {
 			super: 'n',
 			description: 'RDF N-Quads',
-			modes: [
-				'read',
-				'write',
-				'scan',
-			],
+			modes: G_MODES_N_FAMILY,
 			manifest: 'http://w3c.github.io/rdf-tests/nquads/manifest.ttl',
 			mime: 'application/n-quads',
 		},
 		ttl: {
 			super: 't',
 			description: 'RDF Turtle',
-			modes: [
-				'read',
-				'write',
-				'scan',
-			],
+			modes: G_MODES_T_FAMILY,
 			manifest: 'http://w3c.github.io/rdf-tests/turtle/manifest.ttl',
 			mime: 'text/turtle',
 		},
 		trig: {
 			super: 't',
 			description: 'RDF TriG',
-			modes: [
-				'read',
-				'write',
-			],
+			modes: G_MODES_T_FAMILY,
 			manifest: 'http://w3c.github.io/rdf-tests/trig/manifest.ttl',
 			mime: 'application/trig',
 		},
@@ -55,9 +59,6 @@ module.exports = {
 			links: [
 				'core.data.factory',
 				'core.iso.stream',
-			],
-			dependencies: [
-				'uri-js',
 			],
 			files: {
 				'main.js': ['../text.read.jmacs'],
@@ -76,13 +77,10 @@ module.exports = {
 		},
 
 		write: {
-			description: s => `${s} content writer`,
+			description: s => `${s} content writer for dynamic and stylized output`,
 			links: [
 				'core.data.factory',
 				'core.class.writable',
-			],
-			dependencies: [
-				'big-integer',
 			],
 			files: {
 				'main.js': [],
@@ -90,8 +88,9 @@ module.exports = {
 		},
 
 		scribe: {
-			description: s => `${s} content scriber`,
+			description: s => `${s} content scriber for fast and simple output`,
 			links: [
+				'core.data.factory',
 				'core.class.writable',
 			],
 			files: {

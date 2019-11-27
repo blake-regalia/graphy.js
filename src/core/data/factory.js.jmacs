@@ -1,9 +1,10 @@
 @import '../../share/iris.jmacs'
+@import '../../content/text.read.jmacs'
 
-const uri = require('uri-js');
+const R_INVALID_IRIREF = /([\x00-\x20<>"{}|^`\\]|%(?![0-9A-F][0-9A-F]))/g;
+const F_REPLACE_INVALID_IRIREF = (s_, s_v) => '\\u'+s_v.codePointAt()
 
-// take a dirty iri and clean it up
-const clean_iri = p_iri_dirty => uri.serialize(uri.parse(p_iri_dirty), {iri:true});
+const clean_iri = p_iri_dirty => p_iri_dirty.replace(R_INVALID_IRIREF, F_REPLACE_INVALID_IRIREF);
 
 @>> MK_RANGE_PN_HIGH(b_extend=false)
 	@// #x00B7
@@ -137,8 +138,96 @@ const uuid_v4 = () => {
 	});
 };
 
-// attempt to turn an iri into a prefixed name
-const concise = (p_iri, h_prefixes) => {
+
+// symbol to access cache on a prefix mapping
+const $_PREFIX_CACHE = Symbol('prefix-cache');
+
+// escape characters for compiling regexes
+const R_REGEX_ESCAPE = /[$^*()+[\\{}|.?]/g;
+
+// valid locals of prefixed names
+const SR_PN_LOCAL = '(@{(PN_LOCAL(true)+'').replace(/['\\]/g, '\\$&')})$';
+
+
+// create a cache on a prefix mapping
+function cache_prefixes(h_prefixes, b_terse=false) {
+	// regex cache string building
+	let a_cache = [];
+
+	// inverse mappings
+	let h_inverse = {};
+
+	// each prefix/iri pair
+	for(let si_prefix in h_prefixes) {
+		let p_iri = h_prefixes[si_prefix];
+
+		// prefix would make an invalid namespace; skip
+		if(b_terse && RT_AVOID_PNAME_NS.test(si_prefix)) continue;
+
+		// save inverse mapping
+		h_inverse[p_iri] = si_prefix;
+
+		// push iri
+		a_cache.push(p_iri.replace(R_REGEX_ESCAPE, '\\$&'));
+	}
+
+	// save cache object
+	h_prefixes[$_PREFIX_CACHE] = {
+		_r_iris: new RegExp(`^(${a_cache.join('|')})${SR_PN_LOCAL}`, 'u'),
+		_h_inverse: h_inverse,
+	};
+
+	// freeze object
+	return Object.freeze(h_prefixes);
+}
+
+
+@$ B_OPTIMIZE_PREFIX_COMPRESSION = false;
+
+@- B_OPTIMIZE_PREFIX_COMPRESSION
+	const R_COMPRESS = /^(.*?)([^/#]*)$/;
+@;
+
+@> curi_prefix_cache()
+	// ref cache
+	let g_cache = h_prefixes[$_PREFIX_CACHE];
+
+	// cache exists
+	if(g_cache) {
+		@- B_OPTIMIZE_PREFIX_COMPRESSION
+			// iri compression
+			let m_compress = R_COMPRESS.exec(p_iri);
+			if(m_compress) {
+				let p_compress = m_compress[1];
+				let h_inverse = g_cache._h_inverse;
+				if(p_compress in h_inverse) {
+					return h_inverse[p_compress]+':'+m_compress[2];
+				}
+			}
+		@;
+
+		// iri matching
+		let m_iri = g_cache._r_iris.exec(p_iri);
+
+		// prefix mapped; compress
+		if(m_iri) {
+			return g_cache._h_inverse[m_iri[1]]+':'+m_iri[2];
+		}
+	}
+@;
+
+// attempt to turn an iri into a terse prefixed name
+const terse = (p_iri, h_prefixes) => {
+	@{curi_prefix_cache()}
+
+	// don't waste time
+	return '<'+p_iri+'>';
+};
+
+// attempt to turn an iri into a concise prefixed name
+const concise = (p_iri, h_prefixes={}) => {
+	@{curi_prefix_cache()}
+
 	// best prefix id
 	let s_best_prefix_id = '';
 
@@ -167,6 +256,57 @@ const concise = (p_iri, h_prefixes) => {
 	// no prefix found; default to full iri
 	return '>'+p_iri;
 };
+
+const R_C1N_DECONSTRUCT = /^([^:]*):(.*)$/;
+
+function c1_to_terse(sc1_in, h_prefixes={}) {
+	switch(sc1_in[0]) {
+		// absolute iri
+		case '>': return '<'+sc1_in.slice(1)+'>';
+
+		// blank node
+		case '_': return sc1_in;
+
+		// simple literal
+		case '"': return JSON.stringify(sc1_in.slice(1));
+
+		// languaged literal
+		case '@': {
+			let i_contents = sc1_in.indexOf('"');
+			return JSON.stringify(sc1_in.slice(i_contents+1))+sc1_in.slice(0, i_contents);
+		}
+
+		// datatyped literal
+		case '^': {
+			let i_contents = sc1_in.indexOf('"');
+			return JSON.stringify(sc1_in.slice(i_contents+1))+'^^'+c1_to_terse(sc1_in.slice(1, i_contents), h_prefixes);
+		}
+
+		// default graph
+		case '*': return '';
+
+		// directive / node explicit
+		case '<':
+		case '`': return factory.c1(sc1_in).terse(h_prefixes);
+
+		// otherwise
+		default: {
+			// rdf:type alis
+			if('a' === sc1_in) return 'a';
+
+			// deconstruct prefixed name
+			let [, si_prefix, s_suffix] = R_C1N_DECONSTRUCT.exec(sc1_in);
+
+			// avoid illegal prefixed name parts
+			if(RT_AVOID_PNAME_LOCAL.test(s_suffix) || RT_AVOID_PNAME_NS.test(si_prefix)) {
+				return '<'+h_prefixes[si_prefix]+s_suffix+'>';
+			}
+
+			// good as-is
+			return sc1_in;
+		}
+	}
+}
 
 class GenericTerm {
 	valueOf() {
@@ -199,25 +339,29 @@ class NamedNode extends GenericTerm {
 	}
 
 	terse(h_prefixes={}) {
-		let p_iri = clean_iri(this.value);
+		return terse(clean_iri(this.value), h_prefixes);
 
-		// try finding prefix to compress
-		let sct_node = concise(p_iri, h_prefixes);
+		// let p_iri = clean_iri(this.value);
 
-		// none of the prefixes contain this iri; use full iriref
-		if('>' === sct_node[0]) return '<'+p_iri+'>';
+		// let p_iri = this.value;
 
-		let i_colon = sct_node.indexOf(':');
+		// // try finding prefix to compress
+		// let sct_node = concise(p_iri, h_prefixes);
 
-		// avoid using prefixed name; use full iriref
-		if(RT_AVOID_PNAME_LOCAL.test(sct_node.slice(i_colon+1))
-			|| RT_AVOID_PNAME_NS.test(sct_node.slice(0, i_colon))
-		) {
-			return '<'+p_iri+'>';
-		}
+		// // none of the prefixes contain this iri; use full iriref
+		// if('>' === sct_node[0]) return '<'+p_iri+'>';
 
-		// use terse prefixed name
-		return sct_node;
+		// let i_colon = sct_node.indexOf(':');
+
+		// // avoid using prefixed name; use full iriref
+		// if(RT_AVOID_PNAME_LOCAL.test(sct_node.slice(i_colon+1))
+		// 	|| RT_AVOID_PNAME_NS.test(sct_node.slice(0, i_colon))
+		// ) {
+		// 	return '<'+p_iri+'>';
+		// }
+
+		// // use terse prefixed name
+		// return sct_node;
 	}
 
 	verbose() {
@@ -1225,6 +1369,8 @@ const factory = module.exports = {
 		}
 	},
 
+	c1_to_terse,
+
 	* quads(hct_quads, h_prefixes={}) {
 		for(let sct_graph in hct_quads) {
 			yield* factory.triples(hct_quads[sct_graph], h_prefixes, sct_graph);
@@ -1425,6 +1571,10 @@ const factory = module.exports = {
 		return `\`[${uuid_v4()}]{"type":"newlines"}`;
 	},
 
+
+	cache_prefixes,
+	cachePrefixes: cache_prefixes,
+	terse,
 };
 
 Object.assign(factory, {

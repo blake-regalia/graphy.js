@@ -126,8 +126,11 @@ for(let [s_content, g_content] of Object.entries(h_content_packages)) {
 	let s_description_base = g_content.description;
 
 	// each content mode of this package
-	for(let s_mode of g_content.modes) {
-		let g_mode = h_content_modes[s_mode];
+	for(let [s_mode, g_mode_extend] of Object.entries(g_content.modes)) {
+		let g_mode = {
+			...h_content_modes[s_mode],
+			...g_mode_extend,
+		};
 
 		// mode description
 		let s_description_mode = g_mode.description(s_description_base);
@@ -258,7 +261,7 @@ const package_node_modules = si_package => ({
 				],
 
 				run: /* syntax: bash */ `
-					cd build/graphy/package/${si_package}
+					cd build/package/${si_package}
 
 					# link to dep
 					npm link @${s_super}/${si_link}
@@ -276,8 +279,8 @@ const package_node_modules = si_package => ({
 					'package.json',
 				],
 				run: /* syntax: bash */ `
-					cd "build/graphy/package/${si_package}/node_modules"
-					ln -sf "../../../../../$1" ${si_dep}
+					cd "build/package/${si_package}/node_modules"
+					ln -sf "../../../../$1" ${si_dep}
 				`,
 			}),
 		}), {}),
@@ -304,7 +307,7 @@ const carry_sub = (pd_src, h_recipe={}, pdr_package=null) => {
 	// each file
 	for(let s_file of a_files) {
 		let p_src = `${pd_src}/${s_file}`;
-		let pd_dst = `build/graphy/package/${pdr_package}`;
+		let pd_dst = `build/package/${pdr_package}`;
 
 		// *.js files
 		if(s_file.endsWith('.js')) {
@@ -341,18 +344,18 @@ let a_messages = fs.readdirSync('messages').sort().reverse().map(s => `messages/
 // emk struct
 module.exports = async() => {
 	// make manifest dependencies
-	let h_manifest_deps = await new Promise(async(fk_manifest_deps) => {
+	let h_manifest_deps = {};
+	{
 		const A_DEPEDENCY_PREDICATES = [
 			'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#action',
 			'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#result',
 		];
-		let h_out = {};
 
 		for(let si_package of a_content_subs.filter(s => s.endsWith('.read'))) {
-			let h_deps = h_out[`manifest_deps_${si_package.replace(/\./g, '_')}`] = {};
+			let h_deps = h_manifest_deps[`manifest_deps_${si_package.replace(/\./g, '_')}`] = {};
 
 			try {
-				fs.accessSync(`build/graphy/package/content.ttl.read/main.js`, fs.constants.F_OK);
+				fs.accessSync(`build/package/content.ttl.read/main.js`, fs.constants.F_OK);
 				fs.accessSync(`build/cache/specs/${si_package}/manifest.ttl`, fs.constants.F_OK);
 			}
 			catch(e_access) {
@@ -361,7 +364,7 @@ module.exports = async() => {
 
 			let ttl_read;
 			try {
-				ttl_read = require(`@${s_super}/content.ttl.read`);
+				ttl_read = require(`@${s_super}/content.ttl.read`);  // eslint-disable-line global-require
 			}
 			catch(e_require) {
 				continue;
@@ -396,9 +399,7 @@ module.exports = async() => {
 				continue;
 			}
 		}
-
-		fk_manifest_deps(h_out);
-	});
+	}
 
 	return {
 		defs: {
@@ -456,7 +457,8 @@ module.exports = async() => {
 						'${P_PACKAGE_PREFIX}/lib/node_modules/${s_super}' \
 						'${P_PACKAGE_PREFIX}/lib/node_modules/@${s_super}' \
 						'${P_PACKAGE_PREFIX}/bin/${s_super}' \
-						'build/graphy' \
+						'build/package' \
+						'build/test' \
 						'node_modules/${s_super}' \
 						'node_modules/@${s_super}'
 				`,
@@ -489,22 +491,22 @@ module.exports = async() => {
 				':package': h => ({
 					deps: [`link_to.${h.package}`],
 					run: /* syntax: bash */ `
-						cd build/graphy/package/${h.package}
+						cd build/package/${h.package}
 
 						# defer README to GitHub
 						rm -rf README.md
-						cat <(echo "#@${s_super}/${h.package}") ../../../../emk/aux/README-defer.md > README.md
+						cat <(echo "#@${s_super}/${h.package}") ../../../emk/aux/README-defer.md > README.md
 					`,
 				}),
 
 				[s_super]: () => ({
 					deps: [`link_to.${s_super}`],
 					run: /* syntax: bash */ `
-						cd build/graphy/package/${s_super}
+						cd build/package/${s_super}
 
 						# defer README to GitHub
 						rm -rf README.md
-						cat <(echo "#${s_super}") ../../../../emk/aux/README-defer.md > README.md
+						cat <(echo "#${s_super}") ../../../emk/aux/README-defer.md > README.md
 					`,
 				}),
 
@@ -516,7 +518,7 @@ module.exports = async() => {
 				':package': h => ({
 					deps: [`prepublish.${h.package}`],
 					run: /* syntax: bash */ `
-						cd build/graphy/package/${h.package}
+						cd build/package/${h.package}
 
 						# publish to npm
 						npm publish --access=public
@@ -526,7 +528,7 @@ module.exports = async() => {
 				[s_super]: () => ({
 					deps: [`prepublish.${s_super}`],
 					run: /* syntax: bash */ `
-						cd build/graphy/package/${s_super}
+						cd build/package/${s_super}
 
 						# publish to npm
 						npm publish --access=public
@@ -570,7 +572,7 @@ module.exports = async() => {
 				web: () => ({
 					deps: [
 						'test/web/runner.html',
-						`build/graphy/test/web/**`,
+						`build/test/web/**`,
 					],
 					run: /* syntax: bash */ `
 						npx mocha-chrome $1
@@ -657,114 +659,123 @@ module.exports = async() => {
 					},
 				},
 
-				graphy: {
-					package: {
-						// content subs
-						':content_sub': [si_package => ({
-							[si_package]: (g_package => ({
-								...scoped_package(si_package),
+				package: {
+					// content subs
+					':content_sub': [si_package => ({
+						[si_package]: (g_package => ({
+							...scoped_package(si_package),
 
-								...Object.entries(g_package.files).reduce((h_def, [s_file, a_deps]) => ({
-									...h_def,
-									[s_file]: () => ({
-										deps: [
-											`src/content/${g_package.super}/${si_package.split(/\./g)[2]}/${s_file}.jmacs`,
-											...a_deps.map(s_dep => path.join(`src/content/${g_package.super}/`, s_dep)),
-										],
+							...Object.entries(g_package.files).reduce((h_def, [s_file, a_deps]) => ({
+								...h_def,
+								[s_file]: () => ({
+									deps: [
+										`src/content/${g_package.super}/${si_package.split(/\./g)[2]}/${s_file}.jmacs`,
+										...a_deps.map(s_dep => path.join(`src/content/${g_package.super}/`, s_dep)),
+									],
 
-										run: /* syntax: bash */ `
-											npx jmacs -g "{FORMAT:'${si_package.split(/\./g)[1]}'}" $1 > $@ \
-											 && ${eslint()}
-										`,
-									}),
-								}), {}),
-							}))(h_packages[si_package]),
-						})],
+									run: /* syntax: bash */ `
+										npx jmacs -g "{FORMAT:'${si_package.split(/\./g)[1]}'}" $1 > $@ \
+										 && ${eslint()}
+									`,
+								}),
+							}), {}),
+						}))(h_packages[si_package]),
+					})],
 
-						// all non-content-sub packages
-						':package_ncs': [si_package => ({
-							[si_package]: {
-								...scoped_package(si_package),
+					// all non-content-sub packages
+					':package_ncs': [si_package => ({
+						[si_package]: {
+							...scoped_package(si_package),
 
-								'main.js': () => jmacs_lint([
-									`src/${si_package.replace(/\./g, '/')}.js.jmacs`,
-								], [
-									`build/graphy/package/${si_package}/package.json`,
-								]),
+							'main.js': () => jmacs_lint([
+								`src/${si_package.replace(/\./g, '/')}.js.jmacs`,
+							], [
+								`build/package/${si_package}/package.json`,
+							]),
+						},
+					})],
+
+					// the super module
+					[s_super]: {
+						'.npmrc': npmrc,
+
+						'package.json': () => ({
+							deps: [
+								P_PACKAGE_JSON_BASE,
+								'package.json',
+							],
+
+							run: /* syntax: bash */ `
+								cat $1 | npx lambduh "g_base_package_json => { \
+									${/* eslint-disable indent */
+										/* syntax: js */`
+										// load package info
+										let g_package_json = ${JSON.stringify({
+											name: s_super,
+											dependencies: {
+												...g_package_json_super.dependencies,
+												...Object.keys(h_packages).reduce((h, si_link) => Object.assign(h, {
+													[`@${s_super}/${si_link}`]: s_base_version,
+												}), {}),
+											},
+											description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
+											bin: {
+												[s_super]: 'main.js',
+											},
+										})};
+
+										// update package.json
+										return Object.assign(g_base_package_json, g_package_json);
+									`.trim().replace(/(["`])/g, '\\$1')
+									/* eslint-enable */} }" > $@
+
+								# sort its package.json
+								npx sort-package-json $@
+							`,
+						}),
+
+						node_modules: {
+							[`@graphy`]: {
+								':package': ({package:si_package}) => ({
+									deps: [
+										`build/package/${s_super}/.npmrc`,
+										`link_to.${si_package}`,
+									],
+
+									run: /* syntax: bash */ `
+										cd build/package/graphy
+										npm link @graphy/${si_package}
+									`,
+								}),
 							},
-						})],
-
-						// the super module
-						[s_super]: {
-							'.npmrc': npmrc,
-
-							'package.json': () => ({
-								deps: [
-									P_PACKAGE_JSON_BASE,
-									'package.json',
-								],
-
-								run: /* syntax: bash */ `
-									cat $1 | npx lambduh "g_base_package_json => { \
-										${/* eslint-disable indent */
-											/* syntax: js */`
-											// load package info
-											let g_package_json = ${JSON.stringify({
-												name: s_super,
-												dependencies: {
-													...g_package_json_super.dependencies,
-													...Object.keys(h_packages).reduce((h, si_link) => Object.assign(h, {
-														[`@${s_super}/${si_link}`]: s_base_version,
-													}), {}),
-												},
-												description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
-												bin: {
-													[s_super]: 'main.js',
-												},
-											})};
-
-											// update package.json
-											return Object.assign(g_base_package_json, g_package_json);
-										`.trim().replace(/(["`])/g, '\\$1')
-										/* eslint-enable */} }" > $@
-
-									# sort its package.json
-									npx sort-package-json $@
-								`,
-							}),
-
-							node_modules: {
-								[`@graphy`]: {
-									':package': ({package:si_package}) => ({
-										deps: [
-											`build/graphy/package/${s_super}/.npmrc`,
-											`link_to.${si_package}`,
-										],
-
-										run: /* syntax: bash */ `
-											cd build/graphy/package/graphy
-											npm link @graphy/${si_package}
-										`,
-									}),
-								},
-							},
-
-							'main.js': () => jmacs_lint([`src/main/graphy.js.jmacs`]),
 						},
 
+						'main.js': () => jmacs_lint([`src/main/graphy.js.jmacs`]),
+
+						// quad-expression parser
+						'quad-expression.js': () => ({
+							deps: [
+								'src/cli/quad-expression.pegjs',
+							],
+
+							run: /* syntax: bash */ `
+								npx pegjs < $1 > $@
+							`,
+						}),
 					},
 
-					test: {
-						web: {
-							':testable.js': ({testable:si_package}) => ({
-								deps: [
-									`test/package/${si_package}.js`,
-								],
-								run: /* syntax: bash */ `
-									npx browserify $1 -d -o $@
-								`,
-							}),
-						},
+				},
+
+				test: {
+					web: {
+						':testable.js': ({testable:si_package}) => ({
+							deps: [
+								`test/package/${si_package}.js`,
+							],
+							run: /* syntax: bash */ `
+								npx browserify $1 -d -o $@
+							`,
+						}),
 					},
 				},
 			},
@@ -776,12 +787,12 @@ module.exports = async() => {
 						[`@${s_super}`]: {
 							':package': ({package:si_package}) => ({
 								deps: [
-									`build/graphy/package/${si_package}/**`,
+									`build/package/${si_package}/**`,
 								],
 
 								run: /* syntax: bash */ `
 									# package directory relative to project root
-									PACKAGE_DIR='build/graphy/package/${si_package}'
+									PACKAGE_DIR='build/package/${si_package}'
 									
 									# enter package directory
 									cd "$PACKAGE_DIR"
@@ -797,14 +808,14 @@ module.exports = async() => {
 
 						[s_super]: () => ({
 							deps: [
-								`build/graphy/package/${s_super}/**`,
+								`build/package/${s_super}/**`,
 
 								...Object.keys(h_packages).map(s_dep => `link.${s_dep}`),
 							],
 
 							run: /* syntax: bash */ `
 								# enter package directory
-								cd build/graphy/package/${s_super}
+								cd build/package/${s_super}
 
 								# remove package lock
 								rm -f package-lock.json

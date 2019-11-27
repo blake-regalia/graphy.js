@@ -5,7 +5,11 @@ module.exports = {
 		class: {
 			writable: () => ({
 				links: ['core.data.factory', 'core.iso.stream'],
-				description: 'Produce quads using nestable concise term string objects',
+				description: 'Serialize RDF using a variety of object interfaces',
+			}),
+			scribable: () => ({
+				links: ['core.data.factory', 'core.iso.stream'],
+				description: 'Serialize RDF using RDF/JS quads',
 			}),
 		},
 		data: {

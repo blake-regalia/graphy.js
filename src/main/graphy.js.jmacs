@@ -46,6 +46,13 @@ const gobble = (s_text, s_indent='') => {
 			delete @{s_content}.write;
 			return @{s_content}.write = require('@{channel(`content.${s_content}.write`)}');  // eslint-disable-line global-require
 		},
+
+		// scribe @{s_content} input
+		get scribe() {
+			// memoize
+			delete @{s_content}.scribe;
+			return @{s_content}.scribe = require('@{channel(`content.${s_content}.scribe`)}');  // eslint-disable-line global-require
+		},
 	};
 @;
 
@@ -113,6 +120,8 @@ const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS()})(;.+)*$/i;
 
 const graphy = module.exports = Object.assign({
 
+	VERSION: '4.0.0',
+
 	content: Object.assign(function(s_query) {
 		if(s_query in H_CONTENT_TAGS) {
 			return H_CONTENT_TAGS[s_query];
@@ -174,6 +183,14 @@ const graphy = module.exports = Object.assign({
 					// memoize
 					delete graphy['content.${s_content}.write'];
 					return graphy['content.${s_content}.write'] = require('${channel(`content.${s_content}.write`)}');  // eslint-disable-line global-require
+				},
+			`;
+
+			yield /* syntax: js.object-literal */ `
+				get 'content.${s_content}.scribe' () {
+					// memoize
+					delete graphy['content.${s_content}.scribe'];
+					return graphy['content.${s_content}.scribe'] = require('${channel(`content.${s_content}.scribe`)}');  // eslint-disable-line global-require
 				},
 			`;
 		}
@@ -239,12 +256,12 @@ if(module === require.main) {
 	const reader = f_reader => (a_args, g_context) => new Promise((fk_resolve) => {
 		let g_argv = command(g_context.command)
 			.options({
-				v: {
-					type: 'boolean',
-					alias: ['validate'],
-					default: undefined,  // eslint-disable-line no-undefined
-					describe: 'validate all tokens within the RDF document',
-				},
+				// v: {
+				// 	type: 'boolean',
+				// 	alias: ['validate'],
+				// 	default: undefined,  // eslint-disable-line no-undefined
+				// 	describe: 'validate all tokens within the RDF document',
+				// },
 				r: {
 					type: 'boolean',
 					alias: ['relax'],
@@ -256,7 +273,7 @@ if(module === require.main) {
 					alias: ['base', 'base-uri'],
 					describe: 'set a base URI on the document',
 				},
-				// f: {
+				// x: {
 				// 	type: 'string',
 				// 	alias: ['filter'],
 				// 	describe: 'filter quads by matching the given expression',
@@ -592,12 +609,10 @@ if(module === require.main) {
 		}));
 	});
 
-	const writer = f_writer => (a_args, g_context) => {
+	const writer = (f_writer, gc_write={}) => (a_args, g_context) => {
 		let g_argv = command(g_context.command)
 			.help()
 			.parse(a_args);
-
-		let gc_write = {};
 
 		return g_context.inputs.map((ds_input) => {
 			let ds_writer = f_writer({
@@ -644,12 +659,6 @@ if(module === require.main) {
 			let s_group_boolean = 'Test exactly 2 inputs to get `true` or `false`:';
 
 			let h_operations = {
-				z: {
-					type: 'boolean',
-					alias: ['canonicalize'],
-					group: s_group_multi_input,
-					describe: 'canonicalize 1 or more inputs',
-				},
 				u: {
 					type: 'boolean',
 					alias: ['union'],
@@ -699,11 +708,23 @@ if(module === require.main) {
 				h_operations[s_operation].conflicts = a_operation_keys.filter(s => s_operation !== s);
 			}
 
+			Object.assign(h_operations, {
+				z: {
+					type: 'boolean',
+					alias: ['canonicalize'],
+					group: s_group_multi_input,
+					describe: 'canonicalize 1 or more inputs',
+				},
+			});
+
 			let g_argv = command(g_context.command)
 				.options(h_operations)
 				.help()
 				.version(false)
 				.parse(a_args);
+
+			// canonicalize flag
+			let b_canonicalize = g_argv.canonicalize;
 
 			// ref inputs; cache length
 			let a_inputs = g_context.inputs;
@@ -734,6 +755,14 @@ if(module === require.main) {
 					// wait for input stream to finish writing to b
 					await k_tree_b.until('finish');
 
+					// canonicalize
+					if(b_canonicalize) {
+						k_tree_b = a_trees[i_input] = k_tree_b.canonicalize();
+
+						// update out ref
+						if(!i_input) k_tree_out = k_tree_b;
+					}
+
 					// non-first input
 					if(i_input) {
 						// perform pairwise operation
@@ -763,7 +792,13 @@ if(module === require.main) {
 					let k_tree_a = dataset_tree();
 					let b_finished_a = false;
 					k_tree_a.on('finish', () => {
+						// canonicalize
+						if(b_canonicalize) k_tree_a = k_tree_a.canonicalize();
+
+						// a is finished now
 						b_finished_a = true;
+
+						// b is already finished
 						if(b_finished_b) fk_resolve(operate());
 					});
 
@@ -771,7 +806,13 @@ if(module === require.main) {
 					let k_tree_b = dataset_tree();
 					let b_finished_b = false;
 					k_tree_b.on('finish', () => {
+						// canonicalize
+						if(b_canonicalize) k_tree_b = k_tree_b.canonicalize();
+
+						// b is finished now
 						b_finished_b = true;
+
+						// a is already finished
 						if(b_finished_a) fk_resolve(operate());
 					});
 
@@ -804,7 +845,13 @@ if(module === require.main) {
 					let k_tree_a = dataset_tree();
 					let b_finished_a = false;
 					k_tree_a.on('finish', () => {
+						// canonicalize
+						if(b_canonicalize) k_tree_a = k_tree_a.canonicalize();
+
+						// a is finished now
 						b_finished_a = true;
+
+						// b is already finished
 						if(b_finished_b) fk_resolve(operate());
 					});
 
@@ -812,7 +859,13 @@ if(module === require.main) {
 					let k_tree_b = dataset_tree();
 					let b_finished_b = false;
 					k_tree_b.on('finish', () => {
+						// canonicalize
+						if(b_canonicalize) k_tree_b = k_tree_b.canonicalize();
+
+						// b is finished now
 						b_finished_b = true;
+
+						// a is already finished
 						if(b_finished_a) fk_resolve(operate());
 					});
 
@@ -835,7 +888,11 @@ if(module === require.main) {
 
 	// command aliases
 	h_commands.read = h_commands['content.trig.read'];
-	h_commands.write = h_commands['content.trig.write'];
+	h_commands.write = writer(graphy.content.trig.write, {
+		tokens: {
+			simplify_default_graph: true,
+		},
+	});
 	h_commands.tree = h_commands['util.dataset.tree'];
 
 	let a_argv = process.argv.slice(2);

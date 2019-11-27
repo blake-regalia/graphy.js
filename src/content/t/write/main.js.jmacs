@@ -15,7 +15,7 @@
 @$ S_CONTENT_TYPE = B_TTL? 'text/turtle': 'application/trig';
 
 const factory = require('@{channel('core.data.factory')}');
-const writable = require('@{channel('core.class.writable')}');
+const Writable = require('@{channel('core.class.writable')}');
 
 // eslint-disable-next-line no-misleading-character-class
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
@@ -25,32 +25,32 @@ const N_MAX_STRING_BUFFER = 1 << 12;
 const P_IRI_RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 */}
 
-class @{S_LABEL}_Writer extends writable {
+class @{S_LABEL}_Writer extends Writable {
 	constructor(gc_writer={}) {
 		super(gc_writer);
 
 		let {
 			prefixes: h_prefixes={},
 			indent: s_indent='\t',
-			tokens: gc_tokens=null,
 			collections: gc_collections=null,
 			debug: b_debug=false,
+			style: gc_style=null,
 		} = gc_writer;
 
 		Object.assign(this, {
-			indent: s_indent,
-			debug: b_debug,
+			_s_indent: s_indent,
+			_b_debug: b_debug,
 			_b_simplify_default_graph: false,
 		});
 
 		@- B_QUADS
 			let s_graph_token = '';
 
-			// token config
-			if(gc_tokens) {
+			// style config
+			if(gc_style) {
 				// 'graph' token
-				if(gc_tokens.graph) {
-					let z_token = gc_tokens.graph;
+				if(gc_style.graph) {
+					let z_token = gc_style.graph;
 
 					// boolean true
 					if(true === z_token) {
@@ -71,7 +71,7 @@ class @{S_LABEL}_Writer extends writable {
 				}
 
 				// default graph simplification
-				if(gc_tokens.simplifyDefaultGraph || gc_tokens.simplify_default_graph) {
+				if(gc_style.simplifyDefaultGraph || gc_style.simplify_default_graph) {
 					this._b_simplify_default_graph = true;
 				}
 			}
@@ -104,12 +104,12 @@ class @{S_LABEL}_Writer extends writable {
 		// custom collection keys
 		if(gc_collections) {
 			// serialize collection object
-			this.collection_object = function(a_collection, n_nest_level) {
+			this._serialize_collection_object = function(a_collection, n_nest_level) {
 				// transcode collection object
-				let hc2_transcoded = this.transcode_collection(a_collection);
+				let hc2_transcoded = this._transcode_collection(a_collection);
 
 				// serialize object
-				return this.objects(hc2_transcoded, n_nest_level);
+				return this._encode_objects(hc2_transcoded, n_nest_level);
 			};
 		}
 
@@ -139,12 +139,15 @@ class @{S_LABEL}_Writer extends writable {
 	}
 
 	// serialize prefixes
-	serialize_prefixes(h_prefixes) {
+	_serialize_prefixes(h_prefixes) {
 		// build prefixes string
-		let s_prefixes = (@{XC_STATE_DATA} === this.state)? '\n\n': '';
+		let s_prefixes = (@{XC_STATE_DATA} === this._xc_state)? '\n\n': '';
 
 		// update state
-		this.state = @{XC_STATE_INITIAL};
+		this._xc_state = @{XC_STATE_INITIAL};
+
+		// clone prefixes
+		this._h_prefixes = {...this._h_prefixes};
 
 		// each user-defined prefix
 		for(let s_prefix_id in h_prefixes) {
@@ -157,8 +160,11 @@ class @{S_LABEL}_Writer extends writable {
 			s_prefixes += `@prefix ${s_prefix_id}: ${factory.namedNode(h_prefixes[s_prefix_id]).verbose()} .\n`;
 
 			// set prefix
-			this.prefixes[s_prefix_id] = h_prefixes[s_prefix_id];
+			this._h_prefixes[s_prefix_id] = h_prefixes[s_prefix_id];
 		}
+
+		// recache
+		factory.cache_prefixes(this._h_prefixes);
 
 		// return prefix string
 		return s_prefixes;
@@ -175,19 +181,19 @@ class @{S_LABEL}_Writer extends writable {
 	}
 	@//@object-literal
 	// serialize c@{n_n} hash
-	serialize_c@{n_n}(hc@{n_n}_@{s_name}) {
+	_serialize_c@{n_n}(hc@{n_n}_@{s_name}) {
 		@//@
 		let {
-			prefixes: h_prefixes,
-			indent: s_indent,
+			_h_prefixes: h_prefixes,
+			_s_indent: s_indent,
 			@.{/*alias_rdf_type: b_alias_rdf_type,*/}
 		} = this;
 
 		// break line if non-data state
-		let s_write = @{XC_STATE_DATA} !== this.state? '\n': '';
+		let s_write = @{XC_STATE_DATA} !== this._xc_state? '\n': '';
 
 		// update state
-		this.state = @{XC_STATE_DATA};
+		this._xc_state = @{XC_STATE_DATA};
 
 		@- b_c4
 			// force default graph brace
@@ -200,7 +206,7 @@ class @{S_LABEL}_Writer extends writable {
 			for(let sc1_graph in hc4_quads) {
 				// directive
 				if('`' === sc1_graph[0]) {
-					s_write += this.directive(sc1_graph, hc4_quads[sc1_graph]);
+					s_write += this._encode_directive(sc1_graph, hc4_quads[sc1_graph]);
 					continue;
 				}
 
@@ -215,7 +221,7 @@ class @{S_LABEL}_Writer extends writable {
 				let s_indent_root = (!st_graph && b_simplify_default_graph)? '': s_indent;
 
 				// update state
-				this.state = @{XC_STATE_DATA};
+				this._xc_state = @{XC_STATE_DATA};
 
 				// ref triples
 				let hc3_triples = hc4_quads[sc1_graph];
@@ -228,7 +234,7 @@ class @{S_LABEL}_Writer extends writable {
 			for(let sc1_subject in hc3_triples) {
 				// directive
 				if('`' === sc1_subject[0]) {
-					s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}this.directive(sc1_subject, hc3_triples[sc1_subject]);
+					s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}this._encode_directive(sc1_subject, hc3_triples[sc1_subject]);
 
 					// do not break next line
 					s_delim_triples = '';
@@ -262,7 +268,7 @@ class @{S_LABEL}_Writer extends writable {
 						s_write += (s_indent_pairs? s_term_pairs: '\n')+s_indent@{b_c4? '+s_indent_root': ''};
 
 						// serialize directive
-						s_write += this.directive(sc1_predicate, hc2_pairs[sc1_predicate]);
+						s_write += this._encode_directive(sc1_predicate, hc2_pairs[sc1_predicate]);
 
 						// pair already terminated
 						s_term_pairs = '';
@@ -276,7 +282,7 @@ class @{S_LABEL}_Writer extends writable {
 					let z_objects = hc2_pairs[sc1_predicate];
 
 					// serialize objects
-					let st_objects = this.objects(z_objects);
+					let st_objects = this._encode_objects(z_objects);
 
 					// no objects; skip pair
 					if(!st_objects) continue;
@@ -299,7 +305,7 @@ class @{S_LABEL}_Writer extends writable {
 					s_write += s_term_pairs+s_indent_pairs+st_predicate+' '+st_objects;
 
 					// update state
-					this.state = @{XC_STATE_DATA};
+					this._xc_state = @{XC_STATE_DATA};
 
 					// // string buffer became too large
 					// if(s_write.length >= N_MAX_STRING_BUFFER) {
@@ -347,11 +353,11 @@ class @{S_LABEL}_Writer extends writable {
 
 	@//@object-literal
 	// write objects
-	objects(z_objects, n_nest_level=1) {
+	_encode_objects(z_objects, n_nest_level=1) {
 		let {
-			prefixes: h_prefixes,
-			indent: s_indent,
-			coercions: hm_coercions,
+			_h_prefixes: h_prefixes,
+			_s_indent: s_indent,
+			_hm_coercions: hm_coercions,
 		} = this;
 
 		// deduce object value type
@@ -381,12 +387,12 @@ class @{S_LABEL}_Writer extends writable {
 					for(let z_item of z_objects) {
 						// item is an array; write RDF collection
 						if(Array.isArray(z_item)) {
-							s_write += s_term_object + this.collection_object(z_item, n_nest_level);
+							s_write += s_term_object + this._serialize_collection_object(z_item, n_nest_level);
 						}
 						// non-array
 						else {
 							// recurse on item
-							s_write += s_term_object + this.objects(z_item, n_nest_level);
+							s_write += s_term_object + this._encode_objects(z_item, n_nest_level);
 						}
 
 						// terminate next object
@@ -413,13 +419,13 @@ class @{S_LABEL}_Writer extends writable {
 
 						// directive; serialize it
 						if('`' === sc1_predicate[0]) {
-							s_write += this.directive(sc1_predicate, z_objects[sc1_predicate]);
+							s_write += this._encode_directive(sc1_predicate, z_objects[sc1_predicate]);
 							continue;
 						}
 
 						// write predicate and object(s)
 						s_write += factory.c1(sc1_predicate, h_prefixes).terse(h_prefixes) + ' '
-							+ this.objects(z_objects[sc1_predicate], n_nest_level+1) +' ;';
+							+ this._encode_objects(z_objects[sc1_predicate], n_nest_level+1) +' ;';
 					}
 
 					// close blank node block
@@ -454,8 +460,8 @@ class @{S_LABEL}_Writer extends writable {
 	}
 
 	// serialize collection object
-	collection_object(a_collection, n_nest_level) {
-		let s_indent = this.indent;
+	_serialize_collection_object(a_collection, n_nest_level) {
+		let s_indent = this._s_indent;
 
 		// open collection block
 		let s_write = '(';
@@ -466,11 +472,11 @@ class @{S_LABEL}_Writer extends writable {
 
 			// item is array; serialize as sub-collection
 			if(Array.isArray(z_item)) {
-				s_objects = this.collection_object(z_item, n_nest_level+1);
+				s_objects = this._serialize_collection_object(z_item, n_nest_level+1);
 			}
 			// non-array item
 			else {
-				s_objects = this.objects(z_item, n_nest_level+1);
+				s_objects = this._encode_objects(z_item, n_nest_level+1);
 			}
 			
 			// serialize collection
@@ -487,8 +493,8 @@ class @{S_LABEL}_Writer extends writable {
 	}
 
 	// rdfjs quad
-	serialize_quad(g_quad) {
-		let h_prefixes = this.prefixes;
+	_serialize_quad(g_quad) {
+		let h_prefixes = this._h_prefixes;
 		let kq_quad = factory.from.quad(g_quad);
 
 		@- B_QUADS
@@ -496,7 +502,7 @@ class @{S_LABEL}_Writer extends writable {
 		@;
 
 		// serialize quad
-		let s_write = (@{XC_STATE_DATA} !== this.state? '\n': '')
+		let s_write = (@{XC_STATE_DATA} !== this._xc_state? '\n': '')
 			@- B_QUADS
 				+this.graph_token+(st_graph? st_graph+' ': '')+'{\n\t'
 			@;
@@ -509,14 +515,17 @@ class @{S_LABEL}_Writer extends writable {
 			;
 
 		// update state
-		this.state = @{XC_STATE_DATA};
+		this._xc_state = @{XC_STATE_DATA};
 
 		return s_write;
 	}
+
 }
 
 Object.assign(@{S_LABEL}_Writer.prototype, {
 	anonymous_blank_nodes: true,
+	_serialize_c3x: @{S_LABEL}_Writer.prototype._serialize_c3,
+	_serialize_c4x: @{S_LABEL}_Writer.prototype._serialize_c4,
 });
 
 module.exports = function(gc_writer) {

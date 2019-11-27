@@ -3,7 +3,7 @@
 @import '../../share/writer.jmacs'
 
 const factory = require('@{channel('core.data.factory')}');
-const stream = require('@{channel('core.iso.stream')}');
+const Scribable = require('@{channel('core.class.scribable')}');
 
 const R_DIRECTIVE_CONTENTS = /^`\[[^\]]+\](.*)$/;
 
@@ -12,16 +12,11 @@ const HM_COERCIONS_DEFAULT = new Map([
 	[Number, x => factory.number(x)],
 ]);
 
-
-class Writable extends stream.Transform {
+class Writable extends Scribable {
 	constructor(gc_writable={}) {
-		super({
-			writableObjectMode: true,
-			readableObjectMode: false,
-		});
+		super(gc_writable);
 
 		let {
-			prefixes: h_prefixes={},
 			collections: gc_collections=null,
 		} = gc_writable;
 
@@ -60,70 +55,47 @@ class Writable extends stream.Transform {
 		}
 
 		Object.assign(this, {
-			isGraphyWritable: true,
-			state: @{XC_STATE_INITIAL},
-			prefixes: h_prefixes || {},
-			coercions: hm_coercions,
-			collections: g_collections,
+			_xc_state: @{XC_STATE_INITIAL},
+			_hm_coercions: hm_coercions,
+			_g_collections: g_collections,
 		});
 
-		// one new sources
-		this.on('pipe', (ds_src) => {
-			// listen for prefix events
-			ds_src.on('prefix', (s_prefix_id, p_iri) => {
-				this.write({
-					type: 'prefixes',
-					value: {
-						[s_prefix_id]: p_iri,
-					},
-				})
-			});
+		// // one new sources
+		// this.on('pipe', (ds_src) => {
+		// 	// listen for prefix events
+		// 	ds_src.on('prefix', (s_prefix_id, p_iri) => {
+		// 		this.write({
+		// 			type: 'prefixes',
+		// 			value: {
+		// 				[s_prefix_id]: p_iri,
+		// 			},
+		// 		})
+		// 	});
 
-			// listen for comment events
-			ds_src.on('comment', (s_comment) => {
-				this.write({
-					type: 'c3',
-					value: {
-						[factory.comment()]: s_comment,
-					},
-				});
-			});
-		});
+		// 	// listen for comment events
+		// 	ds_src.on('comment', (s_comment) => {
+		// 		this.write({
+		// 			type: 'c3',
+		// 			value: {
+		// 				[factory.comment()]: s_comment,
+		// 			},
+		// 		});
+		// 	});
+		// });
 
-		// bind event listeners
-		@*{
-			const H_WRITE_EVENTS = {
-				close: {once:true},
-				drain: {},
-				error: {},
-				finish: {once:true},
-				data: {},  // attach data listener last
-				end: {once:true},
-				warning: {},
-			};
-
-			for(let [s_event, g_event] of Object.entries(H_WRITE_EVENTS)) {
-				yield /* syntax: js */ `
-					if(gc_writable.${s_event}) this.${g_event.once? 'once': 'on'}('${s_event}', gc_writable.${s_event});
-					`.trim()+'\n';
-			}
-		}
 	}
 
-	// overrideable no-ops
-	serialize_prefixes() {}  // eslint-disable-line class-methods-use-this
-
 	// serialize comment
-	serialize_comment(s_comment) {
+	_serialize_comment(s_comment) {
 		let s_write = '';
 
 		// non-data state
-		if(@{XC_STATE_DATA} !== this.state) {
+		if(@{XC_STATE_DATA} !== this._xc_state) {
 			// break line
 			s_write += '\n';
 
 			// update state
-			this.state = @{XC_STATE_DATA};
+			this._xc_state = @{XC_STATE_DATA};
 		}
 
 		// each line of comment
@@ -135,14 +107,14 @@ class Writable extends stream.Transform {
 	}
 
 	// serialize newlines
-	serialize_newlines(n_newlines) {  // eslint-disable-line class-methods-use-this
+	_serialize_newlines(n_newlines) {  // eslint-disable-line class-methods-use-this
 		// no need to check/change state
 		return '\n'.repeat(n_newlines);
 	}
 
 	// transcode collection into concise-pairs hash
-	transcode_collection(a_collection) {
-		let g_collections = this.collections;
+	_transcode_collection(a_collection) {
+		let g_collections = this._g_collections;
 
 		// empty collection
 		if(!a_collection.length) {
@@ -158,7 +130,7 @@ class Writable extends stream.Transform {
 
 			// item is nested collection; transcode
 			if(Array.isArray(z_item)) {
-				w_first = this.transcode_collection(z_item);  // eslint-disable-line no-invalid-this
+				w_first = this._transcode_collection(z_item);  // eslint-disable-line no-invalid-this
 			}
 
 			return {
@@ -168,55 +140,39 @@ class Writable extends stream.Transform {
 				// rest of items
 				[g_collections.rest]: 1 === a_collection.length
 					? g_collections.nil
-					: this.transcode_collection(a_collection.slice(1)),  // eslint-disable-line no-invalid-this
+					: this._transcode_collection(a_collection.slice(1)),  // eslint-disable-line no-invalid-this
 			};
 		}
 	}
 
-	// implement stream.Transform
-	_transform(g_event, s_encoding, fke_transform) {
-		// try to serialize input value
-		try {
-			// this.push(this.data_event(g_event), 'utf8');
-			fke_transform(null, this.data_event(g_event));
-		}
-		// serialization error
-		catch(e_serialize) {
-			fke_transform(e_serialize);
-		}
-	}
 
-	// route writable data events
-	data_event(g_event) {
-		let {
-			type: s_type,
-			value: z_value,
-		} = g_event;
+	// // route writable data events
+	// data_event(g_event) {
+	// 	let {
+	// 		type: s_type,
+	// 		value: z_value,
+	// 	} = g_event;
 
-		// method id
-		let s_method = 'serialize_'+s_type;
+	// 	// method id
+	// 	let s_method = 'serialize_'+s_type;
 
-		// event type exists
-		if('function' === typeof this[s_method]) {
-			return this[s_method](z_value);
-		}
-		// no such event type
-		else {
-			throw new Error(`no such writable data event type for RDF stream: '${s_type}'`);
-		}
-	}
+	// 	// event type exists
+	// 	if('function' === typeof this[s_method]) {
+	// 		return this[s_method](z_value);
+	// 	}
+	// 	// no such event type
+	// 	else {
+	// 		throw new Error(`no such writable data event type for RDF stream: '${s_type}'`);
+	// 	}
+	// }
 
-	// serialize 'array' writable data event
-	serialize_array(a_events) {
-		return a_events.map(g_event => this.data_event(g_event)).join('');
-	}
 
 	// serialize a writable data event directive
-	directive(sct_directive, w_value) {
+	_encode_directive(sc1_directive, w_value) {
 		// directive contents
-		let m_directive = R_DIRECTIVE_CONTENTS.exec(sct_directive);
+		let m_directive = R_DIRECTIVE_CONTENTS.exec(sc1_directive);
 		if(!m_directive) {
-			throw new Error(`Invalid writable data event directive string: "${sct_directive}"`);
+			throw new Error(`Invalid writable data event directive string: "${sc1_directive}"`);
 		}
 
 		// parse as JSON
@@ -236,8 +192,8 @@ class Writable extends stream.Transform {
 			// comment
 			case 'comment': {
 				// serializer supports commenting; serialize comment
-				if(this.serialize_comment) {
-					return this.serialize_comment(w_value+'', g_directive);
+				if(this._serialize_comment) {
+					return this._serialize_comment(w_value+'', g_directive);
 				}
 				break;
 			}
@@ -245,8 +201,8 @@ class Writable extends stream.Transform {
 			// newlines
 			case 'newlines': {
 				// serializer supports newlines; serialize newlines
-				if(this.serialize_newlines) {
-					return this.serialize_newlines(w_value);
+				if(this._serialize_newlines) {
+					return this._serialize_newlines(w_value);
 				}
 				break;
 			}
@@ -262,8 +218,8 @@ class Writable extends stream.Transform {
 	}
 
 	// if not overriden by subclass, serialize quads in default graph
-	serialize_c4(hc4_quads) {
-		let h_prefixes = this.prefixes;
+	_serialize_c4(hc4_quads) {
+		let h_prefixes = this._h_prefixes;
 		let a_unions = [];
 		let s_write = '';
 
@@ -273,7 +229,7 @@ class Writable extends stream.Transform {
 			if('*' !== sv1_graph) a_unions.push(sv1_graph);
 			
 			// add all quads from graph
-			s_write += this.serialize_c3(hc4_quads[sv1_graph]);
+			s_write += this._serialize_c3(hc4_quads[sv1_graph]);
 		}
 
 		// a union was performed

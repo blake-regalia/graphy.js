@@ -108,9 +108,9 @@
 	%[A-Fa-f0-9]{2}|\\[_~.\-!$&'()*+,;=/?#@%]
 @;
 
-@>> PN_LOCAL()
+@>> PN_LOCAL(b_nc=false)
 	@//@regex
-	([@{RANGE_PN_CHARS_U()}:0-9]|@{PLX()})(([@{RANGE_PN_CHARS()}.:]|@{PLX()})*([@{RANGE_PN_CHARS()}:]|@{PLX()}))?
+	(@{b_nc? '?:': ''}[@{RANGE_PN_CHARS_U()}:0-9]|@{PLX()})(@{b_nc? '?:': ''}(@{b_nc? '?:': ''}[@{RANGE_PN_CHARS()}.:]|@{PLX()})*(@{b_nc? '?:': ''}[@{RANGE_PN_CHARS()}:]|@{PLX()}))?
 @;
 
 @>> UCHAR(s_ins='')
