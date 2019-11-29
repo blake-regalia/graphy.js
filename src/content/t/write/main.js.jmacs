@@ -510,7 +510,7 @@ class @{S_LABEL}_Writer extends Writable {
 		@;
 
 		// serialize quad
-		let s_write = (@{XC_STATE_DATA} !== this._xc_state? '\n': '')
+		this._s_push += (@{XC_STATE_DATA} !== this._xc_state? '\n': '')
 			@- B_QUADS
 				+this._s_graph_keyword+(st_graph? st_graph+' ': '')+'{\n\t'
 			@;
@@ -524,11 +524,6 @@ class @{S_LABEL}_Writer extends Writable {
 
 		// update state
 		this._xc_state = @{XC_STATE_DATA};
-
-		// push to buffer rather than stream
-		this._queue(s_write);
-
-		// return s_write;
 	}
 
 }

@@ -17,7 +17,67 @@
 const factory = require('@{channel('core.data.factory')}');
 const Writable = require('@{channel('core.class.writable')}');
 
+const {
+	c1_to_nt,
+	clean_iri,
+} = factory;
+
 const N_MAX_STRING_BUFFER = 1 << 12;
+
+
+function verbose_s(yt_subject) {
+	if('NamedNode' === yt_subject.termType) {
+		return '<'+clean_iri(yt_subject.value)+'>';
+	}
+	else {
+		return '_:'+yt_subject.value;
+	}
+}
+
+
+@- B_QUADS
+	function verbose_g(yt_subject) {
+		switch(yt_subject.termType) {
+			// default graph
+			case 'DefaultGraph': return '';
+
+			// named node
+			case 'NamedNode': return '<'+clean_iri(yt_subject.value)+'>';
+
+			// blank node
+			default: return '_:'+yt_subject.value;
+		}
+	}
+@;
+
+
+const verbose_p = yt_predicate => '<'+clean_iri(yt_predicate.value)+'>';
+
+const P_IRI_XSD_STRING = 'http://www.w3.org/2001/XMLSchema#';
+function verbose_o(yt_object) {
+	switch(yt_object.termType) {
+		// named node
+		case 'NamedNode': return '<'+clean_iri(yt_object.value)+'>';
+
+		// literal
+		case 'Literal': {
+			let s_contents = JSON.stringify(yt_object.value);
+
+			if(yt_object.language) {
+				return s_contents+'@'+yt_object.language;
+			}
+			else if(P_IRI_XSD_STRING === yt_object.datatype.value) {
+				return s_contents;
+			}
+			else {
+				return s_contents+'^^<'+clean_iri(yt_object.datatype.value)+'>';
+			}
+		}
+
+		// blank node
+		default: return '_:'+yt_object.value;
+	}
+}
 
 class @{S_LABEL}_Writer extends Writable {
 	constructor(gc_writer={}) {
@@ -82,7 +142,7 @@ class @{S_LABEL}_Writer extends Writable {
 				}
 
 				// subject-pre component
-				let st_pre = factory.c1(sc1_subject, h_prefixes).verbose()+' ';
+				let st_pre = c1_to_nt(sc1_subject, h_prefixes, true)+' ';
 
 				// pair indent & terminator
 				let s_indent_pairs = '';
@@ -100,7 +160,7 @@ class @{S_LABEL}_Writer extends Writable {
 					}
 
 					// predicate component
-					let st_predicate = factory.c1(sc1_predicate, h_prefixes).verbose()
+					let st_predicate = c1_to_nt(sc1_predicate, h_prefixes, true);
 
 					// ref objects
 					let z_objects = hc2_pairs[sc1_predicate];
@@ -132,7 +192,7 @@ class @{S_LABEL}_Writer extends Writable {
 	@//@object-literal
 
 	// write objects
-	objects(s_pre, z_objects, s_post, n_nest_level=1) {
+	_encode_objects(s_pre, z_objects, s_post, n_nest_level=1) {
 		let {
 			_h_prefixes: h_prefixes,
 			_hm_coercions: hm_coercions,
@@ -193,7 +253,7 @@ class @{S_LABEL}_Writer extends Writable {
 						}
 
 						// pre-string for nested triples
-						let s_pre_nest = st_blank+' '+factory.c1(sc1_predicate, h_prefixes).verbose()+' ';
+						let s_pre_nest = st_blank+' '+c1_to_nt(sc1_predicate, h_prefixes, true)+' ';
 
 						// recurse
 						s_write += this._encode_objects(s_pre_nest, z_objects[sc1_predicate], s_post, n_nest_level+1)
@@ -228,20 +288,16 @@ class @{S_LABEL}_Writer extends Writable {
 
 	// rdfjs quad
 	_serialize_quad(g_quad) {
-		let kq_quad = factory.from.quad(g_quad);
-
 		// serialize quad
-		let s_write = (@{XC_STATE_DATA} !== this._xc_state? '\n': '')
-			+kq_quad.subject.verbose()
-			+' '+kq_quad.predicate.verbose()
-			+' '+kq_quad.object.verbose()
-			@{B_QUADS? /* syntax: js */ `+(kq_quad.graph.isDefaultGraph? '': ' '+kq_quad.graph.verbose())`: ''}
+		this._s_push += (@{XC_STATE_DATA} !== this._xc_state? '\n': '')
+			+verbose_s(g_quad.subject)
+			+' '+verbose_p(g_quad.predicate)
+			+' '+verbose_o(g_quad.object)
+			@{B_QUADS? /* syntax: js */ `+(kq_quad.graph.isDefaultGraph? '': ' '+verbose_g(g_quad.graph))`: ''}
 			+' .\n';
 
 		// update state
 		this._xc_state = @{XC_STATE_DATA};
-
-		return s_write;
 	}
 }
 

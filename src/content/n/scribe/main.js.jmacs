@@ -143,15 +143,6 @@ class @{S_LABEL}_Scriber extends Scribable {
 				? /* syntax: js */ `+' '+verbose_g(yt_graph)`
 				: ''}
 			+' .\n';
-
-		// internal buffer high water mark
-		if(this._s_push.length > this._n_max_buffer) {
-			Scribable._flush_buffer(this);
-		}
-		else {
-			// do not worry about clearing timeouts
-			setTimeout(Scribable._flush_buffer, 0, this);
-		}
 	}
 };
 

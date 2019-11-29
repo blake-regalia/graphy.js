@@ -254,15 +254,6 @@ class @{S_LABEL}_Scriber extends Scribable {
 				this._yt_predicate = yt_predicate;
 			}
 		@;
-
-		// internal buffer high water mark
-		if(this._s_push.length > this._n_max_buffer) {
-			@{S_LABEL}_Scriber._flush_buffer(this);
-		}
-		else {
-			// do not worry about clearing timeouts
-			setTimeout(@{S_LABEL}_Scriber._flush_buffer, 0, this);
-		}
 	}
 
 	_flush() {

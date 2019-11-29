@@ -128,7 +128,7 @@ class Scribable extends stream.Transform {
 		for(let s_event_type of A_OVERRIDEABLE) {
 			yield /* syntax: js */ `
 				_serialize_${s_event_type}() {
-					throw new Error(\`Write event type '@{s_event_type}' not supported by \${this.constructor.name}\`);
+					throw new Error(\`Write event type '${s_event_type}' not supported by \${this.constructor.name}\`);
 				}
 			`;
 		}
@@ -143,7 +143,7 @@ class Scribable extends stream.Transform {
 		for(let s_event_type of A_REQUIRED) {
 			yield /* syntax: js */ `
 				_serialize_${s_event_type}() {
-					throw new Error(\`Write event type 'quad' should have been implemented by subclass \${this.constructor.name}\`);
+					throw new Error(\`Write event type '${s_event_type}' should have been implemented by subclass \${this.constructor.name}\`);
 				}
 			`;
 		}
@@ -188,6 +188,15 @@ class Scribable extends stream.Transform {
 
 			// push data to stream
 			this.push(w_write);
+		}
+		// internal buffer high water mark
+		else if(this._s_push.length > this._n_max_buffer) {
+			Scribable._flush_buffer(this);
+		}
+		// allow buffer to build
+		else {
+			// do not worry about clearing timeouts
+			setTimeout(Scribable._flush_buffer, 0, this);
 		}
 
 		// callback

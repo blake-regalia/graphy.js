@@ -313,6 +313,7 @@ function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 	}
 }
 
+
 class GenericTerm {
 	valueOf() {
 		return this.concise();
