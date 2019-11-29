@@ -5,11 +5,11 @@ module.exports = {
 		class: {
 			writable: () => ({
 				links: ['core.data.factory', 'core.iso.stream'],
-				description: 'Serialize RDF using a variety of object interfaces',
+				description: 'Serialize RDF conveniently and with style',
 			}),
 			scribable: () => ({
 				links: ['core.data.factory', 'core.iso.stream'],
-				description: 'Serialize RDF using RDF/JS quads',
+				description: 'Serialize RDF fast',
 			}),
 		},
 		data: {

@@ -2,6 +2,7 @@ const G_MODES_N_FAMILY = {
 	read: {},
 	write: {},
 	// scan: {},
+	scribe: {},
 };
 
 const G_MODES_T_FAMILY = {

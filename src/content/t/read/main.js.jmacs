@@ -852,7 +852,7 @@ class Reader {
 		}
 
 		// base uri
-		let p_set_base_uri = g_config.base_uri || g_config.baseUri || g_config.baseURI;
+		let p_set_base_uri = g_config.base_uri || g_config.baseUri || g_config.baseURI || g_config.base_iri || g_config.baseIri || g_config.baseIRI;
 		if(p_set_base_uri) {
 			let m_base_iri = R_BASE_IRI.exec(p_set_base_uri);
 			this._s_base_url = m_base_iri[1];

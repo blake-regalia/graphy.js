@@ -2,7 +2,12 @@
 @import '../../content/text.read.jmacs'
 
 const R_INVALID_IRIREF = /([\x00-\x20<>"{}|^`\\]|%(?![0-9A-F][0-9A-F]))/g;
-const F_REPLACE_INVALID_IRIREF = (s_, s_v) => '\\u'+s_v.codePointAt()
+const F_REPLACE_INVALID_IRIREF = (s_, s_v) => {
+	let s_code = s_v.codePointAt(0).toString(16)+'';
+	return s_code.length > 4
+		? '\\U'+s_code.padStart(8, '0')
+		: '\\u'+s_code.padStart(4, '0');
+}
 
 const clean_iri = p_iri_dirty => p_iri_dirty.replace(R_INVALID_IRIREF, F_REPLACE_INVALID_IRIREF);
 
@@ -259,7 +264,7 @@ const concise = (p_iri, h_prefixes={}) => {
 
 const R_C1N_DECONSTRUCT = /^([^:]*):(.*)$/;
 
-function c1_to_terse(sc1_in, h_prefixes={}) {
+function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 	switch(sc1_in[0]) {
 		// absolute iri
 		case '>': return '<'+sc1_in.slice(1)+'>';
@@ -279,7 +284,7 @@ function c1_to_terse(sc1_in, h_prefixes={}) {
 		// datatyped literal
 		case '^': {
 			let i_contents = sc1_in.indexOf('"');
-			return JSON.stringify(sc1_in.slice(i_contents+1))+'^^'+c1_to_terse(sc1_in.slice(1, i_contents), h_prefixes);
+			return JSON.stringify(sc1_in.slice(i_contents+1))+'^^'+c1_to_nt(sc1_in.slice(1, i_contents), h_prefixes, b_verbose);
 		}
 
 		// default graph
@@ -298,7 +303,7 @@ function c1_to_terse(sc1_in, h_prefixes={}) {
 			let [, si_prefix, s_suffix] = R_C1N_DECONSTRUCT.exec(sc1_in);
 
 			// avoid illegal prefixed name parts
-			if(RT_AVOID_PNAME_LOCAL.test(s_suffix) || RT_AVOID_PNAME_NS.test(si_prefix)) {
+			if(b_verbose || RT_AVOID_PNAME_LOCAL.test(s_suffix) || RT_AVOID_PNAME_NS.test(si_prefix)) {
 				return '<'+h_prefixes[si_prefix]+s_suffix+'>';
 			}
 
@@ -1369,7 +1374,7 @@ const factory = module.exports = {
 		}
 	},
 
-	c1_to_terse,
+	c1_to_nt,
 
 	* quads(hct_quads, h_prefixes={}) {
 		for(let sct_graph in hct_quads) {
@@ -1377,13 +1382,13 @@ const factory = module.exports = {
 		}
 	},
 
-	* triples(hct_triples, h_prefixes={}, sct_graph='*') {
+	* triples(hc3x_triples, h_prefixes={}, sct_graph='*') {
 		let k_graph = factory.c1(sct_graph, h_prefixes);
-		for(let sct_subject in hct_triples) {
+		for(let sct_subject in hc3x_triples) {
 			let k_subject = factory.c1(sct_subject, h_prefixes);
-			let hct_pairs = hct_triples[sct_subject];
+			let hc2x_pairs = hc3x_triples[sct_subject];
 
-			yield* factory.pairs(k_graph, k_subject, hct_pairs, h_prefixes);
+			yield* factory.pairs(k_graph, k_subject, hc2x_pairs, h_prefixes);
 		}
 	},
 
@@ -1575,6 +1580,9 @@ const factory = module.exports = {
 	cache_prefixes,
 	cachePrefixes: cache_prefixes,
 	terse,
+
+	clean_iri,
+	cleanIri: clean_iri,
 };
 
 Object.assign(factory, {

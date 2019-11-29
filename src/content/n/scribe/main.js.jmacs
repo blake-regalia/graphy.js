@@ -3,33 +3,162 @@
 
 @import '../../../share/channel.jmacs'
 
-@$ QUADS = ('nq' === FORMAT);
+@$ B_NT = 'nt' === FORMAT;
+@$ B_NQ = 'nq' === FORMAT;
+@$ B_QUADS = B_NQ;
 
-const writable = require('@@@{S_GRAPHY_CHANNEL}/core.class.writable');
+@$ S_CONTENT_TYPE = B_NT? 'application/n-triples': 'application/n-quads';
 
-class Serializer extends writable.serializer.textual.verbose {
-	constructor(g_config={}) {
-		super(writable.@{QUADS? 'quads': 'triples'}, g_config);
+@$ S_LABEL = B_NT? 'NTriples': 'NQuads';
+
+const Scribable = require('@@@{S_GRAPHY_CHANNEL}/core.class.scribable');
+
+const factory = require('@@@{S_GRAPHY_CHANNEL}/core.data.factory');
+const {
+	c1_to_nt,
+	clean_iri,
+} = factory;
+
+
+function verbose_s(yt_subject) {
+	if('NamedNode' === yt_subject.termType) {
+		return '<'+clean_iri(yt_subject.value)+'>';
+	}
+	else {
+		return '_:'+yt_subject.value;
+	}
+}
+
+
+@- B_QUADS
+	function verbose_g(yt_subject) {
+		switch(yt_subject.termType) {
+			// default graph
+			case 'DefaultGraph': return '';
+
+			// named node
+			case 'NamedNode': return '<'+clean_iri(yt_subject.value)+'>';
+
+			// blank node
+			default: return '_:'+yt_subject.value;
+		}
+	}
+@;
+
+
+const verbose_p = yt_predicate => '<'+clean_iri(yt_predicate.value)+'>';
+
+const P_IRI_XSD_STRING = 'http://www.w3.org/2001/XMLSchema#';
+function verbose_o(yt_object) {
+	switch(yt_object.termType) {
+		// named node
+		case 'NamedNode': return '<'+clean_iri(yt_object.value)+'>';
+
+		// literal
+		case 'Literal': {
+			let s_contents = JSON.stringify(yt_object.value);
+
+			if(yt_object.language) {
+				return s_contents+'@'+yt_object.language;
+			}
+			else if(P_IRI_XSD_STRING === yt_object.datatype.value) {
+				return s_contents;
+			}
+			else {
+				return s_contents+'^^<'+clean_iri(yt_object.datatype.value)+'>';
+			}
+		}
+
+		// blank node
+		default: return '_:'+yt_object.value;
+	}
+}
+
+
+class @{S_LABEL}_Scriber extends Scribable {
+	constructor(gc_scriber={}) {
+		super(gc_scriber);
+
+		// prefixes given
+		if(gc_scriber.prefixes) {
+			// update prefixes
+			this._update_prefixes(gc_scriber.prefixes);
+		}
 	}
 
-	get comment() {
-		return this.hash_comment;
+	_serialize_c3r(hc3r_triples) {
+		// ref prefixes
+		let h_prefixes = this._h_prefixes;
+
+		// string building
+		let st_build = '';
+
+		for(let sc1_subject in hc3r_triples) {
+			// quick convert subject from concise term to terse
+			let st1_subject = c1_to_nt(sc1_subject, h_prefixes, true);
+
+			// not a term; skip
+			if(!st1_subject) continue;
+
+			// each predicate
+			let hc2x_pairs = hc3r_triples[sc1_subject];
+			for(let sc1_predicate in hc2x_pairs) {
+				// quick convert predicate from concise term to terse
+				let st1_predicate = c1_to_nt(sc1_predicate, h_prefixes, true);
+
+				// not a term; skip
+				if(!st1_predicate) continue;
+
+				// each object
+				for(let sc1_object of hc2x_pairs[sc1_predicate]) {
+					// quick convert object from concise term to terse
+					let st1_object = c1_to_nt(sc1_object, h_prefixes, true);
+
+					// not a term; skip
+					if(!st1_object) continue;
+
+					st_build += st1_subject+' '+st1_predicate+' '+st1_object+' .\n';
+				}
+			}
+		}
+
+		return st_build;
 	}
 
-	newlines(n_newlines=1) {
-		return '\n'.repeat(n_newlines);
-	}
+	_serialize_quad(g_quad) {
+		let {
+			subject: yt_subject,
+			predicate: yt_predicate,
+			object: yt_object,
+			@- B_QUADS
+				graph: yt_graph,
+			@;
+		} = g_quad;
 
-	serialize_object(k_leaf, s_object) {
-		@- QUADS
-			let k_parent = k_leaf.parent;
-			return `${k_parent.term} ${k_leaf.term} ${s_object} ${k_parent.parent.term} .\n`;
-		@:
-			return `${k_leaf.parent.term} ${k_leaf.term} ${s_object} .\n`;
-		@;
+		// write @{B_QUADS? 'quad': 'triple'}
+		this._s_push += verbose_s(yt_subject)
+			+' '+verbose_p(yt_predicate)
+			+' '+verbose_o(yt_object)
+			@{B_QUADS
+				? /* syntax: js */ `+' '+verbose_g(yt_graph)`
+				: ''}
+			+' .\n';
+
+		// internal buffer high water mark
+		if(this._s_push.length > this._n_max_buffer) {
+			Scribable._flush_buffer(this);
+		}
+		else {
+			// do not worry about clearing timeouts
+			setTimeout(Scribable._flush_buffer, 0, this);
+		}
 	}
 };
 
+Object.assign(@{S_LABEL}_Scriber.prototype, {
+	_serialize_comment: Scribable.prototype._serialize_hash_comment,
+});
+
 module.exports = function(g_config) {
-	return (new Serializer(g_config)).writer;
+	return new @{S_LABEL}_Scriber(g_config);
 };

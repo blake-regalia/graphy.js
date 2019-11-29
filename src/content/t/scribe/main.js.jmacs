@@ -16,14 +16,13 @@ const Scribable = require('@{channel('core.class.scribable')}');
 
 const {
 	terse,
-	c1_to_terse,
+	c1_to_nt,
 } = factory;
 
 @- B_QUADS
 	const KT_DEFAULT_GRAPH = factory.defaultGraph();
 @;
 
-@$ B_OPTIMIZE_BUFFER = true;
 
 function terse_s(yt_subject, h_prefixes) {
 	if('NamedNode' === yt_subject.termType) {
@@ -91,25 +90,28 @@ class @{S_LABEL}_Scriber extends Scribable {
 		this._yt_subject = null;
 		this._yt_predicate = null;
 
-		// update prefixes and push to output
-		this.push(this._update_prefixes(gc_scriber.prefixes));
+		// prefixes given
+		if(gc_scriber.prefixes) {
+			// update prefixes and push to output
+			this.push(this._serialize_prefixes(gc_scriber.prefixes));
+		}
 	}
 
-	_update_prefixes(h_prefixes_in) {
+	_serialize_prefixes(h_prefixes_in) {
 		// cache prefixes
-		let h_prefixes = this._h_prefixes = factory.cache_prefixes(h_prefixes_in || {}, true);
+		this._update_prefixes(h_prefixes_in, true);
 
-		// serialize prefixes
+		// serialize new prefixes
 		let st_prefixes = '';
-		for(let si_prefix in h_prefixes) {
-			st_prefixes += `@prefix ${si_prefix}: ${factory.namedNode(h_prefixes[si_prefix]).verbose()} .\n`;
+		for(let si_prefix in h_prefixes_in) {
+			st_prefixes += `@prefix ${si_prefix}: ${factory.namedNode(h_prefixes_in[si_prefix]).verbose()} .\n`;
 		}
 
 		// write prefixes
 		return st_prefixes+'\n';
 	}
 
-	_serialize_c3x(hc3x_triples) {
+	_serialize_c3r(hc3r_triples) {
 		// ref prefixes
 		let h_prefixes = this._h_prefixes;
 
@@ -118,9 +120,9 @@ class @{S_LABEL}_Scriber extends Scribable {
 
 		let b_subjects = false;
 
-		for(let sc1_subject in hc3x_triples) {
+		for(let sc1_subject in hc3r_triples) {
 			// quick convert subject from concise term to terse
-			let st1_subject = c1_to_terse(sc1_subject, h_prefixes);
+			let st1_subject = c1_to_nt(sc1_subject, h_prefixes);
 
 			// not a term; skip
 			if(!st1_subject) continue;
@@ -134,10 +136,10 @@ class @{S_LABEL}_Scriber extends Scribable {
 			let b_predicates = false;
 
 			// each predicate
-			let hc2x_pairs = hc3x_triples[sc1_subject];
+			let hc2x_pairs = hc3r_triples[sc1_subject];
 			for(let sc1_predicate in hc2x_pairs) {
 				// quick convert predicate from concise term to terse
-				let st1_predicate = c1_to_terse(sc1_predicate, h_prefixes);
+				let st1_predicate = c1_to_nt(sc1_predicate, h_prefixes);
 
 				// not a term; skip
 				if(!st1_predicate) continue;
@@ -153,7 +155,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 				// each object
 				for(let sc1_object of hc2x_pairs[sc1_predicate]) {
 					// quick convert object from concise term to terse
-					let st1_object = c1_to_terse(sc1_object, h_prefixes);
+					let st1_object = c1_to_nt(sc1_object, h_prefixes);
 
 					// not a term; skip
 					if(!st1_object) continue;
@@ -175,181 +177,97 @@ class @{S_LABEL}_Scriber extends Scribable {
 		this._yt_subject = null;
 		this._yt_predicate = null;
 
-		@- B_OPTIMIZE_BUFFER
-			this._st_buffer = '';
-		@;
-
 		return st_build;
 	}
 
-	@- B_OPTIMIZE_BUFFER
-		_serialize_quad(g_quad) {
-			let h_prefixes = this._h_prefixes;
+	_serialize_quad(g_quad) {
+		let h_prefixes = this._h_prefixes;
 
-			let {
-				subject: yt_subject,
-				predicate: yt_predicate,
-				object: yt_object,
-				@- B_QUADS
-					graph: yt_graph,
-				@;
-			} = g_quad;
-
+		let {
+			subject: yt_subject,
+			predicate: yt_predicate,
+			object: yt_object,
 			@- B_QUADS
-				// same graph
-				if(yt_graph.equals(this._yt_graph)) {
+				graph: yt_graph,
 			@;
+		} = g_quad;
 
-			// same subject
-			if(yt_subject.equals(this._yt_subject)) {
-				// same prediate
-				if(yt_predicate.equals(this._yt_predicate)) {
-					// write object
-					this._st_buffer += ', '+terse_o(yt_object, h_prefixes);
-				}
-				// different predicate
-				else {
-					// write pair
-					this._st_buffer += ' ;\n\t'+terse_p(yt_predicate, h_prefixes)+' '+terse_o(yt_object, h_prefixes);
+		@- B_QUADS
+			// same graph
+			if(yt_graph.equals(this._yt_graph)) {
+		@;
 
-					// update prediate
-					this._yt_predicate = yt_predicate;
-				}
+		// same subject
+		if(yt_subject.equals(this._yt_subject)) {
+			// same prediate
+			if(yt_predicate.equals(this._yt_predicate)) {
+				// write object
+				this._s_push += ', '+terse_o(yt_object, h_prefixes);
 			}
-			// subject not identical to previous
+			// different predicate
 			else {
-				let st_line = terse_s(yt_subject, h_prefixes)+' '+terse_p(yt_predicate, h_prefixes)+' '+terse_o(yt_object, h_prefixes);
+				// write pair
+				this._s_push += ' ;\n\t'+terse_p(yt_predicate, h_prefixes)+' '+terse_o(yt_object, h_prefixes);
 
-				// different subject
-				if(this._yt_subject) {
-					// write triple
-					this._st_buffer += ' .\n\n'+st_line;
-				}
-				// first subject
-				else {
-					this._st_buffer += st_line;
+				// update prediate
+				this._yt_predicate = yt_predicate;
+			}
+		}
+		// subject not identical to previous
+		else {
+			let st_line = terse_s(yt_subject, h_prefixes)+' '+terse_p(yt_predicate, h_prefixes)+' '+terse_o(yt_object, h_prefixes);
+
+			// different subject
+			if(this._yt_subject) {
+				// write triple
+				this._s_push += ' .\n\n'+st_line;
+			}
+			// first subject
+			else {
+				this._s_push += st_line;
+			}
+
+			// save subject and predicate
+			this._yt_subject = yt_subject;
+			this._yt_predicate = yt_predicate;
+		}
+
+		@- B_QUADS
+			}
+			// graph not identical to previous
+			else {
+				// what to write this call
+				let s_write = '';
+
+				// different graph
+				if(this._yt_graph) {
+					// close graph
+					s_write = ' .\n}\n\n';
 				}
 
-				// save subject and predicate
+				// write graph
+				this._s_push += s_write+terse_g(yt_graph, h_prefixes)+' {\n';
+
+				// save graph
+				this._yt_graph = yt_graph;
 				this._yt_subject = yt_subject;
 				this._yt_predicate = yt_predicate;
 			}
+		@;
 
-			@- B_QUADS
-				}
-				// graph not identical to previous
-				else {
-					// what to write this call
-					let s_write = '';
-
-					// different graph
-					if(this._yt_graph) {
-						// close graph
-						s_write = ' .\n}\n\n';
-					}
-
-					// write graph
-					this._st_buffer += s_write+terse_g(yt_graph, h_prefixes)+' {\n';
-
-					// save graph
-					this._yt_graph = yt_graph;
-					this._yt_subject = yt_subject;
-					this._yt_predicate = yt_predicate;
-				}
-			@;
-
-			// internal buffer high water mark
-			if(this._s_buffer.length > this._n_max_buffer) {
-				@{S_LABEL}_Scriber._flush_buffer(this);
-			}
-			else {
-				// do not worry about clearing timeouts
-				setTimeout(@{S_LABEL}_Scriber._flush_buffer, 0, this);
-			}
+		// internal buffer high water mark
+		if(this._s_push.length > this._n_max_buffer) {
+			@{S_LABEL}_Scriber._flush_buffer(this);
 		}
-	@:
-		_serialize_quad(g_quad) {
-			let h_prefixes = this._h_prefixes;
-
-			let {
-				subject: yt_subject,
-				predicate: yt_predicate,
-				object: yt_object,
-				@- B_QUADS
-					graph: yt_graph,
-				@;
-			} = g_quad;
-
-			@- B_QUADS
-				// same graph
-				if(yt_graph.equals(this._yt_graph)) {
-			@;
-
-			// same subject
-			if(yt_subject.equals(this._yt_subject)) {
-				// same prediate
-				if(yt_predicate.equals(this._yt_predicate)) {
-					// write object
-					this.push(', '+terse_o(yt_object, h_prefixes));
-				}
-				// different predicate
-				else {
-					// write pair
-					this.push(' ;\n\t'+terse_p(yt_predicate, h_prefixes)+' '+terse_o(yt_object, h_prefixes));
-
-					// update prediate
-					this._yt_predicate = yt_predicate;
-				}
-			}
-			// subject not identical to previous
-			else {
-				let st_line = terse_s(yt_subject, h_prefixes)+' '+terse_p(yt_predicate, h_prefixes)+' '+terse_o(yt_object, h_prefixes);
-
-				// different subject
-				if(this._yt_subject) {
-					// write triple
-					this.push(' .\n\n'+st_line);
-				}
-				// first subject
-				else {
-					this.push(st_line);
-				}
-
-				// save subject and predicate
-				this._yt_subject = yt_subject;
-				this._yt_predicate = yt_predicate;
-			}
-
-			@- B_QUADS
-				}
-				// graph not identical to previous
-				else {
-					// what to write this call
-					let s_write = '';
-
-					// different graph
-					if(this._yt_graph) {
-						// close graph
-						s_write = ' .\n}\n\n';
-					}
-
-					// write graph
-					this.push(s_write+terse_g(yt_graph, h_prefixes)+' {\n');
-
-					// save graph
-					this._yt_graph = yt_graph;
-					this._yt_subject = yt_subject;
-					this._yt_predicate = yt_predicate;
-				}
-			@;
+		else {
+			// do not worry about clearing timeouts
+			setTimeout(@{S_LABEL}_Scriber._flush_buffer, 0, this);
 		}
-	@;
+	}
 
 	_flush() {
-		@- B_OPTIMIZE_BUFFER
-			// flush buffer
-			@{S_LABEL}_Scriber._flush_buffer(this);
-		@;
+		// flush buffer
+		@{S_LABEL}_Scriber._flush_buffer(this);
 
 		// triple needs closing
 		if(this._yt_subject) {

@@ -24,7 +24,7 @@ class @{S_LABEL}_Writer extends Writable {
 		super(gc_writer);
 
 		let {
-			tokens: gc_tokens=null,
+			style: gc_style=null,
 		} = gc_writer;
 
 		Object.assign(this, {
@@ -243,8 +243,11 @@ class @{S_LABEL}_Writer extends Writable {
 
 		return s_write;
 	}
-
 }
+
+Object.assign(@{S_LABEL}_Writer.prototype, {
+	_serialize_c3r: @{S_LABEL}_Writer.prototype._serialize_c3,
+});
 
 module.exports = function(gc_writer) {
 	return new @{S_LABEL}_Writer(gc_writer);

@@ -14,13 +14,13 @@ class Scribable extends stream.Transform {
 	// flush buffer
 	static _flush_buffer(k_self) {
 		// no buffer; exit
-		if(!k_self._s_buffer) return;
+		if(!k_self._s_push) return;
 
 		// push buffer to stream
-		k_self.push(k_self._s_buffer);
+		k_self.push(k_self._s_push);
 
 		// reset buffer
-		k_self._s_buffer = '';
+		k_self._s_push = '';
 	}
 
 	constructor(gc_scribable={}) {
@@ -83,18 +83,26 @@ class Scribable extends stream.Transform {
 		}
 	}
 
-	_serialize_c4x(hc4x_quads) {
+	_serialize_hash_comment(s_comment) {
+		return '# '+s_comment+'\n';
+	}
+
+	_serialize_newlines(n_newlines=1) {
+		return '\n'.repeat(n_newlines);
+	}
+
+	_serialize_c4r(hc4r_quads) {
 		let h_prefixes = this._h_prefixes;
 		let a_unions = [];
 		let s_write = '';
 
 		// each graph in quads hash
-		for(let sv1_graph in hc4x_quads) {
+		for(let sv1_graph in hc4r_quads) {
 			// non-default graph; union from dataset
 			if('*' !== sv1_graph) a_unions.push(sv1_graph);
 			
 			// add all quads from graph
-			s_write += this._serialize_c3x(hc4x_quads[sv1_graph]);
+			s_write += this._serialize_c3r(hc4r_quads[sv1_graph]);
 		}
 
 		// a union was performed
@@ -128,7 +136,7 @@ class Scribable extends stream.Transform {
 
 	@*{
 		const A_REQUIRED = [
-			'c3x',
+			'c3r',
 			'quad',
 		];
 
@@ -143,10 +151,9 @@ class Scribable extends stream.Transform {
 
 	// ignorable events
 	_serialize_comment() {}  // eslint-disable-line class-methods-use-this
-	_serialize_newlines() {}  // eslint-disable-line class-methods-use-this
 
 	// update prefix mappings
-	_update_prefixes(h_prefixes_in) {
+	_update_prefixes(h_prefixes_in, b_terse=false) {
 		// merge prefixes
 		let h_prefixes = {
 			...this._h_prefixes,
@@ -154,7 +161,7 @@ class Scribable extends stream.Transform {
 		};
 
 		// recache prefixes
-		this._h_prefixes = factory.cachePrefixes(h_prefixes || {}, true);
+		this._h_prefixes = factory.cachePrefixes(h_prefixes || {}, b_terse);
 	}
 
 	// implement stream.Transform
@@ -209,19 +216,10 @@ class Scribable extends stream.Transform {
 			case undefined: return this._serialize_quad(g_event);
 
 			// concise triple struct strict-mode
-			case 'c3x': return this._serialize_c3x(g_event.value);
-
-			// concise triple struct
-			case 'c3': return this._serialize_c3(g_event.value);
+			case 'c3r': return this._serialize_c3r(g_event.value);
 
 			// concise quad struct strict-mode
-			case 'c4x': return this._serialize_c4x(g_event.value);
-
-			// concise quad struct
-			case 'c4': return this._serialize_c4(g_event.value);
-
-			// quad
-			case 'quad': return this._serialize_quad(g_event.value);
+			case 'c4r': return this._serialize_c4r(g_event.value);
 
 			// array of events
 			case 'array': {
@@ -238,6 +236,15 @@ class Scribable extends stream.Transform {
 				return s_write;
 			}
 
+			// quad
+			case 'quad': return this._serialize_quad(g_event.value);
+
+			// concise triple struct
+			case 'c3': return this._serialize_c3(g_event.value);
+
+			// concise quad struct
+			case 'c4': return this._serialize_c4(g_event.value);
+
 			// prefixes
 			case 'prefixes': {
 				return this._serialize_prefixes(g_event.value);
@@ -248,7 +255,8 @@ class Scribable extends stream.Transform {
 				return this._serialize_comment(g_event.value);
 			}
 
-			// newlines
+			// newline(s)
+			case 'newline':
 			case 'newlines': {
 				return this._serialize_newlines(g_event.value);
 			}
@@ -258,6 +266,14 @@ class Scribable extends stream.Transform {
 				throw new Error(`no such writable data event type for RDF stream: '${g_event.type}'`);
 			}
 		}
+	}
+
+	_flush() {
+		// flush buffer
+		Scribable._flush_buffer(this);
+
+		// eof
+		this.push(null);
 	}
 }
 

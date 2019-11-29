@@ -21,6 +21,7 @@ const stream = require('readable-stream');
 		});
 	}
 @;
+
 @> bucket()
 	bucket(s_encoding='utf8') {
 		let g_readable = this._readableState;
@@ -114,6 +115,17 @@ const stream = require('readable-stream');
 	}
 @;
 
+@> rdfjs_import()
+	@//@object-literal
+	// rdfjs impl
+	import(ds_source) {
+		return ds_source
+			.on('data', w_chunk => this.write(w_chunk))
+			.on('end', () => this.end())
+			.on('error', e_read => this.emit('error', e_read));
+	}
+@;
+
 @//@
 class Readable extends stream.Readable {
 	constructor(gc_readable={}) {
@@ -132,6 +144,8 @@ class Readable extends stream.Readable {
 
 class Writable extends stream.Writable {
 	@{until()}
+
+	@{rdfjs_import()}
 }
 
 class Duplex extends stream.Duplex {
@@ -144,6 +158,8 @@ class Transform extends stream.Transform {
 	@{until()}
 
 	@{bucket()}
+
+	@{rdfjs_import()}
 
 	demolish(e_destroy) {
 		// do not allow to push
