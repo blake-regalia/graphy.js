@@ -762,6 +762,14 @@ module.exports = async() => {
 								npx pegjs < $1 > $@
 							`,
 						}),
+
+						// quad-expression parser
+						'expression-handler.js': () => ({
+							copy: 'src/cli/expression-handler.js',
+						}),
+						'constants.js': () => ({
+							copy: 'src/cli/constants.js',
+						}),
 					},
 
 				},

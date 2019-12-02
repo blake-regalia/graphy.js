@@ -1,6 +1,6 @@
 {
   "name": "@graphy/super-repo",
-  "version": "3.2.2",
+  "version": "4.0.0",
   "devVersion": "0.0.34",
   "description": "A collection of RDF libraries for JavaScript developers that focus on performance and usability",
   "keywords": [
@@ -32,22 +32,18 @@
   },
   "dependencies": {
     "big-integer": "^1.6.48",
-    "bkit": "^1.4.1",
+    "pegjs": "^0.10.0",
     "uri-js": "^4.2.2",
-    "worker": "^0.4.0",
-    "yargs": "^13.3.0"
+    "yargs": "^15.0.2"
   },
   "devDependencies": {
     "@rdfjs/data-model": "^1.1.2",
     "chai": "^4.2.0",
     "chai-iterator": "^3.0.2",
     "chai-string": "^1.5.0",
-    "csv-parse": "^4.4.5",
-    "d3": "^5.9.7",
-    "d3plus-viz": "^0.12.38",
     "detective": "^5.2.0",
     "emk": "^1.7.2",
-    "eslint": "^6.7.0",
+    "eslint": "^6.7.2",
     "eslint-plugin-chai-expect": "^2.0.1",
     "eslint-plugin-chai-friendly": "^0.5.0",
     "eslint-plugin-jmacs": "^1.4.0",
@@ -60,9 +56,10 @@
     "plotly": "^1.0.6",
     "pug-cli": "^1.0.0-alpha6",
     "rdf-test-suite": "^1.11.0",
+    "readable-stream": "^3.4.0",
     "request": "^2.88.0",
-    "sort-package-json": "^1.23.1",
-    "webpack": "^4.39.2",
-    "webpack-cli": "^3.3.6"
+    "sort-package-json": "^1.27.0",
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10"
   }
 }

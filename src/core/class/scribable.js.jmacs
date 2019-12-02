@@ -84,7 +84,7 @@ class Scribable extends stream.Transform {
 	}
 
 	_serialize_hash_comment(s_comment) {
-		return '# '+s_comment+'\n';
+		return '# '+s_comment.replace(/\n/g, '\n# ')+'\n';
 	}
 
 	_serialize_newlines(n_newlines=1) {
@@ -189,14 +189,19 @@ class Scribable extends stream.Transform {
 			// push data to stream
 			this.push(w_write);
 		}
-		// internal buffer high water mark
-		else if(this._s_push.length > this._n_max_buffer) {
-			Scribable._flush_buffer(this);
-		}
-		// allow buffer to build
+		// nothing returned from serialization
 		else {
-			// do not worry about clearing timeouts
-			setTimeout(Scribable._flush_buffer, 0, this);
+			let nl_push = this._s_push.length;
+
+			// internal buffer high water mark
+			if(nl_push > this._n_max_buffer) {
+				Scribable._flush_buffer(this);
+			}
+			// allow buffer to build
+			else if(nl_push) {
+				// do not worry about clearing timeouts
+				setTimeout(Scribable._flush_buffer, 0, this);
+			}
 		}
 
 		// callback
@@ -238,7 +243,20 @@ class Scribable extends stream.Transform {
 				// each subevent
 				for(let g_sub of g_event.value) {
 					// build serialization string
-					s_write += this.serialize(g_sub);
+					let s_push = this.serialize(g_sub);
+
+					// something to push
+					if(s_push) {
+						s_write += s_push;
+					}
+					// push was queued
+					else if(this._s_push) {
+						// concat to write
+						s_write += this._s_push;
+
+						// reset push
+						this._s_push = '';
+					}
 				}
 
 				// all done
@@ -261,6 +279,7 @@ class Scribable extends stream.Transform {
 
 			// comment
 			case 'comment': {
+				debugger;
 				return this._serialize_comment(g_event.value);
 			}
 

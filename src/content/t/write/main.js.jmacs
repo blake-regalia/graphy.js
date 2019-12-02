@@ -532,6 +532,7 @@ Object.assign(@{S_LABEL}_Writer.prototype, {
 	anonymous_blank_nodes: true,
 	_serialize_c3r: @{S_LABEL}_Writer.prototype._serialize_c3,
 	_serialize_c4r: @{S_LABEL}_Writer.prototype._serialize_c4,
+	_serialize_comment: Writable.prototype._serialize_hash_comment,
 });
 
 module.exports = function(gc_writer) {

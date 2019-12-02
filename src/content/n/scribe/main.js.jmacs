@@ -109,6 +109,9 @@ class @{S_LABEL}_Scriber extends Scribable {
 				// not a term; skip
 				if(!st1_predicate) continue;
 
+				// opening string
+				let st_opening = st1_subject+' '+st1_predicate+' ';
+
 				// each object
 				for(let sc1_object of hc2x_pairs[sc1_predicate]) {
 					// quick convert object from concise term to terse
@@ -117,7 +120,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 					// not a term; skip
 					if(!st1_object) continue;
 
-					st_build += st1_subject+' '+st1_predicate+' '+st1_object+' .\n';
+					st_build += st_opening+st1_object+' .\n';
 				}
 			}
 		}

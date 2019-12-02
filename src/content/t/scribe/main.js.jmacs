@@ -270,6 +270,10 @@ class @{S_LABEL}_Scriber extends Scribable {
 	}
 };
 
+Object.assign(@{S_LABEL}_Scriber, {
+	_serialize_comment: Scribable.prototype._serialize_hash_comment,
+});
+
 module.exports = function(g_config) {
 	return new @{S_LABEL}_Scriber(g_config);
 };

@@ -293,7 +293,7 @@ class @{S_LABEL}_Writer extends Writable {
 			+verbose_s(g_quad.subject)
 			+' '+verbose_p(g_quad.predicate)
 			+' '+verbose_o(g_quad.object)
-			@{B_QUADS? /* syntax: js */ `+(kq_quad.graph.isDefaultGraph? '': ' '+verbose_g(g_quad.graph))`: ''}
+			@{B_QUADS? /* syntax: js */ `+('DefaultGraph' === g_quad.graph? '': ' '+verbose_g(g_quad.graph))`: ''}
 			+' .\n';
 
 		// update state
@@ -303,6 +303,7 @@ class @{S_LABEL}_Writer extends Writable {
 
 Object.assign(@{S_LABEL}_Writer.prototype, {
 	_serialize_c3r: @{S_LABEL}_Writer.prototype._serialize_c3,
+	_serialize_comment: Writable.prototype._serialize_hash_comment,
 });
 
 module.exports = function(gc_writer) {

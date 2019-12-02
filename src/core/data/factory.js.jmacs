@@ -176,6 +176,9 @@ function cache_prefixes(h_prefixes, b_terse=false) {
 		a_cache.push(p_iri.replace(R_REGEX_ESCAPE, '\\$&'));
 	}
 
+	// no prefixes; forgo cache
+	if(!a_cache.length) return h_prefixes;
+
 	// save cache object
 	h_prefixes[$_PREFIX_CACHE] = {
 		_r_iris: new RegExp(`^(${a_cache.join('|')})${SR_PN_LOCAL}`, 'u'),
@@ -224,38 +227,80 @@ function cache_prefixes(h_prefixes, b_terse=false) {
 // attempt to turn an iri into a terse prefixed name
 const terse = (p_iri, h_prefixes) => {
 	@{curi_prefix_cache()}
+	// cache does not exist
+	else {
+		// best prefix id
+		let si_best_prefix = '';
+		let s_best_suffix = '';
 
-	// don't waste time
+		// length of longest matching iri
+		let nl_best_prefix_iri = -1;
+
+		// each prefix in hash
+		for(let si_prefix in h_prefixes) {
+			let p_prefix_iri = h_prefixes[si_prefix];
+
+			// target iri starts with prefix iri and its longer than the current best
+			if(0 === p_iri.indexOf(p_prefix_iri) && p_prefix_iri.length > nl_best_prefix_iri
+				// namespace is okay to use
+				&& !RT_AVOID_PNAME_NS.test(si_prefix)
+			) {
+				// compute suffix
+				let s_suffix = p_iri.slice(p_prefix_iri.length);
+
+				// suffix is okay to use
+				if(!RT_AVOID_PNAME_LOCAL.test(s_suffix)) {
+					s_best_suffix = s_suffix;
+
+					// save prefix id as best
+					si_best_prefix = si_prefix;
+
+					// update best iri length
+					nl_best_prefix_iri = p_prefix_iri.length;
+				}
+			}
+		}
+
+		// found a prefix
+		if(-1 !== nl_best_prefix_iri) {
+			// use terse prefixed name
+			return si_best_prefix+':'+s_best_suffix;
+		}
+	}
+
+	// fallback
 	return '<'+p_iri+'>';
 };
 
 // attempt to turn an iri into a concise prefixed name
 const concise = (p_iri, h_prefixes={}) => {
 	@{curi_prefix_cache()}
+	// cache does not exists
+	else {
+		// best prefix id
+		let s_best_prefix_id = '';
 
-	// best prefix id
-	let s_best_prefix_id = '';
+		// length of longest matching iri
+		let nl_best_prefix_iri = -1;
 
-	// length of longest matching iri
-	let nl_best_prefix_iri = -1;
+		// each prefix in hash
+		for(let s_prefix_id in h_prefixes) {
+			let p_prefix_iri = h_prefixes[s_prefix_id];
 
-	// each prefix in hash
-	for(let s_prefix_id in h_prefixes) {
-		let p_prefix_iri = h_prefixes[s_prefix_id];
+			// target iri starts with prefix iri and its longer than the current best
+			if(p_iri.startsWith(p_prefix_iri) && p_prefix_iri.length > nl_best_prefix_iri) {
+				// save prefix id as best
+				s_best_prefix_id = s_prefix_id;
 
-		// target iri starts with prefix iri and its longer than the current best
-		if(p_iri.startsWith(p_prefix_iri) && p_prefix_iri.length > nl_best_prefix_iri) {
-			// save prefix id as best
-			s_best_prefix_id = s_prefix_id;
-
-			// update best iri length
-			nl_best_prefix_iri = p_prefix_iri.length;
+				// update best iri length
+				nl_best_prefix_iri = p_prefix_iri.length;
+			}
 		}
-	}
 
-	// found a prefix
-	if(-1 !== nl_best_prefix_iri) {
-		return s_best_prefix_id+':'+p_iri.slice(nl_best_prefix_iri);
+		// found a prefix
+		if(-1 !== nl_best_prefix_iri) {
+			return s_best_prefix_id+':'+p_iri.slice(nl_best_prefix_iri);
+		}
 	}
 
 	// no prefix found; default to full iri
@@ -297,7 +342,7 @@ function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 		// otherwise
 		default: {
 			// rdf:type alis
-			if('a' === sc1_in) return 'a';
+			if('a' === sc1_in) return b_verbose? '<@{P_IRI_RDF}type>': 'a';
 
 			// deconstruct prefixed name
 			let [, si_prefix, s_suffix] = R_C1N_DECONSTRUCT.exec(sc1_in);
@@ -344,30 +389,8 @@ class NamedNode extends GenericTerm {
 		return concise(this.value, h_prefixes);
 	}
 
-	terse(h_prefixes={}) {
-		return terse(clean_iri(this.value), h_prefixes);
-
-		// let p_iri = clean_iri(this.value);
-
-		// let p_iri = this.value;
-
-		// // try finding prefix to compress
-		// let sct_node = concise(p_iri, h_prefixes);
-
-		// // none of the prefixes contain this iri; use full iriref
-		// if('>' === sct_node[0]) return '<'+p_iri+'>';
-
-		// let i_colon = sct_node.indexOf(':');
-
-		// // avoid using prefixed name; use full iriref
-		// if(RT_AVOID_PNAME_LOCAL.test(sct_node.slice(i_colon+1))
-		// 	|| RT_AVOID_PNAME_NS.test(sct_node.slice(0, i_colon))
-		// ) {
-		// 	return '<'+p_iri+'>';
-		// }
-
-		// // use terse prefixed name
-		// return sct_node;
+	terse(h_prefixes={}, b_opt=false) {
+		return terse(clean_iri(this.value), h_prefixes, b_opt);
 	}
 
 	verbose() {

@@ -98,19 +98,14 @@ class Writable extends Scribable {
 			this._xc_state = @{XC_STATE_DATA};
 		}
 
-		// each line of comment
-		for(let s_line of s_comment.split(/\n/g)) {
-			s_write += `# ${s_line}\n`;
-		}
-
-		return s_write;
+		return s_write+(super._serialize_comment(s_comment) || '');
 	}
 
-	// serialize newlines
-	_serialize_newlines(n_newlines) {  // eslint-disable-line class-methods-use-this
-		// no need to check/change state
-		return '\n'.repeat(n_newlines);
-	}
+	// // serialize newlines
+	// _serialize_newlines(n_newlines) {  // eslint-disable-line class-methods-use-this
+	// 	// no need to check/change state
+	// 	return '\n'.repeat(n_newlines);
+	// }
 
 	// transcode collection into concise-pairs hash
 	_transcode_collection(a_collection) {

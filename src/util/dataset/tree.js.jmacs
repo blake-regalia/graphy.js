@@ -975,7 +975,7 @@ class DatasetTree extends stream.Duplex {
 
 				// push writable data event
 				let b_pressure = this.push({
-					type: 'c4x',
+					type: 'c4r',
 					value: {
 						[sv1_graph]: {
 							[sv1_subject]: h_triples[sv1_subject],
@@ -2385,7 +2385,7 @@ class DatasetTree extends stream.Duplex {
 		}
 
 		// compare digests
-		return this.canonicalize().string === k_other.canonicalize().string;
+		return (new Canonicalizer_ct(this)).normalize().string === (new Canonicalizer_ct(k_other)).normalize().string;
 	}
 
 	// generate the canonical string representation of a quad

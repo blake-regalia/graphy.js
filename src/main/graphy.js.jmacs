@@ -213,6 +213,9 @@ if(module === require.main) {
 	const mk_yargs = require('yargs/yargs');
 	const stream = require('@{channel('core.iso.stream')}');
 
+	const parse_filter = require('./quad-expression.js').parse;
+	const expression_handler = require('./expression-handler.js');
+
 	class answer_source extends require('stream').Readable {
 		constructor(w_datum) {
 			super({
@@ -270,14 +273,14 @@ if(module === require.main) {
 				},
 				b: {
 					type: 'string',
-					alias: ['base', 'base-uri'],
+					alias: ['base', 'base-uri', 'base-iri'],
 					describe: 'set a base URI on the document',
 				},
-				// x: {
-				// 	type: 'string',
-				// 	alias: ['filter'],
-				// 	describe: 'filter quads by matching the given expression',
-				// },
+				x: {
+					type: 'string',
+					alias: ['filter-expression'],
+					describe: 'filter quads by matching the given quad filter expression',
+				},
 				s: {
 					type: 'string',
 					alias: ['subject'],
@@ -358,10 +361,45 @@ if(module === require.main) {
 				},
 			}));
 
-			// // filter expression
-			// if(g_argv.filter) {
-			// 	parse_filter(g_argv.filter);
-			// }
+			// filter expression
+			if(g_argv.filter) {
+				let g_parse = parse_filter(g_argv.filter);
+
+				let sj_eval = expression_handler.prepare(g_parse);
+
+				let f_filter = new Function('stream', sj_eval);  // eslint-disable-line no-new-func
+
+				let ds_filter = f_filter(stream);
+
+				// intercept pipe
+				ds_filter.pipe = function(ds_out) {
+					let ds_dst = ds_out;
+
+					// non-object mode
+					if(!ds_dst._writableState.objectMode) {
+						// transform to JSON
+						ds_out = stream.quads_to_json();
+					}
+					// yes object mode and graphy writable
+					else if(ds_out.isGraphyWritable) {
+						// transform to writable data events
+						ds_out = stream.quads_to_writable();
+					}
+					// forward as-is to super
+					else {
+						return this.constructor.prototype.pipe.call(this, ds_dst);
+					}
+
+					// forward output to super
+					this.constructor.prototype.pipe.call(this, ds_out);
+
+					// pipe output to destination
+					return ds_out.pipe(ds_dst);
+				}
+
+				// pipe reader to filter
+				return ds_reader.pipe(f_filter());
+			}
 			// filters
 			if(g_argv.subject || g_argv.predicate || g_argv.object || g_argv.graph
 				|| g_argv['not-subject'] || g_argv['not-predicate'] || g_argv['not-object'] || g_argv['not-graph']) {
