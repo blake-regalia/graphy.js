@@ -987,6 +987,11 @@ class Reader {
 			}
 		});
 
+		// destroy
+		ds_transform.destroy = (...a_args) => {
+			this.destroy(...a_args);
+		};
+
 		// bind events to transform stream
 		this.bind(g_config);
 
@@ -2665,6 +2670,11 @@ class Reader {
 				`;
 			}
 		}
+
+		this.eof = () => {
+			this.s = null;
+		};
+
 		this._b_destroyed = true;
 		this.transform.demolish(e_destroy);
 	}

@@ -248,6 +248,16 @@ if(module === require.main) {
 		return ds_input;
 	});
 
+	const map_streams = (a_inputs, f_map) => a_inputs.map((ds_input) => {
+		let ds_output = f_map(ds_input);
+
+		// intercept pipe
+		ds_output.pipe = F_ADAPT_STREAM;
+
+		// pipe input to step and return step
+		return ds_input.pipe(ds_output);
+	});
+
 	const warp_term = (z_term, h_prefixes) => {
 		// c1 string
 		if('string' === typeof z_term) {
@@ -670,24 +680,24 @@ if(module === require.main) {
 					}
 
 					// eslint-disable-next-line class-methods-use-this
-					_transform(y_quad, s_encoding, fk_transform) {
+					_transform(y_quad, s_encoding, fke_transform) {
 						// skip graph
-						if(b_skip_graph) return fk_transform();
+						if(b_skip_graph) return fke_transform();
 
 						// apply filter
-						if(sv1_subject && sv1_subject !== y_quad.subject.concise()) return fk_transform();
-						else if(sv1_predicate && sv1_predicate !== y_quad.predicate.concise()) return fk_transform();
-						else if(sv1_object && sv1_object !== y_quad.object.concise()) return fk_transform();
-						else if(sv1_graph && sv1_graph !== y_quad.graph.concise()) return fk_transform();
+						if(sv1_subject && sv1_subject !== y_quad.subject.concise()) return fke_transform();
+						else if(sv1_predicate && sv1_predicate !== y_quad.predicate.concise()) return fke_transform();
+						else if(sv1_object && sv1_object !== y_quad.object.concise()) return fke_transform();
+						else if(sv1_graph && sv1_graph !== y_quad.graph.concise()) return fke_transform();
 
 						// apply not filter
-						if(a_not_subjects && a_not_subjects.includes(y_quad.subject.concise())) return fk_transform();
-						else if(a_not_predicates && a_not_predicates.includes(y_quad.predicate.concise())) return fk_transform();
-						else if(a_not_objects && a_not_objects.includes(y_quad.object.concise())) return fk_transform();
-						else if(a_not_graphs && a_not_graphs.includes(y_quad.graph.concise())) return fk_transform();
+						if(a_not_subjects && a_not_subjects.includes(y_quad.subject.concise())) return fke_transform();
+						else if(a_not_predicates && a_not_predicates.includes(y_quad.predicate.concise())) return fke_transform();
+						else if(a_not_objects && a_not_objects.includes(y_quad.object.concise())) return fke_transform();
+						else if(a_not_graphs && a_not_graphs.includes(y_quad.graph.concise())) return fke_transform();
 
 						// quad passed filter
-						fk_transform(null, y_quad);
+						fke_transform(null, y_quad);
 					}
 
 					// intercept pipe
@@ -805,21 +815,17 @@ if(module === require.main) {
 		}
 
 		// map input(s) to writer(s)
-		return g_context.inputs.map((ds_input) => {
-			let ds_writer = f_writer({
-				...gc_write,
+		return g_context.inputs.map(ds_input => ds_input.pipe(f_writer({
+			...gc_write,
 
-				style: g_style,
+			style: g_style,
 
-				lists: g_lists,
+			lists: g_lists,
 
-				error(e_write) {
-					g_context.failure(e_write);
-				},
-			});
-
-			return ds_input.pipe(ds_writer);
-		});
+			error(e_write) {
+				g_context.failure(e_write);
+			},
+		})));
 	};
 
 	// commands
@@ -840,11 +846,87 @@ if(module === require.main) {
 
 
 		head(a_args, g_context) {
-			
+			let g_argv = command(g_context.command)
+				.options({
+					q: {
+						type: 'number',
+						alias: ['quads', 't', 'triples'],
+						describe: 'emit only the given number of quads from the beginning of a stream',
+						conflicts: ['s'],
+					},
+
+					s: {
+						type: 'number',
+						alias: ['subjects'],
+						describe: 'emit quads until the given number of distinct subjects have been encountered from the beginning of a stream',
+						conflicts: ['q'],
+					},
+				})
+				.help()
+				.parse(a_args);
+
+			if(g_argv.subjects) {
+				let n_subjects = g_argv.subjects || 1;
+
+				return map_streams(g_context.inputs, (ds_input) => {
+					let c_subjects = 0;
+					let kt_prev = null;
+
+					return new stream.Transform.QuadsToOther({
+						transform(g_quad, s_encoding, fke_transform) {
+							// under limit
+							if(g_quad.subject.equals(kt_prev) || ++c_subjects <= n_subjects) {
+								this.push(g_quad);
+							}
+							// hit limit
+							else {
+								// push eof
+								this.push(null);
+
+								// destroy source
+								ds_input.destroy();
+							}
+
+							// done
+							fke_transform();
+						},
+					});
+				});
+			}
+			else {
+				let n_quads = g_argv.quads || 1;
+
+				return map_streams(g_context.inputs, (ds_input) => {
+					let c_quads = 0;
+
+					return new stream.Transform.QuadsToOther({
+						transform(g_quad, s_encoding, fke_transform) {
+							// under limit
+							if(++c_quads <= n_quads) {
+								this.push(g_quad);
+							}
+							// hit limit
+							else {
+								// push eof
+								this.push(null);
+
+								// destroy source
+								ds_input.destroy();
+							}
+
+							// done
+							fke_transform();
+						},
+					});
+				});
+			}
 		},
 
 		tail(a_args, g_context) {
 			
+			// neither used (bypass head)
+			warn(`The 'tail' command was not used and is being ignored.`);
+			return bypass(g_context.inputs);
 		},
 
 		// copy(a_args, g_context) {
@@ -929,10 +1011,10 @@ if(module === require.main) {
 						exit(`The 'filter' command expects -j/--javascript expression to evaluate to a function, instead found '${typeof f_filter}'`);
 					}
 
-					return g_context.inputs.map((ds_input) => {
+					return map_streams(g_context.inputs, () => {
 						let h_prefixes = {};
 
-						let ds_filter = new stream.Transform.QuadsToOther({
+						return new stream.Transform.QuadsToOther({
 							objectMode: true,
 
 							prefix(si_prefix, p_iri) {
@@ -947,12 +1029,6 @@ if(module === require.main) {
 								fke_transform();
 							},
 						});
-
-						// intercept pipe
-						ds_filter.pipe = F_ADAPT_STREAM;
-
-						// pipe reader to filter
-						return ds_input.pipe(ds_filter);
 					});
 				}
 			}
@@ -1000,10 +1076,10 @@ if(module === require.main) {
 						exit(`The 'filter' command expects -j/--javascript expression to evaluate to a function, instead found '${typeof f_filter}'`);
 					}
 
-					return g_context.inputs.map((ds_input) => {
+					return map_streams(g_context.inputs, () => {
 						let h_prefixes = {};
 
-						let ds_transform = new stream.Transform.QuadsToOther({
+						return new stream.Transform.QuadsToOther({
 							objectMode: true,
 
 							prefix(si_prefix, p_iri) {
@@ -1036,12 +1112,6 @@ if(module === require.main) {
 								fke_transform();
 							},
 						});
-
-						// intercept pipe
-						ds_transform.pipe = F_ADAPT_STREAM;
-
-						// pipe reader to transform
-						return ds_input.pipe(ds_transform);
 					});
 				}
 			}
@@ -1360,8 +1430,13 @@ if(module === require.main) {
 					console.log('\n'+gobble(`
 						Usage: graphy COMMAND [--pipe COMMAND]*
 
+						Stream operations:
+						  head                  Limit number of quads from top of stream
+						  tail                  Limit number of quads from bottom of stream
+						  filter                Filter quads on a stream
+						  transform             Apply a transform to each quad in a stream
+
 						Commands:
-						  filter                Apply a filter to the stream of quads
 						  content.nt.read       Read an N-Triples document
 						  content.nt.write      Write to N-Triples format
 						  content.nq.read       Read an N-Quads document

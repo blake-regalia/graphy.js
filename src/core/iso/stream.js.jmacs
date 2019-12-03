@@ -180,7 +180,7 @@ class Transform extends stream.Transform {
 
 		// an error was given, destroy the stream as well
 		if(e_destroy) {
-			return this.destroy(e_destroy);
+			return stream.Transform.prototype.destroy.call(e_destroy);
 		}
 	}
 }
