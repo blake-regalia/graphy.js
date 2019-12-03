@@ -83,10 +83,15 @@ const H_CONTENT_MIMES = {
 };
 
 const H_CONTENT_TAGS = {
-	ttl,
-	trig,
 	nt,
+	'n-triples': nt,
+	ntriples: nt,
 	nq,
+	'n-quads': nq,
+	nquads: nq,
+	ttl,
+	turtle: ttl,
+	trig,
 	// 'application/sparql-results+json': sparql_results,
 };
 
@@ -123,8 +128,8 @@ const graphy = module.exports = Object.assign({
 	VERSION: '4.0.0',
 
 	content: Object.assign(function(s_query) {
-		if(s_query in H_CONTENT_TAGS) {
-			return H_CONTENT_TAGS[s_query];
+		if(s_query.toLowerCase() in H_CONTENT_TAGS) {
+			return H_CONTENT_TAGS[s_query.toLowerCase()];
 		}
 
 		let m_content_type = R_CONTENT_TYPE.exec(s_query);
@@ -740,131 +745,58 @@ if(module === require.main) {
 		}));
 	});
 
-	const writer = (f_writer, gc_write={}) => (a_args, g_context) => {
-		let s_group_style = 'Style options:';
-		let s_group_list = 'List structure options:'
+	const content_type_flags = f_verb => ({
+		nt: {
+			type: 'boolean',
+			alias: ['ntriples', 'n-triples'],
+			conflicts: ['ttl', 'nq', 'trig'],
+			describe: f_verb('N-Triples'),
+		},
 
-		let g_argv = command(g_context.command)
-			.options({
-				i: {
-					type: 'string',
-					alias: ['indent'],
-					// default: '\\t',  // eslint-disable-line no-undefined
-					describe: `sets the whitespace string to use for indentation. Writers use '\\t' by default`,
-					group: s_group_style,
-				},
-				g: {
-					type: 'string',
-					alias: ['graph-keyword'],
-					describe: `sets the style to use when serializing the optional 'GRAPH' keyword in TriG. Writers omit this keyword by default.
-						Passing 'true' or empty with this flag on is shorthand for the all-caps 'GRAPH' keyword`.replace(/\n\s*/g, ' '),
-					group: s_group_style,
-				},
-				s: {
-					type: 'boolean',
-					alias: ['simplify-default-graph'],
-					describe: 'if enabled, omits serializing the surrounding optional graph block for the default graph in TriG.',
-					group: s_group_style,
-				},
-				f: {
-					type: 'string',
-					alias: ['first'],
-					describe: `c1 string: sets the predicate to use for the 'first' relation when serializing list structures`,
-					group: s_group_list,
-				},
-				r: {
-					type: 'string',
-					alias: ['rest'],
-					describe: `c1 string: sets the predicate to use for the 'rest' relation when serializing list structures`,
-					group: s_group_list,
-				},
-				n: {
-					type: 'string',
-					alias: ['nil'],
-					describe: `c1 string: sets the predicate to use for the 'nil' relation when serializing list structures`,
-					group: s_group_list,
-				},
-			})
-			.help()
-			.parse(a_args);
+		nq: {
+			type: 'boolean',
+			alias: ['nquads', 'n-quads'],
+			conflicts: ['nt', 'ttl', 'trig'],
+			describe: f_verb('N-Quads'),
+		},
 
-		// extend style options
-		let g_style = gc_write.style || {};
-		{
-			// indent
-			if(g_argv.indent) g_style.indent = g_argv.indent;
+		ttl: {
+			type: 'boolean',
+			alias: ['turtle'],
+			conflicts: ['nt', 'nq', 'trig'],
+			describe: f_verb(' Turtle'),
+		},
 
-			// graph keyword
-			if(g_argv['graph-keyword']) g_style.graph_keyword = g_argv['graph-keyword'];
-
-			// simplify default graph
-			if(g_argv['simplify-default-graph']) g_style.simplify_default_graph = g_argv['simplify-default-graph'];
-		}
-
-		// extend list options
-		let g_lists = gc_write.lists || {};
-		{
-			// first
-			if(g_argv.first) g_lists.first = g_argv.first;
-
-			// rest
-			if(g_argv.rest) g_lists.rest = g_argv.rest;
-
-			// nil
-			if(g_argv.nil) g_lists.nil = g_argv.nil;
-		}
-
-		// map input(s) to writer(s)
-		return g_context.inputs.map(ds_input => ds_input.pipe(f_writer({
-			...gc_write,
-
-			style: g_style,
-
-			lists: g_lists,
-
-			error(e_write) {
-				g_context.failure(e_write);
-			},
-		})));
-	};
+		trig: {
+			type: 'boolean',
+			conflicts: ['nt', 'nq', 'ttl'],
+			describe: f_verb('TriG'),
+		},
+	});
 
 	// commands
 	let h_commands = {  // eslint-disable-next-line quote-props
-		// 'content': (a_args, g_context) => {
-		// 	let g_argv = command(g_context.command)
-		// 		.string('t')
-		// 			.alias('t', ['type'])
-		// 			.describe('t', 'argument to `super.content()`; either an RDF Content-Type or format selector')
-		// 		.string('v')
-		// 			.alias('v', 'verb')
-		// 			.describe('v', 'which verb to access on the given content handler, e.g., `read`, `write`, etc.')
-		// 		.help()
-		// 		.version(false)
-		// 		.parse(a_args);
-
-		// },
-
-
 		head(a_args, g_context) {
 			let g_argv = command(g_context.command)
 				.options({
 					q: {
 						type: 'number',
 						alias: ['quads', 't', 'triples'],
-						describe: 'emit only the given number of quads from the beginning of a stream',
+						describe: 'emit only the given number of quads from the top of a stream',
 						conflicts: ['s'],
 					},
 
 					s: {
 						type: 'number',
 						alias: ['subjects'],
-						describe: 'emit quads until the given number of distinct subjects have been encountered from the beginning of a stream',
+						describe: 'emit quads until the given number of distinct subjects have been encountered from the top of a stream',
 						conflicts: ['q'],
 					},
 				})
 				.help()
 				.parse(a_args);
 
+			// count subjects
 			if(g_argv.subjects) {
 				let n_subjects = g_argv.subjects || 1;
 
@@ -877,6 +809,7 @@ if(module === require.main) {
 							// under limit
 							if(g_quad.subject.equals(kt_prev) || ++c_subjects <= n_subjects) {
 								this.push(g_quad);
+
 							}
 							// hit limit
 							else {
@@ -887,12 +820,16 @@ if(module === require.main) {
 								ds_input.destroy();
 							}
 
+							// save subject
+							kt_prev = g_quad.subject;
+
 							// done
 							fke_transform();
 						},
 					});
 				});
 			}
+			// count quads
 			else {
 				let n_quads = g_argv.quads || 1;
 
@@ -923,10 +860,122 @@ if(module === require.main) {
 		},
 
 		tail(a_args, g_context) {
-			
-			// neither used (bypass head)
-			warn(`The 'tail' command was not used and is being ignored.`);
-			return bypass(g_context.inputs);
+			let g_argv = command(g_context.command)
+				.options({
+					q: {
+						type: 'number',
+						alias: ['quads', 't', 'triples'],
+						describe: 'emit only the given number of quads from the bottom of a stream',
+						conflicts: ['s'],
+					},
+
+					s: {
+						type: 'number',
+						alias: ['subjects'],
+						describe: 'emit quads contained by the given number of distinct subjects from the bottom of a stream',
+						conflicts: ['q'],
+					},
+				})
+				.help()
+				.epilogue('Warning: specifying a large number of quads or subjects may incur substantial memory consumption.')
+				.parse(a_args);
+
+			// count subjects
+			if(g_argv.subjects) {
+				let n_subjects = g_argv.subjects || 1;
+
+				return map_streams(g_context.inputs, (ds_input) => {
+					let c_subjects = 0;
+					let kt_prev = null;
+					let a_batch = null;
+					let a_fifo = [];
+
+					return new stream.Transform.QuadsToOther({
+						transform(g_quad, s_encoding, fke_transform) {
+							// different subject
+							if(!g_quad.subject.equals(kt_prev)) {
+								// reset batch
+								a_batch = [];
+
+								// push batch to fifo
+								a_fifo.push(a_batch);
+								
+								// hit limit
+								if(++c_subjects > n_subjects) {
+									a_fifo.shift();
+								}
+							}
+
+							// save subject
+							kt_prev = g_quad.subject;
+
+							// add quad to batch
+							a_batch.push(g_quad);
+
+							// done
+							fke_transform();
+						},
+
+						flush(fk_flush) {
+							// push queue
+							for(let a_quads of a_fifo) {
+								for(let g_quad of a_quads) {
+									this.push(g_quad);
+								}
+							}
+
+							// free to GC
+							a_fifo.length = 0;
+							a_batch.length = 0;
+
+							// done
+							fk_flush();
+						}
+					});
+				});
+			}
+			// count quads
+			else {
+				let n_quads = g_argv.quads || 1;
+
+				return map_streams(g_context.inputs, (ds_input) => {
+					let c_quads = 0;
+					let a_fifo = [];
+
+					return new stream.Transform.QuadsToOther({
+						transform(g_quad, s_encoding, fke_transform) {
+							// under limit
+							if(++c_quads <= n_quads) {
+								a_fifo.push(g_quad);
+							}
+							// hit limit
+							else {
+								// shift off bottom
+								a_fifo.shift();
+
+								// push to top
+								a_fifo.push(g_quad);
+							}
+
+							// done
+							fke_transform();
+						},
+
+						flush(fk_flush) {
+							// push queue
+							for(let g_quad of a_fifo) {
+								this.push(g_quad);
+							}
+
+							// free to GC
+							a_fifo.length = 0;
+
+							// done
+							fk_flush();
+						},
+					});
+				});
+			}
 		},
 
 		// copy(a_args, g_context) {
@@ -938,7 +987,33 @@ if(module === require.main) {
 		// },
 
 		concat(a_args, g_context) {
-			
+			let a_inputs = g_context.inputs;
+			let nl_inputs = a_inputs.length;
+
+			if(1 === nl_inputs) return a_inputs;
+
+			let i_input = 0;
+
+			return [new stream.Readable({
+				objectMode: true,
+
+				read() {
+					// while there are inputs
+					for(; i_input<nl_inputs; i_input++) {
+						// ref input
+						let ds_input = a_inputs[i_input];
+
+						// read chunk from input and push to output
+						let w_chunk;
+						while((w_chunk = ds_input.read()) && this.push(w_chunk)) {
+							; // eslint-disable-line no-empty
+						}
+
+						// input not fully consumed; try again next read
+						if(!w_chunk.readableEnded) break;
+					}
+				},
+			})];
 		},
 
 		filter(a_args, g_context) {
@@ -1121,16 +1196,217 @@ if(module === require.main) {
 			return bypass(g_context.inputs);
 		},
 
+		read(a_args, g_context) {
+			let g_argv = command(g_context.command)
+				.options({
+					r: {
+						type: 'boolean',
+						alias: ['relax'],
+						default: undefined,  // eslint-disable-line no-undefined
+						describe: 'relax validation of tokens within the RDF document',
+					},
+					b: {
+						type: 'string',
+						alias: ['base', 'base-uri', 'base-iri'],
+						describe: 'set a base URI on the document',
+					},
+					c: {
+						type: 'string',
+						alias: ['content-type'],
+						default: 'trig',
+						describe: 'either an RDF Content-Type or format selector',
+						example: [
+							`read -c nt`,
+							`read -c n-triples`,
+							`read -c 'application/n-triples'`,
+							`read -c ttl`,
+							`read -c turtle`,
+							`read -c 'text/turtle'`,
+						].join('\n'),
+					},
+
+					...content_type_flags(s => `read from ${s}`),
+				})
+				.help()
+				.version(false)
+				.parse(a_args);
+
+			// select reader
+			let f_reader = graphy.content(g_argv['content-type']).read;
+
+			let gc_read = {
+				relax: g_argv.relax || false,
+			};
+
+			// 'base-uri' => 'baseUri'
+			if(g_argv['base-uri']) {
+				gc_read.baseUri = g_argv['base-uri'];
+			}
+
+			return map_streams(g_context.inputs, () => f_reader({
+				...gc_read,
+				error(e_read) {
+					g_context.failure(e_read);
+				},
+			}));
+		},
+
+		write(a_args, g_context, _f_writer=null) {
+			let s_group_style = 'Style options:';
+			let s_group_list = 'List structure options:'
+
+			let g_argv = command(g_context.command)
+				.options({
+					i: {
+						type: 'string',
+						alias: ['indent'],
+						// default: '\\t',  // eslint-disable-line no-undefined
+						describe: `sets the whitespace string to use for indentation. Writers use '\\t' by default`,
+						group: s_group_style,
+					},
+					g: {
+						type: 'string',
+						alias: ['graph-keyword'],
+						describe: `sets the style to use when serializing the optional 'GRAPH' keyword in TriG. Writers omit this keyword by default.
+							Passing 'true' or empty with this flag on is shorthand for the all-caps 'GRAPH' keyword`.replace(/\n\s*/g, ' '),
+						group: s_group_style,
+					},
+					s: {
+						type: 'boolean',
+						alias: ['simplify-default-graph'],
+						default: true,
+						describe: 'if enabled, omits serializing the surrounding optional graph block for the default graph in TriG.',
+						group: s_group_style,
+					},
+					f: {
+						type: 'string',
+						alias: ['first'],
+						describe: `c1 string: sets the predicate to use for the 'first' relation when serializing list structures`,
+						group: s_group_list,
+					},
+					r: {
+						type: 'string',
+						alias: ['rest'],
+						describe: `c1 string: sets the predicate to use for the 'rest' relation when serializing list structures`,
+						group: s_group_list,
+					},
+					n: {
+						type: 'string',
+						alias: ['nil'],
+						describe: `c1 string: sets the predicate to use for the 'nil' relation when serializing list structures`,
+						group: s_group_list,
+					},
+					...(_f_writer? {} :{
+						c: {
+							type: 'string',
+							alias: ['content-type'],
+							default: 'trig',
+							describe: 'either an RDF Content-Type or format selector',
+							example: [
+								`write -c nt`,
+								`write -c n-triples`,
+								`write -c 'application/n-triples'`,
+								`write -c ttl`,
+								`write -c turtle`,
+								`write -c 'text/turtle'`,
+							].join('\n')
+						},
+
+						...content_type_flags(s => `write to ${s}`),
+					}),
+				})
+				.help()
+				.version(false)
+				.parse(a_args);
+
+			// select writer
+			let f_writer = _f_writer || graphy.content(g_argv['content-type']).write;
+
+			// default write config
+			let gc_write = {};
+
+			// extend style options
+			let g_style = gc_write.style || {};
+			{
+				// indent
+				if(g_argv.indent) g_style.indent = g_argv.indent;
+
+				// graph keyword
+				if(g_argv['graph-keyword']) g_style.graph_keyword = g_argv['graph-keyword'];
+
+				// simplify default graph
+				if(g_argv['simplify-default-graph']) g_style.simplify_default_graph = g_argv['simplify-default-graph'];
+			}
+
+			// extend list options
+			let g_lists = gc_write.lists || {};
+			{
+				// first
+				if(g_argv.first) g_lists.first = g_argv.first;
+
+				// rest
+				if(g_argv.rest) g_lists.rest = g_argv.rest;
+
+				// nil
+				if(g_argv.nil) g_lists.nil = g_argv.nil;
+			}
+
+			// map input(s) to writer(s)
+			return g_context.inputs.map(ds_input => ds_input.pipe(f_writer({
+				...gc_write,
+
+				style: g_style,
+
+				lists: g_lists,
+
+				error(e_write) {
+					g_context.failure(e_write);
+				},
+			})));
+		},
+
+		scribe(a_args, g_context, _f_scriber=null) {
+			let g_argv = command(g_context.command)
+				.options({
+					...(_f_scriber? {} :{
+						c: {
+							type: 'string',
+							alias: ['content-type'],
+							default: 'trig',
+							describe: 'either an RDF Content-Type or format selector',
+							example: [
+								`scribe -c nt`,
+								`scribe -c n-triples`,
+								`scribe -c 'application/n-triples'`,
+								`scribe -c ttl`,
+								`scribe -c turtle`,
+								`scribe -c 'text/turtle'`,
+							].join('\n'),
+						},
+
+						...content_type_flags(s => `scribe to ${s}`),
+					}),
+				})
+				.help()
+				.version(false)
+				.parse(a_args);
+
+			// select scriber
+			let f_scriber = _f_scriber || graphy.content(g_argv['content-type']).scribe;
+
+			// map input(s) to writer(s)
+			return g_context.inputs.map(ds_input => ds_input.pipe(f_scriber({
+				error(e_write) {
+					g_context.failure(e_write);
+				},
+			})));
+		},
 
 		'content.nt.read': reader(graphy.content.nt.read),
 		'content.nq.read': reader(graphy.content.nq.read),
 		'content.ttl.read': reader(graphy.content.ttl.read),
 		'content.trig.read': reader(graphy.content.trig.read),
 
-		'content.nt.write': writer(graphy.content.nt.write),
-		'content.nq.write': writer(graphy.content.nq.write),
-		'content.ttl.write': writer(graphy.content.ttl.write),
-		'content.trig.write': writer(graphy.content.trig.write),
 
 		'util.dataset.tree': async(a_args, g_context) => {
 			const dataset_tree = graphy.util.dataset.tree;
@@ -1368,12 +1644,13 @@ if(module === require.main) {
 	};
 
 	// command aliases
-	h_commands.read = h_commands['content.trig.read'];
-	h_commands.write = writer(graphy.content.trig.write, {
-		tokens: {
-			simplify_default_graph: true,
-		},
+	Object.assign(h_commands, {
+		'content.nt.write': (a, g) => h_commands.write(a, g, nt.write),
+		'content.nq.write': (a, g) => h_commands.write(a, g, nq.write),
+		'content.ttl.write': (a, g) => h_commands.write(a, g, ttl.write),
+		'content.trig.write': (a, g) => h_commands.write(a, g, trig.write),
 	});
+
 	h_commands.tree = h_commands['util.dataset.tree'];
 
 	let a_argv = process.argv.slice(2);
