@@ -231,9 +231,10 @@ if(B_BROWSERIFY || (b_is_node && (+(/^v(\d+)/.exec(process.version)[1])) < 10)) 
 	Transform.prototype._destroy = Duplex.prototype._destroy = (e_destroy, fke_destroy) => fke_destroy(e_destroy);
 }
 
-class Quads_To_Other extends Transform {
-	constructor() {
+class QuadsToOther extends Transform {
+	constructor(gc_transform={}) {
 		super({
+			...gc_transform,
 			writableObjectMode: true,
 			readableObjectMode: true,
 		});
@@ -251,14 +252,14 @@ class Quads_To_Other extends Transform {
 	}
 }
 
-class Quads_To_JSON_Transform extends Quads_To_Other {
+class Quads_To_JSON_Transform extends QuadsToOther {
 	// serializse json
 	_transform(g_quad, s_encoding, fk_transform) {
 		fk_transform(null, JSON.stringify(g_quad.isolate())+'\n');
 	}
 }
 
-class Quads_To_Writable extends Quads_To_Other {
+class Quads_To_Writable extends QuadsToOther {
 	_transform(g_quad, s_encoding, fk_transform) {
 		fk_transform(null, {
 			type: 'quad',
@@ -267,6 +268,7 @@ class Quads_To_Writable extends Quads_To_Other {
 	}
 }
 
+Transform.QuadsToOther = QuadsToOther;
 
 module.exports = {
 	...stream,
@@ -274,6 +276,8 @@ module.exports = {
 	Writable,
 	Duplex,
 	Transform,
+
+	QuadsToOther,
 
 	// create a transform from quad objects into JSON strings for trivial serialization
 	quads_to_json() {

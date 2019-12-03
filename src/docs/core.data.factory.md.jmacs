@@ -51,8 +51,9 @@
      - [`.from.term`](#function_from-term)
      - [`.from.quad`](#function_from-term)
    - Content Writer directives
-     - [`.comment(...)`](#function_comment)@.{/*
-     - [`.newlines(...)`](#function_newlines)*/}
+     - [`.config(...)`](#function_config)
+     - [`.comment(...)`](#function_comment)
+     - [`.newlines(...)`](#function_newlines)
  - [Classes](#classes) -- class definitions
    - [GenericTerm](#class_generic-term)
      - [NamedNode](#class_named-node)
@@ -475,6 +476,24 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       }).verbose()}'
       ```
 
+<a name="function_config" />
+
+### [`factory.config`](#function_config)`(key: string)`
+   - configures a writer option that is scoped to the current sub-tree (applies in the order that the keys are traversed).
+   - **returns** a [`#string/concise-term`](concise#string_c1)
+   - *accepted keys:*
+     - `'lists'` -- corresponds to the `.lists` option of [`WriteConfig`](content.textual#config_write). The value corresponding to this key is expected to be a [`ListsConfig`](content.textual#config_lists).
+   - *example:*
+      ```js
+      @{cat('snippets/write-config.js', `
+      `)}
+      ```
+   - *outputs:*
+      ```turtle
+      @{exec('snippets/write-config.js', {}, `
+      `)}
+      ```
+
 <a name="function_comment" />
 
 ### [`factory.comment`](#function_comment)`(config: `[`#config/comment`](#config_comment)`)`
@@ -657,6 +676,9 @@ A class that represents an RDF literal.
 
 **Properties:**
  - `.isLiteral` : `boolean` = `true` -- a faster alternative to test for Literal term types
+ - `.isSimple` : `boolean` -- whether or not this Literal is 'simple', i.e., it has the datatype [xsd:string](https://www.w3.org/TR/xmlschema-2/#boolean) and no language tag.
+ - `.isLanguaged` : `boolean` -- whether or not this Literal is 'languaged', i.e., it has some language tag and the datatype [rdf:langString](https://www.w3.org/TR/rdf11-concepts/#dfn-language-tagged-string).
+ - `.isDatatyped` : `boolean` -- whether or not this Literal is 'datatyped', i.e., it has some datatype other than [xsd:string](https://www.w3.org/TR/xmlschema-2/#boolean) and no language tag.
  
 **Methods:**
  - ... [see those inherited from GenericTerm](#class_generic-term)

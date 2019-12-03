@@ -216,6 +216,125 @@ if(module === require.main) {
 	const parse_filter = require('./quad-expression.js').parse;
 	const expression_handler = require('./expression-handler.js');
 
+	const F_ADAPT_STREAM = function(ds_out) {
+		let ds_dst = ds_out;
+
+		// non-object mode
+		if(!ds_dst._writableState.objectMode) {
+			// transform to JSON
+			ds_out = stream.quads_to_json();
+		}
+		// yes object mode and graphy writable
+		else if(ds_out.isGraphyWritable) {
+			// transform to writable data events
+			ds_out = stream.quads_to_writable();
+		}
+		// forward as-is to super
+		else {
+			return this.constructor.prototype.pipe.call(this, ds_dst);
+		}
+
+		// forward output to super
+		this.constructor.prototype.pipe.call(this, ds_out);
+
+		// pipe output to destination
+		return ds_out.pipe(ds_dst);
+	};
+
+	const bypass = a_inputs => a_inputs.map((ds_input) => {
+		// intercept pipe
+		ds_input.pipe = F_ADAPT_STREAM;
+
+		return ds_input;
+	});
+
+	const warp_term = (z_term, h_prefixes) => {
+		// c1 string
+		if('string' === typeof z_term) {
+			return factory.c1(z_term, h_prefixes);
+		}
+		// normalize term
+		else {
+			return factory.fromTerm(z_term);
+		}
+	};
+
+	const interpret_item = (z_item, h_prefixes, ds_transform, fke_transform) => {
+		// array
+		if(Array.isArray(z_item)) {
+			// zero-length, skip
+			if(!z_item.length) return fke_transform();
+
+			// first object is also array
+			if(Array.isArray(z_item[0])) {
+				let nl_subs = z_item.length;
+
+				let c_resolves = 0;
+
+				for(let z_sub of z_item) {
+					interpret_item(z_sub, h_prefixes, ds_transform, () => {  // eslint-disable-line no-loop-func
+						if(++c_resolves === nl_subs) {
+							fke_transform();
+						}
+					});
+				}
+
+				// do not consume transform synchronously
+				return;
+			}
+			// triple/quad
+			else if(3 === z_item.length || 4 === z_item.length) {
+				let a_terms = z_item.map(z => warp_term(z, h_prefixes));
+
+				ds_transform.push(factory.quad(...a_terms));
+			}
+		}
+		// string (trig)
+		else if('string' === typeof z_item) {
+			trig.read({
+				input: {
+					string: z_item,
+
+					error(e_read) {
+						warn(`The 'transform' command threw an Error while trying to read the returned TriG string: '${z_item}'\n\nThe reader reported: ${e_read.stack}`);
+
+						// done
+						fke_transform();
+					},
+				},
+
+				data(g_quad_read) {
+					ds_transform.push(g_quad_read);
+				},
+
+				eof() {
+					// done
+					fke_transform();
+				},
+			});
+
+			// do not consume transform synchronously
+			return;
+		}
+		// quad
+		else if(z_item.subject && z_item.predicate && z_item.object) {
+			ds_transform.push(factory.fromQuad(z_item));
+		}
+		// iterable
+		else if(z_item[Symbol.iterator]) {
+			for(let g_quad_it of z_item) {
+				ds_transform.push(g_quad_it);
+			}
+		}
+		// other
+		else {
+			exit(`The callback function supplied to the 'transform' command returned an invalid quad value: '${z_item}'`);
+		}
+
+		// done
+		fke_transform();
+	};
+
 	class answer_source extends require('stream').Readable {
 		constructor(w_datum) {
 			super({
@@ -247,6 +366,12 @@ if(module === require.main) {
 		}
 	}
 
+	const warn = (s_message) => {
+		console.warn((new Error(s_message)).stack
+			.replace(/\n\s+at [^\n]*\n/, '\n')
+			.replace(/^Error:/, 'Warning:'));
+	};
+
 	const exit = (s_exit) => {
 		console.error(s_exit);
 		process.exit(1);
@@ -259,12 +384,12 @@ if(module === require.main) {
 	const reader = f_reader => (a_args, g_context) => new Promise((fk_resolve) => {
 		let g_argv = command(g_context.command)
 			.options({
-				// v: {
-				// 	type: 'boolean',
-				// 	alias: ['validate'],
-				// 	default: undefined,  // eslint-disable-line no-undefined
-				// 	describe: 'validate all tokens within the RDF document',
-				// },
+				v: {
+					type: 'boolean',
+					alias: ['validate'],
+					default: undefined,  // eslint-disable-line no-undefined
+					describe: 'DEPRECATED. Validation is now enabled by default',
+				},
 				r: {
 					type: 'boolean',
 					alias: ['relax'],
@@ -276,57 +401,52 @@ if(module === require.main) {
 					alias: ['base', 'base-uri', 'base-iri'],
 					describe: 'set a base URI on the document',
 				},
-				x: {
-					type: 'string',
-					alias: ['filter-expression'],
-					describe: 'filter quads by matching the given quad filter expression',
-				},
 				s: {
 					type: 'string',
 					alias: ['subject'],
-					describe: 'filter quads by only allowing those that match the given subject (must be a concise-term string)',
+					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by only allowing those that match the given subject (must be a concise-term string)',
 					conflicts: ['S'],
 				},
 				p: {
 					type: 'string',
 					alias: ['predicate'],
-					describe: 'filter quads by only allowing those that match the given predicate (must be a concise-term string)',
+					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by only allowing those that match the given predicate (must be a concise-term string)',
 					conflicts: ['P'],
 				},
 				o: {
 					type: 'string',
 					alias: ['object'],
-					describe: 'filter quads by only allowing those that match the given object (must be a concise-term string)',
+					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by only allowing those that match the given object (must be a concise-term string)',
 					conflicts: ['O'],
 				},
 				g: {
 					type: 'string',
 					alias: ['graph'],
-					describe: 'filter quads by only allowing those that match the given graph (must be a concise-term string)',
+					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by only allowing those that match the given graph (must be a concise-term string)',
 					conflicts: ['G'],
 				},
 				S: {
 					type: 'array',
 					alias: ['not-subject'],
-					describe: 'filter quads by allowing any that *do not match* the given subject(s) (must be concise-term string(s))',
+					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by allowing any that *do not match* the given subject(s) (must be concise-term string(s))',
 					conflicts: ['s'],
 				},
 				P: {
 					type: 'array',
 					alias: ['not-predicate'],
-					describe: 'filter quads by allowing any that *do not match* the given predicate(s) (must be a concise-term string(s))',
+					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by allowing any that *do not match* the given predicate(s) (must be a concise-term string(s))',
 					conflicts: ['p'],
 				},
 				O: {
 					type: 'array',
 					alias: ['not-object'],
-					describe: 'filter quads by allowing any that *do not match* the given object(s) (must be a concise-term string(s))',
+					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by allowing any that *do not match* the given object(s) (must be a concise-term string(s))',
 					conflicts: ['o'],
 				},
 				G: {
 					type: 'array',
 					alias: ['not-graph'],
-					describe: 'filter quads by allowing any that *do not match* the given graph(s) (must be a concise-term string(s))',
+					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by allowing any that *do not match* the given graph(s) (must be a concise-term string(s))',
 					conflicts: ['g'],
 				},
 			})
@@ -340,7 +460,7 @@ if(module === require.main) {
 
 		// 'validate' option is set
 		if('undefined' !== typeof g_argv.validate) {
-			console.warn((new Error(`option 'validate' has been deprecated. Validation is now enabled by default. Use the 'relax' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+			warn(`The 'validate' option has been deprecated. Validation is now enabled by default. Use the 'relax' option if you wish to disable validation.`);
 
 			// infer validation value from flag
 			if('undefined' === typeof g_argv.relax) {
@@ -360,46 +480,6 @@ if(module === require.main) {
 					g_context.failure(e_read);
 				},
 			}));
-
-			// filter expression
-			if(g_argv.filter) {
-				let g_parse = parse_filter(g_argv.filter);
-
-				let sj_eval = expression_handler.prepare(g_parse);
-
-				let f_filter = new Function('stream', sj_eval);  // eslint-disable-line no-new-func
-
-				let ds_filter = f_filter(stream);
-
-				// intercept pipe
-				ds_filter.pipe = function(ds_out) {
-					let ds_dst = ds_out;
-
-					// non-object mode
-					if(!ds_dst._writableState.objectMode) {
-						// transform to JSON
-						ds_out = stream.quads_to_json();
-					}
-					// yes object mode and graphy writable
-					else if(ds_out.isGraphyWritable) {
-						// transform to writable data events
-						ds_out = stream.quads_to_writable();
-					}
-					// forward as-is to super
-					else {
-						return this.constructor.prototype.pipe.call(this, ds_dst);
-					}
-
-					// forward output to super
-					this.constructor.prototype.pipe.call(this, ds_out);
-
-					// pipe output to destination
-					return ds_out.pipe(ds_dst);
-				}
-
-				// pipe reader to filter
-				return ds_reader.pipe(f_filter());
-			}
 			// filters
 			if(g_argv.subject || g_argv.predicate || g_argv.object || g_argv.graph
 				|| g_argv['not-subject'] || g_argv['not-predicate'] || g_argv['not-object'] || g_argv['not-graph']) {
@@ -413,6 +493,9 @@ if(module === require.main) {
 					'not-object': a_not_objects_src=null,
 					'not-graph': a_not_graphs_src=null,
 				} = g_argv;
+
+				// deprecation notice
+				warn(`All content reader term filter flags have been deprecated. Use the 'filter' CLI command instead.`);
 
 				// create sv1 test strings
 				let sv1_subject = null;
@@ -648,17 +731,93 @@ if(module === require.main) {
 	});
 
 	const writer = (f_writer, gc_write={}) => (a_args, g_context) => {
+		let s_group_style = 'Style options:';
+		let s_group_list = 'List structure options:'
+
 		let g_argv = command(g_context.command)
+			.options({
+				i: {
+					type: 'string',
+					alias: ['indent'],
+					// default: '\\t',  // eslint-disable-line no-undefined
+					describe: `sets the whitespace string to use for indentation. Writers use '\\t' by default`,
+					group: s_group_style,
+				},
+				g: {
+					type: 'string',
+					alias: ['graph-keyword'],
+					describe: `sets the style to use when serializing the optional 'GRAPH' keyword in TriG. Writers omit this keyword by default.
+						Passing 'true' or empty with this flag on is shorthand for the all-caps 'GRAPH' keyword`.replace(/\n\s*/g, ' '),
+					group: s_group_style,
+				},
+				s: {
+					type: 'boolean',
+					alias: ['simplify-default-graph'],
+					describe: 'if enabled, omits serializing the surrounding optional graph block for the default graph in TriG.',
+					group: s_group_style,
+				},
+				f: {
+					type: 'string',
+					alias: ['first'],
+					describe: `c1 string: sets the predicate to use for the 'first' relation when serializing list structures`,
+					group: s_group_list,
+				},
+				r: {
+					type: 'string',
+					alias: ['rest'],
+					describe: `c1 string: sets the predicate to use for the 'rest' relation when serializing list structures`,
+					group: s_group_list,
+				},
+				n: {
+					type: 'string',
+					alias: ['nil'],
+					describe: `c1 string: sets the predicate to use for the 'nil' relation when serializing list structures`,
+					group: s_group_list,
+				},
+			})
 			.help()
 			.parse(a_args);
 
+		// extend style options
+		let g_style = gc_write.style || {};
+		{
+			// indent
+			if(g_argv.indent) g_style.indent = g_argv.indent;
+
+			// graph keyword
+			if(g_argv['graph-keyword']) g_style.graph_keyword = g_argv['graph-keyword'];
+
+			// simplify default graph
+			if(g_argv['simplify-default-graph']) g_style.simplify_default_graph = g_argv['simplify-default-graph'];
+		}
+
+		// extend list options
+		let g_lists = gc_write.lists || {};
+		{
+			// first
+			if(g_argv.first) g_lists.first = g_argv.first;
+
+			// rest
+			if(g_argv.rest) g_lists.rest = g_argv.rest;
+
+			// nil
+			if(g_argv.nil) g_lists.nil = g_argv.nil;
+		}
+
+		// map input(s) to writer(s)
 		return g_context.inputs.map((ds_input) => {
 			let ds_writer = f_writer({
 				...gc_write,
+
+				style: g_style,
+
+				lists: g_lists,
+
 				error(e_write) {
 					g_context.failure(e_write);
 				},
 			});
+
 			return ds_input.pipe(ds_writer);
 		});
 	};
@@ -678,6 +837,220 @@ if(module === require.main) {
 		// 		.parse(a_args);
 
 		// },
+
+
+		head(a_args, g_context) {
+			
+		},
+
+		tail(a_args, g_context) {
+			
+		},
+
+		// copy(a_args, g_context) {
+			
+		// },
+
+		// append(a_args, g_context) {
+			
+		// },
+
+		concat(a_args, g_context) {
+			
+		},
+
+		filter(a_args, g_context) {
+			let g_argv = command(g_context.command)
+				.options({
+					x: {
+						type: 'string',
+						alias: ['expression'],
+						describe: 'filter quads using the given quad filter expression',
+						conflicts: ['j'],
+						example: [
+							`filter -x '; a; dbo:Plant'`,
+							`filter -x 'dbr:Banana;; !{literal}'`,
+						].join('\n'),
+					},
+
+					j: {
+						type: 'string',
+						alias: ['js', 'javascript'],
+						describe: 'filter quads using the given JavaScript expression which will be evaluated as a callback function passed the quad and current prefix map as arguments',
+						conflicts: ['x'],
+						example: [
+							`filter -j 'g => g.object.number > 10e3'`,
+							`filter -j 'g => g.object.value.startsWith(g.subject.value)'`,
+							`filter -j '(g, h) => g.subject.concise(h).startsWith("db")'`,
+						].join('\n'),
+					},
+
+					v: {
+						type: 'boolean',
+						alias: ['verbose'],
+						describe: 'prints the compiled quad filter expression to stderr',
+					},
+				})
+				.help()
+				.parse(a_args);
+
+			// quad filter expression
+			if(g_argv.expression) {
+				let g_parse = parse_filter(g_argv.expression);
+
+				let sj_eval = expression_handler.prepare(g_parse);
+
+				if(g_argv.verbose) {
+					console.warn(`The compiled quad filter expression from 'transform' command: () => {\n${sj_eval.replace(/^|\n/g, '\n\t')}\n}\n`);
+				}
+
+				let f_filter = new Function('factory', 'stream', sj_eval);  // eslint-disable-line no-new-func
+
+				return g_context.inputs.map((ds_input) => {
+					let ds_filter = f_filter(factory, stream);
+
+					// intercept pipe
+					ds_filter.pipe = F_ADAPT_STREAM;
+
+					// pipe reader to filter
+					return ds_input.pipe(ds_filter);
+				});
+			}
+			// javascript expression
+			else if(g_argv.javascript) {
+				let f_build = new Function('factory', /* syntax: js */ `return (${g_argv.javascript}) || null;`);  // eslint-disable-line no-new-func
+
+				let f_filter = f_build(factory);
+
+				// filter exists
+				if(f_filter) {
+					// invalid type
+					if('function' !== typeof f_filter) {
+						exit(`The 'filter' command expects -j/--javascript expression to evaluate to a function, instead found '${typeof f_filter}'`);
+					}
+
+					return g_context.inputs.map((ds_input) => {
+						let h_prefixes = {};
+
+						let ds_filter = new stream.Transform.QuadsToOther({
+							objectMode: true,
+
+							prefix(si_prefix, p_iri) {
+								h_prefixes[si_prefix] = p_iri;
+							},
+
+							transform(g_quad, s_encoding, fke_transform) {
+								if(f_filter(g_quad, h_prefixes)) {
+									return fke_transform(null, g_quad);
+								}
+
+								fke_transform();
+							},
+						});
+
+						// intercept pipe
+						ds_filter.pipe = F_ADAPT_STREAM;
+
+						// pipe reader to filter
+						return ds_input.pipe(ds_filter);
+					});
+				}
+			}
+
+			// neither used (bypass filter)
+			warn(`The 'filter' command was not used and is being ignored.`);
+			return bypass(g_context.inputs);
+		},
+
+		// transform
+		transform(a_args, g_context) {
+			let g_argv = command(g_context.command)
+				.options({
+					j: {
+						type: 'string',
+						alias: ['js', 'javascript'],
+						describe: 'transform quads using the given JavaScript expression which will be evaluated as a callback function passed the quad and current prefix map as arguments',
+						demandOption: true,
+						example: [
+							`transform -j 'g => [g.object, g.predicate, g.subject]'`,
+							`transform -j 'g => ({
+								[factory.blankNode()]: {
+									a: 'rdf:Statement',
+									'rdf:subject': g.subject,
+									'rdf:predicate': g.predicate,
+									'rdf:object': g.object,
+								},
+							})'`,
+						].join('\n'),
+					},
+				})
+				.help()
+				.parse(a_args);
+
+			// javascript expression
+			if(g_argv.javascript) {
+				let f_build = new Function('factory', 'c3', 'c4', /* syntax: js */ `return (${g_argv.javascript}) || null;`);  // eslint-disable-line no-new-func
+
+				let f_transform = f_build(factory, factory.c3, factory.c4);
+
+				// transform exists
+				if(f_transform) {
+					// invalid type
+					if('function' !== typeof f_transform) {
+						exit(`The 'filter' command expects -j/--javascript expression to evaluate to a function, instead found '${typeof f_filter}'`);
+					}
+
+					return g_context.inputs.map((ds_input) => {
+						let h_prefixes = {};
+
+						let ds_transform = new stream.Transform.QuadsToOther({
+							objectMode: true,
+
+							prefix(si_prefix, p_iri) {
+								h_prefixes[si_prefix] = p_iri;
+							},
+
+							transform(g_quad, s_encoding, fke_transform) {
+								// alias quad property access
+								g_quad.s = g_quad.subject;
+								g_quad.p = g_quad.predicate;
+								g_quad.o = g_quad.object;
+								g_quad.g = g_quad.graph;
+
+								// try to apply transform callback
+								let z_item;
+								try {
+									z_item = f_transform(g_quad, h_prefixes);
+								}
+								catch(e_transform) {
+									warn(`The 'transform' command threw an Error while applying the given callback function:\n${e_transform.stack}`);
+									return fke_transform();
+								}
+
+								// item was returned
+								if(z_item) {
+									return interpret_item(z_item, h_prefixes, this, fke_transform);
+								}
+
+								// done
+								fke_transform();
+							},
+						});
+
+						// intercept pipe
+						ds_transform.pipe = F_ADAPT_STREAM;
+
+						// pipe reader to transform
+						return ds_input.pipe(ds_transform);
+					});
+				}
+			}
+
+			// nothing used (bypass filter)
+			warn(`The 'transform' command was not used and is being ignored.`);
+			return bypass(g_context.inputs);
+		},
+
 
 		'content.nt.read': reader(graphy.content.nt.read),
 		'content.nq.read': reader(graphy.content.nq.read),
@@ -979,38 +1352,41 @@ if(module === require.main) {
 					break;
 				}
 			}
+			// first arg
+			else {
+				// main option
+				if('-h' === s_arg || '--help' === s_arg) {
+					// eslint-disable-next-line no-console
+					console.log('\n'+gobble(`
+						Usage: graphy COMMAND [--pipe COMMAND]*
 
-			// help
-			if('-h' === s_arg || '--help' === s_arg) {
-				// eslint-disable-next-line no-console
-				console.log('\n'+gobble(`
-					Usage: graphy COMMAND [--pipe COMMAND]*
+						Commands:
+						  filter                Apply a filter to the stream of quads
+						  content.nt.read       Read an N-Triples document
+						  content.nt.write      Write to N-Triples format
+						  content.nq.read       Read an N-Quads document
+						  content.nq.write      Write to N-Quads format
+						  content.ttl.read      Read a Turtle document
+						  content.ttl.write     Write to Turtle format
+						  content.trig.read     Read a TriG document
+						  content.trig.write    Write to TriG format
+						  util.dataset.tree     Perform some transformation on a datset
 
-					Commands:
-					  content.nt.read       Read an N-Triples document
-					  content.nt.write      Write to N-Triples format
-					  content.nq.read       Read an N-Quads document
-					  content.nq.write      Write to N-Quads format
-					  content.ttl.read      Read a Turtle document
-					  content.ttl.write     Write to Turtle format
-					  content.trig.read     Read a TriG document
-					  content.trig.write    Write to TriG format
-					  util.dataset.tree     Perform some transformation on a datset
+						Command aliases:
+						  read     -> content.trig.read
+						  write    -> content.trig.write
+						  tree     -> util.dataset.tree
 
-					Command aliases:
-					  read     -> content.trig.read
-					  write    -> content.trig.write
-					  tree     -> util.dataset.tree
-
-					Run 'graphy COMMAND --help' for more information on a command.
-				`));
-				process.exit(0);
-			}
-			// version
-			else if('-v' === s_arg || '--version' === s_arg) {
-				// eslint-disable-next-line no-console
-				console.log(require(path.join(__dirname, './package.json')).version);
-				process.exit(0);
+						Run 'graphy COMMAND --help' for more information on a command.
+					`));
+					process.exit(0);
+				}
+				// version
+				else if('-v' === s_arg || '--version' === s_arg) {
+					// eslint-disable-next-line no-console
+					console.log(require(path.join(__dirname, './package.json')).version);
+					process.exit(0);
+				}
 			}
 
 			a_series.push(s_arg);
@@ -1026,48 +1402,6 @@ if(module === require.main) {
 	if(!a_pipeline.length) {
 		exit('no commands given');
 	}
-
-	// const parse_series = a_args => mk_yargs()
-	// 	.command('content.ttl.read', 'read Turtle document', (yargs_read) => {
-	// 		return yargs_read
-	// 			.options({
-	// 				u: {
-	// 					type: 'boolean',
-	// 					default: false,
-	// 					alias: 'union',
-	// 					group: s_group_multi_input,
-	// 					describe: 'perform the union of multiple inputs',
-	// 					conflicts: a_dual_input_keys.filter(s => 'u' !== s),
-	// 				},
-	// 				i: {
-	// 					type: 'boolean',
-	// 					default: false,
-	// 					alias: ['intersect', 'intersection'],
-	// 					group: s_group_multi_input,
-	// 					describe: 'perform the intersection of multiple inputs',
-	// 					conflicts: a_dual_input_keys.filter(s => 'i' !== s),
-	// 				},
-	// 				d: {
-	// 					type: 'boolean',
-	// 					alias: ['diff', 'difference'],
-	// 					group: s_group_dual_input,
-	// 					describe: 'perform a difference between two inputs',
-	// 					conflicts: a_dual_input_keys.filter(s => 'd' !== s),
-	// 				},
-	// 				m: {
-	// 					type: 'boolean',
-	// 					alias: ['minus', 'subtract', 'subtraction'],
-	// 					group: s_group_dual_input,
-	// 					describe: 'perform a subtraction by removing input-B from input-A',
-	// 					conflicts: a_dual_input_keys.filter(s => 'm' !== s),
-	// 				},
-	// 			})
-	// 			.help()
-	// 			.parse();
-	// 	})
-	// 	.command('util.dataset.tree')
-	// 	.help()
-	// 	.parse(a_args);
 
 	(async() => {
 		// failure handler

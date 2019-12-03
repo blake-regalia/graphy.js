@@ -17,7 +17,7 @@ class Writable extends Scribable {
 		super(gc_writable);
 
 		let {
-			collections: gc_collections=null,
+			lists: gc_lists=null,
 		} = gc_writable;
 
 		// start with default coercions map
@@ -34,55 +34,31 @@ class Writable extends Scribable {
 			}
 		}
 
-		// collections 
-		let g_collections = {
+		// lists 
+		let g_lists = {
 			first: '>@{P_IRI_RDF}first',
 			rest: '>@{P_IRI_RDF}rest',
 			nil: '>@{P_IRI_RDF}nil',
 		};
 
 		// custom transcoder
-		if(gc_collections) {
+		if(gc_lists) {
 			let {
 				first: sc1_first=null,
 				rest: sc1_rest=null,
 				nil: sc1_nil=null,
-			} = gc_collections;
+			} = gc_lists;
 
-			if(sc1_first) g_collections.first = sc1_first;
-			if(sc1_rest) g_collections.rest = sc1_rest;
-			if(sc1_nil) g_collections.nil = sc1_nil;
+			if(sc1_first) g_lists.first = sc1_first;
+			if(sc1_rest) g_lists.rest = sc1_rest;
+			if(sc1_nil) g_lists.nil = sc1_nil;
 		}
 
 		Object.assign(this, {
 			_xc_state: @{XC_STATE_INITIAL},
 			_hm_coercions: hm_coercions,
-			_g_collections: g_collections,
+			_g_lists: g_lists,
 		});
-
-		// // one new sources
-		// this.on('pipe', (ds_src) => {
-		// 	// listen for prefix events
-		// 	ds_src.on('prefix', (s_prefix_id, p_iri) => {
-		// 		this.write({
-		// 			type: 'prefixes',
-		// 			value: {
-		// 				[s_prefix_id]: p_iri,
-		// 			},
-		// 		})
-		// 	});
-
-		// 	// listen for comment events
-		// 	ds_src.on('comment', (s_comment) => {
-		// 		this.write({
-		// 			type: 'c3',
-		// 			value: {
-		// 				[factory.comment()]: s_comment,
-		// 			},
-		// 		});
-		// 	});
-		// });
-
 	}
 
 	// serialize comment
@@ -101,69 +77,37 @@ class Writable extends Scribable {
 		return s_write+(super._serialize_comment(s_comment) || '');
 	}
 
-	// // serialize newlines
-	// _serialize_newlines(n_newlines) {  // eslint-disable-line class-methods-use-this
-	// 	// no need to check/change state
-	// 	return '\n'.repeat(n_newlines);
-	// }
 
-	// transcode collection into concise-pairs hash
-	_transcode_collection(a_collection) {
-		let g_collections = this._g_collections;
-
-		// empty collection
-		if(!a_collection.length) {
-			return g_collections.nil;
-			// return {
-			// 	[g_collections.first]: g_collections.nil,
-			// };
+	// transcode list into concise-pairs hash
+	_transcode_list(a_list, g_lists=this._g_lists) {
+		// empty list
+		if(!a_list.length) {
+			return g_lists.nil;
 		}
-		// non-empty collection
+		// non-empty list
 		else {
-			let z_item = a_collection[0];
+			let z_item = a_list[0];
 			let w_first = z_item;
 
-			// item is nested collection; transcode
+			// item is nested list; transcode
 			if(Array.isArray(z_item)) {
-				w_first = this._transcode_collection(z_item);  // eslint-disable-line no-invalid-this
+				w_first = this._transcode_list(z_item, g_lists);  // eslint-disable-line no-invalid-this
 			}
 
 			return {
 				// first item
-				[g_collections.first]: w_first,
+				[g_lists.first]: w_first,
 
 				// rest of items
-				[g_collections.rest]: 1 === a_collection.length
-					? g_collections.nil
-					: this._transcode_collection(a_collection.slice(1)),  // eslint-disable-line no-invalid-this
+				[g_lists.rest]: 1 === a_list.length
+					? g_lists.nil
+					: this._transcode_list(a_list.slice(1), g_lists),  // eslint-disable-line no-invalid-this
 			};
 		}
 	}
 
-
-	// // route writable data events
-	// data_event(g_event) {
-	// 	let {
-	// 		type: s_type,
-	// 		value: z_value,
-	// 	} = g_event;
-
-	// 	// method id
-	// 	let s_method = 'serialize_'+s_type;
-
-	// 	// event type exists
-	// 	if('function' === typeof this[s_method]) {
-	// 		return this[s_method](z_value);
-	// 	}
-	// 	// no such event type
-	// 	else {
-	// 		throw new Error(`no such writable data event type for RDF stream: '${s_type}'`);
-	// 	}
-	// }
-
-
 	// serialize a writable data event directive
-	_encode_directive(sc1_directive, w_value) {
+	_apply_directive(sc1_directive, w_value) {
 		// directive contents
 		let m_directive = R_DIRECTIVE_CONTENTS.exec(sc1_directive);
 		if(!m_directive) {
@@ -188,7 +132,9 @@ class Writable extends Scribable {
 			case 'comment': {
 				// serializer supports commenting; serialize comment
 				if(this._serialize_comment) {
-					return this._serialize_comment(w_value+'', g_directive);
+					return {
+						write: this._serialize_comment(w_value+'', g_directive),
+					};
 				}
 				break;
 			}
@@ -197,9 +143,56 @@ class Writable extends Scribable {
 			case 'newlines': {
 				// serializer supports newlines; serialize newlines
 				if(this._serialize_newlines) {
-					return this._serialize_newlines(w_value);
+					return {
+						write: this._serialize_newlines(w_value),
+					};
 				}
 				break;
+			}
+
+			// config
+			case 'config': {
+				switch(g_directive.value) {
+					// list config
+					case 'lists': {
+						// ref stack of list serializers
+						let a_list_serializers = this._a_list_serializers;
+
+						// push current method to stack
+						a_list_serializers.push(this._serialize_list_object);
+
+						// inherit unspecified keys from parent
+						let g_list_default = this._g_lists;
+
+						// build list config
+						let g_lists = {
+							first: w_value.first || g_list_default.first,
+							rest: w_value.rest || g_list_default.rest,
+							nil: w_value.nil || g_list_default.nil,
+						};
+
+						// redefine list object serialization
+						this._serialize_list_object = function(a_list, n_nest_level) {
+							// transcode list object
+							let hc2_transcoded = this._transcode_list(a_list, g_lists);
+
+							// serialize object
+							return this._encode_objects(hc2_transcoded, n_nest_level);
+						};
+
+						// return local directive instructions
+						return {
+							exit: () => {
+								this._serialize_list_object = a_list_serializers.pop();
+							},
+						};
+					}
+
+					// no such key
+					default: {
+						throw new Error(`No such config key '${g_directive.value}'`);
+					}
+				}
 			}
 
 			// other
@@ -209,7 +202,7 @@ class Writable extends Scribable {
 		}
 
 		// nothing
-		return '';
+		return {};
 	}
 
 	// if not overriden by subclass, serialize quads in default graph

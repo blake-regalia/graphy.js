@@ -31,7 +31,7 @@ class @{S_LABEL}_Writer extends Writable {
 
 		let {
 			prefixes: h_prefixes={},
-			collections: gc_collections=null,
+			lists: gc_lists=null,
 			debug: b_debug=false,
 			style: gc_style=null,
 		} = gc_writer;
@@ -109,12 +109,12 @@ class @{S_LABEL}_Writer extends Writable {
 		}
 			*/}
 
-		// custom collection keys
-		if(gc_collections) {
-			// serialize collection object
-			this._serialize_collection_object = function(a_collection, n_nest_level) {
-				// transcode collection object
-				let hc2_transcoded = this._transcode_collection(a_collection);
+		// custom list keys
+		if(gc_lists) {
+			// serialize list object
+			this._serialize_list_object = function(a_list, n_nest_level) {
+				// transcode list object
+				let hc2_transcoded = this._transcode_list(a_list);
 
 				// serialize object
 				return this._encode_objects(hc2_transcoded, n_nest_level);
@@ -209,12 +209,21 @@ class @{S_LABEL}_Writer extends Writable {
 
 			// graph token
 			let s_graph_keyword = this._s_graph_keyword;
+
+			// graph exit listener
+			let f_exit_graph = null;
 			
 			// each graph
 			for(let sc1_graph in hc4_quads) {
 				// directive
 				if('`' === sc1_graph[0]) {
-					s_write += this._encode_directive(sc1_graph, hc4_quads[sc1_graph]);
+					let g_apply = this._apply_directive(sc1_graph, hc4_quads[sc1_graph]);
+
+					// write data
+					if(g_apply.write) s_write += g_apply.write;
+
+					// save exit listener
+					if(g_apply.exit) f_exit_graph = g_apply.exit;
 					continue;
 				}
 
@@ -238,14 +247,25 @@ class @{S_LABEL}_Writer extends Writable {
 			// triple delimiter
 			let s_delim_triples = '';
 
+			// subject exit listener
+			let f_exit_subject = null;
+
 			// each subject
 			for(let sc1_subject in hc3_triples) {
 				// directive
 				if('`' === sc1_subject[0]) {
-					s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}this._encode_directive(sc1_subject, hc3_triples[sc1_subject]);
+					let g_apply = this._apply_directive(sc1_subject, hc3_triples[sc1_subject]);
 
-					// do not break next line
-					s_delim_triples = '';
+					// write data
+					if(g_apply.write) {
+						s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}g_apply.write;
+
+						// do not break next line
+						s_delim_triples = '';
+					}
+
+					// save exit listener
+					if(g_apply.exit) f_exit_subject = g_apply.exit;
 					continue;
 				}
 
@@ -268,21 +288,30 @@ class @{S_LABEL}_Writer extends Writable {
 				// were objects written?
 				let b_empty = true;
 
+				// predicate exit listener
+				let f_exit_predicate = null;
+
 				// each predicate
 				for(let sc1_predicate in hc2_pairs) {
 					// directive
 					if('`' === sc1_predicate[0]) {
-						// break line
-						s_write += (s_indent_pairs? s_term_pairs: '\n')+s_indent@{b_c4? '+s_indent_root': ''};
+						// apply directive
+						let g_apply = this._apply_directive(sc1_predicate, hc2_pairs[sc1_predicate]);
 
-						// serialize directive
-						s_write += this._encode_directive(sc1_predicate, hc2_pairs[sc1_predicate]);
+						// write data
+						if(g_apply.write) {
+							// break line
+							s_write += (s_indent_pairs? s_term_pairs: '\n')+s_indent@{b_c4? '+s_indent_root': ''}+g_apply.write;
 
-						// pair already terminated
-						s_term_pairs = '';
+							// pair already terminated
+							s_term_pairs = '';
 
-						// indent next pair
-						s_indent_pairs = s_indent@{b_c4? '+s_indent_root': ''};
+							// indent next pair
+							s_indent_pairs = s_indent@{b_c4? '+s_indent_root': ''};
+						}
+
+						// save exit listener
+						if(g_apply.exit) f_exit_predicate = g_apply.exit;
 						continue;
 					}
 
@@ -325,6 +354,9 @@ class @{S_LABEL}_Writer extends Writable {
 
 					// indent next pair
 					s_indent_pairs = s_indent@{b_c4? '+s_indent_root': ''};
+
+					// call exit predicate listener
+					if(f_exit_predicate) f_exit_predicate();
 				}
 
 				// empty triples; cut out
@@ -338,12 +370,17 @@ class @{S_LABEL}_Writer extends Writable {
 
 				// close triple
 				s_write += `${s_term_pairs? ' ': s_indent_pairs}.\n`; // @{b_c4? '\\n': ''}
+
+				// call exit subject listener
+				if(f_exit_subject) f_exit_subject();
 			}
 
 		@- b_c4
 				// close graph
 				s_write += ((st_graph || !b_simplify_default_graph)? '}\n': '')+'\n';
 
+				// call exit graph listener
+				if(f_exit_graph) f_exit_graph();
 			}
 		@:
 			s_write += '\n';
@@ -393,9 +430,9 @@ class @{S_LABEL}_Writer extends Writable {
 
 					// each object
 					for(let z_item of z_objects) {
-						// item is an array; write RDF collection
+						// item is an array; serialize list
 						if(Array.isArray(z_item)) {
-							s_write += s_term_object + this._serialize_collection_object(z_item, n_nest_level);
+							s_write += s_term_object + this._serialize_list_object(z_item, n_nest_level);
 						}
 						// non-array
 						else {
@@ -417,6 +454,9 @@ class @{S_LABEL}_Writer extends Writable {
 					// whether the block is empty
 					let b_empty = true;
 
+					// object exit listener
+					let f_exit_object = null;
+
 					// each pair
 					for(let sc1_predicate in z_objects) {
 						// block is not empty
@@ -427,7 +467,13 @@ class @{S_LABEL}_Writer extends Writable {
 
 						// directive; serialize it
 						if('`' === sc1_predicate[0]) {
-							s_write += this._encode_directive(sc1_predicate, z_objects[sc1_predicate]);
+							let g_apply = this._apply_directive(sc1_predicate, z_objects[sc1_predicate]);
+
+							// write data
+							if(g_apply.write) s_write += g_apply.write;
+
+							// save exit listener
+							if(g_apply.exit) f_exit_object = g_apply.exit;
 							continue;
 						}
 
@@ -438,6 +484,9 @@ class @{S_LABEL}_Writer extends Writable {
 
 					// close blank node block
 					s_write += (b_empty? '': '\n'+s_indent.repeat(@{B_QUADS? '1+': ''}n_nest_level))+']';
+
+					// call exit object listener
+					if(f_exit_object) f_exit_object();
 
 					// serialize current predicate to blank node
 					return s_write;
@@ -533,6 +582,7 @@ Object.assign(@{S_LABEL}_Writer.prototype, {
 	_serialize_c3r: @{S_LABEL}_Writer.prototype._serialize_c3,
 	_serialize_c4r: @{S_LABEL}_Writer.prototype._serialize_c4,
 	_serialize_comment: Writable.prototype._serialize_hash_comment,
+	_serialize_list_object: @{S_LABEL}_Writer.prototype._serialize_collection_object,
 });
 
 module.exports = function(gc_writer) {

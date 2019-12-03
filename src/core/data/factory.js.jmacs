@@ -699,7 +699,7 @@ class SimpleLiteral extends GenericLiteral {
 					}
 					// not an integer
 					else if(!Number.isInteger(${s_arg})) {
-						throw new Error(\`Number is not an integer: \${${s_arg}}\`);
+						throw new Error('Number is not an integer: '+${s_arg});
 					}
 
 					return new Literal_Integer(${s_arg});
@@ -716,7 +716,7 @@ class SimpleLiteral extends GenericLiteral {
 
 					// failed to parse or not an integer
 					if(Number.isNaN(x_value) || !Number.isInteger(x_value)) {
-						throw new Error(\`Invalid integer string: \${${s_arg}}\`);
+						throw new Error('Invalid integer string: '+${s_arg});
 					}
 
 					return new Literal_Integer(x_value);
@@ -775,7 +775,7 @@ class SimpleLiteral extends GenericLiteral {
 
 					// failed to parse
 					if(Number.isNaN(x_value)) {
-						throw new Error(\`Invalid decimal string: \${${s_arg}}\`);
+						throw new Error('Invalid decimal string: '+${s_arg});
 					}
 
 					return new Literal_Double(x_value);
@@ -830,7 +830,7 @@ class SimpleLiteral extends GenericLiteral {
 
 					// failed to parse
 					if(Number.isNaN(x_value)) {
-						throw new Error(\`Invalid decimal string: \${${s_arg}}\`);
+						throw new Error('Invalid decimal string: '+${s_arg});
 					}
 
 					return new Literal_Decimal(x_value);
@@ -896,7 +896,7 @@ class SimpleLiteral extends GenericLiteral {
 					}
 
 					// failed to parse
-					throw new Error(\`Invalid boolean string: \${${s_arg}}\`);
+					throw new Error('Invalid boolean string: '+${s_arg});
 				}
 				// undefined
 				else if('undefined' === s_type) {
@@ -1274,79 +1274,79 @@ const factory = module.exports = {
 
 	/**
 	 * construct a term object from a concise term string
-	 * @param  {c1_string} term - a representation of the term object to create
-	 * @param  {Object} prefixes - mappings for prefixes
+	 * @param  {c1_string} sc1_term - a representation of the term object to create
+	 * @param  {Object} h_prefixes - mappings for prefixes
 	 * @return {Term} - an RDFJS-compatible term object
 	 */
-	c1(sct_term, h_prefixes={}) {
+	c1(sc1_term, h_prefixes={}) {
 		// deduce term type
-		switch(sct_term[0]) {
+		switch(sc1_term[0]) {
 			// datatyped literal
 			case '^': {
 				// find literal's contents delimiter
-				let i_contents = sct_term.indexOf('"');
+				let i_contents = sc1_term.indexOf('"');
 
 				// no delimiter
 				if(-1 === i_contents) {
-					throw new Error(`invalid concise-term string, no content literal delimiter found: ${sct_term}`);
+					throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
 				}
 
 				// extract datatype
-				let s_datatype = sct_term.slice(1, i_contents);
+				let s_datatype = sc1_term.slice(1, i_contents);
 
 				// make term
-				return factory.literal(sct_term.slice(i_contents+1), factory.c1_node_explicit(s_datatype, h_prefixes));
+				return factory.literal(sc1_term.slice(i_contents+1), factory.c1_node_explicit(s_datatype, h_prefixes));
 			}
 
 			// languaged literal
 			case '@': {
 				// find literal's contents delimiter
-				let i_contents = sct_term.indexOf('"');
+				let i_contents = sc1_term.indexOf('"');
 
 				// no delimiter
 				if(-1 === i_contents) {
-					throw new Error(`invalid concise-term string, no content literal delimiter found: ${sct_term}`);
+					throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
 				}
 
 				// extract language
-				let s_language = sct_term.slice(1, i_contents);
+				let s_language = sc1_term.slice(1, i_contents);
 
 				// make term
-				return factory.literal(sct_term.slice(i_contents+1), s_language);
+				return factory.literal(sc1_term.slice(i_contents+1), s_language);
 			}
 
 			// simple literal
 			case '"': {
 				// make term
-				return factory.literal(sct_term.slice(1));
+				return factory.literal(sc1_term.slice(1));
 			}
 
 			// prefixed name
-			default: return factory.c1_node(sct_term, h_prefixes);
+			default: return factory.c1_node(sc1_term, h_prefixes);
 		}
 	},
 
 	// construct a term object from a concise term string for nodes
-	c1_node(sct_node, h_prefixes={}) {
+	c1_node(sc1_node, h_prefixes={}) {
 		// rdf:type shortcut
-		if('a' === sct_node) return KT_RDF_TYPE;
+		if('a' === sc1_node) return KT_RDF_TYPE;
 
 		// default graph
-		if('*' === sct_node) return factory.defaultGraph();
+		if('*' === sc1_node) return factory.defaultGraph();
 
 		// blank node
-		if('_' === sct_node[0]) {
-			if(':' !== sct_node[1]) throw new Error(`Invliad concise-term string, prefixes are not allowed to start with an underscore: ${sct_node}`);
+		if('_' === sc1_node[0]) {
+			if(':' !== sc1_node[1]) throw new Error(`Invliad concise-term string, prefixes are not allowed to start with an underscore: '${sc1_node}'`);
 
 			// interpret ephemeral hint
-			if('#' === sct_node[2] || 2 === sct_node.length) return factory.ephemeral();
+			if('#' === sc1_node[2] || 2 === sc1_node.length) return factory.ephemeral();
 
 			// create blank node
-			return factory.blankNode(sct_node.slice(2));
+			return factory.blankNode(sc1_node.slice(2));
 		}
 
 		// other
-		return factory.c1_node_explicit(sct_node, h_prefixes);
+		return factory.c1_node_explicit(sc1_node, h_prefixes);
 	},
 
 	// construct a named node
@@ -1359,34 +1359,34 @@ const factory = module.exports = {
 	},
 
 	// construct a term object from a concise term string for nodes (no shortcuts)
-	c1_node_explicit(sct_node, h_prefixes={}) {
+	c1_node_explicit(sc1_node, h_prefixes={}) {
 		// deduce term type
-		switch(sct_node[0]) {
+		switch(sc1_node[0]) {
 			// iri
-			case '>': return factory.namedNode(sct_node.slice(1));
+			case '>': return factory.namedNode(sc1_node.slice(1));
 
 			// invalid concise-term string
-			case '<': throw new Error(`Whoops! It looks like this concise-term string starts with a '<' character. Remember to use '>' if you are trying to make an absolute IRI reference.\nInvalid concise-term string '${sct_node}'`);
-			case '`': throw new Error(`The backtick character '\`' is reserved for concise-struct key directives and should not be used in the object position.\nInvalid concise-term string '${sct_node}'`);
+			case '<': throw new Error(`Whoops! It looks like this concise-term string starts with a '<' character. Remember to use '>' if you are trying to make an absolute IRI reference.\nInvalid concise-term string '${sc1_node}'`);
+			case '`': throw new Error(`The backtick character '\`' is reserved for concise-struct key directives and should not be used in the object position.\nInvalid concise-term string '${sc1_node}'`);
 
 			// prefixed name
-			default: return this.c1_prefixed_node(sct_node, h_prefixes);
+			default: return this.c1_prefixed_node(sc1_node, h_prefixes);
 		}
 	},
 
 	// construct a term object from a concise term string for prefixed nodes
-	c1_prefixed_node(sct_node, h_prefixes={}) {
+	c1_prefixed_node(sc1_node, h_prefixes={}) {
 		// find prefix delimiter
-		let i_colon = sct_node.indexOf(':');
+		let i_colon = sc1_node.indexOf(':');
 
 		// no delimter; invalid concise-term string for node
-		if(-1 === i_colon) throw new Error(`A relative or prefixed node must include a ':' character. \nInvalid concise-term string for node: '${sct_node}'`);
+		if(-1 === i_colon) throw new Error(`A relative or prefixed node must include a ':' character. \nInvalid concise-term string for node: '${sc1_node}'`);
 
 		// prefix id
-		let s_prefix_id = sct_node.slice(0, i_colon);
+		let s_prefix_id = sc1_node.slice(0, i_colon);
 
 		// suffix
-		let s_suffix = sct_node.slice(i_colon+1);
+		let s_suffix = sc1_node.slice(i_colon+1);
 
 		// find prefix in hash
 		if(s_prefix_id in h_prefixes) {
@@ -1401,25 +1401,25 @@ const factory = module.exports = {
 	c1_to_nt,
 
 	* quads(hct_quads, h_prefixes={}) {
-		for(let sct_graph in hct_quads) {
-			yield* factory.triples(hct_quads[sct_graph], h_prefixes, sct_graph);
+		for(let sc1_graph in hct_quads) {
+			yield* factory.triples(hct_quads[sc1_graph], h_prefixes, sc1_graph);
 		}
 	},
 
-	* triples(hc3x_triples, h_prefixes={}, sct_graph='*') {
-		let k_graph = factory.c1(sct_graph, h_prefixes);
-		for(let sct_subject in hc3x_triples) {
-			let k_subject = factory.c1(sct_subject, h_prefixes);
-			let hc2x_pairs = hc3x_triples[sct_subject];
+	* triples(hc3x_triples, h_prefixes={}, sc1_graph='*') {
+		let k_graph = factory.c1(sc1_graph, h_prefixes);
+		for(let sc1_subject in hc3x_triples) {
+			let k_subject = factory.c1(sc1_subject, h_prefixes);
+			let hc2x_pairs = hc3x_triples[sc1_subject];
 
 			yield* factory.pairs(k_graph, k_subject, hc2x_pairs, h_prefixes);
 		}
 	},
 
 	* pairs(k_graph, k_subject, hct_pairs, h_prefixes={}) {
-		for(let sct_predicate in hct_pairs) {
-			let k_predicate = factory.c1(sct_predicate, h_prefixes);
-			let z_objects = hct_pairs[sct_predicate];
+		for(let sc1_predicate in hct_pairs) {
+			let k_predicate = factory.c1(sc1_predicate, h_prefixes);
+			let z_objects = hct_pairs[sc1_predicate];
 
 			yield* factory.objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes);
 		}
@@ -1582,12 +1582,12 @@ const factory = module.exports = {
 
 
 	/**
-	 * @param  {Object} config - 
+	 * @param  {Object} gc_comment - 
 	 * @return {string} a `concise-term string` directive to be used as a key in `concise-term structs`
 	 * 	in order to write a comment to the document (only works with supporting serializers)
 	 */
-	comment(g_config={}) {
-		return `\`[${uuid_v4()}]${JSON.stringify({...g_config, type:'comment'})}`;
+	comment(gc_comment={}) {
+		return `\`[${uuid_v4()}]${JSON.stringify({...gc_comment, type:'comment'})}`;
 	},
 
 	/**
@@ -1598,6 +1598,16 @@ const factory = module.exports = {
 	newlines() {
 		// if(!Number.isInteger(n_line_count)) throw new TypeError('graphy/core.data.factory#newlines() expects `line_count` argument to be an integer');
 		return `\`[${uuid_v4()}]{"type":"newlines"}`;
+	},
+
+	/**
+	 * @param {string} s_key - key that identifies which aspect to configure. e.g., 'lists'
+	 * @return {string} a `concise-term string` directive to be used as a key in `concise-term structs`
+	 * 	in order to write the given number of newlines to the document (only works with supporting serializers)
+	 */
+	config(s_key) {
+		if('string' !== typeof s_key) throw new TypeError(`Expected 'key' argument to be a string, instead found ${typeof s_key}`);
+		return `\`[${uuid_v4()}]{"type":"config","value":${JSON.stringify(s_key)}}`;
 	},
 
 

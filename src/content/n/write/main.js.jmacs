@@ -112,11 +112,20 @@ class @{S_LABEL}_Writer extends Writable {
 		let s_write = '';
 
 		@- b_c4
+			// graph exit listener
+			let f_exit_graph = null;
+
 			// each graph
 			for(let sc1_graph in hc4_quads) {
 				// directive
 				if('`' === sc1_graph[0]) {
-					s_write += this._encode_directive(sc1_graph, hc4_quads[sc1_graph]);
+					let g_apply = this._apply_directive(sc1_graph, hc4_quads[sc1_graph]);
+
+					// write data
+					if(g_apply.write) s_write += g_apply.write;
+
+					// save exit listener
+					if(g_apply.exit) f_exit_graph = g_apply.exit;
 					continue;
 				}
 
@@ -133,11 +142,20 @@ class @{S_LABEL}_Writer extends Writable {
 			let st_post = ' .\n';
 		@;
 
+			// subject exit listener
+			let f_exit_subject = null;
+
 			// each subject
 			for(let sc1_subject in hc3_triples) {
 				// directive; serialize it
 				if('`' === sc1_subject[0]) {
-					s_write += this._encode_directive(sc1_subject, hc3_triples[sc1_subject]);
+					let g_apply = this._apply_directive(sc1_subject, hc3_triples[sc1_subject]);
+
+					// write data
+					if(g_apply.write) s_write += g_apply.write;
+
+					// save exit listener
+					if(g_apply.exit) f_exit_subject = g_apply.exit;
 					continue;
 				}
 
@@ -151,11 +169,20 @@ class @{S_LABEL}_Writer extends Writable {
 				// ref pairs
 				let hc2_pairs = hc3_triples[sc1_subject];
 
+				// predicate exit listener
+				let f_exit_predicate = null;
+
 				// each predicate
 				for(let sc1_predicate in hc2_pairs) {
 					// directive; serialize it
 					if('`' === sc1_predicate[0]) {
-						s_write += this._encode_directive(sc1_predicate, hc2_pairs[sc1_predicate]);
+						let g_apply = this._apply_directive(sc1_predicate, hc2_pairs[sc1_predicate]);
+
+						// write data
+						if(g_apply.write) s_write += g_apply.write;
+
+						// save exit listener
+						if(g_apply.exit) f_exit_predicate = g_apply.exit;
 						continue;
 					}
 
@@ -173,10 +200,19 @@ class @{S_LABEL}_Writer extends Writable {
 					// 	debugger;
 					// }
 				}
+
+				// call exit predicate listener
+				if(f_exit_predicate) f_exit_predicate();
 			}
+
+			// call exit subject listener
+			if(f_exit_subject) f_exit_subject();
 
 		@- b_c4
 			}
+
+			// call exit graph listener
+			if(f_exit_graph) f_exit_graph();
 		@;
 
 		return s_write;
@@ -220,13 +256,13 @@ class @{S_LABEL}_Writer extends Writable {
 
 					// each object
 					for(let z_item of z_objects) {
-						// item is an array; write RDF collection
+						// item is an array; write list
 						if(Array.isArray(z_item)) {
-							// transcode collection
-							let hc2_collection = this._transcode_collection(z_item);
+							// transcode list
+							let hc2_list = this._transcode_list(z_item);
 
-							// serialize transcoded collection
-							s_write += this._encode_objects(s_pre, hc2_collection, s_post, n_nest_level);
+							// serialize transcoded list
+							s_write += this._encode_objects(s_pre, hc2_list, s_post, n_nest_level);
 						}
 						// non-array; recurse on item
 						else {
@@ -244,11 +280,20 @@ class @{S_LABEL}_Writer extends Writable {
 					// start with incoming triple
 					let s_write = s_pre+st_blank+s_post;
 
+					// object exit listener
+					let f_exit_object = null;
+
 					// each pair
 					for(let sc1_predicate in z_objects) {
 						// directive; serialize it
 						if('`' === sc1_predicate[0]) {
-							s_write += this._encode_directive(sc1_predicate, z_objects[sc1_predicate]);
+							let g_apply = this._apply_directive(sc1_predicate, z_objects[sc1_predicate]);
+
+							// write data
+							if(g_apply.write) s_write += g_apply.write;
+
+							// save exit listener
+							if(g_apply.exit) f_exit_object = g_apply.exit;
 							continue;
 						}
 
@@ -258,6 +303,9 @@ class @{S_LABEL}_Writer extends Writable {
 						// recurse
 						s_write += this._encode_objects(s_pre_nest, z_objects[sc1_predicate], s_post, n_nest_level+1)
 					}
+
+					// call exit object listener
+					if(f_exit_object) f_exit_object();
 
 					return s_write;
 				}
@@ -293,7 +341,7 @@ class @{S_LABEL}_Writer extends Writable {
 			+verbose_s(g_quad.subject)
 			+' '+verbose_p(g_quad.predicate)
 			+' '+verbose_o(g_quad.object)
-			@{B_QUADS? /* syntax: js */ `+('DefaultGraph' === g_quad.graph? '': ' '+verbose_g(g_quad.graph))`: ''}
+			@{B_QUADS? /* syntax: js */ `+('DefaultGraph' === g_quad.graph.termType? '': ' '+verbose_g(g_quad.graph))`: ''}
 			+' .\n';
 
 		// update state
