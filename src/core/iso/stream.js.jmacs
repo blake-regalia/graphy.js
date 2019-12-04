@@ -239,8 +239,12 @@ class QuadsToOther extends Transform {
 			readableObjectMode: true,
 		});
 
+		this._as_inputs = new Set();
+
 		// forward prefix and comment events
 		this.on('pipe', (ds_src) => {
+			this._as_inputs.add(ds_src);
+
 			ds_src
 				.on('prefix', (...a_args) => {
 					this.emit('prefix', ...a_args);
@@ -249,6 +253,16 @@ class QuadsToOther extends Transform {
 					this.emit('comment', ...a_args);
 				});
 		});
+
+		this.on('unpipe', (ds_src) => {
+			this._as_inputs.delete(ds_src);
+		});
+	}
+
+	_destroy() {
+		for(let ds_input of this._as_inputs) {
+			ds_input.destroy();
+		}
 	}
 }
 

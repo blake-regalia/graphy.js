@@ -392,358 +392,27 @@ if(module === require.main) {
 		process.exit(1);
 	};
 
-	const command = s_command => mk_yargs()
+	const command = (a_args, s_command, a_decsribes, h_options) => mk_yargs()
 		.strict()
-		.usage(`Usage: $0 ${s_command} [OPTIONS] [--pipe COMMAND]`);
+		.usage(`Usage: $0 ${s_command} [OPTIONS] [ / COMMAND]${a_decsribes.length? `\n\n${a_decsribes.join('\n\n')}`: ''}`)
+		.options(h_options)
+		.help()
+		.version(false)
+		.parse(a_args);
 
-	const reader = f_reader => (a_args, g_context) => new Promise((fk_resolve) => {
-		let g_argv = command(g_context.command)
-			.options({
-				v: {
-					type: 'boolean',
-					alias: ['validate'],
-					default: undefined,  // eslint-disable-line no-undefined
-					describe: 'DEPRECATED. Validation is now enabled by default',
-				},
-				r: {
-					type: 'boolean',
-					alias: ['relax'],
-					default: undefined,  // eslint-disable-line no-undefined
-					describe: 'relax validation of tokens within the RDF document',
-				},
-				b: {
-					type: 'string',
-					alias: ['base', 'base-uri', 'base-iri'],
-					describe: 'set a base URI on the document',
-				},
-				s: {
-					type: 'string',
-					alias: ['subject'],
-					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by only allowing those that match the given subject (must be a concise-term string)',
-					conflicts: ['S'],
-				},
-				p: {
-					type: 'string',
-					alias: ['predicate'],
-					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by only allowing those that match the given predicate (must be a concise-term string)',
-					conflicts: ['P'],
-				},
-				o: {
-					type: 'string',
-					alias: ['object'],
-					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by only allowing those that match the given object (must be a concise-term string)',
-					conflicts: ['O'],
-				},
-				g: {
-					type: 'string',
-					alias: ['graph'],
-					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by only allowing those that match the given graph (must be a concise-term string)',
-					conflicts: ['G'],
-				},
-				S: {
-					type: 'array',
-					alias: ['not-subject'],
-					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by allowing any that *do not match* the given subject(s) (must be concise-term string(s))',
-					conflicts: ['s'],
-				},
-				P: {
-					type: 'array',
-					alias: ['not-predicate'],
-					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by allowing any that *do not match* the given predicate(s) (must be a concise-term string(s))',
-					conflicts: ['p'],
-				},
-				O: {
-					type: 'array',
-					alias: ['not-object'],
-					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by allowing any that *do not match* the given object(s) (must be a concise-term string(s))',
-					conflicts: ['o'],
-				},
-				G: {
-					type: 'array',
-					alias: ['not-graph'],
-					describe: 'DEPRECATED. Use \'filter\' command instead. Filter quads by allowing any that *do not match* the given graph(s) (must be a concise-term string(s))',
-					conflicts: ['g'],
-				},
-			})
-			.help()
-			.version(false)
-			.parse(a_args);
+	const S_TRANSFORM_TYPE_NNSQ = 'Transform Type: N-to-N (map);  (...Strings) --> [...Quads]';
+	const S_TRANSFORM_TYPE_NNQS = 'Transform Type: N-to-N (map);  (...Quads) --> [...Strings]';
+	const S_TRANSFORM_TYPE_NNQQ = 'Transform Type: N-to-N (map);  (...Quads) --> [...Quads]';
+	const S_TRANSFORM_TYPE_21QQ = 'Transform Type: 2-to-1 (join);  (Quads, Quads) --> [Quads]';
+	const S_TRANSFORM_TYPE_N1QQ = 'Transform Type: N-to-1 (reduce);  (...Quads) -->  [Quads]';
+	const S_TRANSFORM_TYPE_21QR = 'Transform Type: 2-to-1 (join);  (Quads, Quads) --> [ResultValues]';
 
-		let gc_read = {
-			relax: g_argv.relax || false,
-		};
+	const S_CATEGORY_IO = 'Input/Output Commands:'
+	const S_CATEGORY_DATA = 'Quad-Level Commands:';
+	const S_CATEGORY_STREAM = 'Stream Control Commands:';
+	const S_CATEGORY_SET = 'Dataset Commands:';
 
-		// 'validate' option is set
-		if('undefined' !== typeof g_argv.validate) {
-			warn(`The 'validate' option has been deprecated. Validation is now enabled by default. Use the 'relax' option if you wish to disable validation.`);
-
-			// infer validation value from flag
-			if('undefined' === typeof g_argv.relax) {
-				gc_read.relax = !g_argv.validate;
-			}
-		}
-
-		// 'base-uri' => 'baseUri'
-		if(g_argv['base-uri']) {
-			gc_read.baseUri = g_argv['base-uri'];
-		}
-
-		fk_resolve(g_context.inputs.map((ds_input) => {
-			let ds_reader = ds_input.pipe(f_reader({
-				...gc_read,
-				error(e_read) {
-					g_context.failure(e_read);
-				},
-			}));
-			// filters
-			if(g_argv.subject || g_argv.predicate || g_argv.object || g_argv.graph
-				|| g_argv['not-subject'] || g_argv['not-predicate'] || g_argv['not-object'] || g_argv['not-graph']) {
-				let {
-					subject: sc1_subject=null,
-					predicate: sc1_predicate=null,
-					object: sc1_object=null,
-					graph: sc1_graph=null,
-					'not-subject': a_not_subjects_src=null,
-					'not-predicate': a_not_predicates_src=null,
-					'not-object': a_not_objects_src=null,
-					'not-graph': a_not_graphs_src=null,
-				} = g_argv;
-
-				// deprecation notice
-				warn(`All content reader term filter flags have been deprecated. Use the 'filter' CLI command instead.`);
-
-				// create sv1 test strings
-				let sv1_subject = null;
-				let sv1_predicate = null;
-				let sv1_object = null;
-				let sv1_graph = null;
-
-				// create not filter arrays
-				let a_not_subjects = null;
-				let a_not_predicates = null;
-				let a_not_objects = null;
-				let a_not_graphs = null;
-
-				// prefix mappings
-				let h_prefixes = {};
-
-				// graph optimzation
-				let b_skip_graph = false;
-
-				// skip graphs that do not match filter
-				let f_enter = (yt_graph) => {
-					b_skip_graph = (sv1_graph !== yt_graph.concise());
-				};
-
-				// only skip triples if filter is not the default graph
-				let f_exit = () => {
-					b_skip_graph = ('*' !== sv1_graph);
-				};
-
-				// skip graphs that match not filter
-				let f_enter_not = (yt_graph) => {
-					b_skip_graph = a_not_graphs.includes(yt_graph.concise());
-				};
-
-				// only skip triples if not filter is the default graph
-				let f_exit_not = () => {
-					b_skip_graph = a_not_graphs.includes('*');
-				};
-
-				// when prefix mappings change, populate filter strings
-				let f_update_filters = () => {
-					// filter subject
-					if(sc1_subject) {
-						try {
-							sv1_subject = factory.c1_node(sc1_subject, h_prefixes).concise();
-						}
-						catch(e_convert) {
-							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
-							sv1_subject = '`void';
-						}
-					}
-					// filter not subject
-					else if(a_not_subjects_src) {
-						a_not_subjects = a_not_subjects_src.map((sc1_not_subject) => {
-							try {
-								return factory.c1_node(sc1_not_subject, h_prefixes).concise();
-							}
-							catch(e_convert) {
-								if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
-								return null;
-							}
-						});
-					}
-
-					// filter predicate
-					if(sc1_predicate) {
-						try {
-							sv1_predicate = factory.c1_named_node(sc1_predicate, h_prefixes).concise();
-						}
-						catch(e_convert) {
-							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
-							sv1_predicate = '`void';
-						}
-					}
-					// filter not predicate
-					else if(a_not_predicates_src) {
-						a_not_predicates = a_not_predicates_src.map((sc1_not_predicate) => {
-							try {
-								return factory.c1_node(sc1_not_predicate, h_prefixes).concise();
-							}
-							catch(e_convert) {
-								if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
-								return null;
-							}
-						});
-					}
-
-					// filter object
-					if(sc1_object) {
-						try {
-							sv1_object = factory.c1(sc1_object, h_prefixes).concise();
-						}
-						catch(e_convert) {
-							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
-							sv1_object = '`void';
-						}
-					}
-					// filter not object
-					else if(a_not_objects) {
-						a_not_objects = a_not_objects_src.map((sc1_not_object) => {
-							try {
-								return factory.c1(sc1_not_object, h_prefixes).concise();
-							}
-							catch(e_convert) {
-								if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
-								return null;
-							}
-						});
-					}
-
-					// filter graph
-					if(sc1_graph) {
-						// listeners already set, remove them
-						if(sv1_graph) {
-							ds_reader.removeListener('enter', f_enter);
-							ds_reader.removeListener('exit', f_exit);
-						}
-
-						try {
-							sv1_graph = factory.c1_node(sc1_graph, h_prefixes).concise();
-						}
-						catch(e_convert) {
-							if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
-							sv1_graph = '`void';
-						}
-
-						// setup graph filter
-						ds_reader
-							.on('enter', f_enter)
-							.on('exit', f_exit);
-					}
-					// filter not graph
-					else if(a_not_graphs_src) {
-						// listeners might already set, remove them
-						if(a_not_graphs) {
-							ds_reader.removeListener('enter', f_enter_not);
-							ds_reader.removeListener('exit', f_exit_not);
-						}
-
-						a_not_graphs = a_not_graphs_src.map((sc1_not_graph) => {
-							try {
-								return factory.c1_node(sc1_not_graph, h_prefixes).concise();
-							}
-							catch(e_convert) {
-								if(!/prefix not defined/i.test(e_convert.message)) throw e_convert;
-								return null;
-							}
-						});
-
-						// setup graph filter
-						ds_reader
-							.on('enter', f_enter_not)
-							.on('exit', f_exit_not);
-					}
-				};
-
-				// listen for prefix events
-				ds_reader.on('prefix', (s_prefix_id, p_prefix_iri) => {
-					// update hash
-					h_prefixes[s_prefix_id] = p_prefix_iri;
-
-					// update filters
-					f_update_filters();
-				});
-
-				// create filter transform
-				let ds_filter = new (class extends stream.Transform {
-					constructor() {
-						super({
-							objectMode: true,
-						});
-					}
-
-					// eslint-disable-next-line class-methods-use-this
-					_transform(y_quad, s_encoding, fke_transform) {
-						// skip graph
-						if(b_skip_graph) return fke_transform();
-
-						// apply filter
-						if(sv1_subject && sv1_subject !== y_quad.subject.concise()) return fke_transform();
-						else if(sv1_predicate && sv1_predicate !== y_quad.predicate.concise()) return fke_transform();
-						else if(sv1_object && sv1_object !== y_quad.object.concise()) return fke_transform();
-						else if(sv1_graph && sv1_graph !== y_quad.graph.concise()) return fke_transform();
-
-						// apply not filter
-						if(a_not_subjects && a_not_subjects.includes(y_quad.subject.concise())) return fke_transform();
-						else if(a_not_predicates && a_not_predicates.includes(y_quad.predicate.concise())) return fke_transform();
-						else if(a_not_objects && a_not_objects.includes(y_quad.object.concise())) return fke_transform();
-						else if(a_not_graphs && a_not_graphs.includes(y_quad.graph.concise())) return fke_transform();
-
-						// quad passed filter
-						fke_transform(null, y_quad);
-					}
-
-					// intercept pipe
-					pipe(ds_out) {
-						let ds_dst = ds_out;
-
-						// non-object mode
-						if(!ds_dst._writableState.objectMode) {
-							// transform to JSON
-							ds_out = stream.quads_to_json();
-						}
-						// yet object mode and graphy writable
-						else if(ds_out.isGraphyWritable) {
-							// transform to writable data events
-							ds_out = stream.quads_to_writable();
-						}
-
-						// interim stream created
-						if(ds_out !== ds_dst) {
-							// forward output to super
-							super.pipe(ds_out);
-
-							// pipe outpu to destination
-							return ds_out.pipe(ds_dst);
-						}
-						// forward as-is to super
-						else {
-							return super.pipe(ds_dst);
-						}
-					}
-				})();
-
-				// pipe thru filter
-				return ds_reader.pipe(ds_filter);
-			}
-			// no filter
-			else {
-				return ds_reader;
-			}
-		}));
-	});
+	const S_WARN_JAVASCRIPT = `WARNING: the '-j' / '--js' / '--javascript' option evals the given code. Do not allow user input into this option as it will grant them arbitrary code execution with whatever privileges the process is running with.`;
 
 	const content_type_flags = f_verb => ({
 		nt: {
@@ -776,487 +445,119 @@ if(module === require.main) {
 
 	// commands
 	let h_commands = {  // eslint-disable-next-line quote-props
-		head(a_args, g_context) {
-			let g_argv = command(g_context.command)
-				.options({
-					q: {
-						type: 'number',
-						alias: ['quads', 't', 'triples'],
-						describe: 'emit only the given number of quads from the top of a stream',
-						conflicts: ['s'],
-					},
+/*
+ ------ Input/Output --------
+ */
 
-					s: {
-						type: 'number',
-						alias: ['subjects'],
-						describe: 'emit quads until the given number of distinct subjects have been encountered from the top of a stream',
-						conflicts: ['q'],
-					},
-				})
-				.help()
-				.parse(a_args);
-
-			// count subjects
-			if(g_argv.subjects) {
-				let n_subjects = g_argv.subjects || 1;
-
-				return map_streams(g_context.inputs, (ds_input) => {
-					let c_subjects = 0;
-					let kt_prev = null;
-
-					return new stream.Transform.QuadsToOther({
-						transform(g_quad, s_encoding, fke_transform) {
-							// under limit
-							if(g_quad.subject.equals(kt_prev) || ++c_subjects <= n_subjects) {
-								this.push(g_quad);
-
-							}
-							// hit limit
-							else {
-								// push eof
-								this.push(null);
-
-								// destroy source
-								ds_input.destroy();
-							}
-
-							// save subject
-							kt_prev = g_quad.subject;
-
-							// done
-							fke_transform();
-						},
-					});
-				});
-			}
-			// count quads
-			else {
-				let n_quads = g_argv.quads || 1;
-
-				return map_streams(g_context.inputs, (ds_input) => {
-					let c_quads = 0;
-
-					return new stream.Transform.QuadsToOther({
-						transform(g_quad, s_encoding, fke_transform) {
-							// under limit
-							if(++c_quads <= n_quads) {
-								this.push(g_quad);
-							}
-							// hit limit
-							else {
-								// push eof
-								this.push(null);
-
-								// destroy source
-								ds_input.destroy();
-							}
-
-							// done
-							fke_transform();
-						},
-					});
-				});
-			}
-		},
-
-		tail(a_args, g_context) {
-			let g_argv = command(g_context.command)
-				.options({
-					q: {
-						type: 'number',
-						alias: ['quads', 't', 'triples'],
-						describe: 'emit only the given number of quads from the bottom of a stream',
-						conflicts: ['s'],
-					},
-
-					s: {
-						type: 'number',
-						alias: ['subjects'],
-						describe: 'emit quads contained by the given number of distinct subjects from the bottom of a stream',
-						conflicts: ['q'],
-					},
-				})
-				.help()
-				.epilogue('Warning: specifying a large number of quads or subjects may incur substantial memory consumption.')
-				.parse(a_args);
-
-			// count subjects
-			if(g_argv.subjects) {
-				let n_subjects = g_argv.subjects || 1;
-
-				return map_streams(g_context.inputs, (ds_input) => {
-					let c_subjects = 0;
-					let kt_prev = null;
-					let a_batch = null;
-					let a_fifo = [];
-
-					return new stream.Transform.QuadsToOther({
-						transform(g_quad, s_encoding, fke_transform) {
-							// different subject
-							if(!g_quad.subject.equals(kt_prev)) {
-								// reset batch
-								a_batch = [];
-
-								// push batch to fifo
-								a_fifo.push(a_batch);
-								
-								// hit limit
-								if(++c_subjects > n_subjects) {
-									a_fifo.shift();
-								}
-							}
-
-							// save subject
-							kt_prev = g_quad.subject;
-
-							// add quad to batch
-							a_batch.push(g_quad);
-
-							// done
-							fke_transform();
-						},
-
-						flush(fk_flush) {
-							// push queue
-							for(let a_quads of a_fifo) {
-								for(let g_quad of a_quads) {
-									this.push(g_quad);
-								}
-							}
-
-							// free to GC
-							a_fifo.length = 0;
-							a_batch.length = 0;
-
-							// done
-							fk_flush();
-						}
-					});
-				});
-			}
-			// count quads
-			else {
-				let n_quads = g_argv.quads || 1;
-
-				return map_streams(g_context.inputs, (ds_input) => {
-					let c_quads = 0;
-					let a_fifo = [];
-
-					return new stream.Transform.QuadsToOther({
-						transform(g_quad, s_encoding, fke_transform) {
-							// under limit
-							if(++c_quads <= n_quads) {
-								a_fifo.push(g_quad);
-							}
-							// hit limit
-							else {
-								// shift off bottom
-								a_fifo.shift();
-
-								// push to top
-								a_fifo.push(g_quad);
-							}
-
-							// done
-							fke_transform();
-						},
-
-						flush(fk_flush) {
-							// push queue
-							for(let g_quad of a_fifo) {
-								this.push(g_quad);
-							}
-
-							// free to GC
-							a_fifo.length = 0;
-
-							// done
-							fk_flush();
-						},
-					});
-				});
-			}
-		},
-
-		// copy(a_args, g_context) {
-			
-		// },
-
-		// append(a_args, g_context) {
-			
-		// },
-
-		concat(a_args, g_context) {
-			let a_inputs = g_context.inputs;
-			let nl_inputs = a_inputs.length;
-
-			if(1 === nl_inputs) return a_inputs;
-
-			let i_input = 0;
-
-			return [new stream.Readable({
-				objectMode: true,
-
-				read() {
-					// while there are inputs
-					for(; i_input<nl_inputs; i_input++) {
-						// ref input
-						let ds_input = a_inputs[i_input];
-
-						// read chunk from input and push to output
-						let w_chunk;
-						while((w_chunk = ds_input.read()) && this.push(w_chunk)) {
-							; // eslint-disable-line no-empty
-						}
-
-						// input not fully consumed; try again next read
-						if(!w_chunk.readableEnded) break;
-					}
+		read: {
+			type: S_TRANSFORM_TYPE_NNSQ,
+			category: S_CATEGORY_IO,
+			overview: 'Deserialize RDF content',
+			description: [
+				'Read RDF content (i.e., deserialize it) from 1 or more inputs',
+			],
+			options: {
+				r: {
+					type: 'boolean',
+					alias: ['relax'],
+					default: undefined,  // eslint-disable-line no-undefined
+					describe: 'relax validation of tokens within the RDF document',
 				},
-			})];
-		},
+				b: {
+					type: 'string',
+					alias: ['base', 'base-uri', 'base-iri'],
+					describe: 'set a base URI on the document',
+				},
+				c: {
+					type: 'string',
+					alias: ['content-type'],
+					default: 'trig',
+					describe: 'either an RDF Content-Type or format selector',
+					example: [
+						`read -c nt`,
+						`read -c n-triples`,
+						`read -c 'application/n-triples'`,
+						`read -c ttl`,
+						`read -c turtle`,
+						`read -c 'text/turtle'`,
+					].join('\n'),
+				},
 
-		filter(a_args, g_context) {
-			let g_argv = command(g_context.command)
-				.options({
-					x: {
-						type: 'string',
-						alias: ['expression'],
-						describe: 'filter quads using the given quad filter expression',
-						conflicts: ['j'],
-						example: [
-							`filter -x '; a; dbo:Plant'`,
-							`filter -x 'dbr:Banana;; !{literal}'`,
-						].join('\n'),
-					},
+				...content_type_flags(s => `read from ${s}`),
+			},
 
-					j: {
-						type: 'string',
-						alias: ['js', 'javascript'],
-						describe: 'filter quads using the given JavaScript expression which will be evaluated as a callback function passed the quad and current prefix map as arguments',
-						conflicts: ['x'],
-						example: [
-							`filter -j 'g => g.object.number > 10e3'`,
-							`filter -j 'g => g.object.value.startsWith(g.subject.value)'`,
-							`filter -j '(g, h) => g.subject.concise(h).startsWith("db")'`,
-						].join('\n'),
-					},
+			command(g_argv, a_inputs, fe_command) {
+				// select reader
+				let f_reader = graphy.content(g_argv['content-type']).read;
 
-					v: {
-						type: 'boolean',
-						alias: ['verbose'],
-						describe: 'prints the compiled quad filter expression to stderr',
-					},
-				})
-				.help()
-				.parse(a_args);
+				let gc_read = {
+					relax: g_argv.relax || false,
+				};
 
-			// quad filter expression
-			if(g_argv.expression) {
-				let g_parse = parse_filter(g_argv.expression);
-
-				let sj_eval = expression_handler.prepare(g_parse);
-
-				if(g_argv.verbose) {
-					console.warn(`The compiled quad filter expression from 'transform' command: () => {\n${sj_eval.replace(/^|\n/g, '\n\t')}\n}\n`);
+				// 'base-uri' => 'baseUri'
+				if(g_argv['base-uri']) {
+					gc_read.baseUri = g_argv['base-uri'];
 				}
 
-				let f_filter = new Function('factory', 'stream', sj_eval);  // eslint-disable-line no-new-func
+				return map_streams(a_inputs, () => f_reader({
+					...gc_read,
 
-				return g_context.inputs.map((ds_input) => {
-					let ds_filter = f_filter(factory, stream);
-
-					// intercept pipe
-					ds_filter.pipe = F_ADAPT_STREAM;
-
-					// pipe reader to filter
-					return ds_input.pipe(ds_filter);
-				});
-			}
-			// javascript expression
-			else if(g_argv.javascript) {
-				let f_build = new Function('factory', /* syntax: js */ `return (${g_argv.javascript}) || null;`);  // eslint-disable-line no-new-func
-
-				let f_filter = f_build(factory);
-
-				// filter exists
-				if(f_filter) {
-					// invalid type
-					if('function' !== typeof f_filter) {
-						exit(`The 'filter' command expects -j/--javascript expression to evaluate to a function, instead found '${typeof f_filter}'`);
-					}
-
-					return map_streams(g_context.inputs, () => {
-						let h_prefixes = {};
-
-						return new stream.Transform.QuadsToOther({
-							objectMode: true,
-
-							prefix(si_prefix, p_iri) {
-								h_prefixes[si_prefix] = p_iri;
-							},
-
-							transform(g_quad, s_encoding, fke_transform) {
-								if(f_filter(g_quad, h_prefixes)) {
-									return fke_transform(null, g_quad);
-								}
-
-								fke_transform();
-							},
-						});
-					});
-				}
-			}
-
-			// neither used (bypass filter)
-			warn(`The 'filter' command was not used and is being ignored.`);
-			return bypass(g_context.inputs);
+					error: e => fe_command(e),
+				}));
+			},
 		},
 
-		// transform
-		transform(a_args, g_context) {
-			let g_argv = command(g_context.command)
-				.options({
-					j: {
-						type: 'string',
-						alias: ['js', 'javascript'],
-						describe: 'transform quads using the given JavaScript expression which will be evaluated as a callback function passed the quad and current prefix map as arguments',
-						demandOption: true,
-						example: [
-							`transform -j 'g => [g.object, g.predicate, g.subject]'`,
-							`transform -j 'g => ({
-								[factory.blankNode()]: {
-									a: 'rdf:Statement',
-									'rdf:subject': g.subject,
-									'rdf:predicate': g.predicate,
-									'rdf:object': g.object,
-								},
-							})'`,
-						].join('\n'),
-					},
-				})
-				.help()
-				.parse(a_args);
-
-			// javascript expression
-			if(g_argv.javascript) {
-				let f_build = new Function('factory', 'c3', 'c4', /* syntax: js */ `return (${g_argv.javascript}) || null;`);  // eslint-disable-line no-new-func
-
-				let f_transform = f_build(factory, factory.c3, factory.c4);
-
-				// transform exists
-				if(f_transform) {
-					// invalid type
-					if('function' !== typeof f_transform) {
-						exit(`The 'filter' command expects -j/--javascript expression to evaluate to a function, instead found '${typeof f_filter}'`);
-					}
-
-					return map_streams(g_context.inputs, () => {
-						let h_prefixes = {};
-
-						return new stream.Transform.QuadsToOther({
-							objectMode: true,
-
-							prefix(si_prefix, p_iri) {
-								h_prefixes[si_prefix] = p_iri;
-							},
-
-							transform(g_quad, s_encoding, fke_transform) {
-								// alias quad property access
-								g_quad.s = g_quad.subject;
-								g_quad.p = g_quad.predicate;
-								g_quad.o = g_quad.object;
-								g_quad.g = g_quad.graph;
-
-								// try to apply transform callback
-								let z_item;
-								try {
-									z_item = f_transform(g_quad, h_prefixes);
-								}
-								catch(e_transform) {
-									warn(`The 'transform' command threw an Error while applying the given callback function:\n${e_transform.stack}`);
-									return fke_transform();
-								}
-
-								// item was returned
-								if(z_item) {
-									return interpret_item(z_item, h_prefixes, this, fke_transform);
-								}
-
-								// done
-								fke_transform();
-							},
-						});
-					});
-				}
-			}
-
-			// nothing used (bypass filter)
-			warn(`The 'transform' command was not used and is being ignored.`);
-			return bypass(g_context.inputs);
-		},
-
-		read(a_args, g_context) {
-			let g_argv = command(g_context.command)
-				.options({
-					r: {
-						type: 'boolean',
-						alias: ['relax'],
-						default: undefined,  // eslint-disable-line no-undefined
-						describe: 'relax validation of tokens within the RDF document',
-					},
-					b: {
-						type: 'string',
-						alias: ['base', 'base-uri', 'base-iri'],
-						describe: 'set a base URI on the document',
-					},
+		scribe: {
+			type: S_TRANSFORM_TYPE_NNSQ,
+			category: S_CATEGORY_IO,
+			overview: 'Serialize RDF content fast',
+			description: [
+				'Scribe RDF content (i.e., serialize it) fast (and possibly ugly) using the given content-type.',
+			],
+			options: (_f_scriber=null) => ({
+				...(_f_scriber? {} :{
 					c: {
 						type: 'string',
 						alias: ['content-type'],
 						default: 'trig',
 						describe: 'either an RDF Content-Type or format selector',
 						example: [
-							`read -c nt`,
-							`read -c n-triples`,
-							`read -c 'application/n-triples'`,
-							`read -c ttl`,
-							`read -c turtle`,
-							`read -c 'text/turtle'`,
+							`scribe -c nt`,
+							`scribe -c n-triples`,
+							`scribe -c 'application/n-triples'`,
+							`scribe -c ttl`,
+							`scribe -c turtle`,
+							`scribe -c 'text/turtle'`,
 						].join('\n'),
 					},
 
-					...content_type_flags(s => `read from ${s}`),
-				})
-				.help()
-				.version(false)
-				.parse(a_args);
+					...content_type_flags(s => `scribe to ${s}`),
+				}),
+			}),
 
-			// select reader
-			let f_reader = graphy.content(g_argv['content-type']).read;
+			command(g_argv, a_inputs, fe_command, _f_scriber=null) {
+				// select scriber
+				let f_scriber = _f_scriber || graphy.content(g_argv['content-type']).scribe;
 
-			let gc_read = {
-				relax: g_argv.relax || false,
-			};
-
-			// 'base-uri' => 'baseUri'
-			if(g_argv['base-uri']) {
-				gc_read.baseUri = g_argv['base-uri'];
-			}
-
-			return map_streams(g_context.inputs, () => f_reader({
-				...gc_read,
-				error(e_read) {
-					g_context.failure(e_read);
-				},
-			}));
+				// map input(s) to writer(s)
+				return a_inputs.map(ds_input => ds_input.pipe(f_scriber({
+					error: e => fe_command(e),
+				})));
+			},
 		},
 
-		write(a_args, g_context, _f_writer=null) {
-			let s_group_style = 'Style options:';
-			let s_group_list = 'List structure options:'
+		write: {
+			type: S_TRANSFORM_TYPE_NNQS,
+			category: S_CATEGORY_IO,
+			overview: 'Serialize RDF content in style (pretty-printing)',
+			description: [
+				'Write RDF content (i.e., serialize it) in style (for pretty-print) using the given content-type.',
+			],
+			options(_f_writer=null) {
+				let s_group_style = 'Style options:';
+				let s_group_list = 'List structure options:'
 
-			let g_argv = command(g_context.command)
-				.options({
+				return {
 					i: {
 						type: 'string',
 						alias: ['indent'],
@@ -1314,345 +615,943 @@ if(module === require.main) {
 
 						...content_type_flags(s => `write to ${s}`),
 					}),
-				})
-				.help()
-				.version(false)
-				.parse(a_args);
+				};
+			},
 
-			// select writer
-			let f_writer = _f_writer || graphy.content(g_argv['content-type']).write;
+			command(g_argv, a_inputs, fe_command, _f_writer=null) {
+				// select writer
+				let f_writer = _f_writer || graphy.content(g_argv['content-type']).write;
 
-			// default write config
-			let gc_write = {};
+				// default write config
+				let gc_write = {};
 
-			// extend style options
-			let g_style = gc_write.style || {};
-			{
-				// indent
-				if(g_argv.indent) g_style.indent = g_argv.indent;
+				// extend style options
+				let g_style = gc_write.style || {};
+				{
+					// indent
+					if(g_argv.indent) g_style.indent = g_argv.indent;
 
-				// graph keyword
-				if(g_argv['graph-keyword']) g_style.graph_keyword = g_argv['graph-keyword'];
+					// graph keyword
+					if(g_argv['graph-keyword']) g_style.graph_keyword = g_argv['graph-keyword'];
 
-				// simplify default graph
-				if(g_argv['simplify-default-graph']) g_style.simplify_default_graph = g_argv['simplify-default-graph'];
-			}
-
-			// extend list options
-			let g_lists = gc_write.lists || {};
-			{
-				// first
-				if(g_argv.first) g_lists.first = g_argv.first;
-
-				// rest
-				if(g_argv.rest) g_lists.rest = g_argv.rest;
-
-				// nil
-				if(g_argv.nil) g_lists.nil = g_argv.nil;
-			}
-
-			// map input(s) to writer(s)
-			return g_context.inputs.map(ds_input => ds_input.pipe(f_writer({
-				...gc_write,
-
-				style: g_style,
-
-				lists: g_lists,
-
-				error(e_write) {
-					g_context.failure(e_write);
-				},
-			})));
-		},
-
-		scribe(a_args, g_context, _f_scriber=null) {
-			let g_argv = command(g_context.command)
-				.options({
-					...(_f_scriber? {} :{
-						c: {
-							type: 'string',
-							alias: ['content-type'],
-							default: 'trig',
-							describe: 'either an RDF Content-Type or format selector',
-							example: [
-								`scribe -c nt`,
-								`scribe -c n-triples`,
-								`scribe -c 'application/n-triples'`,
-								`scribe -c ttl`,
-								`scribe -c turtle`,
-								`scribe -c 'text/turtle'`,
-							].join('\n'),
-						},
-
-						...content_type_flags(s => `scribe to ${s}`),
-					}),
-				})
-				.help()
-				.version(false)
-				.parse(a_args);
-
-			// select scriber
-			let f_scriber = _f_scriber || graphy.content(g_argv['content-type']).scribe;
-
-			// map input(s) to writer(s)
-			return g_context.inputs.map(ds_input => ds_input.pipe(f_scriber({
-				error(e_write) {
-					g_context.failure(e_write);
-				},
-			})));
-		},
-
-		'content.nt.read': reader(graphy.content.nt.read),
-		'content.nq.read': reader(graphy.content.nq.read),
-		'content.ttl.read': reader(graphy.content.ttl.read),
-		'content.trig.read': reader(graphy.content.trig.read),
-
-
-		'util.dataset.tree': async(a_args, g_context) => {
-			const dataset_tree = graphy.util.dataset.tree;
-
-			let s_group_multi_input = 'Transform 1 or more inputs to 1 output:';
-			let s_group_dual_input = 'Transform exactly 2 inputs into 1 output:';
-			let s_group_boolean = 'Test exactly 2 inputs to get `true` or `false`:';
-
-			let h_operations = {
-				u: {
-					type: 'boolean',
-					alias: ['union'],
-					group: s_group_multi_input,
-					describe: 'perform the union of 1 or more inputs',
-				},
-				i: {
-					type: 'boolean',
-					alias: ['intersect', 'intersection'],
-					group: s_group_multi_input,
-					describe: 'perform the intersection of 1 or more inputs',
-				},
-				d: {
-					type: 'boolean',
-					alias: ['diff', 'difference'],
-					group: s_group_dual_input,
-					describe: 'perform a difference between two inputs',
-				},
-				m: {
-					type: 'boolean',
-					alias: ['minus', 'subtract', 'subtraction'],
-					group: s_group_dual_input,
-					describe: 'perform a subtraction by removing input-B from input-A',
-				},
-				c: {
-					type: 'boolean',
-					alias: ['contains'],
-					group: s_group_boolean,
-					describe: 'test if input-A completely contains input-B, i.e., if B is a subset of A',
-				},
-				j: {
-					type: 'boolean',
-					alias: ['disjoint'],
-					group: s_group_boolean,
-					describe: 'test if input-A is disjoint with input-B',
-				},
-				e: {
-					type: 'boolean',
-					alias: ['equals'],
-					group: s_group_boolean,
-					describe: 'test if input-A is exactly equal to input-B (you can test for isomorphism by piping thru --canonicalize first)',
-				},
-			};
-
-			let a_operation_keys = Object.keys(h_operations);
-			for(let s_operation of a_operation_keys) {
-				h_operations[s_operation].conflicts = a_operation_keys.filter(s => s_operation !== s);
-			}
-
-			Object.assign(h_operations, {
-				z: {
-					type: 'boolean',
-					alias: ['canonicalize'],
-					group: s_group_multi_input,
-					describe: 'canonicalize 1 or more inputs',
-				},
-			});
-
-			let g_argv = command(g_context.command)
-				.options(h_operations)
-				.help()
-				.version(false)
-				.parse(a_args);
-
-			// canonicalize flag
-			let b_canonicalize = g_argv.canonicalize;
-
-			// ref inputs; cache length
-			let a_inputs = g_context.inputs;
-			let n_inputs = a_inputs.length;
-
-			// multi-input stream-output operation
-			if(g_argv.union || g_argv.intersection) {
-				let s_operation = g_argv.union
-					? 'union'
-					: 'intersection';
-
-				// // less than 2 inputs; no-op
-				// if(n_inputs < 2) return a_inputs;
-
-				// create trees
-				let a_trees = a_inputs.map(() => dataset_tree());
-
-				// initial tree
-				let k_tree_out = a_trees[0];
-
-				// pairwise readiness
-				for(let i_input=0; i_input<n_inputs; i_input++) {
-					let k_tree_b = a_trees[i_input];
-
-					// pipe input stream to tree b
-					a_inputs[i_input].pipe(k_tree_b);
-
-					// wait for input stream to finish writing to b
-					await k_tree_b.until('finish');
-
-					// canonicalize
-					if(b_canonicalize) {
-						k_tree_b = a_trees[i_input] = k_tree_b.canonicalize();
-
-						// update out ref
-						if(!i_input) k_tree_out = k_tree_b;
-					}
-
-					// non-first input
-					if(i_input) {
-						// perform pairwise operation
-						k_tree_out = k_tree_out[s_operation](k_tree_b);
-					}
+					// simplify default graph
+					if(g_argv['simplify-default-graph']) g_style.simplify_default_graph = g_argv['simplify-default-graph'];
 				}
 
-				// return readable tree
-				return [k_tree_out];
-			}
-			// dual-input stream-output operation
-			else if(g_argv.difference || g_argv.subtraction) {
-				let s_operation =  g_argv.difference
-					? 'difference'
-					: 'minus';
+				// extend list options
+				let g_lists = gc_write.lists || {};
+				{
+					// first
+					if(g_argv.first) g_lists.first = g_argv.first;
 
-				// not two inputs
-				if(2 !== n_inputs) {
-					exit(`operation '${s_operation}' expects two inputs but found ${n_inputs}`);
+					// rest
+					if(g_argv.rest) g_lists.rest = g_argv.rest;
+
+					// nil
+					if(g_argv.nil) g_lists.nil = g_argv.nil;
 				}
 
-				// async
-				return new Promise((fk_resolve) => {
-					let operate = () => [k_tree_a[s_operation](k_tree_b)];
+				// map input(s) to writer(s)
+				return a_inputs.map(ds_input => ds_input.pipe(f_writer({
+					...gc_write,
 
-					// wait for a
-					let k_tree_a = dataset_tree();
-					let b_finished_a = false;
-					k_tree_a.on('finish', () => {
-						// canonicalize
-						if(b_canonicalize) k_tree_a = k_tree_a.canonicalize();
+					style: g_style,
 
-						// a is finished now
-						b_finished_a = true;
+					lists: g_lists,
 
-						// b is already finished
-						if(b_finished_b) fk_resolve(operate());
-					});
-
-					// wait for b
-					let k_tree_b = dataset_tree();
-					let b_finished_b = false;
-					k_tree_b.on('finish', () => {
-						// canonicalize
-						if(b_canonicalize) k_tree_b = k_tree_b.canonicalize();
-
-						// b is finished now
-						b_finished_b = true;
-
-						// a is already finished
-						if(b_finished_a) fk_resolve(operate());
-					});
-
-					// ref both input streams
-					let [ds_input_a, ds_input_b] = a_inputs;
-
-					// pipe each to its tree
-					ds_input_a.pipe(k_tree_a);
-					ds_input_b.pipe(k_tree_b);
-				});
-			}
-			// boolean
-			else if(g_argv.contains || g_argv.disjoint || g_argv.equals) {
-				let s_operation =  g_argv.contains
-					? 'contains'
-					: (g_argv.disjoint
-						? 'disjoint'
-						: 'equals');
-
-				// not two inputs
-				if(2 !== n_inputs) {
-					exit(`boolean operation '${s_operation}' expects two inputs but found ${n_inputs}`);
-				}
-
-				// async
-				return new Promise((fk_resolve) => {
-					let operate = () => [new answer_source(k_tree_a[s_operation](k_tree_b))];
-
-					// wait for a
-					let k_tree_a = dataset_tree();
-					let b_finished_a = false;
-					k_tree_a.on('finish', () => {
-						// canonicalize
-						if(b_canonicalize) k_tree_a = k_tree_a.canonicalize();
-
-						// a is finished now
-						b_finished_a = true;
-
-						// b is already finished
-						if(b_finished_b) fk_resolve(operate());
-					});
-
-					// wait for b
-					let k_tree_b = dataset_tree();
-					let b_finished_b = false;
-					k_tree_b.on('finish', () => {
-						// canonicalize
-						if(b_canonicalize) k_tree_b = k_tree_b.canonicalize();
-
-						// b is finished now
-						b_finished_b = true;
-
-						// a is already finished
-						if(b_finished_a) fk_resolve(operate());
-					});
-
-					// ref both input streams
-					let [ds_input_a, ds_input_b] = a_inputs;
-
-					// pipe each to its tree
-					ds_input_a.pipe(k_tree_a);
-					ds_input_b.pipe(k_tree_b);
-				});
-			}
-			// map; n-to-n
-			else {
-				return g_context.inputs.map(ds_input => ds_input.pipe(dataset_tree({
-					canonicalize: g_argv.canonicalize,
+					error: e => fe_command(e),
 				})));
-			}
+			},
 		},
+
+/*
+ ------ Quad-Level --------
+ */
+
+		skip: {
+			type: S_TRANSFORM_TYPE_NNQQ,
+			category: S_CATEGORY_DATA,
+			overview: 'Skip over some amount of quads',
+			description: 'Skip over some amount of data for each input stream before piping the remainder as usual.',
+			options: {
+				q: {
+					type: 'number',
+					alias: ['quads', 't', 'triples'],
+					describe: 'skip the given number of quads from the top of a stream',
+					conflicts: ['s'],
+				},
+
+				s: {
+					type: 'number',
+					alias: ['subjects'],
+					describe: 'skip quads until the given number of distinct subjects have been encountered from the top of a stream',
+					conflicts: ['q'],
+				},
+			},
+
+			command(g_argv, a_inputs, fe_command) {
+				// count subjects
+				if(g_argv.subjects) {
+					let n_subjects = g_argv.subjects || 1;
+
+					return map_streams(a_inputs, (ds_input) => {
+						let c_subjects = 0;
+						let kt_prev = null;
+
+						return new stream.Transform.QuadsToOther({
+							error: e => fe_command(e),
+
+							transform(g_quad, s_encoding, fke_transform) {
+								// reached length
+								if(!g_quad.subject.equals(kt_prev) && ++c_subjects > n_subjects) {
+									// start pushing
+									this.push(g_quad);
+								}
+
+								// save subject
+								kt_prev = g_quad.subject;
+
+								// done
+								fke_transform();
+							},
+						});
+					});
+				}
+				// count quads
+				else {
+					let n_quads = g_argv.quads || 1;
+
+					return map_streams(a_inputs, (ds_input) => {
+						let c_quads = 0;
+
+						return new stream.Transform.QuadsToOther({
+							error: e => fe_command(e),
+
+							transform(g_quad, s_encoding, fke_transform) {
+								// reached length
+								if(++c_quads > n_quads) {
+									// start pushing
+									this.push(g_quad);
+								}
+
+								// done
+								fke_transform();
+							},
+						});
+					});
+				}
+			},
+		},
+
+		head: {
+			type: S_TRANSFORM_TYPE_NNQQ,
+			category: S_CATEGORY_DATA,
+			overview: 'Limit number of quads from top',
+			description: [
+				'Limit the number of quads that pass through by counting from the top of the stream.',
+			],
+			options: {
+				q: {
+					type: 'number',
+					alias: ['quads', 't', 'triples'],
+					describe: 'emit only the given number of quads from the top of a stream',
+					conflicts: ['s'],
+				},
+
+				s: {
+					type: 'number',
+					alias: ['subjects'],
+					describe: 'emit quads until the given number of distinct subjects have been encountered from the top of a stream',
+					conflicts: ['q'],
+				},
+			},
+
+			command(g_argv, a_inputs, fe_command) {
+				// count subjects
+				if(g_argv.subjects) {
+					let n_subjects = g_argv.subjects || 1;
+
+					return map_streams(a_inputs, (ds_input) => {
+						let c_subjects = 0;
+						let kt_prev = null;
+
+						return new stream.Transform.QuadsToOther({
+							error: e => fe_command(e),
+
+							transform(g_quad, s_encoding, fke_transform) {
+								// under limit
+								if(g_quad.subject.equals(kt_prev) || ++c_subjects <= n_subjects) {
+									this.push(g_quad);
+								}
+								// hit limit
+								else {
+									// push eof
+									this.push(null);
+
+									// destroy source
+									ds_input.destroy();
+								}
+
+								// save subject
+								kt_prev = g_quad.subject;
+
+								// done
+								fke_transform();
+							},
+						});
+					});
+				}
+				// count quads
+				else {
+					let n_quads = g_argv.quads || 1;
+
+					return map_streams(a_inputs, (ds_input) => {
+						let c_quads = 0;
+
+						return new stream.Transform.QuadsToOther({
+							error: e => fe_command(e),
+
+							transform(g_quad, s_encoding, fke_transform) {
+								// under limit
+								if(++c_quads <= n_quads) {
+									this.push(g_quad);
+								}
+								// hit limit
+								else {
+									// push eof
+									this.push(null);
+
+									// destroy source
+									ds_input.destroy();
+								}
+
+								// done
+								fke_transform();
+							},
+						});
+					});
+				}
+			},
+		},
+
+		tail: {
+			type: S_TRANSFORM_TYPE_NNQQ,
+			category: S_CATEGORY_DATA,
+			overview: 'Limit number of quads from bottom',
+			description: [
+				'Limit the number of quads that pass through by counting from the bottom of the stream.',
+				'WARNING: quads must be buffered in memory until the end of the stream is reached. Specifying a large number of quads or subjects might therefore incur lots of memory.',
+			],
+			options: {
+				q: {
+					type: 'number',
+					alias: ['quads', 't', 'triples'],
+					describe: 'emit only the given number of quads from the bottom of a stream',
+					conflicts: ['s'],
+				},
+
+				s: {
+					type: 'number',
+					alias: ['subjects'],
+					describe: 'emit quads contained by the given number of distinct subjects from the bottom of a stream',
+					conflicts: ['q'],
+				},
+			},
+
+			command(g_argv, a_inputs, fe_command) {
+				// count subjects
+				if(g_argv.subjects) {
+					let n_subjects = g_argv.subjects || 1;
+
+					return map_streams(a_inputs, (ds_input) => {
+						let c_subjects = 0;
+						let kt_prev = null;
+						let a_batch = null;
+						let a_fifo = [];
+
+						return new stream.Transform.QuadsToOther({
+							error: e => fe_command(e),
+
+							transform(g_quad, s_encoding, fke_transform) {
+								// different subject
+								if(!g_quad.subject.equals(kt_prev)) {
+									// reset batch
+									a_batch = [];
+
+									// push batch to fifo
+									a_fifo.push(a_batch);
+									
+									// hit limit
+									if(++c_subjects > n_subjects) {
+										a_fifo.shift();
+									}
+								}
+
+								// save subject
+								kt_prev = g_quad.subject;
+
+								// add quad to batch
+								a_batch.push(g_quad);
+
+								// done
+								fke_transform();
+							},
+
+							flush(fk_flush) {
+								// push queue
+								for(let a_quads of a_fifo) {
+									for(let g_quad of a_quads) {
+										this.push(g_quad);
+									}
+								}
+
+								// free to GC
+								a_fifo.length = 0;
+								a_batch.length = 0;
+
+								// done
+								fk_flush();
+							}
+						});
+					});
+				}
+				// count quads
+				else {
+					let n_quads = g_argv.quads || 1;
+
+					return map_streams(a_inputs, (ds_input) => {
+						let c_quads = 0;
+						let a_fifo = [];
+
+						return new stream.Transform.QuadsToOther({
+							error: e => fe_command(e),
+
+							transform(g_quad, s_encoding, fke_transform) {
+								// under limit
+								if(++c_quads <= n_quads) {
+									a_fifo.push(g_quad);
+								}
+								// hit limit
+								else {
+									// shift off bottom
+									a_fifo.shift();
+
+									// push to top
+									a_fifo.push(g_quad);
+								}
+
+								// done
+								fke_transform();
+							},
+
+							flush(fk_flush) {
+								// push queue
+								for(let g_quad of a_fifo) {
+									this.push(g_quad);
+								}
+
+								// free to GC
+								a_fifo.length = 0;
+
+								// done
+								fk_flush();
+							},
+						});
+					});
+				}
+			},
+		},
+
+		filter: {
+			type: S_TRANSFORM_TYPE_N1QQ,
+			category: S_CATEGORY_DATA,
+			overview: 'Filter quads via expression',
+			description: [
+				'Filter quads by using either a Quad Filter Expression or a bit of JavaScript.',
+				'For documentation on the Quad Filter Expression syntax, see:  https://graphy.link/quad-filter-expression',
+				S_WARN_JAVASCRIPT,
+			],
+			options: {
+				x: {
+					type: 'string',
+					alias: ['expression'],
+					describe: 'filter quads using the given quad filter expression',
+					conflicts: ['j'],
+					example: [
+						`filter -x '; a; dbo:Plant'`,
+						`filter -x 'dbr:Banana;; !{literal}'`,
+					].join('\n'),
+				},
+
+				j: {
+					type: 'string',
+					alias: ['js', 'javascript'],
+					describe: 'filter quads using the given JavaScript expression which will be evaluated as a callback function passed the quad and current prefix map as arguments',
+					conflicts: ['x'],
+					example: [
+						`filter -j 'g => g.object.number > 10e3'`,
+						`filter -j 'g => g.object.value.startsWith(g.subject.value)'`,
+						`filter -j '(g, h) => g.subject.concise(h).startsWith("db")'`,
+					].join('\n'),
+				},
+
+				v: {
+					type: 'boolean',
+					alias: ['verbose'],
+					describe: 'prints the compiled quad filter expression to stderr',
+				},
+			},
+
+			command(g_argv, a_inputs, fe_command) {
+				// quad filter expression
+				if(g_argv.expression) {
+					let g_parse = parse_filter(g_argv.expression);
+
+					let sj_eval = expression_handler.prepare(g_parse);
+
+					if(g_argv.verbose) {
+						console.warn(`The compiled quad filter expression from 'transform' command: () => {\n${sj_eval.replace(/^|\n/g, '\n\t')}\n}\n`);
+					}
+
+					let f_filter = new Function('factory', 'stream', sj_eval);  // eslint-disable-line no-new-func
+
+					return map_streams(a_inputs, () => f_filter(factory, stream));
+				}
+				// javascript expression
+				else if(g_argv.javascript) {
+					let f_build = new Function('factory', /* syntax: js */ `return (${g_argv.javascript}) || null;`);  // eslint-disable-line no-new-func
+
+					let f_filter = f_build(factory);
+
+					// filter exists
+					if(f_filter) {
+						// invalid type
+						if('function' !== typeof f_filter) {
+							exit(`The 'filter' command expects -j/--javascript expression to evaluate to a function, instead found '${typeof f_filter}'`);
+						}
+
+						return map_streams(a_inputs, () => {
+							let h_prefixes = {};
+
+							return new stream.Transform.QuadsToOther({
+								error: e => fe_command(e),
+
+								prefix(si_prefix, p_iri) {
+									h_prefixes[si_prefix] = p_iri;
+								},
+
+								transform(g_quad, s_encoding, fke_transform) {
+									if(f_filter(g_quad, h_prefixes)) {
+										return fke_transform(null, g_quad);
+									}
+
+									fke_transform();
+								},
+							});
+						});
+					}
+				}
+
+				// neither used (bypass filter)
+				warn(`The 'filter' command was not used and is being ignored.`);
+				return bypass(a_inputs);
+			},
+		},
+
+		// transform
+		transform: {
+			type: S_TRANSFORM_TYPE_N1QQ,
+			category: S_CATEGORY_DATA,
+			overview: 'Apply a custom transform function to each quad in the stream(s)',
+			description: [
+				'$1',
+				S_WARN_JAVASCRIPT,
+			],
+			options: {
+				j: {
+					type: 'string',
+					alias: ['js', 'javascript'],
+					describe: 'transform quads using the given JavaScript expression which will be evaluated as a callback function passed the quad and current prefix map as arguments',
+					demandOption: true,
+					example: [
+						`transform -j 'g => [g.object, g.predicate, g.subject]'`,
+						`transform -j 'g => ({
+							[factory.blankNode()]: {
+								a: 'rdf:Statement',
+								'rdf:subject': g.subject,
+								'rdf:predicate': g.predicate,
+								'rdf:object': g.object,
+							},
+						})'`,
+					].join('\n'),
+				},
+			},
+
+			command(g_argv, a_inputs, fe_command) {
+				// javascript expression
+				if(g_argv.javascript) {
+					let f_build = new Function('factory', 'c3', 'c4', /* syntax: js */ `return (${g_argv.javascript}) || null;`);  // eslint-disable-line no-new-func
+
+					let f_transform = f_build(factory, factory.c3, factory.c4);
+
+					// transform exists
+					if(f_transform) {
+						// invalid type
+						if('function' !== typeof f_transform) {
+							exit(`The 'filter' command expects -j/--javascript expression to evaluate to a function, instead found '${typeof f_filter}'`);
+						}
+
+						return map_streams(a_inputs, () => {
+							let h_prefixes = {};
+
+							return new stream.Transform.QuadsToOther({
+								error: e => fe_command(e),
+
+								prefix(si_prefix, p_iri) {
+									h_prefixes[si_prefix] = p_iri;
+								},
+
+								transform(g_quad, s_encoding, fke_transform) {
+									// alias quad property access
+									g_quad.s = g_quad.subject;
+									g_quad.p = g_quad.predicate;
+									g_quad.o = g_quad.object;
+									g_quad.g = g_quad.graph;
+
+									// try to apply transform callback
+									let z_item;
+									try {
+										z_item = f_transform(g_quad, h_prefixes);
+									}
+									catch(e_transform) {
+										warn(`The 'transform' command threw an Error while applying the given callback function:\n${e_transform.stack}`);
+										return fke_transform();
+									}
+
+									// item was returned
+									if(z_item) {
+										return interpret_item(z_item, h_prefixes, this, fke_transform);
+									}
+
+									// done
+									fke_transform();
+								},
+							});
+						});
+					}
+				}
+
+				// nothing used (bypass filter)
+				warn(`The 'transform' command was not used and is being ignored.`);
+				return bypass(a_inputs);
+			},
+		},
+
+/*
+ ------ Stream Control --------
+ */
+
+		concat: {
+			type: S_TRANSFORM_TYPE_N1QQ,
+			category: S_CATEGORY_STREAM,
+			overview: 'Join stream data in order via concatentation',
+			description: [
+				'Concatenate quads from all input streams in order.',
+			],
+			options: {},
+
+			command(g_argv, a_inputs, fe_command) {
+				let nl_inputs = a_inputs.length;
+
+				// single input, bypass passthrough
+				if(1 === nl_inputs) return a_inputs;
+
+				// input index
+				let i_input = 0;
+
+				// single output stream
+				let ds_out = new stream.PassThrough();
+
+				// stream consumer
+				let f_next = () => {
+					// done consuming inputs; end output stream
+					if(i_input >= nl_inputs) return ds_out.end();
+
+					// next input
+					let ds_input = a_inputs[i_input++];
+
+					// once it ends; consume next input
+					ds_input.on('end', f_next);
+
+					// catch stream errors
+					ds_input.on('error', fe_command);
+
+					// pipe to passthrough
+					ds_input.pipe(ds_out, {end:false});
+				};
+
+				// start concatenating
+				f_next();
+
+				// return stream
+				return [ds_out];
+
+				// return [new stream.Readable({
+				// 	objectMode: true,
+
+				// 	read() {
+				// 		// while there are inputs
+				// 		for(; i_input<nl_inputs; i_input++) {
+				// 			// ref input
+				// 			let ds_input = a_inputs[i_input];
+
+				// 			// read chunk from input and push to output
+				// 			let w_chunk;
+				// 			while((w_chunk = ds_input.read()) && this.push(w_chunk)) {
+				// 				; // eslint-disable-line no-empty
+				// 			}
+
+				// 			// input not fully consumed; try again next read
+				// 			if(!w_chunk.readableEnded) break;
+				// 		}
+				// 	},
+				// })];
+			},
+		},
+
+		merge: {
+			type: S_TRANSFORM_TYPE_N1QQ,
+			category: S_CATEGORY_STREAM,
+			overview: `Join stream data on a 'first come, first serve' basis`,
+			description: [
+				'Merge quads from all input streams without order.',
+			],
+			options: {},
+
+			command(g_argv, a_inputs, fe_command) {
+				let nl_inputs = a_inputs.length;
+
+				// single input, bypass passthrough
+				if(1 === nl_inputs) return a_inputs;
+
+				// input index
+				let i_input = 0;
+
+				// single output stream
+				let ds_out = new stream.PassThrough();
+
+				// stream consumer
+				let f_next = () => {
+					// done consuming inputs; end output stream
+					if(i_input >= nl_inputs) return ds_out.end();
+
+					// next input
+					let ds_input = a_inputs[i_input++];
+
+					// once it ends; consume next input
+					ds_input.on('end', f_next);
+
+					// catch stream errors
+					ds_input.on('error', fe_command);
+
+					// pipe to passthrough
+					ds_input.pipe(ds_out, {end:false});
+				};
+
+				// start concatenating
+				f_next();
+
+				// return stream
+				return [ds_out];
+			},
+		},
+
+/*
+ ------ Dataset --------
+ */
+
+		union: {
+			type: S_TRANSFORM_TYPE_N1QQ,
+			category: S_CATEGORY_SET,
+			overview: 'Compute the set union of 1 or more inputs',
+			description: [
+				'$1.',
+			],
+			options: {},
+
+			command(g_argv, a_inputs, fe_command) {
+				return map_streams(a_inputs, () => new stream.Transform.QuadsToOther({
+					error: e => fe_command(e),
+				}));
+			},
+		},
+
+
+		// boilerplate: {
+		// 	type: S_TRANSFORM_TYPE_N1QQ,
+		// 	overview: '',
+		// 	description: [
+		// 		'Some decsription',
+		// 	],
+		// 	options: {},
+
+		// 	command(g_argv, a_inputs, fe_command) {
+		// 		return map_streams(a_inputs, () => new Transform({
+		// 			error: e => fe_command(e),
+		// 		}));
+		// 	},
+		// },
+
+
+		// 'util.dataset.tree': async(g_argv, a_inputs, fe_command) => {
+		// 	const dataset_tree = graphy.util.dataset.tree;
+
+		// 	let s_group_multi_input = 'Transform 1 or more inputs to 1 output:';
+		// 	let s_group_dual_input = 'Transform exactly 2 inputs into 1 output:';
+		// 	let s_group_boolean = 'Test exactly 2 inputs to get `true` or `false`:';
+
+		// 	let h_operations = {
+		// 		u: {
+		// 			type: 'boolean',
+		// 			alias: ['union'],
+		// 			group: s_group_multi_input,
+		// 			describe: 'perform the union of 1 or more inputs',
+		// 		},
+		// 		i: {
+		// 			type: 'boolean',
+		// 			alias: ['intersect', 'intersection'],
+		// 			group: s_group_multi_input,
+		// 			describe: 'perform the intersection of 1 or more inputs',
+		// 		},
+		// 		d: {
+		// 			type: 'boolean',
+		// 			alias: ['diff', 'difference'],
+		// 			group: s_group_dual_input,
+		// 			describe: 'perform a difference between two inputs',
+		// 		},
+		// 		m: {
+		// 			type: 'boolean',
+		// 			alias: ['minus', 'subtract', 'subtraction'],
+		// 			group: s_group_dual_input,
+		// 			describe: 'perform a subtraction by removing input-B from input-A',
+		// 		},
+		// 		c: {
+		// 			type: 'boolean',
+		// 			alias: ['contains'],
+		// 			group: s_group_boolean,
+		// 			describe: 'test if input-A completely contains input-B, i.e., if B is a subset of A',
+		// 		},
+		// 		j: {
+		// 			type: 'boolean',
+		// 			alias: ['disjoint'],
+		// 			group: s_group_boolean,
+		// 			describe: 'test if input-A is disjoint with input-B',
+		// 		},
+		// 		e: {
+		// 			type: 'boolean',
+		// 			alias: ['equals'],
+		// 			group: s_group_boolean,
+		// 			describe: 'test if input-A is exactly equal to input-B (you can test for isomorphism by piping thru --canonicalize first)',
+		// 		},
+		// 	};
+
+		// 	let a_operation_keys = Object.keys(h_operations);
+		// 	for(let s_operation of a_operation_keys) {
+		// 		h_operations[s_operation].conflicts = a_operation_keys.filter(s => s_operation !== s);
+		// 	}
+
+		// 	Object.assign(h_operations, {
+		// 		z: {
+		// 			type: 'boolean',
+		// 			alias: ['canonicalize'],
+		// 			group: s_group_multi_input,
+		// 			describe: 'canonicalize 1 or more inputs',
+		// 		},
+		// 	});
+
+		// 	// canonicalize flag
+		// 	let b_canonicalize = g_argv.canonicalize;
+
+		// 	// ref inputs; cache length
+		// 	let a_inputs = g_context.inputs;
+		// 	let n_inputs = a_inputs.length;
+
+		// 	// multi-input stream-output operation
+		// 	if(g_argv.union || g_argv.intersection) {
+		// 		let s_operation = g_argv.union
+		// 			? 'union'
+		// 			: 'intersection';
+
+		// 		// // less than 2 inputs; no-op
+		// 		// if(n_inputs < 2) return a_inputs;
+
+		// 		// create trees
+		// 		let a_trees = a_inputs.map(() => dataset_tree());
+
+		// 		// initial tree
+		// 		let k_tree_out = a_trees[0];
+
+		// 		// pairwise readiness
+		// 		for(let i_input=0; i_input<n_inputs; i_input++) {
+		// 			let k_tree_b = a_trees[i_input];
+
+		// 			// pipe input stream to tree b
+		// 			a_inputs[i_input].pipe(k_tree_b);
+
+		// 			// wait for input stream to finish writing to b
+		// 			await k_tree_b.until('finish');
+
+		// 			// canonicalize
+		// 			if(b_canonicalize) {
+		// 				k_tree_b = a_trees[i_input] = k_tree_b.canonicalize();
+
+		// 				// update out ref
+		// 				if(!i_input) k_tree_out = k_tree_b;
+		// 			}
+
+		// 			// non-first input
+		// 			if(i_input) {
+		// 				// perform pairwise operation
+		// 				k_tree_out = k_tree_out[s_operation](k_tree_b);
+		// 			}
+		// 		}
+
+		// 		// return readable tree
+		// 		return [k_tree_out];
+		// 	}
+		// 	// dual-input stream-output operation
+		// 	else if(g_argv.difference || g_argv.subtraction) {
+		// 		let s_operation =  g_argv.difference
+		// 			? 'difference'
+		// 			: 'minus';
+
+		// 		// not two inputs
+		// 		if(2 !== n_inputs) {
+		// 			exit(`operation '${s_operation}' expects two inputs but found ${n_inputs}`);
+		// 		}
+
+		// 		// async
+		// 		return new Promise((fk_resolve) => {
+		// 			let operate = () => [k_tree_a[s_operation](k_tree_b)];
+
+		// 			// wait for a
+		// 			let k_tree_a = dataset_tree();
+		// 			let b_finished_a = false;
+		// 			k_tree_a.on('finish', () => {
+		// 				// canonicalize
+		// 				if(b_canonicalize) k_tree_a = k_tree_a.canonicalize();
+
+		// 				// a is finished now
+		// 				b_finished_a = true;
+
+		// 				// b is already finished
+		// 				if(b_finished_b) fk_resolve(operate());
+		// 			});
+
+		// 			// wait for b
+		// 			let k_tree_b = dataset_tree();
+		// 			let b_finished_b = false;
+		// 			k_tree_b.on('finish', () => {
+		// 				// canonicalize
+		// 				if(b_canonicalize) k_tree_b = k_tree_b.canonicalize();
+
+		// 				// b is finished now
+		// 				b_finished_b = true;
+
+		// 				// a is already finished
+		// 				if(b_finished_a) fk_resolve(operate());
+		// 			});
+
+		// 			// ref both input streams
+		// 			let [ds_input_a, ds_input_b] = a_inputs;
+
+		// 			// pipe each to its tree
+		// 			ds_input_a.pipe(k_tree_a);
+		// 			ds_input_b.pipe(k_tree_b);
+		// 		});
+		// 	}
+		// 	// boolean
+		// 	else if(g_argv.contains || g_argv.disjoint || g_argv.equals) {
+		// 		let s_operation =  g_argv.contains
+		// 			? 'contains'
+		// 			: (g_argv.disjoint
+		// 				? 'disjoint'
+		// 				: 'equals');
+
+		// 		// not two inputs
+		// 		if(2 !== n_inputs) {
+		// 			exit(`boolean operation '${s_operation}' expects two inputs but found ${n_inputs}`);
+		// 		}
+
+		// 		// async
+		// 		return new Promise((fk_resolve) => {
+		// 			let operate = () => [new answer_source(k_tree_a[s_operation](k_tree_b))];
+
+		// 			// wait for a
+		// 			let k_tree_a = dataset_tree();
+		// 			let b_finished_a = false;
+		// 			k_tree_a.on('finish', () => {
+		// 				// canonicalize
+		// 				if(b_canonicalize) k_tree_a = k_tree_a.canonicalize();
+
+		// 				// a is finished now
+		// 				b_finished_a = true;
+
+		// 				// b is already finished
+		// 				if(b_finished_b) fk_resolve(operate());
+		// 			});
+
+		// 			// wait for b
+		// 			let k_tree_b = dataset_tree();
+		// 			let b_finished_b = false;
+		// 			k_tree_b.on('finish', () => {
+		// 				// canonicalize
+		// 				if(b_canonicalize) k_tree_b = k_tree_b.canonicalize();
+
+		// 				// b is finished now
+		// 				b_finished_b = true;
+
+		// 				// a is already finished
+		// 				if(b_finished_a) fk_resolve(operate());
+		// 			});
+
+		// 			// ref both input streams
+		// 			let [ds_input_a, ds_input_b] = a_inputs;
+
+		// 			// pipe each to its tree
+		// 			ds_input_a.pipe(k_tree_a);
+		// 			ds_input_b.pipe(k_tree_b);
+		// 		});
+		// 	}
+		// 	// map; n-to-n
+		// 	else {
+		// 		return a_inputs.map(ds_input => ds_input.pipe(dataset_tree({
+		// 			canonicalize: g_argv.canonicalize,
+		// 		})));
+		// 	}
+		// },
 	};
 
-	// command aliases
-	Object.assign(h_commands, {
-		'content.nt.write': (a, g) => h_commands.write(a, g, nt.write),
-		'content.nq.write': (a, g) => h_commands.write(a, g, nq.write),
-		'content.ttl.write': (a, g) => h_commands.write(a, g, ttl.write),
-		'content.trig.write': (a, g) => h_commands.write(a, g, trig.write),
-	});
 
-	h_commands.tree = h_commands['util.dataset.tree'];
+	let n_width_column = Object.keys(h_commands)
+		.reduce((n, s) => Math.max(n, s.length), 0);
 
+	// group command by category
+	let h_categories = {};
+	for(let [si_command, g_command] of Object.entries(h_commands)) {
+		let s_category = g_command.category;
+
+		let g_category = (h_categories[s_category] = h_categories[s_category] || {
+			commands: [],
+			overview: [],
+		});
+		
+		g_category.commands.push(g_command);
+		g_category.overview.push(`  ${si_command.padEnd(n_width_column, ' ')}  ${g_command.overview}`);
+	}
+
+
+	// args
 	let a_argv = process.argv.slice(2);
 	let n_args = a_argv.length;
 
@@ -1703,34 +1602,28 @@ if(module === require.main) {
 			else {
 				// main option
 				if('-h' === s_arg || '--help' === s_arg) {
+					// command overview
+					let s_overview = '';
+					for(let [s_category, g_category] of Object.entries(h_categories)) {
+						s_overview += `${s_category}\n${g_category.overview.join('\n')}\n\n`;
+					}
+
 					// eslint-disable-next-line no-console
-					console.log('\n'+gobble(`
-						Usage: graphy COMMAND [--pipe COMMAND]*
+					console.log(`\nUsage: graphy COMMAND [ / COMMAND]* [--inputs FILES...]\n\n`
+						+`Tip: Use the internal pipe operator ' / ' to string together a series of commands.\n\n`
+						+s_overview
+						+`\nRun 'graphy COMMAND --help' for more information on a command.\n`
+						+'\n'+gobble(`
+							Examples:
+							  1) Find all owl:sameAs triples where the object is a node and different from
+							     the subject, then swap the subject and object.
+							  
+							     graphy read / filter -x '!$object; owl:sameAs; {node}' / transform -j  \\
+							         'g => [g.o, g.p, g.s]' / write -c ttl   < input.ttl   > output.ttl
 
-						Stream operations:
-						  head                  Limit number of quads from top of stream
-						  tail                  Limit number of quads from bottom of stream
-						  filter                Filter quads on a stream
-						  transform             Apply a transform to each quad in a stream
-
-						Commands:
-						  content.nt.read       Read an N-Triples document
-						  content.nt.write      Write to N-Triples format
-						  content.nq.read       Read an N-Quads document
-						  content.nq.write      Write to N-Quads format
-						  content.ttl.read      Read a Turtle document
-						  content.ttl.write     Write to Turtle format
-						  content.trig.read     Read a TriG document
-						  content.trig.write    Write to TriG format
-						  util.dataset.tree     Perform some transformation on a datset
-
-						Command aliases:
-						  read     -> content.trig.read
-						  write    -> content.trig.write
-						  tree     -> util.dataset.tree
-
-						Run 'graphy COMMAND --help' for more information on a command.
-					`));
+							  (2) 
+						`)+'\n'
+					);
 					process.exit(0);
 				}
 				// version
