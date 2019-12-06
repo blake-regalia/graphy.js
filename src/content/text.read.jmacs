@@ -131,7 +131,7 @@
 		+@{sv_literal}
 			.replace(R_UNICODE_8, F_REPLACE_UNICODE_ANY)
 			.replace(R_ESCAPES, '$1$2') // no need to escape anything other than reserved characters
-			.replace(/[\t"@{b_whitespace? '\\n\\r': ''}\f\u0008]/g, s => H_ESCAPES_JSON[s])
+			.replace(/[\t"@{b_whitespace? '\\n\\r': ''}\f\u0008]/g, s_e => H_ESCAPES_JSON[s_e])
 			@// @:
 			@// 	.replace(/"/g, '\\"') // escape all quotes ;)
 			@// @;

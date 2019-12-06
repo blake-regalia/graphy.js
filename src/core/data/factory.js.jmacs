@@ -1232,6 +1232,9 @@ const factory = module.exports = {
 			else if('string' === typeof z_datatype_or_lang) {
 				return new LanguagedLiteral(s_value, z_datatype_or_lang);
 			}
+			else if(KT_XSD_STRING.equals(z_datatype_or_lang)) {
+				return new SimpleLiteral(s_value);
+			}
 			else {
 				return new ExplicitlyDatatypedLiteral(s_value, z_datatype_or_lang);
 			}
@@ -1246,7 +1249,12 @@ const factory = module.exports = {
 		},
 
 		datatypedLiteral(s_value, kt_datatype) {
-			return new ExplicitlyDatatypedLiteral(s_value, kt_datatype);
+			if(KT_XSD_STRING.equals(kt_datatype)) {
+				return new SimpleLiteral(s_value);
+			}
+			else {
+				return new ExplicitlyDatatypedLiteral(s_value, kt_datatype);
+			}
 		},
 	},
 

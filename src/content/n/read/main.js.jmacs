@@ -10,14 +10,29 @@
 
 @$ S_LABEL = NT? 'NTriples': 'NQuads';
 
+@$ B_OPTIMIZE_UNESCAPE = true;
+@$ B_UPGRADE_FACTORY = true;
+@.{
+	let SJ_DEFAULT_GRAPH;
+
+	if(B_UPGRADE_FACTORY) {
+		SJ_DEFAULT_GRAPH = /* syntax: js */ `kt_default_graph`;
+	}
+	else {
+		SJ_DEFAULT_GRAPH = /* syntax: js */ `KT_DEFAULT_GRAPH`;
+	}
+}
+
 @// import parser macros
 @import '../../text.read.jmacs'
 
 const stream = require('@{channel('core.iso.stream')}');
-const factory = require('@{channel('core.data.factory')}').raw;
+const factory = require('@{channel('core.data.factory')}')@{B_UPGRADE_FACTORY? '': '.raw'};
 
-const KT_DEFAULT_GRAPH = factory.defaultGraph();
-const KT_RDFS_LANG_STRING = factory.namedNode('@{P_IRI_RDFS}langString');
+@- !B_UPGRADE_FACTORY
+	const KT_DEFAULT_GRAPH = factory.defaultGraph();
+	const KT_RDFS_LANG_STRING = factory.namedNode('@{P_IRI_RDFS}langString');
+@;
 
 const H_ESCAPES_JSON = @{H_ESCAPES_JSON()};
 
@@ -26,6 +41,10 @@ const R_UNICODE_8 = /@{R_UNICODE_8()}/g;
 const R_UNICODE_ANY = /@{R_UNICODE_4()}|@{R_UNICODE_8()}/g;
 
 const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
+
+@- B_OPTIMIZE_UNESCAPE
+	const unescape_literal = s => @{unescape_literal('s')};
+@;
 
 const R_CLEAN = /\s*(?:#[^\n]*\n\s*)*\s*/y;
 const R_CLEAN_COMMENTS = /\s*(#[^\n]*\n\s*)*\s*/y;
@@ -127,53 +146,73 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 
 @> match_body(sv_match, b_unescape=false)
 	// prep object term
-	let w_object;
+	let kt_object;
 
 	// object term type is named node
 	if(@{sv_match}[4]) {
 		let p_object = @{sv_match}[4].slice(1);
-		w_object = this.namedNode(@{ue_iri('p_object', b_unescape)});
+		kt_object = namedNode(@{ue_iri('p_object', b_unescape)});
 	}
 	// object term type is blank node
 	else if(@{sv_match}[5]) {
-		w_object = this.blankNode(@{ue_iri(sv_match+'[5]', b_unescape)});
+		kt_object = blankNode(@{ue_iri(sv_match+'[5]', b_unescape)});
 	}
 	// object term type is literal
 	else {
-		// contents
-		w_object = this.literal(@{sv_match}[6], @{b_unescape});
+		@- B_UPGRADE_FACTORY
+			// contents
+			let s_contents = @{sv_match}[6];
+		@:
+			kt_object = literal(@{sv_match}[6], @{b_unescape});
+		@;
 
 		// set datatype if present
 		if(@{sv_match}[7]) {
-			w_object.datatype = this.namedNode(@{ue_iri(sv_match+'[7]', b_unescape)});
+			@- B_UPGRADE_FACTORY
+				kt_object = datatypedLiteral@{b_unescape? 'E': ''}(s_contents, @{ue_iri(sv_match+'[7]')});
+			@:
+				kt_object.datatype = namedNode(@{ue_iri(sv_match+'[7]', b_unescape)});
+			@;
 		}
 		// otherwise, set language tag if present
 		else if(@{sv_match}[8]) {
-			let s_language = w_object.language = @{sv_match}[8].toLowerCase();
-			if(!this._b_relax && !RT_LANGUAGE_VALID.test(s_language)) return this._error(`invalid literal language tag: ${s_language}`);
-			w_object.datatype = KT_RDFS_LANG_STRING;
+			@- B_UPGRADE_FACTORY
+				kt_object = languagedLiteral@{b_unescape? 'E': ''}(s_contents, @{sv_match}[8].toLowerCase());
+			@:
+				let s_language = kt_object.language = @{sv_match}[8].toLowerCase();
+				
+				if(!b_relax && !RT_LANGUAGE_VALID.test(s_language)) return this._error(`invalid literal language tag: ${s_language}`);
+				
+				kt_object.datatype = KT_RDFS_LANG_STRING;
+			@;
 		}
+		@- B_UPGRADE_FACTORY
+			// simple literal
+			else {
+				kt_object = simpleLiteral@{b_unescape? 'E': ''}(s_contents);
+			}
+		@;
 	}
 
 	// emit data event
 	fk_data(
-		factory.quad(
+		@{B_UPGRADE_FACTORY? 'f_quad': 'factory.quad'}(
 			@{sv_match}[2]
-				? this.blankNode(@{sv_match}[2])
-				: this.namedNode(@{ue_iri(sv_match+'[1]', b_unescape)}),
-			this.namedNode(@{ue_iri(sv_match+'[3]', b_unescape)}),
-			w_object,
+				? blankNode(@{sv_match}[2])
+				: namedNode(@{ue_iri(sv_match+'[1]', b_unescape)}),
+			namedNode(@{ue_iri(sv_match+'[3]', b_unescape)}),
+			kt_object,
 			@- QUADS
 				@{sv_match}[9]
-					? this.namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
+					? namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
 					: (@{sv_match}[10]
-						? this.blankNode(@{sv_match}[10])
+						? blankNode(@{sv_match}[10])
 						: ('string' === typeof @{sv_match}[9]
-							? this.namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
-							: KT_DEFAULT_GRAPH))
+							? namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
+							: @{SJ_DEFAULT_GRAPH}))
 			@:
 				@//@
-				KT_DEFAULT_GRAPH
+				@{SJ_DEFAULT_GRAPH}
 			@;
 			@//@arguments
 		)
@@ -265,6 +304,15 @@ class @{S_LABEL}_Reader extends stream.Transform {
 	}
 }
 
+@> try_unescape_literal(sj_var, s_type)
+	try {
+		@{sj_var} = @{B_OPTIMIZE_UNESCAPE? `unescape_literal(${sj_var})`: unescape_literal(sj_var)};
+	}
+	catch(e_parse) {
+		return this._error(`Invalid escaping within @{s_type}-literal contents: "${s_contents}"`);
+	}
+@;
+
 class Reader {
 	constructor(g_config) {
 		let {
@@ -277,6 +325,15 @@ class Reader {
 			// debug
 			debug: b_debug=false,
 		} = g_config;
+
+		@- B_UPGRADE_FACTORY
+			// adopt factory
+			let dc_factory = this._dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
+
+			this._f_quad = dc_factory.quad;
+		@:
+			let dc_factory = factory;
+		@;
 
 		// fields
 		Object.assign(this, {
@@ -293,6 +350,11 @@ class Reader {
 			_b_destroyed: false,
 		});
 
+		@- B_UPGRADE_FACTORY
+			this._kt_default_graph = dc_factory.defaultGraph();
+			this._kt_rdfs_lang_string = dc_factory.namedNode('@{P_IRI_RDFS}langString');
+		@;
+
 		// clean regex
 		let r_clean = R_CLEAN;
 
@@ -304,34 +366,106 @@ class Reader {
 		}
 
 		// validation
+		let k_self = this;
 		Object.assign(this, !b_relax
 			? {
 				namedNode(s_iri) {
-					if(!RT_ABSOLUTE_IRI_VALID.test(s_iri)) return this._error(`invalid absolute IRI: "${s_iri}"`);
-					return factory.namedNode(s_iri);
+					if(!RT_ABSOLUTE_IRI_VALID.test(s_iri)) return k_self._error(`Invalid absolute IRI: "${s_iri}"`);
+					return dc_factory.namedNode(s_iri);
 				},
 
 				blankNode(s_label) {
-					if(!RT_BLANK_NODE_LABEL_VALID.test(s_label)) return this._error(`invalid blank node label: "${s_label}"`);
-					return factory.blankNode(s_label);
+					if(!RT_BLANK_NODE_LABEL_VALID.test(s_label)) return k_self._error(`Invalid blank node label: "${s_label}"`);
+					return dc_factory.blankNode(s_label);
 				},
 
-				literal(s_literal, b_unescape=false) {
-					if(!RT_LITERAL_CONTENTS_VALID.test(s_literal)) return this._error(`invalid literal: "${s_literal}"`);
-					try {
-						return factory.literal(b_unescape? @{unescape_literal('s_literal')}: s_literal);
+				@- !B_UPGRADE_FACTORY
+					literal(s_literal, b_unescape=false) {
+						if(!RT_LITERAL_CONTENTS_VALID.test(s_literal)) return k_self._error(`Invalid literal: "${s_literal}"`);
+						try {
+							return dc_factory.literal(b_unescape? @{unescape_literal('s_literal')}: s_literal);
+						}
+						catch(e_parse) {
+							return k_self._error(`Invalid literal contents: "${s_literal}"`);
+						}
+					},
+				@;
+
+
+				@*{
+					for(let b_escape of [false, true]) {
+						for(let s_type of ['simple', 'languaged', 'datatyped']) {
+							let sj_extra = '';
+							let sj_test = '';
+							let sj_thru = '';
+
+							if('languaged' === s_type) {
+								sj_extra = sj_thru = ', s_language';
+								sj_test = /* syntax: js */ `
+									if(!RT_LANGUAGE_VALID.test(s_language)) {
+										return k_self._error(\`Invalid literal language tag: \${s_language}\`);
+									}
+								`;
+							}
+							else if('datatyped' === s_type) {
+								sj_extra = ', p_datatype';
+								sj_thru = /* syntax: js */ `, k_self.namedNode(p_datatype)`;
+							}
+
+							yield /* syntax: js.object-literal */ `
+								${s_type}Literal${b_escape? 'E': ''}(s_contents${sj_extra}) {
+									if(!RT_LITERAL_CONTENTS_VALID.test(s_contents)) {
+										return k_self._error(\`Invalid ${s_type}-literal contents: "\${s_contents}"\`);
+									}
+
+									${sj_test}
+
+									${b_escape? try_unescape_literal('s_contents', s_type): ''}
+
+									return dc_factory.${s_type}Literal(s_contents${sj_thru});
+								},
+							`;
+						}
 					}
-					catch(e_parse) {
-						return this._error(`invalid string literal: "${s_literal}"`);
-					}
-				},
+				}
 			}
 			: {
-				namedNode: factory.namedNode,
+				namedNode: dc_factory.namedNode,
 
-				blankNode: factory.blankNode,
+				blankNode: dc_factory.blankNode,
 
-				literal: (s_literal, b_unescape) => factory.literal(b_unescape? @{unescape_literal('s_literal')}: s_literal),
+				@- !B_UPGRADE_FACTORY
+					literal: (s_literal, b_unescape) => dc_factory.literal(b_unescape? @{unescape_literal('s_literal')}: s_literal),
+				@;
+
+				simpleLiteral: dc_factory.simpleLiteral,
+
+				languagedLiteral: dc_factory.languagedLiteral,
+
+				datatypedLiteral: dc_factory.datatypedLiteral,
+
+				@*{
+					for(let s_type of ['simple', 'languaged', 'datatyped']) {
+						let sj_extra = '';
+						let sj_thru = '';
+
+						if('languaged' === s_type) {
+							sj_extra = sj_thru = ', s_language';
+						}
+						else if('datatyped' === s_type) {
+							sj_extra = ', p_datatype';
+							sj_thru = /* syntax: js */ `, k_self.namedNode(p_datatype)`;
+						}
+
+						yield /* syntax: js.object-literal */ `
+							${s_type}LiteralE(s_contents${sj_extra}) {
+								${try_unescape_literal('s_contents', s_type)}
+
+								return dc_factory.${s_type}Literal(s_contents${sj_thru});
+							},
+						`;
+					}
+				}
 			});
 
 		// transform stream
@@ -506,6 +640,21 @@ class Reader {
 		let n = this.n;
 		let i = this.i;
 		let fk_data = this.data;
+		let f_quad = this._f_quad;
+		let namedNode = this.namedNode;
+		let blankNode = this.blankNode;
+		@- B_UPGRADE_FACTORY
+			let simpleLiteral = this.simpleLiteral;
+			let languagedLiteral = this.languagedLiteral;
+			let datatypedLiteral = this.datatypedLiteral;
+			let simpleLiteralE = this.simpleLiteralE;
+			let languagedLiteralE = this.languagedLiteralE;
+			let datatypedLiteralE = this.datatypedLiteralE;
+			let kt_default_graph = this._kt_default_graph;
+		@:
+			let literal = this.literal;
+			let b_relax = this._b_relax;
+		@;
 
 		@// parse chunk
 		@{parse_n()};

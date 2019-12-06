@@ -2411,6 +2411,10 @@ class DatasetTree extends stream.Duplex {
 		return k_normalize.normalize().tree;
 	}
 
+	noramlize() {
+		return (new Canonicalizer_ct(this)).normalize();
+	}
+
 	// create union of two sets
 	union(k_other) {
 		// ref quads
