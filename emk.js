@@ -417,6 +417,7 @@ module.exports = async() => {
 				'content.nt.write',
 				'content.nq.read',
 				'content.nq.write',
+				'content.nq.scribe',
 				'content.ttl.read',
 				'content.ttl.write',
 				'content.trig.read',

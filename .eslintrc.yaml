@@ -159,7 +159,7 @@
         VariableDeclarator: 0
         ignoreComments: true
     key-spacing:
-      - warn
+      - off
       - singleLine:
           beforeColon: false
           afterColon: false
