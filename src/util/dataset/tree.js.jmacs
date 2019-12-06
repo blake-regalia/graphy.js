@@ -805,7 +805,7 @@ class DatasetTree extends stream.Duplex {
 		this.add = this.addAll = this.addQuads = this.add_quads = this.add_tree = this.clear = this.delete = this.deny;
 
 		// end writable stream
-		super.end(...a_args);
+		return super.end(...a_args);
 	}
 
 	// deny mutator call

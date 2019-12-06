@@ -200,7 +200,7 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 			@{match_body('m_statement', true)}
 
 		@{else_if_match('R_EOL')}
-			this._error(`invalid statement:\n${this.s.substr(0, 50)}\n  ^ starting here`);
+			this._error(`Failed to read statement:\n\`${this.s.substr(i, 80).replace(/\n/g, '\u23CE')} [...]\`\n ^ starting here`);
 
 		@{else_retry()}
 	} // end of while

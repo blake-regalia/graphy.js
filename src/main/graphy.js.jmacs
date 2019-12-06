@@ -786,20 +786,27 @@ if(module === require.main) {
 			category: S_CATEGORY_DATA,
 			overview: 'Skip over some amount of quads in the stream(s)',
 			description: [
-				'Skip over some amount of data for each input stream before piping the remainder as usual.',
+				'Skip over some amount of data (quads by default) for each input stream before piping the remainder as usual.',
 			],
+			syntax: '<size>',
+			positionals: {
+				size: {
+					describe: 'the number of things to skip',
+					type: 'number',
+				},
+			},
 			options: {
 				q: {
-					type: 'number',
+					type: 'boolean',
 					alias: ['quads', 't', 'triples'],
-					describe: 'skip the given number of quads from the top of a stream',
+					describe: 'skip the given number of quads',
 					conflicts: ['s'],
 				},
 
 				s: {
 					type: 'number',
 					alias: ['subjects'],
-					describe: 'skip quads until the given number of distinct subjects have been encountered from the top of a stream',
+					describe: 'skip quads until the given number of distinct subjects have been encountered',
 					conflicts: ['q'],
 				},
 
@@ -828,6 +835,8 @@ if(module === require.main) {
 			},
 
 			command(g_argv, a_inputs, fe_command) {
+				debugger;
+
 				// count subjects
 				if(g_argv.subjects) {
 					let n_subjects = g_argv.subjects || 1;
@@ -1728,8 +1737,12 @@ if(module === require.main) {
 						.join('\n\n');
 				}
 
+				// let s_positionals = '';
+				// if(g_command.positionals) {
+				// }
+
 				let s_usage = [s_command, ...(g_command.alias? [g_command.alias]: [])]
-					.reduce((s_out, s, i) => `${s_out}\n${i? 'Or': 'Usage'}:  $0${S_TRANSFORM_TYPE_NNSQ === g_command.type? '': ' [...]'} ${s} [OPTIONS] [ / COMMAND]*`, '');
+					.reduce((s_out, s, i) => `${s_out}\n${i? 'Or': 'Usage'}:  $0${S_TRANSFORM_TYPE_NNSQ === g_command.type? '': ' [...]'} ${s}${g_command.syntax? ' '+g_command.syntax: ''} [OPTIONS] [ / COMMAND]*`, '');
 
 				let s_examples = '';
 				if(g_command.examples && g_command.examples.length) {
@@ -1752,7 +1765,7 @@ if(module === require.main) {
 				// build yargs
 				let g_argv = mk_yargs()
 					.strict()
-					.usage(s_usage+`\n${s_describe}`)
+					.usage(s_usage+'\n'+s_describe)
 					.options(g_options)
 					.help()
 					.epilog(s_examples)

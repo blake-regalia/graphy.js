@@ -1171,8 +1171,84 @@ let g_raw = {
 const factory = module.exports = {
 	concise,
 
+	adopt(dc_factory) {
+		let dc_extend = Object.create(dc_factory);
+		let b_use_extend = false;
+
+		if('function' !== typeof dc_factory.boolean) {
+			let kt_xsd_boolean = dc_factory.namedNode('@{P_IRI_XSD}boolean');
+			dc_extend.boolean = b_value => dc_factory.literal(b_value, kt_xsd_boolean);
+			b_use_extend = true;
+		}
+
+		if('function' !== typeof dc_factory.double) {
+			let kt_xsd_double = dc_factory.namedNode('@{P_IRI_XSD}double');
+			dc_extend.double = s_value => dc_factory.double(s_value, kt_xsd_double);
+			b_use_extend = true;
+		}
+
+		if('function' !== typeof dc_factory.decimal) {
+			let kt_xsd_decimal = dc_factory.namedNode('@{P_IRI_XSD}decimal');
+			dc_extend.decimal = s_value => dc_factory.decimal(s_value, kt_xsd_decimal);
+			b_use_extend = true;
+		}
+
+		if('function' !== typeof dc_factory.integer) {
+			let kt_xsd_integer = dc_factory.namedNode('@{P_IRI_XSD}integer');
+			dc_extend.integer = s_value => dc_factory.integer(s_value, kt_xsd_integer);
+			b_use_extend = true;
+		}
+
+		if('function' !== typeof dc_factory.simpleLiteral) {
+			dc_extend.simpleLiteral = s_value => dc_factory.literal(s_value);
+			b_use_extend = true;
+		}
+
+		if('function' !== typeof dc_factory.languagedLiteral) {
+			dc_extend.languagedLiteral = (s_value, s_lang) => dc_factory.literal(s_value, s_lang);
+			b_use_extend = true;
+		}
+
+		if('function' !== typeof dc_factory.datatypedLiteral) {
+			dc_extend.datatypedLiteral = (s_value, kt_datatype) => dc_factory.literal(s_value, kt_datatype);
+			b_use_extend = true;
+		}
+
+		if(b_use_extend) {
+			return dc_extend;
+		}
+		else {
+			return dc_factory;
+		}
+	},
+
 	raw: g_raw,
-	unfiltered: g_raw,
+	unfiltered: {
+		...g_raw,
+		literal(s_value, z_datatype_or_lang) {
+			if(!z_datatype_or_lang || KT_XSD_STRING.equals(z_datatype_or_lang)) {
+				return new SimpleLiteral(s_value);
+			}
+			else if('string' === typeof z_datatype_or_lang) {
+				return new LanguagedLiteral(s_value, z_datatype_or_lang);
+			}
+			else {
+				return new ExplicitlyDatatypedLiteral(s_value, z_datatype_or_lang);
+			}
+		},
+
+		simpleLiteral(s_value) {
+			return new SimpleLiteral(s_value);
+		},
+
+		languagedLiteral(s_value, s_language) {
+			return new LanguagedLiteral(s_value, s_language);
+		},
+
+		datatypedLiteral(s_value, kt_datatype) {
+			return new ExplicitlyDatatypedLiteral(s_value, kt_datatype);
+		},
+	},
 
 	number(x) {
 		// not finite or not a number
