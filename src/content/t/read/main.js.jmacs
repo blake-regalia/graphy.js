@@ -2002,10 +2002,6 @@ class Reader {
 		// ref character
 		let x = s[i];
 
-		@- B_UPGRADE_FACTORY
-			let w_post = null;
-		@;
-
 		// next token indicates datatype or langtag
 		@{if_char('^', '@')}
 			// '^^' datatype
@@ -2015,7 +2011,7 @@ class Reader {
 			// '@' language tag
 			@{else_if_match('R_LANGTAG', 'm_langtag')}
 				@- B_UPGRADE_FACTORY
-					w_post = m_langtag[1];
+					this._kt_object = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
 				@:
 					// set literal language type
 					this._kt_object.language = m_langtag[1].toLowerCase();
@@ -2029,12 +2025,13 @@ class Reader {
 			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
+		@- B_UPGRADE_FACTORY
+			@{else_any()}
+				this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+		@;
+
 		// not datatype, not language tag => that's okay! those are optional
 		@{end_else()}
-
-		@- B_UPGRADE_FACTORY
-			this._kt_object = this._dc_factory.literal(this._s_literal, w_post);
-		@;
 
 		// goto end of statement state
 		@{end_of_statement()}
@@ -2091,7 +2088,7 @@ class Reader {
 		@{else_retry()}
 
 		@- B_UPGRADE_FACTORY
-			this._kt_object = this._dc_factory.literal(this._s_literal, w_datatype);
+			this._kt_object = this._dc_factory.datatypedLiteral(this._s_literal, w_datatype);
 		@;
 
 		// goto end of statement state

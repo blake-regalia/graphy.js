@@ -229,10 +229,10 @@ class @{S_LABEL}_Writer extends Writable {
 
 				// serialize open graph
 				let st_graph = factory.c1_node(sc1_graph, h_prefixes).terse(h_prefixes);
-				s_write += s_graph_keyword+(st_graph
-					? st_graph+' {'
-					: (b_simplify_default_graph? '': '{')
-				)+'\n';
+
+				s_write += st_graph
+					? s_graph_keyword+st_graph+' {\n'
+					: (b_simplify_default_graph? '': s_graph_keyword+'{\n');
 
 				// simplify default graph implies no indent
 				let s_indent_root = (!st_graph && b_simplify_default_graph)? '': s_indent;
@@ -385,7 +385,6 @@ class @{S_LABEL}_Writer extends Writable {
 		@:
 			s_write += '\n';
 		@;
-
 		return s_write;
 	}
 @;
