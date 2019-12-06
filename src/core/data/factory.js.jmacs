@@ -974,15 +974,19 @@ function BlankNode(s_value, b_anonymous=false) {
 	Object.create(GenericTerm.prototype), {
 		termType: 'BlankNode',
 		isBlankNode: true,
+
 		concise() {
 			return '_:'+this.value;
 		},
+
 		terse() {
 			return '_:'+this.value;
 		},
+
 		verbose() {
 			return '_:'+this.value;
 		},
+
 		isolate() {
 			return {
 				termType: 'BlankNode',
@@ -997,21 +1001,26 @@ EphemeralBlankNode.prototype = Object.assign(
 	Object.create(BlankNode.prototype), {
 		isAnonymous: true,
 		isEphemeral: true,
+
 		concise() {
 			return '_:#'+this.value;
 		},
+
 		terse() {
 			return '[]';
 		},
+
 		verbose() {
 			return '_:'+this.value;
 		},
+
 		isolate() {
 			return {
 				termType: 'BlankNode',
 				value: this.value,
 			};
 		},
+
 		equals() {
 			return false;
 		},
@@ -1028,15 +1037,19 @@ DefaultGraph.prototype = Object.assign(
 		value: '',
 		termType: 'DefaultGraph',
 		isDefaultGraph: true,
+
 		concise() {
 			return '*';
 		},
+
 		terse() {
 			return '';
 		},
+
 		verbose() {
 			return '';
 		},
+
 		isolate() {
 			return {
 				termType: 'DefaultGraph',
@@ -1050,15 +1063,19 @@ NoGraph.prototype = Object.assign(
 	Object.create(GenericTerm.prototype), {
 		value: '',
 		termType: 'NoGraph',
+
 		concise() {
 			return '';
 		},
+
 		terse() {
 			return '';
 		},
+
 		verbose() {
 			return '';
 		},
+
 		isolate() {
 			return {
 				termType: 'NoGraph',
@@ -1075,6 +1092,7 @@ function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 	this.graph = h_graph;
 } Object.assign(Quad.prototype, {
 	isGraphyQuad: true,
+
 	equals(z_other) {
 		return z_other
 			? this === z_other
@@ -1084,9 +1102,11 @@ function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 					&& this.graph.equals(z_other.graph))
 			: false;
 	},
+
 	valueOf() {
 		return this.verbose();
 	},
+
 	concise(h_prefixes={}) {
 		return [
 			this.subject.concise(h_prefixes),
@@ -1095,6 +1115,7 @@ function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 			this.graph.concise(h_prefixes),
 		];
 	},
+
 	terse(h_prefixes) {
 		let b_default_graph = this.graph.isDefaultGraph;
 		return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
@@ -1103,12 +1124,14 @@ function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 			+' '+this.object.terse(h_prefixes)+' .'
 			+(b_default_graph? '': ' }');
 	},
+
 	verbose() {
 		return this.subject.verbose()
 			+' '+this.predicate.verbose()
 			+' '+this.object.verbose()
 			+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
 	},
+
 	isolate() {
 		return {
 			subject: this.subject.isolate(),
@@ -1141,15 +1164,19 @@ let g_raw = {
 	namedNode(p_iri) {
 		return new NamedNode(p_iri);
 	},
+
 	blankNode(s_label, b_anonymous) {
 		return new BlankNode(s_label, b_anonymous);
 	},
+
 	literal(s_value) {
 		return new RawLiteral(s_value);
 	},
+
 	defaultGraph() {
 		return new DefaultGraph();
 	},
+
 	quad(kt_subject, kt_predicate, kt_object, kt_graph) {
 		return new Quad(kt_subject, kt_predicate, kt_object, kt_graph || KT_DEFAULT_GRAPH);
 	},

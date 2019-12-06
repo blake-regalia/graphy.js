@@ -22,6 +22,12 @@ const trig_write = require('@graphy/content.trig.write');
 const factory = require('@graphy/core.data.factory');
 const dataset_tree = require('@graphy/util.dataset.tree');
 
+const write_preview = () => trig_write({
+	style: {
+		simplify_default_graph: true,
+	},
+});
+
 // prefixes
 const H_PREFIXES = {
 	rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
@@ -205,16 +211,30 @@ class TestCase_EvalPositive extends TestCase_Positive {
 							}
 							// mismatch; clarify
 							else {
+								debugger;
 								let k_actual_missing = k_tree_expected.minus(k_tree_actual);
 								let k_actual_misplaced = k_tree_actual.minus(k_tree_expected);
+								let k_present = k_tree_actual.intersection(k_tree_expected);
 
 								let s_error = '';
+
+								if(k_tree_actual.size) {
+									let st_actual = await k_tree_actual.end().pipe(write_preview()).bucket();
+									s_error += `entire actual quad set:\n${st_actual}`;
+								}
+
+								if(k_present.size) {
+									let st_present = await k_present.end().pipe(write_preview()).bucket();
+									s_error += `actual quad set has that should be there:\n${st_present}`;
+								}
+
 								if(k_actual_missing.size) {
-									let st_missing = await k_actual_missing.end().pipe(trig_write()).bucket();
+									let st_missing = await k_actual_missing.end().pipe(write_preview()).bucket();
 									s_error += `actual quad set missing:\n${st_missing}`;
 								}
+
 								if(k_actual_misplaced.size) {
-									let st_misplaced = await k_actual_misplaced.end().pipe(trig_write()).bucket();
+									let st_misplaced = await k_actual_misplaced.end().pipe(write_preview()).bucket();
 									s_error += `\nactual quad set has quads that don't belong:\n${st_misplaced}`;
 								}
 

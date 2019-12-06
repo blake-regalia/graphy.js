@@ -9,7 +9,7 @@ const util = require('./util.js');
 
 const R_WANTS_PREFIX = /^\s*[(:_[]/;
 
-class reader_suite {
+class ReaderSuite {
 	constructor(gc_suite, f_suite) {
 		let s_prefix_string = '';
 		if(gc_suite.prefixes) {
@@ -182,5 +182,5 @@ class reader_suite {
 }
 
 module.exports = function(...a_args) {
-	return new reader_suite(...a_args);
+	return new ReaderSuite(...a_args);
 };

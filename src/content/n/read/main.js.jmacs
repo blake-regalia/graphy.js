@@ -442,7 +442,7 @@ class Reader {
 
 				languagedLiteral: dc_factory.languagedLiteral,
 
-				datatypedLiteral: dc_factory.datatypedLiteral,
+				datatypedLiteral: (s_contents, p_datatype) => dc_factory.datatypedLiteral(s_contents, dc_factory.namedNode(p_datatype)),
 
 				@*{
 					for(let s_type of ['simple', 'languaged', 'datatyped']) {
@@ -454,7 +454,7 @@ class Reader {
 						}
 						else if('datatyped' === s_type) {
 							sj_extra = ', p_datatype';
-							sj_thru = /* syntax: js */ `, k_self.namedNode(p_datatype)`;
+							sj_thru = /* syntax: js */ `, dc_factory.namedNode(p_datatype)`;
 						}
 
 						yield /* syntax: js.object-literal */ `

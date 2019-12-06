@@ -696,6 +696,13 @@ class Reader {
 			let dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
 
 			let kt_default_graph = dc_factory.defaultGraph();
+
+			// if data factory is not graphy, it might be returning the same object on each call to .defaultGraph()
+			if(dc_factory !== factory.unfiltered) {
+				// do not trust it, create a new object
+				kt_default_graph = Object.create(kt_default_graph);
+			}
+
 			let kt_rdf_first = dc_factory.namedNode('@{P_IRI_RDF}first');
 
 			let blankNode = dc_factory.blankNode;
@@ -1312,7 +1319,7 @@ class Reader {
 
 			@-QUADS
 				// not inside block
-				if(@{terms_equal(SJ_DEFAULT_GRAPH, 'this._kt_graph')}) {
+				if(@{SJ_DEFAULT_GRAPH} === this._kt_graph) {
 					@{goto('block')}
 				}
 				// inside block
@@ -1470,12 +1477,13 @@ class Reader {
 
 		@{triples()}
 
-		@// for trig only
-		@- TRIG
-			@{else_if_match('R_CHAR_CLOSE')}
-				this._kt_graph = @{SJ_DEFAULT_GRAPH};
-				@{goto('block')}
-		@;
+		@// dead code
+		@// @// for trig only
+		@// @- TRIG
+		@// 	@{else_if_match('R_CHAR_CLOSE')}
+		@// 		this._kt_graph = @{SJ_DEFAULT_GRAPH};
+		@// 		@{goto('block')}
+		@// @;
 
 		// comment
 		@{else_if_match('R_COMMENT', 'm_comment', true)}
@@ -2160,7 +2168,7 @@ class Reader {
 			@- TTL
 				@{goto(S_STATE_PRIMARY)}
 			@:
-				return (@{terms_equal(SJ_DEFAULT_GRAPH, 'this._kt_graph')})? this.@{S_STATE_PRIMARY}(): this.statement();
+				return (@{SJ_DEFAULT_GRAPH} === this._kt_graph)? this.@{S_STATE_PRIMARY}(): this.statement();
 			@;
 
 		// ']' end of property-object pairs
