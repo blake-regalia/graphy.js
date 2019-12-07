@@ -97,12 +97,12 @@ class Scribable extends stream.Transform {
 		let s_write = '';
 
 		// each graph in quads hash
-		for(let sv1_graph in hc4r_quads) {
+		for(let sc1_graph in hc4r_quads) {
 			// non-default graph; union from dataset
-			if('*' !== sv1_graph) a_unions.push(sv1_graph);
+			if('*' !== sc1_graph) a_unions.push(sc1_graph);
 			
 			// add all quads from graph
-			s_write += this._serialize_c3r(hc4r_quads[sv1_graph]);
+			s_write += this._serialize_c3r(hc4r_quads[sc1_graph]);
 		}
 
 		// a union was performed

@@ -86,46 +86,98 @@ class @{S_LABEL}_Scriber extends Scribable {
 		}
 	}
 
+	@- B_QUADS
+		_serialize_c4r(hc4r_quads) {
+			let h_prefixes = this._h_prefixes;
+			let sv_build = '';
+
+			// each graph in quads hash
+			for(let sc1_graph in hc4r_quads) {
+				// quick convert graph from concise term to verbose
+				let sv1_graph = c1_to_nt(sc1_graph, h_prefixes, true);
+
+				// graph string
+				let sv_graph = sv1_graph? ' '+sv1_graph: '';
+
+				// each subject
+				let hc3r_triples = hc4r_quads[sc1_graph];
+				for(let sc1_subject in hc3r_triples) {
+					// quick convert subject from concise term to verbose
+					let sv1_subject = c1_to_nt(sc1_subject, h_prefixes, true);
+
+					// not a term; skip
+					if(!sv1_subject) continue;
+
+					// each predicate
+					let hc2r_pairs = hc3r_triples[sc1_subject];
+					for(let sc1_predicate in hc2r_pairs) {
+						// quick convert predicate from concise term to verbose
+						let sv1_predicate = c1_to_nt(sc1_predicate, h_prefixes, true);
+
+						// not a term; skip
+						if(!sv1_predicate) continue;
+
+						// opening string
+						let sv_opening = sv1_subject+' '+sv1_predicate+' ';
+
+						// each object
+						for(let sc1_object of hc2r_pairs[sc1_predicate]) {
+							// quick convert object from concise term to verbose
+							let sv1_object = c1_to_nt(sc1_object, h_prefixes, true);
+
+							// not a term; skip
+							if(!sv1_object) continue;
+
+							sv_build += sv_opening+sv1_object+sv_graph+' .\n';
+						}
+					}
+				}
+			}
+
+			return sv_build;
+		}
+	@;
+
 	_serialize_c3r(hc3r_triples) {
 		// ref prefixes
 		let h_prefixes = this._h_prefixes;
 
 		// string building
-		let st_build = '';
+		let sv_build = '';
 
 		for(let sc1_subject in hc3r_triples) {
-			// quick convert subject from concise term to terse
-			let st1_subject = c1_to_nt(sc1_subject, h_prefixes, true);
+			// quick convert subject from concise term to verbose
+			let sv1_subject = c1_to_nt(sc1_subject, h_prefixes, true);
 
 			// not a term; skip
-			if(!st1_subject) continue;
+			if(!sv1_subject) continue;
 
 			// each predicate
-			let hc2x_pairs = hc3r_triples[sc1_subject];
-			for(let sc1_predicate in hc2x_pairs) {
-				// quick convert predicate from concise term to terse
-				let st1_predicate = c1_to_nt(sc1_predicate, h_prefixes, true);
+			let hc2r_pairs = hc3r_triples[sc1_subject];
+			for(let sc1_predicate in hc2r_pairs) {
+				// quick convert predicate from concise term to verbose
+				let sv1_predicate = c1_to_nt(sc1_predicate, h_prefixes, true);
 
 				// not a term; skip
-				if(!st1_predicate) continue;
+				if(!sv1_predicate) continue;
 
 				// opening string
-				let st_opening = st1_subject+' '+st1_predicate+' ';
+				let sv_opening = sv1_subject+' '+sv1_predicate+' ';
 
 				// each object
-				for(let sc1_object of hc2x_pairs[sc1_predicate]) {
-					// quick convert object from concise term to terse
-					let st1_object = c1_to_nt(sc1_object, h_prefixes, true);
+				for(let sc1_object of hc2r_pairs[sc1_predicate]) {
+					// quick convert object from concise term to verbose
+					let sv1_object = c1_to_nt(sc1_object, h_prefixes, true);
 
 					// not a term; skip
-					if(!st1_object) continue;
+					if(!sv1_object) continue;
 
-					st_build += st_opening+st1_object+' .\n';
+					sv_build += sv_opening+sv1_object+' .\n';
 				}
 			}
 		}
 
-		return st_build;
+		return sv_build;
 	}
 
 	_serialize_quad(g_quad) {

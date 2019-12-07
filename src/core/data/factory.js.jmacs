@@ -315,7 +315,16 @@ function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 		case '>': return '<'+sc1_in.slice(1)+'>';
 
 		// blank node
-		case '_': return sc1_in;
+		case '_': {
+			// ephemeral hint
+			if(sc1_in.length <= 2 || '#' === sc1_in[2]) {
+				return (new EphemeralBlankNode())[b_verbose? 'verbose': 'terse']();
+			}
+			// labeled
+			else {
+				return sc1_in;
+			}
+		}
 
 		// simple literal
 		case '"': return JSON.stringify(sc1_in.slice(1));
@@ -1511,26 +1520,26 @@ const factory = module.exports = {
 
 	c1_to_nt,
 
-	* quads(hct_quads, h_prefixes={}) {
-		for(let sc1_graph in hct_quads) {
-			yield* factory.triples(hct_quads[sc1_graph], h_prefixes, sc1_graph);
+	* quads(hc4_quads, h_prefixes={}) {
+		for(let sc1_graph in hc4_quads) {
+			yield* factory.triples(hc4_quads[sc1_graph], h_prefixes, sc1_graph);
 		}
 	},
 
-	* triples(hc3x_triples, h_prefixes={}, sc1_graph='*') {
+	* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
 		let k_graph = factory.c1(sc1_graph, h_prefixes);
-		for(let sc1_subject in hc3x_triples) {
+		for(let sc1_subject in hc3_triples) {
 			let k_subject = factory.c1(sc1_subject, h_prefixes);
-			let hc2x_pairs = hc3x_triples[sc1_subject];
+			let hc2_pairs = hc3_triples[sc1_subject];
 
-			yield* factory.pairs(k_graph, k_subject, hc2x_pairs, h_prefixes);
+			yield* factory.pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
 		}
 	},
 
-	* pairs(k_graph, k_subject, hct_pairs, h_prefixes={}) {
-		for(let sc1_predicate in hct_pairs) {
+	* pairs(k_graph, k_subject, hc2_pairs, h_prefixes={}) {
+		for(let sc1_predicate in hc2_pairs) {
 			let k_predicate = factory.c1(sc1_predicate, h_prefixes);
-			let z_objects = hct_pairs[sc1_predicate];
+			let z_objects = hc2_pairs[sc1_predicate];
 
 			yield* factory.objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes);
 		}

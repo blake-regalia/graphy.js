@@ -1,12 +1,9 @@
 /* eslint quote-props: 0 */
 /* eslint-env mocha */
-const expect = require('chai').expect;
-
-const factory = require('@graphy/core.data.factory');
 const trig_read = require('@graphy/content.trig.read');
 
-const nq_read = require('@graphy/content.nq.read');
-const nq_scribe = require('@graphy/content.nq.scribe');
+const nt_read = require('@graphy/content.nt.read');
+const nt_scribe = require('@graphy/content.nt.scribe');
 
 const serializer_suite = require('../helper/serializer.js');
 const util = require('../helper/util.js');
@@ -20,79 +17,16 @@ const H_PREFIXES = {
 	'': 'z://y/',
 };
 
-let a_items = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-
-const modes = (h_tree) => {
-	let g_mods = {
-		'w/o graph': g => () => ({
-			...g,
-			type: 'c3r',
-		}),
-		'w/ named graph': g => () => ({
-			...g,
-			write: {
-				':graph': g.write,
-			},
-			validate: `:graph { ${g.validate} }`,
-		}),
-		'w/ anonymous blank node graph': g => () => ({
-			...g,
-			write: {
-				'_:': g.write,
-			},
-			validate: `[] { ${g.validate} }`,
-		}),
-		'w/ labeled blank node graph': g => () => ({
-			...g,
-			write: {
-				'_:graph': g.write,
-			},
-			validate: `_:graph { ${g.validate} }`,
-		}),
-	};
-
-
-	let g_outs = Object.keys(g_mods)
-		.reduce((h_out, s_key) => ({
-			...h_out,
-			[s_key]: {},
-		}), {});
-
-	util.map_tree(h_tree, (s_label, f_leaf, a_path) => {
-		let a_nodes = Object.values(g_outs);
-
-		for(let s_key of a_path) {
-			if(!(s_key in a_nodes[0])) a_nodes.forEach(h_node => h_node[s_key] = {});
-			a_nodes = a_nodes.map(h_node => h_node[s_key]);
-		}
-
-		let {
-			write: g_write,
-			validate: s_validate,
-		} = f_leaf();
-
-
-		a_nodes.forEach((h_node, i_node) => {
-			let s_mode = Object.keys(g_outs)[i_node];
-			describe(s_mode, () => {
-				h_node[s_label] = g_mods[s_mode](f_leaf());
-			});
-		});
-	});
-
-	return g_outs;
-};
-
 serializer_suite({
-	alias: 'nq',
+	alias: 'nt',
 	verb: 'scribe',
-	type: 'c4r',
-	serializer: nq_scribe,
-	interpreter: nq_read,
+	type: 'c3r',
+	serializer: nt_scribe,
+	interpreter: nt_read,
 	validator: trig_read,
 	prefixes: H_PREFIXES,
 }, (writer) => {
-	writer.validates(modes({
+	writer.validates({
 		'objects': {
 			'c1 strings': () => ({
 				write: {
@@ -135,7 +69,7 @@ serializer_suite({
 				`,
 			}),
 		},
-	}));
+	});
 
 	writer.events({
 		'prefixes': () => ({
@@ -168,16 +102,11 @@ serializer_suite({
 			],
 		}),
 
-		'c4r separate graphs': () => ({
+		'c4r default graph': () => ({
 			writes: [
 				{
 					type: 'c4r',
 					value: {
-						'>z://y/g': {
-							'>z://y/a': {
-								'>z://y/b': ['>z://y/c'],
-							},
-						},
 						'*': {
 							'>z://y/a': {
 								'>z://y/b': ['>z://y/d'],
@@ -187,9 +116,6 @@ serializer_suite({
 				},
 			],
 			events: [
-				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/c', 'z://y/g']]);
-				}],
 				['data', (g_quad) => {
 					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/d', '*']]);
 				}],
@@ -266,11 +192,6 @@ serializer_suite({
 						{
 							type: 'c4r',
 							value: {
-								'>z://y/g': {
-									'>z://y/a': {
-										'>z://y/b': ['>z://y/cg'],
-									},
-								},
 								'*': {
 									'>z://y/a': {
 										'>z://y/b': ['>z://y/d'],
@@ -284,9 +205,6 @@ serializer_suite({
 			events: [
 				['data', (g_quad) => {
 					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/c', '*']]);
-				}],
-				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/cg', 'z://y/g']]);
 				}],
 				['data', (g_quad) => {
 					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/d', '*']]);
@@ -323,11 +241,6 @@ serializer_suite({
 				{
 					type: 'c4r',
 					value: {
-						'>z://y/g': {
-							'>z://y/a': {
-								'>z://y/b': ['>z://y/cg'],
-							},
-						},
 						'*': {
 							'>z://y/a': {
 								'>z://y/b': ['>z://y/d'],
@@ -344,9 +257,6 @@ serializer_suite({
 			events: [
 				['data', (g_quad) => {
 					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/c', '*']]);
-				}],
-				['data', (g_quad) => {
-					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/cg', 'z://y/g']]);
 				}],
 				['data', (g_quad) => {
 					util.validate_quads([g_quad], [['z://y/a', 'z://y/b', 'z://y/d', '*']]);
@@ -396,6 +306,7 @@ serializer_suite({
 		}),
 
 		'c4r default graph': () => ({
+			type: 'c4r',
 			write: {
 				'*': {
 					'demo:Banana': {

@@ -111,13 +111,15 @@ class @{S_LABEL}_Scriber extends Scribable {
 		return st_prefixes+'\n';
 	}
 
+
 	_serialize_c3r(hc3r_triples) {
 		// ref prefixes
 		let h_prefixes = this._h_prefixes;
 
 		// string building
-		let st_build = '';
+		let st_quads = '';
 
+@> serialize_c3r(b_indent=false)
 		let b_subjects = false;
 
 		for(let sc1_subject in hc3r_triples) {
@@ -127,17 +129,17 @@ class @{S_LABEL}_Scriber extends Scribable {
 			// not a term; skip
 			if(!st1_subject) continue;
 
-			if(b_subjects) st_build += ' .\n\n';
-			b_subjects = true;
+			let st_triples = '';
+			if(b_subjects) st_triples += ' .\n\n';
 
 			// 
-			st_build += st1_subject+' ';
+			st_triples += @{b_indent? `'\t'+`: ''}st1_subject+' ';
 
 			let b_predicates = false;
 
 			// each predicate
-			let hc2x_pairs = hc3r_triples[sc1_subject];
-			for(let sc1_predicate in hc2x_pairs) {
+			let hc2r_pairs = hc3r_triples[sc1_subject];
+			for(let sc1_predicate in hc2r_pairs) {
 				// quick convert predicate from concise term to terse
 				let st1_predicate = c1_to_nt(sc1_predicate, h_prefixes);
 
@@ -145,30 +147,86 @@ class @{S_LABEL}_Scriber extends Scribable {
 				if(!st1_predicate) continue;
 
 				// 
-				if(b_predicates) st_build += ' ;\n\t';
-				b_predicates = true;
+				let st_pairs = '';
+				if(b_predicates) st_pairs += ' ;\n\t@{b_indent? '\t': ''}';
 
-				st_build += st1_predicate+' ';
+				// pairs output
+				st_pairs += st1_predicate+' ';
 
 				let b_objects = false;
 
 				// each object
-				for(let sc1_object of hc2x_pairs[sc1_predicate]) {
+				for(let sc1_object of hc2r_pairs[sc1_predicate]) {
 					// quick convert object from concise term to terse
 					let st1_object = c1_to_nt(sc1_object, h_prefixes);
 
 					// not a term; skip
 					if(!st1_object) continue;
 
-					if(b_objects) st_build += ', ';
+					if(b_objects) st_pairs += ', ';
 					b_objects = true;
 
-					st_build += st1_object;
+					// add object to pairs
+					st_pairs += st1_object;
+				}
+
+				// objects written; add pairs to output
+				if(b_objects) {
+					st_triples += st_pairs;
+					b_predicates = true;
 				}
 			}
-		}
 
-		if(b_subjects) st_build += ' .\n\n';
+			// predicates written; add triples to output
+			if(b_predicates) {
+				st_quads += st_triples;
+				b_subjects = true;
+			}
+		}
+@;
+
+		@{serialize_c3r()}
+
+		// subjects written; terminate
+		if(b_subjects) st_quads += ' .\n\n';
+
+		// reset all markers
+		@- B_QUADS
+			this._yt_graph = KT_DEFAULT_GRAPH;
+		@;
+		this._yt_subject = null;
+		this._yt_predicate = null;
+
+		return st_quads;
+	}
+
+	_serialize_c4r(hc4r_quads) {
+		// ref prefixes
+		let h_prefixes = this._h_prefixes;
+
+		// string building
+		let st_build = '';
+
+		let b_graphs = false;
+
+		for(let sc1_graph in hc4r_quads) {
+			// quick convert subject from concise term to terse
+			let st1_graph = c1_to_nt(sc1_graph, h_prefixes);
+
+			// not a term; skip
+			if('*' !== sc1_graph && !st1_graph) continue;
+
+			st_build += st1_graph+' {\n';
+			
+			let st_quads = '';
+			let hc3r_triples = hc4r_quads[sc1_graph];
+			@{serialize_c3r(true)}
+
+			if(b_subjects) st_build += st_quads+' .\n';
+
+			// subjects written; terminate
+			st_build += '}\n\n';
+		}
 
 		// reset all markers
 		@- B_QUADS
