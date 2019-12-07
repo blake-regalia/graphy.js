@@ -216,7 +216,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 			// not a term; skip
 			if('*' !== sc1_graph && !st1_graph) continue;
 
-			st_build += st1_graph+' {\n';
+			st_build += (st1_graph? st1_graph+' ': '')+'{\n';
 			
 			let st_quads = '';
 			let hc3r_triples = hc4r_quads[sc1_graph];

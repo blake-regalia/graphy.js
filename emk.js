@@ -246,7 +246,8 @@ const jmacs_lint = (a_deps=[], a_deps_strict=[]) => ({
 	],
 	run: /* syntax: bash */ `
 		npx jmacs $1 > $@ \
-			&& ${eslint()}
+			&& ${eslint()} \
+			&& node emk/pretty-print.js $@
 	`,
 });
 
@@ -724,7 +725,7 @@ module.exports = async() => {
 											},
 											description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
 											bin: {
-												[s_super]: 'main.js',
+												[s_super]: 'cli.js',
 											},
 										})};
 
@@ -754,7 +755,9 @@ module.exports = async() => {
 							},
 						},
 
-						'main.js': () => jmacs_lint([`src/main/graphy.js.jmacs`]),
+						'api.js': () => jmacs_lint([`src/main/graphy.js.jmacs`]),
+
+						'cli.js': () => jmacs_lint([`src/cli/cli.js.jmacs`]),
 
 						// quad-expression parser
 						'quad-expression.js': () => ({

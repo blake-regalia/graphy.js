@@ -250,7 +250,7 @@ writer_suite({
 					},
 				},
 				config: {
-					collections: {
+					lists: {
 						first: '>first',
 						rest: '>rest',
 						nil: '>nil',
@@ -311,7 +311,7 @@ writer_suite({
 					},
 				},
 				config: {
-					collections: {
+					lists: {
 						first: '>first',
 						rest: '>rest',
 						nil: '>nil',
