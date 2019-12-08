@@ -200,43 +200,45 @@ class @{S_LABEL}_Scriber extends Scribable {
 		return st_quads;
 	}
 
-	_serialize_c4r(hc4r_quads) {
-		// ref prefixes
-		let h_prefixes = this._h_prefixes;
+	@- B_QUADS
+		_serialize_c4r(hc4r_quads) {
+			// ref prefixes
+			let h_prefixes = this._h_prefixes;
 
-		// string building
-		let st_build = '';
+			// string building
+			let st_build = '';
 
-		let b_graphs = false;
+			let b_graphs = false;
 
-		for(let sc1_graph in hc4r_quads) {
-			// quick convert subject from concise term to terse
-			let st1_graph = c1_to_nt(sc1_graph, h_prefixes);
+			for(let sc1_graph in hc4r_quads) {
+				// quick convert subject from concise term to terse
+				let st1_graph = c1_to_nt(sc1_graph, h_prefixes);
 
-			// not a term; skip
-			if('*' !== sc1_graph && !st1_graph) continue;
+				// not a term; skip
+				if('*' !== sc1_graph && !st1_graph) continue;
 
-			st_build += (st1_graph? st1_graph+' ': '')+'{\n';
-			
-			let st_quads = '';
-			let hc3r_triples = hc4r_quads[sc1_graph];
-			@{serialize_c3r(true)}
+				st_build += (st1_graph? st1_graph+' ': '')+'{\n';
+				
+				let st_quads = '';
+				let hc3r_triples = hc4r_quads[sc1_graph];
+				@{serialize_c3r(true)}
 
-			if(b_subjects) st_build += st_quads+' .\n';
+				if(b_subjects) st_build += st_quads+' .\n';
 
-			// subjects written; terminate
-			st_build += '}\n\n';
+				// subjects written; terminate
+				st_build += '}\n\n';
+			}
+
+			// reset all markers
+			@- B_QUADS
+				this._yt_graph = KT_DEFAULT_GRAPH;
+			@;
+			this._yt_subject = null;
+			this._yt_predicate = null;
+
+			return st_build;
 		}
-
-		// reset all markers
-		@- B_QUADS
-			this._yt_graph = KT_DEFAULT_GRAPH;
-		@;
-		this._yt_subject = null;
-		this._yt_predicate = null;
-
-		return st_build;
-	}
+	@;
 
 	_serialize_quad(g_quad) {
 		let h_prefixes = this._h_prefixes;

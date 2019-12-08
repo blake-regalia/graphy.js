@@ -154,6 +154,8 @@ This section documents the 'verb' part of each content module. A 'verb' refers t
 #### Difference between `scribe` and `write` verbs
 The [`scribe`](#verb_scribe) and [`write`](#verb_write) verbs are both for serializing RDF to a writable stream. However, `scribe` is the more basic serializer built for speed, while `write` is the more advanced serializer built to support rich features such as stylized output (e.g., custom spacing), serializing comments, RDF collections, and so forth.
 
+Additionally, `write` employs several safety checks that help prevent serializing malformed RDF from faulty write input (e.g., literals in subject position, blank nodes or literals in predicate position, invalid IRI strings, and so on), whereas `scribe` does not perform such safety checks.
+
 The [`scribe`](#verb_scribe) verb supports the following [WritableDataEvent](#interface_writable-data-event) types:
  - `'prefixes'`
  - `'quad'`

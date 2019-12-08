@@ -86,12 +86,13 @@ const modes = (h_tree) => {
 
 serializer_suite({
 	alias: 'trig',
+	verb: 'scribe',
 	type: 'c4r',
 	serializer: trig_scribe,
 	validator: trig_read,
 	prefixes: H_PREFIXES,
-}, (writer) => {
-	writer.events(modes({
+}, (serializer) => {
+	serializer.events(modes({
 		'prefixes': () => ({
 			writes: [
 				{
@@ -311,7 +312,7 @@ serializer_suite({
 		}),
 	}));
 
-	writer.outputs({
+	serializer.outputs({
 		'c3r no graph': () => ({
 			type: 'c3r',
 			write: {

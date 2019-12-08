@@ -1038,7 +1038,37 @@ Object.defineProperty(EphemeralBlankNode.prototype, 'value', {
 	get() {
 		return '_'+uuid_v4();
 	},
-})
+});
+
+class Variable extends GenericTerm {
+	constructor(s_label) {
+		super();
+		this.value = s_label;
+	}
+
+	concise() {
+		return '?'+this.value;
+	}
+
+	terse() {
+		throw new Error(`Cannot call .terse() on 'Variable' term type`);
+	}
+
+	verbose() {
+		throw new Error(`Cannot call .verbose() on 'Variable' term type`);
+	}
+
+	isolate() {
+		return {
+			termType: 'Variable',
+			value: this.value,
+		};
+	}
+} Object.assign(Variable.prototype, {
+	termType: 'Variable',
+	isVariable: true,
+});
+
 
 function DefaultGraph() {}
 DefaultGraph.prototype = Object.assign(
@@ -1369,6 +1399,9 @@ const factory = module.exports = {
 		return new DefaultGraph();
 	},
 
+	variable(s_label) {
+		return new Variable(s_label);
+	},
 
 	// warn
 	triple(h_subject, h_predicate, h_object) {

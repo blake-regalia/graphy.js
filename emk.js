@@ -82,13 +82,15 @@ const files = (g_config={}, pd_rel=null) => {
 
 
 // for run commands to lint js files
-const eslint = () => /* syntax: bash */ `
+const eslint = (sx_more='') => /* syntax: bash */ `
 	npx eslint --fix --color --rule 'no-debugger: off' $@
 	eslint_exit=$?
 	# do not fail on warnings
 	if [ $eslint_exit -eq 2 ]; then
+		${sx_more}
 		exit 0
 	fi
+	${sx_more}
 	exit $eslint_exit
 `;
 
@@ -246,8 +248,9 @@ const jmacs_lint = (a_deps=[], a_deps_strict=[]) => ({
 	],
 	run: /* syntax: bash */ `
 		npx jmacs $1 > $@ \
-			&& ${eslint()} \
-			&& node emk/pretty-print.js $@
+			&& ${eslint(/* syntax: bash */ `
+				node emk/pretty-print.js $@
+			`)}
 	`,
 });
 
@@ -680,7 +683,9 @@ module.exports = async() => {
 
 									run: /* syntax: bash */ `
 										npx jmacs -g "{FORMAT:'${si_package.split(/\./g)[1]}'}" $1 > $@ \
-										 && ${eslint()}
+										 && ${eslint(/* syntax: bash */ `
+											node emk/pretty-print.js $@
+										`)}
 									`,
 								}),
 							}), {}),
@@ -724,6 +729,7 @@ module.exports = async() => {
 												}), {}),
 											},
 											description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
+											main: 'api.js',
 											bin: {
 												[s_super]: 'cli.js',
 											},

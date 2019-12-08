@@ -274,7 +274,7 @@ module.exports = {
 					},
 				},
 				config: {
-					collections: {
+					lists: {
 						first: '>first',
 						rest: '>rest',
 						nil: '>nil',
@@ -334,7 +334,7 @@ module.exports = {
 					},
 				},
 				config: {
-					collections: {
+					lists: {
 						first: '>first',
 						rest: '>rest',
 						nil: '>nil',

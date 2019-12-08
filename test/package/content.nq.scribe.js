@@ -91,8 +91,8 @@ serializer_suite({
 	interpreter: nq_read,
 	validator: trig_read,
 	prefixes: H_PREFIXES,
-}, (writer) => {
-	writer.validates(modes({
+}, (serializer) => {
+	serializer.validates(modes({
 		'objects': {
 			'c1 strings': () => ({
 				write: {
@@ -137,7 +137,7 @@ serializer_suite({
 		},
 	}));
 
-	writer.events({
+	serializer.events({
 		'prefixes': () => ({
 			writes: [
 				{
@@ -355,7 +355,7 @@ serializer_suite({
 		}),
 	});
 
-	writer.outputs({
+	serializer.outputs({
 		'c3r no graph': () => ({
 			type: 'c3r',
 			write: {

@@ -331,7 +331,7 @@ const S_CATEGORY_STREAM = 'Stream Control Commands:';
 const S_CATEGORY_SET = 'Dataset Commands:';
 const S_CATEGORY_STATS = 'Statistics Commands:';
 
-const S_WARN_JAVASCRIPT = `WARNING: the '-j' / '--js' / '--javascript' option evals the given code. Do not allow user input into this option as it will grant them arbitrary code execution with whatever privileges the process is running with.`;
+const S_WARN_JAVASCRIPT = `WARNING: the '-j' / '--js' / '--javascript' option evals the given code. DO NOT allow user input into this option as it will grant them arbitrary code execution with whatever privileges the process is running under.`;
 
 const content_type_flags = f_verb => ({
 	// nt: {
@@ -591,7 +591,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		description: [
 			'Skip over some amount of data (quads by default) for each input stream before piping the remainder as usual.',
 		],
-		syntax: '<SIZE>',
+		syntax: '[size=1]',
 		positionals: {
 			size: {
 				type: 'number',
@@ -607,7 +607,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			},
 
 			s: {
-				type: 'number',
+				type: 'boolean',
 				alias: ['subjects'],
 				describe: 'skip quads until the given number of distinct subjects have been encountered',
 				conflicts: ['q'],
@@ -638,13 +638,14 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		},
 
 		command(g_argv, a_inputs, fe_command) {
-			debugger;
+			// size argument
+			let [
+				n_skip=1,
+			] = g_argv._;
 
 			// count subjects
 			if(g_argv.subjects) {
-				let n_subjects = g_argv.subjects || 1;
-
-				return map_streams(a_inputs, (ds_input) => {
+				return map_streams(a_inputs, () => {
 					let c_subjects = 0;
 					let kt_prev = null;
 
@@ -653,7 +654,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 						transform(g_quad, s_encoding, fke_transform) {
 							// reached length
-							if(!g_quad.subject.equals(kt_prev) && ++c_subjects > n_subjects) {
+							if(!g_quad.subject.equals(kt_prev) && ++c_subjects > n_skip) {
 								// start pushing
 								this.push(g_quad);
 							}
@@ -669,9 +670,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			}
 			// count quads
 			else {
-				let n_quads = g_argv.quads || 1;
-
-				return map_streams(a_inputs, (ds_input) => {
+				return map_streams(a_inputs, () => {
 					let c_quads = 0;
 
 					return new stream.Transform.QuadsToOther({
@@ -679,7 +678,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 						transform(g_quad, s_encoding, fke_transform) {
 							// reached length
-							if(++c_quads > n_quads) {
+							if(++c_quads > n_skip) {
 								// start pushing
 								this.push(g_quad);
 							}
@@ -700,16 +699,23 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		description: [
 			'Limit the number of quads that pass through by counting from the top of the stream.',
 		],
+		syntax: '[size=1]',
+		positionals: {
+			size: {
+				type: 'number',
+				describe: 'the number of things to emit',
+			},
+		},
 		options: {
 			q: {
-				type: 'number',
+				type: 'boolean',
 				alias: ['quads', 't', 'triples'],
 				describe: 'emit only the given number of quads from the top of a stream',
 				conflicts: ['s'],
 			},
 
 			s: {
-				type: 'number',
+				type: 'boolean',
 				alias: ['subjects'],
 				describe: 'emit quads until the given number of distinct subjects have been encountered from the top of a stream',
 				conflicts: ['q'],
@@ -717,10 +723,13 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		},
 
 		command(g_argv, a_inputs, fe_command) {
+			// size argument
+			let [
+				n_head=1,
+			] = g_argv._;
+
 			// count subjects
 			if(g_argv.subjects) {
-				let n_subjects = g_argv.subjects || 1;
-
 				return map_streams(a_inputs, (ds_input) => {
 					let c_subjects = 0;
 					let kt_prev = null;
@@ -730,7 +739,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 						transform(g_quad, s_encoding, fke_transform) {
 							// under limit
-							if(g_quad.subject.equals(kt_prev) || ++c_subjects <= n_subjects) {
+							if(g_quad.subject.equals(kt_prev) || ++c_subjects <= n_head) {
 								this.push(g_quad);
 							}
 							// hit limit
@@ -753,8 +762,6 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			}
 			// count quads
 			else {
-				let n_quads = g_argv.quads || 1;
-
 				return map_streams(a_inputs, (ds_input) => {
 					let c_quads = 0;
 
@@ -763,7 +770,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 						transform(g_quad, s_encoding, fke_transform) {
 							// under limit
-							if(++c_quads <= n_quads) {
+							if(++c_quads <= n_head) {
 								this.push(g_quad);
 							}
 							// hit limit
@@ -792,16 +799,23 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			'Limit the number of quads that pass through by counting from the bottom of the stream.',
 			'WARNING: quads must be buffered in memory until the end of the stream is reached. Specifying a large number of quads or subjects might therefore incur lots of memory.',
 		],
+		syntax: '<size>',
+		positionals: {
+			size: {
+				type: 'number',
+				describe: 'the number of things to emit',
+			},
+		},
 		options: {
 			q: {
-				type: 'number',
+				type: 'boolean',
 				alias: ['quads', 't', 'triples'],
 				describe: 'emit only the given number of quads from the bottom of a stream',
 				conflicts: ['s'],
 			},
 
 			s: {
-				type: 'number',
+				type: 'boolean',
 				alias: ['subjects'],
 				describe: 'emit quads contained by the given number of distinct subjects from the bottom of a stream',
 				conflicts: ['q'],
@@ -809,11 +823,14 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		},
 
 		command(g_argv, a_inputs, fe_command) {
+			// size argument
+			let [
+				n_tail=1,
+			] = g_argv._;
+
 			// count subjects
 			if(g_argv.subjects) {
-				let n_subjects = g_argv.subjects || 1;
-
-				return map_streams(a_inputs, (ds_input) => {
+				return map_streams(a_inputs, () => {
 					let c_subjects = 0;
 					let kt_prev = null;
 					let a_batch = null;
@@ -832,7 +849,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 								a_fifo.push(a_batch);
 								
 								// hit limit
-								if(++c_subjects > n_subjects) {
+								if(++c_subjects > n_tail) {
 									a_fifo.shift();
 								}
 							}
@@ -867,9 +884,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			}
 			// count quads
 			else {
-				let n_quads = g_argv.quads || 1;
-
-				return map_streams(a_inputs, (ds_input) => {
+				return map_streams(a_inputs, () => {
 					let c_quads = 0;
 					let a_fifo = [];
 
@@ -878,7 +893,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 						transform(g_quad, s_encoding, fke_transform) {
 							// under limit
-							if(++c_quads <= n_quads) {
+							if(++c_quads <= n_tail) {
 								a_fifo.push(g_quad);
 							}
 							// hit limit
@@ -1505,7 +1520,8 @@ if(!a_pipeline.length) {
 
 (async() => {
 	// failure handler
-	let fe_command = (e_command) => {
+	let fe_command = (z_error) => {
+		let e_command = 'string' === typeof z_error? new Error(z_error): z_error;
 		exit(e_command.message);
 	};
 
@@ -1579,7 +1595,7 @@ if(!a_pipeline.length) {
 
 			// no inputs
 			if(!a_inputs.length) {
-				return fe_command(`The '${s_command}' requires at least 1 input stream but 0 were piped in.`);
+				return fe_command(`The '${s_command}' command requires at least 1 input stream but 0 were piped in.`);
 			}
 
 			// check input cardinality
@@ -1588,7 +1604,7 @@ if(!a_pipeline.length) {
 				case S_TRANSFORM_TYPE_21QQ: {
 					if(2 !== a_prev.length) {
 						let nl_inputs = a_inputs.length;
-						return fe_command(`The '${s_command}' expects exactly 2 input streams but ${1 === nl_inputs? 'only 1 was': nl_inputs+' were'} piped in.`);
+						return fe_command(`The '${s_command}' command expects exactly 2 input streams but ${1 === nl_inputs? 'only 1 was': nl_inputs+' were'} piped in.`);
 					}
 
 					break;

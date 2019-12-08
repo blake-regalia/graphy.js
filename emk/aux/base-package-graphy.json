@@ -5,7 +5,7 @@
     "name": "Blake Regalia",
     "email": "blake.regalia@gmail.com"
   },
-  "main": "api.js",
+  "main": "main.js",
   "engines": {
     "node": ">=8.4.0"
   },

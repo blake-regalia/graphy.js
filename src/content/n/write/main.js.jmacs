@@ -351,6 +351,9 @@ class @{S_LABEL}_Writer extends Writable {
 
 Object.assign(@{S_LABEL}_Writer.prototype, {
 	_serialize_c3r: @{S_LABEL}_Writer.prototype._serialize_c3,
+	@- B_QUADS
+		_serialize_c4r: @{S_LABEL}_Writer.prototype._serialize_c4,
+	@;
 	_serialize_comment: Writable.prototype._serialize_hash_comment,
 });
 

@@ -48,8 +48,10 @@
      - [`.triples(...)`](#function_quads)*/}
      - [`.c4(...)`](#function_c4)
    - Normalization
+     - [`.fromTerm`](#function_from-term)
+     - [`.fromQuad`](#function_from-quad)
      - [`.from.term`](#function_from-term)
-     - [`.from.quad`](#function_from-term)
+     - [`.from.quad`](#function_from-quad)
    - Content Writer directives
      - [`.config(...)`](#function_config)
      - [`.comment(...)`](#function_comment)
@@ -417,15 +419,15 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_from-term" />
 
-### [`factory.from.term`](#function_from-term)`(term: `[`AnyTerm`](#interface_any-term)`)`
+### [`factory.fromTerm`](#function_from-term)`(term: `[`AnyTerm`](#interface_any-term)`)`
    - converts an object that represents an RDF term, as long as it includes the expected keys such as an [@RDFJS/Term](https://rdf.js.org/#term-interface) from another library, into a graphy-constructed [GenericTerm](#class_generic-term).
    - **returns** a [new GenericTerm](#class_generic-term)
    - *example:*
       ```js
-      factory.from.term({
+      factory.fromTerm({
           termType: 'NamedNode',
           value: 'z://a',
-      }).verbose();  // '@{factory.from.term({
+      }).verbose();  // '@{factory.fromTerm({
           termType: 'NamedNode',
           value: 'z://a',
       }).verbose()}'
@@ -433,12 +435,12 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_from-quad" />
 
-### [`factory.from.quad`](#function_from-quad)`(term: `[`AnyQuad`](#interface_any-quad)`)`
+### [`factory.fromQuad`](#function_from-quad)`(term: `[`AnyQuad`](#interface_any-quad)`)`
    - converts an object that represents an RDF quad, as long as it includes the expected keys such as an [@RDFJS/Quad](https://rdf.js.org/#quad-interface) from another library, into a graphy-constructed [Quad](#class_quad).
    - **returns** a [new Quad](#class_quad)
    - *example:*
       ```js
-      factory.from.quad({
+      factory.fromQuad({
           subject: {
               termType: 'NamedNode',
               value: 'z://y/a',
@@ -456,7 +458,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
               termType: 'NamedNode',
               value: 'z://y/g',
           },
-      }).verbose();  // '@{factory.from.quad({
+      }).verbose();  // '@{factory.fromQuad({
           subject: {
               termType: 'NamedNode',
               value: 'z://y/a',

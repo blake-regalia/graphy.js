@@ -25,12 +25,13 @@ let a_prefix_events = Object.entries(H_PREFIXES)
 
 serializer_suite({
 	alias: 'ttl',
+	verb: 'scribe',
 	type: 'c3r',
 	serializer: ttl_scribe,
 	validator: ttl_read,
 	prefixes: H_PREFIXES,
-}, (writer) => {
-	writer.events({
+}, (serializer) => {
+	serializer.events({
 		'prefixes': () => ({
 			writes: [
 				{
@@ -81,9 +82,9 @@ serializer_suite({
 					},
 				},
 			],
-			writer: (k_writer, f_later) => {
+			serializer: (k_serializer, f_later) => {
 				let c_warns = 0;
-				k_writer.on('warning', (s_warn) => {
+				k_serializer.on('warning', (s_warn) => {
 					expect(s_warn).to.include('implicit union');
 					c_warns += 1;
 				});
@@ -187,9 +188,10 @@ serializer_suite({
 					],
 				},
 			],
-			writer: (k_writer, f_later) => {
+			serializer: (k_serializer, f_later) => {
 				let c_warns = 0;
-				k_writer.on('warning', (s_warn) => {
+
+				k_serializer.on('warning', (s_warn) => {
 					expect(s_warn).to.include('implicit union');
 					c_warns += 1;
 				});
@@ -259,9 +261,9 @@ serializer_suite({
 					value: [],
 				},
 			],
-			writer: (k_writer, f_later) => {
+			serializer: (k_serializer, f_later) => {
 				let c_warns = 0;
-				k_writer.on('warning', (s_warn) => {
+				k_serializer.on('warning', (s_warn) => {
 					expect(s_warn).to.include('implicit union');
 					c_warns += 1;
 				});
@@ -285,7 +287,7 @@ serializer_suite({
 		}),
 	});
 
-	writer.outputs({
+	serializer.outputs({
 		'basic': () => ({
 			write: {
 				'demo:Banana': {
@@ -441,68 +443,6 @@ serializer_suite({
 				demo:Banana rdf:type dbo:Fruit .
 			`,
 		}),
-	});
-
-	const R_ERR_PREDICATE = /predicate position/;
-	writer.throws({
-		'blank node predicates': {
-			'auto blank node': () => ({
-				write: {
-					'demo:subject': {
-						'_:': ['demo:object'],
-					},
-				},
-				match: R_ERR_PREDICATE,
-			}),
-
-			'c1 labeled blank node': () => ({
-				write: {
-					'demo:subject': {
-						'_:label': ['demo:object'],
-					},
-				},
-			}),
-
-			'c1 ephemeral blank node': () => ({
-				write: {
-					'demo:subject': {
-						'_:#anon': ['demo:object'],
-					},
-				},
-			}),
-
-			'c1 hinted auto blank node': () => ({
-				write: {
-					'demo:subject': {
-						'_:_anon': ['demo:object'],
-					},
-				},
-			}),
-
-			'factory ephemeral blank node': () => ({
-				write: {
-					'demo:subject': {
-						[factory.ephemeral()]: ['demo:object'],
-					},
-				},
-			}),
-
-			'factory auto blank node': () => ({
-				write: {
-					'demo:subject': {
-						[factory.blankNode()]: ['demo:object'],
-					},
-				},
-			}),
-
-			'factory labeled blank node': () => ({
-				write: {
-					'demo:subject': {
-						[factory.blankNode('label')]: ['demo:object'],
-					},
-				},
-			}),
-		},
 	});
 });
 

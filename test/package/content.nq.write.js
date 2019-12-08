@@ -309,7 +309,7 @@ writer_suite({
 					},
 				},
 				config: {
-					collections: {
+					lists: {
 						first: '>z://y/first',
 						rest: '>z://y/rest',
 						nil: '>z://y/nil',
@@ -369,7 +369,7 @@ writer_suite({
 					},
 				},
 				config: {
-					collections: {
+					lists: {
 						first: '>z://y/first',
 						rest: '>z://y/rest',
 						nil: '>z://y/nil',
