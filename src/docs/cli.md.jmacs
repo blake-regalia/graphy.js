@@ -42,59 +42,52 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
 
 <a name="command_content-format-read" />
 
-### [`content.FORMAT.read`](#command_content-format-read)` [OPTIONS]`
+### [`read`](#command_read)` [OPTIONS]`
    - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
-   - **Format:**
-     - `nt` -- read N-Triples document(s)
-     - `nq` -- read N-Quads document(s)
-     - `ttl` -- read Turtle document(s)
-     - `trig` -- read TriG document(s)
    - **Options:**
+     - `-c, --content-type` -- either an RDF Content-Type or format selector such as @*{
+     yield* `
+      nt ntriples n-triples application/n-triples
+      nq nquads n-quads application/n-quads
+      ttl turtle text/turtle 
+      trig application/trig
+     `.trim().split(/\s+/g).join(s => "`'"+s+"'`");
+   }, or any other case-insensitive variant including proper handling for content-types with parameters.
      - `-b, --base, --base-uri` -- sets the starting base URI for the RDF document, [see more here](content.textual#config_read-no-input).
-     - `-v, --validate` -- whether or not to perform validation on tokens, [see more here](content.textual#config_read-no-input).
-     - **Whitelist Filtering:**
-       - `-s, --subject SUBJECT_FILTER` -- only allow quads that match the given subject. `SUBJECT_FILTER` must be a [concise-term string](concise#string_c1).
-       - `-p, --predicate PREDICATE_FILTER` -- only allow quads that match the given predicate. `PREDICATE_FILTER` must be a [concise-term string](concise#string_c1).
-       - `-o, --object OBJECT_FILTER` -- only allow quads that match the given object. `OBJECT_FILTER` must be a [concise-term string](concise#string_c1).
-       - `-g, --graph GRAPH_FILTER` -- only allow quads that match the given graph. `GRAPH_FILTER` must be a [concise-term string](concise#string_c1).
-     - **Blacklist Filtering:**
-       - `-S, --not-subject NOT_SUBJECTS_FILTER+` -- allow any quads that **do not match** the given subject(s). `NOT_SUBJECTS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-       - `-P, --not-predicate NOT_PREDICATE_FILTER+` -- allow any quads that **do not match** the given predicate(s). `NOT_PREDICATES_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-       - `-O, --not-object NOT_OBJECT_FILTER+` -- allow any quads that **do not match** the given object(s). `NOT_OBJECTS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-       - `-G, --not-graph NOT_GRAPH_FILTER+` -- allow any quads that **do not match** the given graph(s). `NOT_GRAPHS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
+     - `-r, --relax` -- relax validation of tokens for trusted input sources to improve read speeds, [see more here](content.textual#config_read-no-input).
    - _examples:_
      ```bash
      # validate an N-Triples document
-     $ graphy content.nt.read --validate < input.nt > /dev/null
+     $ graphy read -c nt < input.nt > /dev/null
 
      # print line-delimited JSON of quads in N-Quads document
-     $ graphy content.nq.read < input.nq
+     $ graphy read -c nq < input.nq
 
      # validate a Turtle document
-     $ graphy content.ttl.read -v < input.ttl > /dev/null
+     $ graphy read -c ttl < input.ttl > /dev/null
 
      # print line-delimited JSON of quads in TriG document while validating it
-     $ graphy content.trig.read -v < input.trig
+     $ graphy read -c trig < input.trig
 
      # filter by subject: 'dbr:Banana_split' using prefix mappings embedded in document
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -s 'dbr:Banana_split'
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x 'dbr:Banana_split'
 
      # filter by predicate: 'rdf:type' alias
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -p 'a'
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x '; a'
 
-     # select quads that *do not have* the predicate: 'owl:sameAs' nor `dbo:wikiPageRedirects`
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -P 'owl:sameAs' 'dbo:wikiPageRedirects'
+     # select quads that *do not have* the predicate: 'owl:sameAs' _nor_ `dbo:wikiPageRedirects`
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x '; !(owl:sameAs or dbo:wikiPageRedirects)'
 
      # filter by object: '"Banana"@en'
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -o '@en"Banana'
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x ';; "Banana"@en'
 
      # filter by graph using absolute IRI ref
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -g '>http://ex.org/some-absolute-graph-iri'
+     $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x ';;; <http://ex.org/some-absolute-graph-iri>'
      ```
 
 <a name="command_content-format-write" />
 
-### [`content.FORMAT.write`](#command_content-format-write)` [OPTIONS]`
+### [`write`](#command_write)` [OPTIONS]`
    - `N-to-1<`[`WritableDataEventStream`](#class_writable-data-event-stream)`, `[`StringStream`](#class_string-stream)`>` -- maps 1 or more object input streams of [WritableDataEvent](content.textual#interface_writable-data-event) objects into 1 utf8-encoded output stream.
    - **Format:**
      - `nt` -- write an N-Triples document
@@ -122,10 +115,10 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
          --pipe content.trig.write > output.trig
      ```
 
-<a name="command_util-dataset-tree" />
+<a name="command_tree" />
 
-### [`util.dataset.tree`](#command_util-dataset-tree)` [OPTIONS] [SUBCOMMAND]`
-   - use the [DatasetTree](util.dataset.tree) package to perform set algebra or simply to remove duplicates from a single data source.
+### [`tree`](#command_tree)` [OPTIONS] [SUBCOMMAND]`
+   - use the [FastDataset](memory.dataset.fast) package to perform set algebra or simply to remove duplicates from a single data source.
    - **Subcommands:**
      - ` ` -- _(no command)_
        - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- maps 1 or more object input streams of [Quad](core.data.factory#class_quad) objects into 1 or more object output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
@@ -136,11 +129,8 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
        - _example:_
          ```bash
          # compute the isomorphic difference between two files
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --canonicalize \  # first canonicalize each input
-             --pipe util.dataset.tree --difference \  # then compute their difference
-             --pipe content.ttl.write \
-             --inputs a.ttl b.ttl \
+         $ graphy read -c ttl / diff / write -c ttl   \
+             --inputs a.ttl b.ttl                     \
              > canonical-difference.ttl
          ```
      - `-u, --union`
@@ -149,10 +139,8 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
        - _example:_
          ```bash
          # perform a union on all *.ttl files inside `data/` directory
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --union \
-             --pipe content.ttl.write \
-             --inputs input/*.ttl \
+         $ graphy read -c ttl / union / write -c ttl   \
+             --inputs input/*.ttl                      \
              > union.ttl
          ```
      - `-i, --intersection`
@@ -161,10 +149,8 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
        - _example:_
          ```bash
          # perform an intersection on all *.ttl files inside `data/` directory
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --intersection \
-             --pipe content.ttl.write \
-             --inputs input/*.ttl \
+         $ graphy read -c ttl / intersect / write -c ttl   \
+             --inputs input/*.ttl                          \
              > intersection.ttl
          ```
      - `-m, --minus, --subtraction`
@@ -172,11 +158,9 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
        - Subtracts the second input from the first.
        - _example:_
          ```bash
-         # perform an intersection on all *.ttl files inside `data/` directory
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --minus \
-             --pipe content.ttl.write \
-             --inputs union.ttl input/dead.ttl \
+         # subtract `input/dead.ttl` from `union.ttl`
+         $ graphy read -c ttl / minus / write -c ttl   \
+             --inputs union.ttl input/dead.ttl         \
              > leftover.ttl
          ```
      - `-d, --diff, --difference`
@@ -185,10 +169,8 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
        - _example:_
          ```bash
          # compute the difference between `original.ttl` and `modified.ttl`
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --difference \
-             --pipe content.ttl.write \
-             --inputs original.ttl modified.ttl \
+         $ graphy read -c ttl / diff / write -c ttl   \
+             --inputs original.ttl modified.ttl       \
              > difference.ttl
          ```
      - `-e, --equals`
@@ -197,14 +179,11 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
        - _example:_
          ```bash
          # test if `before.ttl` and `after.ttl` are strictly equal
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --equals \
+         $ graphy read -c ttl / equals --strict   \
              --inputs before.ttl after.ttl
 
          # test if `before.ttl` and `after.ttl` are isomorphically equivalent
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --canonicalize \
-             --pipe util.dataset.tree --equals \
+         $ graphy read -c ttl / equals   \
              --inputs before.ttl after.ttl
          ```
      - `-j, --disjoint`
@@ -213,8 +192,7 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
        - _example:_
          ```bash
          # test if `apples.ttl` and `oranges.ttl` are strictly disjoint
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --disjoint \
+         $ graphy read -c ttl / disjoint --strict   \
              --inputs apples.ttl oranges.ttl
          ```
      - `-c, --contains`
@@ -223,8 +201,7 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
        - _example:_
          ```bash
          # test if `superset.ttl` strictly contains `subset.ttl`
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --contains \
+         $ graphy read -c ttl / contains --strict   \
              --inputs superset.ttl subset.ttl
          ```
 
@@ -234,23 +211,19 @@ By default, `graphy` expects a single input stream on `stdin`, which it will for
 ### `--inputs FILE ...`
 If you are simply piping in multiple input files, you can use the `--inputs` options like so:
 ```bash
-$ graphy content.ttl.read \
-    --pipe util.dataset.tree --difference \
-    --pipe content.ttl.write \
-    --inputs original.ttl modified.ttl \
+$ graphy read -c ttl / diff / write -c ttl   \
+    --inputs original.ttl modified.ttl       \
 	  > difference.ttl
 ```
 
-Keep in mind that each command has its own restrictions on the number of inputs it accepts, which may also depend on the operation being performed (e.g., `util.dataset.tree --diff` expects exactly 2 input streams while `util.dataset.tree --union` accepts 1 or more).
+Keep in mind that each command has its own restrictions on the number of inputs it accepts, which may also depend on the operation being performed (e.g., `diff` expects exactly 2 input streams while `union` accepts 1 or more).
 
 
 ### Process Substitution
 If you need to execute other commands before passing in multiple inputs, you can use [process substitution](http://www.tldp.org/LDP/abs/html/process-sub.html) (supported in bash) like so:
 ```bash
 $ DBPEDIA_EN_URL="http://downloads.dbpedia.org/2016-10/core-i18n/en"
-$ graphy content.ttl.read \
-    --pipe util.dataset.tree --union \
-    --pipe content.ttl.write \
+$ graphy read -c ttl / union / write -c ttl   \
     --inputs \
       <(curl "$DBPEDIA_EN_URL/topical_concepts_en.ttl.bz2" | bzip2 -d) \
       <(curl "$DBPEDIA_EN_URL/uri_same_as_iri_en.ttl.bz2" | bzip2 -d) \

@@ -429,7 +429,7 @@ module.exports = async() => {
 				'content.trig.read',
 				'content.trig.scribe',
 				'content.trig.write',
-				'util.dataset.tree',
+				'memory.dataset.fast',
 			],
 
 			// package enumeration
@@ -549,7 +549,7 @@ module.exports = async() => {
 				':testable': ({testable:si_package}) => ({
 					deps: [
 						`prepublish.${si_package}`,
-						'link_to.util.dataset.tree',
+						'link_to.memory.dataset.fast',
 						`test/package/${si_package}.js`,
 						...a_content_subs.filter(s => s.endsWith('.read')).includes(si_package)
 							? [

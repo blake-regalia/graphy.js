@@ -176,7 +176,7 @@ The [`write`](#verb_write) verb supports the following [WritableDataEvent](#inte
 
 <a name="verb_read" />
 
-### [`read`](#verb_read)`([input: string | stream][, config: #config-read-*])`
+### [`read`](#verb_read)`([input: string | stream][, config: `[`ReadConfig`](#config_write)`])`
  - Read RDF data (in other words, deserialize it) from a document given by an input stream, input string or via duplexing. Uses a single thread.
  - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable) (accepts utf8-encoded strings on its writable side, pushes [Quad](core.data.factory#class_quad) objects on its readable side)
 
@@ -225,14 +225,14 @@ read(`
 ```
 
 **Overloaded variants:**
- - `read([config: `[`#ReadNoInputConfig`](#config_read-no-input)`])`
- - `read(input_string: string[, config: `[`#ReadNoInputConfig`](#config_read-no-input)`])`
+ - `read([config: `[`#ReadConfigNoInput`](#config_read-no-input)`])`
+ - `read(input_string: string[, config: `[`#ReadConfigNoInput`](#config_read-no-input)`])`
    - shortcut for: `read(config).end(input_string, 'utf-8');`
    - equivalent to: `read({...config, input: {string:input_string}});`
- - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#ReadNoInputConfig`](#config_read-no-input)`])`
+ - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#ReadConfigNoInput`](#config_read-no-input)`])`
    - shortcut for: `input_stream.pipe(read(config));`
    - equivalent to: `read({...config, input: {stream:input_stream}});`
- - `read(config: `[`#ReadWithInputConfig`](#config_read-with-input)`)`
+ - `read(config: `[`#ReadConfigWithInput`](#config_read-with-input)`)`
 
 ----
 
@@ -660,11 +660,12 @@ See [`write`](#verb_write) and [`QuadWriter#graph`](#class_quadwriter).
 
 <a name="config_read-no-input" />
 
-#### config **ReadNoInputConfig** _inlines_ [ReadEvents](#events_read)
+#### config **ReadConfigNoInput** _inlines_ [ReadEvents](#events_read) _implements_ [@RDFJS/ConstructorOptions](http://rdf.js.org/stream-spec/#constructoroptions-interface)
 An interface that defines the config object passed to a content reader.
 
 **Options:**
  - ... [see those inlined from ReadEvents](#events_read)
+ - `dataFactory` : `DataFactory=@graphy/core.data.factory` -- DataFactory implementation that will be used to create all Terms and Quads. The default implementation provided by graphy tends to perform a tad better and enables readers to create specialized Terms such as [Booleans, Integers, Decimals, Doubles, and so on](https://graphy.link/core.data.factory#class_literal-boolean).
  - `baseURI | baseUri | baseIRI | baseIri`: `string` -- sets the starting base URI for the RDF document.
  - `relax` : `boolean=false` -- by default, the contents of tokens are validated, e.g., checking for invalid characters in IRIs, literals, and so on. The stream will emit an `'error'` event if an invalid token is encountered. Setting the `relax` option to `true` will permit as wide a character range within tokens as possible (i.e., it will allow any characters *not* in the lookahead table). Using the `relax` option may be useful when trying to recover improperly formatted Turtle documents, however it also yields slightly faster parsing for valid documents as well since normal validation adds overhead to reading.
  - `maxTokenLength` : `number=2048` -- defines the maximum number of characters to expect of any token other than a quoted literal. This option only exists to prevent invalid input from endlessly consuming the reader when using a stream as input. By default, this value is set to **2048**, which is more than the recommended maximum URL length. However, you may wish to set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
@@ -672,10 +673,10 @@ An interface that defines the config object passed to a content reader.
 
 <a name="config_read-with-input" />
 
-#### config **ReadWithInputConfig** _extends_ [#ReadNoInputConfig](#config_read-no-input)
+#### config **ReadConfigWithInput** _extends_ [#ReadConfigNoInput](#config_read-no-input)
       
 **Options:**
- - ... [see those inheritted from #ReadNoInputConfig](#config_read-no-input)
+ - ... [see those inheritted from #ReadConfigNoInput](#config_read-no-input)
 
 **Required:**
  - `input` : [`UseInputString`](#interface_use-input-string)` | `[`UseInputStream`](#interface_use-input-stream)

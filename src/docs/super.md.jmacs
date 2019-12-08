@@ -2,6 +2,15 @@
 @.{
   const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
   const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#', dbr:'http://dbpedia.org/resource/'};
+
+  const H_FORMATS = {
+    nt: {},
+    nq: {},
+    ttl: {},
+    trig: {},
+  };
+
+  const A_VERBS = ['read', 'scribe', 'write'];
 }
 @{api_title('Super Package')}
 This document describes the 'super' package `graphy`.
@@ -18,14 +27,18 @@ This document describes the 'super' package `graphy`.
    - [`.content(...)`](#function_content)
  - [Packages](#packages)
    - [`.content.nt.read(...)`](#package_content-nt-read)
+   - [`.content.nt.scribe(...)`](#package_content-nt-scribe)
    - [`.content.nt.write(...)`](#package_content-nt-write)
    - [`.content.nq.read(...)`](#package_content-nq-read)
+   - [`.content.nq.scribe(...)`](#package_content-nq-scribe)
    - [`.content.nq.write(...)`](#package_content-nq-write)
    - [`.content.ttl.read(...)`](#package_content-ttl-read)
+   - [`.content.ttl.scribe(...)`](#package_content-ttl-scribe)
    - [`.content.ttl.write(...)`](#package_content-ttl-write)
    - [`.content.trig.read(...)`](#package_content-trig-read)
+   - [`.content.trig.scribe(...)`](#package_content-trig-scribe)
    - [`.content.trig.write(...)`](#package_content-trig-write)
-   - [`.util.dataset.tree(...)`](#package_content-trig-write)
+   - [`.memory.dataset.fast(...)`](#package_memory-dataset-fast)
 
 <a name="functions" />
 
@@ -45,61 +58,25 @@ This document describes the 'super' package `graphy`.
       graphy.content('text/turtle');  // { read: [Getter], write: [Getter] }
       ```
 
-
-
-<a name="package_content-nt-read" />
-
- - `graphy.content.nt.read(...)`
-   - See the [`read verb`](content.textual#read) in [Textual Content Handler](content.textual).
-
-
-<a name="package_content-nt-write" />
-
- - `graphy.content.nt.write(...)`
-   - See the [`write verb`](content.textual#write) in [Textual Content Handler](content.textual).
-
-
-<a name="package_content-nq-read" />
-
- - `graphy.content.nq.read(...)`
-   - See the [`read verb`](content.textual#read) in [Textual Content Handler](content.textual).
-
-
-<a name="package_content-nq-write" />
-
- - `graphy.content.nq.write(...)`
-   - See the [`write verb`](content.textual#write) in [Textual Content Handler](content.textual).
-
-
-<a name="package_content-ttl-read" />
-
- - `graphy.content.ttl.read(...)`
-   - See the [`read verb`](content.textual#read) in [Textual Content Handler](content.textual).
-
-
-<a name="package_content-ttl-write" />
-
- - `graphy.content.ttl.write(...)`
-   - See the [`write verb`](content.textual#write) in [Textual Content Handler](content.textual).
-
-
-<a name="package_content-trig-read" />
-
- - `graphy.content.trig.read(...)`
-   - See the [`read verb`](content.textual#read) in [Textual Content Handler](content.textual).
-
-
-<a name="package_content-trig-write" />
-
- - `graphy.content.trig.write(...)`
-   - See the [`write verb`](content.textual#write) in [Textual Content Handler](content.textual).
-
-
-<a name="package_util-dataset-tree" />
-
- - `graphy.util.dataset.tree(...)`
-   - See the [`DatasetTree`](util.dataset.tree) package.
-
-
 <a name="packages" />
+
+@*{
+   for(let s_format of H_FORMATS) {
+      for(let s_verb of A_VERBS) {
+         yield `
+<a name="package_content-${s_format}-${s_verb}" />
+
+ - `graphy.content.${s_format}.${s_verb}(...)`
+   - See the [`${s_verb} verb`](content.textual#verb_${s_verb}) in [Reading and Writing](content.textual).
+         `;
+      }
+   }
+}
+
+<a name="package_memory-dataset-fast" />
+
+ - `graphy.memory.dataset.fast(...)`
+   - See the [`FastDataset`](memory.dataset.fast) package.
+
+
 

@@ -25,7 +25,7 @@ const A_PACKAGES = [
 	'content.ttl.write',
 	'content.trig.read',
 	'content.trig.write',
-	'util.dataset.tree',
+	'memory.dataset.fast',
 ];
 
 describe('graphy API', () => {
@@ -56,21 +56,25 @@ describe('graphy API', () => {
 			/* eslint-disable global-require */
 			let g_nt = {
 				read: require('@graphy/content.nt.read'),
+				scribe: require('@graphy/content.nt.scribe'),
 				write: require('@graphy/content.nt.write'),
 			};
 
 			let g_nq = {
 				read: require('@graphy/content.nq.read'),
+				scribe: require('@graphy/content.nq.scribe'),
 				write: require('@graphy/content.nq.write'),
 			};
 
 			let g_ttl = {
 				read: require('@graphy/content.ttl.read'),
+				scribe: require('@graphy/content.ttl.scribe'),
 				write: require('@graphy/content.ttl.write'),
 			};
 
 			let g_trig = {
 				read: require('@graphy/content.trig.read'),
+				scribe: require('@graphy/content.trig.scribe'),
 				write: require('@graphy/content.trig.write'),
 			};
 			/* eslint-enable global-require */
@@ -568,7 +572,7 @@ if(!B_BROWSER) {
 				},
 			}), {}),
 
-			'util.dataset.tree': {
+			'memory.dataset.fast': {
 				...process.env.GRAPHY_SKIP_DBR_TESTS
 					? {}
 					: {
@@ -576,7 +580,7 @@ if(!B_BROWSER) {
 							cmd: /* syntax: bash */ `
 								cat build/cache/data/dbr/Banana.ttl
 									| npx graphy read -c ttl
-										/ util.dataset.tree
+										/ memory.dataset.fast
 							`,
 							out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 						}),
@@ -710,7 +714,7 @@ if(!B_BROWSER) {
 				'.canonicalize/.contains() = false': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ util.dataset.tree -z
+							/ memory.dataset.fast -z
 							/ contains
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
@@ -720,7 +724,7 @@ if(!B_BROWSER) {
 				'.canonicalize/.contains() = true': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ util.dataset.tree -z
+							/ memory.dataset.fast -z
 							/ contains
 							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
 					`,
@@ -730,7 +734,7 @@ if(!B_BROWSER) {
 				'.canonicalize/.disjoint() = false': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ util.dataset.tree -z
+							/ memory.dataset.fast -z
 							/ disjoint
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
@@ -740,7 +744,7 @@ if(!B_BROWSER) {
 				'.canonicalize/.disjoint() = true': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ util.dataset.tree -z
+							/ memory.dataset.fast -z
 							/ disjoint
 							--inputs <(echo '${st_left}') <(echo '${st_blank_1}')
 					`,
@@ -750,7 +754,7 @@ if(!B_BROWSER) {
 				'.canonicalize/.equals() = false': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ util.dataset.tree -z
+							/ memory.dataset.fast -z
 							/ equals
 							--inputs <(echo '${st_blank_1}') <(echo '${st_right}')
 					`,
@@ -760,7 +764,7 @@ if(!B_BROWSER) {
 				'.canonicalize/.equals() = true': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ util.dataset.tree -z
+							/ memory.dataset.fast -z
 							/ equals
 							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
 					`,

@@ -169,6 +169,18 @@ const graphy = module.exports = Object.assign({
 		@{memoize('util.dataset.tree', true)}
 	},
 
+	memory: {
+		dataset: {
+			get fast() {
+				@{memoize('memory.dataset.fast')}
+			},
+		},
+	},
+
+	get 'memory.dataset.fast'() {
+		@{memoize('memory.dataset.fast', true)}
+	},
+
 
 	@*{
 		for(let s_content in h_content_types) {

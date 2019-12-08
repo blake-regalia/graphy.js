@@ -2,7 +2,7 @@
 const expect = require('chai').expect;
 
 const factory = require('@graphy/core.data.factory');
-const dataset_tree = require('@graphy/util.dataset.tree');
+const dataset_tree = require('@graphy/memory.dataset.fast');
 
 const ttl_read = require('@graphy/content.ttl.read');
 

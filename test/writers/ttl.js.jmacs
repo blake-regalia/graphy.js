@@ -8,7 +8,7 @@ const deq = assert.deepEqual;
 
 const ttl_read = require('@{channel()}/content.ttl.read');
 const ttl_write = require('@{channel()}/content.ttl.write');
-const data_set = require('@{channel()}/util.dataset.tree');
+const data_set = require('@{channel()}/memory.dataset.fast');
 
 const ST_PREFIXES = /* syntax: turtle */ `
 	@prefix : <> .

@@ -62,7 +62,7 @@ class Writable extends Scribable {
 	}
 
 	// serialize comment
-	_serialize_comment(s_comment) {
+	_serialize_comment(s_comment, g_directive) {
 		let s_write = '';
 
 		// non-data state
@@ -72,6 +72,31 @@ class Writable extends Scribable {
 
 			// update state
 			this._xc_state = @{XC_STATE_DATA};
+		}
+
+		// comment width
+		if(g_directive && g_directive.width) {
+			let n_width = g_directive.width;
+
+			let a_lines = [];
+
+			while(s_comment.length > n_width) {
+				let s_line = s_comment.slice(0, n_width+1);
+
+				let m_line = /^(.*[^\s])\s+/.exec(s_line);
+
+				if(m_line) {
+					let s_push = m_line[1];
+					a_lines.push(s_push);
+					s_comment = s_comment.slice(s_push.length).replace(/^\s+/, '');
+				}
+				else {
+					a_lines.push(s_comment.slice(0, n_width));
+					s_comment = s_comment.slice(n_width);
+				}
+			}
+
+			s_comment = a_lines.join('\n');
 		}
 
 		return s_write+(super._serialize_comment(s_comment) || '');

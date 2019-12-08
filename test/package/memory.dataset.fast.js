@@ -4,7 +4,7 @@ chai.use(require('chai-iterator'));
 const expect = chai.expect;
 
 const factory = require('@graphy/core.data.factory');
-const dataset_tree = require('@graphy/util.dataset.tree');
+const dataset_tree = require('@graphy/memory.dataset.fast');
 const util = require('../helper/util.js');
 
 const map_tree = (h_tree, f_onto, a_path=[]) => {
@@ -61,7 +61,7 @@ const methods_boolean = (h_tree) => {
 	}));
 };
 
-describe('util.dataset.tree', () => {
+describe('memory.dataset.fast', () => {
 	let g_abcg = factory.quad(...[
 		factory.namedNode('z://a'),
 		factory.namedNode('z://b'),

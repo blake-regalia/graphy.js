@@ -31,7 +31,7 @@ module.exports = {
 		dataset: {
 			tree: () => ({
 				links: ['core.data.factory', 'core.iso.stream'],
-				description: 'Create a mathematical set of triples for comparison and operations such as union, intersection, difference, etc.',
+				description: `This package is now an alias for where it has been moved to: '@graphy/memory.dataset.fast'`,
 			}),
 		},
 		...('graphy-ignore' === process.env.GRAPHY_CHANNEL
@@ -43,6 +43,15 @@ module.exports = {
 				},
 			}
 			: {}),
+	},
+
+	memory: {
+		dataset: {
+			fast: () => ({
+				links: ['core.data.factory', 'core.iso.stream'],
+				description: 'Create a dataset of quads in memory for comparison and set operations such as union, intersection, difference, etc.',
+			}),
+		},
 	},
 
 	content: {

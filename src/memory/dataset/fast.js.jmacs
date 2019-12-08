@@ -1,0 +1,3107 @@
+@import '../../share/channel.jmacs'
+
+/* eslint-disable no-prototype-builtins */
+
+@.{
+	const B_HARDEN_PROTOTYPE = true;
+}
+
+const crypto = require('crypto');
+
+const stream = require('@{channel('core.iso.stream')}');
+const factory = require('@{channel('core.data.factory')}');
+const factory_from = factory.from;
+
+const $_KEYS = Symbol('key-count');
+const $_QUADS = Symbol('quad-count');
+const $_KIDS = Symbol('has-descendents');
+const $_THIN = Symbol('has-thin-keys');
+
+const KT_DEFAULT_GRAPH = factory.defaultGraph();
+const F_SORT_LINE = (g_a, g_b) => g_a.line < g_b.line? -1: 1;
+
+class Matcher {
+	constructor(k_set) {
+		this.set = k_set;
+	}
+
+@> match_role(s_role, s_tree)
+	@//@
+	@.{
+		let s_term = `z_${s_role}`;
+		let s_list = `a_${s_role}s`;
+	}
+	// declare list
+	let @{s_list} = [];
+
+	// object
+	if('object' === typeof @{s_term}) {
+		// null
+		if(null === @{s_term}) {
+			// each key in tree
+			for(let svt_@{s_role} in @{s_tree}) {
+				// create Term object from verbose-term string
+				let kt_@{s_role} = factory.c1(svt_@{s_role});
+
+				// produce canonical form of term
+				let snt_@{s_role} = kt_@{s_role}.verbose();
+				
+				// add each entry to list
+				@{s_list}.push([snt_@{s_role}, kt_@{s_role}]);
+			}
+		}
+		// regex
+		else if(@{s_term} instanceof RegExp || '[object RegExp]' === Object.prototype.toString.call(@{s_term})) {
+			// cast to regex
+			let r_@{s_role} = @{s_term};
+
+			// each key in tree
+			for(let svt_@{s_role} in @{s_tree}) {
+				// create Term object from verbose-term string
+				let kt_@{s_role} = factory.c1(svt_@{s_role});
+
+				// produce canonical form of term
+				let snt_@{s_role} = kt_@{s_role}.verbose();
+				
+				// regex matches key; add it to the list
+				if(r_@{s_role}.test(snt_@{s_role})) {
+					@{s_list}.push([snt_@{s_role}, kt_@{s_role}]);
+				}
+			}
+		}
+		// Term
+		else if('string' === typeof @{s_term}.value) {
+			// convert to graphy term
+			let kt_@{s_role} = factory_from.rdfjs_term(@{s_term});
+
+			// convert to verbose-term string
+			let svt_@{s_role} = kt_@{s_role}.concise();
+
+			// term is indexed in tree; add subtree to list
+			if(svt_@{s_role} in @{s_tree}) {
+				@{s_list}.push([kt_@{s_role}.verbose(), kt_@{s_role}]);
+			}
+		}
+		@- 'graph' === s_role
+			// null or default graph; add subtree to list
+			else if('defaultGraph' === @{s_term}.type) {
+				@{s_list}.push(['*', factory_from.rdfjs_term(@{s_term})]);
+			}
+		@;
+		// invalid
+		else {
+			throw new TypeError(`invalid object for @{s_role} argument`);
+		}
+	}
+	// other
+	else {
+		throw new TypeError(`invalid type for @{s_role} argument`);
+	}
+@;
+@//@object-literal
+
+	* match(z_subject=null, z_predicate=null, z_object=null, z_graph=KT_DEFAULT_GRAPH) {
+		let h_quad_tree = this.set.quad_tree;
+
+		@{match_role('graph', 'h_quad_tree')}
+
+		// each graph
+		for(let [svt_graph, kt_graph] of a_graphs) {
+			// fetch tree
+			let h_subjects = h_quad_tree[svt_graph];
+
+			@{match_role('subject', 'h_subjects')}
+
+			// each subject
+			for(let [svt_subject, kt_subject] of a_subjects) {
+				// fetch tree
+				let h_predicates = h_subjects[svt_subject];
+
+				@{match_role('predicate', 'h_predicates')}
+
+				// each object
+				for(let [svt_predicate, kt_predicate] of a_predicates) {
+					// fetch set
+					let as_objects = h_predicates[svt_predicate];
+
+					// object
+					if('object' === typeof z_object) {
+						// null
+						if(null === z_object) {
+							// each value in set
+							for(let svt_object of as_objects) {
+								// create object term
+								let kt_object = factory.c1(svt_object);
+								
+								// yield quad
+								yield factory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
+							}
+						}
+						// regex
+						else if(z_object instanceof RegExp || '[object RegExp]' === Object.prototype.toString.call(z_object)) {
+							// cast to regex
+							let r_object = z_object;
+
+							// each value in set
+							for(let svt_object of as_objects) {
+								// create object term
+								let kt_object = factory.c1(svt_object);
+								
+								// regex matches value; yield quad
+								if(z_object.test(kt_object.verbose())) {
+									yield factory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
+								}
+							}
+						}
+						// Term
+						else if('string' === typeof z_object.value) {
+							// convert to graphy term
+							let kt_object = factory_from.rdfjs_term(z_object);
+
+							// term is in set; yield quad
+							if(as_objects.has(kt_object.concise())) {
+								yield factory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
+							}
+						}
+						// invalid
+						else {
+							throw new TypeError(`invalid object for object argument`);
+						}
+					}
+					// other
+					else {
+						throw new TypeError(`invalid type for object argument`);
+					}
+				}
+			}
+		}
+
+	}
+
+	match_stream(z_subject, z_predicate, z_object, z_graph=KT_DEFAULT_GRAPH) {
+		// create readable output
+		return new stream.Readable({
+			// from iterator (which is a generator)
+			iterator: this.match(z_subject, z_predicate, z_object, z_graph),
+
+			// outputs quad objets
+			objectMode: true,
+		});
+	}
+}
+
+
+// use JSON-friendly keys
+// const $_KEYS = '{KEYS}';
+// const $_QUADS = '{QUADS}';
+
+class Issuer {
+	constructor(s_prefix='_:c14n') {
+		Object.assign(this, {
+			prefix: s_prefix,
+			counter: 0,
+			existing: {},
+		});
+	}
+
+	issue(s_label) {
+		if(s_label in this.existing) return this.existing[s_label];
+
+		return (this.existing[s_label] = this.prefix+(this.counter++));
+	}
+
+	has(s_label) {
+		return s_label in this.existing;
+	}
+
+	clone() {
+		return Object.assign(new Issuer(this.prefix), {
+			counter: this.counter,
+			existing: Object.assign({}, this.existing),
+		});
+	}
+}
+
+const F_SORT_CANONICALIZER_HASH = (g_a, g_b) => g_a.hash < g_b.hash? -1: (g_a.hash > g_b.hash? 1: 0);
+
+const permutations = function *(a_list) {
+	let b_done = false;
+	let h_left = {};
+
+	if(a_list.lenth <= 1) {
+		yield a_list;
+		return;
+	}
+
+	a_list.sort();
+	for(let s_item of a_list) {
+		h_left[s_item] = true;
+	}
+
+	do {
+		// copy list to avoid race condition
+		yield a_list.slice();
+
+		let s_k = null;
+		let i_pos = 0;
+		let nl_list = a_list.length;
+		for(let i_item=0; i_item<nl_list; i_item++) {
+			let s_item = a_list[i_item];
+			let b_left = h_left[s_item];
+			if((null === s_k || s_item > s_k)
+				&& ((b_left && i_item > 0 && s_item > a_list[i_item-1])
+					|| (!b_left && i_item < (nl_list-1) && s_item > a_list[i_item+1]))
+			) {
+				s_k = s_item;
+				i_pos = i_item;
+			}
+		}
+
+		if(null === s_k) {
+			b_done = true;
+		}
+		else {
+			let i_swap = h_left[s_k]? i_pos-1: i_pos+1;
+			a_list[i_pos] = a_list[i_swap];  // eslint-disable-line require-atomic-updates
+			a_list[i_swap] = s_k;  // eslint-disable-line require-atomic-updates
+
+			// reverse direction of all elements larger thn k
+			for(let s_item of a_list) {
+				if(s_item > s_k) {
+					h_left[s_item] = !h_left[s_item];
+				}
+			}
+		}
+	} while(!b_done);
+
+	yield a_list;
+};
+
+@.{
+	const A_TERM_ROLES_BLANK_NODES = ['graph', 'subject', 'object'];
+}
+
+class Canonicalizer_ct {
+	constructor(k_tree) {
+		Object.assign(this, {
+			tree: k_tree,
+			blanks: {},
+			issuer: new Issuer('_:r'),
+			quads: [...k_tree.ct_quads()],
+		});
+	}
+
+	normalize() {
+		let {
+			blanks: h_blanks,
+			issuer: k_issuer,
+			quads: a_quads,
+		} = this;
+
+		let h_hashes = {};
+		let h_non_normal = {};
+
+		// each quad
+		for(let a_quad of a_quads) {
+			let [sc1_graph, sc1_subject, , sc1_object] = a_quad;
+
+			@> normalize_check(s_var)
+				if('_' === @{s_var}[0]) {
+					if(@{s_var} in h_blanks) {
+						h_blanks[@{s_var}].quads.push(a_quad);
+					}
+					else {
+						h_blanks[@{s_var}] = {quads:[a_quad]};
+						h_non_normal[@{s_var}] = true;
+					}
+				}
+			@;
+			@*{
+				for(let s_var of A_TERM_ROLES_BLANK_NODES.map(s => `sc1_${s}`)) {
+					yield normalize_check(s_var);
+				}
+			}
+		}
+
+		let b_simple = false;
+
+		do {
+			b_simple = false;
+
+			h_hashes = {};
+
+			for(let sc1_blank in h_non_normal) {
+				let p_blank = this.hash_first_degree_quads(sc1_blank);
+
+				if(p_blank in h_hashes) {
+					h_hashes[p_blank].push(sc1_blank);
+				}
+				else {
+					h_hashes[p_blank] = [sc1_blank];
+				}
+			}
+
+			for(let p_blank of Object.keys(h_hashes).sort()) {
+				let a_blanks = h_hashes[p_blank];
+				if(a_blanks.length > 1) continue;
+
+				let sc1_blank_0 = a_blanks[0];
+				k_issuer.issue(sc1_blank_0);
+
+				delete h_non_normal[sc1_blank_0];
+
+				delete h_hashes[p_blank];
+
+				b_simple = true;
+			}
+		} while(b_simple);
+
+		for(let p_blank of Object.keys(h_hashes).sort()) {
+			let a_paths = [];
+			for(let sc1_blank of h_hashes[p_blank]) {
+				if(k_issuer.has(sc1_blank)) continue;
+
+				let k_issuer_tmp = new Issuer('_:g');
+				k_issuer_tmp.issue(sc1_blank);
+				
+				a_paths.push(
+					this.hash_n_degree_quads(sc1_blank, k_issuer_tmp));
+			}
+
+			for(let g_hash_result of a_paths.sort(F_SORT_CANONICALIZER_HASH)) {
+				for(let sc1_existing in g_hash_result.issuer.existing) {
+					k_issuer.issue(sc1_existing);
+				}
+			}
+		}
+
+		let a_normalized = [];
+		let s_issuer_prefix = k_issuer.prefix;
+		for(let a_quad of a_quads) {
+			let [sc1_graph, sc1_subject, sc1_predicate, sc1_object] = a_quad;
+
+			@> normalize_update(s_var)
+				if('_' === @{s_var}[0] && !@{s_var}.startsWith(s_issuer_prefix)) {
+					@{s_var} = k_issuer.issue(@{s_var});
+				}
+			@;
+
+			@*{
+				for(let s_var of A_TERM_ROLES_BLANK_NODES.map(s => `sc1_${s}`)) {
+					yield normalize_update(s_var);
+				}
+			}
+
+			let [
+				kt_subject,
+				kt_predicate,
+				kt_object,
+				kt_graph,
+			] = [
+				factory.c1(sc1_subject),
+				factory.c1(sc1_predicate),
+				factory.c1(sc1_object),
+				factory.c1(sc1_graph),
+			];
+			
+			a_normalized.push({
+				line: [
+					sc1_graph,
+					sc1_subject,
+					sc1_predicate,
+					sc1_object,
+				].join('\0\t')+'\0\n',
+				quad: factory.quad(kt_subject, kt_predicate, kt_object, kt_graph),
+			});
+		}
+
+		// sort quads
+		a_normalized.sort(F_SORT_LINE);
+
+		// create dataset reflecting quad order
+		let k_tree_normalized = new DatasetTree({
+			prefixes: Object.assign({}, this.prefixes),
+		});
+		k_tree_normalized.addQuads(a_normalized.map(g => g.quad));
+
+		// end writable side of stream
+		k_tree_normalized.end();
+
+		// return strut
+		return {
+			string: a_normalized.map(g => g.line).join(''),
+			tree: k_tree_normalized,
+		};
+	}
+
+	hash_first_degree_quads(sc1_blank) {
+		let {
+			blanks: h_blanks,
+			quads: a_quads,
+		} = this;
+
+		let g_blank = h_blanks[sc1_blank];
+		if('hash' in g_blank) return g_blank.hash;
+
+		let a_nquads = [];
+		for(let a_quad of a_quads) {
+			let [sc1_graph, sc1_subject, sc1_predicate, sc1_object] = a_quad;
+
+			@> normalize_1st_deg(s_var)
+				sc1_blank === @{s_var}
+					? '_:i'
+					: ('_' === @{s_var}[0]
+						? '_:o'
+						: @{s_var}),
+			@;
+
+			a_nquads.push([
+				@{normalize_1st_deg('sc1_graph')}
+				@{normalize_1st_deg('sc1_subject')}
+				sc1_predicate,
+				@{normalize_1st_deg('sc1_object')}
+			].join('\0\t')+'\0\n');
+		}
+
+		let p_hash = crypto.createHash('sha256')
+			.update(a_nquads.sort().join('\n'))
+			.digest('hex');
+
+		g_blank.hash = p_hash;
+
+		return p_hash;
+	}
+
+	hash_n_degree_quads(sc1_blank, k_issuer) {
+		let {
+			issuer: k_issuer_root,
+		} = this;
+
+		let h_related = this.hash_to_related(sc1_blank, k_issuer);
+
+		let d_hash = crypto.createHash('sha256');
+		for(let p_related of Object.keys(h_related).sort()) {
+			d_hash.update(p_related);
+			let s_path_chosen = '';
+			let k_issuer_chosen;
+
+			for(let a_perm of permutations(h_related[p_related])) {
+				let k_issuer_copy = k_issuer.clone();
+				let s_path = '';
+				let a_recurse = [];
+
+				let b_next_perm = false;
+				for(let p_other of a_perm) {
+					if(k_issuer_root.has(p_other)) {
+						s_path += k_issuer_root.issue(p_other);
+					}
+					else {
+						if(!k_issuer_copy.has(p_other)) {
+							a_recurse.push(p_other);
+						}
+
+						s_path += k_issuer_copy.issue(p_other);
+					}
+
+					if(s_path_chosen.length
+						&& s_path.length >= s_path_chosen.length
+						&& s_path > s_path_chosen
+					) {
+						b_next_perm = true;
+						break;
+					}
+				}
+
+				if(b_next_perm) continue;
+
+				for(let p_other of a_recurse) {
+					let g_hash_result = this.hash_n_degree_quads(p_other, k_issuer_copy);
+
+					s_path += k_issuer_copy.issue(p_other);
+
+					s_path += '_:#'+g_hash_result.hash;
+
+					k_issuer_copy = g_hash_result.issuer;
+
+					if(s_path_chosen.length
+						&& s_path.length >= s_path_chosen.length
+						&& s_path > s_path_chosen
+					) {
+						b_next_perm = true;
+						break;
+					}
+				}
+
+				if(b_next_perm) continue;
+
+				if(!s_path_chosen.length || s_path < s_path_chosen) {
+					s_path_chosen = s_path;
+					k_issuer_chosen = k_issuer_copy;
+				}
+			}
+
+			d_hash.update(s_path_chosen);
+
+			k_issuer = k_issuer_chosen;
+		}
+
+		return {
+			hash: d_hash.digest('hex'),
+			issuer: k_issuer,
+		};
+	}
+
+	hash_to_related(sc1_blank, k_issuer) {
+		let {
+			blanks: h_blanks,
+		} = this;
+
+		let h_related = {};
+		for(let a_quad of h_blanks[sc1_blank].quads) {
+			let [sc1_graph, sc1_subject, , sc1_object] = a_quad;
+			@> normalize_hash_related(s_var, i_var)
+				if('_' === @{s_var}[0] && @{s_var} !== sc1_blank) {
+					let p_related = this.hash_related_blank_node(@{s_var}, a_quad, k_issuer, @{i_var});
+					if(p_related in h_related) {
+						h_related[p_related].push(@{s_var});
+					}
+					else {
+						h_related[p_related] = [@{s_var}];
+					}
+				}
+			@;
+			@{normalize_hash_related('sc1_graph', 0)}
+			@{normalize_hash_related('sc1_subject', 1)}
+			@{normalize_hash_related('sc1_object', 3)}
+		}
+
+		return h_related;
+	}
+
+	hash_related_blank_node(sc1_blank, a_quad, k_issuer, i_role) {
+		let k_issuer_root = this.issuer;
+		let sc1_use;
+		if(k_issuer_root.has(sc1_blank)) {
+			sc1_use = k_issuer_root.issue(sc1_blank);
+		}
+		else if(k_issuer.has(sc1_blank)) {
+			sc1_use = k_issuer.issue(sc1_blank);
+		}
+		else {
+			sc1_use = this.hash_first_degree_quads(sc1_blank);
+		}
+
+		let d_hash = crypto.createHash('sha256');
+		d_hash.update(i_role+'');
+		if(i_role) {
+			d_hash.update(`<${a_quad[2]}>`);
+		}
+
+		d_hash.update(sc1_use);
+
+		return d_hash.digest('hex');
+	}
+}
+
+// const thicken_quads = (h_tree) => {
+// 	// create thickened object
+// 	let h_thickened = {};
+
+// 	// check each key
+// 	for(let sv1_key in h_tree) {
+// 		h_thickened[sv1_key] = thicken_triples(h_tree[sv1_key]);
+// 	}
+
+// 	// copy key count and quad count
+// 	h_thickened[$_KEYS] = h_tree[$_KEYS];
+// 	h_thickened[$_QUADS] = h_tree[$_QUADS];
+
+// 	return h_thickened;
+// };
+
+// const thicken_triples = (h_tree) => {
+// 	// create thickened object
+// 	let h_thickened = {};
+
+// 	// check each key
+// 	for(let sv1_key in h_tree) {
+// 		h_thickened[sv1_key] = thicken_pairs(h_tree[sv1_key]);
+// 	}
+
+// 	// copy key count and quad count
+// 	h_thickened[$_KEYS] = h_tree[$_KEYS];
+// 	h_thickened[$_QUADS] = h_tree[$_QUADS];
+
+// 	return h_thickened;
+// };
+
+// const thicken_pairs = (h_tree) => {
+// 	// create thickened object
+// 	let h_thickened = {};
+
+// 	// check each key
+// 	for(let sv1_key in h_tree) {
+// 		h_thickened[sv1_key] = new Set(h_tree[sv1_key]);
+// 	}
+
+// 	// copy key count and quad count
+// 	h_thickened[$_KEYS] = h_tree[$_KEYS];
+// 	h_thickened[$_QUADS] = h_tree[$_QUADS];
+
+// 	return h_thickened;
+// };
+// 
+
+const thin_copy = (h_src) => {
+	// create new hash
+	let h_dst = Object.create(h_src);
+
+	// src has weak descendents
+	h_src[$_KIDS] = 1;
+
+	// dst has weak keys
+	h_dst[$_THIN] = 1;
+
+	return h_dst;
+};
+
+// const thin_copy_paste = (h_src, h_dst_parent, s_dst_key) => {
+// 	// create parent
+// 	if(null === h_dst_parent) {
+// 		h_dst_parent = {
+// 			[$_KEYS]: 0,
+// 			[$_QUADS]: 0,
+// 		};
+// 	}
+
+// 	// append to new quad tree
+// 	h_dst_parent[s_dst_key] = h_dst;
+
+// 	// adds single key to parent tree
+// 	h_dst_parent[$_KEYS] += 1;
+
+// 	// all quad count from pairs hash
+// 	h_dst_parent[$_QUADS] += h_src[$_QUADS];
+
+// 	// return dst
+// 	return h_dst;
+// };
+
+
+const thicken = (h_tree) => {
+	// create thickened object
+	let h_thickened = {};
+
+	// check each key
+	for(let sv1_key in h_tree) {
+		h_thickened[sv1_key] = h_tree[sv1_key];
+	}
+
+	// copy key count and quad count
+	h_thickened[$_KEYS] = h_tree[$_KEYS];
+	h_thickened[$_QUADS] = h_tree[$_QUADS];
+
+	return h_thickened;
+};
+
+class DatasetTree extends stream.Duplex {
+	static from(h_quad_tree, g_config={}) {
+		// JSON import
+		if(h_quad_tree['{KEYS}']) {
+			h_quad_tree[$_KEYS] = h_quad_tree['{KEYS}'];
+			h_quad_tree[$_QUADS] = h_quad_tree['{QUADS}'];
+			delete h_quad_tree['{KEYS}'];
+			delete h_quad_tree['{QUADS}'];
+		}
+
+		// 
+		return new DatasetTree(g_config, h_quad_tree);
+	}
+
+	constructor(g_config={}, h_quad_tree=null) {
+		super({
+			// expect quads as input and write objects as output
+			objectMode: true,
+		});
+
+		// config-struct event binding
+		this.bind(g_config);
+
+		let h_prefixes = g_config.prefixes || {};
+
+		// source piped to this
+		this.on('pipe', (ds_src) => {
+			this.src = ds_src;
+
+			ds_src.on('prefix', (s_prefix, p_iri) => {
+				// save/update prefix mapping
+				h_prefixes[s_prefix] = p_iri;
+
+				// graphy output and initial prefix mappings already flushed
+				if(this.prefixes_flushed) {
+					// flush single prefix
+					this.push({
+						type: 'prefixes',
+						value: {
+							[s_prefix]: p_iri,
+						},
+					});
+				}
+			});
+
+			// once input ends
+			ds_src.once('eof', () => {
+				this.eofd = true;
+				// debugger;
+				// this.emit('ready', this);
+			});
+		});
+
+		this.once('finish', () => {
+			this.emit('ready', this);
+			this.finishedd = true;
+
+			if(this.push_waiting) {
+				this._read(this.push_waiting);
+			}
+		});
+
+		Object.assign(this, {
+			quad_tree: h_quad_tree || {[$_KEYS]:0, [$_QUADS]:0},
+			digest: null,
+			root_blanks: {},
+			leaf_blanks: {},
+			prefixes: h_prefixes,
+			prefixes_flushed: false,
+			debug: g_config.debug || false,
+			quad_generator: null,
+			graph_generator: null,
+			graph_iterator: null,
+			subject_generator: null,
+			transform_canonicalize: g_config.canonicalize || false,
+			transform_tree: this,
+			push_waiting: 0,
+		});
+
+		// data given
+		if(h_quad_tree) {
+			// auto-end writable side of duplex
+			setTimeout(() => {
+				this.end();
+			}, 0);
+		}
+	}
+
+	offspring(h_quad_tree=null) {
+		return new DatasetTree({
+			prefixes: Object.assign({}, this.prefixes),
+		}, h_quad_tree);
+	}
+
+
+	// on end input
+	end(...a_args) {
+		// overwrite mutators
+		this.add = this.addAll = this.addQuads = this.add_quads = this.add_tree = this.clear = this.delete = this.deny;
+
+		// end writable stream
+		return super.end(...a_args);
+	}
+
+	// deny mutator call
+	deny() {  // eslint-disable-line class-methods-use-this
+		throw new Error('Set mutator call not allowed after writable side of duplex ended');
+	}
+
+	// on pipe
+	pipe(ds_out) {
+		// // graphy dataset tree
+		// if(ds_out.isGraphyDatasetTree) {
+		// 	debugger;
+
+		// 	// change read moe
+		// 	this._read = function(n_size) {
+		// 		this.push({
+
+		// 		});
+
+		// 		// eos
+		// 		this.push(null);
+		// 	};
+		// }
+
+		// graphy writable
+		if(ds_out.isGraphyWritable) {
+			// change read mode
+			this._read = function(n_size) {
+				// push prefix mappings
+				this.push({
+					type: 'prefixes',
+					value: this.prefixes,
+				});
+
+				// if more prefixes come in, push them immediately
+				this.prefixes_flushed = true;
+
+				// ready to start pushing
+				if(this._writableState.finished) {
+					return this.read_graphy_after_finished(n_size);
+				}
+				// not ready yet
+				else {
+					this.push_waiting = n_size;
+					this._read = function(n_size_nry) {
+						// ready to start pushing
+						if(this._writableState.finished) {
+							this.push_waiting = 0;
+							return this.read_graphy_after_finished(n_size_nry);
+						}
+						// still not ready yet; append size
+						else {
+							this.push_waiting += n_size_nry;
+						}
+					};
+				}
+			}
+		}
+		// non-object mode
+		else if(!ds_out._writableState.objectMode) {
+			let ds_dst = ds_out;
+
+			// transform to JSON strings first
+			ds_out = stream.quads_to_json();
+
+			// forward to super
+			super.pipe(ds_out);
+
+			// pipe to destination
+			return ds_out.pipe(ds_dst);
+		}
+
+		// forward to super
+		return super.pipe(ds_out);
+	}
+
+	// default read: quad mode
+	_read(n_quads) {
+		// ready to start pushing
+		if(this._writableState.finished) {
+			let k_tree = this;
+
+			// transform canonicalize option
+			if(this.transform_canonicalize) {
+				k_tree = this.canonicalize();
+			}
+
+			// start new quad iterator
+			this.quad_generator = k_tree.quads();
+
+			// harden read method
+			this._read = this.resume_read;
+
+			// resume reading
+			return this._read(n_quads);
+		}
+		// not ready yet
+		else {
+			this.push_waiting = n_quads;
+		}
+	}
+
+	// resume default read: quad mode
+	resume_read(n_quads) {
+		let dg_quads = this.quad_generator;
+
+		// advance iterator
+		let di_next = dg_quads.next();
+
+		// continue until iterator is done
+		while(!di_next.done) {
+			// back-pressure; stop pushing
+			if(!this.push(di_next.value)) return;
+
+			// advance iterator
+			di_next = dg_quads.next();
+		}
+
+		// done iterating
+		this.push(null);
+	}
+
+	read_graphy_after_finished(n_size) {
+		let k_tree = this;
+
+		// transform canonicalize option
+		if(this.transform_canonicalize) {
+			k_tree = this.transform_tree = this.canonicalize();
+		}
+
+		// initialize generator(s) & iterator
+		let dg_graphs = this.graph_generator = k_tree.c1_graphs();
+		this.graph_iterator = dg_graphs.next();
+
+		// harden read method
+		this._read = this.resume_read_graphy;
+
+		// resume reading
+		return this._read(n_size);
+	}
+
+	resume_read_graphy(n_size) {
+		let {
+			graph_generator: dg_graphs,
+			graph_iterator: di_graph,
+			subject_generator: dg_subjects,
+			transform_tree: k_tree,
+		} = this;
+
+		let h_quads = k_tree.quad_tree;
+
+		// continue until iterator is done
+		while(!di_graph.done) {
+			let sv1_graph = di_graph.value;
+			let h_triples = h_quads[sv1_graph];
+
+			// advance subject iterator
+			if(!dg_subjects) {
+				dg_subjects = this.subject_generator = k_tree.c1_subjects(sv1_graph);
+			}
+
+			// resume iterator
+			let di_subject = dg_subjects.next();
+
+			while(!di_subject.done) {
+				let sv1_subject = di_subject.value;
+
+				// push writable data event
+				let b_pressure = this.push({
+					type: 'c4r',
+					value: {
+						[sv1_graph]: {
+							[sv1_subject]: h_triples[sv1_subject],
+						},
+					},
+				});
+				
+				// backpressure; stop pushing
+				if(b_pressure) return;
+
+				// advance subject iterator
+				di_subject = dg_subjects.next();
+			}
+
+			// advance graph iterator
+			di_graph = this.graph_iterator = dg_graphs.next();
+		}
+
+		// done reading
+		this.push(null);
+	}
+
+	_write(g_quad, s_encdoing, fk_write) {
+		// add quad to tree
+		this.add(g_quad);
+
+		// done with object
+		fk_write();
+	}
+
+@$ H_PARSE_EVENTS = {
+	ready: {},
+};
+
+	// bind event listeners to output stream
+	bind(g_config) {
+		@*{
+			for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
+				yield /* syntax: js */ `
+					if(g_config.${s_event}) this.${g_event.once? 'once': 'on'}('${s_event}', g_config.${s_event});
+					`.trim()+'\n';
+			}
+		}
+	}
+
+	export() {
+		let h_quads_src = this.quad_tree;
+		let h_quads_dst = {
+			'{KEYS}': h_quads_src[$_KEYS],
+			'{QUADS}': h_quads_src[$_QUADS],
+		};
+
+		for(let svt_graph in h_quads_src) {
+			let h_triples_src = h_quads_src[svt_graph];
+			let h_triples_dst = h_quads_dst[svt_graph] = {
+				'{KEYS}': h_triples_src[$_KEYS],
+				'{QUADS}': h_triples_src[$_QUADS],
+			};
+			for(let svt_subject in h_triples_src) {
+				let h_pairs_src = h_triples_src[svt_subject];
+				let h_pairs_dst = h_triples_dst[svt_subject] = {
+					'{KEYS}': h_pairs_src[$_KEYS],
+					'{QUADS}': h_pairs_src[$_QUADS],
+				};
+				for(let svt_predicate in h_pairs_src) {
+					let as_objects_src = h_pairs_src[svt_predicate];
+					h_pairs_dst[svt_predicate] = new Set([...as_objects_src]);
+				}
+			}
+		}
+
+		return h_quads_dst;
+	}
+
+	* [Symbol.iterator]() {
+		yield* this.quads();
+	}
+
+	* quads() {
+		let h_quads = this.quad_tree;
+		for(let sv1_graph in h_quads) {
+			let h_subjects = h_quads[sv1_graph];
+			let g_graph = factory.c1(sv1_graph);
+			for(let sv1_subject in h_subjects) {
+				let h_predicates = h_subjects[sv1_subject];
+				let g_subject = factory.c1(sv1_subject);
+				for(let sv1_predicate in h_predicates) {
+					let as_objects = h_predicates[sv1_predicate];
+					let g_predicate = factory.c1(sv1_predicate);
+					for(let sv1_object of as_objects) {
+						yield factory.quad(
+							g_subject,
+							g_predicate,
+							factory.c1(sv1_object),
+							g_graph,
+						);
+					}
+				}
+			}
+		}
+	}
+
+	* ct_quads() {
+		let h_quads = this.quad_tree;
+		for(let sc1_graph in h_quads) {
+			let h_subjects = h_quads[sc1_graph];
+			for(let sc1_subject in h_subjects) {
+				let h_predicates = h_subjects[sc1_subject];
+				for(let sc1_predicate in h_predicates) {
+					let as_objects = h_predicates[sc1_predicate];
+					for(let sc1_object of as_objects) {
+						yield [sc1_graph, sc1_subject, sc1_predicate, sc1_object];
+					}
+				}
+			}
+		}
+	}
+
+	* c1_graphs() {
+		for(let sv1_graph in this.quad_tree) {
+			yield sv1_graph;
+		}
+	}
+
+	* c1_subjects(sv1_graph) {
+		let h_subjects = this.quad_tree[sv1_graph];
+		for(let sv1_subject in h_subjects) {
+			yield sv1_subject;
+		}
+	}
+
+	* c1_predicates(s_graph, s_subject) {
+		let h_predicates = this.quad_tree[s_graph][s_subject];
+		for(let s_predicate in h_predicates) {
+			yield s_predicate;
+		}
+	}
+
+	* c1_objects(s_graph, s_subject, s_predicate) {
+		yield* this.quad_tree[s_graph][s_subject][s_predicate];
+	}
+
+	* pairs(sv1_graph, sv1_subject) {
+		let h_predicates = this.quad_tree[sv1_graph][sv1_subject];
+		for(let sv1_predicate in h_predicates) {
+			yield [sv1_predicate, h_predicates[sv1_predicate]];
+		}
+	}
+
+	// match(z_subject, z_predicate, z_object, z_graph=null) {
+	// 	return (new Matcher(this)).match(z_subject, z_predicate, z_object, z_graph);
+	// }
+
+	match(z_subject=null, z_predicate=null, z_object=null, z_graph=null) {
+		let h_quads_src = this.quad_tree;
+
+		// +graph
+		if(z_graph) {
+			// convert graph to c1
+			let sc1_graph_target = factory.from.term(z_graph).concise();
+
+			// no such graph; return new empty tree
+			if(!(sc1_graph_target in h_quads_src)) return this.offspring();
+
+			// ref triples hash
+			let h_triples_src = h_quads_src[sc1_graph_target];
+
+			// +grraph, +subject
+			if(z_subject) {
+				// convert subject to c1
+				let sc1_subject_target = factory.from.term(z_subject).concise();
+
+				// no such subject; return new empty tree
+				if(!(sc1_subject_target in h_triples_src)) return this.offspring();
+
+				// ref pairs hash
+				let h_pairs_src = h_triples_src[sc1_subject_target];
+
+				// +graph, +subject, +predicate
+				if(z_predicate) {
+					// convert predicate to c1
+					let sc1_predicate_target = factory.from.term(z_predicate).concise();
+
+					// no such predicate; return new empty tree
+					if(!(sc1_predicate_target in h_pairs_src)) return this.offspring();
+
+					// ref objects set
+					let as_objects_src = h_pairs_src[sc1_predicate_target];
+
+					// for both paths
+					let n_quads_objects;
+					let as_objects_dst;
+
+					// +graph, +subject, +predicate, +object
+					if(z_object) {
+						// convert object to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// no such object; return new empty tree
+						if(!as_objects_src.has(sc1_object_target)) return this.offspring();
+						
+						// create set
+						as_objects_dst = new Set([sc1_object_target]);
+
+						// sole quad
+						n_quads_objects = 1;
+					}
+					// +graph, +subject, +predicate, -object
+					else {
+						// copy set
+						as_objects_dst = new Set(as_objects_src);
+
+						// quad count
+						n_quads_objects = as_objects_src.size;
+					}
+
+					// path merge; create new tree
+					return this.offspring({
+						[$_KEYS]: 1,
+						[$_QUADS]: n_quads_objects,
+						[sc1_graph_target]: {
+							[$_KEYS]: 1,
+							[$_QUADS]: n_quads_objects,
+							[sc1_subject_target]: {
+								[$_KEYS]: 1,
+								[$_QUADS]: n_quads_objects,
+								[sc1_predicate_target]: as_objects_dst,
+							},
+						},
+					});
+				}
+				// +graph, +subject, -predicate, +object
+				else if(z_object) {
+					// convert object to c1
+					let sc1_object_target = factory.from.term(z_object).concise();
+
+					// prepare for loading into set multiple times
+					let a_object_load = [sc1_object_target];
+
+					// how many distinct pairs are added
+					let c_pairs = 0;
+
+					// dst pairs hash
+					let h_pairs_dst = {
+						[$_KEYS]: 0,
+						[$_QUADS]: 0,
+					};
+
+					// each pairs
+					for(let sc1_predicate in h_pairs_src) {
+						// object exists under pairs tree
+						if(h_pairs_src[sc1_predicate].has(sc1_object_target)) {
+							// create new objects set and save to dst pairs hash
+							h_pairs_dst[sc1_predicate] = new Set(a_object_load);
+
+							// increment pairs count
+							c_pairs += 1;
+						}
+					}
+
+					// no quads; empty tree
+					if(!c_pairs) return this.offspring();
+
+					// save keys and quads count
+					h_pairs_dst[$_KEYS] = c_pairs;
+					h_pairs_dst[$_QUADS] = c_pairs;
+
+					// create new tree
+					return this.offspring({
+						[$_KEYS]: 1,
+						[$_QUADS]: c_pairs,
+						[sc1_graph_target]: {
+							[$_KEYS]: 1,
+							[$_QUADS]: c_pairs,
+							[sc1_subject_target]: h_pairs_dst,
+						},
+					});
+				}
+				// +graph, +subject -predicate, -object
+				else {
+					// quad count
+					let n_quads_pairs = h_pairs_src[$_QUADS];
+
+					// create new tree
+					return this.offspring({
+						[$_KEYS]: 1,
+						[$_QUADS]: n_quads_pairs,
+						[sc1_graph_target]: {
+							[$_KEYS]: 1,
+							[$_QUADS]: n_quads_pairs,
+							[sc1_subject_target]: thin_copy(h_pairs_src),
+						},
+					});
+				}
+			}
+			// +graph, -subject, +predicate
+			else if(z_predicate) {
+				// convert predicate to c1
+				let sc1_predicate_target = factory.from.term(z_predicate).concise();
+
+				// how many subject-keys and quads are added
+				let c_subjects = 0;
+				let c_quads = 0;
+
+				// init dst triples hash
+				let h_triples_dst = {
+					[$_KEYS]: 0,
+					[$_QUADS]: 0,
+				};
+
+				// +graph, -subject, +predicate, +object
+				if(z_object) {
+					// convert object to c1
+					let sc1_object_target = factory.from.term(z_object).concise();
+
+					// prepare for loading into set multiple times
+					let a_object_load = [sc1_object_target];
+
+					// each triples
+					for(let sc1_subject in h_triples_src) {
+						// ref src pairs hash
+						let h_pairs_src = h_triples_src[sc1_subject];
+
+						// no such predicate; skip
+						if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+						// ref src objects set
+						let as_objects_src = h_pairs_src[sc1_predicate_target];
+
+						// no such object; skip
+						if(!as_objects_src.has(sc1_object_target)) continue;
+
+						// create pairs subtree
+						h_triples_dst[sc1_subject] = {
+							[$_KEYS]: 1,
+							[$_QUADS]: 1,
+							[sc1_predicate_target]: new Set(a_object_load),
+						};
+
+						// increment quads count
+						c_quads += 1;
+					}
+
+					// key count matches added quads count
+					c_subjects = c_quads;
+				}
+				// +graph, -subject, +predicate, -object
+				else {
+					// each triples
+					for(let sc1_subject in h_triples_src) {
+						// ref src pairs hash
+						let h_pairs_src = h_triples_src[sc1_subject];
+
+						// no such predicate; skip
+						if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+						// create dst objects set
+						let as_objects_dst = new Set(h_pairs_src[sc1_predicate_target]);
+
+						// create pairs subtree
+						h_triples_dst[sc1_subject] = {
+							[$_KEYS]: 1,
+							[$_QUADS]: as_objects_dst.size,
+							[sc1_predicate_target]: as_objects_dst,
+						};
+
+						// increment quads & subject-keys count
+						c_quads += as_objects_dst.size;
+						c_subjects += 1;
+					}
+				}
+
+				// no quads; empty tree
+				if(!c_subjects) return this.offspring();
+
+				// save quads and subject-keys counts to dst triples hash
+				h_triples_dst[$_KEYS] = c_subjects;
+				h_triples_dst[$_QUADS] = c_quads;
+
+				// create new tree
+				return this.offspring({
+					[$_KEYS]: 1,
+					[$_QUADS]: c_quads,
+					[sc1_graph_target]: h_triples_dst,
+				});
+			}
+			// +graph, -subject, -predicate, +object
+			else if(z_object) {
+				// convert object to c1
+				let sc1_object_target = factory.from.term(z_object).concise();
+
+				// prepare for loading into set multiple times
+				let a_object_load = [sc1_object_target];
+
+				// how many subject keys and quads are added
+				let c_subjects = 0;
+				let c_quads = 0;
+
+				// init dst triples hash
+				let h_triples_dst = {
+					[$_KEYS]: 0,
+					[$_QUADS]: 0,
+				};
+
+				// each triples
+				for(let sc1_subject in h_triples_src) {
+					// ref src pairs hash
+					let h_pairs_src = h_triples_src[sc1_subject];
+
+					// count distinct pairs
+					let c_pairs = 0;
+
+					// dst pairs hash
+					let h_pairs_dst = {
+						[$_KEYS]: 0,
+						[$_QUADS]: 0,
+					};
+
+					// each pairs
+					for(let sc1_predicate in h_pairs_src) {
+						// ref src objects set
+						let as_objects_src = h_pairs_src[sc1_predicate];
+
+						// set has target object
+						if(as_objects_src.has(sc1_object_target)) {
+							// create object set
+							h_pairs_dst[sc1_predicate] = new Set(a_object_load);
+
+							// increment pair count
+							c_pairs += 1;
+						}
+					}
+
+					// no pairs; skip
+					if(!c_pairs) continue;
+
+					// save quads and predicate-keys count
+					h_pairs_dst[$_KEYS] = c_pairs;
+					h_pairs_dst[$_QUADS] = c_pairs;
+
+					// save pairs hash tree
+					h_triples_dst[sc1_subject] = h_pairs_dst;
+
+					// increment super quads count
+					c_quads += c_pairs;
+
+					// increment subject-keys count
+					c_subjects += 1;
+				}
+
+				// no quads; empty tree
+				if(!c_subjects) return this.offspring();
+
+				// save quads and subject-keys count
+				h_triples_dst[$_KEYS] = c_subjects;
+				h_triples_dst[$_QUADS] = c_quads;
+
+				// create dataset tree
+				return this.offspring({
+					[$_KEYS]: 1,
+					[$_QUADS]: c_quads,
+					[sc1_graph_target]: h_triples_dst,
+				});
+			}
+			// +graph, -subject, -predicate, -object
+			else {
+				// create dataset tree
+				return this.offspring({
+					[$_KEYS]: 1,
+					[$_QUADS]: h_triples_src[$_QUADS],
+					[sc1_graph_target]: thin_copy(h_triples_src),
+				});
+			}
+		}
+		// -graph
+		else {
+			// init dst quads hash
+			let h_quads_dst = {
+				[$_KEYS]: 0,
+				[$_QUADS]: 0,
+			};
+
+			// -graph, +subject
+			if(z_subject) {
+				// convert subject to c1
+				let sc1_subject_target = factory.from.term(z_subject).concise();
+
+				// -graph, +subject, +predicate
+				if(z_predicate) {
+					// convert predicate to c1
+					let sc1_predicate_target = factory.from.term(z_predicate).concise();
+
+					// graph-keys and quads counts
+					let c_graphs = 0;
+					let c_quads = 0;
+
+					// -graph, +subject, +predicate, +object
+					if(z_object) {
+						// convert object to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// prepare for loading into set multiple times
+						let a_object_load = [sc1_object_target];
+
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// no such subject; skip
+							if(!(sc1_subject_target in h_triples_src)) continue;
+
+							// ref src pairs hash
+							let h_pairs_src = h_triples_src[sc1_subject_target];
+
+							// no such predicate; skip
+							if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+							// ref src objects set
+							let as_objects_src = h_pairs_src[sc1_predicate_target];
+
+							// no such object; skip
+							if(!as_objects_src.has(sc1_object_target)) continue;
+
+							// create dst object set
+							let as_objects_dst = new Set(a_object_load);
+
+							// create dst triples tree
+							h_quads_dst[sc1_graph] = {
+								[$_KEYS]: 1,
+								[$_QUADS]: 1,
+								[sc1_subject_target]: {
+									[$_KEYS]: 1,
+									[$_QUADS]: 1,
+									[sc1_predicate_target]: as_objects_dst,
+								},
+							};
+
+							// increment graph-keys & quads count
+							c_quads += 1;
+						}
+
+						// graph-keys count matches quads count
+						c_graphs = c_quads;
+					}
+					// -graph, +subject, +predicate, -object
+					else {
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// no such subject; skip
+							if(!(sc1_subject_target in h_triples_src)) continue;
+
+							// ref src pairs hash
+							let h_pairs_src = h_triples_src[sc1_subject_target];
+
+							// no such predicate; skip
+							if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+							// create dst objects set
+							let as_objects_dst = new Set(h_pairs_src[sc1_predicate_target]);
+
+							// how many objects are in set
+							let n_objects = as_objects_dst.size;
+
+							// create dst triples tree
+							h_quads_dst[sc1_graph] = {
+								[$_KEYS]: 1,
+								[$_QUADS]: n_objects,
+								[sc1_subject_target]: {
+									[$_KEYS]: 1,
+									[$_QUADS]: n_objects,
+									[sc1_predicate_target]: as_objects_dst,
+								},
+							};
+
+							// increment graph-keys & quads count
+							c_graphs += 1;
+							c_quads += n_objects;
+						}
+					}
+
+					// no quads; empty tree
+					if(!c_graphs) return this.offspring();
+
+					// save quads and graph-keys counts
+					h_quads_dst[$_KEYS] = c_graphs;
+					h_quads_dst[$_QUADS] = c_quads;
+
+					// create dataset tree
+					return this.offspring(h_quads_dst);
+				}
+				// -graph, +subject, -predicate
+				else {
+					// count graph-keys and quads
+					let c_graphs = 0;
+					let c_quads = 0;
+
+					// -graph, +subject, -predicate, +object
+					if(z_object) {
+						// convert object to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// prepare for loading into set multiple times
+						let a_object_load = [sc1_object_target];
+
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// no such subject; skip
+							if(!(sc1_subject_target in h_triples_src)) continue;
+
+							// ref src pairs hash
+							let h_pairs_src = h_triples_src[sc1_subject_target];
+
+							// count pairs
+							let c_pairs = 0;
+
+							// init dst pairs hash
+							let h_pairs_dst =  {
+								[$_KEYS]: 0,
+								[$_QUADS]: 0,
+							};
+
+							// each predicate
+							for(let sc1_predicate in h_pairs_src) {
+								// ref src objets set
+								let as_objects_src = h_pairs_src[sc1_predicate];
+
+								// no such object; skip
+								if(!as_objects_src.has(sc1_object_target)) continue;
+
+								// create dst objects set
+								h_pairs_dst[sc1_predicate] = new Set(a_object_load);
+
+								// increment pairs count
+								c_pairs += 1;
+							}
+
+							// no pairs hash to add; skip graph
+							if(!c_pairs) continue;
+
+							// save predicate-keys and quads counts
+							h_pairs_dst[$_KEYS] = c_pairs;
+							h_pairs_dst[$_QUADS] = c_pairs;
+
+							// save pairs hash tree
+							h_quads_dst[sc1_graph] = {
+								[$_KEYS]: 1,
+								[$_QUADS]: c_pairs,
+								[sc1_subject_target]: h_pairs_dst,
+							};
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += c_pairs;
+						}
+					}
+					// -graph, +subject, -predicate, -object
+					else {
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// no such subject; skip
+							if(!(sc1_subject_target in h_triples_src)) continue;
+
+							// ref src pairs hash
+							let h_pairs_src = h_triples_src[sc1_subject_target];
+
+							// quads under pairs tree
+							let n_quads = h_pairs_src[$_QUADS];
+
+							// save thin copy of pairs hash to dst quads hash
+							h_quads_dst[sc1_graph] = {
+								[$_KEYS]: 1,
+								[$_QUADS]: n_quads,
+								[sc1_subject_target]: thin_copy(h_pairs_src),
+							};
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += n_quads;
+						}
+					}
+
+					// no quads; empty tree
+					if(!c_graphs) return this.offspring();
+
+					// save graph-keys and quads count
+					h_quads_dst[$_KEYS] = c_graphs;
+					h_quads_dst[$_QUADS] = c_quads;
+
+					// save graph-keys and quads counts
+					return this.offspring(h_quads_dst);
+				}
+			}
+			// -graph, -subject
+			else {
+				// -graph, -subject, +predicate
+				if(z_predicate) {
+					// convert predicate to c1
+					let sc1_predicate_target = factory.from.term(z_predicate).concise();
+
+					// graph-keys and quads count
+					let c_graphs = 0;
+					let c_quads = 0;
+
+					// -graph, -subject, +predicate, +object
+					if(z_object) {
+						// convert predicate to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// prepare for loading into set multiple times
+						let a_object_load = [sc1_object_target];
+
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// subjet-keys count
+							let c_subjects = 0;
+
+							// init dst triples hash
+							let h_triples_dst = {
+								[$_KEYS]: 0,
+								[$_QUADS]: 0,
+							};
+
+							// each subject
+							for(let sc1_subject in h_triples_src) {
+								// ref src pairs hash
+								let h_pairs_src = h_triples_src[sc1_subject];
+
+								// no such predicate; skip
+								if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+								// ref src objects set
+								let as_objects_src = h_pairs_src[sc1_predicate_target];
+
+								// no such object; skip
+								if(!as_objects_src.has(sc1_object_target)) continue;
+
+								// create dst triples tree
+								h_triples_dst[sc1_subject] ={
+									[$_KEYS]: 1,
+									[$_QUADS]: 1,
+									[sc1_predicate_target]: new Set(a_object_load),
+								};
+
+								// increment subject-keys and quads count
+								c_subjects += 1;
+							}
+
+							// no triples trees to add; skip graph
+							if(!c_subjects) continue;
+
+							// save subject-keys and quads count
+							h_triples_dst[$_KEYS] = c_subjects;
+							h_triples_dst[$_QUADS] = c_subjects;
+
+							// save triples hash tree
+							h_quads_dst[sc1_graph] = h_triples_dst;
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += c_subjects;
+						}
+
+						// no quads; empty tree
+						if(!c_graphs) return this.offspring();
+
+						// save graph-keys and quads count
+						h_quads_dst[$_KEYS] = c_graphs;
+						h_quads_dst[$_QUADS] = c_quads
+
+						// create dataset tree
+						return this.offspring(h_quads_dst);
+					}
+					// -graph, -subject, +predicate, -object
+					else {
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// subjet-keys and quads count
+							let c_subjects = 0;
+							let c_triples = 0;
+
+							// init dst triples hash
+							let h_triples_dst = {
+								[$_KEYS]: 0,
+								[$_QUADS]: 0,
+							};
+
+							// each subject
+							for(let sc1_subject in h_triples_src) {
+								// ref src pairs hash
+								let h_pairs_src = h_triples_src[sc1_subject];
+
+								// no such predicate; skip
+								if(!(sc1_predicate_target in h_pairs_src)) continue;
+
+								// create dst objects set
+								let as_objects_dst = new Set(h_pairs_src[sc1_predicate_target]);
+
+								// objects count
+								let n_objects = as_objects_dst.size;
+
+								// create dst triples tree
+								h_triples_dst[sc1_subject] ={
+									[$_KEYS]: 1,
+									[$_QUADS]: n_objects,
+									[sc1_predicate_target]: as_objects_dst,
+								};
+
+								// increment subject-keys and quads count
+								c_subjects += 1;
+								c_triples += n_objects;
+							}
+
+							// no triples trees to add; skip graph
+							if(!c_subjects) continue;
+
+							// save subject-keys and quads count
+							h_triples_dst[$_KEYS] = c_subjects;
+							h_triples_dst[$_QUADS] = c_triples;
+
+							// save triples hash tree
+							h_quads_dst[sc1_graph] = h_triples_dst;
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += c_triples;
+						}
+
+						// no quads; empty tree
+						if(!c_graphs) return this.offspring();
+
+						// save graph-keys and quads counts
+						h_quads_dst[$_KEYS] = c_graphs;
+						h_quads_dst[$_QUADS] = c_quads;
+
+						// create dataset tree
+						return this.offspring(h_quads_dst);
+					}
+				}
+				// -graph, -subject, -predicate
+				else {
+					// -graph, -subject, -predicate, +object
+					if(z_object) {
+						// convert predicate to c1
+						let sc1_object_target = factory.from.term(z_object).concise();
+
+						// prepare for loading into set multiple times
+						let a_object_load = [sc1_object_target];
+
+						// graph-keys and quads count
+						let c_graphs = 0;
+						let c_quads = 0;
+
+						// each graph
+						for(let sc1_graph in h_quads_src) {
+							// ref src triples hash
+							let h_triples_src = h_quads_src[sc1_graph];
+
+							// subject-keys and quads count
+							let c_subjects = 0;
+							let c_triples = 0;
+
+							// init dst triples hash
+							let h_triples_dst = {
+								[$_KEYS]: 0,
+								[$_QUADS]: 0,
+							};
+
+							// each subject
+							for(let sc1_subject in h_triples_src) {
+								// ref src pairs hash
+								let h_pairs_src = h_triples_src[sc1_subject];
+
+								// predicate-keys count
+								let c_predicates = 0;
+
+								// init dst pairs hash
+								let h_pairs_dst = {
+									[$_KEYS]: 0,
+									[$_QUADS]: 0,
+								};
+
+								// each predicate
+								for(let sc1_predicate in h_pairs_src) {
+									// ref src objects set
+									let as_objects_src = h_pairs_src[sc1_predicate];
+
+									// no such object; skip
+									if(!as_objects_src.has(sc1_object_target)) continue;
+
+									// create dst pairs hash
+									h_pairs_dst[sc1_predicate] = new Set(a_object_load);
+
+									// increment predicate-keys count
+									c_predicates += 1;
+								}
+
+								// no quads
+								if(!c_predicates) continue;
+
+								// save predicate-keys and quads count
+								h_pairs_dst[$_KEYS] = c_predicates;
+								h_pairs_dst[$_QUADS] = c_predicates;
+
+								// increment subject-keys and triples count
+								c_subjects += 1;
+								c_triples += c_predicates;
+
+								// save to triples hash tree
+								h_triples_dst[sc1_subject] = h_pairs_dst;
+							}
+
+							// no quads
+							if(!c_subjects) continue;
+
+							// save subject-keys and quads count
+							h_triples_dst[$_KEYS] = c_subjects;
+							h_triples_dst[$_QUADS] = c_triples;
+
+							// increment graph-keys and quads count
+							c_graphs += 1;
+							c_quads += c_triples;
+
+							// save triples hash tree
+							h_quads_dst[sc1_graph] = h_triples_dst;
+						}
+
+						// no quads; empty tree
+						if(!c_graphs) return this.offspring();
+
+						// save subject-keys and quads count
+						h_quads_dst[$_KEYS] = c_graphs;
+						h_quads_dst[$_QUADS] = c_quads;
+
+						// create dataset tree
+						return this.offspring(h_quads_dst);
+					}
+					// -graph, -subject, -predicate, -object
+					else {
+						// same quad tree (clone)
+						return this.union(new DatasetTree());
+					}
+				}
+			}
+		}
+	}
+
+	get size() {
+		return this.quad_tree[$_QUADS];
+	}
+
+	// add single quad
+	add(w_quad) {
+		this.add_quads([factory.from.quad(w_quad)]);
+		return this;
+	}
+
+	// add multiple quads
+	addAll(z_quads) {
+		// array
+		if(Array.isArray(z_quads)) {
+			this.add_quads(z_quads.map(factory.from.quad));
+		}
+		// object
+		else if('object' === typeof z_quads) {
+			if(z_quads.isGraphyDatasetTree) {
+				this.add_tree(z_quads);
+			}
+			else if('function' === typeof z_quads[Symbol.iterator]) {
+				let a_quads = [...z_quads];
+				this.add_quads(a_quads.map(factory.from.quad));
+			}
+			else {
+				throw new Error(`failed to add quads from non-iterable object: ${z_quads}`);
+			}
+		}
+
+		return this;
+	}
+
+	// add quads from sibling
+	add_tree(k_tree) {
+		let h_quads_src = k_tree.quad_tree;
+		let h_quads_dst = this.quad_tree;
+
+		// each graph in src
+		for(let sv1_graph in h_quads_src) {
+			// ref triples src subtree
+			let h_triples_src = h_quads_src[sv1_graph];
+			
+			// ref/create triples dst subtree
+			let h_triples_dst = h_quads_dst[sv1_graph] || {[$_KEYS]:0, [$_QUADS]:0};
+
+			// each subject in src
+			for(let sv1_subject in h_triples_src) {
+				// ref pairs src subtree
+				let h_pairs_src = h_triples_src[sv1_subject];
+
+				// ref/create pairs dst subtree
+				let h_pairs_dst = h_triples_dst[sv1_subject] || {[$_KEYS]:0, [$_QUADS]:0};;
+
+				// each predicate in pairs
+				for(let sv1_predicate in h_pairs_src) {
+					// ref objects src
+					let as_objects_src = h_pairs_src[sv1_predicate];
+					
+					// predicate exists
+					if(sv1_predicate in h_pairs_dst) {
+						h_pairs_dst[sv1_predicate] = new Set([...h_pairs_dst[sv1_predicate], ...as_objects_src]);
+					}
+					// predicate not yet exists
+					else {
+						h_pairs_dst[sv1_predicate] = new Set(as_objects_src);
+					}
+				}
+			}
+		}
+	}
+
+	addQuads(a_quads_safe) {
+		return this.add_quads(a_quads_safe);
+	}
+
+	// add quad(s) to this set
+	add_quads(z_quads_safe) {
+		let h_quads = this.quad_tree;
+		let c_added = 0;
+
+		// each quad in arguments
+		for(let g_quad of z_quads_safe) {
+			let p_graph = g_quad.graph.concise();
+			let p_subject = g_quad.subject.concise();
+			let p_predicate = g_quad.predicate.concise();
+			let p_object = g_quad.object.concise();
+
+			// so we don't have to check twice
+			let b_thickened_quads = false;
+
+			// first encounter of graph
+			if(!(p_graph in h_quads)) {
+				// has weak descendents; thicken self
+				if(h_quads.hasOwnProperty($_KIDS)) {
+					h_quads = this.quad_tree = thicken(h_quads);
+					b_thickened_quads = true;
+				}
+				
+				// add new tree under graph
+				h_quads[p_graph] = {
+					[$_KEYS]: 1,
+					[$_QUADS]: 1,
+					[p_subject]: {
+						[$_KEYS]: 1,
+						[$_QUADS]: 1,
+						[p_predicate]: new Set([p_object]),
+					},
+				};
+
+				// increment how many graphs there are in this set
+				h_quads[$_KEYS] += 1;
+
+				// increment counter
+				c_added += 1;
+			}
+			// graph exists
+			else {
+				let h_triples = h_quads[p_graph];
+
+				// first encounter of subject
+				if(!(p_subject in h_triples)) {
+					// triples tree is weak; thicken it
+					if(h_triples.hasOwnProperty($_KIDS)) {
+						h_triples = thicken(h_triples);
+					}
+
+					// add new tree under subject
+					h_triples[p_subject] = {
+						[$_KEYS]: 1,
+						[$_QUADS]: 1,
+						[p_predicate]: new Set([p_object]),
+					};
+
+					// increment how many subjects there are under this graph
+					h_triples[$_KEYS] += 1;
+
+					// increment counter
+					c_added += 1;
+				}
+				// subject exists
+				else {
+					let h_pairs = h_triples[p_subject];
+
+					// first encounter of predicate
+					if(!(p_predicate in h_pairs)) {
+						// pairs tree is weak; thicken it
+						if(h_pairs.hasOwnProperty($_KIDS)) {
+							h_pairs = thicken(h_pairs);
+						}
+
+						// add new set under predicate
+						h_pairs[p_predicate] = new Set([p_object]);
+
+						// increment how many predicates there are under this subject
+						h_pairs[$_KEYS] += 1;
+
+						// increment counter
+						c_added += 1;
+					}
+					// predicate exists
+					else {
+						let as_objects = h_pairs[p_predicate];
+
+						// first encounter of object
+						if(!as_objects.has(p_object)) {
+							// add object to set
+							as_objects.add(p_object);
+
+							// increment counter
+							c_added += 1;
+						}
+						// duplicate
+						else {
+							continue;
+						}
+					}
+
+					// pairs tree is weak; thicken it
+					if(h_pairs.hasOwnProperty($_KIDS)) {
+						h_pairs = thicken(h_pairs);
+					}
+
+					// increment how many quads there are under this subject
+					h_pairs[$_QUADS] += 1;
+				}
+
+				// triples tree is weak; thicken it
+				if(h_triples.hasOwnProperty($_KIDS)) {
+					h_triples = thicken(h_triples);
+				}
+
+				// increment how many quads there are under this graph
+				h_triples[$_QUADS] += 1;
+			}
+
+			// triples tree is weak; thicken it
+			if(!b_thickened_quads && h_quads.hasOwnProperty($_KIDS)) {
+				h_quads = this.quad_tree = thicken(h_quads);
+			}
+
+			// increment how many quads there are in set
+			h_quads[$_QUADS] += 1;
+
+			// subject is blank node
+			if(g_quad.subject.isBlankNode) {
+				let h_root_blanks = this.root_blanks;
+				if(p_subject in h_root_blanks) {
+					h_root_blanks[p_subject].add(g_quad);
+				}
+				else {
+					h_root_blanks[p_subject] = new Set([g_quad]);
+				}
+			}
+
+			// object is blank node
+			if(g_quad.object.isBlankNode) {
+				let h_leaf_blanks = this.leaf_blanks;
+				if(p_object in h_leaf_blanks) {
+					h_leaf_blanks[p_object].add(g_quad);
+				}
+				else {
+					h_leaf_blanks[p_object] = new Set([g_quad]);
+				}
+			}
+		}
+
+		// invalidate hash and canonicalization
+		this.hash = this.canonicalization = null;
+
+		return c_added;
+	}
+
+	// remove all quads from this tree
+	clear() {
+		this.quad_tree = {[$_KEYS]:0, [$_QUADS]:0};
+		this.digest = this.hash = this.canonicalization = null;
+		this.root_blanks = {};
+		this.leaf_blanks = {};
+	}
+
+	// delete set of quads
+	delete(...a_quads) {
+		let h_quads = this.quad_tree;
+		let c_deleted = 0;
+
+		for(let g_quad of a_quads) {
+			let svt_graph = g_quad.graph.concise();
+			let svt_subject = g_quad.subject.concise();
+			let svt_predicate = g_quad.predicate.concise();
+			let svt_object = g_quad.object.concise();
+
+			// graph exists
+			if(svt_graph in h_quads) {
+				let h_triples = h_quads[svt_graph];
+
+				// subject exists
+				if(svt_subject in h_triples) {
+					let h_pairs = h_triples[svt_subject];
+
+					// predicate exists
+					if(svt_predicate in h_pairs) {
+						let as_objects = h_pairs[svt_predicate];
+
+						// object exists in set
+						if(as_objects.has(svt_object)) {
+							// quads holds graph weakly
+							if(!h_quads.hasOwnProperty(svt_graph)) {
+								// thicken quad tree
+								this.quad_tree = h_quads = thicken(h_quads);
+
+								// thicken triples tree
+								h_quads[svt_graph] = h_triples = thicken(h_triples);
+
+								// thicken pairs tree
+								h_triples[svt_subject] = h_pairs = thicken(h_pairs);
+
+								// thicken set
+								as_objects = h_pairs[svt_predicate] = new Set(as_objects);
+
+								// delete object from set
+								as_objects.delete(svt_object)
+
+								// successfully deleted quad
+								c_deleted += 1;
+							}
+							// triples holds subject weakly
+							else if(!h_triples.hasOwnProperty(svt_subject)) {
+								// thicken triples tree
+								h_quads[svt_graph] = h_triples = thicken(h_triples);
+
+								// thicken pairs tree
+								h_triples[svt_subject] = h_pairs = thicken(h_pairs);
+
+								// thicken set
+								as_objects = h_pairs[svt_predicate] = new Set(as_objects);
+
+								// delete object from set
+								as_objects.delete(svt_object)
+
+								// successfully deleted quad
+								c_deleted += 1;
+
+								// quads tree has weak descendents; thicken it
+								if(h_quads.hasOwnProperty($_KIDS)) {
+									this.quad_tree = h_quads = thicken(h_quads);
+								}
+							}
+							// pairs holds predicate weakly
+							else if(!h_pairs.hasOwnProperty(svt_predicate)) {
+								// thicken pairs tree
+								h_triples[svt_subject] = h_pairs = thicken(h_pairs);
+
+								// thicken set
+								as_objects = h_pairs[svt_predicate] = new Set(as_objects);
+
+								// delete object from set
+								as_objects.delete(svt_object)
+
+								// successfully deleted quad
+								c_deleted += 1;
+
+								// triples tree has weak descendents; thicken it
+								if(h_triples.hasOwnProperty($_KIDS)) {
+									h_quads[svt_graph] = h_triples = thicken(h_triples);
+								}
+
+								// quads tree has weak descendents; thicken it
+								if(h_quads.hasOwnProperty($_KIDS)) {
+									this.quad_tree = h_quads = thicken(h_quads);
+								}
+							}
+							else {
+								// delete object from set
+								as_objects.delete(svt_object)
+
+								// successfully deleted quad
+								c_deleted += 1;
+
+								// pairs tree has weak descendents; thicken it
+								if(h_pairs.hasOwnProperty($_KIDS)) {
+									h_triples[svt_subject] = h_pairs = thicken(h_pairs);
+								}
+
+								// triples tree has weak descendents; thicken it
+								if(h_triples.hasOwnProperty($_KIDS)) {
+									h_quads[svt_graph] = h_triples = thicken(h_triples);
+								}
+
+								// quads tree has weak descendents; thicken it
+								if(h_quads.hasOwnProperty($_KIDS)) {
+									this.quad_tree = h_quads = thicken(h_quads);
+								}
+							}
+
+							// subtract quad counts
+							h_pairs[$_QUADS] -= 1;
+							h_triples[$_QUADS] -= 1;
+							h_quads[$_QUADS] -= 1;
+
+							// set is now empty
+							if(!as_objects.size) {
+								// delete pairs mapping
+								delete h_pairs[svt_predicate];
+
+								// subtract key count
+								h_pairs[$_KEYS] -= 1;
+
+								// pairs is now empty
+								if(!h_pairs[$_KEYS]) {
+									// delete triple mapping
+									delete h_triples[svt_subject];
+
+									// subtract key count
+									h_triples[$_KEYS] -= 1;
+
+									// triples is now empty
+									if(!h_triples[$_KEYS]) {
+										// delete quad mapping
+										delete h_quads[svt_graph];
+
+										// subtract key count
+										h_quads[$_KEYS] -= 1;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// quad not in tree
+		return c_deleted;
+	}
+
+	// tree has quad
+	has(g_quad) {
+		let h_quads = this.quad_tree;
+
+		let svt_graph = g_quad.graph.concise();
+		let svt_subject = g_quad.subject.concise();
+		let svt_predicate = g_quad.predicate.concise();
+		let svt_object = g_quad.object.concise();
+
+		// graph exists
+		if(svt_graph in h_quads) {
+			let h_triples = h_quads[svt_graph];
+
+			// subject exists
+			if(svt_subject in h_triples) {
+				let h_pairs = h_triples[svt_subject];
+
+				// predicate exists
+				if(svt_predicate in h_pairs) {
+					let as_objects = h_pairs[svt_predicate];
+
+					// return result of deleting from set
+					return as_objects.has(svt_object)
+				}
+			}
+		}
+
+		// quad not in tree
+		return false;
+	}
+
+	equals(k_other) {
+		return 0 === this.difference(k_other).size;
+	}
+
+	equivalent(k_other) {
+		// both have digest precomputed
+		if(this.digest && k_other.digest) {
+			return this.digest === k_other.digest;
+		}
+
+		// ref quads
+		let h_quads_a = this.quad_tree;
+		let h_quads_b = k_other.quad_tree;
+
+		// different key count or quad count; cannot be equal
+		if(h_quads_a[$_QUADS] !== h_quads_b[$_QUADS] || h_quads_a[$_KEYS] !== h_quads_b[$_KEYS]) {
+			return false;
+		}
+
+		// compare digests
+		return (new Canonicalizer_ct(this)).normalize().string === (new Canonicalizer_ct(k_other)).normalize().string;
+	}
+
+	// generate the canonical string representation of a quad
+	canonicalize_quad(g_quad, h_hashed, a_visited) {
+		let {
+			subject: h_subject,
+			object: h_object,
+		} = g_quad;
+
+		return g_quad.graph.concise()+'\0\n'
+			+(h_subject.isBlankNode
+				? this.hash_blank_node(h_subject.concise(), h_hashed, a_visited)
+				: h_subject.concise()+'')+'\0\n'
+			+g_quad.predicate.concise()+'\0\n'
+			+(h_object.isBlankNode
+				? this.hash_blank_node(h_object.concise(), h_hashed, a_visited)
+				: h_object.concise())+'\0\n';
+	}
+
+	// canonicalize the dataset
+	canonicalize() {
+		let k_normalize = new Canonicalizer_ct(this);
+		return k_normalize.normalize().tree;
+	}
+
+	noramlize() {
+		return (new Canonicalizer_ct(this)).normalize();
+	}
+
+	// create union of two sets
+	union(k_other) {
+		// ref quads
+		let h_quads_a = this.quad_tree;
+		let h_quads_b = k_other.quad_tree;
+
+		// a has less keys than b; swap quads
+		if(h_quads_a[$_KEYS] < h_quads_b[$_KEYS]) {
+			[h_quads_a, h_quads_b] = [h_quads_b, h_quads_a];
+		}
+
+		// prep quads union
+		let h_quads_u = Object.create(h_quads_a);
+
+		// weak keys
+		h_quads_u[$_THIN] = 1;
+
+		// each graph in a
+		for(let p_graph in h_quads_a) {
+			// graph is also in b
+			if(p_graph in h_quads_b) {
+				// ref triples
+				let h_triples_a = h_quads_a[p_graph];
+				let h_triples_b = h_quads_b[p_graph];
+
+				// triples are not swapped relative to quads
+				let b_swapped_triples = false;
+
+				// a has less keys than b
+				if(h_triples_a[$_KEYS] < h_triples_b[$_KEYS]) {
+					// swap triples
+					[h_triples_a, h_triples_b] = [h_triples_b, h_triples_a];
+
+					// beware consequence of swap
+					b_swapped_triples = true;
+				}
+
+				// prep triples union
+				let h_triples_u = Object.create(h_triples_a);
+
+				// weak keys
+				h_triples_u[$_THIN] = 1;
+
+				// save triples union
+				let b_save_triples = false;
+
+				// each subject in a
+				for(let p_subject in h_triples_a) {
+					// subject is also in b
+					if(p_subject in h_triples_b) {
+						// ref pairs
+						let h_pairs_a = h_triples_a[p_subject];
+						let h_pairs_b = h_triples_b[p_subject];
+
+						// pairs are not swapped relative to triples
+						let b_swapped_pairs = false;
+
+						// a has less keys than b
+						if(h_pairs_a[$_KEYS] < h_pairs_b[$_KEYS]) {
+							// swap pairs
+							[h_pairs_a, h_pairs_b] = [h_pairs_b, h_pairs_a];
+
+							// beware consequences of swap
+							b_swapped_pairs = true;
+						}
+
+						// prep pairs union
+						let h_pairs_u = h_triples_u[p_subject] = Object.create(h_pairs_a);
+
+						// weak keys
+						h_pairs_u[$_THIN] = 1;
+
+						// quads to add under pairs
+						let c_quads_add_pairs = 0;
+
+						// each predicate in a
+						for(let p_predicate in h_pairs_a) {
+							// predicate is also in b
+							if(p_predicate in h_pairs_b) {
+								// ref objects
+								let as_objects_a = h_pairs_a[p_predicate];
+								let as_objects_b = h_pairs_b[p_predicate];
+
+								// union sets and save it to pairs union
+								let as_objects_u = h_pairs_u[p_predicate] = new Set([...as_objects_a, ...as_objects_b]);
+
+								// update quad counts with difference
+								c_quads_add_pairs += as_objects_u.size - as_objects_a.size;
+							}
+						}
+
+						// each predicate in b
+						for(let p_predicate in h_pairs_b) {
+							// predicate is not in a
+							if(!(p_predicate in h_pairs_a)) {
+								// add all objects from this predicate
+								let as_objects_u = h_pairs_u[p_predicate] = new Set(h_pairs_b[p_predicate]);
+
+								// update key count
+								h_pairs_u[$_KEYS] += 1;
+
+								// update quad counts
+								c_quads_add_pairs += as_objects_u.size;
+							}
+						}
+
+						// difference
+						if(c_quads_add_pairs) {
+							// update counts
+							h_pairs_u[$_QUADS] += c_quads_add_pairs;
+							h_triples_u[$_QUADS] += c_quads_add_pairs;
+							h_quads_u[$_QUADS] += c_quads_add_pairs;
+
+							// union has same keys as prototype
+							if(h_pairs_u[$_KEYS] === h_pairs_a[$_KEYS] && h_pairs_u.hasOwnProperty($_KEYS)) {
+								// thicken this
+								@- B_HARDEN_PROTOTYPE
+									// set own symbol properties
+									h_pairs_u[$_THIN] = 0;
+									h_pairs_u[$_KEYS] = h_pairs_a[$_KEYS];
+
+									// uninherit from a
+									Object.setPrototypeOf(h_pairs_u, {});
+								@:
+									// copy to new object
+									h_pairs_u = thicken(h_pairs_u);
+								@;
+							}
+							// union differs from prototype
+							else {
+								// flag descendents on source
+								h_pairs_a[$_KIDS] = 1;
+							}
+
+							// save reference in triples
+							h_triples_u[p_subject] = h_pairs_u;
+
+							// save triples reference
+							b_save_triples = true;
+						}
+						// no difference, but prototype is invalid from pair swap
+						else if(b_swapped_pairs) {
+							// discard union object, recreate it and save to triples
+							h_triples_u[p_subject] = Object.create(h_pairs_a);
+						}
+					}
+				}
+
+				// each subject in b
+				for(let p_subject in h_triples_b) {
+					// subject is not in a
+					if(!(p_subject in h_triples_a)) {
+						// ref pairs
+						let h_pairs_b = h_triples_b[p_subject];
+
+						// add all pairs from this subject and save to triples union
+						let h_pairs_u = h_triples_u[p_subject] = Object.create(h_pairs_b);
+
+						// weak descendents
+						h_pairs_b[$_KIDS] = 1;
+
+						// weak keys
+						h_pairs_u[$_THIN] = 1;
+
+						// update key count
+						h_triples_u[$_KEYS] += 1;
+
+						// update quad counts
+						let n_quads_add = h_pairs_u[$_QUADS];
+						h_triples_u[$_QUADS] += n_quads_add;
+						h_quads_u[$_QUADS] += n_quads_add;
+
+						// save triples reference
+						b_save_triples = true;
+					}
+				}
+
+				// yes mutations
+				if(b_save_triples) {
+					// union has same keys as prototype
+					if(h_triples_u[$_KEYS] === h_triples_a[$_KEYS] && h_triples_u.hasOwnProperty($_KEYS)) {
+						// thicken this
+						@- B_HARDEN_PROTOTYPE
+							// set own symbol properties
+							h_triples_u[$_THIN] = 0;
+							h_triples_u[$_KEYS] = h_triples_a[$_KEYS];
+
+							// uninherit from a
+							Object.setPrototypeOf(h_triples_u, {});
+						@:
+							// copy to new object
+							h_triples_u = thicken(h_triples_u);
+						@;
+					}
+					// union differs from prototype
+					else {
+						// flag descendents on source
+						h_triples_a[$_KIDS] = 1;
+					}
+
+					// save triples union to quads union
+					h_quads_u[p_graph] = h_triples_u;
+				}
+				// no mutations, but prototype is invalid from triple swap
+				else if(b_swapped_triples) {
+					// discard union object, recreate it and save to quads
+					h_quads_u[p_graph] = Object.create(h_triples_a);
+				}
+			}
+		}
+
+		// each graph in b
+		for(let p_graph in h_quads_b) {
+			// graph is not in a
+			if(!(p_graph in h_quads_a)) {
+				// add all triples from this graph
+				let h_triples_u = h_quads_u[p_graph] = Object.create(h_quads_b[p_graph]);
+
+				// update key count
+				h_quads_u[$_KEYS] += 1;
+
+				// update quad counts
+				let n_quads_add = h_triples_u[$_QUADS];
+				h_quads_u[$_QUADS] += n_quads_add;
+			}
+		}
+
+		// union has same keys as prototype
+		if(h_quads_u[$_KEYS] === h_quads_a[$_KEYS] && h_quads_u.hasOwnProperty($_KEYS)) {
+			// thicken this
+			@- B_HARDEN_PROTOTYPE
+				// set own symbol properties
+				h_quads_u[$_THIN] = 0;
+				h_quads_u[$_KEYS] = h_quads_a[$_KEYS];
+
+				// uninherit from a
+				Object.setPrototypeOf(h_quads_u, {});
+			@:
+				// copy to new object
+				h_quads_u = thicken(h_quads_u);
+			@;
+		}
+		// union differs from prototype
+		else {
+			// flag descendents on source
+			h_quads_a[$_KIDS] = 1;
+		}
+
+		// always return new instance
+		return new DatasetTree({
+			// merge prefixes; this instance has precedence
+			prefixes: Object.assign({}, k_other.prefixes, this.prefixes),
+		}, h_quads_u);
+	}
+
+	// compute intersection of two sets
+	intersection(k_other) {
+		// ref quads
+		let h_quads_a = this.quad_tree;
+		let h_quads_b = k_other.quad_tree;
+
+		// set b has less quads than set a; swap quadss
+		if(h_quads_b[$_KEYS] < h_quads_a[$_KEYS]) {
+			[h_quads_a, h_quads_b] = [h_quads_b, h_quads_a];
+		}
+
+		// prep quads intersection
+		let h_quads_i = {[$_KEYS]:0, [$_QUADS]:0};
+
+		// each graph in a
+		for(let p_graph in h_quads_a) {
+			// graph is also in b
+			if(p_graph in h_quads_b) {
+				// ref tripless
+				let h_triples_a = h_quads_a[p_graph];
+				let h_triples_b = h_quads_b[p_graph];
+
+				// set b has less triples than set a; swap triples
+				if(h_triples_b[$_KEYS] < h_triples_a[$_KEYS]) {
+					[h_triples_a, h_triples_b] = [h_triples_b, h_triples_a];
+				}
+
+				// prep triples intersection
+				let h_triples_i = {[$_KEYS]:0, [$_QUADS]:0};
+
+				// each subject in a
+				for(let p_subject in h_triples_a) {
+					// subject is also in b
+					if(p_subject in h_triples_b) {
+						// ref pairs
+						let h_pairs_a = h_triples_a[p_subject];
+						let h_pairs_b = h_triples_b[p_subject];
+
+						// set b has less pairs than set a; swap pairs
+						if(h_pairs_b[$_KEYS] < h_pairs_a[$_KEYS]) {
+							[h_pairs_a, h_pairs_b] = [h_pairs_b, h_pairs_a];
+						}
+
+						// prep pairs intersection
+						let h_pairs_i = {[$_KEYS]:0, [$_QUADS]:0};
+
+						// each predicate in a
+						for(let p_predicate in h_pairs_a) {
+							// predicate is also in b
+							if(p_predicate in h_pairs_b) {
+								// ref objects
+								let as_objects_a = h_pairs_a[p_predicate];
+								let as_objects_b = h_pairs_b[p_predicate];
+
+								// set b has less objects than set a; swap objects
+								if(as_objects_b.size < as_objects_a.size) {
+									[as_objects_a, as_objects_b] = [as_objects_b, as_objects_a];
+								}
+
+								// prep objects intersection
+								let as_objects_i = new Set();
+
+								// each object in a
+								for(let p_object of as_objects_a) {
+									// object is also in b
+									if(as_objects_b.has(p_object)) {
+										// add to intersection
+										as_objects_i.add(p_object);
+									}
+								}
+
+								// non-empty object intersection
+								if(as_objects_i) {
+									// add objects to pair
+									h_pairs_i[p_predicate] = as_objects_i;
+
+									// update key count
+									h_pairs_i[$_KEYS] += 1;
+
+									// update quad count
+									h_pairs_i[$_QUADS] += as_objects_i.size;
+								}
+							}
+						}
+
+						// non-empty pairs intersection
+						if(h_pairs_i[$_KEYS]) {
+							// add pairs to triples
+							h_triples_i[p_subject] = h_pairs_i;
+
+							// update key count
+							h_triples_i[$_KEYS] += 1;
+
+							// update quad count
+							h_triples_i[$_QUADS] += h_pairs_i[$_QUADS];
+						}
+					}
+				}
+
+				// non-empty triples intersection
+				if(h_triples_i[$_KEYS]) {
+					// add triples to quads
+					h_quads_i[p_graph] = h_triples_i;
+
+					// update key count
+					h_quads_i[$_KEYS] += 1;
+
+					// update quad count
+					h_quads_i[$_QUADS] += h_triples_i[$_QUADS];
+				}
+			}
+		}
+
+		return new DatasetTree({
+			// merge prefixes; this instance has precedence
+			prefixes: Object.assign({}, k_other.prefixes, this.prefixes),
+		}, h_quads_i);
+	}
+
+	// subtract a subset from this
+	minus_subset(k_subset) {
+		// ref quads
+		let h_quads_a = this.quad_tree;
+		let h_quads_b = k_subset.quad_tree;
+
+		// prep quads remainder
+		let h_quads_r = {[$_KEYS]:0, [$_QUADS]:0};
+
+		// each graph in a
+		for(let p_graph in h_quads_a) {
+			// graph is also in b
+			if(p_graph in h_quads_b) {
+				// ref tripless
+				let h_triples_a = h_quads_a[p_graph];
+				let h_triples_b = h_quads_b[p_graph];
+
+				// prep triples remainder
+				let h_triples_r = {[$_KEYS]:0, [$_QUADS]:0};
+
+				// each subject in a
+				for(let p_subject in h_triples_a) {
+					// subject is also in b
+					if(p_subject in h_triples_b) {
+						// ref pairs
+						let h_pairs_a = h_triples_a[p_subject];
+						let h_pairs_b = h_triples_b[p_subject];
+
+						// prep pairs remainder
+						let h_pairs_r = {[$_KEYS]:0, [$_QUADS]:0};
+
+						// each predicate in b
+						for(let p_predicate in h_pairs_b) {
+							// ref objects
+							let as_objects_a = h_pairs_a[p_predicate];
+							let as_objects_b = h_pairs_b[p_predicate];
+
+							// prep objects remainder
+							let as_objects_r = new Set(as_objects_a);
+
+							// each object in b
+							for(let p_object of as_objects_b) {
+								// remove from remainder
+								as_objects_r.delete(p_object);
+							}
+
+							// non-empty object remainder
+							if(as_objects_r.size) {
+								// add objects to pair
+								h_pairs_r[p_predicate] = as_objects_r;
+
+								// update key count
+								h_pairs_r[$_KEYS] += 1;
+
+								// update quad count
+								h_pairs_r[$_QUADS] += as_objects_r.size;
+							}
+						}
+
+						// non-empty pairs remainder
+						if(h_pairs_r[$_KEYS]) {
+							// add pairs to triples
+							h_triples_r[p_subject] = h_pairs_r;
+
+							// update key count
+							h_triples_r[$_KEYS] += 1;
+
+							// update quad count
+							h_triples_r[$_QUADS] += h_pairs_r[$_QUADS];
+						}
+					}
+					// subject is not in b
+					else {
+						// add all pairs from this subject
+						let h_pairs_r = h_triples_r[p_subject] = h_triples_a[p_subject];
+
+						// update key count
+						h_triples_r[$_KEYS] += 1;
+
+						// update quad count
+						h_triples_r[$_QUADS] += h_pairs_r[$_QUADS];
+					}
+				}
+
+				// non-empty triples intersection
+				if(h_triples_r[$_KEYS]) {
+					// add triples to quads
+					h_quads_r[p_graph] = h_triples_r;
+
+					// update key count
+					h_quads_r[$_KEYS] += 1;
+
+					// update quad count
+					h_quads_r[$_QUADS] += h_triples_r[$_QUADS];
+				}
+			}
+			// graph is not in b
+			else {
+				// add all triples from this graph
+				let h_triples_r = h_quads_r[p_graph] = h_quads_a[p_graph];
+
+				// update key count
+				h_quads_r[$_KEYS] += 1;
+
+				// update quad count
+				h_quads_r[$_QUADS] += h_triples_r[$_QUADS];
+			}
+		}
+
+		// return new dataset tree
+		return new DatasetTree({
+			// merge prefixes; this instance has precedence
+			prefixes: Object.assign({}, k_subset.prefixes, this.prefixes),
+		}, h_quads_r);
+	}
+
+	// tests if another set is contained by this set
+	contains(k_other) {
+		// compute intersection first
+		let k_i = this.intersection(k_other);
+
+		// (A ∩ B) == B
+		return k_i.equals(k_other);
+	}
+
+	// subtract another set from this
+	minus(k_other) {
+		// compte intersection first
+		let k_i = this.intersection(k_other);
+
+		// A - (A ∩ B)
+		return this.minus_subset(k_i);
+	}
+
+	// (A ∩ B) == Ø
+	disjoint(k_other) {
+		return 0 === this.intersection(k_other).size;
+	}
+
+	// compute the difference of two sets
+	difference(k_other) {
+		// compute intersection first
+		let k_i = this.intersection(k_other);
+
+		// (A - (A ∩ B)) ∪ (B - (A ∩ B))
+		return this.minus_subset(k_i)
+			.union(k_other.minus_subset(k_i));
+	}
+
+
+	distinct_subjects() {
+		return this.quad_tree[$_KEYS];
+	}
+
+	// count how many quads match the given selector
+	count(a_terms=[]) {
+		// no terms; return quad count
+		if(!a_terms.length) return this.quad_tree[$_QUADS];
+
+		// normalize terms
+		let act_terms = a_terms.map((z) => {
+			// concise term string
+			if('string' === typeof z) return z;
+
+			// rdfjs term
+			if('termType' in z) {
+				// graphy term
+				if('concise' in z) return z.concise();
+
+				// foreign term; make graphy
+				return factory_from.rdfjs_term(z).concise();
+			}
+
+			// null
+			if(null === z) return z;
+
+			// invalid
+			throw new TypeError(`invalid type for term in array: ${z}`);
+		});
+
+		// ref quads
+		let h_quads = this.quad_tree;
+
+		// number of terms
+		let nl_terms = act_terms.length;
+
+		// matching trees
+		let a_trees = [];
+
+		// graph
+		let p_graph = act_terms[0];
+
+		// variable; take all graphs
+		if(null === p_graph) {
+			a_trees = Object.values(h_quads);
+		}
+		// specific
+		else {
+			a_trees = [h_quads[p_graph]];
+		}
+
+		// subject
+		if(nl_terms > 1) {
+			let p_subject = act_terms[1];
+
+			// prep to swap out trees
+			let a_swap = [];
+
+			// variable
+			if(null === p_subject) {
+				// take all subjects
+				a_trees.forEach((h) => {
+					a_swap.push(...Object.values(h));
+				});
+			}
+			// specific
+			else {
+				a_trees.forEach((h) => {
+					if(p_subject in h) {
+						a_swap.push(h[p_subject]);
+					}
+				});
+			}
+
+			// swap in for trees
+			a_trees = a_swap;
+
+			// predicate given
+			if(nl_terms > 2) {
+				let p_predicate = act_terms[2];
+
+				// prep to swap out trees
+				a_swap = [];
+
+				// variable
+				if(null === p_predicate) {
+					// take all predicates
+					a_trees.forEach((h) => {
+						a_swap.push(...Object.values(h));
+					});
+				}
+				// specific
+				else {
+					a_trees.forEach((h) => {
+						if(p_predicate in h) {
+							a_swap.push(h[p_predicate]);
+						}
+					});
+				}
+
+				// swap in for trees
+				a_trees = a_swap;
+
+				// object given
+				if(nl_terms > 3) {
+					let p_object = act_terms[3];
+
+					// prep to count objects
+					let c_objects = 0;
+
+					// variable
+					if(null === p_object) {
+						// take all objects
+						a_trees.forEach((as) => {
+							c_objects += as.size;
+						});
+					}
+					// specific
+					else {
+						// count objects
+						a_trees.forEach((h) => {
+							if(p_object in h) {
+								c_objects += 1;
+							}
+						});
+					}
+
+					// more terms given
+					if(nl_terms > 4) {
+						throw new Error(`too many values given in terms array`);
+					}
+
+					// object count
+					return c_objects;
+				}
+			}
+		}
+
+		// reduce final quad count
+		return a_trees.reduce((c, h) => c + h[$_QUADS], 0);
+	}
+
+	@//deleteMatches() {}
+	@//every() {}
+	@//filter() {}
+	@//forEach() {}
+	@//import() {}
+	@//map() {}
+	@//reduce() {}
+	@//some() {}
+	@//toArray() {}
+	@//toCanonical() {}
+	@//toStream() {}
+	@//toString() {}
+}
+
+Object.assign(DatasetTree, {
+	isGraphyDatasetTree: true,
+});
+
+module.exports = Object.assign(function(...a_args) {
+	return new DatasetTree(...a_args);
+}, {
+	keys: $_KEYS,
+	quads: $_QUADS,
+});

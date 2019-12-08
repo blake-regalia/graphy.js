@@ -11,9 +11,9 @@
 	Documentation for the <code>@graphy/core.data.factory</code> package which covers the interfaces for RDF data objects and the methods used to create and mutate them.
 </div>
 
-## [Dataset Tree](util.dataset.tree)
+## [Fast Dataset](memory.dataset.fast)
 <div class="larger">
-	Documentation for the <code>@graphy/util.dataset.tree</code> package which allows for union, 
+	Documentation for the <code>@graphy/memory.dataset.fast</code> package which allows for union, 
 	intersection, inclusion, canonicalization, reduction and so forth.
 </div>
 

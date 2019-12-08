@@ -194,7 +194,7 @@ A 'hash' refers to a dictionary (a plain ES object) `value` with enumerable prop
 Directives allow for special events to be passed to the output serializer at a given location within the document, such as for the insertion of comments and newlines, as well as to configure scoped options such as list structure. The following functions create directive strings which can be used as the keys in concise triples and concise quads hashes:
  - [factory.comment](core.data.factory#function_comment)
  - [factory.newlines](core.data.factory#function_comment)
- - [factory.config](core.data.factory#function_config)
+@// - [factory.config](core.data.factory#function_config)
 
 
 ----

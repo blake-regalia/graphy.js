@@ -24,8 +24,8 @@
  - [Write RDF data](content.textual#verb_write) using streaming transforms with the awesome and intuitive [concise triples and concise quads language](concise).
  - [Construct RDF data](concise#hash_c3) using ES object literals that reflect the tree-like structure of quads, `graph -> subject -> predicate -> object`, including nested blank nodes and RDF collections.
 <!-- - [High-performance](#performance) document readers. -->
- - [Compute the union, intersection, difference or subtraction](util.dataset.tree) between multiple RDF graphs analagous to [Set Algebra](https://en.wikipedia.org/wiki/Algebra_of_sets).
- - [Compare two RDF graphs](util.dataset.tree#method_canonicalize) for isomoprhic equivalence, containment, and disjointness by first canonicalizing them with the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
+ - [Compute the union, intersection, difference or subtraction](memory.dataset.fast) between multiple RDF graphs analagous to [Set Algebra](https://en.wikipedia.org/wiki/Algebra_of_sets).
+ - [Compare two RDF graphs](memory.dataset.fast#method_canonicalize) for isomoprhic equivalence, containment, and disjointness by first canonicalizing them with the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
  - [Transform RDF data from the command-line](cli) by piping them through a series of sub-commands.
 
 
@@ -39,21 +39,25 @@ graphy/:
   core.:
     data.:
       factory: '@graphy/core.data.factory'
-  util.:
+  memory.:
     dataset.:
-      tree: '@graphy/util.dataset.tree'
+      tree: '@graphy/memory.dataset.fast'
   content.:
     nt.:
       read: '@graphy/content.nt.read'
+      scribe: '@graphy/content.nt.scribe'
       write: '@graphy/content.nt.write'
     nq.:
       read: '@graphy/content.nq.read'
+      scribe: '@graphy/content.nq.scribe'
       write: '@graphy/content.nq.write'
     ttl.:
       read: '@graphy/content.ttl.read'
+      scribe: '@graphy/content.ttl.scribe'
       write: '@graphy/content.ttl.write'
     trig.:
       read: '@graphy/content.trig.read'
+      scribe: '@graphy/content.trig.scribe'
       write: '@graphy/content.trig.write'
 ```
 

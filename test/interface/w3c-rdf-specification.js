@@ -1,26 +1,17 @@
 const fs = require('fs');
 const path = require('path');
-const stream = require('stream');
 const url = require('url');
 const expect = require('chai').expect;
 
 const pathToFileURL = url.pathToFileURL || (p_path => `file://${p_path}`);
 const fileURLToPath = url.fileURLToPath || (p_url => p_url.replace(/^file:\/\//, ''));
 
-// const S_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
-// const ttl_read = require(`@${S_CHANNEL}/content.ttl.read`);
-// const nt_read = require(`@${S_CHANNEL}/content.nt.read`);
-// const nq_read = require(`@${S_CHANNEL}/content.nq.read`);
-// const trig_write = require(`@${S_CHANNEL}/content.trig.write`);
-// const factory = require(`@${S_CHANNEL}/core.data.factory`);
-// const dataset_tree = require(`@${S_CHANNEL}/util.dataset.tree`);
-
 const ttl_read = require('@graphy/content.ttl.read');
 const nt_read = require('@graphy/content.nt.read');
 const nq_read = require('@graphy/content.nq.read');
 const trig_write = require('@graphy/content.trig.write');
 const factory = require('@graphy/core.data.factory');
-const dataset_tree = require('@graphy/util.dataset.tree');
+const dataset_tree = require('@graphy/memory.dataset.fast');
 
 const write_preview = () => trig_write({
 	style: {

@@ -21,7 +21,7 @@ const mk_yargs = require('yargs/yargs');
 const graphy = require('graphy');
 const factory = require('@{channel('core.data.factory')}');
 const stream = require('@{channel('core.iso.stream')}');
-const dataset_tree = require('@{channel('util.dataset.tree')}');
+const dataset_tree = require('@{channel('memory.dataset.fast')}');
 
 const parse_filter = require('./quad-expression.js').parse;
 const expression_handler = require('./expression-handler.js');
@@ -155,8 +155,8 @@ const interpret_item = (z_item, h_prefixes, ds_transform, fke_transform) => {
 	fke_transform();
 };
 
-const dataset_N1QQ = async(a_inputs, s_operation, fe_command) => {
-	let b_canonicalize = true;
+const dataset_N1QQ = async(g_argv, a_inputs, fe_command, s_operation) => {
+	let b_canonicalize = !g_argv.strict;
 
 	// create trees
 	let a_trees = a_inputs.map(() => dataset_tree());
@@ -193,8 +193,8 @@ const dataset_N1QQ = async(a_inputs, s_operation, fe_command) => {
 	return [k_tree_out];
 };
 
-const dataset_21QQ = (a_inputs, s_operation, fe_command) => new Promise((fk_resolve) => {
-	let b_canonicalize = true;
+const dataset_21QQ = (g_argv, a_inputs, fe_command, s_operation) => new Promise((fk_resolve) => {
+	let b_canonicalize = !g_argv.strict;
 
 	let operate = () => [k_tree_a[s_operation](k_tree_b)];
 
@@ -234,8 +234,8 @@ const dataset_21QQ = (a_inputs, s_operation, fe_command) => new Promise((fk_reso
 	ds_input_b.pipe(k_tree_b);
 });
 
-const dataset_21QR = (a_inputs, s_operation, fe_command) => new Promise((fk_resolve) => {
-	let b_canonicalize = true;
+const dataset_21QR = (g_argv, a_inputs, fe_command, s_operation) => new Promise((fk_resolve) => {
+	let b_canonicalize = !g_argv.strict;
 
 	let operate = () => [new AnswerSource(k_tree_a[s_operation](k_tree_b))];
 
@@ -332,6 +332,13 @@ const S_CATEGORY_SET = 'Dataset Commands:';
 const S_CATEGORY_STATS = 'Statistics Commands:';
 
 const S_WARN_JAVASCRIPT = `WARNING: the '-j' / '--js' / '--javascript' option evals the given code. DO NOT allow user input into this option as it will grant them arbitrary code execution with whatever privileges the process is running under.`;
+
+const G_OPTIONS_DATASET = {
+	strict: {
+		type: 'boolean',
+		describe: 'if true, forgoes canonicalization before the set operation',
+	},
+};
 
 const content_type_flags = f_verb => ({
 	// nt: {
@@ -1249,6 +1256,20 @@ let h_commands = {  // eslint-disable-next-line quote-props
 ------ Dataset --------
 */
 
+	tree: {
+		type: S_TRANSFORM_TYPE_NNQQ,
+		category: S_CATEGORY_SET,
+		overview: 'Put all quads into a tree data structure to remove duplicates',
+		description: [
+			'$1',
+		],
+		options: {},
+
+		command() {
+			return map_streams(a_inputs, () => dataset_tree());
+		},
+	},
+
 	union: {
 		type: S_TRANSFORM_TYPE_N1QQ,
 		category: S_CATEGORY_SET,
@@ -1256,10 +1277,12 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		description: [
 			'$1',
 		],
-		options: {},
+		options: {
+			...G_OPTIONS_DATASET,
+		},
 
 		command(g_argv, a_inputs, fe_command) {
-			return dataset_N1QQ(a_inputs, 'union', fe_command);
+			return dataset_N1QQ(g_argv, a_inputs, fe_command, 'union');
 		},
 	},
 
@@ -1271,10 +1294,12 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		description: [
 			'$1',
 		],
-		options: {},
+		options: {
+			...G_OPTIONS_DATASET,
+		},
 
 		command(g_argv, a_inputs, fe_command) {
-			return dataset_N1QQ(a_inputs, 'intersection', fe_command);
+			return dataset_N1QQ(g_argv, a_inputs, fe_command, 'intersection');
 		},
 	},
 
@@ -1286,10 +1311,12 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		description: [
 			'$1',
 		],
-		options: {},
+		options: {
+			...G_OPTIONS_DATASET,
+		},
 
 		command(g_argv, a_inputs, fe_command) {
-			return dataset_21QQ(a_inputs, 'difference', fe_command);
+			return dataset_21QQ(g_argv, a_inputs, fe_command, 'difference');
 		},
 	},
 
@@ -1301,10 +1328,12 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		description: [
 			'$1',
 		],
-		options: {},
+		options: {
+			...G_OPTIONS_DATASET,
+		},
 
 		command(g_argv, a_inputs, fe_command) {
-			return dataset_21QQ(a_inputs, 'minus', fe_command);
+			return dataset_21QQ(g_argv, a_inputs, fe_command, 'minus');
 		},
 	},
 
@@ -1316,10 +1345,12 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		description: [
 			'$1',
 		],
-		options: {},
+		options: {
+			...G_OPTIONS_DATASET,
+		},
 
 		command(g_argv, a_inputs, fe_command) {
-			return dataset_21QR(a_inputs, 'equals', fe_command);
+			return dataset_21QR(g_argv, a_inputs, fe_command, 'equals');
 		},
 	},
 
@@ -1330,10 +1361,12 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		description: [
 			'$1',
 		],
-		options: {},
+		options: {
+			...G_OPTIONS_DATASET,
+		},
 
 		command(g_argv, a_inputs, fe_command) {
-			return dataset_21QR(a_inputs, 'disjoint', fe_command);
+			return dataset_21QR(g_argv, a_inputs, fe_command, 'disjoint');
 		},
 	},
 
@@ -1345,10 +1378,12 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		description: [
 			'$1',
 		],
-		options: {},
+		options: {
+			...G_OPTIONS_DATASET,
+		},
 
 		command(g_argv, a_inputs, fe_command) {
-			return dataset_21QR(a_inputs, 'contains', fe_command);
+			return dataset_21QR(g_argv, a_inputs, fe_command, 'contains');
 		},
 	},
 
@@ -1553,16 +1588,19 @@ if(!a_pipeline.length) {
 					.join('\n\n');
 			}
 
-			let s_positionals = '';
-			if(g_command.positionals) {
-				s_positionals = 'Arguments:\n';
-				for(let [si_pos, g_pos] of Object.entries(g_command.positionals)) {
-					s_positionals += `  ${si_pos.padStart(n_width_column, ' ')}  [${g_pos.type}] ${g_pos.describe}\n`;
-				}
-			}
-
 			let s_usage = [s_command, ...(g_command.alias? [g_command.alias]: [])]
 				.reduce((s_out, s, i) => `${s_out}\n${i? 'Or': 'Usage'}:  $0${S_TRANSFORM_TYPE_NNSQ === g_command.type? '': ' [...]'} ${s}${g_command.syntax? ' '+g_command.syntax: ''} [OPTIONS] [ / COMMAND]*`, '');
+
+			let s_positionals = '';
+			if(g_command.positionals) {
+				let n_width_positionals = Object.entries(g_command.positionals)
+					.reduce((n, [s]) => Math.max(n, s.length), 10);
+
+				s_positionals = '\n\nArguments:';
+				for(let [si_pos, g_pos] of Object.entries(g_command.positionals)) {
+					s_positionals += `\n  ${si_pos.padEnd(n_width_positionals, ' ')}  [${g_pos.type}] ${g_pos.describe}`;
+				}
+			}
 
 			let s_examples = '';
 			if(g_command.examples && g_command.examples.length) {
@@ -1585,7 +1623,7 @@ if(!a_pipeline.length) {
 			// build yargs
 			let g_argv = mk_yargs()
 				.strict()
-				.usage(s_usage+'\n'+s_describe)
+				.usage(s_usage+'\n'+s_describe+'\n'+s_positionals)
 				.options(g_options)
 				.help()
 				.epilog(s_examples)
@@ -1594,7 +1632,7 @@ if(!a_pipeline.length) {
 				.parse(a_series.slice(1));
 
 			// no inputs
-			if(!a_inputs.length) {
+			if(!a_prev.length) {
 				return fe_command(`The '${s_command}' command requires at least 1 input stream but 0 were piped in.`);
 			}
 
