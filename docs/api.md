@@ -1,9 +1,35 @@
 
 # [« Home](https://graphy.link/) / API Documentation
 
+**Jump To Package:**
+ - [`@graphy/core.data.factory`](core.data.factory)
+ - [`@graphy/memory.dataset.fast`](memory.dataset.fast)
+ - [`@graphy/content.nt.read`](content.textual#verb_read)
+ - [`@graphy/content.nt.scribe`](content.textual#verb_scribe)
+ - [`@graphy/content.nt.write`](content.textual#verb_write)
+ - [`@graphy/content.nq.read`](content.textual#verb_read)
+ - [`@graphy/content.nq.scribe`](content.textual#verb_scribe)
+ - [`@graphy/content.nq.write`](content.textual#verb_write)
+ - [`@graphy/content.ttl.read`](content.textual#verb_read)
+ - [`@graphy/content.ttl.scribe`](content.textual#verb_scribe)
+ - [`@graphy/content.ttl.write`](content.textual#verb_write)
+ - [`@graphy/content.trig.read`](content.textual#verb_read)
+ - [`@graphy/content.trig.scribe`](content.textual#verb_scribe)
+ - [`@graphy/content.trig.write`](content.textual#verb_write)
+
 ## [Examples](api.examples)
 <div class="larger">
-	Examples demonstrating some common use cases for the `graphy` JavaScript API.
+	Examples demonstrating some common use cases for the <code>graphy</code> JavaScript API.
+</div>
+
+## [Concise Terms, Triples and Quads](concise)
+<div class="larger">
+	Documentation for concise-term strings and concise-triples/concise-quads hashes.
+</div>
+
+## [Quad Filter Expressions](quad-filter-expressions)
+<div class="larger">
+	Documentation for quad filter expressions.
 </div>
 
 ## [Data Factory](core.data.factory)
@@ -17,12 +43,7 @@
 	intersection, inclusion, canonicalization, reduction and so forth.
 </div>
 
-## [Concise Terms, Triples and Quads](concise)
-<div class="larger">
-	Documentation for concise-term strings and concise-triples/concise-quads hashes.
-</div>
-
-## [Textual Content Handlers](content.textual)
+## [Reading & Writing (Serializing & Deserializing)](content.textual)
 <div class="larger">
 	Covers all functionality exposed by packages prefixed with the following prefixes:
 	<ul>

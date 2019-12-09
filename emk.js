@@ -11,12 +11,15 @@ const {
 	modes: h_content_modes,
 } = require('./emk/aux/content.js');
 
-const s_super = 'graphy';
+const s_super = process.env.GRAPHY_CHANNEL || 'graphy';
 
 const g_package_json_super = require('./package.json');
-const P_PACKAGE_JSON_BASE = `emk/aux/base-package-${s_super}.json`;
 
-const s_base_version = g_package_json_super.version;
+const P_PACKAGE_JSON_BASE = `./emk/aux/base-package-${s_super}.json`;
+const g_package_json_base = require(P_PACKAGE_JSON_BASE);
+const s_base_version = g_package_json_base.version;
+
+// const s_base_version = g_package_json_super.version;
 const s_semver = `^${s_base_version}`;
 
 const P_PACKAGE_PREFIX = process.env.GRAPHY_PACKAGE_PREFIX || '.npm-packages';
@@ -564,10 +567,10 @@ module.exports = async() => {
 					`,
 				}),
 
-				graphy: () => ({
+				[s_super]: () => ({
 					deps: [
-						'test/package/graphy.js',
-						'prepublish.graphy',
+						`test/package/${s_super}.js`,
+						`prepublish.${s_super}`,
 						// 'build/cache/data/dbr/**',
 					],
 
@@ -746,7 +749,7 @@ module.exports = async() => {
 						}),
 
 						node_modules: {
-							[`@graphy`]: {
+							[`@${s_super}`]: {
 								':package': ({package:si_package}) => ({
 									deps: [
 										`build/package/${s_super}/.npmrc`,
@@ -754,8 +757,8 @@ module.exports = async() => {
 									],
 
 									run: /* syntax: bash */ `
-										cd build/package/graphy
-										npm link @graphy/${si_package}
+										cd build/package/${s_super}
+										npm link @${s_super}/${si_package}
 									`,
 								}),
 							},

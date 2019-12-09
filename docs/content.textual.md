@@ -38,7 +38,7 @@ This documentation covers the following graphy packages:
        - [`finish(...)`](#event_read-finish)
        - [`end(...)`](#event_read-end)
        - [`error(...)`](#event_read-error)
-   - [`.scribe`](#verb-scribe) -- for fast and simple RDF serialization to writable stream
+   - [`.scribe`](#verb_scribe) -- for fast and simple RDF serialization to writable stream
    - [`.write`](#verb_write) -- for dynamic and stylized RDF serialization to writable stream
      - [**Scribe vs. Write**](#note_scribe-vs-write)
      - **Classes:**

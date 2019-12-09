@@ -424,8 +424,8 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
    - *example:*
       ```js
       // snippets/write-comment.js
-      const factory = require('@graphy/core.data.factory');
-      const ttl_write = require('@graphy/content.ttl.write');
+      const factory = require('@graphy-dev/core.data.factory');
+      const ttl_write = require('@graphy-dev/content.ttl.write');
       
       let ds_writer = ttl_write({
          prefixes: {
