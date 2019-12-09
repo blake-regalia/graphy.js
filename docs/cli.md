@@ -223,9 +223,9 @@ _Example:_
 
 
 
-<a name="command_${si_command}" />
+<a name="command_union" />
 
-### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+### [`union`](#command_union)` [OPTIONS]`
 Compute the union of all inputs.
 
 **Stream Multiplicity:**
@@ -243,9 +243,9 @@ Compute the union of all inputs.
    ```
 
 
-<a name="command_${si_command}" />
+<a name="command_intersect" />
 
-### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+### [`intersect`](#command_intersect)` [OPTIONS]`
 Performs the intersection of all inputs.
 
 > `intersection` is also an alias
@@ -265,9 +265,9 @@ Performs the intersection of all inputs.
    ```
 
 
-<a name="command_${si_command}" />
+<a name="command_diff" />
 
-### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+### [`diff`](#command_diff)` [OPTIONS]`
 Compute the difference between the two inputs.
 
 > `difference` is also an alias
@@ -287,9 +287,9 @@ _Example:_
    ```
 
 
-<a name="command_${si_command}" />
+<a name="command_minus" />
 
-### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+### [`minus`](#command_minus)` [OPTIONS]`
 Subtracts the second input from the first.
 
 > `subtract` and `subtraction` are also aliases
@@ -309,9 +309,9 @@ _Example:_
    ```
 
 
-<a name="command_${si_command}" />
+<a name="command_equals" />
 
-### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+### [`equals`](#command_equals)` [OPTIONS]`
 Tests for equality between the two inputs.
 
 > `equal` is also an alias
@@ -334,9 +334,9 @@ _Example:_
    ```
 
 
-<a name="command_${si_command}" />
+<a name="command_disjoint" />
 
-### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+### [`disjoint`](#command_disjoint)` [OPTIONS]`
 Tests for disjointess between the two inputs.
 
 **Stream Multiplicity:**
@@ -353,9 +353,9 @@ _Example:_
    ```
 
 
-<a name="command_${si_command}" />
+<a name="command_contains" />
 
-### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+### [`contains`](#command_contains)` [OPTIONS]`
 Tests if the first input contains the second.
 
 **Stream Multiplicity:**
@@ -371,6 +371,8 @@ _Example:_
        --inputs superset.ttl subset.ttl
    ```
 
+
+<br />
 
 ## Inputs
 By default, `graphy` expects a single input stream on `stdin`, which it will forward through the internal pipeline. Some commands may allow for or even expect multiple inputs (e.g., for computing the difference between two datasets).

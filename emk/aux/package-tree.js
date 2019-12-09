@@ -54,16 +54,16 @@ module.exports = {
 		},
 	},
 
-	content: {
-		sparql_results: {
-			read: () => ({
-				links: [
-					'core.data.factory',
-				],
-				description: 'Single-threaded SPARQL Query Results JSON Format (application/sparql-results+json) reader',
-			}),
-		},
-	},
+	// content: {
+	// 	sparql_results: {
+	// 		read: () => ({
+	// 			links: [
+	// 				'core.data.factory',
+	// 			],
+	// 			description: 'Single-threaded SPARQL Query Results JSON Format (application/sparql-results+json) reader',
+	// 		}),
+	// 	},
+	// },
 
 	// store: {
 	// 	memory: {

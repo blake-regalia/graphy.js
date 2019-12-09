@@ -17,6 +17,8 @@
  - [`@graphy/content.trig.scribe`](content.textual#verb_scribe)
  - [`@graphy/content.trig.write`](content.textual#verb_write)
 
+<br />
+
 ## [Examples](api.examples)
 <div class="larger">
 	Examples demonstrating some common use cases for the <code>graphy</code> JavaScript API.

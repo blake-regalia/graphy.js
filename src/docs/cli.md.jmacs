@@ -273,9 +273,9 @@ _Example:_
 
 
 @> dataset_command(si_command)
-<a name="command_${si_command}" />
+<a name="command_@{si_command}" />
 
-### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+### [`@{si_command}`](#command_@{si_command})` [OPTIONS]`
 @;
 
 @> dataset_options()
@@ -403,6 +403,8 @@ _Example:_
        --inputs superset.ttl subset.ttl
    ```
 
+
+<br />
 
 ## Inputs
 By default, `graphy` expects a single input stream on `stdin`, which it will forward through the internal pipeline. Some commands may allow for or even expect multiple inputs (e.g., for computing the difference between two datasets).

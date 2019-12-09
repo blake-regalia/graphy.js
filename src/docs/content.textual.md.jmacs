@@ -191,10 +191,10 @@ The [`write`](#verb_write) verb supports the following [WritableDataEvent](#inte
 **Read from a Turtle file in Node.js:**
 ```js
 cons fs = require('fs');
-const read = require('graphy').content.ttl.read;
+const ttl_read = require('@graphy/content.ttl.read');
 
 fs.createReadStream('input.ttl')
-    .pipe(read())
+    .pipe(ttl_read())
     .on('data', (y_quad) => {
        console.dir(y_quad.isolate());
     })
@@ -205,9 +205,9 @@ fs.createReadStream('input.ttl')
 
 **Read a Turtle string:**
 ```js
-const read = require('graphy').content.ttl.read;
+const ttl_read = require('@graphy/content.ttl.read');
 
-read(`
+ttl_read(`
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
     <#spiderman> a foaf:Person ;
@@ -252,10 +252,10 @@ read(`
 
 **Serialize some RDF data to Turtle on-the-fly:**
 ```js
-const graphy = require('graphy');
-const factory = graphy;
+const ttl_scribe = require('@graphy/content.ttl.scribe');
+const factory = require('@graphy/core.data.factory');
 
-let ds_scriber = graphy.content.ttl.scribe({
+let ds_scriber = ttl_scribe({
     prefixes: {
         dbr: 'http://dbpedia.org/resource/',
         ex: 'http://ex.org/',
@@ -312,9 +312,9 @@ dbr:Banana ex:color dbr:Yellow .
 
 **Serialize some RDF data to Turtle on-the-fly:**
 ```js
-const graphy = require('graphy');
+const ttl_write = require('@graphy/content.ttl.write');
 
-let ds_writer = graphy.content.ttl.write({
+let ds_writer = ttl_write({
     prefixes: {
         dbr: 'http://dbpedia.org/resource/',
         ex: 'http://ex.org/',

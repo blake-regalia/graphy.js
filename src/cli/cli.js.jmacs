@@ -1371,7 +1371,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 	},
 
 	minus: {
-		alias: 'subtraction',
+		alias: ['subtract', 'subtraction'],
 		type: S_TRANSFORM_TYPE_21QQ,
 		category: S_CATEGORY_SET,
 		overview: 'Subtract the second input from the first: A - B',
@@ -1630,12 +1630,33 @@ for(let [si_command, g_command] of Object.entries(h_commands)) {
 	});
 	
 	g_category.commands.push(g_command);
-	g_category.overview.push(`  ${si_command.padEnd(n_width_column, ' ')}  ${g_command.overview}${g_command.alias? ` [alias: ${g_command.alias}]`: ''}`);
-
-	// add alias
+	let s_aliases = '';
 	if(g_command.alias) {
-		h_aliases[g_command.alias] = si_command;
+		let z_aliases = g_command.alias;
+		if(Array.isArray(z_aliases)) {
+			s_aliases = ` [aliases: ${z_aliases.join(', ')}]`;
+
+			// add aliases
+			for(let s_alias of z_aliases) {
+				h_aliases[s_alias] = si_command;
+			}
+
+			g_command.aliases = z_aliases;
+		}
+		else {
+			s_aliases = ` [alias: ${z_aliases}]`;
+
+			// add alias
+			h_aliases[z_aliases] = si_command;
+
+			g_command.aliases = [z_aliases];
+		}
 	}
+	else {
+		g_command.aliases = [];
+	}
+
+	g_category.overview.push(`  ${si_command.padEnd(n_width_column, ' ')}  ${g_command.overview}${s_aliases}`);
 }
 
 // terminal width
@@ -1811,7 +1832,7 @@ if(!a_pipeline.length) {
 					.join('\n\n');
 			}
 
-			let s_usage = [s_command, ...(g_command.alias? [g_command.alias]: [])]
+			let s_usage = [s_command, ...g_command.aliases]
 				.reduce((s_out, s, i) => `${s_out}\n${i? 'Or': 'Usage'}:  $0${S_TRANSFORM_TYPE_NNSQ === g_command.type? '': ' [...]'} ${s}${g_command.syntax? ' '+g_command.syntax: ''} [OPTIONS] [ / COMMAND]*`, '');
 
 			let s_positionals = '\n'+g_command.type+'\n';
