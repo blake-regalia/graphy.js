@@ -572,7 +572,7 @@ if(!B_BROWSER) {
 				},
 			}), {}),
 
-			'memory.dataset.fast': {
+			'dataset operations': {
 				...process.env.GRAPHY_SKIP_DBR_TESTS
 					? {}
 					: {
@@ -580,7 +580,7 @@ if(!B_BROWSER) {
 							cmd: /* syntax: bash */ `
 								cat build/cache/data/dbr/Banana.ttl
 									| npx graphy read -c ttl
-										/ memory.dataset.fast
+										/ tree
 							`,
 							out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 						}),
@@ -589,7 +589,7 @@ if(!B_BROWSER) {
 				'.union()': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ union
+							/ union --strict
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
 					out: validate_json(triples({
@@ -608,7 +608,7 @@ if(!B_BROWSER) {
 				'.intersection()': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ intersection
+							/ intersection --strict
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
 					out: validate_json(triples({
@@ -621,7 +621,7 @@ if(!B_BROWSER) {
 				'.difference()': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ difference
+							/ difference --strict
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
 					out: validate_json(triples({
@@ -637,7 +637,7 @@ if(!B_BROWSER) {
 				'.minus()': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ minus
+							/ minus --strict
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
 					out: validate_json(triples({
@@ -650,7 +650,6 @@ if(!B_BROWSER) {
 				'.canonicalize()': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ canonicalize
 							/ difference
 							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
 					`,
@@ -660,7 +659,7 @@ if(!B_BROWSER) {
 				'.contains() = false': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ contains
+							/ contains --strict
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
 					out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
@@ -669,7 +668,7 @@ if(!B_BROWSER) {
 				'.contains() = true': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ contains
+							/ contains --strict
 							--inputs <(echo '${st_left}') <(echo '${st_left}')
 					`,
 					out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
@@ -678,7 +677,7 @@ if(!B_BROWSER) {
 				'.disjoint() = false': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ disjoint
+							/ disjoint --strict
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
 					out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
@@ -687,7 +686,7 @@ if(!B_BROWSER) {
 				'.disjoint() = true': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ disjoint
+							/ disjoint --strict
 							--inputs <(echo '${st_left}') <(echo '${st_blank_1}')
 					`,
 					out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
@@ -696,7 +695,7 @@ if(!B_BROWSER) {
 				'.equals() = false': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ equals
+							/ equals --strict
 							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
 					`,
 					out: validate_json(a_rows => expect(a_rows[0]).to.be.false),
@@ -705,7 +704,7 @@ if(!B_BROWSER) {
 				'.equals() = true': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ equals
+							/ equals --strict
 							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_1}')
 					`,
 					out: validate_json(a_rows => expect(a_rows[0]).to.be.true),
@@ -714,7 +713,6 @@ if(!B_BROWSER) {
 				'.canonicalize/.contains() = false': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ memory.dataset.fast -z
 							/ contains
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
@@ -724,7 +722,6 @@ if(!B_BROWSER) {
 				'.canonicalize/.contains() = true': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ memory.dataset.fast -z
 							/ contains
 							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
 					`,
@@ -734,7 +731,6 @@ if(!B_BROWSER) {
 				'.canonicalize/.disjoint() = false': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ memory.dataset.fast -z
 							/ disjoint
 							--inputs <(echo '${st_left}') <(echo '${st_right}')
 					`,
@@ -744,7 +740,6 @@ if(!B_BROWSER) {
 				'.canonicalize/.disjoint() = true': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ memory.dataset.fast -z
 							/ disjoint
 							--inputs <(echo '${st_left}') <(echo '${st_blank_1}')
 					`,
@@ -754,7 +749,6 @@ if(!B_BROWSER) {
 				'.canonicalize/.equals() = false': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ memory.dataset.fast -z
 							/ equals
 							--inputs <(echo '${st_blank_1}') <(echo '${st_right}')
 					`,
@@ -764,7 +758,6 @@ if(!B_BROWSER) {
 				'.canonicalize/.equals() = true': () => ({
 					cmd: /* syntax: bash */ `
 						npx graphy read -c ttl
-							/ memory.dataset.fast -z
 							/ equals
 							--inputs <(echo '${st_blank_1}') <(echo '${st_blank_2}')
 					`,

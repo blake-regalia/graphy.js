@@ -17,12 +17,14 @@ const $_QUADS = Symbol('quad-count');
 const $_KIDS = Symbol('has-descendents');
 const $_THIN = Symbol('has-thin-keys');
 
+const from_term = factory.from.term;
+const from_quad = factory.from.quad;
 const KT_DEFAULT_GRAPH = factory.defaultGraph();
 const F_SORT_LINE = (g_a, g_b) => g_a.line < g_b.line? -1: 1;
 
 class Matcher {
 	constructor(k_set) {
-		this.set = k_set;
+		this._k_set = k_set;
 	}
 
 @> match_role(s_role, s_tree)
@@ -101,7 +103,7 @@ class Matcher {
 @//@object-literal
 
 	* match(z_subject=null, z_predicate=null, z_object=null, z_graph=KT_DEFAULT_GRAPH) {
-		let h_quad_tree = this.set.quad_tree;
+		let h_quad_tree = this._k_set._h_quad_tree;
 
 		@{match_role('graph', 'h_quad_tree')}
 
@@ -198,26 +200,26 @@ class Matcher {
 class Issuer {
 	constructor(s_prefix='_:c14n') {
 		Object.assign(this, {
-			prefix: s_prefix,
-			counter: 0,
-			existing: {},
+			_s_prefix: s_prefix,
+			_c_counter: 0,
+			_h_existing: {},
 		});
 	}
 
 	issue(s_label) {
-		if(s_label in this.existing) return this.existing[s_label];
+		if(s_label in this._h_existing) return this._h_existing[s_label];
 
-		return (this.existing[s_label] = this.prefix+(this.counter++));
+		return (this._h_existing[s_label] = this._s_prefix+(this._c_counter++));
 	}
 
 	has(s_label) {
-		return s_label in this.existing;
+		return s_label in this._h_existing;
 	}
 
 	clone() {
-		return Object.assign(new Issuer(this.prefix), {
-			counter: this.counter,
-			existing: Object.assign({}, this.existing),
+		return Object.assign(new Issuer(this._s_prefix), {
+			counter: this._c_counter,
+			existing: Object.assign({}, this._h_existing),
 		});
 	}
 }
@@ -283,19 +285,17 @@ const permutations = function *(a_list) {
 
 class Canonicalizer_ct {
 	constructor(k_tree) {
-		Object.assign(this, {
-			tree: k_tree,
-			blanks: {},
-			issuer: new Issuer('_:r'),
-			quads: [...k_tree.ct_quads()],
-		});
+		this._k_tree = k_tree;
+		this._h_blanks = {};
+		this._k_issuer = new Issuer('_:r');
+		this._a_quads = [...k_tree.ct_quads()];
 	}
 
 	normalize() {
 		let {
-			blanks: h_blanks,
-			issuer: k_issuer,
-			quads: a_quads,
+			_h_blanks: h_blanks,
+			_k_issuer: k_issuer,
+			_a_quads: a_quads,
 		} = this;
 
 		let h_hashes = {};
@@ -369,14 +369,14 @@ class Canonicalizer_ct {
 			}
 
 			for(let g_hash_result of a_paths.sort(F_SORT_CANONICALIZER_HASH)) {
-				for(let sc1_existing in g_hash_result.issuer.existing) {
+				for(let sc1_existing in g_hash_result.issuer._h_existing) {
 					k_issuer.issue(sc1_existing);
 				}
 			}
 		}
 
 		let a_normalized = [];
-		let s_issuer_prefix = k_issuer.prefix;
+		let s_issuer_prefix = k_issuer._s_prefix;
 		for(let a_quad of a_quads) {
 			let [sc1_graph, sc1_subject, sc1_predicate, sc1_object] = a_quad;
 
@@ -420,7 +420,7 @@ class Canonicalizer_ct {
 
 		// create dataset reflecting quad order
 		let k_tree_normalized = new DatasetTree({
-			prefixes: Object.assign({}, this.prefixes),
+			prefixes: Object.assign({}, this._k_tree._h_prefixes),
 		});
 		k_tree_normalized.addQuads(a_normalized.map(g => g.quad));
 
@@ -436,8 +436,8 @@ class Canonicalizer_ct {
 
 	hash_first_degree_quads(sc1_blank) {
 		let {
-			blanks: h_blanks,
-			quads: a_quads,
+			_h_blanks: h_blanks,
+			_a_quads: a_quads,
 		} = this;
 
 		let g_blank = h_blanks[sc1_blank];
@@ -474,7 +474,7 @@ class Canonicalizer_ct {
 
 	hash_n_degree_quads(sc1_blank, k_issuer) {
 		let {
-			issuer: k_issuer_root,
+			_k_issuer: k_issuer_root,
 		} = this;
 
 		let h_related = this.hash_to_related(sc1_blank, k_issuer);
@@ -553,7 +553,7 @@ class Canonicalizer_ct {
 
 	hash_to_related(sc1_blank, k_issuer) {
 		let {
-			blanks: h_blanks,
+			_h_blanks: h_blanks,
 		} = this;
 
 		let h_related = {};
@@ -579,7 +579,7 @@ class Canonicalizer_ct {
 	}
 
 	hash_related_blank_node(sc1_blank, a_quad, k_issuer, i_role) {
-		let k_issuer_root = this.issuer;
+		let k_issuer_root = this._k_issuer;
 		let sc1_use;
 		if(k_issuer_root.has(sc1_blank)) {
 			sc1_use = k_issuer_root.issue(sc1_blank);
@@ -731,14 +731,14 @@ class DatasetTree extends stream.Duplex {
 
 		// source piped to this
 		this.on('pipe', (ds_src) => {
-			this.src = ds_src;
+			this._ds_src = ds_src;
 
 			ds_src.on('prefix', (s_prefix, p_iri) => {
 				// save/update prefix mapping
 				h_prefixes[s_prefix] = p_iri;
 
 				// graphy output and initial prefix mappings already flushed
-				if(this.prefixes_flushed) {
+				if(this._b_prefixes_flushed) {
 					// flush single prefix
 					this.push({
 						type: 'prefixes',
@@ -751,7 +751,7 @@ class DatasetTree extends stream.Duplex {
 
 			// once input ends
 			ds_src.once('eof', () => {
-				this.eofd = true;
+				this._b_eofd = true;
 				// debugger;
 				// this.emit('ready', this);
 			});
@@ -759,28 +759,28 @@ class DatasetTree extends stream.Duplex {
 
 		this.once('finish', () => {
 			this.emit('ready', this);
-			this.finishedd = true;
+			this._b_finishedd = true;
 
-			if(this.push_waiting) {
-				this._read(this.push_waiting);
+			if(this._n_push_waiting) {
+				this._read(this._n_push_waiting);
 			}
 		});
 
 		Object.assign(this, {
-			quad_tree: h_quad_tree || {[$_KEYS]:0, [$_QUADS]:0},
-			digest: null,
-			root_blanks: {},
-			leaf_blanks: {},
-			prefixes: h_prefixes,
-			prefixes_flushed: false,
-			debug: g_config.debug || false,
-			quad_generator: null,
-			graph_generator: null,
-			graph_iterator: null,
-			subject_generator: null,
-			transform_canonicalize: g_config.canonicalize || false,
-			transform_tree: this,
-			push_waiting: 0,
+			_h_quad_tree: h_quad_tree || {[$_KEYS]:0, [$_QUADS]:0},
+			_s_digest: null,
+			_h_root_blanks: {},
+			_h_leaf_blanks: {},
+			_h_prefixes: h_prefixes,
+			_b_prefixes_flushed: false,
+			_b_debug: g_config.debug || false,
+			_dg_quads: null,
+			_dg_graphs: null,
+			_di_graph: null,
+			_dg_subjects: null,
+			_b_transform_canonicalize: g_config.canonicalize || false,
+			_k_transform_tree: this,
+			_n_push_waiting: 0,
 		});
 
 		// data given
@@ -794,7 +794,7 @@ class DatasetTree extends stream.Duplex {
 
 	offspring(h_quad_tree=null) {
 		return new DatasetTree({
-			prefixes: Object.assign({}, this.prefixes),
+			prefixes: Object.assign({}, this._h_prefixes),
 		}, h_quad_tree);
 	}
 
@@ -837,28 +837,28 @@ class DatasetTree extends stream.Duplex {
 				// push prefix mappings
 				this.push({
 					type: 'prefixes',
-					value: this.prefixes,
+					value: this._h_prefixes,
 				});
 
 				// if more prefixes come in, push them immediately
-				this.prefixes_flushed = true;
+				this._b_prefixes_flushed = true;
 
 				// ready to start pushing
-				if(this._writableState.finished) {
+				if(this.writableFinished || this._writableState.finished) {
 					return this.read_graphy_after_finished(n_size);
 				}
 				// not ready yet
 				else {
-					this.push_waiting = n_size;
+					this._n_push_waiting = n_size;
 					this._read = function(n_size_nry) {
 						// ready to start pushing
-						if(this._writableState.finished) {
-							this.push_waiting = 0;
+						if(this.writableFinished || this._writableState.finished) {
+							this._n_push_waiting = 0;
 							return this.read_graphy_after_finished(n_size_nry);
 						}
 						// still not ready yet; append size
 						else {
-							this.push_waiting += n_size_nry;
+							this._n_push_waiting += n_size_nry;
 						}
 					};
 				}
@@ -885,16 +885,16 @@ class DatasetTree extends stream.Duplex {
 	// default read: quad mode
 	_read(n_quads) {
 		// ready to start pushing
-		if(this._writableState.finished) {
+		if(this.writableFinished || this._writableState.finished) {
 			let k_tree = this;
 
 			// transform canonicalize option
-			if(this.transform_canonicalize) {
+			if(this._b_transform_canonicalize) {
 				k_tree = this.canonicalize();
 			}
 
 			// start new quad iterator
-			this.quad_generator = k_tree.quads();
+			this._dg_quads = k_tree.quads();
 
 			// harden read method
 			this._read = this.resume_read;
@@ -904,13 +904,13 @@ class DatasetTree extends stream.Duplex {
 		}
 		// not ready yet
 		else {
-			this.push_waiting = n_quads;
+			this._n_push_waiting = n_quads;
 		}
 	}
 
 	// resume default read: quad mode
 	resume_read(n_quads) {
-		let dg_quads = this.quad_generator;
+		let dg_quads = this._dg_quads;
 
 		// advance iterator
 		let di_next = dg_quads.next();
@@ -932,13 +932,13 @@ class DatasetTree extends stream.Duplex {
 		let k_tree = this;
 
 		// transform canonicalize option
-		if(this.transform_canonicalize) {
-			k_tree = this.transform_tree = this.canonicalize();
+		if(this._b_transform_canonicalize) {
+			k_tree = this._k_transform_tree = this.canonicalize();
 		}
 
 		// initialize generator(s) & iterator
-		let dg_graphs = this.graph_generator = k_tree.c1_graphs();
-		this.graph_iterator = dg_graphs.next();
+		let dg_graphs = this._dg_graphs = k_tree.c1_graphs();
+		this._di_graph = dg_graphs.next();
 
 		// harden read method
 		this._read = this.resume_read_graphy;
@@ -949,13 +949,13 @@ class DatasetTree extends stream.Duplex {
 
 	resume_read_graphy(n_size) {
 		let {
-			graph_generator: dg_graphs,
-			graph_iterator: di_graph,
-			subject_generator: dg_subjects,
-			transform_tree: k_tree,
+			_dg_graphs: dg_graphs,
+			_di_graph: di_graph,
+			_dg_subjects: dg_subjects,
+			_k_transform_tree: k_tree,
 		} = this;
 
-		let h_quads = k_tree.quad_tree;
+		let h_quads = k_tree._h_quad_tree;
 
 		// continue until iterator is done
 		while(!di_graph.done) {
@@ -964,7 +964,7 @@ class DatasetTree extends stream.Duplex {
 
 			// advance subject iterator
 			if(!dg_subjects) {
-				dg_subjects = this.subject_generator = k_tree.c1_subjects(sv1_graph);
+				dg_subjects = this._dg_subjects = k_tree.c1_subjects(sv1_graph);
 			}
 
 			// resume iterator
@@ -991,7 +991,7 @@ class DatasetTree extends stream.Duplex {
 			}
 
 			// advance graph iterator
-			di_graph = this.graph_iterator = dg_graphs.next();
+			di_graph = this._di_graph = dg_graphs.next();
 		}
 
 		// done reading
@@ -1022,7 +1022,7 @@ class DatasetTree extends stream.Duplex {
 	}
 
 	export() {
-		let h_quads_src = this.quad_tree;
+		let h_quads_src = this._h_quad_tree;
 		let h_quads_dst = {
 			'{KEYS}': h_quads_src[$_KEYS],
 			'{QUADS}': h_quads_src[$_QUADS],
@@ -1055,7 +1055,7 @@ class DatasetTree extends stream.Duplex {
 	}
 
 	* quads() {
-		let h_quads = this.quad_tree;
+		let h_quads = this._h_quad_tree;
 		for(let sv1_graph in h_quads) {
 			let h_subjects = h_quads[sv1_graph];
 			let g_graph = factory.c1(sv1_graph);
@@ -1079,7 +1079,7 @@ class DatasetTree extends stream.Duplex {
 	}
 
 	* ct_quads() {
-		let h_quads = this.quad_tree;
+		let h_quads = this._h_quad_tree;
 		for(let sc1_graph in h_quads) {
 			let h_subjects = h_quads[sc1_graph];
 			for(let sc1_subject in h_subjects) {
@@ -1095,31 +1095,31 @@ class DatasetTree extends stream.Duplex {
 	}
 
 	* c1_graphs() {
-		for(let sv1_graph in this.quad_tree) {
+		for(let sv1_graph in this._h_quad_tree) {
 			yield sv1_graph;
 		}
 	}
 
 	* c1_subjects(sv1_graph) {
-		let h_subjects = this.quad_tree[sv1_graph];
+		let h_subjects = this._h_quad_tree[sv1_graph];
 		for(let sv1_subject in h_subjects) {
 			yield sv1_subject;
 		}
 	}
 
 	* c1_predicates(s_graph, s_subject) {
-		let h_predicates = this.quad_tree[s_graph][s_subject];
+		let h_predicates = this._h_quad_tree[s_graph][s_subject];
 		for(let s_predicate in h_predicates) {
 			yield s_predicate;
 		}
 	}
 
 	* c1_objects(s_graph, s_subject, s_predicate) {
-		yield* this.quad_tree[s_graph][s_subject][s_predicate];
+		yield* this._h_quad_tree[s_graph][s_subject][s_predicate];
 	}
 
 	* pairs(sv1_graph, sv1_subject) {
-		let h_predicates = this.quad_tree[sv1_graph][sv1_subject];
+		let h_predicates = this._h_quad_tree[sv1_graph][sv1_subject];
 		for(let sv1_predicate in h_predicates) {
 			yield [sv1_predicate, h_predicates[sv1_predicate]];
 		}
@@ -1130,12 +1130,12 @@ class DatasetTree extends stream.Duplex {
 	// }
 
 	match(z_subject=null, z_predicate=null, z_object=null, z_graph=null) {
-		let h_quads_src = this.quad_tree;
+		let h_quads_src = this._h_quad_tree;
 
 		// +graph
 		if(z_graph) {
 			// convert graph to c1
-			let sc1_graph_target = factory.from.term(z_graph).concise();
+			let sc1_graph_target = from_term(z_graph).concise();
 
 			// no such graph; return new empty tree
 			if(!(sc1_graph_target in h_quads_src)) return this.offspring();
@@ -1146,7 +1146,7 @@ class DatasetTree extends stream.Duplex {
 			// +grraph, +subject
 			if(z_subject) {
 				// convert subject to c1
-				let sc1_subject_target = factory.from.term(z_subject).concise();
+				let sc1_subject_target = from_term(z_subject).concise();
 
 				// no such subject; return new empty tree
 				if(!(sc1_subject_target in h_triples_src)) return this.offspring();
@@ -1157,7 +1157,7 @@ class DatasetTree extends stream.Duplex {
 				// +graph, +subject, +predicate
 				if(z_predicate) {
 					// convert predicate to c1
-					let sc1_predicate_target = factory.from.term(z_predicate).concise();
+					let sc1_predicate_target = from_term(z_predicate).concise();
 
 					// no such predicate; return new empty tree
 					if(!(sc1_predicate_target in h_pairs_src)) return this.offspring();
@@ -1172,7 +1172,7 @@ class DatasetTree extends stream.Duplex {
 					// +graph, +subject, +predicate, +object
 					if(z_object) {
 						// convert object to c1
-						let sc1_object_target = factory.from.term(z_object).concise();
+						let sc1_object_target = from_term(z_object).concise();
 
 						// no such object; return new empty tree
 						if(!as_objects_src.has(sc1_object_target)) return this.offspring();
@@ -1210,7 +1210,7 @@ class DatasetTree extends stream.Duplex {
 				// +graph, +subject, -predicate, +object
 				else if(z_object) {
 					// convert object to c1
-					let sc1_object_target = factory.from.term(z_object).concise();
+					let sc1_object_target = from_term(z_object).concise();
 
 					// prepare for loading into set multiple times
 					let a_object_load = [sc1_object_target];
@@ -1274,7 +1274,7 @@ class DatasetTree extends stream.Duplex {
 			// +graph, -subject, +predicate
 			else if(z_predicate) {
 				// convert predicate to c1
-				let sc1_predicate_target = factory.from.term(z_predicate).concise();
+				let sc1_predicate_target = from_term(z_predicate).concise();
 
 				// how many subject-keys and quads are added
 				let c_subjects = 0;
@@ -1289,7 +1289,7 @@ class DatasetTree extends stream.Duplex {
 				// +graph, -subject, +predicate, +object
 				if(z_object) {
 					// convert object to c1
-					let sc1_object_target = factory.from.term(z_object).concise();
+					let sc1_object_target = from_term(z_object).concise();
 
 					// prepare for loading into set multiple times
 					let a_object_load = [sc1_object_target];
@@ -1365,7 +1365,7 @@ class DatasetTree extends stream.Duplex {
 			// +graph, -subject, -predicate, +object
 			else if(z_object) {
 				// convert object to c1
-				let sc1_object_target = factory.from.term(z_object).concise();
+				let sc1_object_target = from_term(z_object).concise();
 
 				// prepare for loading into set multiple times
 				let a_object_load = [sc1_object_target];
@@ -1461,12 +1461,12 @@ class DatasetTree extends stream.Duplex {
 			// -graph, +subject
 			if(z_subject) {
 				// convert subject to c1
-				let sc1_subject_target = factory.from.term(z_subject).concise();
+				let sc1_subject_target = from_term(z_subject).concise();
 
 				// -graph, +subject, +predicate
 				if(z_predicate) {
 					// convert predicate to c1
-					let sc1_predicate_target = factory.from.term(z_predicate).concise();
+					let sc1_predicate_target = from_term(z_predicate).concise();
 
 					// graph-keys and quads counts
 					let c_graphs = 0;
@@ -1475,7 +1475,7 @@ class DatasetTree extends stream.Duplex {
 					// -graph, +subject, +predicate, +object
 					if(z_object) {
 						// convert object to c1
-						let sc1_object_target = factory.from.term(z_object).concise();
+						let sc1_object_target = from_term(z_object).concise();
 
 						// prepare for loading into set multiple times
 						let a_object_load = [sc1_object_target];
@@ -1579,7 +1579,7 @@ class DatasetTree extends stream.Duplex {
 					// -graph, +subject, -predicate, +object
 					if(z_object) {
 						// convert object to c1
-						let sc1_object_target = factory.from.term(z_object).concise();
+						let sc1_object_target = from_term(z_object).concise();
 
 						// prepare for loading into set multiple times
 						let a_object_load = [sc1_object_target];
@@ -1683,7 +1683,7 @@ class DatasetTree extends stream.Duplex {
 				// -graph, -subject, +predicate
 				if(z_predicate) {
 					// convert predicate to c1
-					let sc1_predicate_target = factory.from.term(z_predicate).concise();
+					let sc1_predicate_target = from_term(z_predicate).concise();
 
 					// graph-keys and quads count
 					let c_graphs = 0;
@@ -1692,7 +1692,7 @@ class DatasetTree extends stream.Duplex {
 					// -graph, -subject, +predicate, +object
 					if(z_object) {
 						// convert predicate to c1
-						let sc1_object_target = factory.from.term(z_object).concise();
+						let sc1_object_target = from_term(z_object).concise();
 
 						// prepare for loading into set multiple times
 						let a_object_load = [sc1_object_target];
@@ -1835,7 +1835,7 @@ class DatasetTree extends stream.Duplex {
 					// -graph, -subject, -predicate, +object
 					if(z_object) {
 						// convert predicate to c1
-						let sc1_object_target = factory.from.term(z_object).concise();
+						let sc1_object_target = from_term(z_object).concise();
 
 						// prepare for loading into set multiple times
 						let a_object_load = [sc1_object_target];
@@ -1939,12 +1939,12 @@ class DatasetTree extends stream.Duplex {
 	}
 
 	get size() {
-		return this.quad_tree[$_QUADS];
+		return this._h_quad_tree[$_QUADS];
 	}
 
 	// add single quad
 	add(w_quad) {
-		this.add_quads([factory.from.quad(w_quad)]);
+		this.add_quads([from_quad(w_quad)]);
 		return this;
 	}
 
@@ -1952,7 +1952,7 @@ class DatasetTree extends stream.Duplex {
 	addAll(z_quads) {
 		// array
 		if(Array.isArray(z_quads)) {
-			this.add_quads(z_quads.map(factory.from.quad));
+			this.add_quads(z_quads.map(from_quad));
 		}
 		// object
 		else if('object' === typeof z_quads) {
@@ -1961,7 +1961,7 @@ class DatasetTree extends stream.Duplex {
 			}
 			else if('function' === typeof z_quads[Symbol.iterator]) {
 				let a_quads = [...z_quads];
-				this.add_quads(a_quads.map(factory.from.quad));
+				this.add_quads(a_quads.map(from_quad));
 			}
 			else {
 				throw new Error(`failed to add quads from non-iterable object: ${z_quads}`);
@@ -1973,8 +1973,8 @@ class DatasetTree extends stream.Duplex {
 
 	// add quads from sibling
 	add_tree(k_tree) {
-		let h_quads_src = k_tree.quad_tree;
-		let h_quads_dst = this.quad_tree;
+		let h_quads_src = k_tree._h_quad_tree;
+		let h_quads_dst = this._h_quad_tree;
 
 		// each graph in src
 		for(let sv1_graph in h_quads_src) {
@@ -2016,7 +2016,7 @@ class DatasetTree extends stream.Duplex {
 
 	// add quad(s) to this set
 	add_quads(z_quads_safe) {
-		let h_quads = this.quad_tree;
+		let h_quads = this._h_quad_tree;
 		let c_added = 0;
 
 		// each quad in arguments
@@ -2033,7 +2033,7 @@ class DatasetTree extends stream.Duplex {
 			if(!(p_graph in h_quads)) {
 				// has weak descendents; thicken self
 				if(h_quads.hasOwnProperty($_KIDS)) {
-					h_quads = this.quad_tree = thicken(h_quads);
+					h_quads = this._h_quad_tree = thicken(h_quads);
 					b_thickened_quads = true;
 				}
 				
@@ -2136,7 +2136,7 @@ class DatasetTree extends stream.Duplex {
 
 			// triples tree is weak; thicken it
 			if(!b_thickened_quads && h_quads.hasOwnProperty($_KIDS)) {
-				h_quads = this.quad_tree = thicken(h_quads);
+				h_quads = this._h_quad_tree = thicken(h_quads);
 			}
 
 			// increment how many quads there are in set
@@ -2144,7 +2144,7 @@ class DatasetTree extends stream.Duplex {
 
 			// subject is blank node
 			if(g_quad.subject.isBlankNode) {
-				let h_root_blanks = this.root_blanks;
+				let h_root_blanks = this._h_root_blanks;
 				if(p_subject in h_root_blanks) {
 					h_root_blanks[p_subject].add(g_quad);
 				}
@@ -2155,7 +2155,7 @@ class DatasetTree extends stream.Duplex {
 
 			// object is blank node
 			if(g_quad.object.isBlankNode) {
-				let h_leaf_blanks = this.leaf_blanks;
+				let h_leaf_blanks = this._h_leaf_blanks;
 				if(p_object in h_leaf_blanks) {
 					h_leaf_blanks[p_object].add(g_quad);
 				}
@@ -2166,22 +2166,22 @@ class DatasetTree extends stream.Duplex {
 		}
 
 		// invalidate hash and canonicalization
-		this.hash = this.canonicalization = null;
+		this._s_hash = this._s_canonicalization = null;
 
 		return c_added;
 	}
 
 	// remove all quads from this tree
 	clear() {
-		this.quad_tree = {[$_KEYS]:0, [$_QUADS]:0};
-		this.digest = this.hash = this.canonicalization = null;
-		this.root_blanks = {};
-		this.leaf_blanks = {};
+		this._h_quad_tree = {[$_KEYS]:0, [$_QUADS]:0};
+		this._s_digest = this._s_hash = this._s_canonicalization = null;
+		this._h_root_blanks = {};
+		this._h_leaf_blanks = {};
 	}
 
 	// delete set of quads
 	delete(...a_quads) {
-		let h_quads = this.quad_tree;
+		let h_quads = this._h_quad_tree;
 		let c_deleted = 0;
 
 		for(let g_quad of a_quads) {
@@ -2207,7 +2207,7 @@ class DatasetTree extends stream.Duplex {
 							// quads holds graph weakly
 							if(!h_quads.hasOwnProperty(svt_graph)) {
 								// thicken quad tree
-								this.quad_tree = h_quads = thicken(h_quads);
+								this._h_quad_tree = h_quads = thicken(h_quads);
 
 								// thicken triples tree
 								h_quads[svt_graph] = h_triples = thicken(h_triples);
@@ -2243,7 +2243,7 @@ class DatasetTree extends stream.Duplex {
 
 								// quads tree has weak descendents; thicken it
 								if(h_quads.hasOwnProperty($_KIDS)) {
-									this.quad_tree = h_quads = thicken(h_quads);
+									this._h_quad_tree = h_quads = thicken(h_quads);
 								}
 							}
 							// pairs holds predicate weakly
@@ -2267,7 +2267,7 @@ class DatasetTree extends stream.Duplex {
 
 								// quads tree has weak descendents; thicken it
 								if(h_quads.hasOwnProperty($_KIDS)) {
-									this.quad_tree = h_quads = thicken(h_quads);
+									this._h_quad_tree = h_quads = thicken(h_quads);
 								}
 							}
 							else {
@@ -2289,7 +2289,7 @@ class DatasetTree extends stream.Duplex {
 
 								// quads tree has weak descendents; thicken it
 								if(h_quads.hasOwnProperty($_KIDS)) {
-									this.quad_tree = h_quads = thicken(h_quads);
+									this._h_quad_tree = h_quads = thicken(h_quads);
 								}
 							}
 
@@ -2336,7 +2336,7 @@ class DatasetTree extends stream.Duplex {
 
 	// tree has quad
 	has(g_quad) {
-		let h_quads = this.quad_tree;
+		let h_quads = this._h_quad_tree;
 
 		let svt_graph = g_quad.graph.concise();
 		let svt_subject = g_quad.subject.concise();
@@ -2371,13 +2371,13 @@ class DatasetTree extends stream.Duplex {
 
 	equivalent(k_other) {
 		// both have digest precomputed
-		if(this.digest && k_other.digest) {
-			return this.digest === k_other.digest;
+		if(this._s_digest && k_other._s_digest) {
+			return this._s_digest === k_other._s_digest;
 		}
 
 		// ref quads
-		let h_quads_a = this.quad_tree;
-		let h_quads_b = k_other.quad_tree;
+		let h_quads_a = this._h_quad_tree;
+		let h_quads_b = k_other._h_quad_tree;
 
 		// different key count or quad count; cannot be equal
 		if(h_quads_a[$_QUADS] !== h_quads_b[$_QUADS] || h_quads_a[$_KEYS] !== h_quads_b[$_KEYS]) {
@@ -2411,15 +2411,15 @@ class DatasetTree extends stream.Duplex {
 		return k_normalize.normalize().tree;
 	}
 
-	noramlize() {
+	normalize() {
 		return (new Canonicalizer_ct(this)).normalize();
 	}
 
 	// create union of two sets
 	union(k_other) {
 		// ref quads
-		let h_quads_a = this.quad_tree;
-		let h_quads_b = k_other.quad_tree;
+		let h_quads_a = this._h_quad_tree;
+		let h_quads_b = k_other._h_quad_tree;
 
 		// a has less keys than b; swap quads
 		if(h_quads_a[$_KEYS] < h_quads_b[$_KEYS]) {
@@ -2666,15 +2666,15 @@ class DatasetTree extends stream.Duplex {
 		// always return new instance
 		return new DatasetTree({
 			// merge prefixes; this instance has precedence
-			prefixes: Object.assign({}, k_other.prefixes, this.prefixes),
+			prefixes: Object.assign({}, k_other._h_prefixes, this._h_prefixes),
 		}, h_quads_u);
 	}
 
 	// compute intersection of two sets
 	intersection(k_other) {
 		// ref quads
-		let h_quads_a = this.quad_tree;
-		let h_quads_b = k_other.quad_tree;
+		let h_quads_a = this._h_quad_tree;
+		let h_quads_b = k_other._h_quad_tree;
 
 		// set b has less quads than set a; swap quadss
 		if(h_quads_b[$_KEYS] < h_quads_a[$_KEYS]) {
@@ -2785,15 +2785,15 @@ class DatasetTree extends stream.Duplex {
 
 		return new DatasetTree({
 			// merge prefixes; this instance has precedence
-			prefixes: Object.assign({}, k_other.prefixes, this.prefixes),
+			prefixes: Object.assign({}, k_other._h_prefixes, this._h_prefixes),
 		}, h_quads_i);
 	}
 
 	// subtract a subset from this
 	minus_subset(k_subset) {
 		// ref quads
-		let h_quads_a = this.quad_tree;
-		let h_quads_b = k_subset.quad_tree;
+		let h_quads_a = this._h_quad_tree;
+		let h_quads_b = k_subset._h_quad_tree;
 
 		// prep quads remainder
 		let h_quads_r = {[$_KEYS]:0, [$_QUADS]:0};
@@ -2901,7 +2901,7 @@ class DatasetTree extends stream.Duplex {
 		// return new dataset tree
 		return new DatasetTree({
 			// merge prefixes; this instance has precedence
-			prefixes: Object.assign({}, k_subset.prefixes, this.prefixes),
+			prefixes: Object.assign({}, k_subset.prefixes, this._h_prefixes),
 		}, h_quads_r);
 	}
 
@@ -2940,13 +2940,13 @@ class DatasetTree extends stream.Duplex {
 
 
 	distinct_subjects() {
-		return this.quad_tree[$_KEYS];
+		return this._h_quad_tree[$_KEYS];
 	}
 
 	// count how many quads match the given selector
 	count(a_terms=[]) {
 		// no terms; return quad count
-		if(!a_terms.length) return this.quad_tree[$_QUADS];
+		if(!a_terms.length) return this._h_quad_tree[$_QUADS];
 
 		// normalize terms
 		let act_terms = a_terms.map((z) => {
@@ -2970,7 +2970,7 @@ class DatasetTree extends stream.Duplex {
 		});
 
 		// ref quads
-		let h_quads = this.quad_tree;
+		let h_quads = this._h_quad_tree;
 
 		// number of terms
 		let nl_terms = act_terms.length;

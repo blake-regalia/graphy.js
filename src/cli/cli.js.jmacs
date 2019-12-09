@@ -321,9 +321,13 @@ const exit = (s_exit) => {
 const S_TRANSFORM_TYPE_NNSQ = 'Transform Type: N-to-N (map);  (...Strings) --> [...Quads]';
 const S_TRANSFORM_TYPE_NNQS = 'Transform Type: N-to-N (map);  (...Quads) --> [...Strings]';
 const S_TRANSFORM_TYPE_NNQQ = 'Transform Type: N-to-N (map);  (...Quads) --> [...Quads]';
+const S_TRANSFORM_TYPE_NNQRB = 'Transform Type: N-to-N (map);  (...Quads) --> [...ResultValues<Boolean>]';
+const S_TRANSFORM_TYPE_NNQRN = 'Transform Type: N-to-N (map);  (...Quads) --> [...ResultValues<Number>]';
 const S_TRANSFORM_TYPE_21QQ = 'Transform Type: 2-to-1 (join);  (Quads, Quads) --> [Quads]';
 const S_TRANSFORM_TYPE_N1QQ = 'Transform Type: N-to-1 (reduce);  (...Quads) -->  [Quads]';
-const S_TRANSFORM_TYPE_21QR = 'Transform Type: 2-to-1 (join);  (Quads, Quads) --> [ResultValues]';
+const S_TRANSFORM_TYPE_N1AA = 'Transform Type: N-to-1 (reduce);  (...Any) -->  [Any]';
+const S_TRANSFORM_TYPE_21QRB = 'Transform Type: 2-to-1 (join);  (Quads, Quads) --> [ResultValues<Boolean>]';
+const S_TRANSFORM_TYPE_21QRN = 'Transform Type: 2-to-1 (join);  (Quads, Quads) --> [ResultValues<Number>]';
 
 const S_CATEGORY_IO = 'Input/Output Commands:'
 const S_CATEGORY_DATA = 'Quad Manipulation Commands:';
@@ -485,8 +489,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 				c: {
 					type: 'string',
 					alias: ['content-type'],
-					default: 'trig',
-					describe: 'either an RDF Content-Type or format selector',
+					describe: `either an RDF Content-Type or format selector (defaults to 'trig')`,
 					group: 'Content Selector Options:',
 				},
 				i: {
@@ -497,7 +500,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 					group: s_group_style,
 				},
 				g: {
-					type: 'string',
+					// type: 'string',
 					alias: ['graph-keyword'],
 					describe: `sets the style to use when serializing the optional 'GRAPH' keyword in TriG. Writers omit this keyword by default.
 						Passing 'true' or empty with this flag on is shorthand for the all-caps 'GRAPH' keyword`.replace(/\n\s*/g, ' '),
@@ -542,20 +545,51 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		],
 
 		command(g_argv, a_inputs, fe_command, _f_writer=null) {
-			// select writer
-			let f_writer = _f_writer || graphy.content(g_argv['content-type']).write;
-
 			// default write config
 			let gc_write = {};
 
 			// extend style options
 			let g_style = gc_write.style || {};
+
+			// content-type selector
+			let s_selector = g_argv['content-type'];
+
+			// no selector specified
+			if(!s_selector) {
+				// default to trig
+				s_selector = 'trig';
+
+				// set simplify default graph so that it might also turtle-compatible
+				g_style.simplify_default_graph = true;
+			}
+
+			// select writer
+			let f_writer = _f_writer || graphy.content(s_selector).write;
+
+			// style options
 			{
 				// indent
 				if(g_argv.indent) g_style.indent = g_argv.indent;
 
 				// graph keyword
-				if(g_argv['graph-keyword']) g_style.graph_keyword = g_argv['graph-keyword'];
+				if(g_argv['graph-keyword']) {
+					let z_graph_keyword = g_argv['graph-keyword'];
+					if('boolean' === typeof z_graph_keyword) {
+						g_style.graph_keyword = z_graph_keyword;
+					}
+					else if(/^true$/i.test(z_graph_keyword)) {
+						g_style.graph_keyword = true;
+					}
+					else if(/^false$/i.test(z_graph_keyword)) {
+						g_style.graph_keyword = false;
+					}
+					else if(/^graph$/i.test(z_graph_keyword)) {
+						g_style.graph_keyword = z_graph_keyword;
+					}
+					else {
+						return fe_command(`The 'write' command reported an invalid value given to the 'graph-keyword' option: '${z_graph_keyword}'`);
+					}
+				}
 
 				// simplify default graph
 				if(g_argv['simplify-default-graph']) g_style.simplify_default_graph = g_argv['simplify-default-graph'];
@@ -1138,7 +1172,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 */
 
 	concat: {
-		type: S_TRANSFORM_TYPE_N1QQ,
+		type: S_TRANSFORM_TYPE_N1AA,
 		category: S_CATEGORY_STREAM,
 		overview: 'Join stream data in order via concatentation',
 		description: [
@@ -1206,7 +1240,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 	},
 
 	merge: {
-		type: S_TRANSFORM_TYPE_N1QQ,
+		type: S_TRANSFORM_TYPE_N1AA,
 		category: S_CATEGORY_STREAM,
 		overview: `Join stream data on a 'first come, first serve' basis`,
 		description: [
@@ -1265,8 +1299,23 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		],
 		options: {},
 
-		command() {
+		command(g_argv, a_inputs, fe_command) {
 			return map_streams(a_inputs, () => dataset_tree());
+		},
+	},
+
+	canonical: {
+		alias: 'canonicalize',
+		type: S_TRANSFORM_TYPE_NNQQ,
+		category: S_CATEGORY_SET,
+		overview: 'Canonicalize a set of quads using RDF Dataset Normalization Algorithm (URDNA2015)',
+		description: [
+			'$1'
+		],
+		options: {},
+
+		command(g_argv, a_inputs, fe_command) {
+			return map_streams(a_inputs, () => dataset_tree({canonicalize:true}));
 		},
 	},
 
@@ -1339,7 +1388,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 	equals: {
 		alias: 'equal',
-		type: S_TRANSFORM_TYPE_21QR,
+		type: S_TRANSFORM_TYPE_21QRB,
 		category: S_CATEGORY_SET,
 		overview: 'Test if 2 inputs are equivalent',
 		description: [
@@ -1355,7 +1404,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 	},
 
 	disjoint: {
-		type: S_TRANSFORM_TYPE_21QR,
+		type: S_TRANSFORM_TYPE_21QRB,
 		category: S_CATEGORY_SET,
 		overview: 'Test if 2 inputs are completely disjoint from one another',
 		description: [
@@ -1372,7 +1421,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 	contains: {
 		alias: 'contain',
-		type: S_TRANSFORM_TYPE_21QR,
+		type: S_TRANSFORM_TYPE_21QRB,
 		category: S_CATEGORY_SET,
 		overview: 'Test if the first input completely contains the second',
 		description: [
@@ -1387,6 +1436,162 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		},
 	},
 
+
+/*
+------ Statistics --------
+*/
+
+	count: {
+		type: S_TRANSFORM_TYPE_NNQRN,
+		overview: 'Count the number of events',
+		description: [
+			'Count the number of events in each steam',
+		],
+
+		command(g_argv, a_inputs, fe_command) {
+			return a_inputs.map(ds_input => new Promise((fk_resolve) => {
+				let c_items = 0;
+
+				ds_input.on('data', () => {
+					c_items += 1;
+				});
+
+				ds_input.on('error', fe_command);
+
+				ds_input.on('end', () => {
+					fk_resolve(new AnswerSource(c_items));
+				})
+			}));
+		},
+	},
+
+	distinct: {
+		type: S_TRANSFORM_TYPE_NNQRN,
+		overview: 'Count the number of distinct things',
+		description: [
+			'Count the number of distinct things, such as quads, triples, subjects, etc.',
+		],
+		options() {
+			let h_options = {
+				q: {
+					alias: ['quads'],
+					type: 'boolean',
+					describe: 'count the number of distinct quads',
+				},
+				t: {
+					alias: ['triples'],
+					type: 'boolean',
+					describe: 'count the number of distinct triples by ignoring the graph component',
+				},
+				s: {
+					alias: ['subjects'],
+					type: 'boolean',
+					describe: 'count the number of distinct subjects',
+				},
+				p: {
+					alias: ['predicates'],
+					type: 'boolean',
+					describe: 'count the number of distinct predicates',
+				},
+				o: {
+					alias: ['objects'],
+					type: 'boolean',
+					describe: 'count the number of distinct objects',
+				},
+				g: {
+					alias: ['graphs'],
+					type: 'boolean',
+					describe: 'count the number of distinct graphs',
+				},
+				// l: {
+				// 	alias: ['literals'],
+				// 	type: 'boolean',
+				// 	describe: 'count the number of distinct literals',
+				// },
+			};
+
+			let a_others = Object.keys(h_options);
+			for(let [si_option, g_option] of Object.entries(h_options)) {
+				let as_conflicts = new Set(a_others);
+				as_conflicts.delete(si_option);
+				g_option.conflicts = [...as_conflicts];
+			}
+
+			return h_options;
+		},
+
+		command(g_argv, a_inputs, fe_command) {
+			// quad component
+			let s_component = null;
+			{
+				if(g_argv.subjects) s_component = 'subject';
+				if(g_argv.predicates) s_component = 'predicate';
+				if(g_argv.objects) s_component = 'object';
+				if(g_argv.graphs) s_component = 'graph';
+			}
+
+			// distinct number of a certain component
+			if(s_component) {
+				return a_inputs.map(ds_input => new Promise((fk_resolve) => {
+					// term set
+					let as_terms = new Set();
+
+					// simply count
+					ds_input.on('data', (g_quad) => {
+						// concise term
+						let sc1_term = g_quad[s_component].concise();
+
+						// add to set
+						as_terms.add(sc1_term);
+					});
+
+					// error handling
+					ds_input.on('error', fe_command);
+
+					// once it ends
+					ds_input.on('end', () => {
+						fk_resolve(new AnswerSource(as_terms.size));
+					});
+				}));
+			}
+			// distinct number of triples
+			else if(g_argv.triples) {
+				return a_inputs.map(async(ds_input) => {
+					// remove graph component
+					let ds_explode = new stream.Transform.QuadsToOther({
+						transform(g_quad) {
+							return factory.quad(g_quad.subject, g_quad.predicate, g_quad.object);
+						},
+					});
+
+					// create dataset
+					let k_dataset = dataset_tree();
+
+					// create pipeline
+					ds_input.pipe(ds_explode)
+						.pipe(k_dataset);
+
+					// await dataset finish
+					await k_dataset.until('finish');
+
+					// return size
+					return new AnswerSource(k_dataset.size);
+				});
+			}
+			// distinct number of quads
+			else {
+				return a_inputs.map(async(ds_input) => {
+					let k_dataset = dataset_tree();
+					
+					ds_input.pipe(k_dataset);
+
+					await k_dataset.until('finish');
+
+					return new AnswerSource(k_dataset.size);
+				});
+			}
+		},
+	},
 
 	// boilerplate: {
 	// 	type: S_TRANSFORM_TYPE_N1QQ,
@@ -1405,6 +1610,8 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 };
 
+// command aliases
+let h_aliases = {};
 
 let n_width_column = Object.keys(h_commands)
 	.reduce((n, s) => Math.max(n, s.length), 0);
@@ -1421,6 +1628,11 @@ for(let [si_command, g_command] of Object.entries(h_commands)) {
 	
 	g_category.commands.push(g_command);
 	g_category.overview.push(`  ${si_command.padEnd(n_width_column, ' ')}  ${g_command.overview}${g_command.alias? ` [alias: ${g_command.alias}]`: ''}`);
+
+	// add alias
+	if(g_command.alias) {
+		h_aliases[g_command.alias] = si_command;
+	}
 }
 
 // terminal width
@@ -1568,12 +1780,20 @@ if(!a_pipeline.length) {
 		// start with command string
 		let s_command = a_series[0];
 
-		// no such command
+		// command not found
 		if(!(s_command in h_commands)) {
-			exit(`no such command '${s_command}'`);
+			// command alias
+			if(s_command in h_aliases) {
+				s_command = h_aliases[s_command];
+			}
+			// no such command
+			else {
+				exit(`no such command '${s_command}'`);
+			}
 		}
 
 		try {
+			// ref command
 			let g_command = h_commands[s_command];
 
 			let g_options = 'function' === typeof g_command.options
@@ -1638,7 +1858,8 @@ if(!a_pipeline.length) {
 
 			// check input cardinality
 			switch(g_command.type) {
-				case S_TRANSFORM_TYPE_21QR:
+				case S_TRANSFORM_TYPE_21QRB:
+				case S_TRANSFORM_TYPE_21QRN:
 				case S_TRANSFORM_TYPE_21QQ: {
 					if(2 !== a_prev.length) {
 						let nl_inputs = a_inputs.length;
@@ -1657,7 +1878,7 @@ if(!a_pipeline.length) {
 			let a_curr = await g_command.command(g_argv, a_prev, fe_command);
 
 			// advance inputs
-			a_prev = a_curr;
+			a_prev = await Promise.all(a_curr);
 		}
 		catch(e_command) {
 			exit(e_command.message);
