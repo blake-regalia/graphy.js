@@ -18,7 +18,7 @@ const fs =require('fs');
 const path = require('path');
 const yargs = require('yargs');
 const mk_yargs = require('yargs/yargs');
-const graphy = require('graphy');
+const graphy = require('./api.js');
 const factory = require('@{channel('core.data.factory')}');
 const stream = require('@{channel('core.iso.stream')}');
 const dataset_tree = require('@{channel('memory.dataset.fast')}');
@@ -465,9 +465,9 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			`scribe -c 'text/turtle'`,
 		],
 
-		command(g_argv, a_inputs, fe_command, _f_scriber=null) {
+		command(g_argv, a_inputs, fe_command) {
 			// select scriber
-			let f_scriber = _f_scriber || graphy.content(g_argv['content-type']).scribe;
+			let f_scriber = graphy.content(g_argv['content-type']).scribe;
 
 			// map input(s) to writer(s)
 			return a_inputs.map(ds_input => ds_input.pipe(f_scriber({
@@ -545,7 +545,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			`write -c 'text/turtle'`,
 		],
 
-		command(g_argv, a_inputs, fe_command, _f_writer=null) {
+		command(g_argv, a_inputs, fe_command) {
 			// default write config
 			let gc_write = {};
 
@@ -565,7 +565,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			}
 
 			// select writer
-			let f_writer = _f_writer || graphy.content(s_selector).write;
+			let f_writer = graphy.content(s_selector).write;
 
 			// style options
 			{

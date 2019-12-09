@@ -97,18 +97,62 @@ class @{S_LABEL}_Scriber extends Scribable {
 		}
 	}
 
+	_reset() {
+		// some subject is open
+		if(this._yt_subject) {
+			@- B_QUADS
+				// some graph is open
+				if(!KT_DEFAULT_GRAPH.equals(this._yt_graph)) {
+					// reset graph
+					this._yt_graph = KT_DEFAULT_GRAPH;
+
+					// close graph
+					this._s_push += ' .\n}\n\n';
+				}
+				// no graph, just subject; close subject
+				else {
+					this._s_push += ' .\n\n';
+				}
+			@:
+				// close subject
+				this._s_push += ' .\n\n';
+			@;
+
+			// reset subject
+			this._yt_subject = null;
+		}
+
+		// reset predicate
+		this._yt_predicate = null;
+	}
+
 	_serialize_prefixes(h_prefixes_in) {
-		// cache prefixes
-		this._update_prefixes(h_prefixes_in, true);
+		// ref current prefixes
+		let h_prefixes = this._h_prefixes;
 
 		// serialize new prefixes
 		let st_prefixes = '';
 		for(let si_prefix in h_prefixes_in) {
+			// prefix already exists and no change; skip
+			if((si_prefix in h_prefixes) && h_prefixes_in[si_prefix] === h_prefixes[si_prefix]) {
+				continue;
+			}
+
+			// serialize addition
 			st_prefixes += `@prefix ${si_prefix}: ${factory.namedNode(h_prefixes_in[si_prefix]).verbose()} .\n`;
 		}
 
-		// write prefixes
-		return st_prefixes+'\n';
+		// change detected
+		if(st_prefixes) {
+			// (re)cache prefixes
+			this._update_prefixes(h_prefixes_in, true);
+
+			// reset all markers
+			this._reset();
+
+			// write prefixes
+			return st_prefixes+'\n';
+		}
 	}
 
 
@@ -191,11 +235,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 		if(b_subjects) st_quads += ' .\n\n';
 
 		// reset all markers
-		@- B_QUADS
-			this._yt_graph = KT_DEFAULT_GRAPH;
-		@;
-		this._yt_subject = null;
-		this._yt_predicate = null;
+		this._reset();
 
 		return st_quads;
 	}
@@ -230,11 +270,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 			}
 
 			// reset all markers
-			@- B_QUADS
-				this._yt_graph = KT_DEFAULT_GRAPH;
-			@;
-			this._yt_subject = null;
-			this._yt_predicate = null;
+			this._reset();
 
 			return st_build;
 		}

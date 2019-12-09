@@ -87,11 +87,11 @@ const H_CONTENT_MIMES = {
 
 const H_CONTENT_TAGS = {
 	nt,
-	'n-triples': nt,
 	ntriples: nt,
+	'n-triples': nt,
 	nq,
-	'n-quads': nq,
 	nquads: nq,
+	'n-quads': nq,
 	ttl,
 	turtle: ttl,
 	trig,
@@ -112,9 +112,11 @@ const graphy = module.exports = Object.assign({
 
 	VERSION: '4.0.0',
 
-	content: Object.assign((s_query) => {
-		if(s_query.toLowerCase() in H_CONTENT_TAGS) {
-			return H_CONTENT_TAGS[s_query.toLowerCase()];
+	content: Object.assign((s_query_in) => {
+		let s_query = s_query_in.toLowerCase();
+
+		if(s_query in H_CONTENT_TAGS) {
+			return H_CONTENT_TAGS[s_query];
 		}
 
 		let m_content_type = R_CONTENT_TYPE.exec(s_query);
