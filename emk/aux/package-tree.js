@@ -23,6 +23,9 @@ module.exports = {
 		iso: {
 			stream: () => ({
 				description: 'Provides isomorphic stream interface for node.js / browser and adds `.until`, a promisified version of the `.on` event listener',
+				dependencies: [
+					'readable-stream',
+				],
 			}),
 		},
 	},
