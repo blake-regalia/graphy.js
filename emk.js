@@ -24,6 +24,8 @@ const s_semver = `^${s_base_version}`;
 
 const P_PACKAGE_PREFIX = process.env.GRAPHY_PACKAGE_PREFIX || '.npm-packages';
 
+let a_link_selected = [];
+
 const dir_struct = (a_files) => {
 	let a_paths = [];
 	for(let z_file of a_files) {
@@ -263,18 +265,32 @@ const package_node_modules = si_package => ({
 		...h_packages[si_package].links.reduce((h, si_link) => Object.assign(h, {
 			[si_link]: () => ({
 				deps: [
-					`link.${si_link}`,
+					// `link_ready.${si_link}`,
+					`link.selected.${si_link}`,
+					// 'link.packages',
 					// ...h_packages[si_link].links.map(s => `build/${s}/**`),
 				],
 
 				run: /* syntax: bash */ `
-					cd build/package/${si_package}
+					pushd build/package/${si_package}
 
 					# link to dep
 					npm link @${s_super}/${si_link}
+					# echo "link @${s_super}/${si_link}"
+					# touch $@
 				`,
 			}),
 		}), {}),
+
+		// run: /* syntax: bash */ `
+		// 	mkdir -p $@
+		// 	pushd $@
+		// 	${h_packages[si_package].links.map(si_link => /* syntax: bash */ `
+		// 		# link to dep
+		// 		npm link @${s_super}/${si_link}
+		// 	`).join('\n')}
+		// 	popd
+		// 	`,
 	},
 
 	// external dependencies
@@ -476,10 +492,78 @@ module.exports = async() => {
 			}),
 
 			// link alias
-			link: {
+			link_ready: {
 				':package': h => ([
-					`${P_PACKAGE_PREFIX}/lib/node_modules/@${s_super}/${h.package}`,
+					`${P_PACKAGE_PREFIX}/lib/node_modules/@${s_super}/${h.package}.ready`,
 				]),
+			},
+
+			link: {
+				// selected: () => ({
+				// 	run() {
+				// 		return a_link_selected.map(si_link => /* syntax: bash */ `
+				// 			# package directory relative to project root
+				// 			PACKAGE_DIR='build/package/${si_link}'
+
+				// 			# enter package directory
+				// 			pushd "$PACKAGE_DIR"
+
+				// 			# link self
+				// 			npm link
+
+				// 			# pop dir from stack
+				// 			popd
+				// 		`).map('\n');
+				// 	},
+				// }),
+
+				selected: {
+					':package': ({package:si_package}) => ({
+						deps: [
+							...h_packages[si_package].links.reduce((a_out, si_link) => [
+								...a_out,
+								`link.selected.${si_link}`,
+							], []),
+
+							`link_ready.${si_package}`,
+						],
+						run: /* syntax: bash */ `
+							# package directory relative to project root
+							PACKAGE_DIR='build/package/${si_package}'
+							
+							# enter package directory
+							pushd "$PACKAGE_DIR"
+
+							# link self
+							npm link
+
+							# pop dir from stack
+							popd
+						`,
+					}),
+				},
+
+				packages: () => ({
+					deps: [
+						...Object.keys(h_packages).reduce((a_out, si_package) => [
+							...a_out,
+							`link_ready.${si_package}`,
+						], []),
+					],
+					run: Object.keys(h_packages).map(si_package => /* syntax: bash */ `
+						# package directory relative to project root
+						PACKAGE_DIR='build/package/${si_package}'
+						
+						# enter package directory
+						pushd "$PACKAGE_DIR"
+
+						# link self
+						npm link
+
+						# pop dir from stack
+						popd
+					`).join('\n'),
+				}),
 
 				[s_super]: () => ([
 					`${P_PACKAGE_PREFIX}/lib/node_modules/${s_super}`,
@@ -487,7 +571,7 @@ module.exports = async() => {
 			},
 
 			// link-to alias
-			link_to: {
+			local: {
 				':package': h => ({
 					deps: [`node_modules/@${s_super}/${h.package}`],
 				}),
@@ -500,7 +584,7 @@ module.exports = async() => {
 			// prepublish
 			prepublish: {
 				':package': h => ({
-					deps: [`link_to.${h.package}`],
+					deps: [`local.${h.package}`],
 					run: /* syntax: bash */ `
 						cd build/package/${h.package}
 
@@ -511,7 +595,7 @@ module.exports = async() => {
 				}),
 
 				[s_super]: () => ({
-					deps: [`link_to.${s_super}`],
+					deps: [`local.${s_super}`],
 					run: /* syntax: bash */ `
 						cd build/package/${s_super}
 
@@ -552,7 +636,7 @@ module.exports = async() => {
 				':testable': ({testable:si_package}) => ({
 					deps: [
 						`prepublish.${si_package}`,
-						'link_to.memory.dataset.fast',
+						'local.memory.dataset.fast',
 						`test/package/${si_package}.js`,
 						...a_content_subs.filter(s => s.endsWith('.read')).includes(si_package)
 							? [
@@ -613,7 +697,7 @@ module.exports = async() => {
 					':snippet': h => jmacs_lint([
 						`src/docs/snippets/${h.snippet}.jmacs`,
 					], [
-						'link_to.*',
+						'local.*',
 					]),
 				},
 
@@ -710,7 +794,11 @@ module.exports = async() => {
 
 					// the super module
 					[s_super]: {
-						'.npmrc': npmrc,
+						...(process.env.GRAPHY_USE_NVM
+							? {}
+							: {
+								'.npmrc': npmrc,
+							}),
 
 						'package.json': () => ({
 							deps: [
@@ -753,7 +841,7 @@ module.exports = async() => {
 								':package': ({package:si_package}) => ({
 									deps: [
 										`build/package/${s_super}/.npmrc`,
-										`link_to.${si_package}`,
+										`local.${si_package}`,
 									],
 
 									run: /* syntax: bash */ `
@@ -809,7 +897,7 @@ module.exports = async() => {
 				lib: {
 					node_modules: {
 						[`@${s_super}`]: {
-							':package': ({package:si_package}) => ({
+							':package.ready': ({package:si_package}) => ({
 								deps: [
 									`build/package/${si_package}/**`,
 								],
@@ -819,13 +907,20 @@ module.exports = async() => {
 									PACKAGE_DIR='build/package/${si_package}'
 									
 									# enter package directory
-									cd "$PACKAGE_DIR"
+									pushd "$PACKAGE_DIR"
 
 									# remove package lock
 									rm -f package-lock.json
 
-									# then link self
-									npm link
+									# pop dir off stack
+									popd
+
+									# touch file ready
+									mkdir -p $(dirname $@)
+									touch $@
+
+									# # then link self
+									# npm link
 								`,
 							}),
 						},
@@ -834,7 +929,8 @@ module.exports = async() => {
 							deps: [
 								`build/package/${s_super}/**`,
 
-								...Object.keys(h_packages).map(s_dep => `link.${s_dep}`),
+								...Object.keys(h_packages).map(s_dep => `link_ready.${s_dep}`),
+								'link.packages',
 							],
 
 							run: /* syntax: bash */ `
@@ -855,15 +951,20 @@ module.exports = async() => {
 			// mono-repo testing
 			node_modules: {
 				[`@${s_super}`]: {
-					':package': ({package:si_package}) => ({
-						deps: [
-							`link.${si_package}`,
-						],
+					':package': ({package:si_package}) => {
+						a_link_selected.push(si_package);
 
-						run: /* syntax: bash */ `
-							npm link @${s_super}/${si_package}
-						`,
-					}),
+						return {
+							deps: [
+								`link_ready.${si_package}`,
+								`link.selected.${si_package}`,
+							],
+
+							run: /* syntax: bash */ `
+								npm link @${s_super}/${si_package}
+							`,
+						};
+					},
 				},
 
 				[s_super]: () => ({

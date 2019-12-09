@@ -372,7 +372,7 @@ module.exports = async(gc_tests={}) => {
 
 	let a_entries = collection(sv1_head, k_tree);
 
-	let hv3_triples = k_tree.quad_tree['*'];
+	let hv3_triples = k_tree._h_quad_tree['*'];
 
 	let as_empty = new Set();
 	describe('w3c rdf specification manifest', () => {

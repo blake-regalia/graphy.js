@@ -26,7 +26,7 @@
   },
   "repository": "blake-regalia/graphy.js",
   "scripts": {
-    "build": "npx emk",
+    "build": "npx emk local.*",
     "test": "npm run build && npx emk build/cache/specs/** && npx emk test.*",
     "coverage": "nyc --reporter=text mocha test/package"
   },

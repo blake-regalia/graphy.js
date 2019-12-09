@@ -93,7 +93,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 		// prefixes given
 		if(gc_scriber.prefixes) {
 			// update prefixes and push to output
-			this.push(this._serialize_prefixes(gc_scriber.prefixes));
+			this.push(this._serialize_prefixes(gc_scriber.prefixes, true));
 		}
 	}
 
@@ -126,7 +126,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 		this._yt_predicate = null;
 	}
 
-	_serialize_prefixes(h_prefixes_in) {
+	_serialize_prefixes(h_prefixes_in, b_force_serialize=false) {
 		// ref current prefixes
 		let h_prefixes = this._h_prefixes;
 
@@ -134,7 +134,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 		let st_prefixes = '';
 		for(let si_prefix in h_prefixes_in) {
 			// prefix already exists and no change; skip
-			if((si_prefix in h_prefixes) && h_prefixes_in[si_prefix] === h_prefixes[si_prefix]) {
+			if((si_prefix in h_prefixes) && h_prefixes_in[si_prefix] === h_prefixes[si_prefix] && !b_force_serialize) {
 				continue;
 			}
 

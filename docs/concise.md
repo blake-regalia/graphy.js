@@ -10,8 +10,8 @@ Concise hashes allow for representing RDF quads and triples in a convenient tree
 **Example:**
 ```js
 // snippets/concise-triples.js
-const factory = require('@graphy-dev/core.data.factory');
-const ttl_write = require('@graphy-dev/content.ttl.write');
+const factory = require('@graphy/core.data.factory');
+const ttl_write = require('@graphy/content.ttl.write');
 
 // create a Turtle content writer
 let ds_writer = ttl_write({
@@ -303,7 +303,7 @@ A concise quads hash **in strict-mode** describes a plain object whose keys repr
 **Example:**
 ```js
 // snippets/concise-quads-strict-mode.js
-const trig_write = require('@graphy-dev/content.trig.write');
+const trig_write = require('@graphy/content.trig.write');
 
 // create a TriG content writer
 let ds_writer = trig_write({
@@ -399,8 +399,8 @@ A concise quads hash describes a plain object whose keys represent the *graph* o
 **Example:**
 ```js
 // snippets/concise-quads.js
-const factory = require('@graphy-dev/core.data.factory');
-const trig_write = require('@graphy-dev/content.trig.write');
+const factory = require('@graphy/core.data.factory');
+const trig_write = require('@graphy/content.trig.write');
 
 // create a TriG content writer
 let ds_writer = trig_write({
@@ -496,7 +496,7 @@ A concise triples **in strict-mode** hash describes a plain object whose keys re
 **Example:**
 ```js
 // snippets/concise-triples-strict-mode.js
-const ttl_write = require('@graphy-dev/content.ttl.write');
+const ttl_write = require('@graphy/content.ttl.write');
 
 // create a Turtle content writer
 let ds_writer = ttl_write({
@@ -590,8 +590,8 @@ A concise triples hash describes a plain object whose keys represent the *subjec
 **Example:**
 ```js
 // snippets/concise-triples.js
-const factory = require('@graphy-dev/core.data.factory');
-const ttl_write = require('@graphy-dev/content.ttl.write');
+const factory = require('@graphy/core.data.factory');
+const ttl_write = require('@graphy/content.ttl.write');
 
 // create a Turtle content writer
 let ds_writer = ttl_write({

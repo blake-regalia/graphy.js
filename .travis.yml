@@ -3,6 +3,7 @@ before_script:
   - export GRAPHY_PACKAGE_PREFIX="$(dirname $(dirname $(nvm which current)))"
 env:
   - GRAPHY_SKIP_DBR_TESTS=1
+  - GRAPHY_USE_NVM
 node_js:
   - '8'
   - '9'
