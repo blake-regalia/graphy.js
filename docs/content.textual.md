@@ -3,15 +3,19 @@
 This documentation covers the following graphy packages:
  - N-Triples
    - reader: `@graphy/content.nt.read`
+   - scriber: `@graphy/content.nt.scribe`
    - writer: `@graphy/content.nt.write`
  - N-Quads
    - reader: `@graphy/content.nq.read`
+   - scriber: `@graphy/content.nq.scribe`
    - writer: `@graphy/content.nq.write`
  - Turtle
    - reader: `@graphy/content.ttl.read`
+   - scriber: `@graphy/content.ttl.scribe`
    - writer: `@graphy/content.ttl.write`
  - TriG
    - reader: `@graphy/content.trig.read`
+   - scriber: `@graphy/content.trig.scribe`
    - writer: `@graphy/content.trig.write`
 
 ----
@@ -34,15 +38,24 @@ This documentation covers the following graphy packages:
        - [`finish(...)`](#event_read-finish)
        - [`end(...)`](#event_read-end)
        - [`error(...)`](#event_read-error)
-   - [`.write`](#verb_write) -- for writing RDF using write event objects
+   - [`.scribe`](#verb-scribe) -- for fast and simple RDF serialization to writable stream
+   - [`.write`](#verb_write) -- for dynamic and stylized RDF serialization to writable stream
+     - [**Scribe vs. Write**](#note_scribe-vs-write)
+     - **Classes:**
+       - [`Scriber`](#class_scriber)
+       - [`Writer`](#class_writer)
      - **Events:**
        - [`warning(...)`](#event_write-warning)
-     - **WritableDataEvent Types:**
-       - [`'c3'`](#interface_writable-data-event-c3) (including comments and newlines)
-       - [`'c4'`](#interface_writable-data-event-c4) (including comments and newlines)
+     - [**WritableDataEvent Types:**](#interface_writable-data-event)
+       - [`'c3'`](#interface_writable-data-event-c3) (full-mode)
+       - [`'c3r'`](#interface_writable-data-event-c3r) (strict-mode)
+       - [`'c4'`](#interface_writable-data-event-c4) (full-mode)
+       - [`'c4r'`](#interface_writable-data-event-c4r) (strict-mode)
        - [`'quad'`](#interface_writable-data-event-quad)
        - [`'prefixes'`](#interface_writable-data-event-prefixes)
        - [`'array'`](#interface_writable-data-event-array) (includes all other types)
+       - [`'comment'`](#interface_writable-data-event-comment)
+       - [`'newlines'`](#interface_writable-data-event-newlines)
  - [Classes](#classes)
  - [Events](#events) -- definitions for event interfaces
  - [Configs](#configs) -- definitions for config interfaces
@@ -50,7 +63,6 @@ This documentation covers the following graphy packages:
 
 <!--
 - [`scan`](#verb_scan) -- for reading RDF from a string or stream using multiple threads
-- [`scribe`](#verb_scribe) -- for writing RDF using Quad objects only
 -->
 
 ----
@@ -69,7 +81,7 @@ See the [`read`](#verb_read) examples for a demonstration of the two styles of a
 <a name="accessibility" />
 
 ## Accessibility
-The following code block demonstrates three *different* ways to access this module.
+The following code block demonstrates three *different* ways to access these modules (shown here for the `read` verb):
 ```js
 // stand-alone readers
 const nt_read = require('@graphy/content.nt.read');
@@ -94,36 +106,6 @@ const trig_read = graphy.content('application/trig').read;
 ```
 
 <!--
-
-// stand-alone turbos
-const nt_turbo = require('@graphy/content.nt.turbo');
-const nq_turbo = require('@graphy/content.nq.turbo');
-const ttl_turbo = require('@graphy/content.ttl.turbo');
-const trig_turbo = require('@graphy/content.trig.turbo');
-
-// turbos via the graphy 'super module'
-const graphy = require('graphy');
-const nt_turbo = graphy.content.nt.turbo;
-const nq_turbo = graphy.content.nq.turbo;
-const ttl_turbo = graphy.content.ttl.turbo;
-const trig_turbo = graphy.content.trig.turbo;
-
-
-// stand-alone writers
-const nt_write = require('@graphy/content.nt.write');
-const nq_write = require('@graphy/content.nq.write');
-const ttl_write = require('@graphy/content.ttl.write');
-const trig_write = require('@graphy/content.trig.write');
-
-// writers via the graphy 'super module'
-const graphy = require('graphy');
-const nt_write = graphy.content.nt.write;
-const nq_write = graphy.content.nq.write;
-const ttl_write = graphy.content.ttl.write;
-const trig_write = graphy.content.trig.write;
-
--->
-
 ----
 
 <a name="datatypes" />
@@ -131,7 +113,6 @@ const trig_write = graphy.content.trig.write;
 ## Datatypes
 The following section describes hinted formatting on ES primitives that are used throughout this document.
 
-<!--
 <a name="strings" />
 
 ### Strings:
@@ -160,17 +141,42 @@ The following section describes hinted formatting on ES primitives that are used
 ## Verbs
 This section documents the 'verb' part of each content module. A 'verb' refers to the fact that the module's export is itself a function.
  - [read](#verb_read) -- read serialized RDF documents using a single thread.
- - [write](#verb_write) -- write serialized RDF data to an output destination in an event-driven manner using the elegant concise-struct language.
+ - [scribe](#verb_scribe) -- write serialized RDF data to an output stream _fast_, in an event-driven manner using RDFJS/Quads or concise struct objects in strict-mode.
+ - [write](#verb_write) -- write serialized RDF data to an output stream _with style_, in an event-driven manner using RDFJS/Quads or elegant concise struct objects.
 
 <!--
- - [turbo](#verb_turbo) -- read serialized RDF documents using multiple threads.
+ - [scan](#verb_scan) -- read serialized RDF documents using multiple threads.
 -->
+
+
+<a name="note_scribe-vs-write" />
+
+#### Difference between `scribe` and `write` verbs
+The [`scribe`](#verb_scribe) and [`write`](#verb_write) verbs are both for serializing RDF to a writable stream. However, `scribe` is the more basic serializer built for speed, while `write` is the more advanced serializer built to support rich features such as stylized output (e.g., custom spacing), serializing comments, RDF collections, and so forth.
+
+Additionally, `write` employs several safety checks that help prevent serializing malformed RDF from faulty write input (e.g., literals in subject position, blank nodes or literals in predicate position, invalid IRI strings, and so on), whereas `scribe` does not perform such safety checks.
+
+The [`scribe`](#verb_scribe) verb supports the following [WritableDataEvent](#interface_writable-data-event) types:
+ - `'prefixes'`
+ - `'quad'`
+ - `'c3r'`
+ - `'c4r'`
+
+The [`write`](#verb_write) verb supports the following [WritableDataEvent](#interface_writable-data-event) types:
+ - `'prefixes'`
+ - `'quad'`
+ - `'c3'`
+ - `'c3r'`
+ - `'c4'`
+ - `'c4r'`
+ - `'comment'`
+ - `'newlines'`
 
 ----
 
 <a name="verb_read" />
 
-### [`read`](#verb_read)`([input: string | stream][, config: #config-read-*])`
+### [`read`](#verb_read)`([input: string | stream][, config: `[`ReadConfig`](#config_write)`])`
  - Read RDF data (in other words, deserialize it) from a document given by an input stream, input string or via duplexing. Uses a single thread.
  - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable) (accepts utf8-encoded strings on its writable side, pushes [Quad](core.data.factory#class_quad) objects on its readable side)
 
@@ -219,14 +225,74 @@ read(`
 ```
 
 **Overloaded variants:**
- - `read([config: `[`#config/read-no-input`](#config_read-no-input)`])`
- - `read(input_string: string[, config: `[`#config/read-no-input`](#config_read-no-input)`])`
+ - `read([config: `[`#ReadConfigNoInput`](#config_read-no-input)`])`
+ - `read(input_string: string[, config: `[`#ReadConfigNoInput`](#config_read-no-input)`])`
    - shortcut for: `read(config).end(input_string, 'utf-8');`
    - equivalent to: `read({...config, input: {string:input_string}});`
- - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#config/read-no-input`](#config_read-no-input)`])`
+ - `read(input_stream: `[`ReadableStream<string>`](core.iso.stream#readable_string)`[, config: `[`#ReadConfigNoInput`](#config_read-no-input)`])`
    - shortcut for: `input_stream.pipe(read(config));`
    - equivalent to: `read({...config, input: {stream:input_stream}});`
- - `read(config: `[`#config/read-with-input`](#config_read-with-input)`)`
+ - `read(config: `[`#ReadConfigWithInput`](#config_read-with-input)`)`
+
+----
+
+<a name="verb_scribe" />
+
+### [`scribe`](#verb_scribe)`([config: `[`ScribeConfig`](#config_scribe)`])`
+ - Write RDF data (in other words, serialize it) from objects in memory into utf8-encoded strings for storage, transmission, etc. 
+ - **returns** a [`new Scriber`](#class_scriber) which transforms [WritableDataEvent objects](#interface_writable-data-event) or [@RDFJS/Quads](https://rdf.js.org/data-model-spec/#quad-interface) on the writable side into utf8-encoded strings on the readable side. The transformation an object undergoes from the writable side to the readable side will vary depending on the capabilities of the specific output RDF format.
+
+**Accessible via the following modules:**
+ - N-Triples (.nt) -- `@graphy/content.nt.scribe`
+ - N-Quads (.nq) -- `@graphy/content.nq.scribe`
+ - Turtle (.ttl) -- `@graphy/content.ttl.scribe`
+ - TriG (.trig) -- `@graphy/content.trig.scribe`
+
+### Usage examples
+
+**Serialize some RDF data to Turtle on-the-fly:**
+```js
+const graphy = require('graphy');
+const factory = graphy;
+
+let ds_scriber = graphy.content.ttl.scribe({
+    prefixes: {
+        dbr: 'http://dbpedia.org/resource/',
+        ex: 'http://ex.org/',
+    },
+});
+
+ds_scriber.on('data', (s_turtle) => {
+    console.log(s_turtle+'');
+});
+
+// write an RDFJS quad
+ds_scriber.write(factory.quad(...[
+  factory.namedNode('http://dbpedia.org/resource/Banana'),
+  factory.namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#'),
+  factory.namedNode('http://dbpedia.org/ontology/Plant'),
+]));
+
+// or write using a concise-triples struct in strict-mode (c3r)
+ds_scriber.write({
+    type: 'c3r',
+    value: {
+        'dbr:Banana': {
+            'ex:color': ['dbr:Yellow'],
+        },
+    },
+});
+```
+
+Prints:
+```turtle
+@prefix dbr: <http://dbpedia.org/resource/> .
+@prefix ex: <http://ex.org/> .
+
+dbr:Banana a dbo:Plant .
+
+dbr:Banana ex:color dbr:Yellow .
+```
 
 ----
 
@@ -234,7 +300,7 @@ read(`
 
 ### [`write`](#verb_write)`([config: `[`WriteConfig`](#config_write)`])`
  - Write RDF data (in other words, serialize it) from objects in memory into utf8-encoded strings for storage, transmission, etc. 
- - **returns** a [`new Transform<WritableDataEvent, string>`]() (accepts [WritableDataEvent objects](#interface_writable-data-event) on the writable side and pushes utf8-encoded strings on the readable side. The transformation an object undergoes from the writable side to the readable side will vary depending on the capabilities of the specific output RDF format.
+ - **returns** a [`new Writer`](#class_writer) which transforms [WritableDataEvent objects](#interface_writable-data-event) or [RDFJS Quads](http://rdf.js.org/data-model-spec/#quad-interface) on the writable side into utf8-encoded strings on the readable side. The transformation an object undergoes from the writable side to the readable side will vary depending on the capabilities of the specific output RDF format.
 
 **Accessible via the following modules:**
  - N-Triples (.nt) -- `@graphy/content.nt.write`
@@ -276,6 +342,26 @@ Prints:
 
 dbr:Banana ex:lastSeen "2019-01-16T06:59:53.401Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
 ```
+
+----
+
+<a name="class_scriber" />
+
+## **Writer** _extends_ [Transform](core.iso.stream#class_transform)&lt;[WritableDataEvent](#interface_writable-data-event) | [@RDFJS/Quad](http://rdf.js.org/data-model-spec/#quad-interface), string&gt;
+
+
+**Methods:**
+ - ... [see those inheritted from Transform](core.iso.stream#transform)
+ - `import(`[`@RDFJS/Stream`](http://rdf.js.org/stream-spec/#stream-interface)`)` _implements_ [@RDFJS/Sink.import](http://rdf.js.org/stream-spec/#sink-interface)
+   - Consumes the given stream. See RDFJS documentation for further reference.
+
+<a name="class_writer" />
+
+## **Writer** _extends_ [Scriber](#class_scriber)
+
+**Methods:**
+ - ... [those inheritted from Scriber](#class_scriber)
+
 
 ----
 
@@ -461,8 +547,8 @@ The definition for all possible events emitted during content writing. Please [s
 
 <a name="class_concise-quad-writer" />
 
-### class **ConciseQuadWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[#hash/c4](concise#c4-hash), string&gt;
-Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c4](concise#c4-hash).
+### class **ConciseQuadWriter** _extends_ [Transform](core.iso.stream#transform)&lt;[#hash/c4r](concise#c4r-hash), string&gt;
+Acts as an object-writable, string-readable Transform for serializing RDF quads from memory to an output destination. Expects objects on the writable side to be of type [#hash/c4r](concise#c4r-hash).
 
 **Construction:**
 See [`write`](#verb_write).
@@ -520,7 +606,7 @@ Contains methods for serializing RDF quads from memory to an output destination.
 See [`write`](#verb_write).
 
 **Methods:**
- - `async add(quads: `[`#hash/c4`](concise#struct_c4)`)` -- serialize 
+ - `async add(quads: `[`#hash/c4r`](concise#struct_c4r)`)` -- serialize 
    - **resolves to** a [`WriteReport`](#class_writereport)
  - `async add(quad: `[`@RDFJS/Quad`](http://rdf.js.org/#quad-interface)`)`
    - **resolves to** a [`WriteReport`](#class_writereport)
@@ -574,22 +660,23 @@ See [`write`](#verb_write) and [`QuadWriter#graph`](#class_quadwriter).
 
 <a name="config_read-no-input" />
 
-#### config **read-no-input** _inlines_ [ReadEvents](#events_read)
+#### config **ReadConfigNoInput** _inlines_ [ReadEvents](#events_read) _implements_ [@RDFJS/ConstructorOptions](http://rdf.js.org/stream-spec/#constructoroptions-interface)
 An interface that defines the config object passed to a content reader.
 
 **Options:**
  - ... [see those inlined from ReadEvents](#events_read)
- - `baseIRI | baseIri`: `string` -- sets the starting base IRI for the RDF document.
+ - `dataFactory` : `DataFactory=@graphy/core.data.factory` -- DataFactory implementation that will be used to create all Terms and Quads. The default implementation provided by graphy tends to perform a tad better and enables readers to create specialized Terms such as [Booleans, Integers, Decimals, Doubles, and so on](https://graphy.link/core.data.factory#class_literal-boolean).
+ - `baseURI | baseUri | baseIRI | baseIri`: `string` -- sets the starting base URI for the RDF document.
  - `relax` : `boolean=false` -- by default, the contents of tokens are validated, e.g., checking for invalid characters in IRIs, literals, and so on. The stream will emit an `'error'` event if an invalid token is encountered. Setting the `relax` option to `true` will permit as wide a character range within tokens as possible (i.e., it will allow any characters *not* in the lookahead table). Using the `relax` option may be useful when trying to recover improperly formatted Turtle documents, however it also yields slightly faster parsing for valid documents as well since normal validation adds overhead to reading.
  - `maxTokenLength` : `number=2048` -- defines the maximum number of characters to expect of any token other than a quoted literal. This option only exists to prevent invalid input from endlessly consuming the reader when using a stream as input. By default, this value is set to **2048**, which is more than the recommended maximum URL length. However, you may wish to set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
- - `maxStringLength` : `number=65536` -- defines the maximum number of characters to expect of any quoted literal. This option only exists to prevent invalid input from endlessly consuming the reader (such as a long-quoted literal `""" that never ends...`) when using a stream as input. By default, this value is set to **65536** characters. However, you may set this value to `Infinity` if you never expect to encounter invalid syntax on the input stream.
+ - `maxStringLength` : `number=Infinity` -- defines the maximum number of characters to expect for any string literal. This option only exists to prevent invalid input from endlessly consuming the reader (such as a long-quoted literal `""" that never ends...`) when using a stream as input. By default, this value is set to **Infinity** characters (no limit). However, you may wish to set this value to some reasonable upper-bound limit (such as `65536` == 64 KiB) if you want to prevent possible memory leaks from invalid inputs or need your program to be able to gracefully recover from such syntax errors.
 
 <a name="config_read-with-input" />
 
-#### config **read-with-input** _extends_ [#config/read-no-input](#config_read-no-input)
+#### config **ReadConfigWithInput** _extends_ [#ReadConfigNoInput](#config_read-no-input)
       
 **Options:**
- - ... [see those inheritted from #config/read-no-input](#config_read-no-input)
+ - ... [see those inheritted from #ReadConfigNoInput](#config_read-no-input)
 
 **Required:**
  - `input` : [`UseInputString`](#interface_use-input-string)` | `[`UseInputStream`](#interface_use-input-stream)
@@ -597,22 +684,31 @@ An interface that defines the config object passed to a content reader.
 
 <a name="config_write" />
 
-#### config **write** _inlines_ [WriteEvents](#events_write)
+#### config **WriteConfig** _inlines_ [WriteEvents](#events_write)
 An interface that defines the config object passed to a content writer.
 
 **Options:**
  - ... [see those inlined from WriteEvents](#events_write)
  - `prefixes` : [`#hash/prefix-mappings`](core.data.factory#hash_prefix-mappings) -- prefix mappings to use in order to expand the concise-term strings within concise-quad hashes as they are written. These prefixes will also be used to create prefix statements and terse terms on the output stream whenever possible (e.g., for Turtle and TriG documents).
- - `tokens` -- configure certain stylistic options if available for the given provider.
+ - `lists`: [`#ListConfig`](#config_lists) -- globally sets the predicates to use when serializing list structures (defaults to using [RDF Collections](https://www.w3.org/TR/rdf-schema/#ch_collectionvocab)).
+ - `style` -- configure stylistic options to customize serialization for the given output format.
    - **Options:**
-     - `.graph` : `boolean | string=''` -- only supported by TriG writer. If `true`, will write `GRAPH` before each graph open block. If a `string` is given, it must match `/^graph$/i`.
+     - `.indent` : `string='\t'` -- sets the indentation string to use.
+     - `.graphKeyword` : `boolean | string=''` -- only supported by TriG writer. If `true`, will write `GRAPH` before each graph open block. If a `string` is given, it must match `/^graph$/i`.
+     - `.simplifyDefaultGraph` : `boolean=false` -- only supported by TriG writer. If `true`, will omit serializating the surrounding optional graph block for quads within the default graph ([see Example 3 from TriG specification](https://www.w3.org/TR/trig/#sec-graph-statements)).
+
+<a name="config_lists" />
+
+#### config **ListsConfig**
+ - _optional properties:_
+   - `.first`: [`#string/c1`](concise#string/c1) -- the predicate to use for specifiying the 'first' item of the linked-list structure.
+   - `.rest`: [`#string/c1`](concise#string/c1) -- the predicate to use for specifiying the 'rest' item of the linked-list structure.
+   - `.nil`: [`#string/c1`](concise#string/c1) -- the object to use for specifiying the terminating 'nil' item of the linked-list structure.
 
 
 <a name="config_comment" />
 
-#### config **comment**
- - _required properties:_
-   - `.contents`: `string` -- the contents of the comment
+#### config **CommentConfig**
  - _optional properties:_
    - `.width`: `int` -- if specified, breaks comments longer than the given `width` onto multiple lines.
 
@@ -711,8 +807,8 @@ An object that describes an event of writable RDF data (including metadata and d
 
 <a name="#interface_writable-data-event-c3" />
 
-   - `'c3'` -- write a set of triples to the output.
-      - *expects* `.value` to be a [concise triple hash](concise#hash_c3)
+   - `'c3'` -- (full-mode) write a set of triples to the output using the [full-mode of concise triples](concise#hash_c3).
+      - *expects* `.value` to be a [concise triple hash in full-mode](concise#hash_c3)
       - _example:_
         ```js
         const factory = require('@graphy/core.data.factory');
@@ -725,6 +821,45 @@ An object that describes an event of writable RDF data (including metadata and d
             value: {
                 [factory.comment()]: 'banana example'
                 'dbr:Banana': {
+                    a: 'dbo:Fruit',
+                    'rdfs:label': [
+                       '@en"Banana',
+                       '@fr"Banane',
+                    ],
+                },
+            },
+        }).pipe(ttl_write({
+            prefixes: {
+                dbr: 'http://dbpedia.org/resource/',
+                rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+            },
+        })).pipe(process.stdout);
+        ```
+      - **outputs:**
+        ```turtle
+        @prefix dbr: <http://dbpedia.org/resource/> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+        # banana example
+        dbr:Banana rdfs:label "Banana"@en, "Banane"@fr .
+        ```
+
+<a name="#interface_writable-data-event-c3r" />
+
+   - `'c3r'` -- (strict-mode) write a set of triples to the output using the [strict-mode of concise triples](concise#hash_c3r).
+      - *expects* `.value` to be a [concise triple hash in strict-mode](concise#hash_c3r)
+      - _example:_
+        ```js
+        const factory = require('@graphy/core.data.factory');
+        const stream = require('@graphy/core.iso.stream');
+        const ttl_write = require('@graphy/content.ttl.write');
+
+        // `stream.source(data).pipe(dst)` is essentially `dst.write(data).end()`
+        stream.source({
+            type: 'c3r',
+            value: {
+                'dbr:Banana': {
+                    a: ['dbo:Fruit'],
                     'rdfs:label': [
                        '@en"Banana',
                        '@fr"Banane',
@@ -749,8 +884,8 @@ An object that describes an event of writable RDF data (including metadata and d
 
 <a name="#interface_writable-data-event-c4" />
 
-   - `'c4'` -- write a set of quads to the output.
-      - *expects* `.value` to be a [concise quad hash](concise#hash_c4)
+   - `'c4'` -- write a set of quads to the output using the [full-mode of concise quads](concise#hash_c4).
+      - *expects* `.value` to be a [concise quad hash in full-mode](concise#hash_c4)
       - _example:_
         ```js
         const factory = require('@graphy/core.data.factory');
@@ -812,6 +947,62 @@ An object that describes an event of writable RDF data (including metadata and d
         }
         ```
 
+<a name="#interface_writable-data-event-c4r" />
+
+   - `'c4r'` -- write a set of quads to the output using the [strict-mode of concise quads](concise#hash_c4r).
+      - *expects* `.value` to be a [concise quad hash in strict-mode](concise#hash_c4r)
+      - _example:_
+        ```js
+        const factory = require('@graphy/core.data.factory');
+        const stream = require('@graphy/core.iso.stream');
+        const trig_write = require('@graphy/content.trig.write');
+
+        // `stream.source(data).pipe(dst)` is essentially `dst.write(data).end()`
+        stream.source({
+            type: 'c4r',
+            value: {
+                // default graph
+                '*': {
+                    'dbr:Banana': {
+                        'rdfs:label': [
+                           '@en"Banana',
+                           '@fr"Banane',
+                        ],
+                    },
+                },
+
+                // another graph (blank node)
+                '_:': {
+                    'dbr:Banana': {
+                        // notice the value must be an Array
+                        'dbr:color': ['"yellow'],
+                    },
+                },
+            },
+        }).pipe(trig_write({
+            prefixes: {
+                dbr: 'http://dbpedia.org/resource/',
+                rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+            },
+            tokens: {
+                graph: true,  // output `GRAPH` tokens in TriG format
+            },
+        })).pipe(process.stdout);
+        ```
+      - **outputs:**
+        ```trig
+        @prefix dbr: <http://dbpedia.org/resource/> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+        GRAPH {
+            dbr:Banana rdfs:label "Banana"@en, "Banane"@fr .
+        }
+
+        GRAPH _:05565745_3fb2_4378_b4d0_bedb24d45d55 {
+            dbr:Banana dbr:color "yellow" .
+        }
+        ```
+
 <a name="#interface_writable-data-event-quad" />
 
    - `'quad'` -- write a single RDFJS-compatible quad to the output.
@@ -860,7 +1051,7 @@ An object that describes an event of writable RDF data (including metadata and d
 
 <a name="#interface_writable-data-event-prefixes" />
 
-   - `'prefixes'` -- updates the current prefix mappings which are used to expand CURIEs found in following concise triple (c3) and concise quad (c4) hashes. Will also cause the writer to output the given prefix mappings if supported by the underlying RDF format.
+   - `'prefixes'` -- updates the current prefix mappings which are used to expand CURIEs found in subsequent concise triple (c3 or c3r) and concise quad (c4 or c4r) hashes. Will also cause the writer to output the given prefix mappings if supported by the underlying RDF format.
       - *expects* `.value` to be a [#hash/prefix-mappings](core.data.factory#hash_prefix-mappings)
       - _example:_
         ```js
@@ -876,8 +1067,18 @@ An object that describes an event of writable RDF data (including metadata and d
         y_writer.write({
             type: 'prefixes',
             value: {
-                demo: 'http://ex.org/',
+                demo: 'http://ex.org/demo/',
             },
+        });
+
+        // write some data using the new mapping
+        y_writer.write({
+          type: 'c3',
+          value: {
+            'demo:Test': {
+              'demo:isWorking': true,
+            },
+          },
         });
 
         // end stream
@@ -885,7 +1086,9 @@ An object that describes an event of writable RDF data (including metadata and d
         ```
       - **outputs:**
         ```turtle
-        @prefix dbr: <http://dbpedia.org/resource/> .
+        @prefix demo: <http://ex.org/demo/> .
+
+        demo:Test demo:isWorking true .
         ```
 
 <a name="#interface_writable-data-event-array" />
@@ -893,3 +1096,15 @@ An object that describes an event of writable RDF data (including metadata and d
    - `'array'` -- write a series of data events (useful for aggregating events synchronously before going async).
       - *expects* `.value` to be an `Array<`[`WritableDataEvent`](#interface_writable-data-event)`>`.
 
+
+
+
+<a name="#interface_writable-data-event-comment" />
+
+   - `'comment'` -- write a comment to the output stream in the appropriate format. Newlines within the string will become comments on separate lines. Comment-terminating substrings within the string will be escaped.
+      - *expects* `.value` to be a `string`.
+
+<a name="#interface_writable-data-event-newlines" />
+
+   - `'newlines'` -- write the given number of newlines to the output.
+      - *expects* `.value` to be a `uint`.

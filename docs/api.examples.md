@@ -64,26 +64,26 @@ Prints:
 ### [Count number of distinct triples in Turtle document](#count-triples-turtle)
 Anytime we are dealing with triples in RDF, we are really talking about quads without the _graph_ component. For example, when you load a Turtle document into a triplestore, you are either loading them into the default graph, or you are choosing some graph to load them into. In essence, a 'triplestore' is really just a set of quads (the graph being the fourth component to the triple).
 
-Let's count the number of distinct triples (or in other words, the number of distinct quads in the default graph) in a Turtle document. In order to get a distinct count, we must load the data into a structure that will remove duplicates, such as the [DatasetTree](util.dataset.tree) package.
+Let's count the number of distinct triples (or in other words, the number of distinct quads in the default graph) in a Turtle document. In order to get a distinct count, we must load the data into a structure that will remove duplicates, such as the [FastDataset](memory.dataset.fast) package.
 
 ```js
 // count-quads.js
 // since we are using multiple packages from graphy, we can load them from the super module
 const graphy = require('graphy');
 const read = graphy.content.ttl.read;
-const tree = graphy.util.dataset.tree;
+const dataset = graphy.memory.dataset.fast;
 
 // we are going to perform an asynchronous task
 (async() => {
     // pipe data from stdin thru the Turtle reader
-    let k_tree = await process.stdin.pipe(read())
+    let k_dataset = await process.stdin.pipe(read())
         // pipe the RDF data thru the DatasetTree package
-        .pipe(tree())
+        .pipe(dataset())
         // use `.until(event, true)` to await an event and return the stream
         .until('finish', true);
 
-    // at this point, we have awaited for the tree to emit 'finish' and have loaded all quads
-    console.log(`${k_tree.size} triples`);
+    // at this point, we have awaited for the dataset to emit 'finish' and have loaded all quads
+    console.log(`${k_dataset.size} triples`);
 })();
 ```
 

@@ -28,12 +28,6 @@ ds_writer.write({
 			// `a` is shortcut for rdf:type
 			a: 'dbo:Plant',
 
-			// primitive ES types map to XSD datatypes
-			'eg:boolean': true,
-			'eg:integer': 42,
-			'eg:decimal': 0.1,
-			'eg:infinity': Infinity,
-
 			// list of objects
 			'rdfs:label': ['@en"Banana', '@fr"Banane', '@es"Plátano'],
 
@@ -47,21 +41,15 @@ ds_writer.write({
 		[factory.comment()]: 'hey look, another comment!',
 		'eg:HappyPerson': {
 			a: 'owl:Class',
-
-			// nesting an anonymous blank node
 			'owl:equivalentClass': {
 				a: 'owl:Class',
-
-				// a list of objects
 				'owl:intersectionOf': [
 					[
-						// nested anonymous blank node
 						{
 							a: 'owl:Restriction',
 							'owl:onProperty': 'eg:hasChild',
 							'owl:allValuesFrom': 'eg:Happy',
 						},
-						// another nested anonymous blank node
 						{
 							a: 'owl:Restriction',
 							'owl:onProperty': 'eg:hasChild',

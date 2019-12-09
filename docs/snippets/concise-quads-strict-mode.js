@@ -1,5 +1,4 @@
 
-const factory = require('@graphy/core.data.factory');
 const trig_write = require('@graphy/content.trig.write');
 
 // create a TriG content writer
@@ -21,30 +20,29 @@ ds_writer.pipe(process.stdout);
 
 // write some quads using a concise quads hash
 ds_writer.write({
-	type: 'c4',
+	type: 'c4r',
 	value: {  // example 2 from TriG: https://www.w3.org/TR/trig/
-		[factory.comment()]: 'default graph',
 		'*': {
 			'demo:bob': {
-				'dc:publisher': '"Bob',
+				'dc:publisher': ['"Bob'],
 			},
 			'demo:alice': {
-				'dc:publisher': '"Alice',
+				'dc:publisher': ['"Alice'],
 			},
 		},
 
 		'demo:bob': {
 			'_:a': {
-				'foaf:name': '"Bob',
-				'foaf:mbox': '>mailto:bob@oldcorp.example.org',
-				'foaf:knows': '_:b',
+				'foaf:name': ['"Bob'],
+				'foaf:mbox': ['>mailto:bob@oldcorp.example.org'],
+				'foaf:knows': ['_:b'],
 			},
 		},
 
 		'demo:alice': {
 			'_:b': {
-				'foaf:name': '"Alice',
-				'foaf:mbox': '>mailto:alice@work.example.org',
+				'foaf:name': ['"Alice'],
+				'foaf:mbox': ['>mailto:alice@work.example.org'],
 			},
 		},
 	},

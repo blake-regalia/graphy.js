@@ -478,9 +478,10 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       }).verbose()}'
       ```
 
+@.{/*
 <a name="function_config" />
 
-### [`factory.config`](#function_config)`(key: string)`
+### [`factory.config`](#function_config)`()`
    - configures a writer option that is scoped to the current sub-tree (applies in the order that the keys are traversed).
    - **returns** a [`#string/concise-term`](concise#string_c1)
    - *accepted keys:*
@@ -495,6 +496,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
       @{exec('snippets/write-config.js', {}, `
       `)}
       ```
+*/}
 
 <a name="function_comment" />
 

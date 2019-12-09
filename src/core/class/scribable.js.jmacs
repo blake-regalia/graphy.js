@@ -2,8 +2,8 @@
 @import '../../share/iris.jmacs'
 @import '../../share/writer.jmacs'
 
-const factory = require('@graphy/core.data.factory');
-const stream = require('@graphy/core.iso.stream');
+const factory = require('@{channel('core.data.factory')}');
+const stream = require('@{channel('core.iso.stream')}');
 
 
 // max string buffer size

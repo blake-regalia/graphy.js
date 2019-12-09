@@ -318,16 +318,16 @@ const exit = (s_exit) => {
 };
 
 
-const S_TRANSFORM_TYPE_NNSQ = 'Transform Type: N-to-N (map);  (...Strings) --> [...Quads]';
-const S_TRANSFORM_TYPE_NNQS = 'Transform Type: N-to-N (map);  (...Quads) --> [...Strings]';
-const S_TRANSFORM_TYPE_NNQQ = 'Transform Type: N-to-N (map);  (...Quads) --> [...Quads]';
-const S_TRANSFORM_TYPE_NNQRB = 'Transform Type: N-to-N (map);  (...Quads) --> [...ResultValues<Boolean>]';
-const S_TRANSFORM_TYPE_NNQRN = 'Transform Type: N-to-N (map);  (...Quads) --> [...ResultValues<Number>]';
-const S_TRANSFORM_TYPE_21QQ = 'Transform Type: 2-to-1 (join);  (Quads, Quads) --> [Quads]';
-const S_TRANSFORM_TYPE_N1QQ = 'Transform Type: N-to-1 (reduce);  (...Quads) -->  [Quads]';
-const S_TRANSFORM_TYPE_N1AA = 'Transform Type: N-to-1 (reduce);  (...Any) -->  [Any]';
-const S_TRANSFORM_TYPE_21QRB = 'Transform Type: 2-to-1 (join);  (Quads, Quads) --> [ResultValues<Boolean>]';
-const S_TRANSFORM_TYPE_21QRN = 'Transform Type: 2-to-1 (join);  (Quads, Quads) --> [ResultValues<Number>]';
+const S_TRANSFORM_TYPE_NNSQ = 'Transform Type:  N-to-N (map);  (...Strings) --> [...Quads]';
+const S_TRANSFORM_TYPE_NNQS = 'Transform Type:  N-to-N (map);  (...Quads) --> [...Strings]';
+const S_TRANSFORM_TYPE_NNQQ = 'Transform Type:  N-to-N (map);  (...Quads) --> [...Quads]';
+const S_TRANSFORM_TYPE_NNQRB = 'Transform Type:  N-to-N (map);  (...Quads) --> [...ResultValues<Boolean>]';
+const S_TRANSFORM_TYPE_NNQRN = 'Transform Type:  N-to-N (map);  (...Quads) --> [...ResultValues<Number>]';
+const S_TRANSFORM_TYPE_21QQ = 'Transform Type:  2-to-1 (join);  (Quads, Quads) --> [Quads]';
+const S_TRANSFORM_TYPE_N1QQ = 'Transform Type:  N-to-1 (reduce);  (...Quads) --> [Quads]';
+const S_TRANSFORM_TYPE_N1AA = 'Transform Type:  N-to-1 (reduce);  (...Any) --> [Any]';
+const S_TRANSFORM_TYPE_21QRB = 'Transform Type:  2-to-1 (join);  (Quads, Quads) --> [ResultValues<Boolean>]';
+const S_TRANSFORM_TYPE_21QRN = 'Transform Type:  2-to-1 (join);  (Quads, Quads) --> [ResultValues<Number>]';
 
 const S_CATEGORY_IO = 'Input/Output Commands:'
 const S_CATEGORY_DATA = 'Quad Manipulation Commands:';
@@ -392,6 +392,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 				alias: ['content-type'],
 				default: 'trig',
 				describe: 'either an RDF Content-Type or format selector',
+				group: 'Content Selector Options:',
 			},
 			r: {
 				type: 'boolean',
@@ -450,6 +451,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 				alias: ['content-type'],
 				default: 'trig',
 				describe: 'either an RDF Content-Type or format selector',
+				group: 'Content Selector Options:',
 			},
 
 			...content_type_flags(s => `scribe to ${s}`),
@@ -1442,6 +1444,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 	count: {
 		type: S_TRANSFORM_TYPE_NNQRN,
+		category: S_CATEGORY_STATS,
 		overview: 'Count the number of events',
 		description: [
 			'Count the number of events in each steam',
@@ -1466,6 +1469,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 	distinct: {
 		type: S_TRANSFORM_TYPE_NNQRN,
+		category: S_CATEGORY_STATS,
 		overview: 'Count the number of distinct things',
 		description: [
 			'Count the number of distinct things, such as quads, triples, subjects, etc.',
@@ -1802,20 +1806,20 @@ if(!a_pipeline.length) {
 			let a_decsribes = g_command.description;
 			let s_describe = '';
 			if(a_decsribes.length) {
-				s_describe = '\n'+a_decsribes
-					.map(s => s.replace(/^\$1$/, g_command.overview+'.'))
+				s_describe = '\nDescription:'+a_decsribes
+					.map(s => '  '+s.replace(/^\$1$/, g_command.overview+'.'))
 					.join('\n\n');
 			}
 
 			let s_usage = [s_command, ...(g_command.alias? [g_command.alias]: [])]
 				.reduce((s_out, s, i) => `${s_out}\n${i? 'Or': 'Usage'}:  $0${S_TRANSFORM_TYPE_NNSQ === g_command.type? '': ' [...]'} ${s}${g_command.syntax? ' '+g_command.syntax: ''} [OPTIONS] [ / COMMAND]*`, '');
 
-			let s_positionals = '';
+			let s_positionals = '\n'+g_command.type+'\n';
 			if(g_command.positionals) {
 				let n_width_positionals = Object.entries(g_command.positionals)
 					.reduce((n, [s]) => Math.max(n, s.length), 10);
 
-				s_positionals = '\n\nArguments:';
+				s_positionals += '\nArguments:';
 				for(let [si_pos, g_pos] of Object.entries(g_command.positionals)) {
 					s_positionals += `\n  ${si_pos.padEnd(n_width_positionals, ' ')}  [${g_pos.type}] ${g_pos.describe}`;
 				}

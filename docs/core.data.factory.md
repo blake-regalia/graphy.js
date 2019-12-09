@@ -38,10 +38,14 @@
      - [`.c3(...)`](#function_c3)
      - [`.c4(...)`](#function_c4)
    - Normalization
+     - [`.fromTerm`](#function_from-term)
+     - [`.fromQuad`](#function_from-quad)
      - [`.from.term`](#function_from-term)
-     - [`.from.quad`](#function_from-term)
+     - [`.from.quad`](#function_from-quad)
    - Content Writer directives
+     - [`.config(...)`](#function_config)
      - [`.comment(...)`](#function_comment)
+     - [`.newlines(...)`](#function_newlines)
  - [Classes](#classes) -- class definitions
    - [GenericTerm](#class_generic-term)
      - [NamedNode](#class_named-node)
@@ -334,7 +338,7 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
                   'ex:color': 'ex:Color^"yellow',
               },
           },
-      }, {ex:'http://ex.org/'})].map(k_quad => k_quad.terse({ex:'http://ex.org/'}));  // ['ex:graph { ex:Banana ex:color <http://ex.org/Color%5E%22yellow> . }']
+      }, {ex:'http://ex.org/'})].map(k_quad => k_quad.terse({ex:'http://ex.org/'}));  // ['ex:graph { ex:Banana ex:color <http://ex.org/Color\u005e\u0022yellow> . }']
       ```
 
 <a name="function_c1" />
@@ -371,12 +375,12 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_from-term" />
 
-### [`factory.from.term`](#function_from-term)`(term: `[`AnyTerm`](#interface_any-term)`)`
+### [`factory.fromTerm`](#function_from-term)`(term: `[`AnyTerm`](#interface_any-term)`)`
    - converts an object that represents an RDF term, as long as it includes the expected keys such as an [@RDFJS/Term](https://rdf.js.org/#term-interface) from another library, into a graphy-constructed [GenericTerm](#class_generic-term).
    - **returns** a [new GenericTerm](#class_generic-term)
    - *example:*
       ```js
-      factory.from.term({
+      factory.fromTerm({
           termType: 'NamedNode',
           value: 'z://a',
       }).verbose();  // '<z://a>'
@@ -384,12 +388,12 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
 
 <a name="function_from-quad" />
 
-### [`factory.from.quad`](#function_from-quad)`(term: `[`AnyQuad`](#interface_any-quad)`)`
+### [`factory.fromQuad`](#function_from-quad)`(term: `[`AnyQuad`](#interface_any-quad)`)`
    - converts an object that represents an RDF quad, as long as it includes the expected keys such as an [@RDFJS/Quad](https://rdf.js.org/#quad-interface) from another library, into a graphy-constructed [Quad](#class_quad).
    - **returns** a [new Quad](#class_quad)
    - *example:*
       ```js
-      factory.from.quad({
+      factory.fromQuad({
           subject: {
               termType: 'NamedNode',
               value: 'z://y/a',
@@ -409,6 +413,8 @@ A 'hash' is a synonym of a HashMap; it refers to an object whose keys are arbitr
           },
       }).verbose();  // '<z://y/a> <z://y/b> <z://y/c> <z://y/g> .'
       ```
+
+
 
 <a name="function_comment" />
 
@@ -621,6 +627,9 @@ A class that represents an RDF literal.
 
 **Properties:**
  - `.isLiteral` : `boolean` = `true` -- a faster alternative to test for Literal term types
+ - `.isSimple` : `boolean` -- whether or not this Literal is 'simple', i.e., it has the datatype [xsd:string](https://www.w3.org/TR/xmlschema-2/#boolean) and no language tag.
+ - `.isLanguaged` : `boolean` -- whether or not this Literal is 'languaged', i.e., it has some language tag and the datatype [rdf:langString](https://www.w3.org/TR/rdf11-concepts/#dfn-language-tagged-string).
+ - `.isDatatyped` : `boolean` -- whether or not this Literal is 'datatyped', i.e., it has some datatype other than [xsd:string](https://www.w3.org/TR/xmlschema-2/#boolean) and no language tag.
  
 **Methods:**
  - ... [see those inherited from GenericTerm](#class_generic-term)

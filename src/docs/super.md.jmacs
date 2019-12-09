@@ -1,16 +1,7 @@
 @import './docs.jmacs'
 @.{
-  const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
+  const factory = require('@graphy/core.data.factory');
   const h_prefixes = {xsd:'http://www.w3.org/2001/XMLSchema#', dbr:'http://dbpedia.org/resource/'};
-
-  const H_FORMATS = {
-    nt: {},
-    nq: {},
-    ttl: {},
-    trig: {},
-  };
-
-  const A_VERBS = ['read', 'scribe', 'write'];
 }
 @{api_title('Super Package')}
 This document describes the 'super' package `graphy`.
@@ -61,13 +52,22 @@ This document describes the 'super' package `graphy`.
 <a name="packages" />
 
 @*{
-   for(let s_format of H_FORMATS) {
+  const H_FORMATS = {
+    nt: {},
+    nq: {},
+    ttl: {},
+    trig: {},
+  };
+
+  const A_VERBS = ['read', 'scribe', 'write'];
+
+   for(let s_format of Object.keys(H_FORMATS)) {
       for(let s_verb of A_VERBS) {
          yield `
 <a name="package_content-${s_format}-${s_verb}" />
 
- - `graphy.content.${s_format}.${s_verb}(...)`
-   - See the [`${s_verb} verb`](content.textual#verb_${s_verb}) in [Reading and Writing](content.textual).
+ - \`graphy.content.${s_format}.${s_verb}(...)\`
+   - See the [\`${s_verb} verb\`](content.textual#verb_${s_verb}) in [Reading and Writing](content.textual).
          `;
       }
    }

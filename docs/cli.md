@@ -1,5 +1,21 @@
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # [« Home](https://graphy.link/) / Command Line Interface
 
 <div class="larger">
@@ -14,203 +30,347 @@
 
 <br />
 ## Internal Pipeline
-The `graphy` CLI works by pushing RDF data through a series of [internal transforms](#commands), starting with a single input on `stdin` (or instead, [multiple inputs](#inputs)) and ending with a single output on `stdout`. This internal pipeline feature allows for efficient, high-bandwidth transformation of RDF data.
+The `graphy` CLI works by pushing RDF data through a series of [internal transforms](#commands), starting with a single input on `stdin` (or instead, [multiple inputs](#inputs)) and ending with a single output on `stdout`. This internal pipeline feature allows for efficient, high-bandwidth transformations of RDF data.
 
 
-### `Usage: graphy COMMAND [--pipe COMMAND]*`
+### `Usage:  graphy [OPTIONS] COMMAND [ / COMMAND]* [--inputs FILE...]`
+
+**Table of Contents:**
+ - Input/Output Commands:
+   - [`read`](#command_read) -- Deserialize RDF content
+   - [`scribe`](#command_scribe) -- Serialize RDF content fast
+   - [`write`](#command_write) -- Serialize RDF content in style (pretty-printing)
+
+ - Quad Manipulation Commands:
+   - [`skip`](#command_skip) -- Skip over some amount of quads in the stream(s)
+   - [`head`](#command_head) -- Limit number of quads from top of stream(s)
+   - [`tail`](#command_tail) -- Limit number of quads from bottom of stream(s)
+   - [`filter`](#command_filter) -- Filter quads in the stream(s) via expression
+   - [`transform`](#command_transform) -- Apply a custom transform function to each quad in the stream(s)
+
+ - Stream Control Commands:
+   - [`concat`](#command_concat) -- Join stream data in order via concatentation
+   - [`merge`](#command_merge) -- Join stream data on a 'first come, first serve' basis
+
+ - Dataset Commands:
+   - [`tree`](#command_tree) -- Put all quads into a tree data structure to remove duplicates
+   - [`canonical`](#command_canonical) -- Canonicalize a set of quads using RDF Dataset Normalization Algorithm (URDNA2015) [alias: canonicalize]
+   - [`union`](#command_union) -- Compute the set union of 1 or more inputs
+   - [`intersect`](#command_intersect) -- Compute the set intersection of 1 or more inputs [alias: intersection]
+   - [`diff`](#command_diff) -- Compute the set difference between 2 inputs [alias: difference]
+   - [`minus`](#command_minus) -- Subtract the second input from the first: A - B [alias: subtraction]
+   - [`equals`](#command_equals) -- Test if 2 inputs are equivalent [alias: equal]
+   - [`disjoint`](#command_disjoint) -- Test if 2 inputs are completely disjoint from one another
+   - [`contains`](#command_contains) -- Test if the first input completely contains the second [alias: contain]
+
+ - Statistics Commands:
+   - [`count`](#command_count) -- Count the number of events
+   - [`distinct`](#command_distinct) -- Count the number of distinct things
+
+ - Options:
+   - `-e, --examples` -- Print some examples and exit
+   - `-h, --help` -- Print this help message and exit
+   - `-v, --version` -- Print the version info and exit
+
 
 <br />
 
 ## Commands
 
+<a name="command_read" />
 
-<a name="command_content-format-read" />
+### [`read`](#command_read)` [OPTIONS]`
+Read RDF content, i.e., deserialize it.
 
-### [`content.FORMAT.read`](#command_content-format-read)` [OPTIONS]`
-   - `N-to-N<`[`StringStream`](#class_string-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- maps 1 or more utf8-encoded input streams into 1 or more object output streams of RDF [Quad](core.data.factory#class_quad) objects.
-   - **Format:**
-     - `nt` -- read N-Triples document(s)
-     - `nq` -- read N-Quads document(s)
-     - `ttl` -- read Turtle document(s)
-     - `trig` -- read TriG document(s)
-   - **Options:**
-     - `-b, --base, --base-uri` -- sets the starting base URI for the RDF document, [see more here](content.textual#config_read-no-input).
-     - `-v, --validate` -- whether or not to perform validation on tokens, [see more here](content.textual#config_read-no-input).
-     - **Whitelist Filtering:**
-       - `-s, --subject SUBJECT_FILTER` -- only allow quads that match the given subject. `SUBJECT_FILTER` must be a [concise-term string](concise#string_c1).
-       - `-p, --predicate PREDICATE_FILTER` -- only allow quads that match the given predicate. `PREDICATE_FILTER` must be a [concise-term string](concise#string_c1).
-       - `-o, --object OBJECT_FILTER` -- only allow quads that match the given object. `OBJECT_FILTER` must be a [concise-term string](concise#string_c1).
-       - `-g, --graph GRAPH_FILTER` -- only allow quads that match the given graph. `GRAPH_FILTER` must be a [concise-term string](concise#string_c1).
-     - **Blacklist Filtering:**
-       - `-S, --not-subject NOT_SUBJECTS_FILTER+` -- allow any quads that **do not match** the given subject(s). `NOT_SUBJECTS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-       - `-P, --not-predicate NOT_PREDICATE_FILTER+` -- allow any quads that **do not match** the given predicate(s). `NOT_PREDICATES_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-       - `-O, --not-object NOT_OBJECT_FILTER+` -- allow any quads that **do not match** the given object(s). `NOT_OBJECTS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-       - `-G, --not-graph NOT_GRAPH_FILTER+` -- allow any quads that **do not match** the given graph(s). `NOT_GRAPHS_FILTER+` must be 1 or more [concise-term strings](concise#string_c1).
-   - _examples:_
-     ```bash
-     # validate an N-Triples document
-     $ graphy content.nt.read --validate < input.nt > /dev/null
+**Stream Multiplicity:**
+ - `N-to-N<string, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of utf-8 encoded strings into 1 or more output streams of [Quad](core.data.factory#class_quad) objects.
 
-     # print line-delimited JSON of quads in N-Quads document
-     $ graphy content.nq.read < input.nq
+**Options:**
+ - Content Selector Options:
+   - `-c, --content-type` -- either an RDF Content-Type or format selector (defaults to 'trig').
+ - `-b, --base, --base-uri` -- sets the starting base URI for the RDF document, [see more here](content.textual#config_read-no-input).
+ - `-r, --relax` -- relax validation of tokens for trusted input sources to improve read speeds, [see more here](content.textual#config_read-no-input).
 
-     # validate a Turtle document
-     $ graphy content.ttl.read -v < input.ttl > /dev/null
+_Examples:_
+   ```bash
+   # validate an N-Triples document
+   $ graphy read -c nt < input.nt > /dev/null
 
-     # print line-delimited JSON of quads in TriG document while validating it
-     $ graphy content.trig.read -v < input.trig
+   # print line-delimited JSON of quads in N-Quads document
+   $ graphy read -c nq < input.nq
 
-     # filter by subject: 'dbr:Banana_split' using prefix mappings embedded in document
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -s 'dbr:Banana_split'
+   # validate a Turtle document
+   $ graphy read -c ttl < input.ttl > /dev/null
 
-     # filter by predicate: 'rdf:type' alias
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -p 'a'
+   # print line-delimited JSON of quads in TriG document while validating it
+   $ graphy read -c trig < input.trig
 
-     # select quads that *do not have* the predicate: 'owl:sameAs' nor `dbo:wikiPageRedirects`
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -P 'owl:sameAs' 'dbo:wikiPageRedirects'
+   # filter by subject: 'dbr:Banana_split' using prefix mappings embedded in document
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x 'dbr:Banana_split'
 
-     # filter by object: '"Banana"@en'
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -o '@en"Banana'
+   # filter by predicate: 'rdf:type' alias
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x '; a'
 
-     # filter by graph using absolute IRI ref
-     $ curl http://dbpedia.org/data/Banana.ttl | graphy content.ttl.read -g '>http://ex.org/some-absolute-graph-iri'
-     ```
+   # select quads that *do not have* the predicate: 'owl:sameAs' _nor_ `dbo:wikiPageRedirects`
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x '; !(owl:sameAs or dbo:wikiPageRedirects)'
 
-<a name="command_content-format-write" />
+   # filter by object: '"Banana"@en'
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x ';; "Banana"@en'
 
-### [`content.FORMAT.write`](#command_content-format-write)` [OPTIONS]`
-   - `N-to-1<`[`WritableDataEventStream`](#class_writable-data-event-stream)`, `[`StringStream`](#class_string-stream)`>` -- maps 1 or more object input streams of [WritableDataEvent](content.textual#interface_writable-data-event) objects into 1 utf8-encoded output stream.
-   - **Format:**
-     - `nt` -- write an N-Triples document
-     - `nq` -- write an N-Quads document
-     - `ttl` -- write a Turtle document
-     - `trig` -- write a TriG document
-   - **Options:**
-     - _none_
-   - _examples:_
-     ```bash
-     # convert a Turtle document into N-Triples
-     $ cat input.ttl | graphy content.ttl.read \
-         --pipe content.nt.write > output.nt
+   # filter by graph using absolute IRI ref
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x ';;; <http://ex.org/some-absolute-graph-iri>'
+   ```
 
-     # convert a TriG document into N-Quads
-     $ cat input.trig | graphy content.trig.read \
-         --pipe content.nq.write > output.nq
 
-     # convert an N-Triples document into Turtle
-     $ cat input.nt | graphy content.nt.read \
-         --pipe content.ttl.write > output.ttl
+<a name="command_scribe" />
 
-     # convert an N-Quads document into TriG
-     $ cat input.nq | graphy content.nq.read \
-         --pipe content.trig.write > output.trig
-     ```
+### [`scribe`](#command_scribe)` [OPTIONS]`
+Scribe RDF content, i.e., serialize it, fast (and possibly ugly).
 
-<a name="command_util-dataset-tree" />
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, string>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of utf-8 encoded strings.
 
-### [`util.dataset.tree`](#command_util-dataset-tree)` [OPTIONS] [SUBCOMMAND]`
-   - use the [DatasetTree](util.dataset.tree) package to perform set algebra or simply to remove duplicates from a single data source.
-   - **Subcommands:**
-     - ` ` -- _(no command)_
-       - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- maps 1 or more object input streams of [Quad](core.data.factory#class_quad) objects into 1 or more object output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
-       - This transformation puts each dataset into its own tree, effectively removing duplicate quads and organizing quads into a tree of `graph --> subject --> predicate --> object`. [See example](#example_pretty-print).
-     - `-z, --canonicalize`
-       - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- maps 1 or more object input streams of [Quad](core.data.factory#class_quad) objects into 1 or more object output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
-       - This transformation puts each dataset into its own tree, effectively removing duplicate quads and organizing quads into a tree of `graph --> subject --> predicate --> object`. [See example](#example_pretty-print).
-       - _example:_
-         ```bash
-         # compute the isomorphic difference between two files
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --canonicalize \  # first canonicalize each input
-             --pipe util.dataset.tree --difference \  # then compute their difference
-             --pipe content.ttl.write \
-             --inputs a.ttl b.ttl \
-             > canonical-difference.ttl
-         ```
-     - `-u, --union`
-       - `N-to-1<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- accepts 1 or more object input streams of [Quad](core.data.factory#class_quad) objects, performs the union of all datasets, and then pipes the result into 1 object output stream of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream.
-       - Performs the union of all inputs.
-       - _example:_
-         ```bash
-         # perform a union on all *.ttl files inside `data/` directory
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --union \
-             --pipe content.ttl.write \
-             --inputs input/*.ttl \
-             > union.ttl
-         ```
-     - `-i, --intersection`
-       - `N-to-1<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- accepts 1 or more object input streams of [Quad](core.data.factory#class_quad) objects, performs the intersection of all datasets, and then pipes the result into 1 object output stream of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream.
-       - Performs the intersection of all inputs.
-       - _example:_
-         ```bash
-         # perform an intersection on all *.ttl files inside `data/` directory
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --intersection \
-             --pipe content.ttl.write \
-             --inputs input/*.ttl \
-             > intersection.ttl
-         ```
-     - `-m, --minus, --subtraction`
-       - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- expects exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, performs the subtraction of the second input from the first, and then pipes the result into 1 object output stream of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream.
-       - Subtracts the second input from the first.
-       - _example:_
-         ```bash
-         # perform an intersection on all *.ttl files inside `data/` directory
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --minus \
-             --pipe content.ttl.write \
-             --inputs union.ttl input/dead.ttl \
-             > leftover.ttl
-         ```
-     - `-d, --diff, --difference`
-       - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`AnyDestination`](#class_any-destination)`>` -- expects exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, computes the difference between the two inputs, and then pipes the result into 1 object output stream of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream.
-       - Computes the difference between the two inputs.
-       - _example:_
-         ```bash
-         # compute the difference between `original.ttl` and `modified.ttl`
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --difference \
-             --pipe content.ttl.write \
-             --inputs original.ttl modified.ttl \
-             > difference.ttl
-         ```
-     - `-e, --equals`
-       - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream`](#class_result-value-stream)`<boolean>>` -- expects exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests them for strict equality, and then pipes the boolean result value into 1 output stream.
-       - Tests for strict equality between the two inputs.
-       - _example:_
-         ```bash
-         # test if `before.ttl` and `after.ttl` are strictly equal
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --equals \
-             --inputs before.ttl after.ttl
+**Options:**
+ - Content Selector Options:
+   - `-c, --content-type` -- either an RDF Content-Type or format selector (defaults to 'trig').
 
-         # test if `before.ttl` and `after.ttl` are isomorphically equivalent
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --canonicalize \
-             --pipe util.dataset.tree --equals \
-             --inputs before.ttl after.ttl
-         ```
-     - `-j, --disjoint`
-       - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream`](#class_result-value-stream)`<boolean>>` -- expects exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests them for strict disjointess, and then pipes the boolean result value into 1 output stream.
-       - Tests for strict disjointess between the two inputs.
-       - _example:_
-         ```bash
-         # test if `apples.ttl` and `oranges.ttl` are strictly disjoint
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --disjoint \
-             --inputs apples.ttl oranges.ttl
-         ```
-     - `-c, --contains`
-       - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream`](#class_result-value-stream)`<boolean>>` -- expects exactly 2 input streams of [Quad](core.data.factory#class_quad) objects, tests if the first input strictly contains the second, and then pipes the boolean result value into 1 output stream.
-       - Tests if the first input strictly contains the second.
-       - _example:_
-         ```bash
-         # test if `superset.ttl` strictly contains `subset.ttl`
-         $ graphy content.ttl.read \
-             --pipe util.dataset.tree --contains \
-             --inputs superset.ttl subset.ttl
-         ```
+_Examples:_
+   ```bash
+   # convert a Turtle document into N-Triples
+   $ cat input.ttl | graphy read -c ttl / scribe -c nt > output.nt
+
+   # convert a TriG document into N-Quads
+   $ cat input.trig | graphy read -c trig / scribe -c nq > output.nq
+
+   # convert an N-Triples document into Turtle
+   $ cat input.nt | graphy read -c nt / scribe -c ttl > output.ttl
+
+   # convert an N-Quads document into TriG
+   $ cat input.nq | graphy read -c nq / scribe -c trig > output.trig
+   ```
+
+
+<a name="command_write" />
+
+### [`write`](#command_write)` [OPTIONS]`
+Write RDF content, i.e., serialize it, in style (pretty-print).
+
+> NOTE: If no serialization format is specified with the `-c` option, the output format will default to TriG with the simplified default graph option enabled, meaning that the output will also be Turtle-compatible if all quads written belong to the default graph.
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, string>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of utf-8 encoded strings.
+
+**Options:**
+ - Content Selector Options:
+   - `-c, --content-type` -- either an RDF Content-Type or format selector (defaults to 'trig').
+ - Style Options:
+   - `-i, --indent` -- sets the whitespace string to use for indentation. Writers use `'\t'` by default.
+   - `-g, --graph-keyword` -- sets the string to use when serializing the optional `'GRAPH'` keyword in TriG. Writers omit this keyword by default. Using this flag as a boolean (i.e., by passing `'true'` or nothing) is shorthand for the all-caps `'GRAPH'` keyword.
+   - `-s, --simplify-default-graph` --- if enabled, omits serializing the surrounding optional graph block for the default graph in TriG.
+ - List Structure Options:
+   - `-f, --first` -- c1 string: sets the predicate to use for the 'first' relation when serializing list structures.
+   - `-r, --rest` -- c1 string: sets the predicate to use for the 'rest' relation when serializing list structures.
+   - `-n, --nil` -- c1 string: sets the predicate to use for the 'nil' relation when serializing list structures.
+
+_Examples:_
+   ```bash
+   # convert a Turtle document into N-Triples
+   $ cat input.ttl | graphy read -c ttl / write -c nt > output.nt
+
+   # convert a TriG document into N-Quads
+   $ cat input.trig | graphy read -c trig / write -c nq > output.nq
+
+   # convert an N-Triples document into Turtle
+   $ cat input.nt | graphy read -c nt / write -c ttl > output.ttl
+
+   # convert an N-Triples document into Turtle (equivalent to above)
+   $ cat input.nt | graphy read -c nt / write > output.trig
+
+   # convert an N-Quads document into TriG
+   $ cat input.nq | graphy read -c nq / write -c trig > output.trig
+
+   # convert an N-Quads document into TriG (equivalent to above)
+   $ cat input.nq | graphy read -c nq / write > output.trig
+   ```
+
+
+
+<a name="command_tree" />
+
+### [`tree`](#command_tree)
+Puts all quads thru a tree data structure to remove duplicates.
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
+
+
+<a name="command_canonical" />
+
+### [`canonical`](#command_canonical)
+Puts all quads thru a tree data structure to remove duplicates.
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
+
+_Example:_
+   ```bash
+   # canonicalize 
+   $ graphy read -c ttl / canonical / write -c ttl   \
+       < input.ttl                                   \
+       > output.ttl
+   ```
+
+
+
+
+<a name="command_${si_command}" />
+
+### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+Compute the union of all inputs.
+
+**Stream Multiplicity:**
+ - `N-to-1<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **reduces** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into exactly 1 output stream of [Quad](core.data.factory#class_quad) objects.
+
+**Options:**
+ - `--strict` -- if true, forgoes canonicalization before the set operation
+
+ _Example:_
+   ```bash
+   # perform a union on all *.ttl files inside `data/` directory
+   $ graphy read -c ttl / union / write -c ttl   \
+       --inputs input/*.ttl                      \
+       > union.ttl
+   ```
+
+
+<a name="command_${si_command}" />
+
+### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+Performs the intersection of all inputs.
+
+> `intersection` is also an alias
+
+**Stream Multiplicity:**
+ - `N-to-1<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **reduces** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into exactly 1 output stream of [Quad](core.data.factory#class_quad) objects.
+
+**Options:**
+ - `--strict` -- if true, forgoes canonicalization before the set operation
+
+ _Example:_
+   ```bash
+   # perform an intersection on all *.ttl files inside `data/` directory
+   $ graphy read -c ttl / intersect / write -c ttl   \
+       --inputs input/*.ttl                          \
+       > intersection.ttl
+   ```
+
+
+<a name="command_${si_command}" />
+
+### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+Compute the difference between the two inputs.
+
+> `difference` is also an alias
+
+**Stream Multiplicity:**
+ - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **joins** exactly 2 input streams of [Quad](core.data.factory#class_quad) objects into exactly 1 output stream of [Quad](core.data.factory#class_quad) objects.
+
+**Options:**
+ - `--strict` -- if true, forgoes canonicalization before the set operation
+
+_Example:_
+   ```bash
+   # compute the isomorphic difference between two files
+   $ graphy read -c ttl / diff / write -c ttl   \
+       --inputs a.ttl b.ttl                     \
+       > canonical-difference.ttl
+   ```
+
+
+<a name="command_${si_command}" />
+
+### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+Subtracts the second input from the first.
+
+> `subtract` and `subtraction` are also aliases
+
+**Stream Multiplicity:**
+ - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **joins** exactly 2 input streams of [Quad](core.data.factory#class_quad) objects into exactly 1 output stream of [Quad](core.data.factory#class_quad) objects.
+
+**Options:**
+ - `--strict` -- if true, forgoes canonicalization before the set operation
+
+_Example:_
+   ```bash
+   # subtract `input/dead.ttl` from `union.ttl`
+   $ graphy read -c ttl / minus / write -c ttl   \
+       --inputs  union.ttl  input/dead.ttl       \
+       > leftover.ttl
+   ```
+
+
+<a name="command_${si_command}" />
+
+### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+Tests for equality between the two inputs.
+
+> `equal` is also an alias
+
+**Stream Multiplicity:**
+ - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream<Boolean>`](#class_result-value-stream)`>` -- **joins** exactly 2 input streams of [Quad](core.data.factory#class_quad) objects into exactly 1 output stream of a single `boolean` value.
+
+**Options:**
+ - `--strict` -- if true, forgoes canonicalization before the set operation
+
+_Example:_
+   ```bash
+   # test if `before.ttl` and `after.ttl` are strictly equal
+   $ graphy read -c ttl / equals --strict   \
+       --inputs before.ttl after.ttl
+
+   # test if `before.ttl` and `after.ttl` are isomorphically equivalent
+   $ graphy read -c ttl / equals   \
+       --inputs before.ttl after.ttl
+   ```
+
+
+<a name="command_${si_command}" />
+
+### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+Tests for disjointess between the two inputs.
+
+**Stream Multiplicity:**
+ - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream<Boolean>`](#class_result-value-stream)`>` -- **joins** exactly 2 input streams of [Quad](core.data.factory#class_quad) objects into exactly 1 output stream of a single `boolean` value.
+
+**Options:**
+ - `--strict` -- if true, forgoes canonicalization before the set operation
+
+_Example:_
+   ```bash
+   # test if `apples.ttl` and `oranges.ttl` are strictly disjoint
+   $ graphy read -c ttl / disjoint --strict   \
+       --inputs apples.ttl oranges.ttl
+   ```
+
+
+<a name="command_${si_command}" />
+
+### [`${si_command}`](#command_${si_command})` [OPTIONS]`
+Tests if the first input contains the second.
+
+**Stream Multiplicity:**
+ - `2-to-1<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream<Boolean>`](#class_result-value-stream)`>` -- **joins** exactly 2 input streams of [Quad](core.data.factory#class_quad) objects into exactly 1 output stream of a single `boolean` value.
+
+**Options:**
+ - `--strict` -- if true, forgoes canonicalization before the set operation
+
+_Example:_
+   ```bash
+   # test if `superset.ttl` strictly contains `subset.ttl`
+   $ graphy read -c ttl / contains --strict   \
+       --inputs superset.ttl subset.ttl
+   ```
+
 
 ## Inputs
 By default, `graphy` expects a single input stream on `stdin`, which it will forward through the internal pipeline. Some commands may allow for or even expect multiple inputs (e.g., for computing the difference between two datasets).
@@ -218,23 +378,19 @@ By default, `graphy` expects a single input stream on `stdin`, which it will for
 ### `--inputs FILE ...`
 If you are simply piping in multiple input files, you can use the `--inputs` options like so:
 ```bash
-$ graphy content.ttl.read \
-    --pipe util.dataset.tree --difference \
-    --pipe content.ttl.write \
-    --inputs original.ttl modified.ttl \
+$ graphy read -c ttl / diff / write -c ttl   \
+    --inputs original.ttl modified.ttl       \
 	  > difference.ttl
 ```
 
-Keep in mind that each command has its own restrictions on the number of inputs it accepts, which may also depend on the operation being performed (e.g., `util.dataset.tree --diff` expects exactly 2 input streams while `util.dataset.tree --union` accepts 1 or more).
+Keep in mind that each command has its own restrictions on the number of inputs it accepts, which may also depend on the operation being performed (e.g., `diff` expects exactly 2 input streams while `union` accepts 1 or more).
 
 
 ### Process Substitution
 If you need to execute other commands before passing in multiple inputs, you can use [process substitution](http://www.tldp.org/LDP/abs/html/process-sub.html) (supported in bash) like so:
 ```bash
 $ DBPEDIA_EN_URL="http://downloads.dbpedia.org/2016-10/core-i18n/en"
-$ graphy content.ttl.read \
-    --pipe util.dataset.tree --union \
-    --pipe content.ttl.write \
+$ graphy read -c ttl / union / write -c ttl   \
     --inputs \
       <(curl "$DBPEDIA_EN_URL/topical_concepts_en.ttl.bz2" | bzip2 -d) \
       <(curl "$DBPEDIA_EN_URL/uri_same_as_iri_en.ttl.bz2" | bzip2 -d) \

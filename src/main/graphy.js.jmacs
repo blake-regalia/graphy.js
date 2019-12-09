@@ -6,7 +6,7 @@ const factory = require('@{channel('core.data.factory')}');
 
 const memoize = (s_package) => {
 	delete graphy[s_package];
-	return graphy[s_package] = require('@graphy/'+s_package);
+	return graphy[s_package] = require('@{channel('')}/'+s_package);
 };
 
 @.{

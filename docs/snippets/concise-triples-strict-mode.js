@@ -1,0 +1,55 @@
+
+const ttl_write = require('@graphy/content.ttl.write');
+
+// create a Turtle content writer
+let ds_writer = ttl_write({
+	prefixes: {
+		rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+		rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+		owl: 'http://www.w3.org/2002/07/owl#',
+		dbr: 'http://dbpedia.org/resource/',
+		dbo: 'http://dbpedia.org/ontology/',
+		demo: 'http://ex.org/demo#',
+		eg: 'http://ex.org/owl#',
+	},
+});
+
+// pipe to stdout
+ds_writer.pipe(process.stdout);
+
+// write some triples using a concise triples hash
+ds_writer.write({
+	type: 'c3r',
+	value: {
+		// triples about dbr:Banana
+		'dbr:Banana': {
+			// `a` is shortcut for rdf:type
+			a: ['dbo:Plant'],
+
+			// list of objects
+			'rdfs:label': ['@en"Banana', '@fr"Banane', '@es"Plátano'],
+
+			// nested objects are not allowed in strict-mode
+			// they must be encoded as blank nodes
+			'demo:steps': ['_:b0'],
+		},
+
+		'_:b0': {
+			'rdf:first': ['demo:Peel'],
+			'rdf:rest': ['_:b1'],
+		},
+
+		'_:b1': {
+			'rdf:first': ['demo:Slice'],
+			'rdf:rest': ['_:b2'],
+		},
+
+		'_:b2': {
+			'rdf:first': ['demo:distribute'],
+			'rdf:rest': ['rdf:nil'],
+		},
+	},
+});
+
+// end the writable side of the transform
+ds_writer.end();
