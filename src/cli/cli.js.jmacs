@@ -509,7 +509,6 @@ let h_commands = {  // eslint-disable-next-line quote-props
 				s: {
 					type: 'boolean',
 					alias: ['simplify-default-graph'],
-					default: true,
 					describe: 'if enabled, omits serializing the surrounding optional graph block for the default graph in TriG.',
 					group: s_group_style,
 				},
