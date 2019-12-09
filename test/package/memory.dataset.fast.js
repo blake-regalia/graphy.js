@@ -1893,7 +1893,7 @@ describe('memory.dataset.fast', () => {
 				if(g_match.object) a_args[2] = factory.c1(g_match.object, h_prefixes);
 
 				let k_matched = k_tree.match(...a_args);
-				let h_quads_act = k_matched.quad_tree;
+				let h_quads_act = k_matched._h_quad_tree;
 
 				expect(h_quads_act).to.have.property($_KEYS, Object.keys(h_quads_exp).length);
 
