@@ -311,7 +311,11 @@ const package_node_modules = si_package => ({
 
 
 const scoped_package = si_package => ({
-	'.npmrc': npmrc,
+	...(process.env.GRAPHY_USE_NVM
+		? {}
+		: {
+			'.npmrc': npmrc,
+		}),
 
 	'package.json': package_json(si_package),
 
@@ -843,7 +847,9 @@ module.exports = async() => {
 							[`@${s_super}`]: {
 								':package': ({package:si_package}) => ({
 									deps: [
-										`build/package/${s_super}/.npmrc`,
+										...(process.env.GRAPHY_USE_NVM
+											? []
+											: [`build/package/${s_super}/.npmrc`]),
 										`local.${si_package}`,
 									],
 
