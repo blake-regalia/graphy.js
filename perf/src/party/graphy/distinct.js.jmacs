@@ -1,0 +1,18 @@
+@import '../../share/perf.jmacs'
+let read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
+let dataset = require('@{channel(`memory.dataset.fast`)}');
+
+let ds_dataset = process.stdin
+	.pipe(read({
+		@{SJ_CONFIG_READ || ''}
+	}))
+	.pipe(dataset({
+		@{SJ_CONFIG_DATASET || ''}
+	}));
+
+ds_dataset.on('finish', () => {
+	let n_size = ds_dataset.size;
+	@{end_test({
+		size: /* syntax: js */ `n_size`,
+	})}
+});

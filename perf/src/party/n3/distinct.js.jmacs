@@ -1,0 +1,18 @@
+@import '../../share/perf.jmacs'
+const n3 = require('n3');
+
+let y_store = new n3.Store();
+
+let ds_read = process.stdin
+	.pipe(new n3.StreamParser({format:'@{H_CONTENT_TYPES[S_FORMAT_IN]}'}));
+
+ds_read.on('data', (g_quad) => {
+	y_store.addQuad(g_quad);
+});
+
+ds_read.on('end', () => {
+	let n_size = y_store.size;
+	@{end_test({
+		size: /* syntax: js */ `n_size`,
+	})}
+});

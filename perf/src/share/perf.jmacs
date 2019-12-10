@@ -1,0 +1,38 @@
+@import '../../../src/share/channel.jmacs';
+
+@.{
+	const H_CONTENT_TYPES = {
+		nt: 'application/n-triples',
+		nq: 'application/n-quads',
+		ttl: 'text/turtle',
+		trig: 'application/trig',
+	};
+
+}
+
+@> end_test(h_results={})
+	let xt_elapsed = performance.now() - xt_start;
+	console.warn(JSON.stringify({
+		elapsed: xt_elapsed,
+		memory: process.memoryUsage().rss,
+		results: {
+			@*{
+				for(let si_key in h_results) {
+					let sj_value = 'null';
+					let z_value = h_results[si_key];
+
+					if('string' === typeof z_value) {
+						sj_value = z_value;
+					}
+
+					yield /* syntax: js.object-literal */ `
+						${si_key}: ${sj_value},
+					`;
+				}
+			}
+		},
+	}));
+@;
+
+const {performance} = require('perf_hooks');
+let xt_start = performance.now();

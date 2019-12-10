@@ -1793,7 +1793,8 @@ if(!a_pipeline.length) {
 	// failure handler
 	let fe_command = (z_error) => {
 		let e_command = 'string' === typeof z_error? new Error(z_error): z_error;
-		exit(e_command.message);
+		debugger;
+		exit(e_command.stack);
 	};
 
 	// starting inputs default to stdin if no explicit inputs given

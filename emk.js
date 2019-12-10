@@ -674,6 +674,9 @@ module.exports = async() => {
 					`,
 				}),
 			},
+
+			// performance
+			perf: ['build/perf/**'],
 		},
 
 		outputs: {

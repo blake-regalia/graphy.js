@@ -267,11 +267,19 @@ class @{S_LABEL}_Reader extends stream.Transform {
 
 		// when the writable side is piped into
 		this.on('pipe', (ds_input) => {
+			this._ds_input = ds_input;
+
 			// input stream has encoding option; ensure stream encoding is utf8
 			if('function' === typeof ds_input.setEncoding) {
 				ds_input.setEncoding('utf8');
 			}
 		});
+	}
+
+	_destroy(e_destroy) {
+		if(this._ds_input) {
+			this._ds_input.destroy(e_destroy);
+		}
 	}
 
 	// intercept pipe

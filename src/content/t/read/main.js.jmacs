@@ -1029,6 +1029,8 @@ class Reader {
 
 		// when the writable side is piped into
 		ds_transform.on('pipe', (ds_input) => {
+			this._ds_input = ds_input;
+
 			let b_byte_tracking = this._b_byte_tracking;
 
 			// byte-tracking is disable & input stream has encoding option; ensure stream encoding is utf8
@@ -2847,6 +2849,12 @@ class Reader {
 		};
 
 		this._b_destroyed = true;
+
+		// propagate input destroy
+		if(this._ds_input) {
+			this._ds_input.destroy(e_destroy);
+		}
+
 		this.transform.demolish(e_destroy);
 	}
 }

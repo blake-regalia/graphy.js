@@ -1,0 +1,13 @@
+@import '../../share/perf.jmacs'
+const n3 = require('n3');
+
+let ds_reader = new n3.StreamParser({format:'@{H_CONTENT_TYPES[S_FORMAT_IN]}'});
+let ds_writer = new n3.StreamWriter({format:'@{H_CONTENT_TYPES[S_FORMAT_OUT]}'});
+
+process.stdin.pipe(ds_reader)
+	.pipe(ds_writer)
+	.pipe(process.stdout);
+
+ds_writer.on('end', () => {
+	@{end_test()}
+});

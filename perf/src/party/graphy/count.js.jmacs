@@ -1,0 +1,17 @@
+@import '../../share/perf.jmacs'
+let read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
+
+let c_quads = 0;
+process.stdin.pipe(read({
+	@{SJ_CONFIG_READ || ''}
+
+	data() {
+		c_quads += 1;
+	},
+
+	end() {
+		@{end_test({
+			count: /* syntax: js */ `c_quads`,
+		})}
+	},
+}));

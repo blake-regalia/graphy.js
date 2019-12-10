@@ -1,0 +1,14 @@
+@import '../../share/perf.jmacs'
+const n3 = require('n3');
+
+let c_quads = 0;
+let reader = new n3.StreamParser({format:'@{H_CONTENT_TYPES[S_FORMAT_IN]}'});
+process.stdin.pipe(reader)
+	.on('data', () => {
+		c_quads += 1;
+	})
+	.on('end', () => {
+		@{end_test({
+			count: /* syntax: js */ `c_quads`,
+		})}
+	});

@@ -1,0 +1,17 @@
+@import '../../share/perf.jmacs'
+let read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
+let scribe = require('@{channel(`content.${S_FORMAT_OUT}.scribe`)}');
+
+let ds_scribe = process.stdin
+	.pipe(read({
+		@{SJ_CONFIG_READ || ''}
+	}))
+	.pipe(scribe({
+		@{SJ_CONFIG_SCRIBE || ''}
+	}));
+
+ds_scribe.pipe(process.stdout);
+
+ds_scribe.on('end', () => {
+	@{end_test()}
+});
