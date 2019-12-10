@@ -2851,7 +2851,7 @@ class Reader {
 		this._b_destroyed = true;
 
 		// propagate input destroy
-		if(this._ds_input) {
+		if(!e_destroy && this._ds_input) {
 			this._ds_input.destroy(e_destroy);
 		}
 
