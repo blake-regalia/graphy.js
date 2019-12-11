@@ -538,14 +538,14 @@ Count the number of events in each steam
 
 <a name="command_distinct" />
 
-### [`distinct`](#command_distinct)
-Description:  Count the number of distinct things, such as quads, triples, subjects, etc.
+### [`distinct`](#command_distinct)` [OPTIONS]`
+Count the number of distinct things, such as quads, triples, subjects, etc.
 
 **Stream Multiplicity:**
  - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream<Number>`](#class_result-value-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of `number` values.
 
 **Options:**
-  - `-q, --quads` -- count the number of distinct quads
+  - `-q, --quads` -- count the number of distinct quads (_default_)
   - `-t, --triples` -- count the number of distinct triples by ignoring the graph component
   - `-s, --subjects` -- count the number of distinct subjects
   - `-p, --predicates` -- count the number of distinct predicates

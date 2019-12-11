@@ -562,13 +562,13 @@ Count the number of events in each steam
 
 <a name="command_distinct" />
 
-### [`distinct`](#command_distinct)
-Description:  Count the number of distinct things, such as quads, triples, subjects, etc.
+### [`distinct`](#command_distinct)` [OPTIONS]`
+Count the number of distinct things, such as quads, triples, subjects, etc.
 
 @{transform_nnqrn()}
 
 **Options:**
-  - `-q, --quads` -- count the number of distinct quads
+  - `-q, --quads` -- count the number of distinct quads (_default_)
   - `-t, --triples` -- count the number of distinct triples by ignoring the graph component
   - `-s, --subjects` -- count the number of distinct subjects
   - `-p, --predicates` -- count the number of distinct predicates

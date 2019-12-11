@@ -8,28 +8,28 @@
 Find the package you need _or_ install the super-package `npm install --save graphy` .
 
 Data Factory
- - [`@graphy/core.data.factory`](core.data.factory) -- Data Factory
+ - [`@graphy/core.data.factory`](https://graphy.link/core.data.factory) -- Data Factory
 
 Dataset
- - [`@graphy/memory.dataset.fast`](memory.dataset.fast) -- Dataset
+ - [`@graphy/memory.dataset.fast`](https://graphy.link/memory.dataset.fast) -- Dataset
 
 Readers
- - [`@graphy/content.nt.read`](content.textual#verb_read) -- N-Triples reader
- - [`@graphy/content.nq.read`](content.textual#verb_read) -- N-Quads reader
- - [`@graphy/content.ttl.read`](content.textual#verb_read) -- Turtle reader
- - [`@graphy/content.trig.read`](content.textual#verb_read) -- TriG reader
+ - [`@graphy/content.nt.read`](https://graphy.link/content.textual#verb_read) -- N-Triples reader
+ - [`@graphy/content.nq.read`](https://graphy.link/content.textual#verb_read) -- N-Quads reader
+ - [`@graphy/content.ttl.read`](https://graphy.link/content.textual#verb_read) -- Turtle reader
+ - [`@graphy/content.trig.read`](https://graphy.link/content.textual#verb_read) -- TriG reader
 
 Scribers
- - [`@graphy/content.nt.scribe`](content.textual#verb_scribe) -- N-Triples scriber
- - [`@graphy/content.nq.scribe`](content.textual#verb_scribe) -- N-Quads scriber
- - [`@graphy/content.ttl.scribe`](content.textual#verb_scribe) -- Turtle scriber
- - [`@graphy/content.trig.scribe`](content.textual#verb_scribe) -- TriG scriber
+ - [`@graphy/content.nt.scribe`](https://graphy.link/content.textual#verb_scribe) -- N-Triples scriber
+ - [`@graphy/content.nq.scribe`](https://graphy.link/content.textual#verb_scribe) -- N-Quads scriber
+ - [`@graphy/content.ttl.scribe`](https://graphy.link/content.textual#verb_scribe) -- Turtle scriber
+ - [`@graphy/content.trig.scribe`](https://graphy.link/content.textual#verb_scribe) -- TriG scriber
 
 Writers
- - [`@graphy/content.nt.write`](content.textual#verb_write) -- N-Triples writer
- - [`@graphy/content.nq.write`](content.textual#verb_write) -- N-Quads writer
- - [`@graphy/content.ttl.write`](content.textual#verb_write) -- Turtle writer
- - [`@graphy/content.trig.write`](content.textual#verb_write) -- TriG writer
+ - [`@graphy/content.nt.write`](https://graphy.link/content.textual#verb_write) -- N-Triples writer
+ - [`@graphy/content.nq.write`](https://graphy.link/content.textual#verb_write) -- N-Quads writer
+ - [`@graphy/content.ttl.write`](https://graphy.link/content.textual#verb_write) -- Turtle writer
+ - [`@graphy/content.trig.write`](https://graphy.link/content.textual#verb_write) -- TriG writer
 
 
 ## [Command Line Interface](https://graphy.link/cli)
