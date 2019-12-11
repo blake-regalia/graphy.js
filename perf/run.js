@@ -160,7 +160,8 @@ function stat(a_trials, h_props) {
 								error: s_fail,
 							});
 
-							continue;
+							// next mode
+							break;
 						}
 
 						// summarize

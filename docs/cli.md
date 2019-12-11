@@ -104,21 +104,6 @@ _Examples:_
 
    # print line-delimited JSON of quads in TriG document while validating it
    $ graphy read -c trig < input.trig
-
-   # filter by subject: 'dbr:Banana_split' using prefix mappings embedded in document
-   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x 'dbr:Banana_split'
-
-   # filter by predicate: 'rdf:type' alias
-   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x '; a'
-
-   # select quads that *do not have* the predicate: 'owl:sameAs' _nor_ `dbo:wikiPageRedirects`
-   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x '; !(owl:sameAs or dbo:wikiPageRedirects)'
-
-   # filter by object: '"Banana"@en'
-   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x ';; "Banana"@en'
-
-   # filter by graph using absolute IRI ref
-   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x ';;; <http://ex.org/some-absolute-graph-iri>'
    ```
 
 
@@ -193,6 +178,176 @@ _Examples:_
    $ cat input.nq | graphy read -c nq / write > output.trig
    ```
 
+
+<a name="command_skip" />
+
+### [`skip`](#command_skip)` [size=1] [OPTIONS]`
+Skip over some amount of data (quads by default) for each input stream before piping the remainder as usual.
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
+
+**Arguments:**
+ - `size` -- the number of things to skip
+
+**Options:**
+ - `-q, --quads, -t, --triples` -- skip the given number of quads
+ - `-s, --subjects` -- skip quads until the given number of distinct subjects have been encountered
+
+
+_Examples:_
+   ```bash
+   # skip the first 1 million quads
+   $ graphy read / skip 1e6 / write < in.ttl > out.ttl
+
+   # skip the first 50 subjects
+   $ graphy read / skip 50 --subjects / write < in.ttl > out.ttl
+   ```
+
+
+<a name="command_head" />
+
+### [`head`](#command_head)` [size=1] [OPTIONS]`
+Limit the number of quads that pass through by counting from the top of the stream.
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
+
+**Arguments:**
+ - `size` -- the number of things to emit
+
+**Options:**
+ - `-q, --quads, -t, --triples` -- emit only the given number of quads from the top of a stream
+ - `-s, --subjects` -- emit quads until the given number of distinct subjects have been encountered from the top of a stream
+
+
+_Examples:_
+   ```bash
+   # skim the first 1 million quads from the top
+   $ graphy read / head 1e6 / write < in.ttl > out.ttl
+
+   # skim the first 50 subjects from the top
+   $ graphy read / head 50 --subjects / write < in.ttl > out.ttl
+   ```
+
+
+<a name="command_tail" />
+
+### [`tail`](#command_skip)` [size=1] [OPTIONS]`
+Limit the number of quads that pass through by counting from the bottom of the stream.
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
+
+**Arguments:**
+ - `size` -- the number of things to emit
+
+**Options:**
+ - `-q, --quads, -t, --triples` -- emit only the given number of quads from the bottom of a stream
+ - `-s, --subjects` -- emit quads contained by the given number of distinct subjects from the bottom of a stream 
+
+
+_Examples:_
+   ```bash
+   # tail the last 1 million quads
+   $ graphy read / tail 1e6 / write < in.ttl > out.ttl
+
+   # tail the last 50 subjects
+   $ graphy read / tail 50 --subjects / write < in.ttl > out.ttl
+   ```
+
+
+<a name="command_filter" />
+
+### [`filter`](#command_filter)` [OPTIONS]`
+Filter quads using either a [Quad Filter Expression](quad-filter-expressions) or JavaScript expression.
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
+
+**Options:**
+ - `-x, --expression` -- filter quads using the given [Quad Filter Expression](quad-filter-expressions)
+ - `-j, --javascript` -- filter quads using the given JavaScript expression which will be evaluated as a callback function passed the quad and current prefix map as arguments
+
+
+_Examples:_
+   ```bash
+   # filter by subject: 'dbr:Banana_split' using prefix mappings embedded in document
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x 'dbr:Banana_split'
+
+   # filter by predicate: 'rdf:type' alias
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x '; a'
+
+   # select quads that *do not have* the predicate: 'owl:sameAs' _nor_ `dbo:wikiPageRedirects`
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x '; !(owl:sameAs or dbo:wikiPageRedirects)'
+
+   # filter by object: '"Banana"@en'
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x ';; "Banana"@en'
+
+   # filter by graph using absolute IRI ref
+   $ curl http://dbpedia.org/data/Banana.ttl | graphy read / filter -x ';;; <http://ex.org/some-absolute-graph-iri>'
+   ```
+
+
+<a name="command_transform" />
+
+### [`transform`](#command_transform)` [OPTIONS]`
+Apply a custom transform function to each quad in the stream(s). Notice that for each quad that the transform function is applied to, it may yield zero, one, or many quads as output (i.e., the function is one-to-many).
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of [Quad](core.data.factory#class_quad) objects, or [WritableDataEvent](content.textual#interface_writable-data-event) objects, depending on the capabilities of the destination stream(s).
+
+**Options:**
+ - `-j, --javascript` -- transform quads using the given JavaScript expression which will be evaluated as a callback function passed the quad and current prefix map as arguments
+
+The callback function has the signature: `callback(ConvenientQuad, hash<PrefixID, IriString>)`
+Where `ConvenientQuad extends `[`Quad`](core.data.factory#class_quad) with the following properties:
+ - `.s` -- shorthand for the `.subject` property
+ - `.p` -- shorthand for the `.predicate` property
+ - `.o` -- shorthand for the `.object` property
+ - `.g` -- shorthand for the `.graph` property
+
+The callback return value can be any of the following types:
+ - `null`, `undefined`, `false` or otherwise falsy (e.g., `0`, empty string, etc.) -- ignore this quad
+ - `Array<SomeTerm>` -- with the subject at position `[0]`, the predicate at position `[1]`, the object at position `[2]` and optionally the graph at position `[3]`.
+    - Where `SomeTerm` is either an [`AnyTerm`](core.data.factory#interface_any-term) or a [`#string/c1`](concise#string_c1).
+ - [`Quad`](core.data.factory#class_quad) -- simply a quad object
+ - `WritableDataEvent<`[`#hash/c3`](https://graphy.link/concise#hash_c3)` | `[`#hash/c4>`](https://graphy.link/concise#hash_c4)`>` -- using the function identifier `c3()` or `c4()` (defined for you in the upper-scope) to wrap the return value
+ - `#string/trig` -- return any valid TriG string (which is also a superset of N-Triples, N-Quads, and Turtle)
+
+_Examples:_
+   ```bash
+   # materialize the inverse owl:sameAs relations
+   $ graphy read / filter -x '; owl:sameAs' / transform -j 't => [t.o, t.p, t.s]'
+
+   # reify all statements
+   $ graphy read / transform -j 'triple => c3({
+       [">http://demo.org/"+factory.hash(triple)]: {
+           a: "rdf:Statement",
+           "rdf:subject": triple.subject,
+           "rdf:predicate": triple.predicate,
+           "rdf:object": triple.object,
+       },
+     })' / write
+   ```
+
+
+<a name="command_concat" />
+
+### [`concat`](#command_concat)
+Concatenate quads from all input streams in order.
+
+**Stream Multiplicity:**
+ - `N-to-1<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **reduces** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into exactly 1 output stream of [Quad](core.data.factory#class_quad) objects.
+
+
+<a name="command_merge" />
+
+### [`merge`](#command_merge)
+Merge quads from all input streams without order.
+
+**Stream Multiplicity:**
+ - `N-to-1<`[`QuadStream`](#class_quad-stream)`, `[`QuadStream`](#class_quad-stream)`>` -- **reduces** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into exactly 1 output stream of [Quad](core.data.factory#class_quad) objects.
 
 
 <a name="command_tree" />
@@ -370,6 +525,32 @@ _Example:_
    $ graphy read -c ttl / contains --strict   \
        --inputs superset.ttl subset.ttl
    ```
+
+
+<a name="command_count" />
+
+### [`count`](#command_count)
+Count the number of events in each steam
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream<Number>`](#class_result-value-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of `number` values.
+
+
+<a name="command_distinct" />
+
+### [`distinct`](#command_distinct)
+Description:  Count the number of distinct things, such as quads, triples, subjects, etc.
+
+**Stream Multiplicity:**
+ - `N-to-N<`[`QuadStream`](#class_quad-stream)`, `[`ResultValueStream<Number>`](#class_result-value-stream)`>` -- **maps** 1 or more input streams of [Quad](core.data.factory#class_quad) objects into 1 or more output streams of `number` values.
+
+**Options:**
+  - `-q, --quads` -- count the number of distinct quads
+  - `-t, --triples` -- count the number of distinct triples by ignoring the graph component
+  - `-s, --subjects` -- count the number of distinct subjects
+  - `-p, --predicates` -- count the number of distinct predicates
+  - `-o, --objects` -- count the number of distinct objects
+  - `-g, --graphs` -- count the number of distinct graphs
 
 
 <br />

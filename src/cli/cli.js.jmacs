@@ -841,7 +841,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			'Limit the number of quads that pass through by counting from the bottom of the stream.',
 			'WARNING: quads must be buffered in memory until the end of the stream is reached. Specifying a large number of quads or subjects might therefore incur lots of memory.',
 		],
-		syntax: '<size>',
+		syntax: '[size=1]',
 		positionals: {
 			size: {
 				type: 'number',
@@ -970,12 +970,12 @@ let h_commands = {  // eslint-disable-next-line quote-props
 	},
 
 	filter: {
-		type: S_TRANSFORM_TYPE_N1QQ,
+		type: S_TRANSFORM_TYPE_NNQQ,
 		category: S_CATEGORY_DATA,
 		overview: 'Filter quads in the stream(s) via expression',
 		description: [
 			'Filter quads by using either a Quad Filter Expression or a bit of JavaScript.',
-			'For documentation on the Quad Filter Expression syntax, see:  https://graphy.link/quad-filter-expression',
+			'For documentation on the Quad Filter Expression syntax, see:  https://graphy.link/quad-filter-expressions',
 			S_WARN_JAVASCRIPT,
 		],
 		options: {
@@ -1081,7 +1081,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 	// transform
 	transform: {
-		type: S_TRANSFORM_TYPE_N1QQ,
+		type: S_TRANSFORM_TYPE_NNQQ,
 		category: S_CATEGORY_DATA,
 		overview: 'Apply a custom transform function to each quad in the stream(s)',
 		description: [
@@ -1760,9 +1760,9 @@ let a_pipeline = [];
 
 				     graphy read / union / write   --inputs data/*.{nt,nq,ttl,trig}   > output.trig
 
-				  5) Extract the middle third quads of a Turtle file:
+				  5) Extract the first 2 million quads of a Turtle file:
 
-				     graphy read -c ttl / divide --into 3 --select 2 / write -c ttl  < in.ttl  > part-2.ttl
+				     graphy read -c ttl / head 2e6 / write -c ttl  < in.ttl  > view-2M.ttl
 
 				  6) Find all owl:sameAs triples where the object is a node and different from
 				     the subject, then swap the subject and object:

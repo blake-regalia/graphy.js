@@ -1,6 +1,8 @@
 @import '../../share/iris.jmacs'
 @import '../../content/text.read.jmacs'
 
+const crypto = require('crypto');
+
 const R_INVALID_IRIREF = /([\x00-\x20<>"{}|^`\\]|%(?![0-9A-F][0-9A-F]))/g;
 const F_REPLACE_INVALID_IRIREF = (s_, s_v) => {
 	let s_code = s_v.codePointAt(0).toString(16)+'';
@@ -1761,6 +1763,24 @@ const factory = module.exports = {
 	config(s_key) {
 		if('string' !== typeof s_key) throw new TypeError(`Expected 'key' argument to be a string, instead found ${typeof s_key}`);
 		return `\`[${uuid_v4()}]{"type":"config","value":${JSON.stringify(s_key)}}`;
+	},
+
+	/**
+	 * @param {AnyQuad} g_quad - quad to hash
+	 * @return {string} a sha256 hash of the quad
+	 */
+	hash(g_quad) {
+		// normalize quad
+		let k_quad = factory.from.quad(g_quad);
+
+		// create hash
+		let d_hash = crypto.createHash('sha256');
+
+		// verbose quad
+		d_hash.update(k_quad.verbose());
+
+		// return hash string
+		return d_hash.digest('hex');
 	},
 
 

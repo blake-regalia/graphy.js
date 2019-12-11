@@ -7,7 +7,7 @@ const {
 	CanvasRenderService,
 } = require('chartjs-node-canvas');
 
-let a_bench = require('./bench.json');
+let a_bench = require(process.argv[2] || './build/bench.json');
 
 const H_FLAVORS = {
 	nt: 'N-Triples',
@@ -24,8 +24,8 @@ const H_DESCRIBE = {
 };
 
 const H_TRANSFORM = {
-	elapsed: x => x / 1000,
-	memory: x => x / 1024 / 1024,
+	elapsed: (h, si) => h? h[si].avg / 1000: Infinity,
+	memory: (h, si) => h? h[si].avg / 1024 / 1024: Infinity,
 };
 
 const H_COLORS = {
@@ -126,11 +126,16 @@ async function* r() {
 			`)+'\n';
 
 			for(let s_source of a_sources) {
-				let a_tests_source = a_tests_flavor.filter(g => g.input.startsWith(s_source));
+				let a_tests_source = a_tests_flavor.filter(g => g.input.startsWith(s_source))
+					.sort((g_a, g_b) => g_a.input.localeCompare(g_b.input));
 
 				let s_label = s_source.replace(/^data\//g, '').replace(/\//g, '-');
 
-				let a_reviews = [...new Set(a_tests_source.map(g => Object.keys(g.summary)).flat())];
+				let a_reviews = [
+					...new Set(a_tests_source
+						.filter(g => g.summary)
+						.map(g => Object.keys(g.summary)).flat()),
+				];
 
 				yield gobble(`
 					**Input File: ${H_SOURCES[s_source]}**
@@ -153,7 +158,7 @@ async function* r() {
 							backgroundColor: 'rgba(0, 0, 0, 0)',
 							borderColor: H_COLORS[si_test],
 							borderWidth: 1.5,
-						}).data.push(H_TRANSFORM[s_review](g_test.summary[s_review].avg));
+						}).data.push(H_TRANSFORM[s_review](g_test.summary, s_review));
 					}
 
 					let si_chart = `${si_task}_${s_flavor}_${s_label}_${s_review}`;
