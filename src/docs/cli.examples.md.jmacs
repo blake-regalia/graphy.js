@@ -18,6 +18,9 @@
  - [Count number of distinct triples in Turtle document](#count-triples-turtle)
  - [Validate Turtle document(s)](#validate-turtle)
  - [Pretty-print an RDF document](#pretty-print)
+ - [Count the number of distinct subjects of a certain type](#distinct-subject)
+ - [Split a large RDF document into smaller files](#split)
+ - [Materialize the inverse relations for a symmetric property](#materialize-symmetric)
 
 
 ----
@@ -211,5 +214,45 @@ dbr:Goldfinger_banana rdf:type yago:Whole100003553, yago:Abstraction100002137, o
   dbp:imageWidth "250"^^<http://www.w3.org/2001/XMLSchema#integer> .
 
 dbr:Goldfinger dbo:wikiPageDisambiguates dbr:Goldfinger_banana .
+```
+
+
+----
+
+<a name="distinct-subject" />
+
+### [Count the number of distinct subjects of a certain type](#distinct-subject)
+
+Use the [filter](cli#command_filter) command in combination with [distinct](#cli#command_distinct) to count the number of distinct subjects that are of a certain type (say, `dbo:Place`):
+
+```bash
+$ graphy read -c nq / filter -x '; a; dbo:Place' / distinct --subjects   < places.nq
+```
+
+----
+
+<a name="split" />
+
+### [Split a large RDF document into smaller files](#split)
+
+By using the [skip](cli#command_skip) and [head](cli#command_head) commands, you can extract a portion of an RDF document by specifying the number of quads to trim, preserving prefixes and without losing comments.
+
+```bash
+# skip the first 4 million quads, then extract the 2 million that follow
+$ graphy read -c ttl / skip 4e6 / head 2e6 / write -c ttl  < in.ttl  > view-2M.ttl
+```
+
+----
+
+<a name="materialize-symmetric" />
+
+### [Materialize the inverse relations for a symmetric property](#materialize-symmetric)
+
+The [filter](cli#command_filter) and [transform](cli#command_transform) command are capable of incredible things when used together. In this example, let's take all the `owl:sameAs` relations where the object is a _node_ and different from the subject, then materialize the inverse relation (object => subject).
+
+```bash
+$ graphy read / filter -x '!$object; owl:sameAs; {node}'   \
+    / transform -j  't => [t.o, t.p, t.s]'                 \
+    / write -c ttl   < input.ttl   > output.ttl
 ```
 

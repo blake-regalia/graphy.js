@@ -1301,7 +1301,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		options: {},
 
 		command(g_argv, a_inputs, fe_command) {
-			return map_streams(a_inputs, () => dataset_tree());
+			return a_inputs.map(ds_input => ds_input.pipe(dataset_tree()));
 		},
 	},
 
@@ -1316,7 +1316,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		options: {},
 
 		command(g_argv, a_inputs, fe_command) {
-			return map_streams(a_inputs, () => dataset_tree({canonicalize:true}));
+			return a_inputs.map(ds_input => ds_input.pipe(dataset_tree({canonicalize:true})));
 		},
 	},
 
@@ -1562,8 +1562,12 @@ let h_commands = {  // eslint-disable-next-line quote-props
 				return a_inputs.map(async(ds_input) => {
 					// remove graph component
 					let ds_explode = new stream.Transform.QuadsToOther({
-						transform(g_quad) {
-							return factory.quad(g_quad.subject, g_quad.predicate, g_quad.object);
+						transform(g_quad, s_encoding, fke_transform) {
+							// push quad
+							this.push(factory.quad(g_quad.subject, g_quad.predicate, g_quad.object));
+
+							// done
+							fke_transform();
 						},
 					});
 

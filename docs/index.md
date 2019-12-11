@@ -2,7 +2,7 @@
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
 <h1>
-  <code class="super-graphy">graphy</code> is a collection of RDF libraries for JavaScript developers with a focus on performance and usability.
+  <code class="super-graphy">graphy</code> is a collection of <b>high-performane</b> RDF libraries for JavaScript developers with a focus on usability.
 </h1>
 > Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
 
@@ -17,6 +17,11 @@
 ## [Command Line Interface](cli)
 <div class="larger">
   Documentation for the <code>$ graphy</code> command-line interface. Includes CLI examples.
+</div>
+
+## [Performance Benchmarks](https://github.com/blake-regalia/graphy.js/tree/master/perf)
+<div class="larger">
+  See how <code>graphy</code> stacks up against other libraries.
 </div>
 
 ## Features

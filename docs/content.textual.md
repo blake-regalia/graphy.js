@@ -176,7 +176,7 @@ The [`write`](#verb_write) verb supports the following [WritableDataEvent](#inte
 
 <a name="verb_read" />
 
-### [`read`](#verb_read)`([input: string | stream][, config: `[`ReadConfig`](#config_write)`])`
+### [`read`](#verb_read)`([input: string | stream][, config: `[`ReadConfig`](#config_read-no-input)`])`
  - Read RDF data (in other words, deserialize it) from a document given by an input stream, input string or via duplexing. Uses a single thread.
  - **returns** a [`new Transform<string, Quad>`](core.iso.stream#transform_string-writable_quad-readable) (accepts utf8-encoded strings on its writable side, pushes [Quad](core.data.factory#class_quad) objects on its readable side)
 
