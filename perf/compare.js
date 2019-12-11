@@ -79,10 +79,23 @@ const gobble = (s_text, s_indent='') => {
 async function render(si_chart, g_opt={}) {
 	let x_width = 600;
 	let x_height = 400;
-	const configuration = {
+
+	let xs_scale = 0.8;
+	x_width = Math.round(x_width * xs_scale);
+	x_height = Math.round(x_height * xs_scale);
+
+	const gc_chart = {
 		type: 'line',
 		...g_opt,
 		options: {
+			legend: {
+				labels: {
+					fontColor: 'black',
+					fontSize: 16,
+					fontStyle: 'bold',
+					boxWidth: 12,
+				},
+			},
 			scales: {
 				yAxes: [{
 					ticks: {
@@ -95,9 +108,17 @@ async function render(si_chart, g_opt={}) {
 
 	let pr_img = `chart/${si_chart}.png`;
 
-	const y_service = new CanvasRenderService(x_width, x_height, () => {});
+	const y_service = new CanvasRenderService(x_width, x_height, (ChartJS) => {
+		ChartJS.plugins.register({
+			beforeDraw(y_chart) {
+				let y_ctx = y_chart.ctx;
+				y_ctx.fillStyle = '#ffffff';
+				y_ctx.fillRect(0, 0, x_width, x_height);
+			},
+		});
+	});
 
-	let ds_test = y_service.renderToStream(configuration)
+	let ds_test = y_service.renderToStream(gc_chart)
 		.pipe(fs.createWriteStream(`./${pr_img}`));
 
 	await once(ds_test, 'finish');
@@ -161,7 +182,7 @@ async function* r() {
 						let si_test = `${g_test.party}/${g_test.mode}`;
 						(g_groups[si_test] = g_groups[si_test] || {
 							data: [],
-							label: si_test,
+							label: si_test.replace(/\/default$/, '')+'  ',
 							backgroundColor: 'rgba(0, 0, 0, 0)',
 							borderColor: H_COLORS[si_test],
 							borderWidth: 1.5,
