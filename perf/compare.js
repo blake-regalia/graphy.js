@@ -23,8 +23,8 @@ const H_DESCRIBE = {
 	nq: 'N-Quads as input',
 	ttl: 'Turtle as input',
 	trig: 'TriG as input',
-	'nt-ttl': 'N-Triples as input and Turtle as output',
-	'ttl-nt': 'Turtle as input and N-Triples as output',
+	'nt-ttl': 'N-Triples as input => Turtle as output',
+	'ttl-nt': 'Turtle as input => N-Triples as output',
 };
 
 const H_TRANSFORM = {
@@ -126,6 +126,8 @@ async function render(si_chart, g_opt={}) {
 	return pr_img;
 }
 
+const proper = s => s[0].toUpperCase()+s.slice(1);
+
 async function* r() {
 	for(let [si_task, g_task] of Object.entries(H_COMPARE)) {
 		let a_tests_task = a_bench.filter(g => si_task === g.task);
@@ -134,11 +136,13 @@ async function* r() {
 		let a_parties = [...new Set(a_tests_task.map(g => g.party))];
 
 		yield gobble(`
-			## Task: ${si_task}
+			------------
+
+			## ${proper(si_task)} Task
 			${g_task.info}
 
-			**Tests:**
-			${a_flavors.map(s_flavor => ` - [${H_FLAVORS[s_flavor]}](#test_${si_task}_${s_flavor})`).join('\n')}
+			**Test Flavors:**
+			${a_flavors.map(s_flavor => ` - With [${H_DESCRIBE[s_flavor]}](#test_${si_task}_${s_flavor})`).join('\n')}
 		`)+'\n\n';
 
 		for(let s_flavor of a_flavors) {
@@ -149,8 +153,8 @@ async function* r() {
 			yield gobble(`
 				<a name="#test_${si_task}_${s_flavor}" />
 
-				### Test: ${si_task} / ${s_flavor}
-				The ${si_task} task with ${H_DESCRIBE[s_flavor]}.
+				### ${proper(si_task)} Task With ${H_DESCRIBE[s_flavor]}
+
 			`)+'\n';
 
 			for(let s_source of a_sources) {
@@ -166,7 +170,7 @@ async function* r() {
 				];
 
 				yield gobble(`
-					**Input File: ${H_SOURCES[s_source]}**
+					Input File: ${H_SOURCES[s_source]}
 				`)+'\n';
 
 				let s_table = gobble(`
@@ -217,6 +221,8 @@ async function* r() {
 		The following diagrams plot the mean value of 5 trials for each data point.
 
 		The X-axis units are in Millions of Quads, and correspond to the number of triples/quads fed into the process via stdin.
+
+		Want to see how other libraries stack up? Feel free to [open an issue](https://github.com/blake-regalia/graphy.js/issues).
 	`));
 	for await (let s_chunk of r()) {
 		console.log(s_chunk);
