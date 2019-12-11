@@ -92,14 +92,17 @@ async function render(si_chart, g_opt={}) {
 			},
 		},
 	};
-	const canvasRenderService = new CanvasRenderService(x_width, x_height, (ChartJS) => { });
-	// const image = await canvasRenderService.renderToBuffer(configuration);
-	// const dataUrl = await canvasRenderService.renderToDataURL(configuration);
 
-	let ds_test = canvasRenderService.renderToStream(configuration)
-		.pipe(fs.createWriteStream(`./chart/${si_chart}.png`));
+	let pr_img = `chart/${si_chart}.png`;
+
+	const y_service = new CanvasRenderService(x_width, x_height, () => {});
+
+	let ds_test = y_service.renderToStream(configuration)
+		.pipe(fs.createWriteStream(`./${pr_img}`));
 
 	await once(ds_test, 'finish');
+
+	return pr_img;
 }
 
 async function* r() {
@@ -167,11 +170,7 @@ async function* r() {
 
 					let si_chart = `${si_task}_${s_flavor}_${s_label}_${s_review}`;
 
-					a_cells.push(gobble(`
-						![Performance Review of ${s_review} for ${si_task} Task with ${H_DESCRIBE[s_flavor]}](build/chart/${si_chart}.png)
-					`));
-
-					await render(si_chart, {
+					let pr_img = await render(si_chart, {
 						data: {
 							labels: [
 								...new Set(a_tests_source.map(g => g.input.replace(/^.*-([^-.]+)\.[^.]+$/, '$1'))),
@@ -179,6 +178,10 @@ async function* r() {
 							datasets: Object.values(g_groups),
 						},
 					});
+
+					a_cells.push(gobble(`
+						![Performance Review of ${s_review} for ${si_task} Task with ${H_DESCRIBE[s_flavor]}](${pr_img})
+					`));
 				}
 
 				yield s_table+a_cells.join(' | ')+'\n';

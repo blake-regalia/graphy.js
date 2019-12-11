@@ -19,13 +19,13 @@ The count task with N-Triples as input.
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for count Task with N-Triples as input](build/chart/count_nt_wikidata_elapsed.png) | ![Performance Review of memory for count Task with N-Triples as input](build/chart/count_nt_wikidata_memory.png)
+![Performance Review of elapsed for count Task with N-Triples as input](chart/count_nt_wikidata_elapsed.png) | ![Performance Review of memory for count Task with N-Triples as input](chart/count_nt_wikidata_memory.png)
 
 **Input File: DBpedia "Person Data" Dump**
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for count Task with N-Triples as input](build/chart/count_nt_persondata_en_elapsed.png) | ![Performance Review of memory for count Task with N-Triples as input](build/chart/count_nt_persondata_en_memory.png)
+![Performance Review of elapsed for count Task with N-Triples as input](chart/count_nt_persondata_en_elapsed.png) | ![Performance Review of memory for count Task with N-Triples as input](chart/count_nt_persondata_en_memory.png)
 
 <a name="#test_count_ttl" />
 
@@ -36,13 +36,13 @@ The count task with Turtle as input.
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for count Task with Turtle as input](build/chart/count_ttl_wikidata_elapsed.png) | ![Performance Review of memory for count Task with Turtle as input](build/chart/count_ttl_wikidata_memory.png)
+![Performance Review of elapsed for count Task with Turtle as input](chart/count_ttl_wikidata_elapsed.png) | ![Performance Review of memory for count Task with Turtle as input](chart/count_ttl_wikidata_memory.png)
 
 **Input File: DBpedia "Person Data" Dump**
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for count Task with Turtle as input](build/chart/count_ttl_persondata_en_elapsed.png) | ![Performance Review of memory for count Task with Turtle as input](build/chart/count_ttl_persondata_en_memory.png)
+![Performance Review of elapsed for count Task with Turtle as input](chart/count_ttl_persondata_en_elapsed.png) | ![Performance Review of memory for count Task with Turtle as input](chart/count_ttl_persondata_en_memory.png)
 
 ## Task: distinct
 Count the distinct number of triples/quads in an RDF document.
@@ -61,13 +61,13 @@ The distinct task with N-Triples as input.
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for distinct Task with N-Triples as input](build/chart/distinct_nt_wikidata_elapsed.png) | ![Performance Review of memory for distinct Task with N-Triples as input](build/chart/distinct_nt_wikidata_memory.png)
+![Performance Review of elapsed for distinct Task with N-Triples as input](chart/distinct_nt_wikidata_elapsed.png) | ![Performance Review of memory for distinct Task with N-Triples as input](chart/distinct_nt_wikidata_memory.png)
 
 **Input File: DBpedia "Person Data" Dump**
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for distinct Task with N-Triples as input](build/chart/distinct_nt_persondata_en_elapsed.png) | ![Performance Review of memory for distinct Task with N-Triples as input](build/chart/distinct_nt_persondata_en_memory.png)
+![Performance Review of elapsed for distinct Task with N-Triples as input](chart/distinct_nt_persondata_en_elapsed.png) | ![Performance Review of memory for distinct Task with N-Triples as input](chart/distinct_nt_persondata_en_memory.png)
 
 <a name="#test_distinct_ttl" />
 
@@ -78,13 +78,13 @@ The distinct task with Turtle as input.
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for distinct Task with Turtle as input](build/chart/distinct_ttl_wikidata_elapsed.png) | ![Performance Review of memory for distinct Task with Turtle as input](build/chart/distinct_ttl_wikidata_memory.png)
+![Performance Review of elapsed for distinct Task with Turtle as input](chart/distinct_ttl_wikidata_elapsed.png) | ![Performance Review of memory for distinct Task with Turtle as input](chart/distinct_ttl_wikidata_memory.png)
 
 **Input File: DBpedia "Person Data" Dump**
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for distinct Task with Turtle as input](build/chart/distinct_ttl_persondata_en_elapsed.png) | ![Performance Review of memory for distinct Task with Turtle as input](build/chart/distinct_ttl_persondata_en_memory.png)
+![Performance Review of elapsed for distinct Task with Turtle as input](chart/distinct_ttl_persondata_en_elapsed.png) | ![Performance Review of memory for distinct Task with Turtle as input](chart/distinct_ttl_persondata_en_memory.png)
 
 ## Task: convert
 Convert an RDF document from one serialization format to another.
@@ -103,13 +103,13 @@ The convert task with N-Triples as input and Turtle as output.
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for convert Task with N-Triples as input and Turtle as output](build/chart/convert_nt-ttl_wikidata_elapsed.png) | ![Performance Review of memory for convert Task with N-Triples as input and Turtle as output](build/chart/convert_nt-ttl_wikidata_memory.png)
+![Performance Review of elapsed for convert Task with N-Triples as input and Turtle as output](chart/convert_nt-ttl_wikidata_elapsed.png) | ![Performance Review of memory for convert Task with N-Triples as input and Turtle as output](chart/convert_nt-ttl_wikidata_memory.png)
 
 **Input File: DBpedia "Person Data" Dump**
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for convert Task with N-Triples as input and Turtle as output](build/chart/convert_nt-ttl_persondata_en_elapsed.png) | ![Performance Review of memory for convert Task with N-Triples as input and Turtle as output](build/chart/convert_nt-ttl_persondata_en_memory.png)
+![Performance Review of elapsed for convert Task with N-Triples as input and Turtle as output](chart/convert_nt-ttl_persondata_en_elapsed.png) | ![Performance Review of memory for convert Task with N-Triples as input and Turtle as output](chart/convert_nt-ttl_persondata_en_memory.png)
 
 <a name="#test_convert_ttl-nt" />
 
@@ -120,11 +120,11 @@ The convert task with Turtle as input and N-Triples as output.
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for convert Task with Turtle as input and N-Triples as output](build/chart/convert_ttl-nt_wikidata_elapsed.png) | ![Performance Review of memory for convert Task with Turtle as input and N-Triples as output](build/chart/convert_ttl-nt_wikidata_memory.png)
+![Performance Review of elapsed for convert Task with Turtle as input and N-Triples as output](chart/convert_ttl-nt_wikidata_elapsed.png) | ![Performance Review of memory for convert Task with Turtle as input and N-Triples as output](chart/convert_ttl-nt_wikidata_memory.png)
 
 **Input File: DBpedia "Person Data" Dump**
 
 Time Elapsed (s) | Memory Usage (MiB)
 :---:|:---:
-![Performance Review of elapsed for convert Task with Turtle as input and N-Triples as output](build/chart/convert_ttl-nt_persondata_en_elapsed.png) | ![Performance Review of memory for convert Task with Turtle as input and N-Triples as output](build/chart/convert_ttl-nt_persondata_en_memory.png)
+![Performance Review of elapsed for convert Task with Turtle as input and N-Triples as output](chart/convert_ttl-nt_persondata_en_elapsed.png) | ![Performance Review of memory for convert Task with Turtle as input and N-Triples as output](chart/convert_ttl-nt_persondata_en_memory.png)
 
