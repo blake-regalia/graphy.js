@@ -161,13 +161,15 @@ The [`scribe`](#verb_scribe) verb supports the following [WritableDataEvent](#in
  - `'quad'`
  - `'c3r'`
  - `'c4r'`
+ - `'comment'`
+ - `'newlines'`
 
-The [`write`](#verb_write) verb supports the following [WritableDataEvent](#interface_writable-data-event) types:
+The [`write`](#verb_write) verb supports the following [WritableDataEvent](#interface_writable-data-event) types (* = difference from scribe):
  - `'prefixes'`
  - `'quad'`
- - `'c3'`
+ - `'c3'` *
  - `'c3r'`
- - `'c4'`
+ - `'c4'` *
  - `'c4r'`
  - `'comment'`
  - `'newlines'`
@@ -269,7 +271,7 @@ ds_scriber.on('data', (s_turtle) => {
 // write an RDFJS quad
 ds_scriber.write(factory.quad(...[
   factory.namedNode('http://dbpedia.org/resource/Banana'),
-  factory.namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#'),
+  factory.namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#a'),
   factory.namedNode('http://dbpedia.org/ontology/Plant'),
 ]));
 
@@ -347,11 +349,13 @@ dbr:Banana ex:lastSeen "2019-01-16T06:59:53.401Z"^^<http://www.w3.org/2001/XMLSc
 
 <a name="class_scriber" />
 
-## **Writer** _extends_ [Transform](core.iso.stream#class_transform)&lt;[WritableDataEvent](#interface_writable-data-event) | [@RDFJS/Quad](http://rdf.js.org/data-model-spec/#quad-interface), string&gt;
+## **Scriber** _extends_ [Transform](core.iso.stream#class_transform)&lt;[WritableDataEvent](#interface_writable-data-event) | [@RDFJS/Quad](http://rdf.js.org/data-model-spec/#quad-interface), string&gt;
 
 
 **Methods:**
  - ... [see those inheritted from Transform](core.iso.stream#transform)
+ - `write(data: `[`WritableDataEvent`](#interface_writable-data-event)` | `[`@RDFJS/Quad`](http://rdf.js.org/data-model-spec/#quad-interface)`[, ignore: any][, function: callback])`
+   - Implementation of [@node.js/stream.Writable#write](https://nodejs.org/api/stream.html#stream_writable_write_chunk_encoding_callback), where `ignore` corresponds to the `encoding` parameter since the Transform is in objectMode.
  - `import(`[`@RDFJS/Stream`](http://rdf.js.org/stream-spec/#stream-interface)`)` _implements_ [@RDFJS/Sink.import](http://rdf.js.org/stream-spec/#sink-interface)
    - Consumes the given stream. See RDFJS documentation for further reference.
 
