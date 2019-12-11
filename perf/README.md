@@ -3,7 +3,19 @@ The following diagrams plot the mean value of 5 trials for each data point.
 
 The X-axis units are in Millions of Quads, and correspond to the number of triples/quads fed into the process via stdin.
 
+There are usually two modes for `graphy`, the default mode with validation enabled for reading, and ['relaxed' mode](https://graphy.link/content.textual#config_read-no-input), which skips validation for faster read speeds.
+
+All Turtle input files are using prefixed names for identifiers when possible.
+
+Memory-intensive tasks were run with the `--max-old-space-size=8192` node.js option (e.g., the [distinct task](#distinct-task)). Some charts show an exponential jump in time due to the fact that V8's GC starts aggressively trying to free up memory.
+
 Want to see how other libraries stack up? Feel free to [open an issue](https://github.com/blake-regalia/graphy.js/issues).
+
+## Table of Contents
+ - [Count Task](#count-task) -- Count the number of statements in an RDF document.
+ - [Distinct Task](#distinct-task) -- Count the distinct number of triples/quads in an RDF document.
+ - [Convert Task](#convert-task) -- Convert an RDF document from one serialization format to another.
+
 ------------
 
 ## Count Task
