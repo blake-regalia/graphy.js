@@ -75,7 +75,7 @@ The union operator `|` can be used to specify multiple alternative conditions. W
 
 Filter by triples where the subject is `dbr:Orange` OR the subject is *not* `dbr:Banana` and is either (a) of type `dbo:Fruit` or `dbo:Plant`, or (b) has an `rdfs:label` to some literal that has the language tag `@en` or `@de`:
 ```
-not dbr:Banana; (a; dbo:Fruit or dbo:Plant | rdfs:label; @en, @de) | dbr:Orange'
+not dbr:Banana; (a; dbo:Fruit or dbo:Plant | rdfs:label; @en, @de) | dbr:Orange
 ```
 
 It is equivalent to the following SPARQL graph pattern:

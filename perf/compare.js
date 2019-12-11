@@ -14,13 +14,17 @@ const H_FLAVORS = {
 	nq: 'N-Quads',
 	ttl: 'Turtle',
 	trig: 'TriG',
+	'nt-ttl': 'N-Triples => Turtle',
+	'ttl-nt': 'Turtle => N-Triples',
 };
 
 const H_DESCRIBE = {
-	nt: 'N-Triples as input.',
-	nq: 'N-Quads as input.',
-	ttl: 'Turtle as input.',
-	trig: 'TriG as input.',
+	nt: 'N-Triples as input',
+	nq: 'N-Quads as input',
+	ttl: 'Turtle as input',
+	trig: 'TriG as input',
+	'nt-ttl': 'N-Triples as input and Turtle as output',
+	'ttl-nt': 'Turtle as input and N-Triples as output',
 };
 
 const H_TRANSFORM = {
@@ -93,7 +97,7 @@ async function render(si_chart, g_opt={}) {
 	// const dataUrl = await canvasRenderService.renderToDataURL(configuration);
 
 	let ds_test = canvasRenderService.renderToStream(configuration)
-		.pipe(fs.createWriteStream(`./build/chart/${si_chart}.png`));
+		.pipe(fs.createWriteStream(`./chart/${si_chart}.png`));
 
 	await once(ds_test, 'finish');
 }
@@ -184,6 +188,12 @@ async function* r() {
 }
 
 (async() => {
+	console.log(gobble(`
+		# Performance Benchmarks
+		The following diagrams plot the mean value of 5 trials for each data point.
+
+		The X-axis units are in Millions of Quads, and correspond to the number of triples/quads fed into the process via stdin.
+	`));
 	for await (let s_chunk of r()) {
 		console.log(s_chunk);
 	}
