@@ -276,12 +276,6 @@ class @{S_LABEL}_Reader extends stream.Transform {
 		});
 	}
 
-	_destroy(e_destroy) {
-		if(this._ds_input) {
-			this._ds_input.destroy(e_destroy);
-		}
-	}
-
 	// intercept pipe
 	pipe(ds_out) {
 		let ds_dst = ds_out;
@@ -563,6 +557,11 @@ class Reader {
 				fk_flush();
 			},
 		});
+
+		// destroy
+		ds_transform._destroy = (...a_args) => {
+			this.destroy(...a_args);
+		};
 		
 		// data event
 		this.data = g_quad => ds_transform.push(g_quad);
@@ -666,6 +665,16 @@ class Reader {
 
 		@// parse chunk
 		@{parse_n()};
+	}
+
+	destroy(e_destroy) {
+		this.data = () => {};
+
+		if(!e_destroy && this._ds_input) {
+			this._ds_input.destroy(e_destroy);
+		}
+
+		this.transform.demolish(e_destroy);
 	}
 }
 
