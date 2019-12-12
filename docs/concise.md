@@ -488,7 +488,7 @@ demo:alice {
 
 ----
 
-<a name="hash_c3" />
+<a name="hash_c3r" />
 
 ### `#hash/c3r` -- Concise Triples Hash (strict-mode)
 A concise triples **in strict-mode** hash describes a plain object whose keys represent the *subject* of a set of triples, and whose values are [concise pair hashes](#hash_c2), which represent the objects, list structures, collections, or nested blank nodes related to the subject/predicate combination in a tree-like structure.
