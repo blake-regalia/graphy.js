@@ -228,6 +228,14 @@ Use the [filter](cli#command_filter) command in combination with [distinct](#cli
 $ graphy read -c nq / filter -x '; a; dbo:Place' / distinct --subjects   < places.nq
 ```
 
+This is equivalent to the SPARQL query:
+```sparql
+select (count(distinct ?subject) as ?countSubjects) {
+  ?subject a dbo:Place .
+}
+```
+
+
 ----
 
 <a name="split" />
@@ -255,3 +263,14 @@ $ graphy read / filter -x '!$object; owl:sameAs; {node}'   \
     / write -c ttl   < input.ttl   > output.ttl
 ```
 
+This is equivalent to the SPARQL CONSTRUCT query:
+```sparql
+construct {
+  ?object ?predicate ?object
+} where {
+  ?subject owl:sameAs ?object .
+
+  filter(?subject != ?object)
+  filter(isIRI(?object) || isBlank(?object))
+}
+```
