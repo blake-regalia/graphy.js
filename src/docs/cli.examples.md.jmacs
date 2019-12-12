@@ -28,9 +28,9 @@
 <a name="count-triples-turtle" />
 
 ### [Count number of distinct triples in Turtle document](#count-triples-turtle)
-Anytime we are dealing with triples in RDF, we are really talking about quads without the _graph_ component. For example, when you load a Turtle document into a triplestore, you are either loading them into the default graph, or you are choosing some graph to load them into. In essence, a 'triplestore' is really just a set of quads (the graph being the fourth component to the triple).
+Anytime we are dealing with _triples_ in RDF, we can instead treat them as _quads without the graph_ component. For example, when you load a Turtle document into a triplestore, it will either load into the default graph or some named graph. In this case, a 'triplestore' is more like a set of quads since the graph acts as a fourth component to the triple.
 
-Let's count the number of distinct triples (or in other words, the number of distinct quads in the default graph) in a Turtle document. In order to get a distinct count, we must push the data through a transform that will remove duplicates , such as the [`distinct`](cli#command_distinct) command.
+Let's count the number of distinct _triples_ in a Turtle document. In order to get a distinct count, we must push the data through a transform that will remove duplicates, such as the [`distinct`](cli#command_distinct) command. To make things more portable, we can also specify to count the distinct number of _triples_ in order to ignore the graph component (which would be different than counting distinct number of quads in a TriG document).
 
 @// If we end the internal pipeline there, graphy recognizes the stream destination as `stdout` and prints each quad as a JSON object (i.e., a [line-delimted JSON stream](https://en.wikipedia.org/wiki/JSON_streaming#Line-delimited_JSON)). Finally, we can simply pipe this data to another command that will count the number of lines, such as `wc -l`.
 
