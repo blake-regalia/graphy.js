@@ -389,6 +389,8 @@ module.exports = async() => {
 				continue;
 			}
 
+			if(process.env.GRAPHY_SKIP_MANIFEST) continue;
+
 			let ttl_read;
 			try {
 				ttl_read = require(`@${s_super}/content.ttl.read`);  // eslint-disable-line global-require

@@ -70,8 +70,8 @@ const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
 
 const RT_LITERAL_CONTENTS_VALID = /@{RT_LITERAL_CONTENTS_VALID()}/;
 
-const R_STRING_LITERAL_QUOTE_INVALID_START = /@{R_STRING_LITERAL_INVALID_START('"')}/y;
-const R_STRING_LITERAL_SINGLE_QUOTE_INVALID_START = /@{R_STRING_LITERAL_INVALID_START('\'')}/y;
+const R_STRLIT_SHORT_DOUBLE_INVALID_START = /@{R_STRLIT_INVALID_START('"')}/y;
+const R_STRLIT_SHORT_SINGLE_INVALID_START = /@{R_STRLIT_INVALID_START('\'')}/y;
 
 const R_ESCAPES = /@{R_ESCAPES()}/g;
 const R_UNICODE_8 = /@{R_UNICODE_8()}/g;
@@ -247,13 +247,12 @@ const R_BLANK_NODE_LABEL_TERMINAL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_n
 const R_IRIREF_ESCAPELESS = /<([^\\>]*)>\s*/y;
 const R_IRIREF = /<([^>]*)>\s*/y;
 
-
-const R_STRING_LITERAL_QUOTE = /"((?:[^"\\]|\\.)*)"@{lookahead('string')}/y;
-const R_STRING_LITERAL_QUOTE_ESCAPELESS = /"([^"\\]*)"@{lookahead('string')}/y;
-const R_STRING_LITERAL_SINGLE_QUOTE = /'((?:[^'\\]|\\.)*)'@{lookahead('string')}/y;
-const R_STRING_LITERAL_SINGLE_QUOTE_ESCAPELESS = /'([^'\\]*)'@{lookahead('string')}/y;
-const R_STRING_LITERAL_LONG_QUOTE = /"""((?:(?:""?)?(?:[^"\\]|\\.))*)"""\s*/y;
-const R_STRING_LITERAL_LONG_SINGLE_QUOTE = /'''((?:(?:''?)?(?:[^'\\]|\\.))*)'''\s*/y;
+const R_STRLIT_SHORT_DOUBLE = /"((?:[^"\\]|\\.)*)"@{lookahead('string')}/y;
+const R_STRLIT_SHORT_DOUBLE_ESCAPELESS = /"([^"\\]*)"@{lookahead('string')}/y;
+const R_STRLIT_SHORT_SINGLE = /'((?:[^'\\]|\\.)*)'@{lookahead('string')}/y;
+const R_STRLIT_SHORT_SINGLE_ESCAPELESS = /'([^'\\]*)'@{lookahead('string')}/y;
+const R_STRLIT_LONG_DOUBLE = /"""((?:(?:""?)?(?:[^"\\]|\\.))*)"""\s*/y;
+const R_STRLIT_LONG_SINGLE = /'''((?:(?:''?)?(?:[^'\\]|\\.))*)'''\s*/y;
 
 const R_NUMERIC_LITERAL = /([+-]?(?:[0-9]+(\.[0-9]+)?|(\.[0-9]+))(\.?[eE][+-]?[0-9]+)?)(?:\s+|(?=\.[^eE0-9]|[;,)\]]))/y;
 const R_BOOLEAN_LITERAL = /(?:(true|TRUE)|false|FALSE)\s*/y;
@@ -318,6 +317,108 @@ const R_CHAR_STOP = /\.\s*/y;
 	const KT_DEFAULT_GRAPH = factory.defaultGraph();
 @;
 
+
+
+const F_REPLACE_STRLIT_CONTENTS = (s_, s_whitespace, s_auto, s_4, s_8, s_invalid) => {
+	if(s_whitespace) {
+		switch(s_whitespace) {
+			case 't': return '\t';
+			case 'n': return '\n';
+			case 'r': return '\r';
+			case 'f': return '\f';
+			case 'b': return '\b';
+			default: {
+				console.assert(`bad regex escape char mapping: '${s_whitespace}'`);
+			}
+		}
+	}
+	else if(s_auto) {
+		return s_auto;
+	}
+	else if(s_4) {
+		return String.fromCodePoint(parseInt(s_4, 16));
+	}
+	else if(s_8) {
+		return String.fromCodePoint(parseInt(s_8, 16));
+	}
+	else if(s_invalid) {
+		// pointless escape
+		if('\\' === s_invalid[0]) {
+			// // relaxed
+			// return s_invalid[1];
+
+			// if relaxed then return s_invalid, otherwise throw:
+			throw new Error(`invalid escape sequence within string literal contents: '${s_invalid}'`);
+		}
+		// bad character
+		else {
+			throw new Error(`invalid whitespace character within string literal contents: ${JSON.stringify(s_invalid)}`);
+		}
+	}
+	else {
+		console.assert(`unexpected no match branch in escape sequence replace callback`);
+	}
+};
+
+
+@>> R_STRING_CONTENTS_ESCAPES(r_flexibility)
+@//@regex
+(?:
+	\\(?:
+		([tnrfb])
+		| ([\\"'])
+		| u([0-9A-Fa-f]{4})
+		| U([0-9A-Fa-f]{8})
+	)
+	| (
+		[\r\n]
+		| @{r_flexibility.source}
+	)
+)
+@;
+
+@// const R_STRLIT_CONTENTS_ESCAPES_SOFT_OG = /\\(?:([tnrfb])|([\\"'])|u([0-9A-Fa-f]{4})|U([0-9A-Fa-f]{8})|([^uU]))(?=[^])/g;
+
+const R_STRLIT_SHORT_CONTENTS_ESCAPES_SOFT = /@{R_STRING_CONTENTS_ESCAPES(/\\[^uU]|\\u[^]{4}|\\U[^]{8}/)}/g;
+const R_STRLIT_SHORT_CONTENTS_ESCAPES_HARD = /@{R_STRING_CONTENTS_ESCAPES(/\\./)}/g;
+
+const R_STRLIT_ESCAPE_INCOMPLETE = /\\(|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})$/;
+
+const R_STRLIT_SHORT_DOUBLE_BREAK = /[\\"\r\n]/g;
+const R_STRLIT_SHORT_SINGLE_BREAK = /[\\'\r\n]/g;
+
+const R_STRLIT_SHORT_DOUBLE_TERM = /(?<!(?:[^\\]|^)(?:\\\\)*\\)"\s*/g;
+const R_STRLIT_SHORT_SINGLE_TERM = /(?<!(?:[^\\]|^)(?:\\\\)*\\)'\s*/g;
+
+
+const unescape_literal_short_soft = (s_literal) => {
+	let s_clean = s_literal
+		.replace(R_STRLIT_SHORT_CONTENTS_ESCAPES_SOFT, F_REPLACE_STRLIT_CONTENTS);
+
+	let m_incomplete = R_STRLIT_ESCAPE_INCOMPLETE.exec(s_clean);
+
+	// incomplete escape
+	if(m_incomplete) {
+		let i_safe = m_incomplete.index;
+
+		// rewind
+		return [
+			s_clean.slice(0, i_safe),
+			s_clean.slice(i_safe),
+		];
+	}
+	// done
+	else {
+		return [
+			s_clean,
+			'',
+		];
+	}
+};
+
+
+const unescape_literal_short_hard = s_literal => s_literal
+	.replace(R_STRLIT_SHORT_CONTENTS_ESCAPES_HARD, F_REPLACE_STRLIT_CONTENTS);
 
 const unescape_literal_short = s_literal => @{unescape_literal('s_literal', false)};
 const unescape_literal_long = s_literal => @{unescape_literal('s_literal', true)};
@@ -668,6 +769,7 @@ class @{S_LABEL}_Reader extends stream.Transform {
 	}
 }
 
+
 class Reader {
 	constructor(g_config={}) {
 		// impl-specific configs
@@ -770,6 +872,7 @@ class Reader {
 			_kt_predicate: @{B_UPGRADE_FACTORY? 'kt_rdf_first': 'KT_RDF_FIRST'},
 			_kt_object: null,
 			_kt_graph: @{B_UPGRADE_FACTORY? 'kt_default_graph': 'KT_DEFAULT_GRAPH'},
+			_s_literal: '',
 
 			@- B_UPGRADE_FACTORY
 				// static terms
@@ -799,6 +902,7 @@ class Reader {
 			// helper states
 			_b_expecting_full_stop: false,
 			_s_temp_prefix_id: null,
+			_b_trim_start: true,
 
 			anonymous_blank_node: s_label => blankNode(s_label, true),
 
@@ -994,8 +1098,14 @@ class Reader {
 				// cache chunk length
 				this.n = s.length;
 
-				@// eat whitespace before token and reset index
-				@{whitespace()}
+				// eat whitespace before token and reset index
+				if(this._b_trim_start) {
+					@{whitespace()}
+				}
+				// do not eat whitespace; start at beginning
+				else {
+					this.i = 0;
+				}
 
 				// resume parsing; no errors
 				if(this.safe_parse(true)) {
@@ -1201,6 +1311,18 @@ class Reader {
 		return this.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
 			+` ${' '.repeat(i-i_off)}^\n`
 			+`expected ${s_expected} ${b_eof? 'but encountered <<EOF>>': ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
+	}
+
+	info_error(s_message) {
+		let i = this.i;
+
+		let i_off = Math.min(i, Math.abs(i-15));
+
+		let s = this.s;
+
+		this.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
+			+` ${' '.repeat(i-i_off)}^\n`
+			+s_message);
 	}
 
 	// end of file
@@ -1863,8 +1985,19 @@ class Reader {
 			this._kt_object = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
 
 		// string literal
-		@{else_if_char('"', "'")}
-			@{goto('string_literal')}
+		@{else_if_char('"')}
+			// advance index beyond token
+			this.i = i + 1;
+
+			// read contents
+			@{goto('string_literal_short_double')}
+
+		@{else_if_char("'")}
+			// advance index beyond token
+			this.i = i + 1;
+
+			// read contents
+			@{goto('string_literal_short_single')}
 
 		// numeric literal
 		@{else_if_match('R_NUMERIC_LITERAL', 'm_numeric_literal')}
@@ -1938,6 +2071,115 @@ class Reader {
 	@{end_method('object_list')}
 
 
+	@> string_literal_short(s_mode)
+		@{method('string_literal_short_'+s_mode)}
+			// go back to eating whitespace
+			this._b_trim_start = true;
+
+			// something breaks string in this chunk
+			@{if_match(`R_STRLIT_SHORT_${s_mode.toUpperCase()}_BREAK`, 'm_break')}
+				// index of break
+				let i_break = m_break.index;
+
+				// add to contents
+				this._s_literal += s.slice(i, i_break);
+
+				// depending on char
+				switch(s[i_break]) {
+					// terminator
+					case @{'single' === s_mode? `"'"`: `'"'`}: {
+						// advance index to next token beyond delimiter
+						@{whitespace('i_break + 1')}
+
+						// consume rest
+						@{goto('datatype_or_langtag')}
+					}
+
+					// escape
+					case '\\': {
+						// try to find end
+						R_STRLIT_SHORT_@{s_mode.toUpperCase()}_TERM.lastIndex = i_break;
+						let m_term = R_STRLIT_SHORT_@{s_mode.toUpperCase()}_TERM.exec(s);
+
+						// end is in this chunk
+						if(m_term) {
+							// index of terminator
+							let i_term = m_term.index;
+
+							// extract dirty potion
+							let s_dirty = s.slice(i_break, i_term);
+
+							// clean and save
+							this._s_literal += unescape_literal_short_hard(s_dirty);
+
+							// advance index beyond terminator
+							this.i = i_term + m_term[0].length;
+
+							// consume rest
+							@{goto('datatype_or_langtag')}
+						}
+						// end is not in this chunk
+						else {
+							// extract whole portion
+							let s_dirty = s.slice(i_break);
+
+							// unescape to clean part
+							let [s_clean, s_incomplete] = unescape_literal_short_soft(s_dirty);
+
+							// save
+							this._s_literal += s_clean;
+
+							// set unparsed index
+							i = n - s_incomplete.length;
+
+							// do not eat whitespace at start of next chunk
+							this._b_trim_start = false;
+
+							// reached eos; pause normally
+							break string_literal_short_@{s_mode};
+						}
+					}
+
+					// invalid '\n'
+					case '\n': {
+						return this.info_error(`invalid line feed character '\n' within contents of string_literal_short_@{s_mode}`);
+					}
+
+					// invalid '\r'
+					case '\r': {
+						return this.info_error(`invalid form feed character '\r' within contents of string_literal_short_@{s_mode}`);
+					}
+
+					// invalid
+					default: {
+						console.assert(`Unhandle invalid character ${JSON.stringify(s[i_break])} case for string_literal_short_@{s_mode}`);
+					}
+				}
+
+			// no terminator and nothing to escape
+			@{else_any()}
+				// save
+				this._s_literal += i? s.slice(i): s;
+
+				// set unparsed index
+				i = n;
+
+				// do not eat whitespace at start of next chunk
+				this._b_trim_start = false;
+
+				// reached eos; pause normally
+				break;
+
+			@{end_else()}
+		@{end_method('string_literal_short_'+s_mode)}
+	@;
+
+
+	@{string_literal_short('double')}
+
+	@{string_literal_short('single')}
+
+
 	@{method('string_literal')}
 		@- !B_UPGRADE_FACTORY
 			// we know this is going to be a literal
@@ -1950,19 +2192,19 @@ class Reader {
 		// string literal quote / string literal long quote
 		@{if_char('"')}
 			// `"""` string literal long quote
-			@{if_match('R_STRING_LITERAL_LONG_QUOTE', 'm_string_literal_long_quote')}
+			@{if_match('R_STRLIT_LONG_DOUBLE', 'm_string_literal_long_quote')}
 				@{set_string_literal('m_string_literal_long_quote', 'long')}
 
 			// `"` string literal quote escapeless
-			@{else_if_match('R_STRING_LITERAL_QUOTE_ESCAPELESS', 'm_string_literal_quote_escapeless')}
+			@{else_if_match('R_STRLIT_SHORT_DOUBLE_ESCAPELESS', 'm_string_literal_quote_escapeless')}
 				@{set_string_literal('m_string_literal_quote_escapeless', 'no-escape')}
 
 			// `"` string literal quote w/ escapes
-			@{else_if_match('R_STRING_LITERAL_QUOTE', 'm_string_literal_quote')}
+			@{else_if_match('R_STRLIT_SHORT_DOUBLE', 'm_string_literal_quote')}
 				@{set_string_literal('m_string_literal_quote', 'single-dirk')}
 
 			// `"` string literal quote invalid start
-			@{else_if_match('R_STRING_LITERAL_QUOTE_INVALID_START', 'm_invalid', true)}
+			@{else_if_match('R_STRLIT_SHORT_DOUBLE_INVALID_START', 'm_invalid', true)}
 				if(m_invalid[1]) {
 					return Reader$syntax_error(this, i-1, 'string_literal', 'but encountered invalid character after string literal terminator');
 				}
@@ -1977,19 +2219,19 @@ class Reader {
 			@{else_retry()}
 
 		// `'''` string literal long single quote
-		@{else_if_match('R_STRING_LITERAL_LONG_SINGLE_QUOTE', 'm_string_literal_long_single_quote')}
+		@{else_if_match('R_STRLIT_LONG_SINGLE', 'm_string_literal_long_single_quote')}
 			@{set_string_literal('m_string_literal_long_single_quote', 'long')}
 
 		// `'` string literal quote escapeless
-		@{else_if_match('R_STRING_LITERAL_SINGLE_QUOTE_ESCAPELESS', 'm_string_literal_single_quote_escapeless')}
+		@{else_if_match('R_STRLIT_SHORT_SINGLE_ESCAPELESS', 'm_string_literal_single_quote_escapeless')}
 			@{set_string_literal('m_string_literal_single_quote_escapeless', 'no-escape')}
 
 		// `'` string literal single quote w/ escapes
-		@{else_if_match('R_STRING_LITERAL_SINGLE_QUOTE', 'm_string_literal_single_quote')}
+		@{else_if_match('R_STRLIT_SHORT_SINGLE', 'm_string_literal_single_quote')}
 			@{set_string_literal('m_string_literal_single_quote', 'single-irk')}
 
 		// `'` string literal single quote invalid start
-		@{else_if_match('R_STRING_LITERAL_SINGLE_QUOTE_INVALID_START', 'm_invalid', true)}
+		@{else_if_match('R_STRLIT_SHORT_SINGLE_INVALID_START', 'm_invalid', true)}
 			if(m_invalid[1]) {
 				return Reader$syntax_error(this, i-1, 'string_literal', 'but encountered invalid character after string literal terminator');
 			}
@@ -2022,6 +2264,9 @@ class Reader {
 			@{else_if_match('R_LANGTAG', 'm_langtag')}
 				@- B_UPGRADE_FACTORY
 					this._kt_object = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
+
+					// reset literal
+					this._s_literal = '';
 				@:
 					// set literal language type
 					this._kt_object.language = m_langtag[1].toLowerCase();
@@ -2038,6 +2283,9 @@ class Reader {
 		@- B_UPGRADE_FACTORY
 			@{else_any()}
 				this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+
+				// reset literal
+				this._s_literal = '';
 		@;
 
 		// not datatype, not language tag => that's okay! those are optional
@@ -2099,6 +2347,9 @@ class Reader {
 
 		@- B_UPGRADE_FACTORY
 			this._kt_object = this._dc_factory.datatypedLiteral(this._s_literal, w_datatype);
+
+			// reset literal
+			this._s_literal = '';
 		@;
 
 		// goto end of statement state

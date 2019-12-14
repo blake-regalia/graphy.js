@@ -20,7 +20,7 @@
 	(\\[\\])|\\([^tbnrfuU\\])
 @;
 
-@>> R_STRING_LITERAL_INVALID_START(s_quote)
+@>> R_STRLIT_INVALID_START(s_quote)
 	@//@regex
 	^@{s_quote}(?:
 		(?:
