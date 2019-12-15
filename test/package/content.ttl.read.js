@@ -511,10 +511,12 @@ reader_suite({
 			'long single quotes': () => [`
 				:a :b '''''' .
 				:a :b '''\r''' .
+				:a :b '''\\r''' .
 				:a :b '''c''' .
 				:a :b '''"c\\u002C''\\n'\n''' .
 			`, [
 				'',
+				'\r',
 				'\r',
 				'c',
 				`"c,''\n'\n`,
@@ -535,7 +537,7 @@ reader_suite({
 					"\\"\\"\\"\\"\\"\\"",
 					"\\"\\u00C5\\"", "\\"\\U0001D11E\\"\\\\test\\"" .
 			`, [
-				'"\\t = \'\t\'"',
+				`"\\t = '\t'"`,
 				'""""""',
 				'"\u00c5"',
 				'"\u{0001d11e}"\\test"',
@@ -1069,19 +1071,19 @@ reader_suite({
 			[`invalid empty string literal (${s_quote}) terminator`]: () => ({
 				input: `<a> <b> ${s_quote}${s_quote}y .`,
 				char: 'y',
-				state: 'string_literal',
+				state: 'post_object',
 			}),
 
 			[`invalid non-empty string literal (${s_quote}) terminator`]: () => ({
 				input: `<a> <b> ${s_quote}s${s_quote}y .`,
 				char: 'y',
-				state: 'string_literal',
+				state: 'post_object',
 			}),
 
 			[`invalid linebreak at start of string literal (${s_quote}) contents`]: () => ({
 				input: `<a> <b> ${s_quote}\nworld${s_quote} .`,
 				char: 'y',
-				state: 'string_literal',
+				state: 'string_literal_short_'+('"' === s_quote? 'double': 'single'),
 			}),
 
 			[`invalid escape sequence at start of string literal (${s_quote}) contents`]: () => ({
@@ -1093,7 +1095,7 @@ reader_suite({
 			[`invalid linebreak within string literal (${s_quote}) contents`]: () => ({
 				input: `<a> <b> ${s_quote}helo\nworld${s_quote} .`,
 				char: 'y',
-				state: 'string_literal',
+				state: 'string_literal_short_'+('"' === s_quote? 'double': 'single'),
 			}),
 
 			[`invalid escape sequence within string literal (${s_quote}) contents`]: () => ({
