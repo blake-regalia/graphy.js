@@ -59,7 +59,6 @@ const stream = require('@{channel('core.iso.stream')}');
 const factory = require('@{channel('core.data.factory')}');
 const quad = k => factory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
 
-const RT_ESCAPES_INVALID = /@{RT_ESCAPES_INVALID()}/;
 // eslint-disable-next-line no-misleading-character-class
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
 // eslint-disable-next-line no-misleading-character-class
@@ -70,18 +69,11 @@ const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
 
 const RT_LITERAL_CONTENTS_VALID = /@{RT_LITERAL_CONTENTS_VALID()}/;
 
-const R_STRLIT_SHORT_DOUBLE_INVALID_START = /@{R_STRLIT_INVALID_START('"')}/y;
-const R_STRLIT_SHORT_SINGLE_INVALID_START = /@{R_STRLIT_INVALID_START('\'')}/y;
-
-const R_ESCAPES = /@{R_ESCAPES()}/g;
-const R_UNICODE_8 = /@{R_UNICODE_8()}/g;
 const R_UNICODE_ANY = /@{R_UNICODE_4()}|@{R_UNICODE_8()}/g;
 
 const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
 
 const OPHOP = Object.prototype.hasOwnProperty;
-
-const H_ESCAPES_JSON = @{H_ESCAPES_JSON()};
 
 
 @$ H_LOOKAHEADS = {
@@ -243,16 +235,8 @@ const R_PN_LOCAL_ESCAPES = /\\(.)/g;
 const R_BLANK_NODE_LABEL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node')}/y;
 const R_BLANK_NODE_LABEL_TERMINAL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node', '|(?=\\.[\\s@#<({[}])', '\\.?')}/y;
 
-
 const R_IRIREF_ESCAPELESS = /<([^\\>]*)>\s*/y;
 const R_IRIREF = /<([^>]*)>\s*/y;
-
-const R_STRLIT_SHORT_DOUBLE = /"((?:[^"\\]|\\.)*)"@{lookahead('string')}/y;
-const R_STRLIT_SHORT_DOUBLE_ESCAPELESS = /"([^"\\]*)"@{lookahead('string')}/y;
-const R_STRLIT_SHORT_SINGLE = /'((?:[^'\\]|\\.)*)'@{lookahead('string')}/y;
-const R_STRLIT_SHORT_SINGLE_ESCAPELESS = /'([^'\\]*)'@{lookahead('string')}/y;
-const R_STRLIT_LONG_DOUBLE = /"""((?:(?:""?)?(?:[^"\\]|\\.))*)"""\s*/y;
-const R_STRLIT_LONG_SINGLE = /'''((?:(?:''?)?(?:[^'\\]|\\.))*)'''\s*/y;
 
 const R_NUMERIC_LITERAL = /([+-]?(?:[0-9]+(\.[0-9]+)?|(\.[0-9]+))(\.?[eE][+-]?[0-9]+)?)(?:\s+|(?=\.[^eE0-9]|[;,)\]]))/y;
 const R_BOOLEAN_LITERAL = /(?:(true|TRUE)|false|FALSE)\s*/y;
@@ -316,7 +300,6 @@ const R_CHAR_STOP = /\.\s*/y;
 
 	const KT_DEFAULT_GRAPH = factory.defaultGraph();
 @;
-
 
 
 const F_REPLACE_STRLIT_CONTENTS = (s_, s_whitespace, s_auto, s_4, s_8, s_invalid) => {
@@ -417,8 +400,79 @@ const R_STRLIT_ESCAPE_INCOMPLETE = /\\(|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})$/;
 const R_STRLIT_SHORT_DOUBLE_BREAK = /[\\"\r\n]/g;
 const R_STRLIT_SHORT_SINGLE_BREAK = /[\\'\r\n]/g;
 
-const R_STRLIT_SHORT_DOUBLE_TERM = /(?<!(?:[^\\]|^)(?:\\\\)*\\)"\s*/g;
-const R_STRLIT_SHORT_SINGLE_TERM = /(?<!(?:[^\\]|^)(?:\\\\)*\\)'\s*/g;
+// lookbehind regexes
+const [
+	R_STRLIT_SHORT_DOUBLE_TERM,
+	R_STRLIT_SHORT_SINGLE_TERM,
+	R_STRLIT_LONG_DOUBLE_TERM,
+	R_STRLIT_LONG_SINGLE_TERM,
+] = (() => {
+	function RegExp_$lookbehind_polyfill_1(s_input) {
+		let m_match = RegExp.prototype.exec.call(this, s_input);
+		
+		if(m_match) {
+			m_match.index += m_match[0].length - 1;
+		}
+		
+		return m_match;
+	}
+
+	function RegExp_$lookbehind_polyfill_3(s_input) {
+		let m_match = RegExp.prototype.exec.call(this, s_input);
+		
+		if(m_match) {
+			let i_start = m_match[0].length - 3;
+			m_match.index += i_start;
+			m_match[0] = m_match[0].slice(i_start);
+		}
+		
+		return m_match;
+	}
+
+	let mk_lookbehind_regex = (() => {
+		try {
+			/(?<!h)i/;  // eslint-disable-line no-unused-expressions
+		}
+		catch(e_compile) {
+			return (f_lookbehind, r_polyfill, f_polyfill) => {
+				r_polyfill.exec = f_polyfill;
+				return r_polyfill;
+			};
+		}
+
+		return f_lookbehind => f_lookbehind();
+	})();
+
+	return [
+		// R_STRLIT_SHORT_DOUBLE_TERM
+		mk_lookbehind_regex(
+			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)"\s*/g,
+			/(?:(?:[^\\]|^)(?:\\\\)*)"\s*/g,
+			RegExp_$lookbehind_polyfill_1
+		),
+
+		// R_STRLIT_SHORT_SINGLE_TERM
+		mk_lookbehind_regex(
+			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)'\s*/g,
+			/(?:(?:[^\\]|^)(?:\\\\)*)'\s*/g,
+			RegExp_$lookbehind_polyfill_1
+		),
+
+		// R_STRLIT_LONG_DOUBLE_TERM
+		mk_lookbehind_regex(
+			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)"""\s*/g,
+			/(?:(?:[^\\]|^)(?:\\\\)*)"""\s*/g,
+			RegExp_$lookbehind_polyfill_3
+		),
+
+		// R_STRLIT_LONG_SINGLE_TERM
+		mk_lookbehind_regex(
+			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)'''\s*/,
+			/(?:(?:[^\\]|^)(?:\\\\)*)'''\s*/g,
+			RegExp_$lookbehind_polyfill_3
+		),
+	];
+})();
 
 
 const R_STRLIT_LONG_DOUBLE_UNFINISHED_TERM = /"{1,2}$/g;
@@ -426,9 +480,6 @@ const R_STRLIT_LONG_SINGLE_UNFINISHED_TERM = /'{1,2}$/g;
 
 const R_STRLIT_LONG_DOUBLE_BREAK = /(\\|""")/g;
 const R_STRLIT_LONG_SINGLE_BREAK = /(\\|''')/g;
-
-const R_STRLIT_LONG_DOUBLE_TERM = /(?<!(?:[^\\]|^)(?:\\\\)*\\)"""\s*/g;
-const R_STRLIT_LONG_SINGLE_TERM = /(?<!(?:[^\\]|^)(?:\\\\)*\\)'''\s*/g;
 
 
 const unescape_literal_short_soft = (s_literal) => {
@@ -449,10 +500,7 @@ const unescape_literal_short_soft = (s_literal) => {
 	}
 	// done
 	else {
-		return [
-			s_clean,
-			'',
-		];
+		return [s_clean, ''];
 	}
 };
 
@@ -460,8 +508,6 @@ const unescape_literal_short_hard = s_literal => s_literal
 	.replace(R_STRLIT_SHORT_CONTENTS_ESCAPES_HARD, F_REPLACE_STRLIT_CONTENTS);
 
 const unescape_literal_long_soft = (s_literal) => {
-	// debugger;
-
 	let s_clean = s_literal
 		.replace(R_STRLIT_LONG_CONTENTS_ESCAPES_SOFT, F_REPLACE_STRLIT_CONTENTS);
 
@@ -479,24 +525,16 @@ const unescape_literal_long_soft = (s_literal) => {
 	}
 	// done
 	else {
-		return [
-			s_clean,
-			'',
-		];
+		return [s_clean, ''];
 	}
 };
 
 const unescape_literal_long_hard = (s_literal) => {
-	// debugger;
-
 	let s_clean = s_literal
 		.replace(R_STRLIT_LONG_CONTENTS_ESCAPES_HARD, F_REPLACE_STRLIT_CONTENTS);
 
 	return s_clean;
 };
-
-const unescape_literal_short = s_literal => @{unescape_literal('s_literal', false)};
-const unescape_literal_long = s_literal => @{unescape_literal('s_literal', true)};
 
 const match_prefixed_name_escapeless = (s, i) => {
 	R_PREFIXED_NAME_ESCAPELESS.lastIndex = i;
@@ -1066,26 +1104,6 @@ class Reader {
 					return namedNode(s_iri);
 				},
 
-				unescape_literal_long(s_literal) {
-					if(!RT_LITERAL_CONTENTS_VALID.test(s_literal)) return this.error(`invalid escapes in long string literal: "${s_literal}"`);
-					try {
-						return unescape_literal_long(s_literal);
-					}
-					catch(e_parse) {
-						return this.error(`invalid string literal: "${s_literal}"`);
-					}
-				},
-
-				unescape_literal_short(s_literal) {
-					if(!RT_LITERAL_CONTENTS_VALID.test(s_literal)) return this.error(`invalid escapes in short string literal: "${s_literal}"`);
-					try {
-						return unescape_literal_short(s_literal);
-					}
-					catch(e_parse) {
-						return this.error(`invalid string literal: "${s_literal}"`);
-					}
-				},
-
 				match_prefixed_name_escapeless(s, i) {
 					let [m_prefixed_name_e, im_prefixed_name_e] = match_prefixed_name_escapeless(s, i);
 					if(m_prefixed_name_e) {
@@ -1125,10 +1143,6 @@ class Reader {
 				},
 
 				check_named_node: namedNode,
-
-				unescape_literal_short: unescape_literal_short,
-
-				unescape_literal_long: unescape_literal_long,
 
 				match_prefixed_name_escapeless,
 
