@@ -500,7 +500,7 @@ regex_flags 'regex_flags'
 tags 'tags'
 	= '{' __ xm_contents:tags_contents? __ '}'
 		{
-			return xm_contents || XM_TERM_FLAGS_ANY;
+			return xm_contents || XM_TERM_TAG_ANY;
 		}
 
 tags_contents
@@ -518,31 +518,31 @@ tags_contents_more
 tags_selector 'tags_selector'
 	= 'node' 's'?
 		{
-			return XM_TERM_FLAGS_NODE;
+			return XM_TERM_TAG_NODE;
 		}
 	/ 'named' _node?
 		{
-			return XM_TERM_FLAGS_NODE_NAMED;
+			return XM_TERM_TAG_NODE_NAMED;
 		}
 	/ 'blank' 's'? _node?
 		{
-			return XM_TERM_FLAGS_NODE_BLANK;
+			return XM_TERM_TAG_NODE_BLANK;
 		}
 	/ 'literal' 's'?
 		{
-			return XM_TERM_FLAGS_LITERAL;
+			return XM_TERM_TAG_LITERAL;
 		}
 	/ 'datatype' [sd]? _literal?
 		{
-			return XM_TERM_FLAGS_LITERAL_DATATYPED;
+			return XM_TERM_TAG_LITERAL_DATATYPED;
 		}
 	/ 'lang' ('s' / 'uage' [sd]?) _literal?
 		{
-			return XM_TERM_FLAGS_LITERAL_LANGUAGED;
+			return XM_TERM_TAG_LITERAL_LANGUAGED;
 		}
 	/ 'simple' 's'? _literal?
 		{
-			return XM_TERM_FLAGS_LITERAL_SIMPLE;
+			return XM_TERM_TAG_LITERAL_SIMPLE;
 		}
 
 _node
