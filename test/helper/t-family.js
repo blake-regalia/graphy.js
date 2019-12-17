@@ -1,5 +1,5 @@
 /* eslint quote-props: 0 */
-const factory = require('@graphy/core.data.factory');
+const factory = require('graphy-stable').core.data.factory;
 const util = require('./util.js');
 
 let a_items = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');

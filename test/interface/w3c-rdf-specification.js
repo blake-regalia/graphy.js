@@ -6,12 +6,12 @@ const expect = require('chai').expect;
 const pathToFileURL = url.pathToFileURL || (p_path => `file://${p_path}`);
 const fileURLToPath = url.fileURLToPath || (p_url => p_url.replace(/^file:\/\//, ''));
 
-const ttl_read = require('@graphy/content.ttl.read');
-const nt_read = require('@graphy/content.nt.read');
-const nq_read = require('@graphy/content.nq.read');
-const trig_write = require('@graphy/content.trig.write');
-const factory = require('@graphy/core.data.factory');
-const dataset_tree = require('@graphy/memory.dataset.fast');
+const ttl_read = require('graphy-stable').content.ttl.read;
+const nt_read = require('graphy-stable').content.nt.read;
+const nq_read = require('graphy-stable').content.nq.read;
+const trig_write = require('graphy-stable').content.trig.write;
+const factory = require('graphy-stable').core.data.factory;
+const dataset_tree = require('graphy-stable').memory.dataset.fast;
 
 const write_preview = () => trig_write({
 	style: {

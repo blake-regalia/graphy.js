@@ -39,7 +39,7 @@
 
 
 @> F_REPLACE_UNICODE_ANY()
-	(s_, s_8, s_4) => String.fromCodePoint(parseInt(s_8 || s_4, 16))
+	(s_, s_4, s_8) => String.fromCodePoint(parseInt(s_4 || s_8, 16))
 @;
 
 @>> RT_ESCAPES_INVALID()
@@ -118,9 +118,9 @@
 	\\u[@{s_ins}A-Fa-f0-9]{4}|\\U[@{s_ins}A-Fa-f0-9]{8}
 @;
 
-@>> RT_NAMED_NODE_VALID()
+@>> RT_NAMED_NODE_VALID(b_escapeless=false)
 	@//@regex
-	^([^\0-\x20<>"{}|^`\\]|@{UCHAR()})*$
+	^([^\0-\x20<>"{}|^`@{b_escapeless? ']': /\\/.source+']|'+UCHAR()})*$  @// need to test for `>` since it can be encoded as unicode escape sequence
 @;
 
 
