@@ -65,7 +65,8 @@ const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
 const RT_PREFIXED_NAME_LOCAL_NAME_VALID = /^@{PN_LOCAL()}$/u;
 // eslint-disable-next-line no-misleading-character-class
 const RT_BLANK_NODE_VALID = /^[@{RANGE_PN_CHARS_U()}0-9]@{PN_CHARS_FS()}$/u;
-const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID()}/;
+const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID(false)}/;
+const RT_NAMED_NODE_ESCAPELESS_VALID = /@{RT_NAMED_NODE_VALID(true)}/;
 
 const RT_LITERAL_CONTENTS_VALID = /@{RT_LITERAL_CONTENTS_VALID()}/;
 
@@ -407,6 +408,32 @@ const [
 	R_STRLIT_LONG_DOUBLE_TERM,
 	R_STRLIT_LONG_SINGLE_TERM,
 ] = (() => {
+	@>> R_STRLIT_TERM_LOOKBEHIND(r_term)
+		@//@regex
+		(?<!
+			(?:
+				[^\\] | ^
+			)(?:
+				\\\\
+			)*
+			\\
+		)
+		@{r_term.source}\s*
+	@;
+
+	@>> R_STRLIT_TERM_POLYFILL(r_term)
+		@//@regex
+		(?:(?:[^\\]|^)(?:\\\\)*)@{r_term.source}\s*
+	@;
+
+	@> STRLIT_TERM(r_term)
+		mk_lookbehind_regex(
+			() => /@{R_STRLIT_TERM_LOOKBEHIND(r_term)}/g,
+			/@{R_STRLIT_TERM_POLYFILL(r_term)}/g,
+			RegExp_$lookbehind_polyfill_@{r_term.source.length}
+		),
+	@;
+
 	function RegExp_$lookbehind_polyfill_1(s_input) {
 		let m_match = RegExp.prototype.exec.call(this, s_input);
 		
@@ -445,32 +472,40 @@ const [
 
 	return [
 		// R_STRLIT_SHORT_DOUBLE_TERM
-		mk_lookbehind_regex(
-			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)"\s*/g,
-			/(?:(?:[^\\]|^)(?:\\\\)*)"\s*/g,
-			RegExp_$lookbehind_polyfill_1
-		),
+		@{STRLIT_TERM(/"/)}
 
 		// R_STRLIT_SHORT_SINGLE_TERM
-		mk_lookbehind_regex(
-			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)'\s*/g,
-			/(?:(?:[^\\]|^)(?:\\\\)*)'\s*/g,
-			RegExp_$lookbehind_polyfill_1
-		),
+		@{STRLIT_TERM(/'/)}
 
 		// R_STRLIT_LONG_DOUBLE_TERM
-		mk_lookbehind_regex(
-			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)"""\s*/g,
-			/(?:(?:[^\\]|^)(?:\\\\)*)"""\s*/g,
-			RegExp_$lookbehind_polyfill_3
-		),
+		@{STRLIT_TERM(/"""/)}
 
 		// R_STRLIT_LONG_SINGLE_TERM
-		mk_lookbehind_regex(
-			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)'''\s*/,
-			/(?:(?:[^\\]|^)(?:\\\\)*)'''\s*/g,
-			RegExp_$lookbehind_polyfill_3
-		),
+		@{STRLIT_TERM(/'''/)}
+
+@//		mk_lookbehind_regex(
+@//			() => /@{R_STRLIT_TERM(/"/)}/g,
+@//			/(?:(?:[^\\]|^)(?:\\\\)*)"\s*/g,
+@//			RegExp_$lookbehind_polyfill_1
+@//		),
+@//
+@//		mk_lookbehind_regex(
+@//			() => /@{R_STRLIT_TERM(/'/)}/g,
+@//			/(?:(?:[^\\]|^)(?:\\\\)*)'\s*/g,
+@//			RegExp_$lookbehind_polyfill_1
+@//		),
+@//
+@//		mk_lookbehind_regex(
+@//			() => /@{R_STRLIT_TERM(/"""/)}/g,
+@//			/(?:(?:[^\\]|^)(?:\\\\)*)"""\s*/g,
+@//			RegExp_$lookbehind_polyfill_3
+@//		),
+@//
+@//		mk_lookbehind_regex(
+@//			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)'''\s*/,
+@//			/(?:(?:[^\\]|^)(?:\\\\)*)'''\s*/g,
+@//			RegExp_$lookbehind_polyfill_3
+@//		),
 	];
 })();
 
@@ -583,7 +618,7 @@ const match_prefixed_name = (s, i) => {
 	@.{
 		let sv_set = (b_not_this? '': ('this.'+(b_object? '_kt_': '_s_')))+sv_term;
 		let set = b_object
-			? s => `${sv_set} = this.check_named_node(${s});`
+			? s => `${sv_set} = this.check_named_node${b_has_escapes? '': '_escapeless'}(${s});`
 			: s => `${sv_set} = ${s};`;
 	}
 	// ref iri
@@ -1099,9 +1134,14 @@ class Reader {
 					return blankNode(s_label);
 				},
 
-				check_named_node(s_iri) {
-					if(!RT_NAMED_NODE_VALID.test(s_iri)) return this.error(`invalid IRI: "${s_iri}"`);
-					return namedNode(s_iri);
+				check_named_node(p_iri) {
+					if(!RT_NAMED_NODE_VALID.test(p_iri)) return this.error(`invalid IRI: "${p_iri}"`);
+					return namedNode(p_iri);
+				},
+
+				check_named_node_escapeless(p_iri) {
+					if(!RT_NAMED_NODE_ESCAPELESS_VALID.test(p_iri)) return this.error(`invalid IRI: "${p_iri}"`);
+					return namedNode(p_iri);
 				},
 
 				match_prefixed_name_escapeless(s, i) {
@@ -1143,6 +1183,8 @@ class Reader {
 				},
 
 				check_named_node: namedNode,
+
+				check_named_node_escapeless: namedNode,
 
 				match_prefixed_name_escapeless,
 
@@ -2500,10 +2542,10 @@ class Reader {
 			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, false, true)}
 
 			@- B_UPGRADE_FACTORY
-				w_datatype = this.named_node(p_datatype);
+				w_datatype = this.check_named_node_escapeless(p_datatype);
 			@:
 				// set literal datatype
-				this._kt_object.datatype = this.named_node(p_datatype);
+				this._kt_object.datatype = this.check_named_node_escapeless(p_datatype);
 			@;
 
 		// prefixed name
