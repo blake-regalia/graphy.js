@@ -303,47 +303,6 @@ const R_CHAR_STOP = /\.\s*/y;
 @;
 
 
-const F_REPLACE_STRLIT_CONTENTS = (s_, s_whitespace, s_auto, s_4, s_8, s_invalid) => {
-	if(s_whitespace) {
-		switch(s_whitespace) {
-			case 't': return '\t';
-			case 'n': return '\n';
-			case 'r': return '\r';
-			case 'f': return '\f';
-			case 'b': return '\b';
-			default: {
-				console.assert(`bad regex escape char mapping: '${s_whitespace}'`);
-			}
-		}
-	}
-	else if(s_auto) {
-		return s_auto;
-	}
-	else if(s_4) {
-		return String.fromCodePoint(parseInt(s_4, 16));
-	}
-	else if(s_8) {
-		return String.fromCodePoint(parseInt(s_8, 16));
-	}
-	else if(s_invalid) {
-		// pointless escape
-		if('\\' === s_invalid[0]) {
-			// // relaxed
-			// return s_invalid[1];
-
-			// if relaxed then return s_invalid, otherwise throw:
-			throw new Error(`expected string_literal but invalid escape sequence within contents: '${s_invalid}'. failed to parse a valid token`);
-
-		}
-		// bad character
-		else {
-			throw new Error(`expected string_literal but invalid whitespace character within contents: ${JSON.stringify(s_invalid)}. failed to parse a valid token`);
-		}
-	}
-	else {
-		console.assert(`unexpected no match branch in escape sequence replace callback`);
-	}
-};
 
 
 @//	pre-escape sequence
@@ -356,159 +315,11 @@ const F_REPLACE_STRLIT_CONTENTS = (s_, s_whitespace, s_auto, s_4, s_8, s_invalid
 @//	)
 
 
-@>> R_STRLIT_SHORT_CONTENTS_ESCAPES(r_flexibility)
-@//@regex
-(?:
-	\\(?:
-		([tnrfb])
-		| ([\\"'])
-		| u([0-9A-Fa-f]{4})
-		| U([0-9A-Fa-f]{8})
-	)
-	| (
-		[\r\n]
-		| @{r_flexibility.source}
-	)
-)
-@;
-
 @// const R_STRLIT_CONTENTS_ESCAPES_SOFT_OG = /\\(?:([tnrfb])|([\\"'])|u([0-9A-Fa-f]{4})|U([0-9A-Fa-f]{8})|([^uU]))(?=[^])/g;
 
-const R_STRLIT_SHORT_CONTENTS_ESCAPES_SOFT = /@{R_STRLIT_SHORT_CONTENTS_ESCAPES(/\\[^uU]|\\u[^]{4}|\\U[^]{8}/)}/g;
-const R_STRLIT_SHORT_CONTENTS_ESCAPES_HARD = /@{R_STRLIT_SHORT_CONTENTS_ESCAPES(/\\./)}/g;
-
-
-@>> R_STRLIT_LONG_CONTENTS_ESCAPES(r_flexibility)
-@//@regex
-(?:
-	\\(?:
-		([tnrfb])
-		| ([\\"'])
-		| u([0-9A-Fa-f]{4})
-		| U([0-9A-Fa-f]{8})
-	)
-	| (
-		@{r_flexibility.source}
-	)
-)
-@;
-
-const R_STRLIT_LONG_CONTENTS_ESCAPES_SOFT = /@{R_STRLIT_LONG_CONTENTS_ESCAPES(/\\[^uU]|\\u[^]{4}|\\U[^]{8}/)}/g;
-const R_STRLIT_LONG_CONTENTS_ESCAPES_HARD = /@{R_STRLIT_LONG_CONTENTS_ESCAPES(/\\./)}/g;
-
-const R_STRLIT_ESCAPE_INCOMPLETE = /\\(|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})$/;
 
 const R_STRLIT_SHORT_DOUBLE_BREAK = /[\\"\r\n]/g;
 const R_STRLIT_SHORT_SINGLE_BREAK = /[\\'\r\n]/g;
-
-// lookbehind regexes
-const [
-	R_STRLIT_SHORT_DOUBLE_TERM,
-	R_STRLIT_SHORT_SINGLE_TERM,
-	R_STRLIT_LONG_DOUBLE_TERM,
-	R_STRLIT_LONG_SINGLE_TERM,
-] = (() => {
-	@>> R_STRLIT_TERM_LOOKBEHIND(r_term)
-		@//@regex
-		(?<!
-			(?:
-				[^\\] | ^
-			)(?:
-				\\\\
-			)*
-			\\
-		)
-		@{r_term.source}\s*
-	@;
-
-	@>> R_STRLIT_TERM_POLYFILL(r_term)
-		@//@regex
-		(?:(?:[^\\]|^)(?:\\\\)*)@{r_term.source}\s*
-	@;
-
-	@> STRLIT_TERM(r_term)
-		mk_lookbehind_regex(
-			() => /@{R_STRLIT_TERM_LOOKBEHIND(r_term)}/g,
-			/@{R_STRLIT_TERM_POLYFILL(r_term)}/g,
-			RegExp_$lookbehind_polyfill_@{r_term.source.length}
-		),
-	@;
-
-	function RegExp_$lookbehind_polyfill_1(s_input) {
-		let m_match = RegExp.prototype.exec.call(this, s_input);
-		
-		if(m_match) {
-			m_match.index += m_match[0].length - 1;
-		}
-		
-		return m_match;
-	}
-
-	function RegExp_$lookbehind_polyfill_3(s_input) {
-		let m_match = RegExp.prototype.exec.call(this, s_input);
-		
-		if(m_match) {
-			let i_start = m_match[0].length - 3;
-			m_match.index += i_start;
-			m_match[0] = m_match[0].slice(i_start);
-		}
-		
-		return m_match;
-	}
-
-	let mk_lookbehind_regex = (() => {
-		try {
-			/(?<!h)i/;  // eslint-disable-line no-unused-expressions
-		}
-		catch(e_compile) {
-			return (f_lookbehind, r_polyfill, f_polyfill) => {
-				r_polyfill.exec = f_polyfill;
-				return r_polyfill;
-			};
-		}
-
-		return f_lookbehind => f_lookbehind();
-	})();
-
-	return [
-		// R_STRLIT_SHORT_DOUBLE_TERM
-		@{STRLIT_TERM(/"/)}
-
-		// R_STRLIT_SHORT_SINGLE_TERM
-		@{STRLIT_TERM(/'/)}
-
-		// R_STRLIT_LONG_DOUBLE_TERM
-		@{STRLIT_TERM(/"""/)}
-
-		// R_STRLIT_LONG_SINGLE_TERM
-		@{STRLIT_TERM(/'''/)}
-
-@//		mk_lookbehind_regex(
-@//			() => /@{R_STRLIT_TERM(/"/)}/g,
-@//			/(?:(?:[^\\]|^)(?:\\\\)*)"\s*/g,
-@//			RegExp_$lookbehind_polyfill_1
-@//		),
-@//
-@//		mk_lookbehind_regex(
-@//			() => /@{R_STRLIT_TERM(/'/)}/g,
-@//			/(?:(?:[^\\]|^)(?:\\\\)*)'\s*/g,
-@//			RegExp_$lookbehind_polyfill_1
-@//		),
-@//
-@//		mk_lookbehind_regex(
-@//			() => /@{R_STRLIT_TERM(/"""/)}/g,
-@//			/(?:(?:[^\\]|^)(?:\\\\)*)"""\s*/g,
-@//			RegExp_$lookbehind_polyfill_3
-@//		),
-@//
-@//		mk_lookbehind_regex(
-@//			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)'''\s*/,
-@//			/(?:(?:[^\\]|^)(?:\\\\)*)'''\s*/g,
-@//			RegExp_$lookbehind_polyfill_3
-@//		),
-	];
-})();
-
 
 const R_STRLIT_LONG_DOUBLE_UNFINISHED_TERM = /"{1,2}$/g;
 const R_STRLIT_LONG_SINGLE_UNFINISHED_TERM = /'{1,2}$/g;
@@ -516,60 +327,7 @@ const R_STRLIT_LONG_SINGLE_UNFINISHED_TERM = /'{1,2}$/g;
 const R_STRLIT_LONG_DOUBLE_BREAK = /(\\|""")/g;
 const R_STRLIT_LONG_SINGLE_BREAK = /(\\|''')/g;
 
-
-const unescape_literal_short_soft = (s_literal) => {
-	let s_clean = s_literal
-		.replace(R_STRLIT_SHORT_CONTENTS_ESCAPES_SOFT, F_REPLACE_STRLIT_CONTENTS);
-
-	let m_incomplete = R_STRLIT_ESCAPE_INCOMPLETE.exec(s_literal);
-
-	// incomplete escape
-	if(m_incomplete) {
-		let i_safe = m_incomplete.index;
-
-		// rewind
-		return [
-			s_clean.slice(0, i_safe),
-			s_clean.slice(i_safe),
-		];
-	}
-	// done
-	else {
-		return [s_clean, ''];
-	}
-};
-
-const unescape_literal_short_hard = s_literal => s_literal
-	.replace(R_STRLIT_SHORT_CONTENTS_ESCAPES_HARD, F_REPLACE_STRLIT_CONTENTS);
-
-const unescape_literal_long_soft = (s_literal) => {
-	let s_clean = s_literal
-		.replace(R_STRLIT_LONG_CONTENTS_ESCAPES_SOFT, F_REPLACE_STRLIT_CONTENTS);
-
-	let m_incomplete = R_STRLIT_ESCAPE_INCOMPLETE.exec(s_literal);
-
-	// incomplete escape
-	if(m_incomplete) {
-		let i_safe = m_incomplete.index;
-
-		// rewind
-		return [
-			s_clean.slice(0, i_safe),
-			s_clean.slice(i_safe),
-		];
-	}
-	// done
-	else {
-		return [s_clean, ''];
-	}
-};
-
-const unescape_literal_long_hard = (s_literal) => {
-	let s_clean = s_literal
-		.replace(R_STRLIT_LONG_CONTENTS_ESCAPES_HARD, F_REPLACE_STRLIT_CONTENTS);
-
-	return s_clean;
-};
+@{unescape_literals(['short', 'long'])}
 
 const match_prefixed_name_escapeless = (s, i) => {
 	R_PREFIXED_NAME_ESCAPELESS.lastIndex = i;
@@ -2533,7 +2291,7 @@ class Reader {
 
 	@{method('datatype')}
 		@- B_UPGRADE_FACTORY
-			let w_datatype = null;
+			let kt_datatype = null;
 		@;
 
 		// iriref
@@ -2542,7 +2300,7 @@ class Reader {
 			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, false, true)}
 
 			@- B_UPGRADE_FACTORY
-				w_datatype = this.check_named_node_escapeless(p_datatype);
+				kt_datatype = this.check_named_node_escapeless(p_datatype);
 			@:
 				// set literal datatype
 				this._kt_object.datatype = this.check_named_node_escapeless(p_datatype);
@@ -2553,7 +2311,7 @@ class Reader {
 			@{valid_prefix('m_prefixed_named_e_datatype')}
 
 			@- B_UPGRADE_FACTORY
-				w_datatype = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_datatype[2]')};
+				kt_datatype = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_datatype[2]')};
 			@:
 				// set literal datatype
 				this._kt_object.datatype = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_datatype[2]')};
@@ -2561,7 +2319,15 @@ class Reader {
 
 		// iriref
 		@{else_if_match('R_IRIREF', 'm_iriref_datatype')}
-			@{iriref('object["datatype"]', 'm_iriref_datatype', false, false, true)}
+			let p_datatype;
+			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, true, true)}
+
+			@- B_UPGRADE_FACTORY
+				kt_datatype = this.check_named_node(p_datatype);
+			@:
+				// set literal datatype
+				this._kt_object.datatype = this.check_named_node(p_datatype);
+			@;
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_datatype')}
@@ -2571,7 +2337,7 @@ class Reader {
 
 			@- B_UPGRADE_FACTORY
 				// set literal datatype
-				w_datatype = @{prefixed_name('s_prefix_id', 's_suffix')};
+				kt_datatype = @{prefixed_name('s_prefix_id', 's_suffix')};
 			@:
 				// set literal datatype
 				this._kt_object.datatype = @{prefixed_name('s_prefix_id', 's_suffix')};
@@ -2581,7 +2347,7 @@ class Reader {
 		@{else_retry()}
 
 		@- B_UPGRADE_FACTORY
-			this._kt_object = this._dc_factory.datatypedLiteral(this._s_literal, w_datatype);
+			this._kt_object = this._dc_factory.datatypedLiteral(this._s_literal, kt_datatype);
 
 			// reset literal
 			this._s_literal = '';

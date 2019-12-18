@@ -2,7 +2,7 @@
 const expect = require('chai').expect;
 
 const stream = require('@graphy/core.iso.stream');
-const dataset_tree = require('graphy-stable').memory.dataset.fast;
+const dataset_tree = require('@graphy-stable/memory.dataset.fast');
 
 const util = require('./util.js');
 

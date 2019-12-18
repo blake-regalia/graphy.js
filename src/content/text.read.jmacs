@@ -126,7 +126,7 @@
 
 
 @// unescape a string literal
-@> unescape_literal(sv_literal, b_whitespace=false)
+@> unescape_literal_whole(sv_literal, b_whitespace=false)
 	JSON.parse('"'
 		+@{sv_literal}
 			.replace(R_UNICODE_8, F_REPLACE_UNICODE_ANY)
@@ -136,6 +136,264 @@
 			@// 	.replace(/"/g, '\\"') // escape all quotes ;)
 			@// @;
 		+'"')
+@;
+
+
+
+@>> R_STRLIT_SHORT_CONTENTS_ESCAPES(r_flexibility)
+@//@regex
+(?:
+	\\(?:
+		([tnrfb])
+		| ([\\"'])
+		| u([0-9A-Fa-f]{4})
+		| U([0-9A-Fa-f]{8})
+	)
+	| (
+		[\r\n]
+		| @{r_flexibility.source}
+	)
+)
+@;
+
+
+@>> R_STRLIT_LONG_CONTENTS_ESCAPES(r_flexibility)
+@//@regex
+(?:
+	\\(?:
+		([tnrfb])
+		| ([\\"'])
+		| u([0-9A-Fa-f]{4})
+		| U([0-9A-Fa-f]{8})
+	)
+	| (
+		@{r_flexibility.source}
+	)
+)
+@;
+
+
+@>> R_STRLIT_TERM_LOOKBEHIND(r_term, b_ws=false)
+	@//@regex
+	(?<!
+		(?:
+			[^\\] | ^
+		)(?:
+			\\\\
+		)*
+		\\
+	)
+	@{r_term.source}@{b_ws? /\s*/.source: ''}
+@;
+
+
+@//	(?:(?:[^\\]|^)(?:\\\\)*)@{r_term.source}@{b_ws? /\s*/.source: ''}
+
+@>> R_STRLIT_TERM_POLYFILL(r_term, b_ws=false)
+	@.{
+		let s_src = r_term.source;
+	}
+	@//@regex
+	(?:[^\\@{s_src[0]}]|\\.@{s_src.length > 1? '|'+s_src.slice(0, -1)+`?(?!${s_src[0]})`: ''})*(@{s_src}@{b_ws? /\s*/.source: ''})
+@;
+
+@> STRLIT_TERM(r_term)
+	mk_lookbehind_regex(
+		() => /@{R_STRLIT_TERM_LOOKBEHIND(r_term, true)}/g,
+		/@{R_STRLIT_TERM_POLYFILL(r_term, true)}/y,
+		RegExp_$lookbehind_polyfill
+	),
+@;
+
+@> unescape_literals(a_types)
+	@.{
+		let b_short = a_types.includes('short');
+		let b_long = a_types.includes('long');
+	}
+
+	@// const R_STRLIT_ESCAPE_INCOMPLETE = /\\(|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})$/;
+
+	const F_REPLACE_STRLIT_CONTENTS = (s_, s_whitespace, s_auto, s_4, s_8, s_invalid) => {
+		if(s_whitespace) {
+			switch(s_whitespace) {
+				case 't': return '\t';
+				case 'n': return '\n';
+				case 'r': return '\r';
+				case 'f': return '\f';
+				case 'b': return '\b';
+				default: {
+					console.assert(`bad regex escape char mapping: '${s_whitespace}'`);
+				}
+			}
+		}
+		else if(s_auto) {
+			return s_auto;
+		}
+		else if(s_4) {
+			return String.fromCodePoint(parseInt(s_4, 16));
+		}
+		else if(s_8) {
+			return String.fromCodePoint(parseInt(s_8, 16));
+		}
+		else if(s_invalid) {
+			// pointless escape
+			if('\\' === s_invalid[0]) {
+				// // relaxed
+				// return s_invalid[1];
+
+				// if relaxed then return s_invalid, otherwise throw:
+				throw new Error(`expected string_literal but invalid escape sequence within contents: '${s_invalid}'. failed to parse a valid token`);
+
+			}
+			// bad character
+			else {
+				throw new Error(`expected string_literal but invalid whitespace character within contents: ${JSON.stringify(s_invalid)}. failed to parse a valid token`);
+			}
+		}
+		else {
+			console.assert(`unexpected no match branch in escape sequence replace callback`);
+		}
+	};
+
+	@*{
+		for(let s_type of a_types) {
+			yield unescape_literal_type(s_type);
+		}
+	}
+
+	// lookbehind regexes
+	const [
+		R_STRLIT_ESCAPE_INCOMPLETE,
+		@- b_short
+			R_STRLIT_SHORT_DOUBLE_TERM,
+			R_STRLIT_SHORT_SINGLE_TERM,
+		@;
+		@- b_long
+			R_STRLIT_LONG_DOUBLE_TERM,
+			R_STRLIT_LONG_SINGLE_TERM,
+		@;
+	] = (() => {
+		function RegExp_$lookbehind_polyfill(s_input) {
+			let m_match = RegExp.prototype.exec.call(this, s_input);
+			
+			if(m_match) {
+				let i_start = m_match[0].length - m_match[1].length;
+				m_match.index += i_start;
+				m_match[0] = m_match[0].slice(i_start);
+			}
+			
+			return m_match;
+		}
+
+		let mk_lookbehind_regex = (() => {
+			try {
+				/(?<!h)i/;  // eslint-disable-line no-unused-expressions
+			}
+			catch(e_compile) {
+				return (f_lookbehind, r_polyfill, f_polyfill) => {
+					r_polyfill.exec = f_polyfill;
+					return r_polyfill;
+				};
+			}
+
+			return f_lookbehind => f_lookbehind();
+		})();
+
+		return [
+			// R_STRLIT_ESCAPE_INCOMPLETE
+			mk_lookbehind_regex(
+				() => /@{R_STRLIT_TERM_LOOKBEHIND(/\\(|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})$/, false)}/,
+				/^(?:(?:[^\\]|\\.)*)(\\(?:|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7}))$/,
+				function RegExp_$lookbehind_polyfill_n(s_input) {
+					let m_match = RegExp.prototype.exec.call(this, s_input);
+
+					if(m_match) {
+						m_match.index += m_match[0].length - m_match[1].length;
+					}
+					
+					return m_match;
+				}
+			),
+
+			@- b_short
+				// R_STRLIT_SHORT_DOUBLE_TERM
+				@{STRLIT_TERM(/"/)}
+
+				// R_STRLIT_SHORT_SINGLE_TERM
+				@{STRLIT_TERM(/'/)}
+			@;
+
+			@- b_long
+				// R_STRLIT_LONG_DOUBLE_TERM
+				@{STRLIT_TERM(/"""/)}
+
+				// R_STRLIT_LONG_SINGLE_TERM
+				@{STRLIT_TERM(/'''/)}
+			@;
+
+	@//		mk_lookbehind_regex(
+	@//			() => /@{R_STRLIT_TERM(/"/)}/g,
+	@//			/(?:(?:[^\\]|^)(?:\\\\)*)"\s*/g,
+	@//			RegExp_$lookbehind_polyfill_1
+	@//		),
+	@//
+	@//		mk_lookbehind_regex(
+	@//			() => /@{R_STRLIT_TERM(/'/)}/g,
+	@//			/(?:(?:[^\\]|^)(?:\\\\)*)'\s*/g,
+	@//			RegExp_$lookbehind_polyfill_1
+	@//		),
+	@//
+	@//		mk_lookbehind_regex(
+	@//			() => /@{R_STRLIT_TERM(/"""/)}/g,
+	@//			/(?:(?:[^\\]|^)(?:\\\\)*)"""\s*/g,
+	@//			RegExp_$lookbehind_polyfill_3
+	@//		),
+	@//
+	@//		mk_lookbehind_regex(
+	@//			() => /(?<!(?:[^\\]|^)(?:\\\\)*\\)'''\s*/,
+	@//			/(?:(?:[^\\]|^)(?:\\\\)*)'''\s*/g,
+	@//			RegExp_$lookbehind_polyfill_3
+	@//		),
+		];
+	})();
+@;
+
+@> unescape_literal_type(s_type)
+	@.{
+		let s_type_caps = s_type.toUpperCase();
+		let f_escapes = 'short' === s_type? R_STRLIT_SHORT_CONTENTS_ESCAPES: R_STRLIT_LONG_CONTENTS_ESCAPES;
+	}
+
+	const R_STRLIT_@{s_type_caps}_CONTENTS_ESCAPES_HARD = /@{f_escapes(/\\./)}/g;
+	const R_STRLIT_@{s_type_caps}_CONTENTS_ESCAPES_SOFT = /@{f_escapes(/\\[^uU]|\\u[^]{4}|\\U[^]{8}/)}/g;
+
+	const unescape_literal_@{s_type}_hard = s_literal => s_literal
+		.replace(R_STRLIT_@{s_type_caps}_CONTENTS_ESCAPES_HARD, F_REPLACE_STRLIT_CONTENTS);
+
+	const unescape_literal_@{s_type}_soft = (s_literal) => {
+		let m_incomplete = R_STRLIT_ESCAPE_INCOMPLETE.exec(s_literal);
+
+		// incomplete escape
+		if(m_incomplete) {
+			let i_safe = m_incomplete.index;
+
+			// rewind
+			return [
+				s_literal.slice(0, i_safe)
+					.replace(R_STRLIT_@{s_type_caps}_CONTENTS_ESCAPES_SOFT, F_REPLACE_STRLIT_CONTENTS),
+				s_literal.slice(i_safe),
+			];
+		}
+		// done
+		else {
+			return [
+				s_literal
+					.replace(R_STRLIT_@{s_type_caps}_CONTENTS_ESCAPES_SOFT, F_REPLACE_STRLIT_CONTENTS),
+				'',
+			];
+		}
+	};
+
 @;
 
 
