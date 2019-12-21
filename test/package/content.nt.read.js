@@ -22,7 +22,7 @@ reader_suite({
 			'whitespace': () => [' \t \n', []],
 		},
 
-		'irirs': {
+		'iris': {
 			'iris': () => ['<z://y/a> <z://y/b> <z://y/c> .', a_abc],
 
 			'iris w/ unicode escapes': () => ['<z://y/\\u2713> <z://y/like> <z://y/\\U0001F5F8> .', [
