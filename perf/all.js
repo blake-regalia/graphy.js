@@ -19,16 +19,16 @@ const H_FORMATS = {
 			...gen_inputs('nt'),
 		],
 	},
-	// nq: {
-	// 	inputs: [
-	// 		// ...gen_inputs('nq'),
-	// 	],
-	// },
 	ttl: {
 		inputs: [
 			...gen_inputs('ttl'),
 		],
 	},
+	// nq: {
+	// 	inputs: [
+	// 		// ...gen_inputs('nq'),
+	// 	],
+	// },
 	// trig: {
 	// 	inputs: [
 	// 		// ...gen_inputs('trig'),
@@ -43,6 +43,9 @@ const H_CONVERT_FORMAT_MAPPINGS = {
 	ttl: [
 		'nt',
 	],
+	// nq: [
+	// 	'trig',
+	// ],
 	// trig: [
 	// 	'nq',
 	// ],
@@ -106,7 +109,11 @@ const H_TASK_PERMS = {
 };
 
 const H_PARTIES = {
-	n3: {
+	N3: {
+		label: 'N3.js',
+		href: 'https://github.com/rdfjs/N3.js',
+		version: require('n3/package.json').version,
+
 		tasks: {
 			count: H_TASK_PERMS.count(),
 			distinct: H_TASK_PERMS.distinct(),
@@ -115,6 +122,10 @@ const H_PARTIES = {
 	},
 
 	graphy: {
+		label: 'graphy',
+		href: 'https://github.com/blake-regalia/graphy.js',
+		version: require('graphy/package.json').version,
+
 		tasks: {
 			count: H_TASK_PERMS.count({
 				modes: H_MODES_GRAPHY_READ,
@@ -130,30 +141,7 @@ const H_PARTIES = {
 };
 
 
-// const H_APPLY_FORMATS_IN = Object.entries(H_FORMATS).reduce((h_out, [s_format, g_format]) => ({
-// 	...h_out,
-// 	[s_format]: {
-// 		inputs: g_format.inputs,
-// 		config: {
-// 			S_FORMAT_IN: s_format,
-// 		},
-// 	},
-// }), {});
-
-// const H_TASKS = {
-// 	count: {
-// 		apply: H_APPLY_FORMATS_IN,
-// 	},
-// 	distinct: {
-// 		apply: H_APPLY_FORMATS_IN,
-// 	},
-// 	convert: {
-// 	},
-// };
-
-
 module.exports = {
-	// H_TASKS,
 	H_PARTIES,
 };
 

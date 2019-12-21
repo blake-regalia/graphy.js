@@ -7,6 +7,10 @@ const {
 	CanvasRenderService,
 } = require('chartjs-node-canvas');
 
+const {
+	H_PARTIES,
+} = require('./all.js');
+
 let a_bench = require(process.argv[2] || './build/bench.json');
 
 const H_FLAVORS = {
@@ -35,17 +39,12 @@ const H_TRANSFORM = {
 const H_COLORS = {
 	'graphy/default': 'rgba(0, 127, 0 1)',
 	'graphy/relaxed': 'rgba(0, 0, 127, 1)',
-	'n3/default': 'rgba(127, 0, 0, 1)',
+	'N3/default': 'rgba(127, 0, 0, 1)',
 };
 
 const H_REVIEWS = {
 	elapsed: 'Time Elapsed (s)',
 	memory: 'Memory Usage (MiB)',
-};
-
-const H_PARTIES = {
-	graphy: 'graphy.js',
-	n3: 'N3.js',
 };
 
 const H_SOURCES = {
@@ -57,9 +56,11 @@ const H_COMPARE = {
 	count: {
 		info: 'Count the number of statements in an RDF document.',
 	},
+
 	distinct: {
 		info: 'Count the distinct number of triples/quads in an RDF document.',
 	},
+
 	convert: {
 		info: 'Convert an RDF document from one serialization format to another.',
 	},
@@ -229,6 +230,10 @@ async function* r() {
 		Memory-intensive tasks were run with the \`--max-old-space-size=8192\` node.js option (e.g., the [distinct task](#distinct-task)). Some charts show an exponential jump in time due to the fact that V8's GC starts aggressively trying to free up memory.
 
 		Want to see how other libraries stack up? Feel free to [open an issue](https://github.com/blake-regalia/graphy.js/issues).
+
+		## Versions
+		${Object.entries(H_PARTIES).reduce((s_out, [, g_party]) => s_out
+			+` - [${g_party.label}](${g_party.href}) v${g_party.version}`, '')}
 
 		## Table of Contents
 		${[...new Set(a_bench.map(g => g.task))].map(s => ` - [${proper(s)} Task](#${s}-task) -- ${H_COMPARE[s].info}`).join('\n')}
