@@ -587,6 +587,22 @@ class Reader {
 					// append newline to end so we can match token
 					this.s += '\n';
 
+					// remove whitespace & comments from beginning
+					if(this._b_trim_start) {
+						r_clean.lastIndex = 0;
+						let m_clean = r_clean.exec(this.s);
+						if(this.emit_comments) {
+							this.emit_comments(m_clean[1]);
+						}
+
+						// update index and prepare to match statement
+						this.i = r_clean.lastIndex;
+					}
+					// do not remove whitespace; reset index
+					else {
+						this.i = 0;
+					}
+
 					// parse
 					try {
 						this.parse();
