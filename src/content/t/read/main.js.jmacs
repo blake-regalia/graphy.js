@@ -327,7 +327,7 @@ const R_STRLIT_LONG_SINGLE_UNFINISHED_TERM = /'{1,2}$/g;
 const R_STRLIT_LONG_DOUBLE_BREAK = /(\\|""")/g;
 const R_STRLIT_LONG_SINGLE_BREAK = /(\\|''')/g;
 
-@{unescape_literals(['short', 'long'])}
+@{unescape_literals(true)}
 
 const match_prefixed_name_escapeless = (s, i) => {
 	R_PREFIXED_NAME_ESCAPELESS.lastIndex = i;

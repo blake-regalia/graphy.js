@@ -205,12 +205,7 @@
 	),
 @;
 
-@> unescape_literals(a_types)
-	@.{
-		let b_short = a_types.includes('short');
-		let b_long = a_types.includes('long');
-	}
-
+@> unescape_literals(b_terse=false)
 	@// const R_STRLIT_ESCAPE_INCOMPLETE = /\\(|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})$/;
 
 	const F_REPLACE_STRLIT_CONTENTS = (s_, s_whitespace, s_auto, s_4, s_8, s_invalid) => {
@@ -255,20 +250,17 @@
 		}
 	};
 
-	@*{
-		for(let s_type of a_types) {
-			yield unescape_literal_type(s_type);
-		}
-	}
+	@{unescape_literal_type('short')}
+	@- b_terse
+		@{unescape_literal_type('long')}
+	@;
 
 	// lookbehind regexes
 	const [
 		R_STRLIT_ESCAPE_INCOMPLETE,
-		@- b_short
-			R_STRLIT_SHORT_DOUBLE_TERM,
+		R_STRLIT_SHORT_DOUBLE_TERM,
+		@- b_terse
 			R_STRLIT_SHORT_SINGLE_TERM,
-		@;
-		@- b_long
 			R_STRLIT_LONG_DOUBLE_TERM,
 			R_STRLIT_LONG_SINGLE_TERM,
 		@;
@@ -315,15 +307,13 @@
 				}
 			),
 
-			@- b_short
-				// R_STRLIT_SHORT_DOUBLE_TERM
-				@{STRLIT_TERM(/"/)}
+			// R_STRLIT_SHORT_DOUBLE_TERM
+			@{STRLIT_TERM(/"/)}
 
+			@- b_terse
 				// R_STRLIT_SHORT_SINGLE_TERM
 				@{STRLIT_TERM(/'/)}
-			@;
 
-			@- b_long
 				// R_STRLIT_LONG_DOUBLE_TERM
 				@{STRLIT_TERM(/"""/)}
 

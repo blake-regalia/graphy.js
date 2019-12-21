@@ -6,59 +6,47 @@
 
 @$ NT = 'nt' === FORMAT;
 @$ NQ = 'nq' === FORMAT;
-@$ QUADS = NQ;
+@$ B_QUADS = NQ;
 
 @$ S_LABEL = NT? 'NTriples': 'NQuads';
 
 @$ B_OPTIMIZE_UNESCAPE = true;
-@$ B_UPGRADE_FACTORY = true;
-@.{
-	let SJ_DEFAULT_GRAPH;
-
-	if(B_UPGRADE_FACTORY) {
-		SJ_DEFAULT_GRAPH = /* syntax: js */ `kt_default_graph`;
-	}
-	else {
-		SJ_DEFAULT_GRAPH = /* syntax: js */ `KT_DEFAULT_GRAPH`;
-	}
-}
 
 @// import parser macros
 @import '../../text.read.jmacs'
 
 const stream = require('@{channel('core.iso.stream')}');
-const factory = require('@{channel('core.data.factory')}')@{B_UPGRADE_FACTORY? '': '.raw'};
+const factory = require('@{channel('core.data.factory')}');
 
-@- !B_UPGRADE_FACTORY
-	const KT_DEFAULT_GRAPH = factory.defaultGraph();
-	const KT_RDFS_LANG_STRING = factory.namedNode('@{P_IRI_RDFS}langString');
-@;
+const RT_ABSOLUTE_IRI_VALID = /^[a-z][a-z0-9+\-.]*:(?:[^\0-\x20<>"{}|^`\\]|@{UCHAR()})*$/;
+const RT_ABSOLUTE_IRI_ESCAPELESS_VALID = /^[a-z][a-z0-9+\-.]*:[^\0-\x20<>"{}|^`]*$/;
+const RT_NAMED_NODE_VALID = /@{RT_NAMED_NODE_VALID(false)}/;
+const RT_NAMED_NODE_ESCAPELESS_VALID = /@{RT_NAMED_NODE_VALID(true)}/;
 
-const H_ESCAPES_JSON = @{H_ESCAPES_JSON()};
-
-const R_ESCAPES = /@{R_ESCAPES()}/g;
-const R_UNICODE_8 = /@{R_UNICODE_8()}/g;
 const R_UNICODE_ANY = /@{R_UNICODE_4()}|@{R_UNICODE_8()}/g;
 
 const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
 
-@- B_OPTIMIZE_UNESCAPE
-	const unescape_literal = s => @{unescape_literal('s')};
-@;
 
 const R_CLEAN = /\s*(?:#[^\n]*\n\s*)*\s*/y;
 const R_CLEAN_COMMENTS = /\s*(#[^\n]*\n\s*)*\s*/y;
-const R_LITERAL_ESCAPELESS = /^"([^\\"]*)"(?:\^\^<([^\\>]*)>|@([^ \t.]+)|)?$/;
-const R_LITERAL = /^"(.*)"(?:\^\^<(.*)>|@([^ \t.]+)|)?$/;
 const RT_HAS_ESCAPES = /[\\]/;
 const R_EOL = /[^\n]+\n/y;
 
-const RT_ABSOLUTE_IRI_VALID = /^[a-z][a-z0-9+\-.]*:([^\0-\x20<>"{}|^`\\]|@{UCHAR()})*$/;
 // eslint-disable-next-line no-misleading-character-class
 const RT_BLANK_NODE_LABEL_VALID = /^(?:[@{RANGE_PN_CHARS_U()}0-9])(?:(?:[@{RANGE_PN_CHARS()}.])*[@{RANGE_PN_CHARS()}])?$/u;
-const RT_ESCAPES_INVALID = /@{RT_ESCAPES_INVALID()}/;
-const RT_LITERAL_CONTENTS_VALID = /@{RT_LITERAL_CONTENTS_VALID('\\n\\r')}/;
 const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
+
+const R_WS = /\s*/y;
+const R_HWS = /[ \t]*/y;
+const R_LANGTAG = /@([A-Za-z]+(?:-[A-Za-z0-9-]+)*)(?:\s+|(?=[.,;\])#]))/y;
+
+const R_IRIREF = /<([^>]*)>\s*/y;
+
+
+@{unescape_literals()}
+
+
 
 @>> R_NAMED_NODE(b_escapeless=false, b_open_cap=false)
 	@//@regex
@@ -78,7 +66,19 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 
 @>> R_LITERAL(b_escapeless=false)
 	@//@regex
-	"(@{b_escapeless? '[^"\\\\]': '(?:[^"\\\\]|\\\\.)'}*)"(?:\^\^@{R_NAMED_NODE(b_escapeless)}|@([^\x20\t.]+)|)
+	"(@{(b_escapeless? /[^"\\]/: /(?:[^"\\]|\\.)/).source}*)"(?:\^\^@{R_NAMED_NODE(b_escapeless)}|@([^\x20\t.]+)|)
+@;
+
+@>> R_LITERAL_X(b_escapeless=false)
+	@//@regex
+	"(@{(b_escapeless? /[^"\\]/: /(?:[^"\\]|\\.)/).source}*)
+	(?:
+		(")(?:
+			\^\^@{R_NAMED_NODE(b_escapeless)}
+			| @([^\x20\t.]+)
+			|
+		) @{R_STMT_TERM(b_escapeless)}
+	)?
 @;
 
 @>> R_OBJECT(b_escapeless=false)
@@ -100,6 +100,27 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 	[\x20\t]* @{R_COMMENT()}
 @;
 
+@>> R_STMT_TERM(b_escapeless=false)
+	@- B_QUADS
+		@//@regex
+		[\x20\t]* (?:@{R_NODE(b_escapeless)}|)  @// optional graph component
+	@;
+	@//@regex
+	[\x20\t]* @{R_COMMENT()}
+@;
+
+
+@>> R_TRIPLE_X(b_escapeless=false)
+	@//@regex
+	(?:@{R_NODE(b_escapeless)})
+	[\x20\t]* @{R_NAMED_NODE(b_escapeless)}
+	[\x20\t]* (?:
+		(?:@{R_NODE(b_escapeless, true)}) @{R_STMT_TERM(b_escapeless)}
+		| @{R_LITERAL_X(b_escapeless)}
+	)
+@;
+
+
 @>> R_QUAD(b_escapeless=false)
 	@//@regex
 	(?:@{R_NODE(b_escapeless)})
@@ -109,16 +130,27 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 	[\x20\t]* @{R_COMMENT()}
 @;
 
-@- QUADS
+@>> R_QUAD_X(b_escapeless=false)
+	@//@regex
+	(?:@{R_NODE(b_escapeless)})
+	[\x20\t]* @{R_NAMED_NODE(b_escapeless)}
+	[\x20\t]* (?:
+		(?:@{R_NODE(b_escapeless, true)}) @{R_STMT_TERM(b_escapeless)}
+		| @{R_LITERAL_X(b_escapeless)}
+	)
+@;
+
+@- B_QUADS
 	@$ STATEMENT_REGEX = 'R_QUAD';
 
-	const R_QUAD_ESCAPELESS_SP = /@{R_QUAD(true)}/y;
-	const R_QUAD = /@{R_QUAD()}/y;
+	const R_QUAD_ESCAPELESS_SP = /@{R_QUAD_X(true)}/y;
+	const R_QUAD = /@{R_QUAD_X()}/y;
+	const R_BLANK_NODE = /@{R_BLANK_NODE()}/y;
 @:
 	@$ STATEMENT_REGEX = 'R_TRIPLE';
 
-	const R_TRIPLE_ESCAPELESS_SP = /@{R_TRIPLE(true)}/y;
-	const R_TRIPLE = /@{R_TRIPLE()}/y;
+	const R_TRIPLE_ESCAPELESS_SP = /@{R_TRIPLE_X(true)}/y;
+	const R_TRIPLE = /@{R_TRIPLE_X()}/y;
 @;
 
 
@@ -144,109 +176,186 @@ const RT_LANGUAGE_VALID = /^[a-z]+(-[a-z0-9]+)*$/;
 	const ue_iri = (sv_iri, b_unescape=false) => b_unescape? unescape_iri(sv_iri): sv_iri;
 }
 
-@> match_body(sv_match, b_unescape=false)
+@> match_body(sji_match, b_unescape=false)
+	@.{
+		let sji_named_node = /* syntax: js */ `create_named_node${b_unescape? '': '_escapeless'}`;
+		let i_group_strlit = B_QUADS? 9: 7;
+		let i_group_graph = B_QUADS? 11: 9;
+	}
 	// prep object term
 	let kt_object;
 
+	@- B_QUADS
+		// where to find the graph component
+		let b_graph_late = false;
+	@;
+
 	// object term type is named node
-	if(@{sv_match}[4]) {
-		let p_object = @{sv_match}[4].slice(1);
-		kt_object = namedNode(@{ue_iri('p_object', b_unescape)});
+	if(@{sji_match}[4]) {
+		let p_object = @{sji_match}[4].slice(1);
+		kt_object = @{sji_named_node}(@{ue_iri('p_object', b_unescape)});
 	}
 	// object term type is blank node
-	else if(@{sv_match}[5]) {
-		kt_object = blankNode(@{ue_iri(sv_match+'[5]', b_unescape)});
+	else if(@{sji_match}[5]) {
+		kt_object = create_blank_node(@{ue_iri(sji_match+'[5]', b_unescape)});
 	}
 	// object term type is literal
 	else {
-		@- B_UPGRADE_FACTORY
-			// contents
-			let s_contents = @{sv_match}[6];
-		@:
-			kt_object = literal(@{sv_match}[6], @{b_unescape});
+		@- B_QUADS
+			// graph is in late capture group
+			b_graph_late = true;
 		@;
 
-		// set datatype if present
-		if(@{sv_match}[7]) {
-			@- B_UPGRADE_FACTORY
-				kt_object = datatypedLiteral@{b_unescape? 'E': ''}(s_contents, @{ue_iri(sv_match+'[7]')});
-			@:
-				kt_object.datatype = namedNode(@{ue_iri(sv_match+'[7]', b_unescape)});
+		// contents
+		let s_contents = @{sji_match}[@{i_group_strlit}];
+
+		// string terminator
+		if(@{sji_match}[@{i_group_strlit+1}]) {
+			@- b_unescape
+				// unescape contents
+				s_contents = unescape_literal_short_hard(s_contents);
 			@;
-		}
-		// otherwise, set language tag if present
-		else if(@{sv_match}[8]) {
-			@- B_UPGRADE_FACTORY
-				kt_object = languagedLiteral@{b_unescape? 'E': ''}(s_contents, @{sv_match}[8].toLowerCase());
-			@:
-				let s_language = kt_object.language = @{sv_match}[8].toLowerCase();
-				
-				if(!b_relax && !RT_LANGUAGE_VALID.test(s_language)) return this._error(`invalid literal language tag: ${s_language}`);
-				
-				kt_object.datatype = KT_RDFS_LANG_STRING;
-			@;
-		}
-		@- B_UPGRADE_FACTORY
+
+			// datatype is present
+			if(@{sji_match}[@{i_group_strlit+2}]) {
+				// create datatype term
+				let kt_datatype = this.create_named_node@{b_unescape? '': '_escapeless'}(@{ue_iri(sji_match+'['+(i_group_strlit+2)+']')});
+
+				// create object term
+				kt_object = datatypedLiteral(s_contents, kt_datatype);
+			}
+			// language tag is present
+			else if(@{sji_match}[@{i_group_strlit+3}]) {
+				// normalize language
+				let s_language = @{sji_match}[@{i_group_strlit+3}].toLowerCase();
+
+				// create object term
+				kt_object = create_languaged_literal(s_contents, s_language);
+			}
 			// simple literal
 			else {
-				kt_object = simpleLiteral@{b_unescape? 'E': ''}(s_contents);
+				kt_object = simpleLiteral(s_contents);
 			}
-		@;
+		}
+		// no string terminator
+		else {
+			// save contents
+			this._s_literal = s_contents;
+
+			// update index
+			this.i = i;
+
+			// save subject
+			{
+				let s_subject = @{sji_match}[1]
+
+				// named node
+				if(s_subject || 'string' === typeof s_subject) {
+					this._kt_subject = @{sji_named_node}(@{ue_iri('s_subject', b_unescape)})
+				}
+				// blank node
+				else {
+					this._kt_subject = create_blank_node(@{sji_match}[2]);
+				}
+			}
+
+			// save predicate
+			this._kt_predicate = @{sji_named_node}(@{ue_iri(sji_match+'[3]', b_unescape)});
+
+			// parse contents
+			let z_bail = this.strlit_contents();
+
+			// bail out of stack
+			if(z_bail && this.statement !== z_bail) {
+				return z_bail;
+			}
+			// statement completed
+			else {
+				// clean
+				let r_clean = this._r_clean;
+				r_clean.lastIndex = this.i;
+				let m_clean = r_clean.exec(s);
+				if(this.emit_comments) {
+					this.emit_comments(m_clean[1]);
+				}
+
+				// update local index and prepare to match next statement
+				i = r_clean.lastIndex;
+
+				// resume
+				continue;
+			}
+		}
 	}
 
+	@- B_QUADS
+		let kt_graph = kt_default_graph;
+
+		// graph after literal
+		if(b_graph_late) {
+			// ref capture group
+			let s_graph = @{sji_match}[13];
+
+			// named node
+			if(s_graph || 'string' === typeof s_graph) {
+				kt_graph = @{sji_named_node}(@{ue_iri('s_graph', b_unescape)});
+			}
+			// blank node
+			else if(@{sji_match}[14]) {
+				kt_graph = create_blank_node(@{sji_match}[14]);
+			}
+		}
+		// graph after node
+		else {
+			// ref capture group
+			let s_graph = @{sji_match}[6];
+
+			// named node
+			if(s_graph || 'string' === typeof s_graph) {
+				kt_graph = @{sji_named_node}(@{ue_iri('s_graph', b_unescape)});
+			}
+			// blank node
+			else if(@{sji_match}[7]) {
+				kt_graph = create_blank_node(@{sji_match}[7]);
+			}
+		}
+	@;
+
+	let kt_subject;
+	{
+		let s_subject = @{sji_match}[1]
+
+		// named node
+		if(s_subject || 'string' === typeof s_subject) {
+			kt_subject = @{sji_named_node}(@{ue_iri('s_subject', b_unescape)})
+		}
+		// blank node
+		else {
+			kt_subject = create_blank_node(@{sji_match}[2]);
+		}
+	}
+
+	let s_predicate = @{sji_match}[3];
+
 	// emit data event
-	fk_data(
-		@{B_UPGRADE_FACTORY? 'f_quad': 'factory.quad'}(
-			@{sv_match}[2]
-				? blankNode(@{sv_match}[2])
-				: namedNode(@{ue_iri(sv_match+'[1]', b_unescape)}),
-			namedNode(@{ue_iri(sv_match+'[3]', b_unescape)}),
-			kt_object,
-			@- QUADS
-				@{sv_match}[9]
-					? namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
-					: (@{sv_match}[10]
-						? blankNode(@{sv_match}[10])
-						: ('string' === typeof @{sv_match}[9]
-							? namedNode(@{ue_iri(sv_match+'[9]', b_unescape)})
-							: @{SJ_DEFAULT_GRAPH}))
-			@:
-				@//@
-				@{SJ_DEFAULT_GRAPH}
-			@;
-			@//@arguments
-		)
-		@//@arguments
+	f_data_quad(
+		kt_subject,
+		@{sji_named_node}(@{ue_iri('s_predicate', b_unescape)}),
+		kt_object,
+		@{B_QUADS? 'kt_graph': 'kt_default_graph'}
 	);
 
 	// comments
 	if(this.emit_comments) {
-		this.emit_comments(@{sv_match}[@{QUADS? 11: 9}]);
+		@- B_QUADS
+			this.emit_comments(@{sji_match}[8] || @{sji_match}[15]);
+		@:
+			this.emit_comments(@{sji_match}[6] || @{sji_match}[11]);
+		@;
 	}
 @;
 
 
-
-@> parse_n({
-	local: b_local=false,
-}={})
-	// match triples/quads
-	for(;;) {
-		@{if_match(STATEMENT_REGEX+'_ESCAPELESS_SP', 'm_statement_e_sp', true)}
-			@{match_body('m_statement_e_sp')}
-			
-		@{else_if_match(STATEMENT_REGEX, 'm_statement', true)}
-			@{match_body('m_statement', true)}
-
-		@{else_if_match('R_EOL')}
-			this._error(`Failed to read statement:\n\`${this.s.substr(i, 80).replace(/\n/g, '\u23CE')} [...]\`\n ^ starting here`);
-
-		@{else_retry()}
-	} // end of while
-
-	// update unparsed data string
-	@{b_local? 's': 'this.s'} = s.substr(i);
-@;
 
 class @{S_LABEL}_Reader extends stream.Transform {
 	constructor(g_impls) {
@@ -306,15 +415,6 @@ class @{S_LABEL}_Reader extends stream.Transform {
 	}
 }
 
-@> try_unescape_literal(sj_var, s_type)
-	try {
-		@{sj_var} = @{B_OPTIMIZE_UNESCAPE? `unescape_literal(${sj_var})`: unescape_literal(sj_var)};
-	}
-	catch(e_parse) {
-		return this._error(`Invalid escaping within @{s_type}-literal contents: "${s_contents}"`);
-	}
-@;
-
 class Reader {
 	constructor(g_config) {
 		let {
@@ -328,14 +428,13 @@ class Reader {
 			debug: b_debug=false,
 		} = g_config;
 
-		@- B_UPGRADE_FACTORY
-			// adopt factory
-			let dc_factory = this._dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
+		// allow relative iris flag
+		let b_allow_relative_iris = g_config.allow_relative_iris || g_config.allowRelativeIRIs || g_config.allowRelativeIris || false;
 
-			this._f_quad = dc_factory.quad;
-		@:
-			let dc_factory = factory;
-		@;
+		// adopt factory
+		let dc_factory = this._dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
+
+		let f_quad = this._f_quad = dc_factory.quad;
 
 		// fields
 		Object.assign(this, {
@@ -350,15 +449,25 @@ class Reader {
 			_b_relax: b_relax,
 
 			_b_destroyed: false,
+
+			_b_trim_start: true,
+
+			_f_state: this.statement,
+
+			_kt_subject: null,
+			_kt_predicate: null,
+			@- B_QUADS
+				_kt_object: null,
+			@;
+
+			_s_literal: '',
 		});
 
-		@- B_UPGRADE_FACTORY
-			this._kt_default_graph = dc_factory.defaultGraph();
-			this._kt_rdfs_lang_string = dc_factory.namedNode('@{P_IRI_RDFS}langString');
-		@;
+		this._kt_default_graph = dc_factory.defaultGraph();
+		this._kt_rdfs_lang_string = dc_factory.namedNode('@{P_IRI_RDFS}langString');
 
 		// clean regex
-		let r_clean = R_CLEAN;
+		let r_clean = this._r_clean = R_CLEAN;
 
 		if(g_config.relaxed) {
 			console.warn((new Error(`no such option 'relaxed'; did you mean 'relax' ?`)).stack.replace(/^Error:/, 'Warning:'));
@@ -367,107 +476,51 @@ class Reader {
 			console.warn((new Error(`option 'validate' has been removed and validation is now on by default. Use 'relax' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
 		}
 
+		let namedNode = dc_factory.namedNode;
+		let blankNode = dc_factory.blankNode;
+		let languagedLiteral = dc_factory.languagedLiteral;
+
+		// test for valid named node
+		let rt_named_node_valid = b_allow_relative_iris? RT_NAMED_NODE_VALID: RT_ABSOLUTE_IRI_VALID;
+
+		// test for valid named node escapeless
+		let rt_named_node_valid_escapeless = b_allow_relative_iris? RT_NAMED_NODE_ESCAPELESS_VALID: RT_ABSOLUTE_IRI_ESCAPELESS_VALID;
+
 		// validation
 		let k_self = this;
 		Object.assign(this, !b_relax
 			? {
-				namedNode(s_iri) {
-					if(!RT_ABSOLUTE_IRI_VALID.test(s_iri)) return k_self._error(`Invalid absolute IRI: "${s_iri}"`);
-					return dc_factory.namedNode(s_iri);
+				create_named_node(p_iri) {
+					if(!rt_named_node_valid.test(p_iri)) return this.error(`invalid IRI: "${p_iri}"`);
+					return namedNode(p_iri);
 				},
 
-				blankNode(s_label) {
+				create_named_node_escapeless(p_iri) {
+					if(!rt_named_node_valid_escapeless.test(p_iri)) return this.error(`invalid IRI: "${p_iri}"`);
+					return namedNode(p_iri);
+				},
+
+				create_blank_node(s_label) {
 					if(!RT_BLANK_NODE_LABEL_VALID.test(s_label)) return k_self._error(`Invalid blank node label: "${s_label}"`);
-					return dc_factory.blankNode(s_label);
+					return blankNode(s_label);
 				},
 
-				@- !B_UPGRADE_FACTORY
-					literal(s_literal, b_unescape=false) {
-						if(!RT_LITERAL_CONTENTS_VALID.test(s_literal)) return k_self._error(`Invalid literal: "${s_literal}"`);
-						try {
-							return dc_factory.literal(b_unescape? @{unescape_literal('s_literal')}: s_literal);
-						}
-						catch(e_parse) {
-							return k_self._error(`Invalid literal contents: "${s_literal}"`);
-						}
-					},
-				@;
-
-
-				@*{
-					for(let b_escape of [false, true]) {
-						for(let s_type of ['simple', 'languaged', 'datatyped']) {
-							let sj_extra = '';
-							let sj_test = '';
-							let sj_thru = '';
-
-							if('languaged' === s_type) {
-								sj_extra = sj_thru = ', s_language';
-								sj_test = /* syntax: js */ `
-									if(!RT_LANGUAGE_VALID.test(s_language)) {
-										return k_self._error(\`Invalid literal language tag: \${s_language}\`);
-									}
-								`;
-							}
-							else if('datatyped' === s_type) {
-								sj_extra = ', p_datatype';
-								sj_thru = /* syntax: js */ `, k_self.namedNode(p_datatype)`;
-							}
-
-							yield /* syntax: js.object-literal */ `
-								${s_type}Literal${b_escape? 'E': ''}(s_contents${sj_extra}) {
-									if(!RT_LITERAL_CONTENTS_VALID.test(s_contents)) {
-										return k_self._error(\`Invalid ${s_type}-literal contents: "\${s_contents}"\`);
-									}
-
-									${sj_test}
-
-									${b_escape? try_unescape_literal('s_contents', s_type): ''}
-
-									return dc_factory.${s_type}Literal(s_contents${sj_thru});
-								},
-							`;
-						}
+				create_languaged_literal(s_contents, s_language) {
+					if(!RT_LANGUAGE_VALID.test(s_language)) {
+						return k_self._error(`Invalid literal language tag: ${s_language}`);
 					}
-				}
+
+					return languagedLiteral(s_contents, s_language);
+				},
 			}
 			: {
-				namedNode: dc_factory.namedNode,
+				create_named_node: namedNode,
 
-				blankNode: dc_factory.blankNode,
+				create_named_node_escapeless: namedNode,
 
-				@- !B_UPGRADE_FACTORY
-					literal: (s_literal, b_unescape) => dc_factory.literal(b_unescape? @{unescape_literal('s_literal')}: s_literal),
-				@;
+				create_blank_node: blankNode,
 
-				simpleLiteral: dc_factory.simpleLiteral,
-
-				languagedLiteral: dc_factory.languagedLiteral,
-
-				datatypedLiteral: (s_contents, p_datatype) => dc_factory.datatypedLiteral(s_contents, dc_factory.namedNode(p_datatype)),
-
-				@*{
-					for(let s_type of ['simple', 'languaged', 'datatyped']) {
-						let sj_extra = '';
-						let sj_thru = '';
-
-						if('languaged' === s_type) {
-							sj_extra = sj_thru = ', s_language';
-						}
-						else if('datatyped' === s_type) {
-							sj_extra = ', p_datatype';
-							sj_thru = /* syntax: js */ `, dc_factory.namedNode(p_datatype)`;
-						}
-
-						yield /* syntax: js.object-literal */ `
-							${s_type}LiteralE(s_contents${sj_extra}) {
-								${try_unescape_literal('s_contents', s_type)}
-
-								return dc_factory.${s_type}Literal(s_contents${sj_thru});
-							},
-						`;
-					}
-				}
+				create_languaged_literal: languagedLiteral,
 			});
 
 		// transform stream
@@ -493,21 +546,27 @@ class Reader {
 				let s = this.s += s_chunk;
 
 				// remove whitespace & comments from beginning
-				r_clean.lastIndex = 0;
-				let m_clean = r_clean.exec(s);
-				if(this.emit_comments) {
-					this.emit_comments(m_clean[1]);
-				}
+				if(this._b_trim_start) {
+					r_clean.lastIndex = 0;
+					let m_clean = r_clean.exec(s);
+					if(this.emit_comments) {
+						this.emit_comments(m_clean[1]);
+					}
 
-				// update index and prepare to match statement
-				this.i = r_clean.lastIndex;
+					// update index and prepare to match statement
+					this.i = r_clean.lastIndex;
+				}
+				// do not remove whitespace; reset index
+				else {
+					this.i = 0;
+				}
 
 				// cache chunk length
 				this.n = s.length;
 
 				// resume parsing
 				try {
-					this.safe_parse(true);
+					this.parse(true);
 				}
 				// read error occurred; emit and destroy stream
 				catch(e_read) {
@@ -528,9 +587,9 @@ class Reader {
 					// append newline to end so we can match token
 					this.s += '\n';
 
-					// parse safely
+					// parse
 					try {
-						this.safe_parse();
+						this.parse();
 					}
 					// read error occurred; pass to flush errback and exit method
 					catch(e_read) {
@@ -542,6 +601,11 @@ class Reader {
 					if(this.s.length) {
 						return ds_transform.demolish(new Error(`parsing error occurred in state: statement\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
 					}
+				}
+
+				// invalid state
+				if(this._f_state !== this.statement) {
+					return ds_transform.demolish(new Error(`parsing error occurred in state: ${this._f_state.name}\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
 				}
 
 				// make buffer's alloc eligible for gc
@@ -562,9 +626,9 @@ class Reader {
 		ds_transform._destroy = (...a_args) => {
 			this.destroy(...a_args);
 		};
-		
-		// data event
-		this.data = g_quad => ds_transform.push(g_quad);
+
+		// data quad
+		this._f_data_quad = (kt_subject, kt_predicate, kt_object, kt_graph) => ds_transform.push(f_quad(kt_subject, kt_predicate, kt_object, kt_graph));
 
 		// new listener added
 		ds_transform.on('newListener', (s_event) => {
@@ -642,33 +706,427 @@ class Reader {
 		}
 	}
 
-	safe_parse() {
+	// begin parsing, keep applying until no more stack bail-outs
+	parse() {
+		let f_sync = this._f_state();
+		while('function' === typeof f_sync) {
+			f_sync = f_sync.apply(this);
+		}
+	}
+
+	statement() {
 		let s = this.s;
 		let n = this.n;
 		let i = this.i;
-		let fk_data = this.data;
-		let f_quad = this._f_quad;
-		let namedNode = this.namedNode;
-		let blankNode = this.blankNode;
-		@- B_UPGRADE_FACTORY
-			let simpleLiteral = this.simpleLiteral;
-			let languagedLiteral = this.languagedLiteral;
-			let datatypedLiteral = this.datatypedLiteral;
-			let simpleLiteralE = this.simpleLiteralE;
-			let languagedLiteralE = this.languagedLiteralE;
-			let datatypedLiteralE = this.datatypedLiteralE;
-			let kt_default_graph = this._kt_default_graph;
-		@:
-			let literal = this.literal;
-			let b_relax = this._b_relax;
-		@;
+		let f_data_quad = this._f_data_quad;
+		let create_named_node = this.create_named_node;
+		let create_named_node_escapeless = this.create_named_node_escapeless;
+		let create_languaged_literal = this.create_languaged_literal;
+		let create_blank_node = this.create_blank_node;
+		let simpleLiteral = this._dc_factory.simpleLiteral;
+		let datatypedLiteral = this._dc_factory.datatypedLiteral;
+		let kt_default_graph = this._kt_default_graph;
 
-		@// parse chunk
-		@{parse_n()};
+		// match triples/quads
+		for(;;) {
+			@{if_match(STATEMENT_REGEX+'_ESCAPELESS_SP', 'm_statement_e_sp', true)}
+				@{match_body('m_statement_e_sp')}
+
+			@{else_if_match(STATEMENT_REGEX, 'm_statement', true)}
+				@{match_body('m_statement', true)}
+
+			@{else_if_match('R_EOL', null, true)}
+				this._error(`Failed to read statement:\n\`${s.substr(i, 80).replace(/\n/g, '\u23CE')} [...]\`\n ^ starting here`);
+
+			@{else_retry()}
+		} // end of while
+
+		// update unparsed data string
+		this.s = s.substr(i);
+
+		// resume here
+		this._f_state = this.statement;
+
+		// exit
+		return 1;
+	}
+
+
+	strlit_contents() {
+		let {s, n, i} = this;
+
+		// try to find end
+		R_STRLIT_SHORT_DOUBLE_TERM.lastIndex = i;
+		let m_term = R_STRLIT_SHORT_DOUBLE_TERM.exec(s);
+
+		// end is in this chunk
+		if(m_term) {
+			// index of terminator
+			let i_term = m_term.index;
+
+			// extract dirty potion
+			let s_dirty = s.slice(i, i_term);
+
+			// clean and save
+			this._s_literal += unescape_literal_short_hard(s_dirty);
+
+			// advance index beyond terminator
+			this.i = i_term + m_term[0].length;
+
+			// resume eating whitespace at start of next chunk
+			this._b_trim_start = true;
+
+			// proceed with datatype_or_lang, then bail out of stack or resume parsing
+			return this.datatype_or_langtag() || this.statement;
+		}
+		// end is not in this chunk
+		else {
+			// extract whole portion
+			let s_dirty = s.slice(i);
+
+			// unescape to clean part
+			let [s_clean, s_incomplete] = unescape_literal_short_soft(s_dirty);
+
+			// save
+			this._s_literal += s_clean;
+
+			// set unparsed index
+			this.i = i = n - s_incomplete.length;
+
+			// do not eat whitespace at start of next chunk
+			this._b_trim_start = false;
+		}
+
+		// not yet eos
+		if(i < this.n) {
+			// expected token was not found
+			if(0 === i) {
+				// we've exceeded the maximum token length
+				if(this.n > this.max_token_length) {
+					return this.parse_error('strlit_contents');
+				}
+			}
+		}
+
+		// resume here
+		this._f_state = this.strlit_contents;
+
+		// store what is unparsed
+		this.s = s.slice(i);
+
+		// if we're not parsing a stream, then this is an error
+		if(this.eos) this.eos();
+		return 1;
+	}
+
+@.{
+	let sji_save_object = B_QUADS
+		? /* syntax: js */ `this._kt_object`
+		: /* syntax: js */ `let kt_object`;
+}
+
+	// parse state for datatype_or_langtag
+	datatype_or_langtag() {
+		// destruct chunk, length, and index
+		let {s, n, i} = this;
+
+		// ref character
+		let x = s[i];
+
+		while(i < n) {  // eslint-disable-line no-unmodified-loop-condition
+			// datatype
+			if('^' === x) {
+				// enough to speculate datatype
+				if((i+2) < n) {
+					// correct token
+					if('^' === s[i+1]) {
+						// advance index beyond token
+						R_IRIREF.lastIndex = i + 2;
+
+						// execute regex
+						let m_iriref = R_IRIREF.exec(s);
+
+						// regex was a match
+						if(m_iriref) {
+							// advance index
+							this.i = R_IRIREF.lastIndex;
+
+							// prepare iri
+							let p_datatype = m_iriref[1].replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY);
+
+							// create datatype term
+							let kt_datatype = this.create_named_node(p_datatype);
+
+							// create object term
+							@{sji_save_object} = this._dc_factory.datatypedLiteral(this._s_literal, kt_datatype);
+
+							// free literal string
+							this._s_literal = '';
+
+							@- B_QUADS
+								// graph state
+								return this.post_object();
+							@:
+								// emit data event
+								this._f_data_quad(this._kt_subject, this._kt_predicate, kt_object, this._kt_default_graph);
+
+								// complete with statement_term
+								return this.statement_term();
+							@;
+						}
+						// failed to match; try again next chunk
+						else {
+							break;
+						}
+					}
+					// invalid
+					else {
+						this._error(`Failed to read token after literal:\n\`${s.substr(i+1, 80).replace(/\n/g, '\u23CE')} [...]\`\n ^ starting here`);
+					}
+				}
+				// not enough to speculate; try again next chunk
+				else {
+					break;
+				}
+			}
+			// language tag
+			else if('@' === x) {
+				// prepare sticky regex index
+				R_LANGTAG.lastIndex = i;
+				// execute regex
+				let m_langtag = R_LANGTAG.exec(s);
+
+				// regex was a match
+				if(m_langtag) {
+					// advance index
+					this.i = R_LANGTAG.lastIndex;
+
+					// use direct factory method since regex is validation
+					@{sji_save_object} = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
+
+					// free literal string
+					this._s_literal = '';
+
+					@- B_QUADS
+						// graph state
+						return this.post_object();
+					@:
+						// emit data event
+						this._f_data_quad(this._kt_subject, this._kt_predicate, kt_object, this._kt_default_graph);
+
+						// complete with statement_term
+						return this.statement_term();
+					@;
+				}
+				// interrupted by eos; try again next chunk
+				else {
+					break;
+				}
+			}
+			@- B_QUADS
+				// graph component
+				else if('<' === x || '_' === x) {
+					// save simple literal
+					this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+
+					// free literal string
+					this._s_literal = '';
+
+					// continue parsing graph component
+					return this.graph();
+				}
+			@;
+			// triple terminator
+			else if('.' === x) {
+				// save simple literal
+				let kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+
+				// free literal string
+				this._s_literal = '';
+
+				// advance index beyond terminator
+				this.i = i + 1;
+
+				// emit data event
+				this._f_data_quad(this._kt_subject, this._kt_predicate, kt_object, this._kt_default_graph);
+
+				// reset state
+				return this.statement;
+
+				// // consume whitespace (and incidentally reset index)
+				// R_WS.lastIndex = i + 1;
+				// R_WS.exec(s);
+				// this.i = R_WS.lastIndex;
+
+				// // done
+				// return;
+			}
+			// other
+			else {
+				break;
+			}
+		}
+
+		// ran out of characters
+		// update index value
+		this.i = i;
+
+		// not yet eos
+		if(i < this.n) {
+			// expected token was not found
+			if(0 === i) {
+				// we've exceeded the maximum token length
+				if(this.n > this.max_token_length) {
+					return this.parse_error('datatype_or_langtag');
+				}
+			}
+		}
+
+		// resume here
+		this._f_state = this.datatype_or_langtag;
+
+		// store what is unparsed
+		this.s = s.slice(i);
+
+		// if we're not parsing a stream, then this is an error
+		if(this.eos) this.eos();
+		return 1;
+	}
+
+	statement_term() {
+		let {s, n, i} = this;
+
+		// find full stop
+		let i_stop = s.indexOf('.', i);
+
+		// found
+		if(i_stop > -1) {
+			// consume whitespace again
+			this._b_trim_start = true;
+
+			// advance beyond token
+			this.i = i_stop + 1;
+
+			// reset state
+			return this.statement;
+		}
+		// anything other than whitespace
+		else if(!/^\s*$/.test(s.slice(i))) {
+			this.parse_error('statement_term');
+		}
+
+		// do not consume whitespace
+		this._b_trim_start = false;
+
+		// resume here
+		this._f_state = this.statement_term;
+
+		// store what is unparsed
+		this.s = s.slice(i);
+
+		// if we're not parsing a stream, then this is an error
+		if(this.eos) this.eos();
+		return 1;
+	}
+
+	@- B_QUADS
+		post_object() {
+			let {s, n, i} = this;
+
+			// eat horizontal whitespace
+			R_HWS.lastIndex = i;
+			R_HWS.exec(s);
+			i = R_HWS.lastIndex;
+
+			// ran out of characters
+			if(i >= n) {
+				// resume here
+				this._f_state = this.post_object;
+
+				// store what is unparsed
+				this.s = s.slice(i);
+
+				// if we're not parsing a stream, then this is an error
+				if(this.eos) this.eos();
+				return 1;
+			}
+
+			// depending on char
+			switch(s[i]) {
+				// statement term
+				case '.': {
+					// advance index beyond terminator
+					this.i = i + 1;
+
+					// emit data event
+					this._f_data_quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_default_graph);
+
+					// reset state
+					return this.statement;
+				}
+
+				// graph
+				case '<':
+				case '_': {
+					// save index
+					this.i = i;
+
+					// consume graph component
+					return this.graph();
+				}
+
+				// invalid
+				default: {
+					// save index
+					this.i = i;
+
+					// emit parsing error
+					this.parse_error('post_object');
+				}
+			}
+		}
+
+		graph() {
+			let {s, n, i} = this;
+
+			@{if_match('R_IRIREF', 'm_iriref')}
+				// create graph term
+				let kt_graph = this.create_named_node(m_iriref[1]);
+
+				// emit data event
+				this._f_data_quad(this._kt_subject, this._kt_predicate, this._kt_object, kt_graph);
+
+				// complete with statement_term
+				return this.statement_term();
+			@{else_if_match('R_BLANK_NODE', 'm_blank')}
+				// create graph term
+				let kt_graph = this._dc_factory.blankNode(m_blank[1]);
+
+				// emit data event
+				this._f_data_quad(this._kt_subject, this._kt_predicate, this._kt_object, kt_graph);
+
+				// complete with statement_term
+				return this.statement_term();
+			@{end_else()}
+
+			// resume here
+			this._f_state = this.graph;
+
+			// store what is unparsed
+			this.s = s.slice(i);
+
+			// if we're not parsing a stream, then this is an error
+			if(this.eos) this.eos();
+			return 1;
+		}
+	@;
+
+	parse_error(s_state) {
+		return this._error(`Failed to read ${s_state}:\n\`${this.s.substr(this.i, 80).replace(/\n/g, '\u23CE')} [...]\`\n ^ starting here`);
 	}
 
 	destroy(e_destroy) {
-		this.data = () => {};
+		this._f_data_quad = () => {};
 
 		if(!e_destroy && this._ds_input) {
 			this._ds_input.destroy(e_destroy);
