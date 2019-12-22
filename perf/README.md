@@ -11,6 +11,11 @@ Memory-intensive tasks were run with the `--max-old-space-size=8192` node.js opt
 
 Want to see how other libraries stack up? Feel free to [open an issue](https://github.com/blake-regalia/graphy.js/issues).
 
+## Versions
+ - [N3.js](https://github.com/rdfjs/N3.js) v1.3.5
+ - [graphy](https://github.com/blake-regalia/graphy.js) v4.0.1
+
+
 ## Table of Contents
  - [Count Task](#count-task) -- Count the number of statements in an RDF document.
  - [Distinct Task](#distinct-task) -- Count the distinct number of triples/quads in an RDF document.

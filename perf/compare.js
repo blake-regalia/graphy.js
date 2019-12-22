@@ -233,7 +233,7 @@ async function* r() {
 
 		## Versions
 		${Object.entries(H_PARTIES).reduce((s_out, [, g_party]) => s_out
-			+` - [${g_party.label}](${g_party.href}) v${g_party.version}`, '')}
+			+` - [${g_party.label}](${g_party.href}) v${g_party.version}\n`, '')}
 
 		## Table of Contents
 		${[...new Set(a_bench.map(g => g.task))].map(s => ` - [${proper(s)} Task](#${s}-task) -- ${H_COMPARE[s].info}`).join('\n')}
