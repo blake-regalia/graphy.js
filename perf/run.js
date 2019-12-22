@@ -141,7 +141,7 @@ function stat(a_trials, h_props) {
 
 					// each input
 					for(let p_input of a_inputs) {
-						if(s_filter_input && p_input !== s_filter_input) continue;
+						if(s_filter_input && !p_input.startsWith(s_filter_input)) continue;
 
 						// 
 						let s_fail = null;
