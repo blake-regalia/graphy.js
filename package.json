@@ -1,6 +1,6 @@
 {
   "name": "@graphy/super-repo",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "devVersion": "0.0.41",
   "description": "A collection of RDF libraries for JavaScript developers that focus on performance and usability",
   "keywords": [

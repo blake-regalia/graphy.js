@@ -1,5 +1,25 @@
 # Changelog
 
+## v4.0.1 (2019-12-21)
+------------------------
+
+Fixed tag selectors in quad filter expressions, and added a patch for reading large string literals.
+
+### 🔧 Fixes
+
+#### `graphy` CLI
+ - Tag selectors have been fixed.
+
+#### `@graphy/content.*.read`
+ - Fixed reading very large string literals.
+
+
+### ⚡︎ Performance
+
+#### `@graphy/content.*.read`
+ - Optimized string literal lexing.
+
+
 ## v4.0.0 (2019-12-11)
 ------------------------
 
