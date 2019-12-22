@@ -46,7 +46,7 @@ graphy/:
       factory: '@graphy/core.data.factory'
   memory.:
     dataset.:
-      tree: '@graphy/memory.dataset.fast'
+      fast: '@graphy/memory.dataset.fast'
   content.:
     nt.:
       read: '@graphy/content.nt.read'

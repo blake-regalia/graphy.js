@@ -7,9 +7,9 @@
 This document describes a language for expressing filters on RDF data at the quad-level, allowing for short filter expressions that cover a breadth of use-cases in lou of SPARQL queries.
 
 ## Introduction
-This language was created out of a need for constructing quick and easy filters without having to write complex JavaScript expressions. These filters expressions are for testing a single quad/triple at a time, **unlike basic graph patterns** which might require storing quads in memory until the pattern can be evaluated. Instead, these filter expressions evaluate one at a time against a stream of quads/triples, similar to Triple Patterns except with more expressivity.
+This language was created out of a need for constructing quick and easy filters without having to write complex JavaScript expressions. These filters expressions are for testing a single quad/triple at a time, **unlike basic graph patterns** which might require storing quads in memory until the pattern can be evaluated. Instead, these filter expressions evaluate one at a time against a stream of quads/triples, similar to Triple Patterns.
 
-In the following outline, a few example are given to demonstrate some objective and are following by an equivalent graph pattern in a SPARQL query.
+In the following outline, a few use-case examples are given and followed by an equivalent graph pattern one might use in a SPARQL query.
 
 #### Prefix Expansion in Regexes
 The regex flag `c` can be used to denote that the pattern should be matched against the [Concise Term String](https://graphy.link/concise#string_c1) representation of the term, using the best prefix available.
