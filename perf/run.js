@@ -100,21 +100,35 @@ function stat(a_trials, h_props) {
 (async() => {
 	let ds_out = json_stream.stringify();
 
+	let {
+		party: s_filter_party=null,
+		task: s_filter_task=null,
+		flavor: s_filter_flavor=null,
+		mode: s_filter_mode=null,
+		input: s_filter_input=null,
+	} = require('yargs').argv;
+
 	ds_out.pipe(process.stdout);
 
 	let a_perfs = [];
 
 	for(let [si_party, g_party] of Object.entries(H_PARTIES)) {
+		if(s_filter_party && si_party !== s_filter_party) continue;
 
 		for(let [si_task, h_flavors] of Object.entries(g_party.tasks)) {
+			if(s_filter_task && si_task !== s_filter_task) continue;
 
 			let p_src = `src/party/${si_party}/${si_task}.js.jmacs`;
 
 			for(let [s_flavor, g_flavor] of Object.entries(h_flavors)) {
+				if(s_filter_flavor && s_flavor !== s_filter_flavor) continue;
+
 				let a_inputs = g_flavor.inputs;
 				let a_options = g_flavor.options;
 
 				for(let [si_mode, h_env] of Object.entries(g_flavor.modes)) {
+					if(s_filter_mode && si_mode !== s_filter_mode) continue;
+
 					let p_runner = `build/party/${si_party}/${si_task}/${s_flavor}/${si_mode}.js`;
 
 					// mkdirp
@@ -127,6 +141,8 @@ function stat(a_trials, h_props) {
 
 					// each input
 					for(let p_input of a_inputs) {
+						if(s_filter_input && p_input !== s_filter_input) continue;
+
 						// 
 						let s_fail = null;
 						let a_trials = [];
@@ -160,8 +176,8 @@ function stat(a_trials, h_props) {
 								error: s_fail,
 							});
 
-							// next mode
-							break;
+							// next input
+							continue;
 						}
 
 						// summarize
