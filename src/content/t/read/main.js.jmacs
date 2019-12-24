@@ -11,7 +11,11 @@
 
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_UPGRADE_FACTORY = true;
+@$ B_OPTIMIZE_PREFIX_IDS = false;
+
+@// 1% speedup
 @$ B_OPTIMIZE_PN = true;
+
 @.{
 	let SJ_RDF_TYPE;
 	let SJ_RDF_FIRST;
@@ -45,7 +49,7 @@
 		prefixed_name = (sj_pre, sj_suf) => /* syntax: js */ `this.prefixed_name(${sj_pre}, ${sj_suf})`;
 	}
 	else {
-		prefixed_name = (sj_pre, sj_suf) => /* syntax: js */ `this.named_node(h_prefixes[${sj_pre}] + ${sj_suf})`;
+		prefixed_name = (sj_pre, sj_suf) => /* syntax: js */ `this.named_node(this._h_prefixes[${sj_pre}] + ${sj_suf})`;
 	}
 }
 
@@ -161,13 +165,38 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	)
 @;
 
-@>> R_CONTENT_LOOKAHEAD()
+@>> R_CONTENT_LOOKAHEAD_OLD()
 	@//@regex
 	(?=
 		\.[<[("';,)\]#@{QUADS? '{}': ''}\s\0]
 		| [<[("';,)\]#@{QUADS? '{}': ''}]
 	)
 @;
+
+@>> R_CONTENT_LOOKAHEAD()
+	@//@regex
+	(?=
+		\.?[<[("';,)\]#@{QUADS? '{}': ''}]
+		| \.[\s\0]
+	)
+@;
+
+@>> R_PREFIXED_NAME_QUICK()
+	@//@regex
+	(
+		[A-Za-z]  @// PN_CHARS_BASE simplified
+		[A-Za-z0-9_-]*  @// PN_CHARS (omit '.' from middle for perf)
+	)? :(
+		[A-Za-z_0-9:]  @// PN_LOCAL[0]
+		[A-Za-z0-9_:-]*  @// PN_LOCAL[1-$]
+	)
+	(?:
+		\s+
+		| @{R_CONTENT_LOOKAHEAD()}
+	)
+@;
+
+const R_PREFIXED_NAME_QUICK = /@{R_PREFIXED_NAME_QUICK()}/y;
 
 @>> R_PREFIXED_NAME_ESCAPELESS()
 	@//@regex
@@ -329,6 +358,11 @@ const R_STRLIT_LONG_SINGLE_BREAK = /(\\|''')/g;
 
 @{unescape_literals(true)}
 
+const match_prefixed_name_quick = (s, i) => {
+	R_PREFIXED_NAME_QUICK.lastIndex = i;
+	return [R_PREFIXED_NAME_QUICK.exec(s), R_PREFIXED_NAME_QUICK.lastIndex];
+};
+
 const match_prefixed_name_escapeless = (s, i) => {
 	R_PREFIXED_NAME_ESCAPELESS.lastIndex = i;
 	return [R_PREFIXED_NAME_ESCAPELESS.exec(s), R_PREFIXED_NAME_ESCAPELESS.lastIndex];
@@ -366,8 +400,13 @@ const match_prefixed_name = (s, i) => {
 	// check valid prefix
 	let @{sj_var} = @{match}[@{n_group || 1}] || '';
 
-	// invalid prefix
-	if(!OPHOP.call(this._h_prefixes, @{sj_var})) return this.error(`no such prefix "${@{sj_var}}"`);
+	@- B_OPTIMIZE_PREFIX_IDS
+		// invalid prefix
+		if(!(this._as_prefix_ids.has(@{sj_var}))) return this.error(`no such prefix "${@{sj_var}}"`);
+	@:
+		// invalid prefix
+		if(!OPHOP.call(this._h_prefixes, @{sj_var})) return this.error(`no such prefix "${@{sj_var}}"`);
+	@;
 @;
 
 
@@ -764,6 +803,11 @@ class Reader {
 			// map of current prefix ids => iris
 			_h_prefixes: h_prefixes,
 
+			@- B_OPTIMIZE_PREFIX_IDS
+				// set of current prefix ids
+				_as_prefix_ids: new Set(Object.keys(h_prefixes)),
+			@;
+
 			// reader was destroyed by an error
 			_b_destroyed: false,
 
@@ -900,6 +944,11 @@ class Reader {
 				check_named_node_escapeless(p_iri) {
 					if(!RT_NAMED_NODE_ESCAPELESS_VALID.test(p_iri)) return this.error(`invalid IRI: "${p_iri}"`);
 					return namedNode(p_iri);
+				},
+
+				match_prefixed_name_quick(s, i) {
+					R_PREFIXED_NAME_QUICK.lastIndex = i;
+					return [R_PREFIXED_NAME_QUICK.exec(s), R_PREFIXED_NAME_QUICK.lastIndex];
 				},
 
 				match_prefixed_name_escapeless(s, i) {
@@ -1369,8 +1418,18 @@ class Reader {
 	@{method('statement')}
 		@//@
 
+		// prefixed name quick
+		@{if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_subject')}
+			@{valid_prefix('m_pnq_subject')}
+
+			// commit subject iri from resolve prefixed name
+			this._kt_subject = @{prefixed_name('s_prefix_id', 'm_pnq_subject[2]')};
+
+			// predicate-object pairs state
+			@{goto('pairs')}
+
 		// iriref
-		@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_subject')}
+		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_subject')}
 			@{iriref('subject', 'm_iriref_e_subject', true)}
 
 			// predicate-object pairs state
@@ -1391,7 +1450,7 @@ class Reader {
 				@{valid_prefix('m_prefixed_named_e_subject')}
 
 				// make subject key
-				this._kt_subject = this.prefixed_name(s_prefix_id, m_prefixed_named_e_subject[2]);
+				this._kt_subject = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_subject[2]')}
 
 				// predicate-object pairs state
 				@{gtg()}
@@ -1897,8 +1956,19 @@ class Reader {
 		// ref char
 		let x = s[i];
 
+		// string literal * double
+		@{if_char('"')}
+			@{deduce_strlit_path('double')}
+
+		// prefixed name quick
+		@{else_if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_object')}
+			@{valid_prefix('m_pnq_object')}
+
+			// commit object iri from resolve prefixed name
+			this._kt_object = @{prefixed_name('s_prefix_id', 'm_pnq_object[2]')};
+
 		// iriref
-		@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_object')}
+		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_object')}
 			@{iriref('object', 'm_iriref_e_object', true)}
 
 		// prefixed name
@@ -1907,10 +1977,6 @@ class Reader {
 
 			// commit object iri from resolve prefixed name
 			this._kt_object = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
-
-		// string literal * double
-		@{else_if_char('"')}
-			@{deduce_strlit_path('double')}
 
 		// string literal * single
 		@{else_if_char("'")}
@@ -2294,8 +2360,15 @@ class Reader {
 			let kt_datatype = null;
 		@;
 
+		// prefixed name quick
+		@{if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_datatype')}
+			@{valid_prefix('m_pnq_datatype')}
+
+			// commit object iri from resolve prefixed name
+			kt_datatype = @{prefixed_name('s_prefix_id', 'm_pnq_datatype[2]')};
+
 		// iriref
-		@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_datatype')}
+		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_datatype')}
 			let p_datatype;
 			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, false, true)}
 
@@ -2521,7 +2594,11 @@ class Reader {
 	let b_relax = this._b_relax;
 
 	// existing mapping
-	if(s_prefix_id in h_prefixes) {
+	@- B_OPTIMIZE_PREFIX_IDS
+		if(as_prefix_ids.has(s_prefix_id)) {
+	@:
+		if(s_prefix_id in h_prefixes) {
+	@;
 		// doesn't match existing
 		if(p_prefix_iri !== h_prefixes[s_prefix_id]) {
 			// emit change event
@@ -2542,6 +2619,11 @@ class Reader {
 
 		// set prefix
 		h_prefixes[s_prefix_id] = p_prefix_iri;
+
+		@- B_OPTIMIZE_PREFIX_IDS
+			as_prefix_ids.add(s_prefix_id);
+			// this._as_prefix_ids = new Set(Object.keys(h_prefixes).sort());
+		@;
 	}
 
 	// check iri, invalid
@@ -2555,6 +2637,9 @@ class Reader {
 
 	@{method('prefix_iri')}
 		let h_prefixes = this._h_prefixes;
+		@- B_OPTIMIZE_PREFIX_IDS
+			let as_prefix_ids = this._as_prefix_ids;
+		@;
 		let s_prefix_id = this._s_temp_prefix_id;
 		let p_prefix_iri;
 
