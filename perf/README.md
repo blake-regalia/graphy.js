@@ -13,7 +13,7 @@ Want to see how other libraries stack up? Feel free to [open an issue](https://g
 
 ## Versions
  - [N3.js](https://github.com/rdfjs/N3.js) v1.3.5
- - [graphy](https://github.com/blake-regalia/graphy.js) v4.0.1
+ - [graphy](https://github.com/blake-regalia/graphy.js) v4.0.2
 
 
 ## Table of Contents

@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.0.2 (2019-12-29)
+------------------------
+
+Turtle and Trig reader performance patch.
+
+### ⚡︎ Performance
+
+#### `@graphy/content.t*.read`
+ - Faster lexing and validation for prefixed names.
+
+
 ## v4.0.1 (2019-12-21)
 ------------------------
 

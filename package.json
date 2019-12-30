@@ -1,6 +1,6 @@
 {
   "name": "@graphy/super-repo",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "devVersion": "0.0.41",
   "description": "A collection of RDF libraries for JavaScript developers that focus on performance and usability",
   "keywords": [
@@ -50,6 +50,7 @@
     "@graphy-stable/memory.dataset.fast": "npm:@graphy/memory.dataset.fast@^4.0.0",
     "@rdfjs/data-model": "^1.1.2",
     "JSONStream": "^1.3.5",
+    "browserify": "^16.5.0",
     "canvas": "^2.6.1",
     "chai": "^4.2.0",
     "chai-iterator": "^3.0.2",
