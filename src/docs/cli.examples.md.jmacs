@@ -267,7 +267,7 @@ $ graphy read / filter -x '!$object; owl:sameAs; {node}'   \
 This is equivalent to the SPARQL CONSTRUCT query:
 ```sparql
 construct {
-  ?object ?predicate ?object
+  ?object ?predicate ?subject
 } where {
   ?subject owl:sameAs ?object .
 
