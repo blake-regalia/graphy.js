@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.0.3 (2020-01-07)
+------------------------
+
+Patch for negative lookbehind RegExp polyfills **in all readers** that affects certain browsers including Firefox.
+
+### 🔧 Fixes
+
+#### `@graphy/content.*.read`
+ - Lookbehind RegExp polyfills
+
+
 ## v4.0.2 (2019-12-29)
 ------------------------
 
