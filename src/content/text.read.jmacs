@@ -1,6 +1,10 @@
 @// for counting if/else braces in regex matching
 @$ c_braces = 0;
 
+@.{
+	const regex_to_src = s => s.replace(/([\\'])/g, '\\$1');
+}
+
 @>> R_CHAR_HEX()
 	[0-9A-Fa-f]
 @;
@@ -199,7 +203,7 @@
 
 @> STRLIT_TERM(r_term)
 	mk_lookbehind_regex(
-		() => /@{R_STRLIT_TERM_LOOKBEHIND(r_term, true)}/g,
+		() => new RegExp('@{regex_to_src(R_STRLIT_TERM_LOOKBEHIND(r_term, true).toString())}', 'g'),
 		/@{R_STRLIT_TERM_POLYFILL(r_term, true)}/y,
 		RegExp_$lookbehind_polyfill
 	),
@@ -279,7 +283,7 @@
 
 		let mk_lookbehind_regex = (() => {
 			try {
-				/(?<!h)i/;  // eslint-disable-line no-unused-expressions
+				new RegExp('(?<!h)i');  // eslint-disable-line no-new
 			}
 			catch(e_compile) {
 				return (f_lookbehind, r_polyfill, f_polyfill) => {
@@ -294,7 +298,7 @@
 		return [
 			// R_STRLIT_ESCAPE_INCOMPLETE
 			mk_lookbehind_regex(
-				() => /@{R_STRLIT_TERM_LOOKBEHIND(/\\(|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})$/, false)}/,
+				() => new RegExp('@{regex_to_src(R_STRLIT_TERM_LOOKBEHIND(/\\(|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})$/, false).toString())}'),
 				/^(?:(?:[^\\]|\\.)*)(\\(?:|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7}))$/,
 				function RegExp_$lookbehind_polyfill_n(s_input) {
 					let m_match = RegExp.prototype.exec.call(this, s_input);
