@@ -4,7 +4,6 @@ const expect = require('chai').expect;
 const stream = require('@graphy/core.iso.stream');
 const dataset_tree = require('@graphy/memory.dataset.fast');
 
-const graphy_reader_interface = require('../interface/content-reader.js');
 const util = require('./util.js');
 
 class writer_suite {

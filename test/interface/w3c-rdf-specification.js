@@ -1,3 +1,12 @@
+// deduce the runtime environment
+const [B_BROWSER, B_BROWSERIFY] = (() => 'undefined' === typeof process
+	? [true, false]
+	: (process.browser
+		? [true, true]
+		: ('undefined' === process.versions || 'undefined' === process.versions.node
+			? [true, false]
+			: [false, false])))();
+
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
@@ -334,16 +343,10 @@ const collection = (sv1_head, k_tree, a_collection=[]) => {
 };
 
 
-// deduce the runtime environment
-const [B_BROWSER, B_BROWSERIFY] = (() => 'undefined' === typeof process
-	? [true, false]
-	: (process.browser
-		? [true, true]
-		: ('undefined' === process.versions || 'undefined' === process.versions.node
-			? [true, false]
-			: [false, false])))();
-
 module.exports = async(gc_tests={}) => {
+	// do not use fs in browser
+	if(B_BROWSER) return;
+
 	let {
 		reader: f_reader,
 		package: si_package,
@@ -352,9 +355,6 @@ module.exports = async(gc_tests={}) => {
 
 	let p_manifest = path.join(pd_root, 'build/cache/specs', si_package, 'manifest.ttl');
 	let p_iri_manifest = pathToFileURL(p_manifest);
-
-	// do not use fs in browser
-	if(B_BROWSER) return;
 
 	// pipeline for backwards-compat w/ < v10
 	let k_tree = await fs.createReadStream(p_manifest)

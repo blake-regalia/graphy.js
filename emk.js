@@ -670,15 +670,51 @@ module.exports = async() => {
 				}),
 
 				// web test
-				web: () => ({
-					deps: [
-						'test/web/runner.html',
-						`build/test/web/**`,
-					],
-					run: /* syntax: bash */ `
-						npx mocha-chrome $1
-					`,
-				}),
+				web: {
+					browserify: {
+						chrome: () => ({
+							deps: [
+								'test/web/runner.html',
+								`build/test/browserify/**`,
+							],
+							run: /* syntax: bash */ `
+								npx mocha-webdriver-runner --reporter=spec --headless-chrome $1
+							`,
+						}),
+
+						firefox: () => ({
+							deps: [
+								'test/web/runner.html',
+								`build/test/browserify/**`,
+							],
+							run: /* syntax: bash */ `
+								npx mocha-webdriver-runner --reporter=spec --headless-firefox $1
+							`,
+						}),
+					},
+
+					webpack: {
+						chrome: () => ({
+							deps: [
+								'test/web/runner.html',
+								`build/test/webpack/**`,
+							],
+							run: /* syntax: bash */ `
+								npx mocha-webdriver-runner --reporter=spec --headless-chrome $1
+							`,
+						}),
+
+						firefox: () => ({
+							deps: [
+								'test/web/runner.html',
+								`build/test/webpack/**`,
+							],
+							run: /* syntax: bash */ `
+								npx mocha-webdriver-runner --reporter=spec --headless-firefox $1
+							`,
+						}),
+					},
+				},
 			},
 
 			// performance
@@ -890,13 +926,24 @@ module.exports = async() => {
 				},
 
 				test: {
-					web: {
+					browserify: {
 						':testable.js': ({testable:si_package}) => ({
 							deps: [
 								`test/package/${si_package}.js`,
 							],
 							run: /* syntax: bash */ `
 								npx browserify $1 -d -o $@
+							`,
+						}),
+					},
+
+					webpack: {
+						':testable.js': ({testable:si_package}) => ({
+							deps: [
+								`test/package/${si_package}.js`,
+							],
+							run: /* syntax: bash */ `
+								npx webpack --config=./emk/webpack.config.js $1 -o $@
 							`,
 						}),
 					},
