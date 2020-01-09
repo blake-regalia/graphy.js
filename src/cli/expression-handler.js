@@ -244,6 +244,7 @@ const H_COMPILERS = {
 		let k_term = g_term? this.compile(g_range.term): null;
 
 		// tag selector
+		let x_rank = 0;
 		let fsj_tag = null;
 
 		// minimum assertion tags
@@ -255,14 +256,17 @@ const H_COMPILERS = {
 		if(xm_tags && XM_TERM_TAG_ANY !== xm_tags) {
 			// direct tag mapping
 			if(xm_tags in H_TEST_RANGE) {
-				fsj_tag = H_TEST_RANGE[xm_tags];
+				({
+					rank: x_rank,
+					gen: fsj_tag,
+				} = H_TEST_RANGE[xm_tags]);
 			}
 			// composite tag
 			else {
 				let a_selectors = [];
 
 				// each test range in order
-				for(let [sm_test, fsj_select] of Object.entries(H_TEST_RANGE)) {
+				for(let [sm_test, g_select] of Object.entries(H_TEST_RANGE)) {
 					let xm_test = +sm_test;
 
 					// mask covers case
@@ -271,7 +275,7 @@ const H_COMPILERS = {
 						xm_tags &= ~xm_test;
 
 						// apply selector
-						a_selectors.push(fsj_select);
+						a_selectors.push(g_select);
 
 						// done
 						if(!xm_tags) break;
@@ -283,23 +287,41 @@ const H_COMPILERS = {
 					console.assert(`case not covered: ${xm_tags}`);
 				}
 
+				// assess rank
+				x_rank = a_selectors.map(g => g.rank).reduce(F_REDUCE_DECAY, 0);
+
 				// save tag selector
-				fsj_tag = sj_target => a_selectors.map(fsj => fsj(sj_target)).join(' && ');
+				fsj_tag = sj_target => a_selectors.map(g => g.gen(sj_target)).join(' && ');
 			}
 		}
 
-		// tag and term
-		if(fsj_tag && k_term) {
-			return {
-				rank: X_RANK_PROPERTY_ACCESS,
+		// tag
+		if(fsj_tag) {
+			// term
+			if(k_term) {
+				return {
+					rank: X_RANK_PROPERTY_ACCESS,
 
-				gen(sj_target) {
-					return /* syntax: js */ `${fsj_tag(sj_target)} && ${k_term.gen(sj_target)}`;
-				},
-			};
+					gen(sj_target) {
+						return /* syntax: js */ `${fsj_tag(sj_target)} && ${k_term.gen(sj_target)}`;
+					},
+				};
+			}
+			// tag only
+			else {
+				return {
+					rank: x_rank,
+					gen: fsj_tag,
+				};
+			}
 		}
+		// no tag
 		else {
-			debugger;
+			return {
+				rank: 0,
+
+				gen: () => 'true',
+			};
 		}
 	},
 
