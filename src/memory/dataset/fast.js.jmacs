@@ -193,10 +193,6 @@ class Matcher {
 }
 
 
-// use JSON-friendly keys
-// const $_KEYS = '{KEYS}';
-// const $_QUADS = '{QUADS}';
-
 class Issuer {
 	constructor(s_prefix='_:c14n') {
 		Object.assign(this, {

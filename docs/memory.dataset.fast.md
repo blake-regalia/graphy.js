@@ -1,18 +1,18 @@
 
 
-# [« API](api) / Dataset Tree
+# [« API](api) / Fast Dataset
 <div class="package-heading">
   <code>@graphy/memory.dataset.fast</code>
 </div>
 
 ## Primer
- - `dataset_tree` is used throughout examples in this document's code sections to refer to the module's export.
+ - `Dataset` is used throughout examples in this document's code sections to refer to the module's export. This module was previously called _DatasetTree_.
 
 ## Contents
  - [Memory and Performance](#memory-and-performance) -- what to be aware of when using this package.
- - [Construction](#construction) -- how to create an instance of a DatasetTree
+ - [Construction](#construction) -- how to create an instance of a Dataset
  - [Properties](#properties)
-   - [`.size`](#property_size) -- number of quads in the tree.
+   - [`.size`](#property_size) -- number of quads in the dataset.
  - [Prototype Methods](#methods) -- 
    - Iterators
      - [`* [Symbol.iterator](...)`](#method_symbol-iterator) -- instances are iterable
@@ -24,9 +24,9 @@
      - [`.addQuads(...)`](#method_add-quads)
      - [`.delete(...)`](#method_delete)
      - [`.deleteQuads(...)`](#method_delete-quads)
-     - [`.clear(...)`](#method_clear) -- remove all quads from the tree
+     - [`.clear(...)`](#method_clear) -- remove all quads from the dataset
    - Set Analogues
-     - [`.has(...)`](#method_has) -- test if the dataset has a given quad
+     - [`.has(...)`](#method_has) -- test if the Dataset has a given quad
    - Set Algebra Booleans
      - [`.equals(...)`](#method_equals) -- `A = B`
      - [`.contains(...)`](#method_contains) -- `(A ∩ B) = B`
@@ -45,7 +45,68 @@
 
 ## Memory and Performance
 
-This data structure is implemented in a performance-oriented, memory-conscious manner. More technically, certain set operations may reuse pointers to existing object trees in order to save the time it takes to copy subtrees and to reduce the overall memory footprint. This should have no effect on user functionality since object reuse is handled internally and all methods ensure that stale objects are released to GC.
+This data structure is best suited for storing quads in memory when the objective is to perform set operations quickly (e.g., union, difference, intersection, etc.) on relatively small datasets (still much better storage density than the alternatives -- see [memory usage comparison](https://github.com/blake-regalia/graphy.js/blob/master/perf/README.md#distinct-task) in the performance document).
+
+Future releases of graphy plan to include other data structures, such as _DenseDataset_, _FastDatacache_, and _DenseDatacache_, for meeting the various trade-offs between storage density and insertion/deletion time. In this implementation, certain set operations may reuse pointers to existing object trees in order to save the time it takes to copy subtrees and in order to reduce the overall memory footprint. This has no effect on user functionality since object reuse is handled internally and all methods ensure that stale objects are released to GC.
+
+
+----
+
+## Construction
+
+The require'd return value is a wrapper function that constructs an instance of `Dataset`. The `new` keyword is optional.
+
+
+<a name="verb_dataset" />
+
+### [`dataset`](#verb_dataset)`([config: `[`DatasetConfig`](#config_dataset)`])`
+ - Create a new dataset.
+ - **returns** a [`new Duplex<Quad, Quad>`](core.iso.stream#duplex_quad-writable_quad-readable) (accepts [Quad](core.data.factory#class_quad) objects on its writable side, pushes [Quad](core.data.factory#class_quad) objects on its readable side)
+
+
+
+#### Usage examples
+
+The following example is shown for usage in Node.js, however the same async/await mechanisms can be used in the browser with polyfills for piping `fetch` and awaiting stream events.
+
+**Read from a Turtle file in Node.js:**
+```js
+const fs = require('fs');
+const { once } = require('events');
+const ttl_read = require('@graphy/content.ttl.read');
+const dataset = require('@graphy/memory.dataset.fast');
+
+// load 'input-a.ttl' into a new Dataset
+let y_input_a = dataset();
+
+fs.createReadStream('input-a.ttl')
+    .pipe(ttl_read())
+    .pipe(y_input_a);
+
+
+// load 'input-b.ttl' into a new Dataset
+let y_input_b = dataset();
+
+fs.createReadStream('input-b.ttl')
+    .pipe(ttl_read())
+    .pipe(y_input_b);
+
+
+// wait for both datasets to finish loading using async/await
+(async() => {
+    // Dataset extends Node.js' Duplex, so simply listen for the 'finish' event
+    // to be notified once the dataset has finished loading
+    await Promise.all([
+        once(y_input_a, 'finish'),
+        once(y_input_b, 'finish'),
+    ]);
+
+    // compute the union of the two datasets
+    let y_union = y_input_a.union(y_input_b);
+
+    // do something with union...
+})();
+```
 
 
 ----
@@ -56,20 +117,23 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 <a name="property_size" />
 
 ### [`.size`](#property_size)
- - get the number of quads in the tree.
+ - get the number of quads in the dataset.
  - **returns** a [`#number/integer`](core.data.factory#number_integer)
  - *examples:*
      ```js
-     let y_tree = dataset_tree();
+     const factory = require('@graphy/core.data.factory');
+     const dataset = require('@graphy/memory.dataset.fast');
+
+     let y_dataset = dataset();
      let h_prefixes = {
         dbr: 'http://dbpedia.org/resource/',
         rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
         graph: 'http://ex.org/graph#',
      };
 
-     y_tree.size;  // 0
+     y_dataset.size;  // 0
 
-     y_tree.addQuads(factory.c4({
+     y_dataset.addQuads(factory.c4({
          'graph:example': {
              'dbr:Banana': {
                  'rdfs:label': [
@@ -80,7 +144,7 @@ This data structure is implemented in a performance-oriented, memory-conscious m
          },
      }, h_prefixes));
      
-     y_tree.size;  // 2
+     y_dataset.size;  // 2
      ```
 
 ----
@@ -104,41 +168,41 @@ This data structure is implemented in a performance-oriented, memory-conscious m
 <a name="method_add" />
 
 ### [`.add`](#method_add)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/dataset.add](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-add)
- - add a single quad to the tree; will only succeed if the quad is not already present.
+ - add a single quad to the dataset; will only succeed if the quad is not already present.
  - **returns** `this`.
 
 
 <a name="method_add-all" />
 
 ### [`.addAll`](#method_addAll)`(quads: `[`@RDFJS/dataset`](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset)` | sequence<`[`AnyQuad`](core.data.factory#interface_any-quad)`>)` _implements_ [@RDFJS/dataset.addAll](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-addall)
- - add quads to the tree; will only add each quad that is not already present. 
+ - add quads to the dataset; will only add each quad that is not already present. 
  - **returns** `this`
 
 
 <a name="method_add-quads" />
 
 ### [`.addQuads`](#method_addQuads)`(quads: `[`Iterable`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator)`<`[`Quad`](core.data.factory#class_quad)`>)`
- - add quads to the tree; will only add each quad that is not already present. Bypass the internal overhead of checking and needlessly converting each quad to graphy-safe objects. Notice that `quads` must be an [Iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator) sequence of graphy [Quads](core.data.factory#class_quad).
- - **returns** a [`#number/integer`](core.data.factory#number_integer) indicating how many quads were successfully added to the tree.
+ - add quads to the dataset; will only add each quad that is not already present. Bypass the internal overhead of checking and needlessly converting each quad to graphy-safe objects. Notice that `quads` must be an [Iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator) sequence of graphy [Quads](core.data.factory#class_quad).
+ - **returns** a [`#number/integer`](core.data.factory#number_integer) indicating how many quads were successfully added to the dataset.
 
 
 <a name="method_delete" />
 
 ### [`.delete`](#method_delete)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/dataset.delete](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-delete)
- - delete the given `quad` from the tree if it exists.
+ - delete the given `quad` from the dataset if it exists.
  - **returns** `this`
 
 <a name="method_delete-quads" />
 
 ### [`.deleteQuads`](#method_deleteQuads)`(quads: list<`[`Quad`](core.data.factory#class_quad)`>)`
- - delete the given `quads` from the tree if they exist.
- - **returns** a [`#number/integer`](core.data.factory#number_integer) indicating how many quads were successfully deleted from the tree.
+ - delete the given `quads` from the dataset if they exist.
+ - **returns** a [`#number/integer`](core.data.factory#number_integer) indicating how many quads were successfully deleted from the dataset.
 
 
 <a name="method_clear" />
 
 ### [`.clear`](#method_clear)`()`
- - remove all quads from the tree.
+ - remove all quads from the dataset.
  - **returns** `undefined`.
 
 
