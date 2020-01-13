@@ -3,6 +3,9 @@
 # [« API](api) / Quad Filter Expressions
 This document describes a language for expressing filters on RDF data at the quad-level, allowing for short filter expressions that cover a breadth of use-cases in lou of SPARQL queries.
 
+> Stability: **Experimental**
+
+
 ## Introduction
 This language was created out of a need for constructing quick and easy filters without having to write complex JavaScript expressions. These filters expressions are for testing a single quad/triple at a time, **unlike basic graph patterns** which might require storing quads in memory until the pattern can be evaluated. Instead, these filter expressions evaluate one at a time against a stream of quads/triples, similar to Triple Patterns.
 
@@ -21,7 +24,7 @@ Filter by triples where the IRI of the subject starts with the expanded prefix f
 It is equivalent to the following SPARQL graph pattern:
 ```sparql
 ?s a dbo:Plant .
-filter(strStarts(str(?s), "http://dbpedia.org/resource/"))
+filter(strStarts(str(?s), str(dbr:))
 ```
 
 
@@ -53,7 +56,7 @@ You can also combine tag selectors to specify the union of types, e.g., `{named-
 
 Filter by triples where the predicate is `dbo:date` and the object is a literal, but the literal does not have the datatype `xsd:dateTime`:
 ```
-; dbo:date; {literal} but not ^xsd:dateTime'
+; dbo:date; {literal} but not ^xsd:dateTime
 ```
 
 It is equivalent to the following SPARQL graph pattern:
