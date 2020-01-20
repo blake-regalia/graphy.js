@@ -447,6 +447,16 @@ term_regex 'regular expression'
 				b_concise = true;
 			}
 
+			// verbose flag
+			let b_verbose = false;
+			if(s_flags.includes('v')) {
+				s_flags_r = s_flags.replace(/v/g, '');
+				b_verbose = true;
+				if(b_concise) {
+					error(`cannot combine regex flags 'c' (for concise) and 'v' (for verbose)`);
+				}
+			}
+
 			// regex value
 			let r_value;
 
@@ -464,6 +474,7 @@ term_regex 'regular expression'
 				value: {
 					pattern: r_value,
 					concise: b_concise,
+					verbose: b_verbose,
 				},
 			};
 		}

@@ -537,7 +537,29 @@ if(!B_BROWSER) {
 					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 				}),
 
+				'+filter datatype untagged': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia.org\\/datatype\\/gram/c'
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
 
+				'+filter datatype tagged': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia.org\\/datatype\\/gram/c{datatyped}'
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'+filter datatype and tag': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia.org\\/datatype\\/gram/c and {datatyped}'
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
 			},
 
 			...['nt', 'ttl'].reduce((h_out, s_variant) => ({

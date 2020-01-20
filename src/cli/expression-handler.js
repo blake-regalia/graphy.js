@@ -145,7 +145,7 @@ const pretag = (g, sj_target) => g.tags? compile_tags(g.tags).gen(sj_target)+' &
 
 const wrap = (s, b) => b? `(${s})`: s;
 
-const escape_str = s => s.replace(/'/g, '\\\'').replace(/\r\n\v\f/g, '');
+const escape_str = s => s.replace(/\\(.)/g, '$1').replace(/'/g, '\\\'').replace(/\r\n\v\f/g, '');
 
 const track_prefix = (si_var_iri, si_prefix, s_suffix) => ({
 	declare: /* syntax: js */ `let ${si_var_iri} = null;`,
@@ -469,8 +469,8 @@ const H_COMPILERS = {
 		let r_pattern = g_regex.pattern;
 		let s_source = r_pattern.source;
 
-		// consie term
-		if(g_regex.concise) {
+		// concise/verbose term
+		if(g_regex.concise || g_regex.verbose) {
 			let m_plain = R_PLAIN_REGEX.exec(s_source);
 
 			// plain regex
@@ -481,14 +481,17 @@ const H_COMPILERS = {
 				if(s_anchor_start) {
 					// concise term type
 					switch(s_text[0]) {
-						// language tag
+						// language tag or datatype
 						case '@':
 						case '^': {
 							let b_datatype = '^' === s_text[0];
-							let b_prefixed_datatype = b_datatype && '>' !== s_text[1];
+							let b_prefixed_datatype = b_datatype && !g_regex.verbose && '>' !== s_text[1];
 							let sj_prefixes = b_prefixed_datatype? 'h_prefixes': '';
 
 							let xm_tags = b_datatype? XM_TERM_TAG_LITERAL_DATATYPED: XM_TERM_TAG_LITERAL_LANGUAGED;
+
+							// string pattern
+							let s_pattern = b_datatype? escape_str(s_text.slice(1)): escape_str(s_text);
 
 							// exact
 							if(s_anchor_end) {
@@ -500,14 +503,18 @@ const H_COMPILERS = {
 									...(b_prefixed_datatype
 										? {
 											rank: X_RANK_CONCISE_PREFIXES_STRING_EQUALS,
+
+											gen(sj_target) {
+												return /* syntax: js */ `'${s_pattern}' === ${sj_target}.concise(${sj_prefixes})`;
+											},
 										}
 										: {
 											rank: X_RANK_CONCISE_STRING_EQUALS,
-										}),
 
-									gen(sj_target) {
-										return /* syntax: js */ `'${escape_str(s_text)}' === ${sj_target}.concise(${sj_prefixes})`;
-									},
+											gen(sj_target) {
+												return /* syntax: js */ `'${s_pattern}' === ${sj_target}.concise()`;
+											},
+										}),
 								};
 							}
 							// starts with
@@ -524,11 +531,21 @@ const H_COMPILERS = {
 
 											prefixes: !!sj_prefixes,
 
-											rank: b_prefixed_datatype? X_RANK_CONCISE_PREFIXES_STRING_INDEX_OF: X_RANK_CONCISE_STRING_INDEX_OF,
+											...b_prefixed_datatype
+												? {
+													rank: X_RANK_CONCISE_PREFIXES_STRING_INDEX_OF,
 
-											gen(sj_target) {
-												return /* syntax: js */ `0 === ${sj_target}.concise(${sj_prefixes}).indexOf('${escape_str(s_text)}')`;
-											},
+													gen(sj_target) {
+														return /* syntax: js */ `0 === ${sj_target}.concise(${sj_prefixes}).indexOf('${s_pattern}')`;
+													},
+												}
+												: {
+													rank: X_RANK_CONCISE_STRING_INDEX_OF,
+
+													gen(sj_target) {
+														return /* syntax: js */ `0 === ${sj_target}.concise().indexOf('${s_pattern}')`;
+													},
+												},
 										};
 									}
 									// no contents given; exact datatype
@@ -538,11 +555,21 @@ const H_COMPILERS = {
 
 											prefixes: !!sj_prefixes,
 
-											rank: b_prefixed_datatype? X_RANK_CONCISE_PREFIXES_STRING_EQUALS: X_RANK_CONCISE_STRING_EQUALS,
+											...b_prefixed_datatype
+												? {
+													rank: X_RANK_CONCISE_PREFIXES_STRING_EQUALS,
 
-											gen(sj_target) {
-												return /* syntax: js */ `'${escape_str(s_text.slice(1))}' === ${sj_target}.datatype.concise(${sj_prefixes})`;
-											},
+													gen(sj_target) {
+														return /* syntax: js */ `'${s_pattern}' === ${sj_target}.datatype.concise(${sj_prefixes})`;
+													},
+												}
+												: {
+													rank: X_RANK_CONCISE_STRING_EQUALS,
+
+													gen(sj_target) {
+														return /* syntax: js */ `'${s_pattern}' === ${sj_target}.datatype.concise()`;
+													},
+												},
 										};
 									}
 									// exact language
@@ -553,7 +580,7 @@ const H_COMPILERS = {
 											rank: X_RANK_CONCISE_STRING_INDEX_OF,
 
 											gen(sj_target) {
-												return /* syntax: js */ `'${escape_str(s_text.slice(1))}' === ${sj_target}.language`;
+												return /* syntax: js */ `'${s_pattern}' === ${sj_target}.language`;
 											},
 										};
 									}
@@ -565,11 +592,21 @@ const H_COMPILERS = {
 
 										prefixes: !!sj_prefixes,
 
-										rank: b_prefixed_datatype? X_RANK_CONCISE_PREFIXES_STRING_INDEX_OF: X_RANK_CONCISE_STRING_INDEX_OF,
+										...b_prefixed_datatype
+											? {
+												rank: X_RANK_CONCISE_PREFIXES_STRING_INDEX_OF,
 
-										gen(sj_target) {
-											return /* syntax: js */ `0 === ${sj_target}.datatype.concise(${sj_prefixes}).indexOf('${escape_str(s_text)}')`;
-										},
+												gen(sj_target) {
+													return /* syntax: js */ `0 === ${sj_target}.datatype.concise(${sj_prefixes}).indexOf('${s_pattern}')`;
+												},
+											}
+											: {
+												rank: X_RANK_CONCISE_STRING_INDEX_OF,
+
+												gen(sj_target) {
+													return /* syntax: js */ `0 === ${sj_target}.datatype.concise().indexOf('${s_pattern}')`;
+												},
+											},
 									};
 								}
 								// start of language
@@ -580,7 +617,7 @@ const H_COMPILERS = {
 										rank: X_RANK_STRING_INDEX_OF,
 
 										gen(sj_target) {
-											return /* syntax: js */ `0 === ${sj_target}.language.indexOf('${escape_str(s_text.slice(1))}')`;
+											return /* syntax: js */ `0 === ${sj_target}.language.indexOf('${s_pattern}')`;
 										},
 									};
 								}
