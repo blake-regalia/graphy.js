@@ -491,12 +491,12 @@ class Reader {
 		Object.assign(this, !b_relax
 			? {
 				create_named_node(p_iri) {
-					if(!rt_named_node_valid.test(p_iri)) return this.error(`invalid IRI: "${p_iri}"`);
+					if(!rt_named_node_valid.test(p_iri)) return k_self._error(`invalid IRI: "${p_iri}"`);
 					return namedNode(p_iri);
 				},
 
 				create_named_node_escapeless(p_iri) {
-					if(!rt_named_node_valid_escapeless.test(p_iri)) return this.error(`invalid IRI: "${p_iri}"`);
+					if(!rt_named_node_valid_escapeless.test(p_iri)) return k_self._error(`invalid IRI: "${p_iri}"`);
 					return namedNode(p_iri);
 				},
 
