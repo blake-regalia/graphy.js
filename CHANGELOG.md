@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.0.4 (2020-02-05)
+------------------------
+
+Fixes [#22](https://github.com/blake-regalia/graphy.js/issues/22), a bug when validating IRIs in the N-Triples and N-Quads readers.
+
+### 🔧 Fixes
+
+#### `@graphy/content.n*.read`
+ - IRI validation
+
+
 ## v4.0.3 (2020-01-07)
 ------------------------
 
