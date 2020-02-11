@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.0.5 (2020-02-11)
+------------------------
+
+Fixed missing dependency to `@graphy/core.class.scribable` for all writer packages.
+
+### 🔧 Fixes
+
+#### `@graphy/content.*.write`
+ - Added scribable class dependency.
+
+
 ## v4.0.4 (2020-02-05)
 ------------------------
 

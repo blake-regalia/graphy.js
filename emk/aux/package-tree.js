@@ -4,7 +4,7 @@ module.exports = {
 	core: {
 		class: {
 			writable: () => ({
-				links: ['core.data.factory', 'core.iso.stream'],
+				links: ['core.data.factory', 'core.class.scribable'],
 				description: 'Serialize RDF conveniently and with style',
 			}),
 			scribable: () => ({
