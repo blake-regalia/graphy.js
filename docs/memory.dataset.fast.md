@@ -6,11 +6,11 @@
 </div>
 
 ## Primer
- - `Dataset` is used throughout examples in this document's code sections to refer to the module's export. This module was previously called _DatasetTree_.
+ - `FastDataset` is used throughout examples in this document's code sections to refer to the module's export. This module was previously called _DatasetTree_.
 
 ## Contents
  - [Memory and Performance](#memory-and-performance) -- what to be aware of when using this package.
- - [Construction](#construction) -- how to create an instance of a Dataset
+ - [Construction](#construction) -- how to create an instance of a FastDataset
  - [Properties](#properties)
    - [`.size`](#property_size) -- number of quads in the dataset.
  - [Prototype Methods](#methods) -- 
@@ -26,7 +26,7 @@
      - [`.deleteQuads(...)`](#method_delete-quads)
      - [`.clear(...)`](#method_clear) -- remove all quads from the dataset
    - Set Analogues
-     - [`.has(...)`](#method_has) -- test if the Dataset has a given quad
+     - [`.has(...)`](#method_has) -- test if the dataset has a given quad
    - Set Algebra Booleans
      - [`.equals(...)`](#method_equals) -- `A = B`
      - [`.contains(...)`](#method_contains) -- `(A ∩ B) = B`
@@ -48,7 +48,6 @@
 This data structure is best suited for storing quads in memory when the objective is to perform set operations quickly (e.g., union, difference, intersection, etc.) on relatively small datasets (still much better storage density than the alternatives -- see [memory usage comparison](https://github.com/blake-regalia/graphy.js/blob/master/perf/README.md#distinct-task) in the performance document).
 
 Future releases of graphy plan to include other data structures, such as _DenseDataset_, _FastDatacache_, and _DenseDatacache_, for meeting the various trade-offs between storage density and insertion/deletion time. In this implementation, certain set operations may reuse pointers to existing object trees in order to save the time it takes to copy subtrees and in order to reduce the overall memory footprint. This has no effect on user functionality since object reuse is handled internally and all methods ensure that stale objects are released to GC.
-
 
 ----
 
@@ -121,9 +120,6 @@ fs.createReadStream('input-b.ttl')
  - **returns** a [`#number/integer`](core.data.factory#number_integer)
  - *examples:*
      ```js
-     const factory = require('@graphy/core.data.factory');
-     const dataset = require('@graphy/memory.dataset.fast');
-
      let y_dataset = dataset();
      let h_prefixes = {
         dbr: 'http://dbpedia.org/resource/',
@@ -153,7 +149,7 @@ fs.createReadStream('input-b.ttl')
 
 <a name="method_symbol-iterator" />
 
-### [`* [Symbol.iterator]`](#method_symbol-iterator)`()` _per_ [@RDFJS/dataset](https://rdf.js.org/dataset-spec/dataset-spec.html#datasetcore-interface)
+### [`* [Symbol.iterator]`](#method_symbol-iterator)`()` _per_ [@RDFJS/DatasetCore](https://rdf.js.org/dataset-spec/#dfn-datasetcore)
  - create an iterator to traverse each quad in `this`.
  - **yields** [Quads](core.data.factory#class_quad).
 
@@ -161,20 +157,20 @@ fs.createReadStream('input-b.ttl')
 <a name="method_canonicalize" />
 
 ### [`.canonicalize`](#method_canonicalize)`()`
- - create a new DatasetTree by applying the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/) (URDNA2015). If you want isomorphism to hold under the usual DatasetTree methods, you should use this method on both dataset instances prior to testing [`.equals()`](#method_equals), [`.contains()`](#method_contains), [`.disjoint()`](#method_disjoint), and prior to using [`.union()`](#method_union), [`.intersection()`](#method_intersection), [`.minus()`](#method_minus), and [`.difference()`](#method_difference).
- - **returns** a [new DatasetTree](#methods).
+ - create a new FastDataset by applying the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/) (URDNA2015). If you want isomorphism to hold under the usual FastDataset methods, you should use this method on both dataset instances prior to testing [`.equals()`](#method_equals), [`.contains()`](#method_contains), [`.disjoint()`](#method_disjoint), and prior to using [`.union()`](#method_union), [`.intersection()`](#method_intersection), [`.minus()`](#method_minus), and [`.difference()`](#method_difference).
+ - **returns** a [new FastDataset](#methods).
 
 
 <a name="method_add" />
 
-### [`.add`](#method_add)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/dataset.add](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-add)
+### [`.add`](#method_add)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/DatasetCore.add](https://rdf.js.org/dataset-spec/#dfn-add)
  - add a single quad to the dataset; will only succeed if the quad is not already present.
  - **returns** `this`.
 
 
 <a name="method_add-all" />
 
-### [`.addAll`](#method_addAll)`(quads: `[`@RDFJS/dataset`](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset)` | sequence<`[`AnyQuad`](core.data.factory#interface_any-quad)`>)` _implements_ [@RDFJS/dataset.addAll](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-addall)
+### [`.addAll`](#method_addAll)`(quads: `[`@RDFJS/Dataset`](https://rdf.js.org/dataset-spec/#dfn-dataset)` | sequence<`[`AnyQuad`](core.data.factory#interface_any-quad)`>)` _implements_ [@RDFJS/Dataset.addAll](https://rdf.js.org/dataset-spec/#dfn-addall)
  - add quads to the dataset; will only add each quad that is not already present. 
  - **returns** `this`
 
@@ -188,7 +184,7 @@ fs.createReadStream('input-b.ttl')
 
 <a name="method_delete" />
 
-### [`.delete`](#method_delete)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/dataset.delete](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-delete)
+### [`.delete`](#method_delete)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/DatasetCore.delete](https://rdf.js.org/dataset-spec/#dfn-delete)
  - delete the given `quad` from the dataset if it exists.
  - **returns** `this`
 
@@ -208,14 +204,14 @@ fs.createReadStream('input-b.ttl')
 
 <a name="method_has" />
 
-### [`.has`](#method_has)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/dataset.has](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-has)
+### [`.has`](#method_has)`(quad: `[`AnyQuad`](core.data.factory#interface_any-quad)`)` _implements_ [@RDFJS/DatasetCore.has](https://rdf.js.org/dataset-spec/#dfn-has)
  - tests if this contains the given `quad`.
  - **returns** a `boolean`.
 
 
 <a name="method_equals" />
 
-### [`.equals`](#method_equals)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.equals](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-equals)
+### [`.equals`](#method_equals)`(other: `[`FastDataset`](#methods)`)` _implements_ [@RDFJS/Dataset.equals](https://rdf.js.org/dataset-spec/#dfn-equals)
  - `A = B`
  - tests if `this` and `other` are strictly equal graphs.
  - **returns** a `boolean`
@@ -223,7 +219,7 @@ fs.createReadStream('input-b.ttl')
 
 <a name="method_contains" />
 
-### [`.contains`](#method_contains)`(other: `[`DatasetTree`](#methods)`)`
+### [`.contains`](#method_contains)`(other: `[`FastDataset`](#methods)`)`
  - `(A ∩ B) = B`
  - tests if `this` contains all quads in `other`.
  - **returns** a `boolean`.
@@ -231,7 +227,7 @@ fs.createReadStream('input-b.ttl')
 
 <a name="method_disjoint" />
 
-### [`.disjoint`](#method_disjoint)`(other: `[`DatasetTree`](#methods)`)`
+### [`.disjoint`](#method_disjoint)`(other: `[`FastDataset`](#methods)`)`
  - `(A ∩ B) = Ø`
  - tests if `this` is disjoint with `other`.
  - **returns** a `boolean`.
@@ -239,38 +235,38 @@ fs.createReadStream('input-b.ttl')
 
 <a name="method_union" />
 
-### [`.union`](#method_union)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.union](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-union)
- - create a new DatasetTree by combining the quads from both `this` and `other`.
- - **returns** a [new DatasetTree](#methods).
+### [`.union`](#method_union)`(other: `[`FastDataset`](#methods)`)` _implements_ [@RDFJS/Dataset.union](https://rdf.js.org/dataset-spec/#dfn-union)
+ - create a new FastDataset by combining the quads from both `this` and `other`.
+ - **returns** a [new FastDataset](#methods).
 
 
 <a name="method_intersection" />
 
-### [`.intersection`](#method_intersection)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.intersection](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-intersection)
+### [`.intersection`](#method_intersection)`(other: `[`FastDataset`](#methods)`)` _implements_ [@RDFJS/Dataset.intersection](https://rdf.js.org/dataset-spec/#dfn-intersection)
  - `A ∩ B`
- - create a new DatasetTree by intersecting the quads between `this` and `other`.
- - **returns** a [new DatasetTree](#methods).
+ - create a new FastDataset by intersecting the quads between `this` and `other`.
+ - **returns** a [new FastDataset](#methods).
 
 
 <a name="method_minus" />
 
-### [`.minus`](#method_minus)`(other: `[`DatasetTree`](#methods)`)`
+### [`.minus`](#method_minus)`(other: `[`FastDataset`](#methods)`)`
  - `(A - (A ∩ B))`
- - create a new DatasetTree by subtracting the quads in `other` from `this`.
- - **returns** a [new DatasetTree](#methods).
+ - create a new FastDataset by subtracting the quads in `other` from `this`.
+ - **returns** a [new FastDataset](#methods).
 
 
 <a name="method_difference" />
 
-### [`.difference`](#method_difference)`(other: `[`DatasetTree`](#methods)`)` _implements_ [@RDFJS/dataset.difference](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-dataset-difference)
+### [`.difference`](#method_difference)`(other: `[`FastDataset`](#methods)`)` _implements_ [@RDFJS/Dataset.difference](https://rdf.js.org/dataset-spec/#dfn-difference)
  - `(A - (A ∩ B)) ∪ (B - (A ∩ B))`
- - create a new DatasetTree by taking the difference between `this` and `other`.
- - **returns** a [new DatasetTree](#methods).
+ - create a new FastDataset by taking the difference between `this` and `other`.
+ - **returns** a [new FastDataset](#methods).
 
 <a name="method_match" />
 
-### [`.match`](#method_match)`([subject: null | `[`AnyTerm`](core.data.factory#interface_any-term)`[, predicate: null | `[`AnyTerm`](core.data.factory#interface_any-term)`[, object: null | `[`AnyTerm`](core.data.factory#interface_any-term)`[, graph: null | `[`AnyTerm`](core.data.factory#interface_any-term)`]]]])` _implements_ [@RDFJS/dataset.match](https://rdf.js.org/dataset-spec/dataset-spec.html#dom-datasetcore-match)
- - create a new DatasetTree by matching the specified `subject`, `predicate`, `object`, and/or `graph`, or any quads if `null` is given for any role.
- - **returns** a [new DatasetTree](#methods).
+### [`.match`](#method_match)`([subject: null | `[`AnyTerm`](core.data.factory#interface_any-term)`[, predicate: null | `[`AnyTerm`](core.data.factory#interface_any-term)`[, object: null | `[`AnyTerm`](core.data.factory#interface_any-term)`[, graph: null | `[`AnyTerm`](core.data.factory#interface_any-term)`]]]])` _implements_ [@RDFJS/DatasetCore.match](https://rdf.js.org/dataset-spec/#dfn-match)
+ - create a new FastDataset by matching the specified `subject`, `predicate`, `object`, and/or `graph`, or any quads if `null` is given for any role.
+ - **returns** a [new FastDataset](#methods).
 
 
