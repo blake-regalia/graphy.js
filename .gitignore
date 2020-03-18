@@ -30,6 +30,7 @@ debug
 /fixed
 .devtoolrc
 /publish.*
+/.nyc_output/
 
 # auxillary
 /test/main/linked.js
