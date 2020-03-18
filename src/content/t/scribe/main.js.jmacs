@@ -93,7 +93,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 		// prefixes given
 		if(gc_scriber.prefixes) {
 			// update prefixes and push to output
-			this.push(this._serialize_prefixes(gc_scriber.prefixes, true));
+			this.push(this._serialize_prefixes(gc_scriber.prefixes, true) || '');
 		}
 	}
 
