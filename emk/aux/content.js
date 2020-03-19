@@ -51,6 +51,15 @@ module.exports = {
 			manifest: 'http://w3c.github.io/rdf-tests/trig/manifest.ttl',
 			mime: 'application/trig',
 		},
+		xml: {
+			super: 'xml',
+			description: 'RDF/XML',
+			modes: {
+				scribe: {},
+			},
+			// manifest: 'http://w3c.github.io/rdf-tests/trig/manifest.ttl',
+			mime: 'application/rdf+xml',
+		},
 	},
 
 	// content modes

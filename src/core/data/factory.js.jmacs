@@ -1790,6 +1790,8 @@ const factory = module.exports = {
 
 	clean_iri,
 	cleanIri: clean_iri,
+
+	$_PREFIX_CACHE,
 };
 
 Object.assign(factory, {

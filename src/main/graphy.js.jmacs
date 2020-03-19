@@ -65,6 +65,12 @@ const memoize = (s_package) => {
 	}
 }
 
+const xml = {
+	get scribe() {
+		@{memoize('content.xml.scribe')}
+	},
+};
+
 
 // // SPARQL Results package
 // const sparql_results = {
@@ -82,6 +88,7 @@ const H_CONTENT_MIMES = {
 	'application/trig': trig,
 	'application/n-triples': nt,
 	'application/n-quads': nq,
+	'application/rdf+xml': xml,
 	// 'application/sparql-results+json': sparql_results,
 };
 
@@ -95,6 +102,8 @@ const H_CONTENT_TAGS = {
 	ttl,
 	turtle: ttl,
 	trig,
+	xml,
+	'rdf/xml': xml,
 	// 'application/sparql-results+json': sparql_results,
 };
 
