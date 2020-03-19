@@ -454,6 +454,7 @@ module.exports = async() => {
 				'content.trig.read',
 				'content.trig.scribe',
 				'content.trig.write',
+				'content.xml.scribe',
 				'memory.dataset.fast',
 			],
 

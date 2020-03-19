@@ -1,0 +1,438 @@
+@./* global FORMAT */
+
+@//@
+@import '../../../share/channel.jmacs'
+@import '../../../share/writer.jmacs'
+
+const factory = require('@{channel('core.data.factory')}');
+const Scribable = require('@{channel('core.class.scribable')}');
+
+const {
+	c1,
+	namedNode,
+	$_PREFIX_CACHE,
+} = factory;
+
+const R_XML_ESCAPES = /[&"<>']/g;
+const H_XML_ESCAPES = {
+	'&': '&amp;',
+	'<': '&lt;',
+	'>': '&gt;',
+	'"': '&quot;',
+	"'": '&apos;',
+};
+
+const escape_xml_text = s_text => s_text.replace(R_XML_ESCAPES, s => H_XML_ESCAPES[s]);
+
+const R_XML_NAME_SIMPLE_EOS = /([A-Za-z_][A-Za-z_.0-9-]*)$/;
+
+@>> R_CHARS_EXTENDED() 
+	@//@regex
+	\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u{10000}-\u{EFFFF}
+@;
+
+@>> R_XML_NAME_EXTENDED()
+	@//@regex
+	[A-Za-z_@{R_CHARS_EXTENDED()}]
+	[A-Za-z_.0-9\-\u00b7\u203f-\u2040@{R_CHARS_EXTENDED()}]*
+@;
+
+const R_XML_NAME_EXTENDED_EOS = /(@{R_XML_NAME_EXTENDED()}$)/u;
+
+function XML_Serializer$pair(k_self, sx1_predicate, sx_arc, kt_object) {
+	// named node
+	if(kt_object.isNamedNode) {
+		sx_arc += ' rdf:resource="'+escape_xml_text(kt_object.value)+'"/>';
+	}
+	// literal
+	else if(kt_object.isLiteral) {
+		// languaged
+		if(kt_object.isLanguaged) {
+			sx_arc += ' xml:lang="'+kt_object.language+'"';
+		}
+		// datatyped
+		else if(kt_object.isDatatyped) {
+			sx_arc += ' rdf:datatype="'+escape_xml_text(kt_object.datatype.value)+'"';
+		}
+
+		// all literals
+		sx_arc += '>'+escape_xml_text(kt_object.value)+'</'+sx1_predicate+'>';
+	}
+	// blank node
+	else if(kt_object.isBlankNode) {
+		sx_arc += ' rdf:nodeID="'+escape_xml_text(kt_object.value)+'"/>';
+	}
+	// other
+	else {
+		throw new Error(`Not allowed to serialize term type '${kt_object.termType}' as object in XML serializer.`);
+	}
+
+	return sx_arc;
+}
+
+function XML_Serializer$predicate(k_self, kt_predicate) {
+	let h_prefixes = k_self._h_prefixes;
+
+	let p_predicate = kt_predicate.value;
+
+	// split predicate
+	let p_edge_prefix_iri;
+	let s_edge_suffix;
+	{
+		let m_edge_name = R_XML_NAME_SIMPLE_EOS.exec(p_predicate);
+
+		// simple name
+		if(m_edge_name) {
+			p_edge_prefix_iri = p_predicate.slice(0, m_edge_name.index);
+			s_edge_suffix = m_edge_name[1];
+		}
+		// not a simple name
+		else {
+			m_edge_name = R_XML_NAME_EXTENDED_EOS.exec(p_predicate);
+
+			// extended name
+			if(m_edge_name) {
+				p_edge_prefix_iri = p_predicate.slice(0, m_edge_name.index);
+				s_edge_suffix = m_edge_name[1];
+			}
+			// cannot serialize
+			else {
+				throw new Error(`Cannot serialize predicate <${p_predicate}> into an XML qname`);
+			}
+		}
+	}
+
+	// predicate tag
+	let sx1_predicate;
+	let sx_arc;
+
+	TEMPORARY_PREFIX:
+	for(;;) {
+		PREFIX_LOOKUP:
+		for(;;) {
+			// prefix cache
+			if(h_prefixes[$_PREFIX_CACHE]) {
+				let h_inverse = h_prefixes[$_PREFIX_CACHE]._h_inverse;
+
+				// prefix exists
+				if(p_edge_prefix_iri in h_inverse) {
+					let si_prefix = h_inverse[p_edge_prefix_iri];
+
+					// set predicate tag
+					sx1_predicate = (si_prefix? si_prefix+':': '')+s_edge_suffix;
+
+					// start arc
+					sx_arc = '<'+sx1_predicate;
+
+					// done
+					break TEMPORARY_PREFIX;
+				}
+				// prefix does not exist
+				else {
+					break;
+				}
+			}
+			// no cache
+			else {
+				// each prefix in hash
+				for(let si_prefix in h_prefixes) {
+					let p_prefix_iri = h_prefixes[si_prefix];
+
+					// prefix matches
+					if(p_prefix_iri === p_edge_prefix_iri) {
+						// set predicate tag
+						sx1_predicate = (si_prefix? si_prefix+':': '')+s_edge_suffix;
+
+						// start arc
+						sx_arc = '<'+sx1_predicate;
+
+						// stop searching hash
+						break PREFIX_LOOKUP;
+					}
+				}
+			}
+		}
+
+		// create temporary prefix
+		let si_prefix_tmp = '__g'+(k_self._c_prefixes_tmp++);
+
+		// set predicate tag
+		sx1_predicate = si_prefix_tmp+':'+s_edge_suffix;
+
+		// start arc
+		sx_arc = '<'+sx1_predicate+' xmlns:'+si_prefix_tmp+'="'+p_edge_prefix_iri+'"';
+
+		// done
+		break;
+	}
+
+	return [sx1_predicate, sx_arc];
+}
+
+class XML_Scriber extends Scribable {
+	constructor(gc_scriber={}) {
+		// special case, remove prefixes before forwarding to super
+		let h_prefixes = gc_scriber.prefixes;
+		delete gc_scriber.prefixes;
+
+		super(gc_scriber);
+
+		// whether or not we can still add prefixes
+		this._b_prefixes_open = true;
+
+		this._c_prefixes_tmp = 0;
+
+		this._kt_subject = null;
+		// this._kt_predicate = null;
+
+		// open xml document and root node
+		let sx_open = '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF'
+			+'\n\txmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"';
+
+		// force default prefix
+		this._update_prefixes({
+			rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+		});
+
+		// prefixes given
+		if(h_prefixes) {
+			// update prefixes and push to output
+			this.push(sx_open+this._serialize_prefixes(h_prefixes));
+		}
+		// no prefixes
+		else {
+			this.push(sx_open);
+		}
+	}
+
+	_serialize_prefixes(h_prefixes_in, b_force_serialize=false) {
+		// prefixes are frozen; reject prefix event
+		if(!this._b_prefixes_open) return;
+
+		// ref current prefixes
+		let h_prefixes = this._h_prefixes;
+
+		// serialize new prefixes
+		let sx_prefixes = '';
+		for(let si_prefix in h_prefixes_in) {
+			// prefix already exists
+			if((si_prefix in h_prefixes)) {
+				// and no change; skip
+				if(h_prefixes_in[si_prefix] === h_prefixes[si_prefix] && !b_force_serialize) {
+					continue;
+				}
+				// attempted change to prefix
+				else {
+					throw new Error(`Cannot change prefixes in RDF/XML serializer. Attempted to modify '${si_prefix}' from <${h_prefixes[si_prefix]}> to <${h_prefixes_in[si_prefix]}>`);
+				}
+			}
+
+			// serialize prefix
+			sx_prefixes += `\n\txmlns${si_prefix? ':'+si_prefix: ''}="${namedNode(h_prefixes_in[si_prefix]).value}"`;
+		}
+
+		// change detected
+		if(sx_prefixes) {
+			// (re)cache prefixes
+			this._update_prefixes(h_prefixes_in, true);
+		}
+
+		// write prefixes
+		return sx_prefixes;
+	}
+
+
+	_serialize_c3r(hc3r_triples) {
+		// string building
+		let sx_output = '';
+
+		// no longer able to modify prefixes
+		if(this._b_prefixes_open) {
+			sx_output += '>';
+			this._b_prefixes_open = false;
+		}
+
+		// ref prefixes
+		let h_prefixes = this._h_prefixes;
+
+		// hanging subject
+		if(null !== this._kt_subject) {
+			// close previous
+			sx_output += '\n\t</rdf:Description>';
+
+			// reset
+			this._kt_subject = null;
+		}
+
+		for(let sc1_subject in hc3r_triples) {
+			let sx_triples = '';
+
+			// interpret subject
+			let kt_subject = c1(sc1_subject, h_prefixes);
+
+			// not a term; skip
+			if(!kt_subject.termType) continue;
+
+			// not a node
+			if(!kt_subject.isNamedNode && !kt_subject.isBlankNode) {
+				throw new Error(`Cannot use ${kt_subject.termType} term type in subject position`);
+			}
+
+			// convert to xml
+			{
+				// named node
+				if(kt_subject.isNamedNode) {
+					sx_triples += '\n\n\t<rdf:Description rdf:about="'+escape_xml_text(kt_subject.value)+'">';
+				}
+				// named node
+				else if(kt_subject.isBlankNode) {
+					sx_triples += '\n\n\t<rdf:Description rdf:nodeID="'+escape_xml_text(kt_subject.value)+'">';
+				}
+				// other
+				else {
+					throw new Error(`Not allowed to serialize term type '${kt_subject.termType}' as subject in XML serializer.`);
+				}
+			}
+
+			let b_predicates = false;
+
+			// each predicate
+			let hc2r_pairs = hc3r_triples[sc1_subject];
+			for(let sc1_predicate in hc2r_pairs) {
+				// interpret predicate
+				let kt_predicate = c1(sc1_predicate, h_prefixes);
+
+				// not a term; skip
+				if(!kt_predicate.termType) continue;
+
+				// not a node
+				if(!kt_predicate.isNamedNode) {
+					throw new Error(`Cannot use ${kt_predicate.termType} term type in subject position`);
+				}
+
+				// convert to xml
+				let [sx1_predicate, sx_arc] = XML_Serializer$predicate(this, kt_predicate);
+
+				// pairs
+				let sx_pairs = '';
+
+				// each object
+				for(let sc1_object of hc2r_pairs[sc1_predicate]) {
+					// interpret object
+					let kt_object = c1(sc1_object, h_prefixes);
+
+					// not a term; skip
+					if(!kt_object.termType) continue;
+
+					// add object to pairs
+					sx_pairs += '\n\t\t'+XML_Serializer$pair(this, sx1_predicate, sx_arc, kt_object);
+				}
+
+				// objects written; add pairs to output
+				if(sx_pairs) {
+					sx_triples += sx_pairs;
+					b_predicates = true;
+				}
+			}
+
+			// predicates written; add triples to output
+			if(b_predicates) {
+				sx_output += sx_triples+'\n\t</rdf:Description>';
+			}
+		}
+
+		return sx_output;
+	}
+
+	_serialize_quad(g_quad) {
+		// no longer able to modify prefixes
+		if(this._b_prefixes_open) {
+			this._s_push += '>';
+			this._b_prefixes_open = false;
+		}
+
+		let {
+			subject: kt_subject,
+			predicate: kt_predicate,
+			object: kt_object,
+		} = g_quad;
+
+		// serialize predicate
+		let [sx1_predicate, sx_arc] = XML_Serializer$predicate(this, kt_predicate);
+		let sx_pair = '\n\t\t'+XML_Serializer$pair(this, sx1_predicate, sx_arc, kt_object);
+
+		// same subject
+		if(kt_subject.equals(this._kt_subject)) {
+			this._s_push += sx_pair;
+		}
+		// subject not identical to previous
+		else {
+			// not a node
+			if(!kt_subject.isNamedNode && !kt_subject.isBlankNode) {
+				throw new Error(`Cannot use ${kt_subject.termType} term type in subject position`);
+			}
+
+			// convert to xml
+			let sx_line;
+			{
+				// named node
+				if(kt_subject.isNamedNode) {
+					sx_line = '\n\n\t<rdf:Description rdf:about="'+escape_xml_text(kt_subject.value)+'">'+sx_pair;
+				}
+				// named node
+				else if(kt_subject.isBlankNode) {
+					sx_line = '\n\n\t<rdf:Description rdf:nodeID="'+escape_xml_text(kt_subject.value)+'">'+sx_pair;
+				}
+				// other
+				else {
+					throw new Error(`Not allowed to serialize term type '${kt_subject.termType}' as subject in XML serializer.`);
+				}
+			}
+
+			// different subject
+			if(this._kt_subject) {
+				// write triple
+				this._s_push += '\n\t</rdf:Description>'+sx_line;
+			}
+			// first subject
+			else {
+				this._s_push += sx_line;
+			}
+
+			// save subject and predicate
+			this._kt_subject = kt_subject;
+			// this._kt_predicate = kt_predicate;
+		}
+	}
+
+	_flush() {
+		// flush buffer
+		XML_Scriber._flush_buffer(this);
+
+		// no longer able to modify prefixes
+		if(this._b_prefixes_open) {
+			this.push('>');
+			this._b_prefixes_open = false;
+		}
+
+		// triple needs closing
+		if(this._kt_subject) {
+			this.push('\n\t</rdf:Description>\n</rdf:RDF>\n');
+		}
+		// just close document
+		else {
+			this.push('\n</rdf:RDF>\n');
+		}
+
+		// eof
+		this.push(null);
+	}
+};
+
+Object.assign(XML_Scriber, {
+	_serialize_comment: Scribable.prototype._serialize_hash_comment,
+});
+
+module.exports = function(g_config) {
+	return new XML_Scriber(g_config);
+};

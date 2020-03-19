@@ -30,7 +30,7 @@ class SerializerSuite {
 	normalize(st_doc, b_interpret=false) {
 		return stream.source(st_doc)
 			// read document
-			.pipe(((b_interpret && this.interpreter) || this.validator)())
+			.pipe(new ((b_interpret && this.interpreter) || this.validator)())
 
 			// canonicalize in dataset
 			.pipe(dataset_tree({
@@ -160,32 +160,32 @@ class SerializerSuite {
 					}
 
 					// create interpreter
-					let ds_interpreter = (this.interpreter || this.validator)({
-						error(e_read) {
-							fke_test(e_read);
-						},
+					let ds_interpreter = new (this.interpreter || this.validator)();
 
-						finish() {
-							// run interpreter callback?
-							if(fk_validate) fk_validate();
+					ds_interpreter.on('error', (e_read) => {
+						fke_test(e_read);
+					});
 
-							// check interpreter events
-							expect(a_events_actual).to.have.lengthOf(a_events_expect.length);
+					ds_interpreter.on('finish', () => {
+						// run interpreter callback?
+						if(fk_validate) fk_validate();
 
-							for(let i_event=0; i_event<a_events_actual.length; i_event++) {
-								let [s_event_actual, a_event_args] = a_events_actual[i_event];
-								let [s_event_expect, f_event_validate] = a_events_expect[i_event];
+						// check interpreter events
+						expect(a_events_actual).to.have.lengthOf(a_events_expect.length);
 
-								// expect same event name
-								expect(s_event_actual).to.equal(s_event_expect);
+						for(let i_event=0; i_event<a_events_actual.length; i_event++) {
+							let [s_event_actual, a_event_args] = a_events_actual[i_event];
+							let [s_event_expect, f_event_validate] = a_events_expect[i_event];
 
-								// validate arguments
-								f_event_validate(...a_event_args);
-							}
+							// expect same event name
+							expect(s_event_actual).to.equal(s_event_expect);
 
-							// end of test
-							fke_test();
-						},
+							// validate arguments
+							f_event_validate(...a_event_args);
+						}
+
+						// end of test
+						fke_test();
 					});
 
 					// each expected event type
