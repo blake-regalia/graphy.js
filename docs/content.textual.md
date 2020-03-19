@@ -17,6 +17,8 @@ This documentation covers the following graphy packages:
    - reader: `@graphy/content.trig.read`
    - scriber: `@graphy/content.trig.scribe`
    - writer: `@graphy/content.trig.write`
+ - RDF/XML
+   - scriber: `@graphy/content.xml.scribe`
 
 ----
 
@@ -249,6 +251,7 @@ ttl_read(`
  - N-Quads (.nq) -- `@graphy/content.nq.scribe`
  - Turtle (.ttl) -- `@graphy/content.ttl.scribe`
  - TriG (.trig) -- `@graphy/content.trig.scribe`
+ - RDF/XML (.rdf) -- `@graphy/content.xml.scribe`
 
 ### Usage examples
 

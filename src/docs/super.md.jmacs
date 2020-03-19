@@ -29,6 +29,7 @@ This document describes the 'super' package `graphy`.
    - [`.content.trig.read(...)`](#package_content-trig-read)
    - [`.content.trig.scribe(...)`](#package_content-trig-scribe)
    - [`.content.trig.write(...)`](#package_content-trig-write)
+   - [`.content.xml.scribe(...)`](#package_content-xml-scribe)
    - [`.memory.dataset.fast(...)`](#package_memory-dataset-fast)
 
 <a name="functions" />

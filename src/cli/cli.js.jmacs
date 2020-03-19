@@ -463,6 +463,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 			`scribe -c ttl`,
 			`scribe -c turtle`,
 			`scribe -c 'text/turtle'`,
+			`scribe -c xml`,
 		],
 
 		command(g_argv, a_inputs, fe_command) {
@@ -1910,6 +1911,7 @@ if(!a_pipeline.length) {
 			a_prev = await Promise.all(a_curr);
 		}
 		catch(e_command) {
+			debugger;
 			exit(e_command.message);
 		}
 	}

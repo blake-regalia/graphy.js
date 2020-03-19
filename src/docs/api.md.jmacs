@@ -16,6 +16,7 @@
  - [`@graphy/content.trig.read`](content.textual#verb_read)
  - [`@graphy/content.trig.scribe`](content.textual#verb_scribe)
  - [`@graphy/content.trig.write`](content.textual#verb_write)
+ - [`@graphy/content.xml.scribe`](content.textual#verb_scribe)
 
 <br />
 
@@ -60,6 +61,9 @@
 		</li>
 		<li>
 			<code>@graphy/content.trig.*</code>
+		</li>
+		<li>
+			<code>@graphy/content.xml.*</code>
 		</li>
 	</ul>
 </div>

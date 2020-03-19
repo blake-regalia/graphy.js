@@ -64,6 +64,8 @@ graphy/:
       read: '@graphy/content.trig.read'
       scribe: '@graphy/content.trig.scribe'
       write: '@graphy/content.trig.write'
+    xml.:
+      scribe: '@graphy/content.xml.scribe'
 ```
 
 <br />

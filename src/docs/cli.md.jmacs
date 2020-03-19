@@ -186,6 +186,9 @@ _Examples:_
 
    # convert an N-Quads document into TriG
    $ cat input.nq | graphy read -c nq / scribe -c trig > output.trig
+
+   # convert an N-Triples document into RDF/XML
+   $ cat input.nq | graphy read -c nt / scribe -c xml > output.rdf
    ```
 
 

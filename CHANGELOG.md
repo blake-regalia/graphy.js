@@ -1,5 +1,21 @@
 # Changelog
 
+## v4.1.0 (2020-03-19)
+------------------------
+
+Added RDF/XML Serializer as Scriber: `@graphy/content.xml.scribe`.
+
+### 🍭 Features
+
+#### `@graphy/content.xml.scribe`
+ - Introduced RDF/XML Content Scriber.
+
+### 🔧 Fixes
+
+#### `@graphy/content.t*.scribe` and `@graphy/content.t*.write`
+ - Pre-emptively patched a situation that might have lead to serializing `undefined` during repeated `'prefix'` events.
+
+
 ## v4.0.5 (2020-02-11)
 ------------------------
 
