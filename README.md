@@ -24,6 +24,7 @@ Scribers
  - [`@graphy/content.nq.scribe`](https://graphy.link/content.textual#verb_scribe) -- N-Quads scriber
  - [`@graphy/content.ttl.scribe`](https://graphy.link/content.textual#verb_scribe) -- Turtle scriber
  - [`@graphy/content.trig.scribe`](https://graphy.link/content.textual#verb_scribe) -- TriG scriber
+ - [`@graphy/content.xml.scribe`](https://graphy.link/content.textual#verb_scribe) -- RDF/XML scriber
 
 Writers
  - [`@graphy/content.nt.write`](https://graphy.link/content.textual#verb_write) -- N-Triples writer
