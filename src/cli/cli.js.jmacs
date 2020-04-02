@@ -384,7 +384,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 		category: S_CATEGORY_IO,
 		overview: 'Deserialize RDF content',
 		description: [
-			'Read RDF content, i.e., deserialize it, from 1 or more inputs',
+			'Read RDF content, i.e., deserialize it, from 1 or more inputs using a single thread',
 		],
 		options: {
 			c: {
@@ -435,6 +435,88 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 				error: e => fe_command(e),
 			}));
+		},
+	},
+
+	scan: {
+		type: S_TRANSFORM_TYPE_NNSQ,
+		category: S_CATEGORY_IO,
+		overview: 'Deserialize RDF content using multiple threads',
+		description: [
+			'Scan RDF content, i.e., deserialize it, from 1 or more inputs using multiple threads',
+		],
+		options: {
+			c: {
+				type: 'string',
+				alias: ['content-type'],
+				default: 'nt',
+				describe: 'either an RDF Content-Type or format selector',
+				group: 'Content Selector Options:',
+			},
+			r: {
+				type: 'boolean',
+				alias: ['relax'],
+				default: undefined,  // eslint-disable-line no-undefined
+				describe: 'relax validation of tokens within the RDF document',
+			},
+			// b: {
+			// 	type: 'string',
+			// 	alias: ['base', 'base-uri', 'base-iri'],
+			// 	describe: 'set a base URI on the document',
+			// },
+
+			...content_type_flags(s => `scan from ${s}`),
+		},
+		examples: [
+			`scan -c nt`,
+			`scan -c n-triples`,
+			`scan -c 'application/n-triples'`,
+			`scan -c nq`,
+			`scan -c nquads`,
+			`scan -c 'application/n-quads'`,
+		],
+
+		command(g_argv, a_inputs, fe_command, a_rest) {
+			// select scanner
+			let f_scanner = graphy.content(g_argv['content-type']).scan;
+
+			let gc_scan = {
+				relax: g_argv.relax || false,
+			};
+
+			// // 'base-uri' => 'baseUri'
+			// if(g_argv['base-uri']) {
+			// 	gc_scan.baseUri = g_argv['base-uri'];
+			// }
+
+			// next command
+			let a_series = a_rest.shift();
+			let si_next = a_series[0];
+			switch(si_next) {
+				case 'count': {
+					return a_inputs.map(ds_input => new Promise((fk_resolve) => {
+						let ds_scanner = f_scanner({
+							...gc_scan,
+
+							preset: 'count',
+
+							error: e => fe_command(e),
+
+							report(c_quads) {
+								fk_resolve(new AnswerSource(c_quads));
+							},
+						});
+
+						ds_input.on('error', fe_command);
+
+						ds_input.pipe(ds_scanner);
+					}));
+				}
+
+				default: {
+					fe_command(`The 'scan' command only supports a limited set of commands to follow it; '${si_next}' is not supported`);
+				}
+			}
 		},
 	},
 
@@ -1805,8 +1887,13 @@ if(!a_pipeline.length) {
 	// starting inputs default to stdin if no explicit inputs given
 	let a_prev = a_inputs.length? a_inputs: [process.stdin];
 
+	// // each series in pipeline
+	// for(let a_series of a_pipeline) {
+
 	// each series in pipeline
-	for(let a_series of a_pipeline) {
+	while(a_pipeline.length) {
+		let a_series = a_pipeline.shift();
+
 		// start with command string
 		let s_command = a_series[0];
 
@@ -1905,7 +1992,7 @@ if(!a_pipeline.length) {
 			}
 
 			// eval command with its args
-			let a_curr = await g_command.command(g_argv, a_prev, fe_command);
+			let a_curr = await g_command.command(g_argv, a_prev, fe_command, a_pipeline);
 
 			// advance inputs
 			a_prev = await Promise.all(a_curr);

@@ -1,7 +1,7 @@
 const G_MODES_N_FAMILY = {
 	read: {},
 	write: {},
-	// scan: {},
+	scan: {},
 	scribe: {},
 };
 
@@ -82,6 +82,8 @@ module.exports = {
 			],
 			files: {
 				'main.js': [],
+				// 'master.js': [],
+				'task-presets.js': [],
 				'worker.js': [],
 			},
 		},

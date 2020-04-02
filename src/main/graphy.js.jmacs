@@ -10,11 +10,26 @@ const memoize = (s_package) => {
 };
 
 @.{
+	let g_rws = {
+		read: {},
+		write: {},
+		scribe: {},
+	};
+
 	let h_content_types = {
-		ttl: {},
-		trig: {},
-		nt: {},
-		nq: {},
+		ttl: g_rws,
+		trig: g_rws,
+		nt: {
+			...g_rws,
+			scan: {},
+		},
+		nq: {
+			...g_rws,
+			scan: {},
+		},
+		xml: {
+			scribe: {},
+		},
 	};
 }
 
@@ -34,28 +49,18 @@ const memoize = (s_package) => {
 
 
 @> content(s_content)
-
 	// @{s_content} package
 	const @{s_content} = {
-		// read @{s_content}
-		get read() {
-			@{memoize(`content.${s_content}.read`)}
-		},
-
-		@//// scan @{s_content}
-		@//get scan() {
-		@//	@{memoize(`content.${s_content}.scan`)}
-		@//},
-
-		// write @{s_content}
-		get write() {
-			@{memoize(`content.${s_content}.write`)}
-		},
-
-		// scribe @{s_content}
-		get scribe() {
-			@{memoize(`content.${s_content}.scribe`)}
-		},
+		@*{
+			for(let si_mode in h_content_types[s_content]) {
+				yield /* syntax: js.object-literal */ `
+					// ${si_mode} ${s_content}
+					get ${si_mode}() {
+						${memoize(`content.${s_content}.${si_mode}`)}
+					},
+				`;
+			}
+		}
 	};
 @;
 
@@ -65,11 +70,6 @@ const memoize = (s_package) => {
 	}
 }
 
-const xml = {
-	get scribe() {
-		@{memoize('content.xml.scribe')}
-	},
-};
 
 
 // // SPARQL Results package
@@ -103,8 +103,9 @@ const H_CONTENT_TAGS = {
 	turtle: ttl,
 	trig,
 	xml,
+	'rdf-xml': xml,
 	'rdf/xml': xml,
-	// 'application/sparql-results+json': sparql_results,
+	// 'sparql-results': sparql_results,
 };
 
 
@@ -145,8 +146,6 @@ const graphy = module.exports = Object.assign({
 				yield /* syntax: js.object-literal */ `${s_content},\n`;
 			}
 		}
-
-		xml,
 	}),
 
 	core: {
@@ -197,30 +196,17 @@ const graphy = module.exports = Object.assign({
 
 	@*{
 		for(let s_content in h_content_types) {
-			yield /* syntax: js.object-literal */ `
-				get 'content.${s_content}.read' () {
-					${memoize(`content.${s_content}.read`, true)}
-				},
-			`;
+			let h_modes = h_content_types[s_content];
 
-			yield /* syntax: js.object-literal */ `
-				get 'content.${s_content}.write' () {
-					${memoize(`content.${s_content}.write`, true)}
-				},
-			`;
-
-			yield /* syntax: js.object-literal */ `
-				get 'content.${s_content}.scribe' () {
-					${memoize(`content.${s_content}.scribe`, true)}
-				},
-			`;
+			for(let si_mode in h_modes) {
+				yield /* syntax: js.object-literal */ `
+					get 'content.${s_content}.${si_mode}' () {
+						${memoize(`content.${s_content}.${si_mode}`, true)}
+					},
+				`;
+			}
 		}
 	}
-
-	get 'content.xml.scribe'() {
-		@{memoize('content.xml.scribe', true)}
-	},
-
 
 @//@object-literal
 

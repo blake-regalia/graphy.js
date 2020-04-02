@@ -1,0 +1,121 @@
+
+module.exports = {
+	count: (gc_scan) => ({
+		map: /* syntax: js */ `
+			(read, report, update, err) => {
+				let c_quads = 0;
+
+				return read({
+					relax: ${gc_scan.relax? 'true': 'false'},
+
+					data() {
+						c_quads += 1;
+					},
+
+					end() {
+						report(c_quads);
+					},
+				});
+			}
+		`,
+
+		reduce: /* syntax: js */ `
+			(c_quads_a, c_quads_b) => c_quads_a + c_quads_b
+		`,
+
+		// report(c_quads) {
+		// 	console.log('count', c_quads);
+		// },
+	}),
+
+	tree: (gc_scan) => ({
+		map: /* syntax: js */ `
+			(read, report, update, err) => {
+				let k_tree = require('@graphy/memory.dataset.fast')();
+
+				return read({
+					relax: ${gc_scan.relax? 'true': 'false'},
+
+					pipe: k_tree.on('finish', () => {
+
+					}),
+
+					data(g_quad) {
+						k_tree.add(g_quad);
+					},
+
+					end() {
+						report(k_tree.export());
+					},
+				});
+			}
+		`,
+
+		reduce: /* syntax: js */ `
+			(k_tree_a, k_tree_b) => k_tree_a.union(k_tree_b)
+		`,
+
+		// report(k_tree) {
+		// 	console.log(k_tree.size);
+		// },
+	}),
+
+	scribe: (gc_scan) => ({
+		map: /* syntax: js */ `
+			(g_init, read, report, update, err) => {
+				let c_quads = 0;
+
+				let ds_writer = require('@graphy/content.ttl.scribe')({
+					prefixes: g_init.prefixes,
+				});
+
+				ds_writer.on('data', (s_write) => {
+					let ab_chunk = Buffer.from(s_write);
+
+					update(ab_chunk, [ab_chunk]);
+				});
+
+				let ds_reader = read({
+					relax: ${gc_scan.relax? 'true': 'false'},
+
+					end() {
+						report(c_quads);
+					},
+				});
+
+				ds_reader.pipe(ds_writer);
+
+				return ds_reader;
+			}
+		`,
+
+		reduce: /* syntax: js */ `
+			(ab_chunk_a, ab_chunk_a) => c_quads_a + c_quads_b
+		`,
+
+		update(ab_chunk, i_worker) {
+			process.stdout.write(ab_chunk.toString('utf8'));
+		},
+	}),
+
+	distinct: (gc_scan) => ({
+		map: /* syntax: js */ `
+			(read, report) => {
+				const dataset = require('@graphy/memory.dataset.fast');
+				let k_dataset = dataset();
+
+				k_dataset.on('finish', () => {
+					report(k_dataset.export());
+				});
+
+				return read({
+					relax: ${gc_scan.relax? 'true': 'false'},
+				}).pipe(k_dataset);
+			}
+		`,
+
+		reduce: /* syntax: js */ `
+			(k_dataset_a, k_dataset_b) => k_dataset_a.union(k_dataset_b)
+		`,
+	}),
+};

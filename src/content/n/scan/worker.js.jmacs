@@ -1,85 +1,261 @@
-@import '../../../share/channel.jmacs'
+@./* global FORMAT */
+@//@
 
-const fs = require('fs');
-const stream = require('@power-io/stream');
+@import '../../../share/polyfills.jmacs'
 
-const worker = require('worker');
-const read = require('@{channel(`content.${FORMAT}.read`)}');
+@{polyfill.queueMicrotask()}
 
-worker.dedicated({
-	read_file(a_range, p_input, g_stat, sf_map) {
-		let k_worker = this;
+@$ XC_SLOT_OWNER_MASTER = 0x00;
+@$ XC_SLOT_OWNER_NONE = 0xff;
 
-		// open file by path
-		let df_input = fs.openSync(p_input, 'r');
+@$ XC_SLOT_AVAILABLE = 0x00;
+@$ XC_SLOT_TRANSACTING = 0x01;
 
-		// stat file via file descriptor
-		let {
-			ino: ni_inode,
-			size: nb_input,
-			mode: xm_mode,
-			mtimeMs: x_mtime,
-		} = fs.fstatSync(df_input);
+@$ XC_INDICATOR_EOF = -1;
 
-		// make sure we acquired same file
-		if(ni_inode !== g_stat.ino
-			|| nb_input !== g_stat.size
-			|| xm_mode !== g_stat.mode
-			|| x_mtime !== g_stat.mtimeMs
-		) {
-			throw new Error('worker was unable to open the identical file for reading');
+@$ S_LABEL = 'nt' === FORMAT? 'NTriples': 'NQuads';
+
+const reader = require('@graphy/content.@{FORMAT}.read');
+const wt = require('worker_threads');
+
+// fast 4 byte reader from bkit
+const f_reader_uintle32 = (at, ib) => at[ib] + (at[ib+1] << 8) + (at[ib+2] << 16) + (at[ib+3] * 0x1000000);
+
+// fast 4 byte writer from bkit
+const f_writer_uintle32 = (at, ib, x) => {
+	at[ib] = x & 0xff;
+	at[ib+1] = (x >>> 8) & 0xff;
+	at[ib+2] = (x >>> 16) & 0xff;
+	at[ib+3] = (x / 0x1000000) & 0xff;
+	return at;
+};
+
+
+const N_MISSES = 32;
+
+let {
+	parentPort: parent,
+	workerData: {
+		si_content,
+		sjx_map,
+		nl_workers,
+		nl_slots,
+		nb_slot,
+		// nb_region,
+		at32_indicators,
+		atu8_slot_owners,
+		atu8_data,
+		i_worker,
+	},
+} = wt;
+
+// flag to prevent softlock when posting error message to parent
+let b_suicide = false;
+
+// send report to master thread
+function report(w_value) {
+	try {
+		parent.postMessage({
+			type: 'report',
+			value: w_value,
+		});
+	}
+	catch(e_post) {
+		parent.postMessage({
+			type: 'clone-error',
+			value: {
+				info: 'report()',
+				object: w_value+'',
+				error: e_post.stack || e_post.toString(),
+			},
+		});
+	}
+}
+
+// send an update event to the master thread
+function update(w_msg, a_transfer) {
+	try {
+		parent.postMessage({
+			type: 'update',
+			value: w_msg,
+		}, a_transfer);
+	}
+	catch(e_post) {
+		parent.postMessage({
+			type: 'clone-error',
+			value: {
+				info: 'update()',
+				object: w_msg+'',
+				error: e_post.stack || e_post.toString(),
+			},
+		});
+	}
+}
+
+// throw an error to the master thread
+function err(e_what) {
+	// proper error instance
+	if(e_what instanceof Error) {
+		// export
+		parent.postMessage({
+			type: 'error',
+			value: {
+				constructor: e_what.constructor.name,
+				message: e_what.message,
+				string: e_what+'',
+				stack: e_what.stack || '',
+			},
+		});
+	}
+	// invalid error type
+	else {
+		// try sending the message
+		try {
+			parent.postMessage({
+				type: 'throw',
+				value: e_what,
+			});
+		}
+		// could not serialize e_what
+		catch(e_post) {
+			// clone error
+			parent.postMessage({
+				type: 'clone-error',
+				value: {
+					info: 'err()',
+					object: e_what+'',
+					error: e_post.stack || e_post.toString(),
+				},
+			});
+		}
+	}
+
+	// suicide
+	b_suicide = true;
+}
+
+// catch uncaight exceptions and send to master thread
+process.on('uncaughtException', err);
+
+let f_map = (new Function(`return (${sjx_map})`))();  // eslint-disable-line no-new-func
+
+
+// instantiate content reader
+let ds_reader = f_map(reader, report, update, err);
+
+// no error listeners attached to content reader
+if(!ds_reader.listenerCount('error')) {
+	// attach automatic fallback handler to send error to master thread
+	ds_reader.on('error', err);
+}
+
+// received eof from master thread; end content reader
+function eof() {
+	ds_reader.end();
+}
+
+
+// console.warn(`worker ${i_worker} indicator type: ${at32_indicator.buffer.toString()}`);
+
+// read slot data
+function read_slot(i_slot, xc_indicator) {
+	// read data
+	let ib_chunk = i_slot * nb_slot;
+
+	// read chunk size
+	let nb_chunk = f_reader_uintle32(atu8_data, ib_chunk);
+
+	// fetch chunk
+	let atu8_chunk = atu8_data.subarray(ib_chunk+4, ib_chunk+4+nb_chunk);
+
+	// extract contents
+	let ab_chunk = Buffer.from(atu8_chunk.buffer, atu8_chunk.byteOffset, nb_chunk);
+	let s_chunk = ab_chunk.toString('utf8');
+
+	// log(`reading: ${nb_chunk} bytes (${s_chunk.length} characters)...`);
+
+	// read contents
+	ds_reader.write(s_chunk, 'utf8', () => {
+		// log(`read ${s_chunk.length} characters!`);
+
+		// set ok status
+		f_writer_uintle32(atu8_data, ib_chunk, 0);
+
+		// bad slot owner
+		if(i_worker !== atu8_slot_owners[i_slot]) {
+			return err(new Error(`worker ${i_worker} encountered over-written slot owner ${atu8_slot_owners[i_slot]} (#${xc_indicator}/${at32_indicators[0]})`));
 		}
 
-		// async
-		return new Promise((fk_result) => {
-			let ds_document;
+		// return slot to main thread
+		atu8_slot_owners[i_slot] = @{XC_SLOT_OWNER_MASTER};
 
-			// prep user-defined function to generate config struct
-			let f_config = eval(`(${sf_map})`);
+		// set indicator & notify
+		Atomics.add(at32_indicators, 1, 1);
+		Atomics.notify(at32_indicators, 1);
 
-			// invoke with promise resolve callback
-			let g_config = f_config(fk_result);
+		// log(`returned slot ${i_slot}`);
 
-			// set/overwrite the input option
-			g_config.input = {
-				// readable stream from file-descriptor
-				stream: stream.Readable.from({
-					// input medium
-					input: {
-						// open file by path
-						fd: df_input,
+		// search again
+		search();
+	});
+}
 
-						// pass byte range of read
-						range: [a_range[0], a_range[1]],
+// search slots
+function search() {
+	// chunk indicator
+	let xc_indicator = Atomics.load(at32_indicators, 0);
 
-						// align chunks
-						align: {
-							// align with EOLs
-							byte: 0x0a,
+	// search for open slot
+	SLOT_SEARCH:
+	for(let c_miss=0; c_miss<N_MISSES; c_miss++) {
+		// each slot
+		for(let i_slot=0; i_slot<nl_slots; i_slot++) {
+			let i_owner = atu8_slot_owners[i_slot];
 
-							// 'remainder' event listener
-							remainder(g_remainder) {
-								// close file descriptor
-								fs.closeSync(df_input);
+			// found slot ready for reading
+			if(@{XC_SLOT_OWNER_NONE} === i_owner) {
+				// safe lock
+				let xc_owner_prev = Atomics.compareExchange(atu8_slot_owners, i_slot, @{XC_SLOT_OWNER_NONE}, i_worker);
 
-								// return head/tail to master thread
-								k_worker.emit('remainder', g_remainder);
+				// failed to lock slot
+				if(@{XC_SLOT_OWNER_NONE} !== xc_owner_prev) {
+					continue SLOT_SEARCH;
+				}
 
-								// coerce stream to emit eot
-								ds_document.emit('end');
-							},
-						},
-					},
-				}),
-			};
+				// c_claimed += 1;
 
-			// call reader on custom input stream
-			ds_document = read(g_config);
-		});
-	},
+				// log(`locked slot ${i_slot}: ${atu8_slot_owners[i_slot]} (claim #${c_claimed++} by this worker)`);
 
-	merge(z_a, z_b, sf_reduce) {
-		let f_reduce = eval(`(${sf_reduce})`);
-		return f_reduce(z_a, z_b);
-	},
-});
+				// read slot
+				return read_slot(i_slot, xc_indicator);
+			}
+			else {
+				// log(`skipping slot ${i_slot}, owner is: ${atu8_slot_owners[i_slot]}`);
+			}
+		}
+	}
+
+	// escape recursion
+	queueMicrotask(() => {
+		// eof signal
+		if(-1 === at32_indicators[0]) return eof();
+
+		// wait until main thread has filled another slot
+		let s_status = Atomics.wait(at32_indicators, 0, xc_indicator, 4000);
+
+		// suicide; do not repeat search
+		if(b_suicide) return;
+
+		// // eof signal
+		// if(-1 === at32_indicators[0]) return eof();
+
+		// // worker notified
+		// log(`notified wake: ${s_status} => ${Atomics.load(at32_indicators, 0)}`);
+
+		// try again
+		search();
+	});
+}
+
+// start search
+search();
