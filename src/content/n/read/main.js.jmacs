@@ -1,5 +1,8 @@
 @import '../../../share/iris.jmacs'
 @import '../../../share/channel.jmacs'
+@import '../../../share/polyfills.jmacs'
+
+@{polyfill.queueMicrotask()}
 
 @./* global FORMAT */
 @//@
@@ -672,18 +675,18 @@ class Reader {
 				let ds_input = g_input.stream;
 
 				// go async so caller has chance to bind event listeners
-				setTimeout(() => {
+				queueMicrotask(() => {
 					ds_input.pipe(ds_transform);
-				}, 0);
+				});
 			}
 			// string
 			else if('string' === typeof g_input.string) {
 				let s_input = g_input.string;
 
 				// go async so caller has chance to bind event listeners
-				setTimeout(() => {
+				queueMicrotask(() => {
 					ds_transform.end(s_input, 'utf8');
-				}, 0);
+				});
 			}
 			// invalid arg
 			else {

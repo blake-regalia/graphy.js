@@ -1,6 +1,9 @@
 @import '../../share/channel.jmacs'
 @import '../../share/iris.jmacs'
 @import '../../share/writer.jmacs'
+@import '../../share/polyfills.jmacs'
+
+@{polyfill.queueMicrotask()}
 
 const factory = require('@{channel('core.data.factory')}');
 const stream = require('@{channel('core.iso.stream')}');
@@ -200,7 +203,7 @@ class Scribable extends stream.Transform {
 			// allow buffer to build
 			else if(nl_push) {
 				// do not worry about clearing timeouts
-				setTimeout(Scribable._flush_buffer, 0, this);
+				queueMicrotask(() => Scribable._flush_buffer(this));
 			}
 		}
 
@@ -218,7 +221,7 @@ class Scribable extends stream.Transform {
 		}
 		else {
 			// do not worry about clearing timeouts
-			setTimeout(Scribable._flush_buffer, 0, this);
+			queueMicrotask(() => Scribable._flush_buffer(this));
 		}
 	}
 

@@ -1,4 +1,7 @@
 @import '../../share/channel.jmacs'
+@import '../../share/polyfills.jmacs'
+
+@{polyfill.queueMicrotask()}
 
 /* eslint-disable no-prototype-builtins */
 
@@ -782,9 +785,9 @@ class DatasetTree extends stream.Duplex {
 		// data given
 		if(h_quad_tree) {
 			// auto-end writable side of duplex
-			setTimeout(() => {
+			queueMicrotask(() => {
 				this.end();
-			}, 0);
+			});
 		}
 	}
 

@@ -5,6 +5,9 @@
 @import '../../../share/channel.jmacs'
 @import '../../../share/iris.jmacs'
 @import '../../../share/writer.jmacs'
+@import '../../../share/polyfills.jmacs'
+
+@{polyfill.queueMicrotask()}
 
 @$ B_TTL = 'ttl' === FORMAT;
 @$ B_TRIG = 'trig' === FORMAT;
@@ -137,9 +140,9 @@ class @{S_LABEL}_Writer extends Writable {
 		}
 		// serialization error
 		catch(e_serialize) {
-			setTimeout(() => {
+			queueMicrotask(() => {
 				this.emit('error', e_serialize);
-			}, 0);
+			});
 		}
 
 		// push prefixes
