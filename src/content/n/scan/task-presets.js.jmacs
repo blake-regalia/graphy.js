@@ -1,8 +1,10 @@
 
 module.exports = {
-	count: (gc_scan) => ({
+	count: gc_scan => ({
+		reduce: (c_quads_a, c_quads_b) => c_quads_a + c_quads_b,
+
 		map: /* syntax: js */ `
-			(read, report, update, err) => {
+			(read, submit, update, err) => {
 				let c_quads = 0;
 
 				return read({
@@ -13,24 +15,18 @@ module.exports = {
 					},
 
 					end() {
-						report(c_quads);
+						submit(c_quads);
 					},
 				});
 			}
 		`,
-
-		reduce: /* syntax: js */ `
-			(c_quads_a, c_quads_b) => c_quads_a + c_quads_b
-		`,
-
-		// report(c_quads) {
-		// 	console.log('count', c_quads);
-		// },
 	}),
 
-	tree: (gc_scan) => ({
+	tree: gc_scan => ({
+		reduce: (k_tree_a, k_tree_b) => k_tree_a.union(k_tree_b),
+
 		map: /* syntax: js */ `
-			(read, report, update, err) => {
+			(read, submit, update, err) => {
 				let k_tree = require('@graphy/memory.dataset.fast')();
 
 				return read({
@@ -45,14 +41,10 @@ module.exports = {
 					},
 
 					end() {
-						report(k_tree.export());
+						submit(k_tree.export());
 					},
 				});
 			}
-		`,
-
-		reduce: /* syntax: js */ `
-			(k_tree_a, k_tree_b) => k_tree_a.union(k_tree_b)
 		`,
 
 		// report(k_tree) {
@@ -60,47 +52,44 @@ module.exports = {
 		// },
 	}),
 
-	scribe: (gc_scan) => ({
+	scribe: gc_scan => ({
 		map: /* syntax: js */ `
-			(g_init, read, report, update, err) => {
+			(read, submit, update, err, user) => {
 				let c_quads = 0;
 
-				let ds_writer = require('@graphy/content.ttl.scribe')({
-					prefixes: g_init.prefixes,
+				let ds_scriber = require('@graphy/content.ttl.scribe')({
+					prefixes: user.prefixes,
 				});
 
-				ds_writer.on('data', (s_write) => {
+				// each data event on writer
+				ds_scriber.on('data', (s_write) => {
+					// convert to buffer
 					let ab_chunk = Buffer.from(s_write);
 
+					// send to master
 					update(ab_chunk, [ab_chunk]);
 				});
 
 				let ds_reader = read({
 					relax: ${gc_scan.relax? 'true': 'false'},
-
-					end() {
-						report(c_quads);
-					},
 				});
 
-				ds_reader.pipe(ds_writer);
+				ds_reader.pipe(ds_scriber);
 
 				return ds_reader;
 			}
 		`,
 
-		reduce: /* syntax: js */ `
-			(ab_chunk_a, ab_chunk_a) => c_quads_a + c_quads_b
-		`,
+		// reduce: (ab_chunk_a, ab_chunk_a) => c_quads_a + c_quads_b,
 
 		update(ab_chunk, i_worker) {
 			process.stdout.write(ab_chunk.toString('utf8'));
 		},
 	}),
 
-	distinct: (gc_scan) => ({
+	distinct: gc_scan => ({
 		map: /* syntax: js */ `
-			(read, report) => {
+			(read, submit) => {
 				const dataset = require('@graphy/memory.dataset.fast');
 				let k_dataset = dataset();
 
@@ -108,14 +97,16 @@ module.exports = {
 					report(k_dataset.export());
 				});
 
-				return read({
+				let ds_reader = read({
 					relax: ${gc_scan.relax? 'true': 'false'},
-				}).pipe(k_dataset);
+				});
+
+				ds_reader.pipe(k_dataset);
+
+				return ds_reader;
 			}
 		`,
 
-		reduce: /* syntax: js */ `
-			(k_dataset_a, k_dataset_b) => k_dataset_a.union(k_dataset_b)
-		`,
+		reduce: (k_dataset_a, k_dataset_b) => k_dataset_a.union(k_dataset_b),
 	}),
 };

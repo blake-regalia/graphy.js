@@ -1,0 +1,10 @@
+// deduce the runtime environment
+const [B_BROWSER] = (() => 'undefined' === typeof process
+	? [true]
+	: (process.browser
+		? [true]
+		: ('undefined' === process.versions || 'undefined' === process.versions.node
+			? [true]
+			: [false])))();
+
+module.exports = B_BROWSER? require('./master-browser.js'): require('./master-node.js');

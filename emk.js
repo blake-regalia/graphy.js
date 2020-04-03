@@ -835,6 +835,13 @@ module.exports = async() => {
 							], [
 								`build/package/${si_package}/package.json`,
 							]),
+
+							...((h_packages[si_package].includes || []).reduce((h_out, s_include) => ({
+								...h_out,
+								[s_include]: () => ({
+									copy: `src/${si_package.replace(/\./g, '/').replace(/\/[^/]+$/, '')}/${s_include}`,
+								}),
+							}), {})),
 						},
 					})],
 

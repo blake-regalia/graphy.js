@@ -10,7 +10,7 @@
 const path = require('path');
 const stream = require('@graphy/core.iso.stream');
 const reader = require('@graphy/content.@{FORMAT}.read');
-const wt = require('worker_threads');
+const master = require('@graphy/core.iso.master');
 const H_PRESET_TASKS = require('./task-presets.js');
 
 // fast 4 byte writer from bkit
@@ -98,8 +98,8 @@ function Scanner$handle_worker_message(k_self, i_worker) {
 				break;
 			}
 
-			// report
-			case 'report': {
+			// submit
+			case 'submit': {
 				// console.log(`received result from worker ${i_worker}: ${g_msg.value}; ${a_reports.length+1} results`);
 
 				// reduce
@@ -392,18 +392,26 @@ function Scanner$on_pipe(k_self, ds_input) {
 			atu8_data,
 		};
 
+		// ref spawn (and then call without context)
+		let f_spawn = k_self._f_spawn;
+
 		// each worker
 		for(let i_worker=1; i_worker<=nl_workers; i_worker++) {
 			// spawn
-			let d_worker = new wt.Worker(path.join(__dirname, 'worker.js'), {
+			let d_worker = new master.Worker('./worker.js', {
+				__dirname,
+
 				workerData: {
 					...g_worker_data,
 					i_worker,
+					w_user: f_spawn(i_worker),
 				},
+
+				// on message event
+				message: Scanner$handle_worker_message(k_self, i_worker),
 			});
 
-			// on message event
-			d_worker.on('message', Scanner$handle_worker_message(k_self, i_worker));
+			// d_worker.on('message', );
 
 			// push to worker list
 			a_workers.push(d_worker);
@@ -514,29 +522,49 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 
 		// reduce property supplied
 		if(g_task.reduce) {
-			let sjx_reduce = g_task.reduce;
+			let f_reduce = g_task.reduce;
 
 			// invalid reduce property
-			if('string' !== typeof sjx_reduce) {
-				throw new TypeError('Invalid \'.reduce\' property supplied to @{S_LABEL}_Scanner constructor; if present, it must be a non-empty string.');
+			if('function' !== typeof f_reduce) {
+				throw new TypeError('Invalid \'.reduce\' property supplied to @{S_LABEL}_Scanner constructor; if present, it must be a function.');
 			}
 
-			// try creating reduce function
-			try {
-				this._f_reduce = (new Function(`return (${g_task.reduce})`))();  // eslint-disable-line no-new-func
+			// set reduce function
+			this._f_reduce = f_reduce;
+
+			// initial value also present
+			if('undefined' !== typeof g_task) {
+				this._w_initial = g_task.initial;
 			}
-			catch(e_eval) {
-				throw new Error(`Failed to evaluate the '.reduce' property supplied to @{S_LABEL}_Scanner constructor as JavaScript code:\n${e_eval.stack || e_eval}`);
+			// no initial value; set master as initial
+			else {
+				this._f_submit_master = w_value => this._w_reduced = w_value;
 			}
 		}
+		// initial value present
+		else if('undefined' !== typeof g_task) {
+			throw new TypeError('The \'.initial\' property was supplied to @{S_LABEL}_Scanner constructor but you also need to specify a \'.reduce\' function.');
+		}
+
+		// spawn function
+		if(g_task.spawn) {
+			// invalid spawn property
+			if('function' !== typeof f_reduce) {
+				throw new TypeError('Invalid \'.spawn\' property supplied to @{S_LABEL}_Scanner constructor; if present, it must be a function.');
+			}
+
+			// save
+			this._f_spawn = g_task.spawn;
+		}
+
 
 		let k_self = this;
 
 		// create content reader
 		let ds_reader = this._ds_reader = f_map(reader, ...[
-			// 'report' results
-			function report(w_value) {
-				k_self._w_reduced = w_value;
+			// 'submit' results
+			function submit(w_value) {
+				k_self._f_submit_master(w_value);
 			},
 
 			// 'update' with some info
@@ -641,8 +669,11 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 }
 
 Object.assign(@{S_LABEL}_Scanner.prototype, {
+	// initial value
+	_w_initial: [],
+
 	// default reduce function
-	_f_reduce() {},
+	_f_reduce: (a_out, w_value) => [...a_out, w_value],
 
 	// update handler
 	_f_update(w_report) {
@@ -657,6 +688,14 @@ Object.assign(@{S_LABEL}_Scanner.prototype, {
 			console.warn(`WARNING: @{S_LABEL}_Scanner emitted a 'report' event but no listener function is attached`);
 		}
 	},
+
+	// submit master
+	_f_submit_master(w_report) {
+		this._w_reduced = this._f_reduce(w_report, this._w_initial);
+	},
+
+	// spawn function
+	_f_spawn: () => {},
 });
 
 

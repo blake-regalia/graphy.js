@@ -16,7 +16,7 @@
 @$ S_LABEL = 'nt' === FORMAT? 'NTriples': 'NQuads';
 
 const reader = require('@graphy/content.@{FORMAT}.read');
-const wt = require('worker_threads');
+const worker = require('@graphy/core.iso.worker');
 
 // fast 4 byte reader from bkit
 const f_reader_uintle32 = (at, ib) => at[ib] + (at[ib+1] << 8) + (at[ib+2] << 16) + (at[ib+3] * 0x1000000);
@@ -33,30 +33,16 @@ const f_writer_uintle32 = (at, ib, x) => {
 
 const N_MISSES = 32;
 
-let {
-	parentPort: parent,
-	workerData: {
-		si_content,
-		sjx_map,
-		nl_workers,
-		nl_slots,
-		nb_slot,
-		// nb_region,
-		at32_indicators,
-		atu8_slot_owners,
-		atu8_data,
-		i_worker,
-	},
-} = wt;
+let parent;
 
 // flag to prevent softlock when posting error message to parent
 let b_suicide = false;
 
-// send report to master thread
-function report(w_value) {
+// submit report to master thread
+function submit(w_value) {
 	try {
 		parent.postMessage({
-			type: 'report',
+			type: 'submit',
 			value: w_value,
 		});
 	}
@@ -64,7 +50,7 @@ function report(w_value) {
 		parent.postMessage({
 			type: 'clone-error',
 			value: {
-				info: 'report()',
+				info: 'submit()',
 				object: w_value+'',
 				error: e_post.stack || e_post.toString(),
 			},
@@ -134,128 +120,149 @@ function err(e_what) {
 	b_suicide = true;
 }
 
-// catch uncaight exceptions and send to master thread
-process.on('uncaughtException', err);
 
-let f_map = (new Function(`return (${sjx_map})`))();  // eslint-disable-line no-new-func
+worker((g_spawn) => {
+	parent = g_spawn.parentPort;
+
+	let {
+		workerData: {
+			si_content,
+			sjx_map,
+			nl_workers,
+			nl_slots,
+			nb_slot,
+			// nb_region,
+			at32_indicators,
+			atu8_slot_owners,
+			atu8_data,
+			i_worker,
+			w_user,
+		},
+	} = g_spawn;
+
+	// catch uncaight exceptions and send to master thread
+	process.on('uncaughtException', err);
+
+	let f_map = (new Function(`return (${sjx_map})`))();  // eslint-disable-line no-new-func
 
 
-// instantiate content reader
-let ds_reader = f_map(reader, report, update, err);
+	// instantiate content reader
+	let ds_reader = f_map(reader, submit, update, err, w_user);
 
-// no error listeners attached to content reader
-if(!ds_reader.listenerCount('error')) {
-	// attach automatic fallback handler to send error to master thread
-	ds_reader.on('error', err);
-}
-
-// received eof from master thread; end content reader
-function eof() {
-	ds_reader.end();
-}
-
-
-// console.warn(`worker ${i_worker} indicator type: ${at32_indicator.buffer.toString()}`);
-
-// read slot data
-function read_slot(i_slot, xc_indicator) {
-	// read data
-	let ib_chunk = i_slot * nb_slot;
-
-	// read chunk size
-	let nb_chunk = f_reader_uintle32(atu8_data, ib_chunk);
-
-	// fetch chunk
-	let atu8_chunk = atu8_data.subarray(ib_chunk+4, ib_chunk+4+nb_chunk);
-
-	// extract contents
-	let ab_chunk = Buffer.from(atu8_chunk.buffer, atu8_chunk.byteOffset, nb_chunk);
-	let s_chunk = ab_chunk.toString('utf8');
-
-	// log(`reading: ${nb_chunk} bytes (${s_chunk.length} characters)...`);
-
-	// read contents
-	ds_reader.write(s_chunk, 'utf8', () => {
-		// log(`read ${s_chunk.length} characters!`);
-
-		// set ok status
-		f_writer_uintle32(atu8_data, ib_chunk, 0);
-
-		// bad slot owner
-		if(i_worker !== atu8_slot_owners[i_slot]) {
-			return err(new Error(`worker ${i_worker} encountered over-written slot owner ${atu8_slot_owners[i_slot]} (#${xc_indicator}/${at32_indicators[0]})`));
-		}
-
-		// return slot to main thread
-		atu8_slot_owners[i_slot] = @{XC_SLOT_OWNER_MASTER};
-
-		// set indicator & notify
-		Atomics.add(at32_indicators, 1, 1);
-		Atomics.notify(at32_indicators, 1);
-
-		// log(`returned slot ${i_slot}`);
-
-		// search again
-		search();
-	});
-}
-
-// search slots
-function search() {
-	// chunk indicator
-	let xc_indicator = Atomics.load(at32_indicators, 0);
-
-	// search for open slot
-	SLOT_SEARCH:
-	for(let c_miss=0; c_miss<N_MISSES; c_miss++) {
-		// each slot
-		for(let i_slot=0; i_slot<nl_slots; i_slot++) {
-			let i_owner = atu8_slot_owners[i_slot];
-
-			// found slot ready for reading
-			if(@{XC_SLOT_OWNER_NONE} === i_owner) {
-				// safe lock
-				let xc_owner_prev = Atomics.compareExchange(atu8_slot_owners, i_slot, @{XC_SLOT_OWNER_NONE}, i_worker);
-
-				// failed to lock slot
-				if(@{XC_SLOT_OWNER_NONE} !== xc_owner_prev) {
-					continue SLOT_SEARCH;
-				}
-
-				// c_claimed += 1;
-
-				// log(`locked slot ${i_slot}: ${atu8_slot_owners[i_slot]} (claim #${c_claimed++} by this worker)`);
-
-				// read slot
-				return read_slot(i_slot, xc_indicator);
-			}
-			else {
-				// log(`skipping slot ${i_slot}, owner is: ${atu8_slot_owners[i_slot]}`);
-			}
-		}
+	// no error listeners attached to content reader
+	if(!ds_reader.listenerCount('error')) {
+		// attach automatic fallback handler to send error to master thread
+		ds_reader.on('error', err);
 	}
 
-	// escape recursion
-	queueMicrotask(() => {
-		// eof signal
-		if(-1 === at32_indicators[0]) return eof();
+	// received eof from master thread; end content reader
+	function eof() {
+		ds_reader.end();
+	}
 
-		// wait until main thread has filled another slot
-		let s_status = Atomics.wait(at32_indicators, 0, xc_indicator, 4000);
 
-		// suicide; do not repeat search
-		if(b_suicide) return;
+	// console.warn(`worker ${i_worker} indicator type: ${at32_indicator.buffer.toString()}`);
 
-		// // eof signal
-		// if(-1 === at32_indicators[0]) return eof();
+	// read slot data
+	function read_slot(i_slot, xc_indicator) {
+		// read data
+		let ib_chunk = i_slot * nb_slot;
 
-		// // worker notified
-		// log(`notified wake: ${s_status} => ${Atomics.load(at32_indicators, 0)}`);
+		// read chunk size
+		let nb_chunk = f_reader_uintle32(atu8_data, ib_chunk);
 
-		// try again
-		search();
-	});
-}
+		// fetch chunk
+		let atu8_chunk = atu8_data.subarray(ib_chunk+4, ib_chunk+4+nb_chunk);
 
-// start search
-search();
+		// extract contents
+		let ab_chunk = Buffer.from(atu8_chunk.buffer, atu8_chunk.byteOffset, nb_chunk);
+		let s_chunk = ab_chunk.toString('utf8');
+
+		// log(`reading: ${nb_chunk} bytes (${s_chunk.length} characters)...`);
+
+		// read contents
+		ds_reader.write(s_chunk, 'utf8', () => {
+			// log(`read ${s_chunk.length} characters!`);
+
+			// set ok status
+			f_writer_uintle32(atu8_data, ib_chunk, 0);
+
+			// bad slot owner
+			if(i_worker !== atu8_slot_owners[i_slot]) {
+				return err(new Error(`worker ${i_worker} encountered over-written slot owner ${atu8_slot_owners[i_slot]} (#${xc_indicator}/${at32_indicators[0]})`));
+			}
+
+			// return slot to main thread
+			atu8_slot_owners[i_slot] = @{XC_SLOT_OWNER_MASTER};
+
+			// set indicator & notify
+			Atomics.add(at32_indicators, 1, 1);
+			Atomics.notify(at32_indicators, 1);
+
+			// log(`returned slot ${i_slot}`);
+
+			// search again
+			search();
+		});
+	}
+
+	// search slots
+	function search() {
+		// chunk indicator
+		let xc_indicator = Atomics.load(at32_indicators, 0);
+
+		// search for open slot
+		SLOT_SEARCH:
+		for(let c_miss=0; c_miss<N_MISSES; c_miss++) {
+			// each slot
+			for(let i_slot=0; i_slot<nl_slots; i_slot++) {
+				let i_owner = atu8_slot_owners[i_slot];
+
+				// found slot ready for reading
+				if(@{XC_SLOT_OWNER_NONE} === i_owner) {
+					// safe lock
+					let xc_owner_prev = Atomics.compareExchange(atu8_slot_owners, i_slot, @{XC_SLOT_OWNER_NONE}, i_worker);
+
+					// failed to lock slot
+					if(@{XC_SLOT_OWNER_NONE} !== xc_owner_prev) {
+						continue SLOT_SEARCH;
+					}
+
+					// c_claimed += 1;
+
+					// log(`locked slot ${i_slot}: ${atu8_slot_owners[i_slot]} (claim #${c_claimed++} by this worker)`);
+
+					// read slot
+					return read_slot(i_slot, xc_indicator);
+				}
+				else {
+					// log(`skipping slot ${i_slot}, owner is: ${atu8_slot_owners[i_slot]}`);
+				}
+			}
+		}
+
+		// escape recursion
+		queueMicrotask(() => {
+			// eof signal
+			if(-1 === at32_indicators[0]) return eof();
+
+			// wait until main thread has filled another slot
+			let s_status = Atomics.wait(at32_indicators, 0, xc_indicator, 4000);
+
+			// suicide; do not repeat search
+			if(b_suicide) return;
+
+			// // eof signal
+			// if(-1 === at32_indicators[0]) return eof();
+
+			// // worker notified
+			// log(`notified wake: ${s_status} => ${Atomics.load(at32_indicators, 0)}`);
+
+			// try again
+			search();
+		});
+	}
+
+	// start search
+	search();
+});
