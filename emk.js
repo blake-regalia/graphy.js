@@ -443,9 +443,11 @@ module.exports = async() => {
 			testable: [
 				'core.data.factory',
 				'content.nt.read',
+				'content.nt.scan',
 				'content.nt.scribe',
 				'content.nt.write',
 				'content.nq.read',
+				'content.nq.scan',
 				'content.nq.scribe',
 				'content.nq.write',
 				'content.ttl.read',

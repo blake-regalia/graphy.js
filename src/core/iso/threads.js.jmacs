@@ -7,4 +7,10 @@ const [B_BROWSER] = (() => 'undefined' === typeof process
 			? [true]
 			: [false])))();
 
-module.exports = B_BROWSER? require('./master-browser.js'): require('./master-node.js');
+module.exports = B_BROWSER? {
+	master: require('./master-browser.js'),
+	worker: require('./worker-browser.js'),
+}: {
+	master: require('./master-node.js'),
+	worker: require('./worker-node.js'),
+};

@@ -28,22 +28,14 @@ module.exports = {
 				],
 			}),
 
-			master: () => ({
-				description: 'Provides simple, isomorphic worker (from main thread) interface for node.js / browser',
-				includes: ['master-node.js', 'master-browser.js'],
+			threads: () => ({
+				description: 'Provides simple, isomorphic worker interface for node.js / browser',
+				includes: ['master-node.js', 'master-browser.js', 'worker-node.js', 'worker-browser.js'],
 				json: {
 					browser: {
 						'./master-node.js': false,
-					},
-				},
-			}),
-
-			worker: () => ({
-				description: 'Provides simple, isomorphic worker (from worker thread) interface for node.js / browser',
-				includes: ['worker-node.js', 'worker-browser.js'],
-				json: {
-					browser: {
-						'./master-node.js': false,
+						'./worker-node.js': false,
+						worker_threads: false,
 					},
 				},
 			}),

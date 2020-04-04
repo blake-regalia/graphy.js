@@ -16,7 +16,7 @@
 @$ S_LABEL = 'nt' === FORMAT? 'NTriples': 'NQuads';
 
 const reader = require('@graphy/content.@{FORMAT}.read');
-const worker = require('@graphy/core.iso.worker');
+const threads = require('@graphy/core.iso.threads');
 
 // fast 4 byte reader from bkit
 const f_reader_uintle32 = (at, ib) => at[ib] + (at[ib+1] << 8) + (at[ib+2] << 16) + (at[ib+3] * 0x1000000);
@@ -121,7 +121,7 @@ function err(e_what) {
 }
 
 
-worker((g_spawn) => {
+threads.worker((g_spawn) => {
 	parent = g_spawn.parentPort;
 
 	let {

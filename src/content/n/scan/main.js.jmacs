@@ -10,7 +10,8 @@
 const path = require('path');
 const stream = require('@graphy/core.iso.stream');
 const reader = require('@graphy/content.@{FORMAT}.read');
-const master = require('@graphy/core.iso.master');
+const master = require('@graphy/core.iso.threads').master;
+const {StringDecoder} = require('string_decoder');
 const H_PRESET_TASKS = require('./task-presets.js');
 
 // fast 4 byte writer from bkit
@@ -82,6 +83,9 @@ let NL_WORKERS_ADVISE = (() => {
 
 
 function Scanner$kill(k_self, e_reason) {
+	// destroy callbacks
+	k_self._f_report = k_self._f_update = () => {};
+
 	// kill all workers
 	Promise.all(k_self._a_workers.map(d => d.terminate()))
 		.then(() => queueMicrotask(() => {
@@ -201,7 +205,14 @@ function Scanner$fill_slots(k_self) {
 
 		// chunk size exceeds high water mark
 		if(ab_chunk.length > nb_high_water_mark) {
-			throw new Error(`chunk exceeded high water mark: ${ab_chunk.length} bytes > ${nb_high_water_mark} bytes`);
+			// unshift remainder back into internal buffer
+			let ab_unshift = ab_chunk.slice(nb_high_water_mark);
+
+			// pick limit part for this chunk
+			ab_chunk = ab_chunk.slice(0, nb_high_water_mark);
+
+			// unshift
+			ds_input.unshift(ab_unshift);
 		}
 
 		// read head/tail
@@ -260,7 +271,7 @@ function Scanner$fill_slots(k_self) {
 		// info(`wrote: """${s_write}"""`);
 
 		// save tail to prev
-		ab_prev = ab_chunk.slice(ib_tail-1);
+		ab_prev = ab_chunk.slice(ib_tail);
 	}
 
 	// update prev chunk value
@@ -426,31 +437,66 @@ function Scanner$on_pipe(k_self, ds_input) {
 		k_self._tick();
 	});
 
-	// end
-	ds_input.on('end', () => {
-		// set indicator and notify
-		Atomics.store(at32_indicators, 0, @{XC_INDICATOR_EOF});
-		let c_notified = Atomics.notify(at32_indicators, 0);
 
-		// reassign tick function
-		k_self._tick = () => {};
+	// no workers
+	if(0 === nl_workers) {
+		// override tick function
+		k_self._tick = Scanner$_tick_master_only;
 
-		// end writable side of content reader
-		k_self._ds_reader.end();
-	});
+		// presume worker reports collected
+		k_self._b_collected = true;
+
+		// end
+		ds_input.on('end', () => {
+			// final chunk
+			let s_final = k_self._d_string_decoder.end();
+
+			// end writable side of content reader
+			k_self._ds_reader.end(s_final);
+		});
+	}
+	// yes workers
+	else {
+		// end
+		ds_input.on('end', () => {
+			// set indicator and notify
+			Atomics.store(at32_indicators, 0, @{XC_INDICATOR_EOF});
+			let c_notified = Atomics.notify(at32_indicators, 0);
+
+			// reassign tick function
+			k_self._tick = () => {};
+
+			// final chunk
+			let s_final = k_self._ab_prev.toString('utf8')
+
+			// end writable side of content reader
+			k_self._ds_reader.end(s_final);
+		});
+	}
+}
+
+function Scanner$_tick_master_only() {
+	let ds_input = this._ds_input;
+	let ds_reader = this._ds_reader;
+	let d_string_decoder = this._d_string_decoder;
+
+	let ab_chunk;
+	while(null !== (ab_chunk=ds_input.read())) {
+		ds_reader.write(d_string_decoder.write(ab_chunk));
+	}
 }
 
 class @{S_LABEL}_Scanner extends stream.Writable {
 	constructor(gc_scanner) {
 		super();
 
+		// worker and slot settings
+		let nl_workers = this._nl_workers = gc_scanner.workers || NL_WORKERS_ADVISE;
+		this._n_slots_per_worker = gc_scanner.slots_per_worker || gc_scanner.slotsPerWorker || N_DEFAULT_SLOTS_PER_WORKER;
+
 		// flags
 		this._b_eofed = false;
 		this._b_collected = false;
-
-		// worker and slot settings
-		this._nl_workers = gc_scanner.workers || NL_WORKERS_ADVISE;
-		this._n_slots_per_worker = gc_scanner.slots_per_worker || gc_scanner.slotsPerWorker || N_DEFAULT_SLOTS_PER_WORKER;
 
 		// report count
 		this._c_reports = 0;
@@ -466,6 +512,9 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 
 		// previous chunk fragment
 		this._ab_prev = Buffer.allocUnsafe(0);
+
+		// string decoder
+		this._d_string_decoder = new StringDecoder();
 
 		@*{
 			for(let [s_event, g_event] of Object.entries(H_SCAN_EVENTS)) {
@@ -533,7 +582,7 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 			this._f_reduce = f_reduce;
 
 			// initial value also present
-			if('undefined' !== typeof g_task) {
+			if('undefined' !== typeof g_task.initial) {
 				this._w_initial = g_task.initial;
 			}
 			// no initial value; set master as initial
@@ -542,7 +591,7 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 			}
 		}
 		// initial value present
-		else if('undefined' !== typeof g_task) {
+		else if('undefined' !== typeof g_task.initial) {
 			throw new TypeError('The \'.initial\' property was supplied to @{S_LABEL}_Scanner constructor but you also need to specify a \'.reduce\' function.');
 		}
 
@@ -593,6 +642,11 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 			},
 		]);
 
+		// attach automatic error handler to kill workers
+		ds_reader.on('error', (e_read) => {
+			Scanner$kill(k_self, e_read);
+		});
+
 		// once main thread content reader has finished
 		ds_reader.once('eof', () => {
 			// all results collected from workers
@@ -622,7 +676,7 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 
 		// need to explicitly recall tick
 		if(!b_await_readable) {
-			// something drained
+			// something drained (or no workers)
 			if(n_drained) {
 				// log(`drained ${n_drained} slots`);
 
@@ -631,7 +685,6 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 					this._tick();
 				});
 			}
-			// nothing drained
 			else {
 				// log(`awaiting indicator ${xc_indicator_reclaim}....`);
 

@@ -14,7 +14,7 @@ module.exports = {
 						c_quads += 1;
 					},
 
-					end() {
+					eof() {
 						submit(c_quads);
 					},
 				});
@@ -40,7 +40,7 @@ module.exports = {
 						k_tree.add(g_quad);
 					},
 
-					end() {
+					eof() {
 						submit(k_tree.export());
 					},
 				});
