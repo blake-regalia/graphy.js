@@ -484,15 +484,13 @@ let h_commands = {  // eslint-disable-next-line quote-props
 				relax: g_argv.relax || false,
 			};
 
-			// // 'base-uri' => 'baseUri'
-			// if(g_argv['base-uri']) {
-			// 	gc_scan.baseUri = g_argv['base-uri'];
-			// }
-
 			// next command
 			let a_series = a_rest.shift();
 			let si_next = a_series[0];
+
+			// command
 			switch(si_next) {
+				// count task
 				case 'count': {
 					return a_inputs.map(ds_input => new Promise((fk_resolve) => {
 						let ds_scanner = f_scanner({
@@ -511,6 +509,23 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 						ds_input.pipe(ds_scanner);
 					}));
+				}
+
+				// scribe
+				case 'scribe': {
+					return a_inputs.map((ds_input) => {
+						let ds_scanner = f_scanner({
+							...gc_scan,
+
+							preset: 'scribe',
+
+							error: e => fe_command(e),
+						});
+
+						ds_input.on('error', fe_command);
+
+						return ds_input.pipe(ds_scanner);
+					});
 				}
 
 				default: {

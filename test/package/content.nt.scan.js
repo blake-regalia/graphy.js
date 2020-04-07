@@ -153,26 +153,48 @@ describe('content.nt.scan', () => {
 	});
 
 	describe('tasks', () => {
-		it('preset: count', () => {
+		it('preset: count', (fke_test) => {
 			emulate_stream(ab_generate)
 				.pipe(nt_scan({
 					preset: 'count',
 
 					report(c_quads) {
 						expect(c_quads).to.equal(c_items);
+						fke_test();
 					},
 				}));
 		});
 
-		// it('preset: count', () => {
-		// 	emulate_stream(ab_generate)
-		// 		.pipe(nt_scan({
-		// 			preset: 'count',
+		it('preset: scribe', (fke_test) => {
+			emulate_stream(ab_generate)
+				.pipe(nt_scan({
+					preset: 'scribe',
 
-		// 			report(c_quads) {
-		// 				expect(c_quads).to.equal(c_items);
-		// 			},
-		// 		}));
-		// });
+					user: {
+						prefixes: {
+							'': 'http://example.org/linked-open-data/instance-or-ontology/',
+						},
+					},
+
+					update() {
+						expect(c_quads).to.equal(c_items);
+					},
+
+					end() {
+						fke_test();
+					},
+				}));
+		});
+
+		it('preset: distinct-quads', () => {
+			emulate_stream(ab_generate)
+				.pipe(nt_scan({
+					preset: 'distinct-quads',
+
+					report(c_quads) {
+						expect(c_quads).to.equal(c_items);
+					},
+				}));
+		});
 	});
 });

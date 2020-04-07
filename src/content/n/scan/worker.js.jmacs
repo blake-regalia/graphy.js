@@ -121,7 +121,7 @@ function err(e_what) {
 }
 
 
-threads.worker((g_spawn) => {
+threads.worker(async(g_spawn) => {
 	parent = g_spawn.parentPort;
 
 	let {
@@ -143,11 +143,11 @@ threads.worker((g_spawn) => {
 	// catch uncaight exceptions and send to master thread
 	process.on('uncaughtException', err);
 
-	let f_map = (new Function(`return (${sjx_map})`))();  // eslint-disable-line no-new-func
+	let f_map = eval(`(${sjx_map})`);  // eslint-disable-line no-new-func
 
 
 	// instantiate content reader
-	let ds_reader = f_map(reader, submit, update, err, w_user);
+	let ds_reader = await f_map(reader, submit, update, err, w_user);
 
 	// no error listeners attached to content reader
 	if(!ds_reader.listenerCount('error')) {

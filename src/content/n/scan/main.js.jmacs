@@ -71,7 +71,7 @@ let NL_WORKERS_ADVISE = (() => {
 
 @$ H_SCAN_EVENTS = {
 	error: {},
-	update: {},
+	// update: {},
 	report: {once:true},
 	// comment: {},
 	// progress: {},
@@ -98,7 +98,7 @@ function Scanner$handle_worker_message(k_self, i_worker) {
 		switch(g_msg.type) {
 			// update
 			case 'update': {
-				k_self._update(g_msg.value, i_worker);
+				k_self._f_update(g_msg.value, i_worker);
 				break;
 			}
 
@@ -486,7 +486,7 @@ function Scanner$_tick_master_only() {
 	}
 }
 
-class @{S_LABEL}_Scanner extends stream.Writable {
+class @{S_LABEL}_Scanner extends stream.Duplex {
 	constructor(gc_scanner) {
 		super();
 
@@ -563,10 +563,16 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 		// try creating map function
 		let f_map;
 		try {
-			f_map = (new Function(`return (${sjx_map})`))();  // eslint-disable-line no-new-func
+			// f_map = (new Function(`return (${sjx_map})`))();  // eslint-disable-line no-new-func
+			f_map = eval(`(${sjx_map})`);  // eslint-disable-line no-eval
 		}
 		catch(e_eval) {
 			throw new Error(`Failed to evaluate the '.map' property supplied to @{S_LABEL}_Scanner constructor as JavaScript code:\n${e_eval.stack || e_eval}`);
+		}
+
+		// update property supplied
+		if(g_task.update) {
+			this.on('update', g_task.update);
 		}
 
 		// reduce property supplied
@@ -597,67 +603,74 @@ class @{S_LABEL}_Scanner extends stream.Writable {
 
 		// spawn function
 		if(g_task.spawn) {
+			let f_spawn = g_task.spawn;
+
 			// invalid spawn property
-			if('function' !== typeof f_reduce) {
+			if('function' !== typeof f_spawn) {
 				throw new TypeError('Invalid \'.spawn\' property supplied to @{S_LABEL}_Scanner constructor; if present, it must be a function.');
 			}
 
 			// save
-			this._f_spawn = g_task.spawn;
+			this._f_spawn = f_spawn;
 		}
 
 
 		let k_self = this;
 
 		// create content reader
-		let ds_reader = this._ds_reader = f_map(reader, ...[
-			// 'submit' results
-			function submit(w_value) {
-				k_self._f_submit_master(w_value);
-			},
+		(async() => {
+			let ds_reader = this._ds_reader = await f_map(reader, ...[
+				// 'submit' results
+				function submit(w_value) {
+					k_self._f_submit_master(w_value);
+				},
 
-			// 'update' with some info
-			function update(w_msg) {
-				k_self._f_update(w_msg, 0);
-			},
+				// 'update' with some info
+				function update(w_msg) {
+					k_self._f_update(w_msg, 0);
+				},
 
-			// handle errors
-			function err(z_what) {
-				// proper error instance
-				if(z_what instanceof Error) {
-					// kill workers and handle error
-					Scanner$kill(k_self, z_what);
+				// handle errors
+				function err(z_what) {
+					// proper error instance
+					if(z_what instanceof Error) {
+						// kill workers and handle error
+						Scanner$kill(k_self, z_what);
+					}
+					// invalid error type
+					else {
+						// issue warning
+						console.warn(`WARNING: Your code (or some library) on the main thread is throwing an object which is not an instance of Error. I am going to put it into an Error for you now, but please fix this. The object.toString() is: "${z_what}"`);
+
+						// construct error
+						let e_wrap = new Error(z_what+'');
+
+						// kill workers and throw error
+						Scanner$kill(k_self, e_wrap);
+					}
+				},
+
+				// user data
+				this._f_spawn(0),
+			]);
+
+			// attach automatic error handler to kill workers
+			ds_reader.on('error', (e_read) => {
+				Scanner$kill(k_self, e_read);
+			});
+
+			// once main thread content reader has finished
+			ds_reader.once('eof', () => {
+				// all results collected from workers
+				if(this._b_collected) {
+					this._f_report(this._w_reduced);
 				}
-				// invalid error type
+				// set flag that we eof'd
 				else {
-					// issue warning
-					console.warn(`WARNING: Your code (or some library) on the main thread is throwing an object which is not an instance of Error. I am going to put it into an Error for you now, but please fix this. The object.toString() is: "${z_what}"`);
-
-					// construct error
-					let e_wrap = new Error(z_what+'');
-
-					// kill workers and throw error
-					Scanner$kill(k_self, e_wrap);
+					this._b_eofed = true;
 				}
-			},
-		]);
-
-		// attach automatic error handler to kill workers
-		ds_reader.on('error', (e_read) => {
-			Scanner$kill(k_self, e_read);
-		});
-
-		// once main thread content reader has finished
-		ds_reader.once('eof', () => {
-			// all results collected from workers
-			if(this._b_collected) {
-				this._f_report(this._w_reduced);
-			}
-			// set flag that we eof'd
-			else {
-				this._b_eofed = true;
-			}
-		});
+			});
+		})();
 	}
 
 	_tick(b_softlock) {
@@ -740,11 +753,16 @@ Object.assign(@{S_LABEL}_Scanner.prototype, {
 		if(!this.emit('report', w_report)) {
 			console.warn(`WARNING: @{S_LABEL}_Scanner emitted a 'report' event but no listener function is attached`);
 		}
+
+		// end readable side
+		queueMicrotask(() => {
+			this.end();
+		});
 	},
 
 	// submit master
 	_f_submit_master(w_report) {
-		this._w_reduced = this._f_reduce(w_report, this._w_initial);
+		this._w_reduced = this._f_reduce(this._w_initial, w_report);
 	},
 
 	// spawn function

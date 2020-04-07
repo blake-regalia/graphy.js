@@ -54,7 +54,7 @@ module.exports = {
 
 	scribe: gc_scan => ({
 		map: /* syntax: js */ `
-			(read, submit, update, err, user) => {
+			async(read, submit, update, err, user) => {
 				let c_quads = 0;
 
 				let ds_scriber = require('@graphy/content.ttl.scribe')({
@@ -63,11 +63,16 @@ module.exports = {
 
 				// each data event on writer
 				ds_scriber.on('data', (s_write) => {
-					// convert to buffer
+					// convert to Buffer -> ArrayBuffer
 					let ab_chunk = Buffer.from(s_write);
+					let db_chunk = ab_chunk.buffer.slice(ab_chunk.byteOffset, ab_chunk.byteOffset+ab_chunk.byteLength);
 
 					// send to master
-					update(ab_chunk, [ab_chunk]);
+					update(db_chunk, [db_chunk]);
+				});
+
+				ds_scriber.on('end', () => {
+					submit();
 				});
 
 				let ds_reader = read({
@@ -82,8 +87,9 @@ module.exports = {
 
 		// reduce: (ab_chunk_a, ab_chunk_a) => c_quads_a + c_quads_b,
 
-		update(ab_chunk, i_worker) {
-			process.stdout.write(ab_chunk.toString('utf8'));
+		update(db_chunk) {
+			debugger;
+			this.push(Buffer.from(db_chunk).toString());
 		},
 	}),
 
