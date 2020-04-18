@@ -418,7 +418,7 @@ class Canonicalizer_ct {
 		a_normalized.sort(F_SORT_LINE);
 
 		// create dataset reflecting quad order
-		let k_tree_normalized = new DatasetTree({
+		let k_tree_normalized = new FastDataset({
 			prefixes: Object.assign({}, this._k_tree._h_prefixes),
 		});
 		k_tree_normalized.addQuads(a_normalized.map(g => g.quad));
@@ -703,7 +703,7 @@ const thicken = (h_tree) => {
 	return h_thickened;
 };
 
-class DatasetTree extends stream.Duplex {
+class FastDataset extends stream.Duplex {
 	static from(h_quad_tree, g_config={}) {
 		// JSON import
 		if(h_quad_tree['{KEYS}']) {
@@ -714,7 +714,7 @@ class DatasetTree extends stream.Duplex {
 		}
 
 		// 
-		return new DatasetTree(g_config, h_quad_tree);
+		return new FastDataset(g_config, h_quad_tree);
 	}
 
 	constructor(g_config={}, h_quad_tree=null) {
@@ -792,7 +792,7 @@ class DatasetTree extends stream.Duplex {
 	}
 
 	offspring(h_quad_tree=null) {
-		return new DatasetTree({
+		return new FastDataset({
 			prefixes: Object.assign({}, this._h_prefixes),
 		}, h_quad_tree);
 	}
@@ -815,7 +815,7 @@ class DatasetTree extends stream.Duplex {
 	// on pipe
 	pipe(ds_out) {
 		// // graphy dataset tree
-		// if(ds_out.isGraphyDatasetTree) {
+		// if(ds_out.isGraphyFastDataset) {
 		// 	debugger;
 
 		// 	// change read moe
@@ -1930,7 +1930,7 @@ class DatasetTree extends stream.Duplex {
 					// -graph, -subject, -predicate, -object
 					else {
 						// same quad tree (clone)
-						return this.union(new DatasetTree());
+						return this.union(new FastDataset());
 					}
 				}
 			}
@@ -1955,7 +1955,7 @@ class DatasetTree extends stream.Duplex {
 		}
 		// object
 		else if('object' === typeof z_quads) {
-			if(z_quads.isGraphyDatasetTree) {
+			if(z_quads.isGraphyFastDataset) {
 				this.add_tree(z_quads);
 			}
 			else if('function' === typeof z_quads[Symbol.iterator]) {
@@ -2663,7 +2663,7 @@ class DatasetTree extends stream.Duplex {
 		}
 
 		// always return new instance
-		return new DatasetTree({
+		return new FastDataset({
 			// merge prefixes; this instance has precedence
 			prefixes: Object.assign({}, k_other._h_prefixes, this._h_prefixes),
 		}, h_quads_u);
@@ -2782,7 +2782,7 @@ class DatasetTree extends stream.Duplex {
 			}
 		}
 
-		return new DatasetTree({
+		return new FastDataset({
 			// merge prefixes; this instance has precedence
 			prefixes: Object.assign({}, k_other._h_prefixes, this._h_prefixes),
 		}, h_quads_i);
@@ -2898,7 +2898,7 @@ class DatasetTree extends stream.Duplex {
 		}
 
 		// return new dataset tree
-		return new DatasetTree({
+		return new FastDataset({
 			// merge prefixes; this instance has precedence
 			prefixes: Object.assign({}, k_subset.prefixes, this._h_prefixes),
 		}, h_quads_r);
@@ -3094,12 +3094,12 @@ class DatasetTree extends stream.Duplex {
 	@//toString() {}
 }
 
-Object.assign(DatasetTree, {
-	isGraphyDatasetTree: true,
+Object.assign(FastDataset.prototype, {
+	isGraphyFastDataset: true,
 });
 
 module.exports = Object.assign(function(...a_args) {
-	return new DatasetTree(...a_args);
+	return new FastDataset(...a_args);
 }, {
 	keys: $_KEYS,
 	quads: $_QUADS,
