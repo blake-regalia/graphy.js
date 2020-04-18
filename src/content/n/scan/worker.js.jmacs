@@ -1,6 +1,11 @@
 @./* global FORMAT */
 @//@
 
+const run = sjx_eval => eval(sjx_eval);
+
+// iiaf to isolate scope from eval
+(function() {
+
 @import '../../../share/polyfills.jmacs'
 
 @{polyfill.queueMicrotask()}
@@ -14,6 +19,7 @@
 @$ XC_INDICATOR_EOF = -1;
 
 @$ S_LABEL = 'nt' === FORMAT? 'NTriples': 'NQuads';
+
 
 const reader = require('@graphy/content.@{FORMAT}.read');
 const threads = require('@graphy/core.iso.threads');
@@ -127,7 +133,7 @@ threads.worker(async(g_spawn) => {
 	let {
 		workerData: {
 			si_content,
-			sjx_map,
+			sjx_run,
 			nl_workers,
 			nl_slots,
 			nb_slot,
@@ -143,17 +149,11 @@ threads.worker(async(g_spawn) => {
 	// catch uncaight exceptions and send to master thread
 	process.on('uncaughtException', err);
 
-	let f_map = eval(`(${sjx_map})`);  // eslint-disable-line no-new-func
+	let f_run = run(`(${sjx_run})`);  // eslint-disable-line no-new-func
 
 
 	// instantiate content reader
-	let ds_reader = await f_map(reader, submit, update, err, w_user);
-
-	// no error listeners attached to content reader
-	if(!ds_reader.listenerCount('error')) {
-		// attach automatic fallback handler to send error to master thread
-		ds_reader.on('error', err);
-	}
+	let ds_reader = await f_run(reader, err, update, submit, w_user, true);
 
 	// received eof from master thread; end content reader
 	function eof() {
@@ -266,3 +266,5 @@ threads.worker(async(g_spawn) => {
 	// start search
 	search();
 });
+
+})();

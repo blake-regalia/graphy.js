@@ -4,6 +4,7 @@
 		return /* syntax: js */ `
 			// queueMicrotask shim
 			{
+${/*
 				// whether or not to (re)define
 				let b_redefine = false;
 
@@ -22,6 +23,9 @@
 
 				// (re)define
 				if(b_redefine) {
+*/''}
+				// not defined or not a function
+				if('function' !== typeof queueMicrotask) {
 					// create resolved promise
 					let dp_resolve = Promise.resolve();
 

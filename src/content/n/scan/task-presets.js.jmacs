@@ -3,8 +3,8 @@ module.exports = {
 	count: gc_scan => ({
 		reduce: (c_quads_a, c_quads_b) => c_quads_a + c_quads_b,
 
-		map: /* syntax: js */ `
-			(read, submit, update, err) => {
+		run: /* syntax: js */ `
+			(read, err, update, submit) => {
 				let c_quads = 0;
 
 				return read({
@@ -12,6 +12,10 @@ module.exports = {
 
 					data() {
 						c_quads += 1;
+					},
+
+					error(e_read) {
+						err(e_read);
 					},
 
 					eof() {
@@ -23,84 +27,131 @@ module.exports = {
 	}),
 
 	tree: gc_scan => ({
+		// receive: abs_dump => dataset.fromArrayBuffer(abs_dump),
+		// receive: h_import => dataset.from(h_import),
+
 		reduce: (k_tree_a, k_tree_b) => k_tree_a.union(k_tree_b),
 
-		map: /* syntax: js */ `
-			(read, submit, update, err) => {
-				let k_tree = require('@graphy/memory.dataset.fast')();
+		run: /* syntax: js */ `
+			(read, err, update, submit, user={}, isWorker=false) => {
+				let k_dataset = require('@graphy/memory.dataset.fast')();
 
 				return read({
 					relax: ${gc_scan.relax? 'true': 'false'},
 
-					pipe: k_tree.on('finish', () => {
-
+					pipe: k_dataset.on('finish', () => {
+						if(isWorker) {
+							// let abs_dump = k_dataset.dump({shared:true});
+							// submit(abs_dump, [abs_dump]);
+							submit(k_dataset.export());
+						}
+						else {
+							submit(k_dataset);
+						}
 					}),
 
-					data(g_quad) {
-						k_tree.add(g_quad);
-					},
-
-					eof() {
-						submit(k_tree.export());
+					error(e_read) {
+						err(e_read);
 					},
 				});
 			}
 		`,
 
-		// report(k_tree) {
-		// 	console.log(k_tree.size);
-		// },
+		report(k_tree) {
+			console.log(k_tree.size);
+		},
 	}),
 
 	scribe: gc_scan => ({
-		map: /* syntax: js */ `
-			async(read, submit, update, err, user) => {
-				let c_quads = 0;
+		run: /* syntax: js */ `
+			async(read, err, update, submit, user, isWorker) => {
+				// prep buffer string
+				let s_buffer = '';
 
+				// create scriber
 				let ds_scriber = require('@graphy/content.ttl.scribe')({
 					prefixes: user.prefixes,
+
+					// capture scriber output
+					data(s_write) {
+						s_buffer += s_write;
+					},
+
+					// once scriber ends
+					end() {
+						submit();
+					},
 				});
 
-				// each data event on writer
-				ds_scriber.on('data', (s_write) => {
-					// convert to Buffer -> ArrayBuffer
-					let ab_chunk = Buffer.from(s_write);
-					let db_chunk = ab_chunk.buffer.slice(ab_chunk.byteOffset, ab_chunk.byteOffset+ab_chunk.byteLength);
-
-					// send to master
-					update(db_chunk, [db_chunk]);
-				});
-
-				ds_scriber.on('end', () => {
-					submit();
-				});
-
+				// create reader
 				let ds_reader = read({
 					relax: ${gc_scan.relax? 'true': 'false'},
 				});
 
+				// worker
+				if(isWorker) {
+					// on reader progress
+					ds_reader.on('progress', () => {
+						// buffer is not empty
+						if(s_buffer) {
+							// clean scriber output buffer before sending
+							ds_scriber.rinse();
+
+							// convert string -> Buffer -> ArrayBuffer
+							let db_chunk = Buffer.from(s_buffer);
+							let ab_chunk = db_chunk.buffer.slice(db_chunk.byteOffset, db_chunk.byteOffset+db_chunk.byteLength);
+
+							// send to master
+							update(ab_chunk, [ab_chunk]);
+
+							// reset buffer
+							s_buffer = '';
+						}
+					});
+				}
+				// master
+				else {
+					// on reader progress
+					ds_reader.on('progress', () => {
+						// scriber output buffer is not empty
+						if(s_buffer) {
+							// clean scriber output buffer before sending
+							ds_scriber.rinse();
+
+							// empty buffer
+							update(s_buffer);
+
+							// reset buffer
+							s_buffer = '';
+						}
+					});
+				}
+
+				// pipe reader to scriber
 				ds_reader.pipe(ds_scriber);
 
+				// return reader instance
 				return ds_reader;
 			}
 		`,
 
 		// reduce: (ab_chunk_a, ab_chunk_a) => c_quads_a + c_quads_b,
 
-		update(db_chunk) {
-			debugger;
-			this.push(Buffer.from(db_chunk).toString());
-		},
+		// update(ab_chunk) {
+		// 	this.push(Buffer.from(ab_chunk).toString());
+		// },
 	}),
 
-	distinct: gc_scan => ({
-		map: /* syntax: js */ `
-			(read, submit) => {
+	'distinct-quads': gc_scan => ({
+		reduce: (k_dataset_a, k_dataset_b) => k_dataset_a.union(k_dataset_b),
+
+		run: /* syntax: js */ `
+			(read, err, update, submit, user) => {
 				const dataset = require('@graphy/memory.dataset.fast');
 				let k_dataset = dataset();
 
 				k_dataset.on('finish', () => {
-					report(k_dataset.export());
+					submit(k_dataset.export());
 				});
 
 				let ds_reader = read({
@@ -112,7 +163,5 @@ module.exports = {
 				return ds_reader;
 			}
 		`,
-
-		reduce: (k_dataset_a, k_dataset_b) => k_dataset_a.union(k_dataset_b),
 	}),
 };

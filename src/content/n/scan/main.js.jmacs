@@ -1,12 +1,18 @@
 @./* global FORMAT */
 @//@
 
+const run = sjx_eval => eval(sjx_eval);
+
+// iiaf to isolate scope from eval
+(function() {
+
 @import '../../../share/polyfills.jmacs'
 
 @{polyfill.queueMicrotask()}
 
 @$ S_LABEL = 'nt' === FORMAT? 'NTriples': 'NQuads';
 
+const events = require('events');
 const path = require('path');
 const stream = require('@graphy/core.iso.stream');
 const reader = require('@graphy/content.@{FORMAT}.read');
@@ -42,17 +48,17 @@ let NL_WORKERS_ADVISE = (() => {
 
 	switch(os.platform()) {
 		case 'linux': {
-			let s_out = exec('lscpu -p | egrep -v "^#" | sort -u -t, -k 2,4 | wc -l');
+			let s_out = exec(/* syntax: shell */ `lscpu -p | egrep -v "^#" | sort -u -t, -k 2,4 | wc -l`);
 			return parseInt(s_out.trim(), 10);
 		}
 
 		case 'darwin': {
-			let s_out = exec('sysctl -n hw.physicalcpu_max');
+			let s_out = exec(/* syntax: shell */ `sysctl -n hw.physicalcpu_max`);
 			return parseInt(s_out.trim(), 10);
 		}
 
 		case 'windows': {
-			let s_out = exec('WMIC CPU Get NumberOfCores');
+			let s_out = exec(/* syntax: shell */ `WMIC CPU Get NumberOfCores`);
 			return s_out.split(os.EOL)
 				.map(s => parseInt(s))
 				.filter(n => !isNaN(n))
@@ -71,34 +77,26 @@ let NL_WORKERS_ADVISE = (() => {
 
 @$ H_SCAN_EVENTS = {
 	error: {},
-	// update: {},
+	update: {},
 	report: {once:true},
-	// comment: {},
-	// progress: {},
 	eof: {once:true},
-	end: {once:true},
-	// finish: {once:true},
-	// data: {},  // attach data listener last
+	// end: {once:true},
 };
 
-
-function Scanner$kill(k_self, e_reason) {
-	// destroy callbacks
-	k_self._f_report = k_self._f_update = () => {};
-
-	// kill all workers
-	Promise.all(k_self._a_workers.map(d => d.terminate()))
-		.then(() => queueMicrotask(() => {
-			k_self.emit('error', e_reason);
-		}));
-}
 
 function Scanner$handle_worker_message(k_self, i_worker) {
 	return (g_msg) => {
 		switch(g_msg.type) {
 			// update
 			case 'update': {
-				k_self._f_update(g_msg.value, i_worker);
+				// ref message payload
+				let w_value = g_msg.value;
+
+				// sync receive update transform
+				if(k_self._f_receive_update) w_value = k_self._f_receive_update(w_value, i_worker);
+
+				// apply update handler
+				k_self._f_update(w_value, i_worker);
 				break;
 			}
 
@@ -106,8 +104,14 @@ function Scanner$handle_worker_message(k_self, i_worker) {
 			case 'submit': {
 				// console.log(`received result from worker ${i_worker}: ${g_msg.value}; ${a_reports.length+1} results`);
 
+				// ref message payload
+				let w_value = g_msg.value;
+
+				// sync receive submit transform
+				if(k_self._f_receive_submit) w_value = k_self._f_receive_submit(w_value, i_worker);
+
 				// reduce
-				k_self._w_reduced = k_self._f_reduce(k_self._w_reduced, g_msg.value);
+				k_self._w_reduced = k_self._f_reduce(k_self._w_reduced, w_value);
 
 				// all results have been collected
 				if(k_self._nl_workers === ++k_self._c_reports) {
@@ -132,7 +136,7 @@ function Scanner$handle_worker_message(k_self, i_worker) {
 				e_throw.stack = g_error.stack;
 
 				// kill workers and throw error
-				return Scanner$kill(k_self, e_throw);
+				return k_self._kill(e_throw);
 			}
 
 			// throw
@@ -147,7 +151,7 @@ function Scanner$handle_worker_message(k_self, i_worker) {
 				let e_wrap = new Error(z_throw+'');
 
 				// kill workers and throw error
-				return Scanner$kill(k_self, e_wrap);
+				return k_self._kill(e_wrap);
 			}
 
 			// clone error
@@ -159,7 +163,7 @@ function Scanner$handle_worker_message(k_self, i_worker) {
 				let e_clone = new Error(`You are trying to call '${g_clone.info}' on some object from within one of the workers, but that object is not serializable using the structured clone algorithm. The object.toString() is: "${g_clone.obejct}"... the error about the worker failing to send the original error to the master thread is:\n${g_clone.error}`);
 
 				// kill workers and throw error
-				return Scanner$kill(k_self, e_clone);
+				return k_self._kill(e_clone);
 			}
 
 
@@ -185,10 +189,7 @@ function Scanner$fill_slots(k_self) {
 	let ab_prev = k_self._ab_prev;
 	let ds_reader = k_self._ds_reader;
 
-	if(!ds_input.readable) {
-		throw new Error(`input should not read readable...`);
-	}
-
+	// prep chunk placeholder
 	let ab_chunk;
 
 	// while there are open slots
@@ -196,12 +197,8 @@ function Scanner$fill_slots(k_self) {
 		// read chunk from input stream
 		ab_chunk = ds_input.read();
 
-		// info(`read: ${null === ab_chunk? 'null': ab_chunk.length+' bytes'}`);
-
-		// buffer is drained
-		if(null === ab_chunk) {
-			break;
-		}
+		// buffer is drained; break read loop
+		if(null === ab_chunk) break;
 
 		// chunk size exceeds high water mark
 		if(ab_chunk.length > nb_high_water_mark) {
@@ -234,30 +231,14 @@ function Scanner$fill_slots(k_self) {
 
 		// mark slot ready
 		atu8_slot_owners[i_slot] = @{XC_SLOT_OWNER_NONE};
-		// a_slot_owners_internal[i_slot] = XC_SLOT_OWNER_NONE;
-		// Atomics.store(atu8_slot_owners, i_slot, XC_SLOT_OWNER_NONE);
-
-		// info(`(slot_owner[${i_slot}] = NONE) === ${slot_owner(i_slot)}; payload size === ${f_reader_uintle32(atu8_data, ib_slot)}`);
 
 		// set indicator & notice
-		// at32_indicator[0] += 1;
-		Atomics.add(at32_indicators, 0, 1);
-		// log(`(indicator += 1) === ${at32_indicators[0]}`);
+		at32_indicators[0] += 1;
 		let n_awoke = Atomics.notify(at32_indicators, 0);
 		// log(`woke ${n_awoke} sleeping threads}`);
 
-
-		// // save to expected queue
-		// a_expected.push(i_slot);
-
 		// set slot state
 		a_slot_states[i_slot] = @{XC_SLOT_TRANSACTING};
-
-		// log(`(slot_states[${i_slot}] = AWAITING(${XC_SLOT_TRANSACTING})) === ${slot_state(i_slot)}`);
-		// log(`slot_owner[${i_slot}] === ${slot_owner(i_slot)}`);
-
-		// // store association
-		// a_slots_order[i_slot] = i_chunk;
 
 		// join head with prev
 		let ab_head = ab_chunk.slice(0, ib_head);
@@ -267,8 +248,6 @@ function Scanner$fill_slots(k_self) {
 
 		// write to reader
 		ds_reader.write(s_write);
-
-		// info(`wrote: """${s_write}"""`);
 
 		// save tail to prev
 		ab_prev = ab_chunk.slice(ib_tail);
@@ -294,9 +273,6 @@ function Scanner$fill_slots(k_self) {
 		return true;
 	}
 
-	// // whether or not to await readable
-	// return 0 === ds_input.readableLength;
-
 	// have not consumed everything
 	return false;
 }
@@ -312,14 +288,8 @@ function Scanner$drain_slots(k_self) {
 
 	// read results
 	for(let i_slot=0; i_slot<nl_slots; i_slot++) {
-		// log(`read // slot_owner[${i_slot}] === ${slot_owner(i_slot)} (internal
-		//   => ${a_slot_owners_internal[i_slot]}) / slot_states[${i_slot}] ===
-		//     ${slot_state(i_slot)}`);
-
 		// slot returned
 		if(@{XC_SLOT_OWNER_MASTER} === atu8_slot_owners[i_slot] && @{XC_SLOT_TRANSACTING} === a_slot_states[i_slot]) {
-			// green(`master reclaiming slot ${i_slot}`);
-
 			// update slot state
 			a_slot_states[i_slot] = @{XC_SLOT_AVAILABLE};
 
@@ -335,108 +305,15 @@ function Scanner$drain_slots(k_self) {
 }
 
 
-
-function Scanner$on_pipe(k_self, ds_input) {
-	k_self._ds_input = ds_input;
-
-	// byte size ofhigh water mark
-	let nb_high_water_mark = k_self._nb_high_water_mark = Math.max(0x10000, ds_input.readableHighWaterMark);
-
+function Scanner$attach_readable(k_self) {
+	let ds_input = k_self._ds_input;
 	let nl_workers = k_self._nl_workers;
-
-	let nl_slots = k_self._nl_slots = k_self._n_slots_per_worker * nl_workers;
-
-	let nb_slot = k_self._nb_slot = 4 + nb_high_water_mark;
-
-	let nl_indicators = 2;
-	let nb_indicators = nl_indicators * 4;
-
-	let nb_slot_owners = nl_slots * 1;
-	let nb_region = (nb_indicators)  // indicators
-		+ (nb_slot_owners)  // slot owners
-		+ (nb_slot * nl_slots);  // slot data
-
-	// create shared memory region
-	let ab_share = new SharedArrayBuffer(nb_region);
-
-	// indicators
-	let at32_indicators = k_self._at32_indicators = new Int32Array(ab_share, 0, nl_indicators);
-
-	// slot owner and data byte positions
-	let ib_slots = 0 + nb_indicators;
-	let ib_data = ib_slots + (nb_slot_owners);
-
-	// slot owners
-	let atu8_slot_owners = k_self._atu8_slot_owners = new Uint8Array(ab_share, ib_slots, nl_slots);
-
-	// slot data
-	let atu8_data = k_self._atu8_data = new Uint8Array(ab_share, ib_data);
-
-
-	// initially, all slots are claimed by master thread
-	for(let i_slot=0; i_slot<nl_slots; i_slot++) {
-		// set slot owner to master thread
-		atu8_slot_owners[i_slot] = @{XC_SLOT_OWNER_MASTER};
-		// a_slot_owners_internal.push(XC_SLOT_OWNER_MASTER);
-
-		// push open slot to queue
-		k_self._a_slots_open.push(i_slot);
-
-		// set initial slot state
-		k_self._a_slot_states.push(@{XC_SLOT_AVAILABLE});
-	}
-
-
-	// spawn workers
-	{
-		let a_workers = k_self._a_workers;
-
-		let g_worker_data = {
-			sjx_map: k_self._sjx_map,
-			// ab_share,
-			nl_workers,
-			nl_slots,
-			nb_slot,
-			at32_indicators,
-			// nb_region,
-			atu8_slot_owners,
-			atu8_data,
-		};
-
-		// ref spawn (and then call without context)
-		let f_spawn = k_self._f_spawn;
-
-		// each worker
-		for(let i_worker=1; i_worker<=nl_workers; i_worker++) {
-			// spawn
-			let d_worker = new master.Worker('./worker.js', {
-				__dirname,
-
-				workerData: {
-					...g_worker_data,
-					i_worker,
-					w_user: f_spawn(i_worker),
-				},
-
-				// on message event
-				message: Scanner$handle_worker_message(k_self, i_worker),
-			});
-
-			// d_worker.on('message', );
-
-			// push to worker list
-			a_workers.push(d_worker);
-		}
-	}
-
-	// remove pipe dest; switching to paused mode
-	ds_input.unpipe(k_self);
+	let at32_indicators = k_self._at32_indicators;
 
 	// each time the input stream emits readable (this switches to paused mode)
 	ds_input.on('readable', () => {
 		k_self._tick();
 	});
-
 
 	// no workers
 	if(0 === nl_workers) {
@@ -460,7 +337,7 @@ function Scanner$on_pipe(k_self, ds_input) {
 		// end
 		ds_input.on('end', () => {
 			// set indicator and notify
-			Atomics.store(at32_indicators, 0, @{XC_INDICATOR_EOF});
+			at32_indicators[0] = @{XC_INDICATOR_EOF};
 			let c_notified = Atomics.notify(at32_indicators, 0);
 
 			// reassign tick function
@@ -475,6 +352,7 @@ function Scanner$on_pipe(k_self, ds_input) {
 	}
 }
 
+// special tick function if no workers
 function Scanner$_tick_master_only() {
 	let ds_input = this._ds_input;
 	let ds_reader = this._ds_reader;
@@ -486,7 +364,8 @@ function Scanner$_tick_master_only() {
 	}
 }
 
-class @{S_LABEL}_Scanner extends stream.Duplex {
+
+class @{S_LABEL}_Scanner extends stream.Readable {
 	constructor(gc_scanner) {
 		super();
 
@@ -516,6 +395,12 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 		// string decoder
 		this._d_string_decoder = new StringDecoder();
 
+		// open slot resolve
+		this._f_resolve_open_slot = null;
+
+		// reader ready resolve
+		this._f_resolve_reader_ready = null
+
 		@*{
 			for(let [s_event, g_event] of Object.entries(H_SCAN_EVENTS)) {
 				yield /* syntax: js */ `
@@ -524,10 +409,10 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 			}
 		}
 
-		// once input is piped in
-		this.on('pipe', (ds_input) => {
-			Scanner$on_pipe(this, ds_input);
-		});
+		// semaphores
+		this.b_ready_pipe = null;
+		this.b_ready_reader = false;
+		this.b_unpiped_self = false;
 
 		// default preset config
 		let g_preset = {};
@@ -542,7 +427,12 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 			}
 
 			// generate preset config
-			g_preset = H_PRESET_TASKS[gc_scanner.preset](gc_scanner);
+			g_preset = H_PRESET_TASKS[gc_scanner.preset]({
+				...gc_scanner,
+
+				// auto-populate format
+				format: '@{FORMAT}',
+			});
 		}
 		
 		// task config
@@ -552,27 +442,22 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 			...gc_scanner,
 		};
 
-		// map function
-		let sjx_map = this._sjx_map = g_task.map;
+		// run function
+		let sjx_run = this._sjx_run = g_task.run;
 
-		// missing map function
-		if('string' !== typeof sjx_map || !sjx_map) {
-			throw new TypeError('Invalid \'.map\' property supplied to @{S_LABEL}_Scanner constructor; must be a non-empty string.');
+		// missing run function
+		if('string' !== typeof sjx_run || !sjx_run) {
+			throw new TypeError('Invalid \'.run\' property supplied to @{S_LABEL}_Scanner constructor; must be a non-empty string.');
 		}
 
-		// try creating map function
-		let f_map;
+		// try creating run function
+		let f_run;
 		try {
-			// f_map = (new Function(`return (${sjx_map})`))();  // eslint-disable-line no-new-func
-			f_map = eval(`(${sjx_map})`);  // eslint-disable-line no-eval
+			// f_run = (new Function(`return (${sjx_run})`))();  // eslint-disable-line no-new-func
+			f_run = run(`(${sjx_run})`);  // eslint-disable-line no-eval
 		}
 		catch(e_eval) {
-			throw new Error(`Failed to evaluate the '.map' property supplied to @{S_LABEL}_Scanner constructor as JavaScript code:\n${e_eval.stack || e_eval}`);
-		}
-
-		// update property supplied
-		if(g_task.update) {
-			this.on('update', g_task.update);
+			throw new Error(`Failed to evaluate the '.run' property supplied to @{S_LABEL}_Scanner constructor as JavaScript code:\n${e_eval.stack || e_eval}`);
 		}
 
 		// reduce property supplied
@@ -614,28 +499,38 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 			this._f_spawn = f_spawn;
 		}
 
+		// receive handler(s)
+		let z_receive = g_task.receive;
+
+		// receive function
+		if('function' === typeof z_receive) {
+			this._f_receive_update = this._f_receive_submit = z_receive;
+		}
+		// different handlers for update and submit events
+		else if(z_receive) {
+			// update handler supplied
+			if(z_receive.update) {
+				this._f_receive_update = z_receive.update;
+			}
+
+			// submit handler supplied
+			if(z_receive.submit) {
+				this._f_receive_submit = z_receive.submit;
+			}
+		}
+
 
 		let k_self = this;
 
 		// create content reader
 		(async() => {
-			let ds_reader = this._ds_reader = await f_map(reader, ...[
-				// 'submit' results
-				function submit(w_value) {
-					k_self._f_submit_master(w_value);
-				},
-
-				// 'update' with some info
-				function update(w_msg) {
-					k_self._f_update(w_msg, 0);
-				},
-
+			let ds_reader = this._ds_reader = await f_run(reader, ...[
 				// handle errors
 				function err(z_what) {
 					// proper error instance
 					if(z_what instanceof Error) {
 						// kill workers and handle error
-						Scanner$kill(k_self, z_what);
+						k_self._kill(z_what);
 					}
 					// invalid error type
 					else {
@@ -646,17 +541,30 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 						let e_wrap = new Error(z_what+'');
 
 						// kill workers and throw error
-						Scanner$kill(k_self, e_wrap);
+						k_self._kill(e_wrap);
 					}
+				},
+
+				// 'update' with some info
+				function update(w_msg) {
+					k_self._f_update(w_msg, 0);
+				},
+
+				// 'submit' results
+				function submit(w_value) {
+					k_self._f_submit_master(w_value);
 				},
 
 				// user data
 				this._f_spawn(0),
+
+				// not a worker
+				false,
 			]);
 
 			// attach automatic error handler to kill workers
 			ds_reader.on('error', (e_read) => {
-				Scanner$kill(k_self, e_read);
+				this._kill(e_read);
 			});
 
 			// once main thread content reader has finished
@@ -670,13 +578,135 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 					this._b_eofed = true;
 				}
 			});
+
+			// input has been imported
+			if(this._b_ready_input) {
+				Scanner$attach_readable(this);
+			}
 		})();
+	}
+
+	_kill(e_reason) {
+		// destroy callbacks
+		this._f_report = this._f_update = this._kill = () => {};
+
+		// kill all workers
+		Promise.all(this._a_workers.map(d => d.terminate()))
+			.then(() => queueMicrotask(() => {
+				this.emit('error', e_reason);
+			}));
+	}
+
+	import(ds_input) {
+		// input has already been imported
+		if(this._b_ready_input) {
+			throw new Error(`More than one input was imported to @{S_LABEL}_Scanner; only a single input source can be imported and only once.`);
+		}
+
+		// mark input ready
+		this._b_ready_input = true;
+
+		// save input
+		this._ds_input = ds_input;
+
+		// byte size ofhigh water mark
+		let nb_high_water_mark = this._nb_high_water_mark = Math.max(0x10000, ds_input.readableHighWaterMark);
+
+		let nl_workers = this._nl_workers;
+
+		let nl_slots = this._nl_slots = this._n_slots_per_worker * nl_workers;
+
+		let nb_slot = this._nb_slot = 4 + nb_high_water_mark;
+
+		let nl_indicators = 2;
+		let nb_indicators = nl_indicators * 4;
+
+		let nb_slot_owners = nl_slots * 1;
+		let nb_region = (nb_indicators)  // indicators
+			+ (nb_slot_owners)  // slot owners
+			+ (nb_slot * nl_slots);  // slot data
+
+		// create shared memory region
+		let ab_share = new SharedArrayBuffer(nb_region);
+
+		// indicators
+		let at32_indicators = this._at32_indicators = new Int32Array(ab_share, 0, nl_indicators);
+
+		// slot owner and data byte positions
+		let ib_slots = 0 + nb_indicators;
+		let ib_data = ib_slots + (nb_slot_owners);
+
+		// slot owners
+		let atu8_slot_owners = this._atu8_slot_owners = new Uint8Array(ab_share, ib_slots, nl_slots);
+
+		// slot data
+		let atu8_data = this._atu8_data = new Uint8Array(ab_share, ib_data);
+
+
+		// initially, all slots are claimed by master thread
+		for(let i_slot=0; i_slot<nl_slots; i_slot++) {
+			// set slot owner to master thread
+			atu8_slot_owners[i_slot] = @{XC_SLOT_OWNER_MASTER};
+			// a_slot_owners_internal.push(XC_SLOT_OWNER_MASTER);
+
+			// push open slot to queue
+			this._a_slots_open.push(i_slot);
+
+			// set initial slot state
+			this._a_slot_states.push(@{XC_SLOT_AVAILABLE});
+		}
+
+
+		// spawn workers
+		{
+			let a_workers = this._a_workers;
+
+			let g_worker_data = {
+				sjx_run: this._sjx_run,
+				// ab_share,
+				nl_workers,
+				nl_slots,
+				nb_slot,
+				at32_indicators,
+				// nb_region,
+				atu8_slot_owners,
+				atu8_data,
+			};
+
+			// ref spawn (and then call without context)
+			let f_spawn = this._f_spawn;
+
+			// each worker
+			for(let i_worker=1; i_worker<=nl_workers; i_worker++) {
+				// spawn
+				let d_worker = new master.Worker('./worker.js', {
+					__dirname,
+
+					workerData: {
+						...g_worker_data,
+						i_worker,
+						w_user: f_spawn(i_worker),
+					},
+
+					// on message event
+					message: Scanner$handle_worker_message(this, i_worker),
+				});
+
+				// d_worker.on('message', );
+
+				// push to worker list
+				a_workers.push(d_worker);
+			}
+		}
+
+		// reader is ready; attach readable event listener
+		if(this._b_ready_reader) {
+			Scanner$attach_readable(this);
+		}
 	}
 
 	_tick(b_softlock) {
 		let at32_indicators = this._at32_indicators;
-
-		// log(`---------- ${b_retick? '(re)': ''}tick ---------`);
 
 		// grab indicator
 		let xc_indicator_reclaim = Atomics.load(at32_indicators, 1);
@@ -691,17 +721,13 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 		if(!b_await_readable) {
 			// something drained (or no workers)
 			if(n_drained) {
-				// log(`drained ${n_drained} slots`);
-
 				// retick, avoiding recursion
 				queueMicrotask(() => {
 					this._tick();
 				});
 			}
 			else {
-				// log(`awaiting indicator ${xc_indicator_reclaim}....`);
-
-				// avoid recursion; use setImmediate
+				// avoid recursion; use setImmediate (need event loop to process messages from worker)
 				setImmediate(() => {
 					// await change
 					let s_status = Atomics.wait(at32_indicators, 1, xc_indicator_reclaim, 2000);
@@ -714,7 +740,7 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 						}
 
 						// set indicator and notify
-						Atomics.add(at32_indicators, 0, 1);
+						at32_indicators[0] += 1;
 						Atomics.notify(at32_indicators, 0);
 
 						// tick next
@@ -723,8 +749,6 @@ class @{S_LABEL}_Scanner extends stream.Duplex {
 					// else if('not-equal' === s_status) {
 					// 	log(`awaited indicator: ${s_status}; ${Atomics.load(at32_indicators, 1)}`);
 					// }
-
-					// log(`awaited indicator: ${s_status}; ${at32_indicators[1]}`);
 
 					// retick
 					this._tick();
@@ -754,11 +778,15 @@ Object.assign(@{S_LABEL}_Scanner.prototype, {
 			console.warn(`WARNING: @{S_LABEL}_Scanner emitted a 'report' event but no listener function is attached`);
 		}
 
-		// end readable side
-		queueMicrotask(() => {
-			this.end();
-		});
+		// // emit end event
+		// queueMicrotask(() => {
+		// 	this.emit('end');
+		// });
 	},
+
+	// receive handlers
+	_f_receive_update: null,
+	_f_receive_submit: null,
 
 	// submit master
 	_f_submit_master(w_report) {
@@ -776,3 +804,5 @@ module.exports = function(...a_args) {
 	return (new @{S_LABEL}_Scanner(...a_args));
 };
 
+
+})();
