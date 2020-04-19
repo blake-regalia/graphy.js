@@ -19,9 +19,7 @@
 @:
 	let scan = require('@{channel(`content.${S_FORMAT_IN}.scan`)}');
 
-	scan({
-		input: process.stdin,
-
+	scan(process.stdin, {
 		@{SJ_CONFIG_READ || ''}
 
 		preset: 'scribe',
