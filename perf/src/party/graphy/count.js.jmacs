@@ -1,17 +1,35 @@
 @import '../../share/perf.jmacs'
-let read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
+@- !N_THREADS || N_THREADS <= 1 || !['nt', 'nq'].includes(S_FORMAT_IN)
+	let read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
 
-let c_quads = 0;
-process.stdin.pipe(read({
-	@{SJ_CONFIG_READ || ''}
+	let c_quads = 0;
+	process.stdin.pipe(read({
+		@{SJ_CONFIG_READ || ''}
 
-	data() {
-		c_quads += 1;
-	},
+		data() {
+			c_quads += 1;
+		},
 
-	end() {
-		@{end_test({
-			count: /* syntax: js */ `c_quads`,
-		})}
-	},
-}));
+		end() {
+			@{end_test({
+				count: /* syntax: js */ `c_quads`,
+			})}
+		},
+	}));
+@:
+	let scan = require('@{channel(`content.${S_FORMAT_IN}.scan`)}');
+
+	scan({
+		input: process.stdin,
+
+		@{SJ_CONFIG_READ || ''}
+
+		preset: 'count',
+
+		report(c_quads) {
+			@{end_test({
+				count: /* syntax: js */ `c_quads`,
+			})}
+		},
+	});
+@;

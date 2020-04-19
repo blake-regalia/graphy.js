@@ -39,6 +39,9 @@ const H_TRANSFORM = {
 const H_COLORS = {
 	'graphy/default': 'rgba(0, 127, 0 1)',
 	'graphy/relaxed': 'rgba(0, 0, 127, 1)',
+	'graphy/scan.2': 'rgb(204, 51, 255)',
+	'graphy/scan.4': 'rgb(153, 102, 255)',
+	'graphy/scan.6': 'rgb(153, 153, 255)',
 	'N3/default': 'rgba(127, 0, 0, 1)',
 };
 
@@ -223,15 +226,20 @@ async function* r() {
 
 		The X-axis units are in Millions of Quads, and correspond to the number of triples/quads fed into the process via stdin.
 
-		There are usually two modes for \`graphy\`, the default mode with validation enabled for reading, and ['relaxed' mode](https://graphy.link/content.textual#config_read-no-input), which skips validation for faster read speeds.
+		There are multiple modes for \`graphy\`:
+		  - the default mode with validation enabled for reading
+		  - ['relaxed' mode](https://graphy.link/content.textual#config_read-no-input), which skips validation for faster read speeds
+		  - ['scan' mode](https://graphy.link/content.textual#verb_scan), which uses multiple threads (2, 4, or 6 in these trials) to read the input stream
 
 		All Turtle input files are using prefixed names for identifiers when possible.
 
 		Memory-intensive tasks were run with the \`--max-old-space-size=8192\` node.js option (e.g., the [distinct task](#distinct-task)). Some charts show an exponential jump in time due to the fact that V8's GC starts aggressively trying to free up memory.
 
+		Memory usage represents the resident stack size (RSS) at the moment the results are reported. For \`graphy/scan\` modes, memory usage stats are not yet available.
+
 		Want to see how other libraries stack up? Feel free to [open an issue](https://github.com/blake-regalia/graphy.js/issues).
 
-		## Versions
+		## Competitors
 		${Object.entries(H_PARTIES).reduce((s_out, [, g_party]) => s_out
 			+` - [${g_party.label}](${g_party.href}) v${g_party.version}\n`, '')}
 

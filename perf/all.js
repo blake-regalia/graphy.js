@@ -68,6 +68,19 @@ const H_MODES_GRAPHY_READ = {
 	},
 };
 
+const H_MODES_GRAPHY_READ_SCAN = {
+	...H_MODES_GRAPHY_READ,
+	'scan.2': {
+		N_THREADS: 2,
+	},
+	'scan.4': {
+		N_THREADS: 4,
+	},
+	'scan.6': {
+		N_THREADS: 6,
+	},
+};
+
 const perm_formats_in = si_task => (gc_task={modes:H_MODES_DEFAULT}) => Object.entries(H_FORMATS).reduce((h_out, [s_format, g_format]) => ({
 	...h_out,
 	[s_format]: {
@@ -128,13 +141,13 @@ const H_PARTIES = {
 
 		tasks: {
 			count: H_TASK_PERMS.count({
-				modes: H_MODES_GRAPHY_READ,
+				modes: H_MODES_GRAPHY_READ_SCAN,
 			}),
 			distinct: H_TASK_PERMS.distinct({
 				modes: H_MODES_GRAPHY_READ,
 			}),
 			convert: H_TASK_PERMS.convert({
-				modes: H_MODES_GRAPHY_READ,
+				modes: H_MODES_GRAPHY_READ_SCAN,
 			}),
 		},
 	},

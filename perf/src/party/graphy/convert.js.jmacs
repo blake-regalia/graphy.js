@@ -1,17 +1,39 @@
 @import '../../share/perf.jmacs'
-let read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
-let scribe = require('@{channel(`content.${S_FORMAT_OUT}.scribe`)}');
+@- !N_THREADS || N_THREADS <= 1 || !['nt', 'nq'].includes(S_FORMAT_IN)
+	let read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
+	let scribe = require('@{channel(`content.${S_FORMAT_OUT}.scribe`)}');
 
-let ds_scribe = process.stdin
-	.pipe(read({
+	let ds_scribe = process.stdin
+		.pipe(read({
+			@{SJ_CONFIG_READ || ''}
+		}))
+		.pipe(scribe({
+			@{SJ_CONFIG_SCRIBE || ''}
+		}));
+
+	ds_scribe.pipe(process.stdout);
+
+	ds_scribe.on('end', () => {
+		@{end_test()}
+	});
+@:
+	let scan = require('@{channel(`content.${S_FORMAT_IN}.scan`)}');
+
+	scan({
+		input: process.stdin,
+
 		@{SJ_CONFIG_READ || ''}
-	}))
-	.pipe(scribe({
-		@{SJ_CONFIG_SCRIBE || ''}
-	}));
 
-ds_scribe.pipe(process.stdout);
+		preset: 'scribe',
 
-ds_scribe.on('end', () => {
-	@{end_test()}
-});
+		update(z_chunk, i_worker) {
+			process.stdout.write(i_worker? Buffer.from(z_chunk): z_chunk);
+		},
+
+		report(c_qudas) {
+			@{end_test({
+				count: /* syntax: js */ `c_quads`,
+			})}
+		},
+	});
+@;
