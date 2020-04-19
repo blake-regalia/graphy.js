@@ -7,9 +7,9 @@ const once = events.once;
 const factory = require('@graphy/core.data.factory');
 const dataset_tree = require('@graphy/memory.dataset.fast');
 
-const ttl_reader = require('@graphy/content.ttl.read');
-const nt_scriber = require('@graphy/content.nt.scribe');
-const nt_scan = require('@graphy/content.nt.scan');
+const trig_reader = require('@graphy/content.trig.read');
+const nq_scriber = require('@graphy/content.nq.scribe');
+const nq_scan = require('@graphy/content.nq.scan');
 
 function emulate_stream(ab_input) {
 	let ib_start = 0;
@@ -33,7 +33,7 @@ function emulate_stream(ab_input) {
 
 const P_NS_EG = 'http://example.org/linked-open-data/instance-or-ontology/';
 
-describe('content.nt.scan', () => {
+describe('content.nq.scan', () => {
 	const NL_GENERATE = 0x10000 * 64;  // approximately 4 MiB
 	let ab_generate;
 	let c_items = 0;
@@ -42,7 +42,7 @@ describe('content.nt.scan', () => {
 	before(async() => {
 		let s_generate = '';
 
-		let ds_scriber = nt_scriber();
+		let ds_scriber = nq_scriber();
 
 		ds_scriber.on('data', (s_write) => {
 			s_generate += s_write;
@@ -57,6 +57,7 @@ describe('content.nt.scan', () => {
 					: (c_items % 2)
 						? factory.literal('some -value', factory.namedNode(P_NS_EG+'datatype-'+c_items))
 						: factory.literal('This string is an example literal data for the generated dataset, item number "'+c_items+'".', 'en'),
+				factory.namedNode(P_NS_EG+'graph-'+c_items),
 			]));
 		}
 
@@ -69,7 +70,7 @@ describe('content.nt.scan', () => {
 
 	describe('safeguards', () => {
 		it('no workers', (fke_test) => {
-			let ds_scanner = nt_scan({
+			let ds_scanner = nq_scan({
 				preset: 'count',
 				report(c_quads) {
 					expect(c_quads).to.equal(c_items);
@@ -86,7 +87,7 @@ describe('content.nt.scan', () => {
 
 	describe('basics', () => {
 		it('blank', (fke_test) => {
-			nt_scan({
+			nq_scan({
 				preset: 'count',
 				report(c_quads) {
 					expect(c_quads).to.equal(0);
@@ -96,29 +97,29 @@ describe('content.nt.scan', () => {
 		});
 
 		it('one line', (fke_test) => {
-			nt_scan({
+			nq_scan({
 				preset: 'count',
 				report(c_quads) {
 					expect(c_quads).to.equal(1);
 					fke_test();
 				},
-			}).import(emulate_stream(Buffer.from(`<z://a/> <z://b/> <z://c/> .`)));
+			}).import(emulate_stream(Buffer.from(`<z://a/> <z://b/> <z://c/> <z://d/> .`)));
 		});
 
 		it('two lines', (fke_test) => {
-			nt_scan({
+			nq_scan({
 				preset: 'count',
 				report(c_quads) {
 					expect(c_quads).to.equal(2);
 					fke_test();
 				},
-			}).import(emulate_stream(Buffer.from(`<z://a/> <z://b/> <z://c/> .\n<z://a/> <z://b/> "c"@en .`)));
+			}).import(emulate_stream(Buffer.from(`<z://a/> <z://b/> <z://c/> <z://d/> .\n<z://a/> <z://b/> "c"@en <z://d/> .`)));
 		});
 	});
 
 	describe('errors', () => {
 		it('invalid master', (fke_test) => {
-			nt_scan({
+			nq_scan({
 				preset: 'count',
 
 				error(e_read) {
@@ -132,7 +133,7 @@ describe('content.nt.scan', () => {
 		});
 
 		it('invalid worker', (fke_test) => {
-			nt_scan({
+			nq_scan({
 				preset: 'count',
 
 				error(e_read) {
@@ -142,13 +143,13 @@ describe('content.nt.scan', () => {
 				report() {
 					fke_test(new Error('failed to stop report after invalid input'));
 				},
-			}).import(emulate_stream(Buffer.from('<z://a/> <z://b/> <z://c/> .\nInvalid.')));
+			}).import(emulate_stream(Buffer.from('<z://a/> <z://b/> <z://c/> <z://d/> .\nInvalid.')));
 		});
 	});
 
 	describe('tasks', () => {
 		it('preset: count', (fke_test) => {
-			nt_scan({
+			nq_scan({
 				preset: 'count',
 
 				report(c_quads) {
@@ -161,7 +162,7 @@ describe('content.nt.scan', () => {
 		it('preset: scribe', (fke_test) => {
 			let c_quads = 0;
 
-			let ds_verifier = ttl_reader({
+			let ds_verifier = trig_reader({
 				error(e_read) {
 					fke_test(new Error(`scriber output was invalid: ${e_read.stack}`));
 				},
@@ -176,7 +177,7 @@ describe('content.nt.scan', () => {
 				},
 			});
 
-			nt_scan({
+			nq_scan({
 				preset: 'scribe',
 
 				user: () => ({

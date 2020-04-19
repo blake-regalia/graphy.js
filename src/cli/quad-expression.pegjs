@@ -506,7 +506,7 @@ regex_char_class
 	/ regex_sequence_escape
 
 regex_flags 'regex_flags'
-	= [igmc]*
+	= [igmcv]*
 
 tags 'tags'
 	= '{' __ xm_contents:tags_contents? __ '}'

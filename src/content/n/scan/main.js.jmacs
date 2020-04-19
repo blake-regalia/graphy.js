@@ -8,6 +8,9 @@ const run = sjx_eval => eval(sjx_eval);
 
 @import '../../../share/polyfills.jmacs'
 
+@// import parser macros
+@import '../../text.read.jmacs'
+
 @{polyfill.queueMicrotask()}
 
 @$ S_LABEL = 'nt' === FORMAT? 'NTriples': 'NQuads';
@@ -79,8 +82,6 @@ let NL_WORKERS_ADVISE = (() => {
 	error: {},
 	update: {},
 	report: {once:true},
-	eof: {once:true},
-	// end: {once:true},
 };
 
 
@@ -136,7 +137,7 @@ function Scanner$handle_worker_message(k_self, i_worker) {
 				e_throw.stack = g_error.stack;
 
 				// kill workers and throw error
-				return k_self._kill(e_throw);
+				return k_self._kill(e_throw, i_worker);
 			}
 
 			// throw
@@ -151,7 +152,7 @@ function Scanner$handle_worker_message(k_self, i_worker) {
 				let e_wrap = new Error(z_throw+'');
 
 				// kill workers and throw error
-				return k_self._kill(e_wrap);
+				return k_self._kill(e_wrap, i_worker);
 			}
 
 			// clone error
@@ -163,7 +164,7 @@ function Scanner$handle_worker_message(k_self, i_worker) {
 				let e_clone = new Error(`You are trying to call '${g_clone.info}' on some object from within one of the workers, but that object is not serializable using the structured clone algorithm. The object.toString() is: "${g_clone.obejct}"... the error about the worker failing to send the original error to the master thread is:\n${g_clone.error}`);
 
 				// kill workers and throw error
-				return k_self._kill(e_clone);
+				return k_self._kill(e_clone, i_worker);
 			}
 
 
@@ -370,7 +371,7 @@ class @{S_LABEL}_Scanner extends stream.Readable {
 		super();
 
 		// worker and slot settings
-		let nl_workers = this._nl_workers = gc_scanner.workers || NL_WORKERS_ADVISE;
+		let nl_workers = this._nl_workers = (gc_scanner.threads || (NL_WORKERS_ADVISE+1)) - 1;
 		this._n_slots_per_worker = gc_scanner.slots_per_worker || gc_scanner.slotsPerWorker || N_DEFAULT_SLOTS_PER_WORKER;
 
 		// flags
@@ -457,7 +458,7 @@ class @{S_LABEL}_Scanner extends stream.Readable {
 			f_run = run(`(${sjx_run})`);  // eslint-disable-line no-eval
 		}
 		catch(e_eval) {
-			throw new Error(`Failed to evaluate the '.run' property supplied to @{S_LABEL}_Scanner constructor as JavaScript code:\n${e_eval.stack || e_eval}`);
+			throw new Error(`Failed to evaluate the '.run' property supplied to @{S_LABEL}_Scanner constructor as JavaScript code: """\n${sjx_run}"""\n${e_eval.stack || e_eval}`);
 		}
 
 		// reduce property supplied
@@ -486,17 +487,16 @@ class @{S_LABEL}_Scanner extends stream.Readable {
 			throw new TypeError('The \'.initial\' property was supplied to @{S_LABEL}_Scanner constructor but you also need to specify a \'.reduce\' function.');
 		}
 
-		// spawn function
-		if(g_task.spawn) {
-			let f_spawn = g_task.spawn;
+		// user property
+		let z_user = g_task.user;
 
-			// invalid spawn property
-			if('function' !== typeof f_spawn) {
-				throw new TypeError('Invalid \'.spawn\' property supplied to @{S_LABEL}_Scanner constructor; if present, it must be a function.');
-			}
-
-			// save
-			this._f_spawn = f_spawn;
+		// callback function; save
+		if('function' === typeof z_user) {
+			this._f_spawn = z_user;
+		}
+		// other
+		else {
+			this._f_spawn = () => z_user;
 		}
 
 		// receive handler(s)
@@ -530,7 +530,7 @@ class @{S_LABEL}_Scanner extends stream.Readable {
 					// proper error instance
 					if(z_what instanceof Error) {
 						// kill workers and handle error
-						k_self._kill(z_what);
+						k_self._kill(z_what, 0);
 					}
 					// invalid error type
 					else {
@@ -541,7 +541,7 @@ class @{S_LABEL}_Scanner extends stream.Readable {
 						let e_wrap = new Error(z_what+'');
 
 						// kill workers and throw error
-						k_self._kill(e_wrap);
+						k_self._kill(e_wrap, 0);
 					}
 				},
 
@@ -564,7 +564,7 @@ class @{S_LABEL}_Scanner extends stream.Readable {
 
 			// attach automatic error handler to kill workers
 			ds_reader.on('error', (e_read) => {
-				this._kill(e_read);
+				this._kill(e_read, 0);
 			});
 
 			// once main thread content reader has finished
@@ -584,16 +584,63 @@ class @{S_LABEL}_Scanner extends stream.Readable {
 				Scanner$attach_readable(this);
 			}
 		})();
+
+		// input given
+		let g_input = gc_scanner.input;
+		if(g_input) {
+			// stream
+			if(g_input.stream) {
+				this.import(g_input.stream);
+			}
+			// string
+			else if(g_input.string) {
+				// ref input string
+				let s_input = g_input.string;
+
+				// cache its length
+				let nl_input = s_input.length;
+
+				// read position
+				let i_read = 0;
+
+				// import
+				this.import(new stream.Readable({
+					highWaterMark: 0x10000,
+
+					_read() {
+						// end of read range position
+						let i_next = i_read + 0x10000;
+
+						// reach end of string; push eof signal
+						if(i_next >= nl_input) {
+							this.push(null);
+						}
+						// still data
+						else {
+							// convert string to buffer
+							this.push(Buffer.from(s_input.slice(i_read, i_next)));
+
+							// update read position
+							i_read = i_next;
+						}
+					},
+				}));
+			}
+			// other
+			else {
+				throw new Error(`@{S_LABEL}_Scanner: Invalid option supplied to '.input' property "${g_input}"`);
+			}
+		}
 	}
 
-	_kill(e_reason) {
+	_kill(e_reason, i_thread) {
 		// destroy callbacks
 		this._f_report = this._f_update = this._kill = () => {};
 
 		// kill all workers
 		Promise.all(this._a_workers.map(d => d.terminate()))
 			.then(() => queueMicrotask(() => {
-				this.emit('error', e_reason);
+				this.emit('error', e_reason, i_thread);
 			}));
 	}
 
@@ -766,8 +813,8 @@ Object.assign(@{S_LABEL}_Scanner.prototype, {
 	_f_reduce: (a_out, w_value) => [...a_out, w_value],
 
 	// update handler
-	_f_update(w_report) {
-		if(!this.emit('update', w_report)) {
+	_f_update(w_report, i_thread) {
+		if(!this.emit('update', w_report, i_thread)) {
 			console.warn(`WARNING: @{S_LABEL}_Scanner emitted an 'update' event but no listener function is attached`);
 		}
 	},
@@ -800,8 +847,12 @@ Object.assign(@{S_LABEL}_Scanner.prototype, {
 
 
 module.exports = function(...a_args) {
+	let g_config = {};
+
+	@{normalize_reader_config('g_config')}
+
 	// create reader, return transform stream
-	return (new @{S_LABEL}_Scanner(...a_args));
+	return (new @{S_LABEL}_Scanner(g_config));
 };
 
 

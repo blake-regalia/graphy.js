@@ -768,7 +768,7 @@ const H_COMPILERS = {
 					},
 
 					gen(sj_target) {
-						return /* syntax: js */ `${si_var_regex}.test(${sj_target}.concise(h_prefixes))`;
+						return /* syntax: js */ `${si_var_regex}.test(${sj_target}.concise(${g_regex.verbose? '': 'h_prefixes'}))`;
 					},
 				};
 			}

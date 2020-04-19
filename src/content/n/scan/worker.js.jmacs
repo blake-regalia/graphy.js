@@ -252,9 +252,6 @@ threads.worker(async(g_spawn) => {
 			// suicide; do not repeat search
 			if(b_suicide) return;
 
-			// // eof signal
-			// if(-1 === at32_indicators[0]) return eof();
-
 			// // worker notified
 			// log(`notified wake: ${s_status} => ${Atomics.load(at32_indicators, 0)}`);
 

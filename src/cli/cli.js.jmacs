@@ -306,10 +306,16 @@ class AnswerSource extends require('stream').Readable {
 	}
 }
 
+let b_show_stack_trace = false;
 const warn = (s_message) => {
-	console.warn((new Error(s_message)).stack
-		.replace(/\n\s+at [^\n]*\n/, '\n')
-		.replace(/^Error:/, 'Warning:'));
+	let s_msg = (new Error(s_message)).stack;
+
+	if(!b_show_stack_trace) {
+		s_msg = s_msg.replace(/\n\s+at [^\n]*\n/, '\n')
+			.replace(/^Error:/, 'Warning:');
+	}
+
+	console.warn(s_msg);
 };
 
 const exit = (s_exit) => {
@@ -458,12 +464,18 @@ let h_commands = {  // eslint-disable-next-line quote-props
 				alias: ['relax'],
 				default: undefined,  // eslint-disable-line no-undefined
 				describe: 'relax validation of tokens within the RDF document',
+				group: 'Read Options:',
 			},
 			// b: {
 			// 	type: 'string',
 			// 	alias: ['base', 'base-uri', 'base-iri'],
 			// 	describe: 'set a base URI on the document',
 			// },
+			threads: {
+				type: 'number',
+				describe: 'manually set the total number of threads to use (including the main thread)',
+				group: 'Scan Options:',
+			},
 
 			...content_type_flags(s => `scan from ${s}`),
 		},
@@ -482,52 +494,63 @@ let h_commands = {  // eslint-disable-next-line quote-props
 
 			let gc_scan = {
 				relax: g_argv.relax || false,
+				threads: g_argv.threads || 0,
 			};
 
 			// next command
 			let a_series = a_rest.shift();
-			let si_next = a_series[0];
+			let si_next = a_series? a_series[0]: null;
 
 			// command
 			switch(si_next) {
 				// count task
 				case 'count': {
 					return a_inputs.map(ds_input => new Promise((fk_resolve) => {
-						let ds_scanner = f_scanner({
+						ds_input.on('error', fe_command);
+
+						f_scanner(ds_input, {
 							...gc_scan,
 
 							preset: 'count',
 
-							error: e => fe_command(e),
+							error: fe_command,
 
 							report(c_quads) {
 								fk_resolve(new AnswerSource(c_quads));
 							},
 						});
-
-						ds_input.on('error', fe_command);
-
-						ds_input.pipe(ds_scanner);
 					}));
 				}
 
-				// scribe
-				case 'scribe': {
+				// scribe / ndjson
+				case 'scribe':
+				case null: {
 					return a_inputs.map((ds_input) => {
-						let ds_scanner = f_scanner({
-							...gc_scan,
-
-							preset: 'scribe',
-
-							error: e => fe_command(e),
-						});
-
 						ds_input.on('error', fe_command);
 
-						return ds_input.pipe(ds_scanner);
+						let ds_output = new stream.PassThrough();
+
+						f_scanner(ds_input, {
+							...gc_scan,
+
+							preset: si_next || 'ndjson',
+
+							error: fe_command,
+
+							update(z_scribe, i_worker) {
+								ds_output.write(i_worker? Buffer.from(z_scribe).toString(): z_scribe);
+							},
+
+							report() {
+								ds_output.end();
+							},
+						});
+
+						return ds_output;
 					});
 				}
 
+				// other
 				default: {
 					fe_command(`The 'scan' command only supports a limited set of commands to follow it; '${si_next}' is not supported`);
 				}
@@ -1812,7 +1835,7 @@ let a_pipeline = [];
 			}
 		}
 		// first arg, main option
-		else if('-h' === s_arg || '--help' === s_arg) {
+		else if('-h' === s_arg || '--help' === s_arg || 'help' === s_arg) {
 			// command overview
 			let s_overview = '';
 			for(let [s_category, g_category] of Object.entries(h_categories)) {
@@ -1824,10 +1847,18 @@ let a_pipeline = [];
 				+`Tip: Use the internal pipe operator ' / ' to string together a series of commands.\n\n`
 				+s_overview
 				+gobble(`
+					Graphy Commands:
+					  examples        Alias for '--examples'
+					  help            Alias for '--help'
+					  version         Alias for '--version'
+
 					Options:
 					  -e, --examples  Print some examples and exit
 					  -h, --help      Print this help message and exit
 					  -v, --version   Print the version info and exit
+
+					More Options:
+					  --show-stack-trace  Show the stack trace when printing error messages
 				`)+'\n\n'
 				+`\nRun 'graphy COMMAND --help' for more information on a command.\n`
 				+`\nRun 'graphy --examples' to see some examples.\n`
@@ -1836,14 +1867,14 @@ let a_pipeline = [];
 			process.exit(0);
 		}
 		// version
-		else if('-v' === s_arg || '--version' === s_arg) {
+		else if('-v' === s_arg || '--version' === s_arg || 'version' === s_arg) {
 			// eslint-disable-next-line no-console
 			console.log(require(path.join(__dirname, './package.json')).version);
 
 			process.exit(0);
 		}
 		// examples
-		else if('-e' === s_arg || '--examples' === s_arg) {
+		else if('-e' === s_arg || '--examples' === s_arg || 'examples' === s_arg) {
 			console.log(gobble(`
 				Examples:
 				  1) Count the number of distinct triples in a Turtle file:
@@ -1875,6 +1906,13 @@ let a_pipeline = [];
 			`)+'\n');
 
 			process.exit(0);
+		}
+		// print stack trace in error messages
+		else if('--show-stack-trace' === s_arg) {
+			b_show_stack_trace = true;
+
+			// consume arg
+			continue;
 		}
 
 		a_series.push(s_arg);
@@ -2013,8 +2051,12 @@ if(!a_pipeline.length) {
 			a_prev = await Promise.all(a_curr);
 		}
 		catch(e_command) {
-			debugger;
-			exit(e_command.message);
+			if(b_show_stack_trace) {
+				exit(e_command.stack);
+			}
+			else {
+				exit(e_command.message);
+			}
 		}
 	}
 

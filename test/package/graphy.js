@@ -537,26 +537,50 @@ if(!B_BROWSER) {
 					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 				}),
 
-				'+filter datatype untagged': () => ({
+				'+filter datatype plain concise untagged': () => ({
 					cmd: /* syntax: bash */ `
 						cat build/cache/data/dbr/Banana.ttl
-							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia.org\\/datatype\\/gram/c'
+							| npx graphy read -c ttl / filter -x ';; /^^rdf:langString"/c'
 					`,
 					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 				}),
 
-				'+filter datatype tagged': () => ({
+				'+filter datatype pattern concise untagged': () => ({
 					cmd: /* syntax: bash */ `
 						cat build/cache/data/dbr/Banana.ttl
-							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia.org\\/datatype\\/gram/c{datatyped}'
+							| npx graphy read -c ttl / filter -x ';; /^^rdf:lang.+"/c'
 					`,
 					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 				}),
 
-				'+filter datatype and tag': () => ({
+				'+filter datatype pattern verbose untagged': () => ({
 					cmd: /* syntax: bash */ `
 						cat build/cache/data/dbr/Banana.ttl
-							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia.org\\/datatype\\/gram/c and {datatyped}'
+							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia\\.org\\/\\w+\\//v'
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'+filter datatype plain verbose untagged': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia\\.org\\/datatype\\/gram/v'
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'+filter datatype plain verbose tagged': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia\\.org\\/datatype\\/gram/v{datatyped}'
+					`,
+					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				}),
+
+				'+filter datatype plain verbose and tag': () => ({
+					cmd: /* syntax: bash */ `
+						cat build/cache/data/dbr/Banana.ttl
+							| npx graphy read -c ttl / filter -x ';; /^^>http:\\/\\/dbpedia\\.org\\/datatype\\/gram/v and {datatyped}'
 					`,
 					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 				}),

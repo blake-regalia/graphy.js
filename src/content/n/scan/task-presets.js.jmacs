@@ -64,7 +64,7 @@ module.exports = {
 
 	scribe: gc_scan => ({
 		run: /* syntax: js */ `
-			async(read, err, update, submit, user, isWorker) => {
+			async(read, err, update, submit, user={}, isWorker=false) => {
 				// prep buffer string
 				let s_buffer = '';
 
@@ -86,6 +86,11 @@ module.exports = {
 				// create reader
 				let ds_reader = read({
 					relax: ${gc_scan.relax? 'true': 'false'},
+
+					// error while reading
+					error(e_read) {
+						err(e_read);
+					},
 				});
 
 				// worker
@@ -134,12 +139,68 @@ module.exports = {
 				return ds_reader;
 			}
 		`,
+	}),
 
-		// reduce: (ab_chunk_a, ab_chunk_a) => c_quads_a + c_quads_b,
+	ndjson: gc_scan => ({
+		run: /* syntax: js */ `
+			async(read, err, update, submit, user={}, isWorker=false) => {
+				// prep buffer string
+				let s_buffer = '';
 
-		// update(ab_chunk) {
-		// 	this.push(Buffer.from(ab_chunk).toString());
-		// },
+				// create reader
+				let ds_reader = read({
+					relax: ${gc_scan.relax? 'true': 'false'},
+
+					error(e_read) {
+						err(e_read);
+					},
+
+					data(g_quad) {
+						s_buffer += JSON.stringify(g_quad.isolate())+'\\n';
+					},
+
+					eof() {
+						submit();
+					},
+				});
+
+				// worker
+				if(isWorker) {
+					// on reader progress
+					ds_reader.on('progress', () => {
+						// buffer is not empty
+						if(s_buffer) {
+							// convert string -> Buffer -> ArrayBuffer
+							let db_chunk = Buffer.from(s_buffer);
+							let ab_chunk = db_chunk.buffer.slice(db_chunk.byteOffset, db_chunk.byteOffset+db_chunk.byteLength);
+
+							// send to master
+							update(ab_chunk, [ab_chunk]);
+
+							// reset buffer
+							s_buffer = '';
+						}
+					});
+				}
+				// master
+				else {
+					// on reader progress
+					ds_reader.on('progress', () => {
+						// scriber output buffer is not empty
+						if(s_buffer) {
+							// empty buffer
+							update(s_buffer);
+
+							// reset buffer
+							s_buffer = '';
+						}
+					});
+				}
+
+				// return reader instance
+				return ds_reader;
+			}
+		`,
 	}),
 
 	'distinct-quads': gc_scan => ({
