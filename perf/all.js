@@ -76,8 +76,8 @@ const H_MODES_GRAPHY_READ_SCAN = {
 	'scan.4': {
 		N_THREADS: 4,
 	},
-	'scan.6': {
-		N_THREADS: 6,
+	'scan.8': {
+		N_THREADS: 8,
 	},
 };
 
