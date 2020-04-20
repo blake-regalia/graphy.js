@@ -306,6 +306,31 @@ class AnswerSource extends require('stream').Readable {
 	}
 }
 
+function ignore_pipe_warnings(ds_src) {
+	let f_pipe = ds_src.pipe;
+
+	// override pipe
+	ds_src.pipe = function pipe(ds_dst) {
+		// pipe without warning because of worker threads
+		let n_maxl_src = this._maxListeners || 10;
+		let n_maxl_dst = ds_dst._maxListeners || 10
+
+		// set infinite max listeners
+		this.setMaxListeners(Infinity);
+		ds_dst.setMaxListeners(Infinity);
+
+		// call pipe
+		let w_ret = f_pipe.call(this, ds_dst);
+
+		// reset max listeners
+		this._maxListeners = n_maxl_src;
+		ds_dst._maxListeners = n_maxl_dst;
+
+		// return value
+		return w_ret;
+	};
+}
+
 let b_show_stack_trace = false;
 const warn = (s_message) => {
 	let s_msg = (new Error(s_message)).stack;
@@ -516,7 +541,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 							error: fe_command,
 
 							report(c_quads) {
-								fk_resolve(new AnswerSource(c_quads));
+								fk_resolve(ignore_pipe_warnings(new AnswerSource(c_quads)));
 							},
 						});
 					}));
@@ -528,7 +553,7 @@ let h_commands = {  // eslint-disable-next-line quote-props
 					return a_inputs.map((ds_input) => {
 						ds_input.on('error', fe_command);
 
-						let ds_output = new stream.PassThrough();
+						let ds_output = ignore_pipe_warnings(new stream.PassThrough());
 
 						f_scanner(ds_input, {
 							...gc_scan,
