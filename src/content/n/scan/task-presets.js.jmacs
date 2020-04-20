@@ -26,41 +26,41 @@ module.exports = {
 		`,
 	}),
 
-	tree: gc_scan => ({
-		// receive: abs_dump => dataset.fromArrayBuffer(abs_dump),
-		// receive: h_import => dataset.from(h_import),
+	// tree: gc_scan => ({
+	// 	// receive: abs_dump => dataset.fromArrayBuffer(abs_dump),
+	// 	// receive: h_import => dataset.from(h_import),
 
-		reduce: (k_tree_a, k_tree_b) => k_tree_a.union(k_tree_b),
+	// 	reduce: (k_tree_a, k_tree_b) => k_tree_a.union(k_tree_b),
 
-		run: /* syntax: js */ `
-			(read, err, update, submit, user={}, isWorker=false) => {
-				let k_dataset = require('@graphy/memory.dataset.fast')();
+	// 	run: /* syntax: js */ `
+	// 		(read, err, update, submit, user={}, isWorker=false) => {
+	// 			let k_dataset = require('@graphy/memory.dataset.fast')();
 
-				return read({
-					relax: ${gc_scan.relax? 'true': 'false'},
+	// 			return read({
+	// 				relax: ${gc_scan.relax? 'true': 'false'},
 
-					pipe: k_dataset.on('finish', () => {
-						if(isWorker) {
-							// let abs_dump = k_dataset.dump({shared:true});
-							// submit(abs_dump, [abs_dump]);
-							submit(k_dataset.export());
-						}
-						else {
-							submit(k_dataset);
-						}
-					}),
+	// 				pipe: k_dataset.on('finish', () => {
+	// 					if(isWorker) {
+	// 						// let abs_dump = k_dataset.dump({shared:true});
+	// 						// submit(abs_dump, [abs_dump]);
+	// 						submit(k_dataset.export());
+	// 					}
+	// 					else {
+	// 						submit(k_dataset);
+	// 					}
+	// 				}),
 
-					error(e_read) {
-						err(e_read);
-					},
-				});
-			}
-		`,
+	// 				error(e_read) {
+	// 					err(e_read);
+	// 				},
+	// 			});
+	// 		}
+	// 	`,
 
-		report(k_tree) {
-			console.log(k_tree.size);
-		},
-	}),
+	// 	report(k_tree) {
+	// 		console.log(k_tree.size);
+	// 	},
+	// }),
 
 	scribe: gc_scan => ({
 		run: /* syntax: js */ `
@@ -203,26 +203,26 @@ module.exports = {
 		`,
 	}),
 
-	'distinct-quads': gc_scan => ({
-		reduce: (k_dataset_a, k_dataset_b) => k_dataset_a.union(k_dataset_b),
+	// 'distinct-quads': gc_scan => ({
+	// 	reduce: (k_dataset_a, k_dataset_b) => k_dataset_a.union(k_dataset_b),
 
-		run: /* syntax: js */ `
-			(read, err, update, submit, user) => {
-				const dataset = require('@graphy/memory.dataset.fast');
-				let k_dataset = dataset();
+	// 	run: /* syntax: js */ `
+	// 		(read, err, update, submit, user) => {
+	// 			const dataset = require('@graphy/memory.dataset.fast');
+	// 			let k_dataset = dataset();
 
-				k_dataset.on('finish', () => {
-					submit(k_dataset.export());
-				});
+	// 			k_dataset.on('finish', () => {
+	// 				submit(k_dataset.export());
+	// 			});
 
-				let ds_reader = read({
-					relax: ${gc_scan.relax? 'true': 'false'},
-				});
+	// 			let ds_reader = read({
+	// 				relax: ${gc_scan.relax? 'true': 'false'},
+	// 			});
 
-				ds_reader.pipe(k_dataset);
+	// 			ds_reader.pipe(k_dataset);
 
-				return ds_reader;
-			}
-		`,
-	}),
+	// 			return ds_reader;
+	// 		}
+	// 	`,
+	// }),
 };

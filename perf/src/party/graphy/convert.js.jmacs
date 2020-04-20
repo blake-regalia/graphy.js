@@ -28,7 +28,7 @@
 			process.stdout.write(i_worker? Buffer.from(z_chunk): z_chunk);
 		},
 
-		report(c_qudas) {
+		report(c_quads) {
 			@{end_test({
 				count: /* syntax: js */ `c_quads`,
 			})}
