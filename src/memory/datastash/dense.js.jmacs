@@ -1,0 +1,868 @@
+@import '../share/constants.jmacs'
+
+const bkit = require('bkit');
+
+const encodeUtf8 = bkit.encodeUtf8;
+const decodeUtf8 = bkit.decodeUtf8;
+
+const Dictionary = require('@graphy/memory.dictionary.dense');
+
+const SortedMap_IntegerKeys = require('../struct/sorted-map-integer-keys.js');
+
+const R_COMPRESS = /@{R_COMPRESS()}/;
+
+@{TERM_KEYS()}
+
+const HP_DICTIONARY_SIZE = Symbol('size');
+
+const G_ROLES_NODES = {
+	hops: {
+		match: @{XM_NODE_SUBJECT | XM_NODE_OBJECT},
+	},
+	roots: {
+		match: @{XM_NODE_SUBJECT},
+	},
+	leafs: {
+		match: @{XM_NODE_OBJECT},
+	},
+	predicates: {
+		match: @{XM_NODE_PREDICATE},
+		apply: @{XM_NODE_PREDICATE},
+	},
+};
+
+const AB_SEPARATOR_LITERAL_CONTENTS = encodeUtf8([@{'"'.charCodeAt(0)}]);
+
+class Counter {
+	constructor() {
+		this._c_items = 0;
+	}
+
+	next() {
+		return ++this._c_items;
+	}
+
+	decrement() {
+		return --this._c_items;
+	}
+
+	size() {
+		return this._c_items;
+	}
+}
+
+class RefCounter extends Counter {
+	constructor(kc_master) {
+		super();
+		this._kc_master = kc_master;
+	}
+
+	next() {
+		this._c_items += 1;
+		return this._kc_master.next();
+	}
+
+	decrement() {
+		this._c_items -= 1;
+		return this._kc_master.decrement();
+	}
+}
+
+
+const N_DEFAULT_BLOCKS_PER_SUPER = 256 / 32;
+const AT_ZERO = new Uint8Array([0]);
+
+
+class CountingSet extends Set {
+	constructor(f_counter) {
+		super();
+		this._f_counter = f_counter;
+	}
+
+	add(w_value) {
+		if(!super.has(w_value)) {
+			this._f_counter();
+			super.add(w_value);
+		}
+	}
+}
+
+function Datastash$add_named_predicate(k_self, kt_pred, xm_roles) {
+	let pi_pred = kt_pred.value;
+
+	// determine best prefix
+	let m_compress = R_COMPRESS.exec(pi_pred);
+	if(m_compress) {
+		// destructure prefix fragments
+		let [, pi_prefix, s_suffix] = m_compress;
+
+		let kd_prefix_groups = k_self._kd_prefix_groups;
+
+		// create/fetch prefix group
+		let g_group = kd_prefix_groups.add(encodeUtf8(pi_prefix));
+
+		// create/fetch predicate
+		let g_predicate = g_group.predicates.add(encodeUtf8(s_suffix));
+
+		// return term index
+		return g_predicate.id;
+	}
+	// node could not be prefixed
+	else {
+		let kd_preds = k_self._kd_predicates_absolute;
+
+		let g_pred = kd_preds.add(encodeUtf8(pi_pred));
+
+		// return term index
+		return g_pred.id;
+	}
+}
+
+
+function Datastash$get_named_predicate(k_self, kt_pred, xm_roles) {
+	let pi_pred = kt_pred.value;
+
+	// determine best prefix
+	let m_compress = R_COMPRESS.exec(pi_pred);
+	if(m_compress) {
+		// destructure prefix fragments
+		let [, pi_prefix, s_suffix] = m_compress;
+
+		let kd_prefix_groups = k_self._kd_prefix_groups;
+
+		// get prefix group
+		let g_group = kd_prefix_groups.get(encodeUtf8(pi_prefix));
+
+		// no such prefix; no such predicate
+		if(!g_group) return 0;
+
+		// get predicate
+		let g_node = g_group.predicates.get(encodeUtf8(s_suffix));
+
+		// no such predicate
+		if(!g_pred) return 0;
+
+		// return term index
+		return g_pred.id;
+	}
+	// node could not be prefixed
+	else {
+		let kd_preds = k_self._kd_predicates_absolute;
+
+		// get absolute predicate
+		let g_pred = kd_preds.add(encodeUtf8(pi_pred));
+
+		// no such predicate
+		if(!g_pred) return 0;
+
+		// return term index
+		return g_pred.id;
+	}
+}
+
+function Datastash$add_named_node(k_self, kt_node, xm_roles) {
+	let pi_node = kt_node.value;
+
+	// determine best prefix
+	let m_compress = R_COMPRESS.exec(pi_node);
+	if(m_compress) {
+		// destructure prefix fragments
+		let [, pi_prefix, s_suffix] = m_compress;
+
+		let kd_prefix_groups = k_self._kd_prefix_groups;
+
+		// create/fetch prefix group
+		let g_group = kd_prefix_groups.add(encodeUtf8(pi_prefix));
+
+		// create/fetch node
+		let g_node = g_group.nodes.add(encodeUtf8(s_suffix));
+
+		// OR-assign roles mask
+		g_node.roles |= xm_roles;
+
+		// return term index
+		return g_node.id;
+	}
+	// node could not be prefixed
+	else {
+		let kd_nodes = k_self._kd_nodes_absolute;
+
+		let g_node = kd_nodes.add(encodeUtf8(pi_node));
+
+		// OR-assign roles mask
+		g_node.roles |= xm_roles;
+
+		// return term index
+		return g_node.id;
+	}
+}
+
+
+function Datastash$get_named_node(k_self, kt_node, xm_roles) {
+	let pi_node = kt_node.value;
+
+	// determine best prefix
+	let m_compress = R_COMPRESS.exec(pi_node);
+	if(m_compress) {
+		// destructure prefix fragments
+		let [, pi_prefix, s_suffix] = m_compress;
+
+		let kd_prefix_groups = k_self._kd_prefix_groups;
+
+		// get prefix group
+		let g_group = kd_prefix_groups.get(encodeUtf8(pi_prefix));
+
+		// no such prefix; no such node
+		if(!g_group) return 0;
+
+		// get node
+		let g_node = g_group.nodes.get(encodeUtf8(s_suffix));
+
+		// no such node
+		if(!g_node) return 0;
+
+		// node does not fulfil given role
+		if(!(g_node.roles & xm_roles)) return 0;
+
+		// return term index
+		return g_node.id;
+	}
+	// node could not be prefixed
+	else {
+		let kd_nodes = k_self._kd_nodes_absolute;
+
+		// get absolute node
+		let g_node = kd_nodes.add(encodeUtf8(pi_node));
+
+		// no such node
+		if(!g_node) return 0;
+
+		// node does not fulfil given role
+		if(!(g_node.roles & xm_roles)) return 0;
+
+		// return term index
+		return g_node.id;
+	}
+}
+
+
+function Datastash$add_blank_node(k_self, kt_node, xm_roles) {
+	// create/fetch node
+	let g_node = k_self._kd_nodes_blank.add(encodeUtf8(kt_node.value));
+
+	// OR-assign roles mask
+	g_node.roles |= xm_roles;
+
+	// return term index
+	return g_node.id;
+}
+
+
+function Datastash$get_blank_node(k_self, kt_node, xm_roles) {
+	// get node
+	let g_node = k_self._kd_nodes_blank.add(encodeUtf8(kt_node.value));
+
+	// no such node
+	if(!g_node) return 0
+
+	// node does not fulfil given role
+	if(!(g_node.roles & xm_roles)) return 0;
+
+	// return term index
+	return g_node.id;
+}
+
+
+function Datastash$add_datatyped_literal(k_self, kt_literal) {
+	let s_value = kt_literal.value;
+	let pi_datatype = kt_literal.datatype.value;
+
+	// determine best prefix
+	let m_compress = R_COMPRESS.exec(pi_datatype);
+	if(m_compress) {
+		// destructure prefix fragments
+		let [, pi_prefix, s_suffix] = m_compress;
+
+		let kd_prefix_groups = k_self._kd_prefix_groups;
+
+		// create/fetch prefix group
+		let g_group = kd_prefix_groups.add(encodeUtf8(pi_prefix));
+
+		// create/fetch literals dict from datatype suffix
+		let kd_literals = g_group.datatypes.add(encodeUtf8(s_suffix));
+
+		// add literal value
+		return kd_literals.add(encodeUtf8(s_value)).id;
+	}
+	// node could not be prefixed
+	else {
+		// create/fetch literals dict for datatype
+		let kd_literals = k_self._kd_literals_datatyped_absolute.add(encodeUtf8(pi_datatype));
+
+		// add literal value
+		return kd_literals.add(s_value).id;
+	}
+}
+
+function Datastash$get_datatyped_literal(k_self, kt_literal) {
+	let s_value = kt_literal.value;
+	let pi_datatype = kt_literal.datatype.value;
+
+	// determine best prefix
+	let m_compress = R_COMPRESS.exec(pi_datatype);
+	if(m_compress) {
+		// destructure prefix fragments
+		let [, pi_prefix, s_suffix] = m_compress;
+
+		let kd_prefix_groups = k_self._kd_prefix_groups;
+
+		// get prefix group
+		let g_group = kd_prefix_groups.get(encodeUtf8(pi_prefix));
+
+		// no such prefix; no such node
+		if(!g_group) return 0;
+
+		// get literals dict from datatype suffix
+		let kd_literals = g_group.datatypes.get(encodeUtf8(s_suffix));
+
+		// no such datatype
+		if(!kd_literals) return 0;
+
+		// get literal
+		let g_literal = kd_literals.get(encodeUtf8(s_value));
+
+		// no such literal
+		if(!g_literal) return 0;
+
+		// return literal
+		return g_literal;
+	}
+	// node could not be prefixed
+	else {
+		// get literals dict for datatype
+		let kd_literals = k_self._kd_literals_datatyped_absolute.get(encodeUtf8(pi_datatype));
+
+		// no such datatype
+		if(!kd_literals) return 0;
+
+		// get literal
+		let g_literal = kd_literals.get(s_value);
+
+		// no such literal
+		if(!g_literal) return 0;
+
+		// return literal
+		return g_literal;
+	}
+}
+
+
+function Datastash$add_languaged_literal(k_self, kt_literal) {
+	return k_self._kd_literals_languaged.add(encodeUtf8(kt_literal.language+'"'+kt_literal.value)).id;
+}
+
+function Datastash$get_languaged_literal(k_self, kt_literal) {
+	// get literal
+	let g_literal = k_self._kd_literals_languaged.get(encodeUtf8(kt_literal.language+'"'+kt_literal.value));
+
+	// no such literal
+	if(!g_literal) return 0;
+
+	// return literal
+	return g_literal;
+}
+
+function Datastash$add_simple_literal(k_self, kt_literal) {
+	return k_self._kd_literals_simple.add(encodeUtf8(kt_literal.value));
+}
+
+
+function Datastash$get_simple_literal(k_self, kt_literal) {
+	// get literal
+	let g_literal = k_self._kd_literals_simple.get(encodeUtf8(kt_literal.value));
+
+	// no such literal
+	if(!g_literal) return 0;
+
+	// return literal
+	return g_literal;
+}
+
+
+function Datastash$add_triple(k_self, kt_literal) {
+	// ref all positions of triple
+	let {
+		subject: kt_subject,
+		predicate: kt_predicate,
+		object: kt_object,
+	} = g_quad;
+
+	let i_s;
+
+	// subject is named node
+	if(kt_subject.isNamedNode) {
+		i_s = Datastash$add_named_node(this, kt_subject, @{XM_NODE_SUBJECT});
+	}
+	// subject is blank node
+	else {
+		i_s = Datastash$add_blank_node(this, kt_subject, @{XM_NODE_SUBJECT});
+	}
+
+	// predicate is always named node
+	let i_p = Datastash$add_named_node(this, kt_predicate, @{XM_NODE_PREDICATE});
+
+	// prep object id
+	let i_o;
+
+	// object is literal
+	if(kt_object.isLiteral) {
+		// ... a language literal
+		if(kt_object.isLanguaged) {
+			i_o = Datastash$add_languaged_literal(this, kt_object);
+		}
+		// ... a simple literal
+		else if(kt_object.isSimple) {
+			i_o = Datastash$add_simple_literal(this, kt_object);
+		}
+		// ... a datatyped literal
+		else {
+			// datatype is always a named node
+			i_o = Datastash$add_datatyped_literal(this, kt_object);
+		}
+	}
+	// object is named node
+	else if(kt_object.isNamedNode) {
+		i_o = Datastash$add_named_node(this, kt_object, @{XM_NODE_OBJECT});
+	}
+	// object is blank node
+	else {
+		i_o = Datastash$add_blank_node(this, kt_object, @{XM_NODE_OBJECT});
+	}
+
+	// save triple using utis
+	this._ksm_spo.add(i_s).add(i_p).add(i_o);
+}
+
+
+function Datastash$locate_quad(g_quad) {
+	// ref all positions of triple
+	let {
+		subject: kt_subject,
+		predicate: kt_predicate,
+		object: kt_object,
+		grpah: kt_graph,
+	} = g_quad;
+
+	// prep graph term
+	let i_g;
+
+	let ksm_spo;
+
+	// default graph
+	if(kt_graph.isDefaultGraph) {
+		ksm_spo = this._ksm_spo;
+	}
+	// graph is node
+	else {
+		// graph is named node
+		if(kt_graph.isNamedNode) {
+			i_g = Datastash$get_named_node(kt_graph, @{XM_NODE_GRAPH});
+		}
+		// graph is blank node
+		else {
+			i_g = Datastash$get_blank_node(kt_graph, @{XM_NODE_GRAPH});
+		}
+
+		// no such node
+		if(!i_g) return null;
+
+		// get triples (graph guaranteed to exist)
+		ksm_spo = this._ksm_gspo.get(i_g);
+	}
+
+	// prep subject id
+	let i_s;
+
+	// subject is named node
+	if(kt_subject.isNamedNode) {
+		i_s = Datastash$get_named_node(kt_subject, @{XM_NODE_SUBJECT});
+	}
+	// subject is blank node
+	else {
+		i_s = Datastash$get_blankNode(kt_subject, @{XM_NODE_SUBJECT});
+	}
+
+	// no such term
+	if(!i_s) return null;
+
+	// get pairs
+	let ksm_po = ksm_spo.get(i_s);
+
+	// no pairs
+	if(!ksm_po) return null;
+
+	// get predicate
+	let i_p = Datastash$get_named_node(kt_predicate, @{XM_NODE_PREDICATE});
+
+	// no such term
+	if(!i_p) return null;
+
+	// get objects
+	let kas_o = ksm_po.get(i_p);
+
+	// no objects
+	if(!kas_o) return null;
+
+	// prep object id
+	let i_o;
+
+	// object is literal
+	if(kt_object.isLiteral) {
+		// ... a language literal
+		if(kt_object.isLanguaged) {
+			i_o = Datastash$get_languaged_literal(this, kt_object);
+		}
+		// ... a simple literal
+		else if(kt_object.isSimple) {
+			i_o = Datastash$get_simple_literal(this, kt_object);
+		}
+		// ... a datatyped literal
+		else {
+			// datatype is always a named node
+			i_o = Datastash$get_datatyped_literal(this, kt_object);
+		}
+	}
+	// object is named node
+	else if(kt_object.isNamedNode) {
+		i_o = Datastash$get_named_node(this, kt_object, @{XM_NODE_OBJECT});
+	}
+	// object is blank node
+	else {
+		i_o = Datastash$get_blank_node(this, kt_object, @{XM_NODE_OBJECT});
+	}
+
+	// no such term
+	if(!i_o) return null;
+
+	// object does not occur here
+	if(!kas_o.has(i_o)) return null;
+
+	// quad exists
+	return {
+		graph: i_g,
+		subject: i_s,
+		predicate: i_p,
+		object: i_o,
+		triples: ksm_spo,
+		pairs: ksm_po,
+		objects: kas_o,
+	};
+}
+
+
+class Datastash {
+	constructor() {
+		if(h_serialized) {
+			Object.assign(this, h_serialized);
+		}
+		else {
+			// id to term map
+			let a_terms = this._a_terms = [];
+
+			let push = (g_data) => (a_terms.push(g_data), g_data);
+
+			// term counter
+			let kc_terms = this._kc_terms = new Counter();
+
+
+			// nodes absolute counter
+			let kc_nodes_absolute = this._kc_nodes_absolute = new RefCounter(kc_terms);
+			
+			// nodes absolute dict
+			this._kd_nodes_absolute = new Dictionary(() => push({
+				id: kc_nodes_absolute.next(),
+				roles: 0,
+			}));
+
+
+			// nodes blank counter
+			let kc_nodes_blank = this._kc_nodes_blank = new RefCounter(kc_terms);
+		
+			// nodes blank dict
+			this._kd_nodes_blank = new Dictionary(() => push({
+				id: kc_nodes_blank.next(),
+				roles: 0,
+			}));
+
+
+			// prefix count
+			this._c_prefixes = 0;
+
+			// nodes prefixed counter
+			let kc_nodes_prefixed = this._kc_nodes_prefixed = new RefCounter(kc_terms);
+
+			// nodes prefixed creator
+			let f_new_node_named_prefixed = () => push({
+				id: kc_nodes_prefixed.next(),
+				roles: 0,
+			});
+
+			// literals datatyped prefixed counter
+			let kc_literals_datatyped_prefixed = this._kc_literals_datatyped_prefixed = new RefCounter(kc_terms);
+
+			// literals datatyped prefixed creator
+			let f_new_datatype = () => new Dictionary(() => push({
+				id: kc_literals_datatyped_prefixed.next(),
+			}));
+			
+			// prefix group dict
+			this._kd_prefix_groups = new Dictionary(() => {
+				// increment prefix count
+				this._c_prefixes += 1;
+
+				// prefix group struct
+				return {
+					nodes: new Dictionary({
+						create: f_new_node_named_prefixed,
+						change: change_owner,
+					}),
+					datatypes: new Dictionary(f_new_datatype),
+				};
+			});
+
+
+			// literals simple counter
+			let kc_literals_simple = this._kc_literals_simple = new RefCounter(kc_terms);
+		
+			// literals simple dict
+			this._kd_literals_simple = new Dictionary(() => push({
+				id: kc_literals_simple.next(),
+			}));
+
+
+			// literals languaged counter
+			let kc_literals_languaged = this._kc_literals_languaged = new RefCounter(kc_terms);
+		
+			// literals languaged dict
+			this._kd_literals_languaged = new Dictionary(() => push({
+				id: kc_literals_languaged.next(),
+			}));
+
+
+			// literals absolute counter
+			let kc_literals_datatyped_absolute = this._kc_literals_datatyped_absolute = new RefCounter(kc_terms);
+		
+			// literals absolute dict
+			this._kd_literals_datatyped_absolute = new Dictionary(() => push({
+				id: kc_literals_datatyped_absolute.next(),
+			}));
+
+
+			// quads counter
+			this._kc_quads = new Counter();
+
+			// // triples objects creator
+			// let f_new_object = () => {
+			// 	this._kc_triples.next();
+			// 	return new Set();
+			// };
+
+
+			// triples pairs counter
+			this._kc_pairs = new Counter();
+
+			// triples pairs creator
+			let f_new_pair = () => {
+				this._kc_pairs.next();
+				// return new SortedMap_IntegerKeys(f_new_object);
+				return new CountingSet(() => {
+					this._kc_quads.next();
+				});
+			};
+
+
+			// triples subjects creator
+			this._kc_subjects = new Counter();
+
+
+			// graphs counter
+			this._kc_graphs = new Counter();
+
+
+			// quads sorted map
+			let f_new_graph = () => {
+				return new SortedMap_IntegerKeys(() => {
+					this._kc_subjects.next();
+					return new SortedMap_IntegerKeys(f_new_pair);
+				});
+			};
+
+			// quads sorted map
+			this._ksm_gspo = new SortedMap_IntegerKeys(() => {
+				this._kc_graphs.next();
+				return new SortedMap_IntegerKeys(f_new_graph);
+			});
+
+
+			// triples sorted map
+			this._ksm_spo = f_new_graph();
+		}
+	}
+
+	get size() {
+		return this._kc_quads.size();
+	}
+
+	counts() {
+		return {
+			terms: this._kc_terms.size(),
+			prefixes: this._c_prefixes,
+			prefixed_nodes: this._kc_nodes_prefixed.size(),
+			absolute_nodes: this._kc_nodes_absolute.size(),
+			blank_nodes: this._kc_nodes_blank.size(),
+			prefixed_datatyped_literals: this._kc_literals_datatyped_prefixed.size(),
+			absolute_datatyped_literals: this._kc_literals_datatyped_absolute.size(),
+			languaged_literals: this._kc_literals_languaged.size(),
+			simple_literals: this._kc_literals_simple.size(),
+			quads: this._kc_quads.size(),
+			graphs: this._kc_graphs.size(),
+		};
+	}
+
+
+	add(g_quad) {
+		return this.add_quad(factory.fromQuad(g_quad));
+	}
+
+	add_quad(g_quad) {
+		// ref graph component
+		let kt_graph = g_quad.graph;
+
+		// default graph
+		if(kt_graph.isDefaultGraph) {
+			return Datastash$add_triple(g_quad);
+		}
+		// non default graph
+		else {
+			let i_g;
+
+			// graph is named node
+			if(kt_graph.isNamedNode) {
+				i_g = Datastash$add_named_node(this, kt_graph, @{XM_NODE_GRAPH});
+			}
+			// graph is blank node
+			else {
+				i_g = Datastash$add_blank_node(this, kt_graph, @{XM_NODE_GRAPH});
+			}
+
+			// ref all positions of triple
+			let {
+				subject: kt_subject,
+				predicate: kt_predicate,
+				object: kt_object,
+			} = g_quad;
+
+			let i_s;
+
+			// subject is named node
+			if(kt_subject.isNamedNode) {
+				i_s = Datastash$add_named_node(this, kt_subject, @{XM_NODE_SUBJECT});
+			}
+			// subject is blank node
+			else {
+				i_s = Datastash$add_blank_node(this, kt_subject, @{XM_NODE_SUBJECT});
+			}
+
+			// predicate is always named node
+			let i_p = Datastash$add_named_node(this, kt_predicate, @{XM_NODE_PREDICATE});
+
+			// prep object id
+			let i_o;
+
+			// object is literal
+			if(kt_object.isLiteral) {
+				let kt_literal = factory.fromTerm(kt_object);
+
+				// ... a language literal
+				if(kt_literal.isLanguaged) {
+					i_o = Datastash$add_languaged_literal(this, kt_literal);
+				}
+				// ... a simple literal
+				else if(kt_literal.isSimple) {
+					i_o = Datastash$add_simple_literal(this, kt_literal);
+				}
+				// ... a datatyped literal
+				else {
+					// datatype is always a named node
+					i_o = Datastash$add_datatyped_literal(this, kt_literal);
+				}
+			}
+			// object is named node
+			else if(kt_object.isNamedNode) {
+				i_o = Datastash$add_named_node(this, kt_object, @{XM_NODE_OBJECT});
+			}
+			// object is blank node
+			else {
+				i_o = Datastash$add_blank_node(this, kt_object, @{XM_NODE_OBJECT});
+			}
+
+			// save quad using utis
+			this._ksm_gspo.add(i_g).add(i_s).add(i_p).add(i_o);
+		}
+	}
+
+	has(g_quad) {
+		return this.has_quad(factory.fromQuad(g_quad));
+	}
+
+	has_quad(g_quad) {
+		let g_locate = Datastash$locate_quad(g_quad);
+
+		if(!g_locate) return false;
+
+		return true;
+	}
+
+	* [Symbol.iterator]() {
+		// first iterate default graph
+		for(let {key:i_s, value:ks_po} of this._ksm_spo) {
+			// create subject term
+			let kt_subject = 
+		}
+	}
+
+	// delete(g_quad) {
+	// 	return this.delete_quad(factory.fromQuad(g_quad));
+	// }
+
+	// delete_quad() {
+	// 	let kt_graph = g_quad.graph;
+
+	// 	if(kt_graph.isDefaultGraph) {
+
+	// 	}
+	// 	else {
+
+	// 	}
+	// }
+
+	export() {
+		return {
+			nodes_absolute: this._kd_nodes_absolute.export(export_roles_id),
+			nodes_blank: this._kd_nodes_blank.export(export_roles_id),
+			prefix_groups: this._kd_prefix_groups.export(export_group),
+			literals_simple: this._kd_literals_simple.export(export_id),
+			literals_languaged: this._kd_literals_languaged.export(export_id),
+			literals_datatyped_absolute: this._kd_literals_datatyped_absolute.export(export_id),
+			// triples_spo: this.triples_spo,
+			triples_spo: this._ksm_spo.export(export_spo),
+		};
+	}
+	
+}
+
+module.exports = function construct(...a_args) {
+	return new Datastash(...a_args);
+}, {
+	class: Primer,
+};

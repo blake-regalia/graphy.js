@@ -37,7 +37,8 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
 
 **Table of Contents:**
  - Input/Output Commands:
-   - [`read`](#command_read) -- Deserialize RDF content
+   - [`read`](#command_read) -- Deserialize RDF content in a single thread
+   - [`scan`](#command_scan) -- Deserialize RDF content using multiple threads
    - [`scribe`](#command_scribe) -- Serialize RDF content fast
    - [`write`](#command_write) -- Serialize RDF content in style (pretty-printing)
 
@@ -67,11 +68,18 @@ The `graphy` CLI works by pushing RDF data through a series of [internal transfo
    - [`count`](#command_count) -- Count the number of events
    - [`distinct`](#command_distinct) -- Count the number of distinct things
 
- - Options:
+ - Graphy Commands:
+   - [`examples`](#command_examples) -- Alias for `$ graphy --examples`
+   - [`help`](#command_help) -- Alias for `$graphy --help`
+   - [`version`](#command_version) -- Alias for `$graphy --help`
+
+ - [Options](#options):
    - `-e, --examples` -- Print some examples and exit
-   - `-h, --help` -- Print this help message and exit
+   - `-h, --help` -- Print a help message and exit
    - `-v, --version` -- Print the version info and exit
 
+ - [More Options](#options):
+   - `--show-stack-trace` -- Show the stack trace when printing error messages
 
 <br />
 
@@ -104,6 +112,39 @@ _Examples:_
 
    # print line-delimited JSON of quads in TriG document while validating it
    $ graphy read -c trig < input.trig
+   ```
+
+<a name="command_scan" />
+
+### [`scan`](#command_scan)` [OPTIONS]`
+Scan RDF content, i.e., deserialize it and do stuff using multiple threads.
+
+> EXPERIMENTAL! The `scan` verb is currently experimental. Use at your own risk.
+
+**Stream Multiplicity:**
+ - `N-to-N<string, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of utf-8 encoded strings into 1 or more output streams of [Quad](core.data.factory#class_quad) objects.
+
+**Options:**
+ - Content Selector Options:
+   - `-c, --content-type` -- either an RDF Content-Type or format selector (defaults to 'trig').
+ - Read Options:
+   - `-r, --relax` -- relax validation of tokens for trusted input sources to improve read speeds, [see more here](content.textual#config_scan-no-input).
+ - Scan Options:
+   - `--threads` -- manually set the total number of threads to use (including the main thread).
+
+_Examples:_
+   ```bash
+   # validate an N-Triples document
+   $ graphy scan -c nt < input.nt > /dev/null
+
+   # print line-delimited JSON of quads in N-Quads document
+   $ graphy scan -c nq < input.nq
+
+   # count the number of statements in an N-Triples document (bypass validation)
+   $ graphy scan -c nt --realx / count < input.nt
+
+   # convert an N-Triples document into Turtle
+   $ graphy scan -c nt / scribe -c ttl < input.nt > output.ttl
    ```
 
 
@@ -555,6 +596,37 @@ Count the number of distinct things, such as quads, triples, subjects, etc.
   - `-o, --objects` -- count the number of distinct objects
   - `-g, --graphs` -- count the number of distinct graphs
 
+
+<a name="command_help" />
+
+### [`help`](#command_help)` [OPTIONS]`
+Alias for `$ graphy --help`. Print the help message and exit.
+
+
+<a name="command_version" />
+
+### [`version`](#command_version)` [OPTIONS]`
+Alias for `$ graphy --version`. Print the version info and exit.
+
+<a name="command_examples" />
+
+### [`examples`](#command_examples)` [OPTIONS]`
+Alias for `$ graphy --examples`. Print some examples and exit.
+
+
+<br />
+
+
+
+## Options
+Options that you can pass to the main graphy command.
+   - `-e, --examples` -- Print some examples and exit
+   - `-h, --help` -- Print the help message and exit
+   - `-v, --version` -- Print the version info and exit
+
+## More Options
+More options:
+   - `--show-stack-trace` -- Show the stack trace when printing error messages
 
 <br />
 

@@ -329,6 +329,9 @@ function ignore_pipe_warnings(ds_src) {
 		// return value
 		return w_ret;
 	};
+
+	// return self
+	return ds_src;
 }
 
 let b_show_stack_trace = false;

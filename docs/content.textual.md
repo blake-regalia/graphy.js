@@ -3,10 +3,12 @@
 This documentation covers the following graphy packages:
  - N-Triples
    - reader: `@graphy/content.nt.read`
+   - scanner: `@graphy/content.nt.scan`
    - scriber: `@graphy/content.nt.scribe`
    - writer: `@graphy/content.nt.write`
  - N-Quads
    - reader: `@graphy/content.nq.read`
+   - scanner: `@graphy/content.nq.scan`
    - scriber: `@graphy/content.nq.scribe`
    - writer: `@graphy/content.nq.write`
  - Turtle
@@ -40,6 +42,11 @@ This documentation covers the following graphy packages:
        - [`finish(...)`](#event_read-finish)
        - [`end(...)`](#event_read-end)
        - [`error(...)`](#event_read-error)
+   - [`.scan`](#verb_scan) -- *advanced users* -- for reading RDF from a stream or string using multiple threads
+     - **Events:**
+       - [`update(...)`](#event_scan-update)
+       - [`report(...)`](#event_scan-report)
+       - [`error(...)`](#event_scan-error)
    - [`.scribe`](#verb_scribe) -- for fast and simple RDF serialization to writable stream
    - [`.write`](#verb_write) -- for dynamic and stylized RDF serialization to writable stream
      - [**Scribe vs. Write**](#note_scribe-vs-write)
@@ -63,9 +70,6 @@ This documentation covers the following graphy packages:
  - [Configs](#configs) -- definitions for config interfaces
  - [Interfaces](#interfaces) -- definitions for all other interfaces
 
-<!--
-- [`scan`](#verb_scan) -- for reading RDF from a string or stream using multiple threads
--->
 
 ----
 
@@ -237,6 +241,94 @@ ttl_read(`
    - shortcut for: `input_stream.pipe(read(config));`
    - equivalent to: `read({...config, input: {stream:input_stream}});`
  - `read(config: `[`#ReadConfigWithInput`](#config_read-with-input)`)`
+
+----
+
+<a name="verb_scan" />
+
+> EXPERIMENTAL! The `scan` verb is currently experimental and has limited test coverage.
+
+### [`scan`](#verb_scan)`([input: string | stream][, config: `[`ScanConfig`](#config_scan-no-input)`])`
+ - Scan RDF data (in other words, deserialize it) from a document given by an input stream using multiple threads.
+ - **returns** a new Scanner
+
+**Accessible via the following modules:**
+ - N-Triples (.nt) -- `@graphy/content.nt.scan`
+ - N-Quads (.nq) -- `@graphy/content.nq.scan`
+
+#### Usage examples
+
+**Count the number of statements in an N-Quads document from stdin in Node.js:**
+```js
+const nq_scan = require('@graphy/content.nq.scan');
+
+// create the scanner instance
+nq_scan({
+    // provide the input stream (equivalent to using '.import' method on returned instance)
+    input: process.stdin,
+
+    // the code to run on each thread (creates a function that will be called with special arguments)
+    run: /* syntax: js */ `
+      (read, err, update, submit) => {
+        let c_stmts = 0;
+
+        return read({
+          data() {
+            c_stmts += 1;
+          },
+
+          error(e_read) {
+            err(e_read);
+          },
+
+          eof() {
+            submit(c_stmts);
+          },
+        });
+      }
+    `,
+
+    // how to combine the results received from each call to 'submit'
+    reduce: (c_stmts_a, c_stmts_b) => c_stmts_a + c_stmts_b,
+
+    // the final value to report
+    report(c_stmts) {
+        console.log(`${c_stmts} statements total.`);
+    },
+});
+```
+
+**Convert N-Triples from stdin to Turtle on stdout in Node.js:**
+```js
+const nt_scan = require('@graphy/content.nt.scan');
+
+// create the scanner instance
+nt_scan(process.stdin, {
+    // use the 'scribe' preset
+    preset: 'scribe',
+
+    // 'db_chunk' will be a Buffer in this preset, simply write it to stdout
+    update(db_chunk) {
+        process.stdout.write(db_chunk);
+    },
+
+    // this will fire once the scanner is done
+    report() {
+        // do stuff...
+    },
+})
+    // example using the RDFJS Sink '.import' method to provide input stream
+    .import(process.stdin);
+```
+
+**Overloaded variants:**
+ - `scan([config: `[`#ScanConfigNoInput`](#config_scan-no-input)`])`
+ - `scan(input_stream: `[`ReadableStream<Buffer>`](core.iso.stream#readable_buffer)`[, config: `[`#ScanConfigNoInput`](#config_scan-no-input)`])`
+   - shortcut for: `scan(config).import(input_stream);`
+   - equivalent to: `scan({...config, input: {stream:input_stream}});`
+ - `scan(input_string: string[, config: `[`#ScanConfigNoInput`](#config_scan-no-input)`])`
+   - equivalent to: `scan({...config, input: {string:input_string}});`
+ - `scan(config: `[`#ScanConfigWithInput`](#config_scan-with-input)`)`
 
 ----
 
@@ -526,6 +618,22 @@ The definition for all possible events emitted during content reading. Please [s
     - Gets called if an error occurs any time during the read process, including malformed syntax errors, unreadable inputs, and so forth. If an error does occur, no other events will be emitted after this one. If you do not include an error event handler, the parser will throw the error.
 
 
+<a name="event_scan-update" />
+
+  - `update(msg: any, thread: int)`
+    - Gets called each time a thread (either a worker thread or the main thread) calls their local `update()` function to emit some information while reading is happening. Useful when the task objective is to write streaming data to some output or for providing progress feedback to user. `thread` will be `0` if the call came directly from the main thread, otherwise will be an index corresponding to the worker starting at `1`.
+
+<a name="event_scan-report" />
+
+  - `report(value: any)`
+    - Gets called once the scanner has completely finished consuming the input stream, collected  argument data from each thread's `submit()` call, and reduced those values to a single `value` using the [`.reduce` function passed in the ScanConfig](#config_scan-no-input).
+
+
+<a name="event_scan-error" />
+
+  - `error(err: Error, thread: int)`
+    - Gets called if an error occurs any time during the read process on any thread, including malformed syntax errors, unreadable inputs, and so forth. If an error does occur, no other events will be emitted after this one. If you do not include an error event handler, the scanner will throw the error. `thread` will be `0` if the call came directly from the main thread, otherwise will be an index corresponding to the worker starting at `1`.
+
 ----
 
 <a name="events_write" />
@@ -687,6 +795,31 @@ An interface that defines the config object passed to a content reader.
 
 **Required:**
  - `input` : [`UseInputString`](#interface_use-input-string)` | `[`UseInputStream`](#interface_use-input-stream)
+
+
+<a name="config_scan-no-input" />
+
+#### config **ScanConfigNoInput** _inlines_ [ScanEvents](#events_scan)
+An interface that defines the config object passed to a content scanner.
+
+**Options:**
+ - ... [see those inlined from ScanEvents](#events_scan)
+ - `preset` : `string` -- should be one of the following:
+   - `'count'` -- counts the number of statements in the document, reduces by taking sum of submitted values and calls `report()` with final result.
+   - `'scribe'` -- converts each statement into Turtle (or TriG) using the corresponding content scriber. Calls `update()` with each streaming chunk of serialized output. If the update comes from the main thread (indicated by the second argument being `0`) then the received value is a string, otherwise it is a Buffer. The reason for this discrepancy is to minimize redundant string encoding/decoding. The chunk originates as a string and the workers *must encode them* before transferring to main, whereas the main does not need to encode the string. You, the user, either need strings or Buffers -- choose to encode the strings from main OR decode the Buffers from workers. Alternatively, you could simply write the value to a WritableStream (if that is the destination anyway) and it will take care of the rest.
+   - `'ndjson'` -- converts each statement into [Newline-Delimited JSON](https://en.wikipedia.org/wiki/JSON_streaming#Line-delimited_JSON). Behaves similar to `'scribe'` in the way that streaming chunks of serialized output are sent to main thread.
+ - `relax` : `boolean=false` -- see [`.relax` option in ReadConfig](#config_read-no-input).
+ - `run` : `#string/js-function-scan` -- a string of JavaScript code that will be `eval`'d on each worker thread and once on the main thread. Is called with the following arguments:
+   - 0: `read(...)` -- the 'suggested' [content reader verb](#verb_read) to use (will be either the N-Triples or N-Quads reader depending on the scanner format). Call this argument as a function to construct the ReadableStream that needs to be returned by your custom function code.
+   - 1: `err(what: Error)` -- function that will send `what` to the main thread and eventually propagate to the scanner's `'error'` event listener.
+   - 2: `update(value: any[, transfers: Array])` -- function that will send `value` to the main thread using `.postMessage()` and eventually propagate to the scanner's `'update'` event listener. Use `transfers` to specify transferable objects such as large TypedArrays or ArrayBuffers.
+   - 3: `submit(value: any[, transfers: Array])`-- function that will send `value` to the main thread using `.postMessage()` and eventually propagate to the scanner's `.reduce()` function. Calling `submit` will effectively terminate the worker as it indicates the task has completed. Use `transfers` to specify transferable objects such as large TypedArrays or ArrayBuffers.
+   - 4: `user` : `any` -- custom value of any type supported by the structured clone algorithm that was passed to the scanner's `.user` property OR returned from calling the `.user` property if it was a function. Useful for passing data (such as prefix mappings) or custom options to each thread.
+   - 5: `isWorker` : `boolean` -- indicates whether or not the code is running on a worker thread. Useful for determining if data passed to `update`/`submit` needs to cross threads in which case using ArrayBuffers to transfer may be more efficient.
+ - `reduce(accumulator: any, current: any) => output: any` -- callback function that reduces two input arguments into a single output value. On the first invocation, the `accumulator` argument will either be the `.initial` property provided to the scanner's constructor, or, if nothing was provided to `.initial` property, the value sent to `submit()` by the main thread.
+ - `receive(value: any, thread: int) => output: any` -- callback function that takes `value` as it was received from a worker and 'recreates' the intended object before it is sent to `.reduce`. Useful for unmarshalling instances from workers.
+ - `threads` : `int` -- manually set the total number of threads to use (including the main thread).
+
 
 
 <a name="config_write" />
