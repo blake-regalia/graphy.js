@@ -13,6 +13,10 @@ class MasterWorkerPolyfill extends Worker {
 			delete gc_worker.workerData;
 		}
 
+		// remove extraneous node options
+		if(gc_worker.__dirname) delete gc_worker.__dirname;
+		if(gc_worker.resourceLimits) delete gc_worker.resourceLimits;
+
 		super(p_worker, gc_worker);
 
 		this.postMessage({

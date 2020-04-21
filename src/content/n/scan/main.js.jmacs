@@ -737,6 +737,9 @@ class @{S_LABEL}_Scanner extends stream.Readable {
 
 					// on message event
 					message: Scanner$handle_worker_message(this, i_worker),
+
+					// inherit resource limits from main
+					resourceLimits: 'inherit',
 				});
 
 				// d_worker.on('message', );
