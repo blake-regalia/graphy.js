@@ -22,6 +22,8 @@
 	scan(process.stdin, {
 		@{SJ_CONFIG_READ || ''}
 
+		threads: N_THREADS,
+
 		preset: 'scribe',
 
 		update(z_chunk, i_worker) {

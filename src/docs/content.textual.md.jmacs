@@ -262,11 +262,8 @@ ttl_read(`
 ```js
 const nq_scan = require('@graphy/content.nq.scan');
 
-// create the scanner instance
-nq_scan({
-    // provide the input stream (equivalent to using '.import' method on returned instance)
-    input: process.stdin,
-
+// create the scanner instance, provide the input stream as the first argument (equivalent to using '.import' method on returned instance)
+nq_scan(process.stdin, {
     // the code to run on each thread (creates a function that will be called with special arguments)
     run: /* syntax: js */ `
       (read, err, update, submit) => {

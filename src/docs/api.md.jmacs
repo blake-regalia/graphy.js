@@ -2,21 +2,31 @@
 # [« Home](https://graphy.link/) / API Documentation
 
 **Jump To Package:**
- - [`@graphy/core.data.factory`](core.data.factory)
- - [`@graphy/memory.dataset.fast`](memory.dataset.fast)
- - [`@graphy/content.nt.read`](content.textual#verb_read)
- - [`@graphy/content.nt.scribe`](content.textual#verb_scribe)
- - [`@graphy/content.nt.write`](content.textual#verb_write)
- - [`@graphy/content.nq.read`](content.textual#verb_read)
- - [`@graphy/content.nq.scribe`](content.textual#verb_scribe)
- - [`@graphy/content.nq.write`](content.textual#verb_write)
- - [`@graphy/content.ttl.read`](content.textual#verb_read)
- - [`@graphy/content.ttl.scribe`](content.textual#verb_scribe)
- - [`@graphy/content.ttl.write`](content.textual#verb_write)
- - [`@graphy/content.trig.read`](content.textual#verb_read)
- - [`@graphy/content.trig.scribe`](content.textual#verb_scribe)
- - [`@graphy/content.trig.write`](content.textual#verb_write)
- - [`@graphy/content.xml.scribe`](content.textual#verb_scribe)
+ - Core
+   - [`@graphy/core.data.factory`](core.data.factory)
+ - Memory
+   - [`@graphy/memory.dataset.fast`](memory.dataset.fast)
+ - Content
+   - N-Triples
+     - [`@graphy/content.nt.read`](content.textual#verb_read)
+     - [`@graphy/content.nt.scan`](content.textual#verb_scan)
+     - [`@graphy/content.nt.scribe`](content.textual#verb_scribe)
+     - [`@graphy/content.nt.write`](content.textual#verb_write)
+   - N-Quads
+     - [`@graphy/content.nq.read`](content.textual#verb_read)
+     - [`@graphy/content.nq.scan`](content.textual#verb_scan)
+     - [`@graphy/content.nq.scribe`](content.textual#verb_scribe)
+     - [`@graphy/content.nq.write`](content.textual#verb_write)
+   - Turtle
+     - [`@graphy/content.ttl.read`](content.textual#verb_read)
+     - [`@graphy/content.ttl.scribe`](content.textual#verb_scribe)
+     - [`@graphy/content.ttl.write`](content.textual#verb_write)
+   - TriG
+     - [`@graphy/content.trig.read`](content.textual#verb_read)
+     - [`@graphy/content.trig.scribe`](content.textual#verb_scribe)
+     - [`@graphy/content.trig.write`](content.textual#verb_write)
+   - RDF/XML
+     - [`@graphy/content.xml.scribe`](content.textual#verb_scribe)
 
 <br />
 
