@@ -537,21 +537,21 @@ if(!B_BROWSER) {
 					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
 				}),
 
-				'+filter datatype plain concise untagged': () => ({
-					cmd: /* syntax: bash */ `
-						cat build/cache/data/dbr/Banana.ttl
-							| npx graphy read -c ttl / filter -x ';; /^^rdf:langString"/c'
-					`,
-					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
-				}),
+				// '+filter datatype plain concise untagged': () => ({
+				// 	cmd: /* syntax: bash */ `
+				// 		cat build/cache/data/dbr/Banana.ttl
+				// 			| npx graphy read -c ttl / filter -x ';; /^^rdf:langString"/c'
+				// 	`,
+				// 	out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				// }),
 
-				'+filter datatype pattern concise untagged': () => ({
-					cmd: /* syntax: bash */ `
-						cat build/cache/data/dbr/Banana.ttl
-							| npx graphy read -c ttl / filter -x ';; /^^rdf:lang.+"/c'
-					`,
-					out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
-				}),
+				// '+filter datatype pattern concise untagged': () => ({
+				// 	cmd: /* syntax: bash */ `
+				// 		cat build/cache/data/dbr/Banana.ttl
+				// 			| npx graphy read -c ttl / filter -x ';; /^^rdf:lang.+"/c'
+				// 	`,
+				// 	out: validate_json(a_rows => expect(a_rows).to.have.lengthOf.above(1)),
+				// }),
 
 				'+filter datatype pattern verbose untagged': () => ({
 					cmd: /* syntax: bash */ `

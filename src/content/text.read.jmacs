@@ -563,7 +563,7 @@
 		let z_arg_0 = a_args[0];
 
 		// input given unspecified
-		if(z_arg_0 && z_arg_0.input && !z_arg_0.input.string && !z_arg_0.input.stream) {
+		if(z_arg_0 && z_arg_0.input && 'undefined' === typeof z_arg_0.input.string && !z_arg_0.input.stream) {
 			z_arg_0 = z_arg_0.input;
 		}
 

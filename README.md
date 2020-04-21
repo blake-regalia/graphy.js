@@ -53,6 +53,8 @@
  - **TriG**: [TriGReader](https://graphy.link/content.textual#verb_read), [TriGWriter](https://graphy.link/content.textual#verb_write), [TriGScriber](https://graphy.link/content.textual#verb_scribe)
  - **RDF/XML**: [RdfXmlScriber](https://graphy.link/content.textual#verb_scribe)
 
+## Changelog
+🍭⚡︎🔧 [See history of changes here.](https://github.com/blake-regalia/graphy.js/blob/master/CHANGELOG.md).
 
 ## License
 
