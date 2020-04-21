@@ -227,31 +227,38 @@ async function* r() {
 (async() => {
 	console.log(gobble(`
 		# Performance Benchmarks
-		The following diagrams plot the mean value of 5 trials for each data point.
 
-		The X-axis units for all charts are in Millions of Quads, and correspond to the number of triples/quads fed into the process via stdin.
-
-		The Y-axis for 'Velocity' charts denotes the number of Quads per millisecond (Quads/ms) the task completed at.
-
-		There are multiple modes for \`graphy\`:
-		  - the default mode with validation enabled for reading
-		  - ['relaxed' mode](https://graphy.link/content.textual#config_read-no-input), which skips validation for faster read speeds
-		  - ['scan' mode](https://graphy.link/content.textual#verb_scan), which uses multiple threads (2, 4, 8 or 16 in these trials) to read the input stream
-
-		All Turtle input files are using prefixed names for identifiers when possible.
-
-		Memory-intensive tasks were run with the \`--max-old-space-size=8192\` node.js option (e.g., the [distinct task](#distinct-task)). Some charts show an exponential jump in time due to the fact that V8's GC starts aggressively trying to free up memory.
-
-		Memory usage represents the resident stack size (RSS) at the moment the results are reported. For \`graphy/scan\` modes, memory usage stats are not yet available.
+		This document plots the results of a series of performance benchmarks in order to compare the performance of \`graphy\` against other libraries as well as against itself (using different modes/options). The benchmarks demonstrate a few select task objectives designed to simulate real-world scenarios.
 
 		Want to see how other libraries stack up? Feel free to [open an issue](https://github.com/blake-regalia/graphy.js/issues).
+
+
+		## Interpretting the Charts
+		 - Each data point in the following charts represents the mean value of 5 trials.
+		 - The **X-axis units** for all charts are in **Millions of Quads**, and correspond to the number of triples/quads fed into the process via stdin
+		 - The **Y-axis for each 'Velocity' chart** denotes the number of **Quads per millisecond (Quads/ms)** at which the task objective completed.
+
+
+		## Disclaimers
+		 - Memory-intensive tasks were run with the \`--max-old-space-size=8192\` node.js option (e.g., the [distinct task](#distinct-task)). Some charts show a non-linear progression in time due to the fact that V8's GC starts aggressively trying to free up memory.
+		 - Memory usage represents the resident stack size (RSS) at the moment the results are reported. For \`graphy/scan\` modes, memory usage stats are not yet available.
+		 - All Turtle input files are using prefixed names for identifiers when possible.
+
+
+		There are multiple modes for \`graphy\`:
+		  - the default mode, which means that validation is enabled for reading
+		  - ['relaxed' mode](https://graphy.link/content.textual#config_read-no-input), which skips validation for faster reading
+		  - ['scan' mode](https://graphy.link/content.textual#verb_scan), which uses multiple threads (2, 4, 8 or 16 in these trials) to read the input stream
+
 
 		## Competitors
 		${Object.entries(H_PARTIES).reduce((s_out, [, g_party]) => s_out
 			+` - [${g_party.label}](${g_party.href}) v${g_party.version}\n`, '')}
 
-		## Table of Contents
+		## Task Objectives
 		${[...new Set(a_bench.map(g => g.task))].map(s => ` - [${proper(s)} Task](#${s}-task) -- ${H_COMPARE[s].info}`).join('\n')}
+
+		<p align="center">⬇️&nbsp;&nbsp;&nbsp;&nbsp;⬇️&nbsp;&nbsp;&nbsp;&nbsp;⬇️</p>
 	`)+'\n');
 	for await (let s_chunk of r()) {
 		console.log(s_chunk);
