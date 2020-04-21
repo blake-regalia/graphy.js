@@ -21,7 +21,7 @@ class MasterWorkerPolyfill extends wt.Worker {
 			let n_mib_max_old_space = 0;
 			try {
 				// emprically, node(/v8?) seems to reserve additional 48 MiB of heap
-				n_mib_max_old_space = (v8.getHeapStatistics().total_heap_size / 1024 / 1024) - 48;
+				n_mib_max_old_space = (v8.getHeapStatistics().heap_size_limit / 1024 / 1024) - 48;
 			}
 			catch(e_stat) {
 				delete gc_worker.resourceLimits;
