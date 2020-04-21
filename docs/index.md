@@ -32,6 +32,7 @@
  - [Compute the union, intersection, difference or subtraction](memory.dataset.fast) between multiple RDF graphs analagous to [Set Algebra](https://en.wikipedia.org/wiki/Algebra_of_sets).
  - [Compare two RDF graphs](memory.dataset.fast#method_canonicalize) for isomoprhic equivalence, containment, and disjointness by first canonicalizing them with the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
  - [Transform RDF data from the command-line](cli) by piping them through a series of sub-commands.
+ - [Scan RDF documents](https://graphy.link/content.textual#verb_scan) and run custom code using multiple threads for maximum throughput.
 
 
 ## Package Tree
@@ -50,10 +51,12 @@ graphy/:
   content.:
     nt.:
       read: '@graphy/content.nt.read'
+      scan: '@graphy/content.nt.scan'
       scribe: '@graphy/content.nt.scribe'
       write: '@graphy/content.nt.write'
     nq.:
       read: '@graphy/content.nq.read'
+      scan: '@graphy/content.nq.scan'
       scribe: '@graphy/content.nq.scribe'
       write: '@graphy/content.nq.write'
     ttl.:
