@@ -19,7 +19,7 @@
   Documentation for the <code>$ graphy</code> command-line interface. Includes CLI examples.
 </div>
 
-## [Performance Benchmarks](https://github.com/blake-regalia/graphy.js/tree/master/perf)
+## [Performance Benchmarks](https://github.com/blake-regalia/graphy.js/blob/master/perf/README.md)
 <div class="larger">
   See how <code>graphy</code> stacks up against other libraries.
 </div>
