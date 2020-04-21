@@ -127,7 +127,7 @@ function stat(a_trials, h_props) {
 				let a_options = g_flavor.options;
 
 				for(let [si_mode, h_env] of Object.entries(g_flavor.modes)) {
-					if(s_filter_mode && si_mode !== s_filter_mode) continue;
+					if(s_filter_mode && !si_mode.startsWith(s_filter_mode)) continue;
 
 					let p_runner = `build/party/${si_party}/${si_task}/${s_flavor}/${si_mode}.js`;
 
