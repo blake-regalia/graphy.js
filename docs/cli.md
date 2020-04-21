@@ -599,18 +599,18 @@ Count the number of distinct things, such as quads, triples, subjects, etc.
 
 <a name="command_help" />
 
-### [`help`](#command_help)` [OPTIONS]`
+### [`help`](#command_help)
 Alias for `$ graphy --help`. Print the help message and exit.
 
 
 <a name="command_version" />
 
-### [`version`](#command_version)` [OPTIONS]`
+### [`version`](#command_version)
 Alias for `$ graphy --version`. Print the version info and exit.
 
 <a name="command_examples" />
 
-### [`examples`](#command_examples)` [OPTIONS]`
+### [`examples`](#command_examples)
 Alias for `$ graphy --examples`. Print some examples and exit.
 
 
@@ -618,14 +618,14 @@ Alias for `$ graphy --examples`. Print some examples and exit.
 
 
 
-## Options
-Options that you can pass to the main graphy command.
+## Informational Options
+Options you can pass to the main graphy command that print some information and exit:
    - `-e, --examples` -- Print some examples and exit
    - `-h, --help` -- Print the help message and exit
    - `-v, --version` -- Print the version info and exit
 
-## More Options
-More options:
+## Process Options
+Configure certain options for the process:
    - `--show-stack-trace` -- Show the stack trace when printing error messages
 
 <br />
