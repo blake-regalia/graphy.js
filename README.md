@@ -3,7 +3,7 @@
 # graphy.js 🍌
 `graphy` is a collection of *high-performance* RDF libraries for JavaScript developers with a focus on usability. API works in both the browser and Node.js. Expressive CLI tool also available for Node.js.
 
-### [https://graphy.link/](https://graphy.link/)
+[https://graphy.link/](https://graphy.link/)
 
 
 ## Performance Benchmarks
