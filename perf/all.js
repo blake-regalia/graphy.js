@@ -79,6 +79,15 @@ const H_MODES_GRAPHY_READ_SCAN = {
 	'scan.8': {
 		N_THREADS: 8,
 	},
+	'scan.16': {
+		N_THREADS: 8,
+	},
+	'relaxed-scan.16': {
+		N_THREADS: 8,
+		SJ_CONFIG_READ: /* syntax: js.object-literal */ `
+			relax: true,
+		`,
+	},
 };
 
 const perm_formats_in = si_task => (gc_task={modes:H_MODES_DEFAULT}) => Object.entries(H_FORMATS).reduce((h_out, [s_format, g_format]) => ({

@@ -42,9 +42,10 @@ const H_TRANSFORM = {
 const H_COLORS = {
 	'graphy/default': 'rgba(0, 127, 0 1)',
 	'graphy/relaxed': 'rgba(0, 0, 127, 1)',
-	'graphy/scan.2': 'rgb(204, 51, 255)',
-	'graphy/scan.4': 'rgb(153, 102, 255)',
-	'graphy/scan.8': 'rgb(153, 153, 255)',
+	'graphy/scan.2': 'rgb(102, 102, 255)',
+	'graphy/scan.4': 'rgb(153, 153, 255)',
+	'graphy/scan.8': 'rgb(153, 102, 255)',
+	'graphy/scan.16': 'rgb(204, 102, 255)',
 	'N3/default': 'rgba(127, 0, 0, 1)',
 };
 
@@ -235,7 +236,7 @@ async function* r() {
 		There are multiple modes for \`graphy\`:
 		  - the default mode with validation enabled for reading
 		  - ['relaxed' mode](https://graphy.link/content.textual#config_read-no-input), which skips validation for faster read speeds
-		  - ['scan' mode](https://graphy.link/content.textual#verb_scan), which uses multiple threads (2, 4, or 8 in these trials) to read the input stream
+		  - ['scan' mode](https://graphy.link/content.textual#verb_scan), which uses multiple threads (2, 4, 8 or 16 in these trials) to read the input stream
 
 		All Turtle input files are using prefixed names for identifiers when possible.
 
