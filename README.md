@@ -9,7 +9,7 @@
 
 
 ## Command Line Interface
-[Documentation](https://graphy.link/cli)
+📑 [See documentation for CLI here](https://graphy.link/cli).
 
 #### Install
 npm:
@@ -35,28 +35,20 @@ $ graphy --help
 
 
 ## [See API Documentation](https://graphy.link/api)
-Find the package you need _or_ install the super-package `npm install --save graphy` .
+🔎 Find the package you need _or_ install the super-package `npm install --save graphy` .
 
-Core
+### Core
  - [DataFactory](https://graphy.link/core.data.factory)
 
-Memory
+### Memory
  - [FastDataset](https://graphy.link/memory.dataset.fast)
 
-N-Triples
- - [NTriplesReader](https://graphy.link/content.textual#verb_read), [NTriplesScanner](https://graphy.link/content.textual#verb_scan), [NTriplesWriter](https://graphy.link/content.textual#verb_write), [NTriplesScriber](https://graphy.link/content.textual#verb_scribe)
-
-N-Quads
- - [NQuadsReader](https://graphy.link/content.textual#verb_read), [NQuadsScanner](https://graphy.link/content.textual#verb_scan), [NQuadsWriter](https://graphy.link/content.textual#verb_write), [NQuadsScriber](https://graphy.link/content.textual#verb_scribe)
-
-Turtle
- - [TurtleReader](https://graphy.link/content.textual#verb_read), [TurtleWriter](https://graphy.link/content.textual#verb_write), [TurtleScriber](https://graphy.link/content.textual#verb_scribe)
-
-TriG
- - [TriGReader](https://graphy.link/content.textual#verb_read), [TriGWriter](https://graphy.link/content.textual#verb_write), [TriGScriber](https://graphy.link/content.textual#verb_scribe)
-
-RDF/XML
- - [RdfXmlScriber](https://graphy.link/content.textual#verb_scribe)
+### Content
+ - **N-Triples**: [NTriplesReader](https://graphy.link/content.textual#verb_read), [NTriplesScanner](https://graphy.link/content.textual#verb_scan), [NTriplesWriter](https://graphy.link/content.textual#verb_write), [NTriplesScriber](https://graphy.link/content.textual#verb_scribe)
+ - **N-Quads**: [NQuadsReader](https://graphy.link/content.textual#verb_read), [NQuadsScanner](https://graphy.link/content.textual#verb_scan), [NQuadsWriter](https://graphy.link/content.textual#verb_write), [NQuadsScriber](https://graphy.link/content.textual#verb_scribe)
+ - **Turtle**: [TurtleReader](https://graphy.link/content.textual#verb_read), [TurtleWriter](https://graphy.link/content.textual#verb_write), [TurtleScriber](https://graphy.link/content.textual#verb_scribe)
+ - **TriG**: [TriGReader](https://graphy.link/content.textual#verb_read), [TriGWriter](https://graphy.link/content.textual#verb_write), [TriGScriber](https://graphy.link/content.textual#verb_scribe)
+ - **RDF/XML**: [RdfXmlScriber](https://graphy.link/content.textual#verb_scribe)
 
 
 ## License
