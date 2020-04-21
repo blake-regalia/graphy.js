@@ -32,6 +32,7 @@
  - [Compute the union, intersection, difference or subtraction](https://graphy.link/memory.dataset.fast) between multiple RDF graphs analagous to [Set Algebra](https://en.wikipedia.org/wiki/Algebra_of_sets).
  - [Compare two RDF graphs](https://graphy.link/memory.dataset.fast#method_canonicalize) for isomoprhic equivalence, containment, and disjointness by first canonicalizing them with the [RDF Dataset Normalization Algorithm](https://json-ld.github.io/normalization/spec/).
  - [Transform RDF data from the command-line](https://graphy.link/cli) by piping them through a series of sub-commands.
+ - [Scan RDF documents](https://graphy.link/content.textual#verb_scan) and run custom code using multiple threads for maximum throughput.
 
 
 ## [See API Documentation](https://graphy.link/api)

@@ -50,8 +50,8 @@ const H_COLORS = {
 
 const H_REVIEWS = {
 	// elapsed: 'Time Elapsed (s)',
-	elapsed: 'Velocity (Quads/ms) ⬆=👍',
-	memory: 'Memory Usage (MiB) ⬇=👍',
+	elapsed: 'Velocity (Quads/ms)  ▲=👍',
+	memory: 'Memory Usage (MiB)  ▼=👍',
 };
 
 const H_SOURCES = {
