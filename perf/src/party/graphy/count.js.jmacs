@@ -22,7 +22,7 @@
 	scan(process.stdin, {
 		@{SJ_CONFIG_READ || ''}
 
-		threads: N_THREADS,
+		threads: @{N_THREADS},
 
 		preset: 'count',
 
