@@ -8,7 +8,7 @@ The Y-axis for 'Velocity' charts denotes the number of Quads per millisecond (Qu
 There are multiple modes for `graphy`:
   - the default mode with validation enabled for reading
   - ['relaxed' mode](https://graphy.link/content.textual#config_read-no-input), which skips validation for faster read speeds
-  - ['scan' mode](https://graphy.link/content.textual#verb_scan), which uses multiple threads (2, 4, or 8 in these trials) to read the input stream
+  - ['scan' mode](https://graphy.link/content.textual#verb_scan), which uses multiple threads (2, 4, 8 or 16 in these trials) to read the input stream
 
 All Turtle input files are using prefixed names for identifiers when possible.
 
