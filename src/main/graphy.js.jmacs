@@ -120,7 +120,7 @@ const R_CONTENT_TYPE = /^((?:application|text)\/@{R_TOKENS()})(;.+)*$/i;
 
 const graphy = module.exports = Object.assign({
 
-	VERSION: '4.1.0',
+	VERSION: '@{/* eslint-disable */ require('../../package.json').version /* eslint-disable */}',
 
 	content: Object.assign((s_query_in) => {
 		let s_query = s_query_in.toLowerCase();

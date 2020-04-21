@@ -1,43 +1,28 @@
 [![NPM version][npm-image]][npm-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
 # graphy.js 🍌
-`graphy` is a collection of *high-performance* RDF libraries for JavaScript developers with a focus on usability. 
+`graphy` is a collection of *high-performance* RDF libraries for JavaScript developers with a focus on usability. API works in both the browser and Node.js. Expressive CLI tool also available for Node.js.
 
 
-## [See API Documentation](https://graphy.link/api)
-Find the package you need _or_ install the super-package `npm install --save graphy` .
-
-Data Factory
- - [`@graphy/core.data.factory`](https://graphy.link/core.data.factory) -- Data Factory
-
-Dataset
- - [`@graphy/memory.dataset.fast`](https://graphy.link/memory.dataset.fast) -- Dataset
-
-Readers
- - [`@graphy/content.nt.read`](https://graphy.link/content.textual#verb_read) -- N-Triples reader
- - [`@graphy/content.nq.read`](https://graphy.link/content.textual#verb_read) -- N-Quads reader
- - [`@graphy/content.ttl.read`](https://graphy.link/content.textual#verb_read) -- Turtle reader
- - [`@graphy/content.trig.read`](https://graphy.link/content.textual#verb_read) -- TriG reader
-
-Scribers
- - [`@graphy/content.nt.scribe`](https://graphy.link/content.textual#verb_scribe) -- N-Triples scriber
- - [`@graphy/content.nq.scribe`](https://graphy.link/content.textual#verb_scribe) -- N-Quads scriber
- - [`@graphy/content.ttl.scribe`](https://graphy.link/content.textual#verb_scribe) -- Turtle scriber
- - [`@graphy/content.trig.scribe`](https://graphy.link/content.textual#verb_scribe) -- TriG scriber
- - [`@graphy/content.xml.scribe`](https://graphy.link/content.textual#verb_scribe) -- RDF/XML scriber
-
-Writers
- - [`@graphy/content.nt.write`](https://graphy.link/content.textual#verb_write) -- N-Triples writer
- - [`@graphy/content.nq.write`](https://graphy.link/content.textual#verb_write) -- N-Quads writer
- - [`@graphy/content.ttl.write`](https://graphy.link/content.textual#verb_write) -- Turtle writer
- - [`@graphy/content.trig.write`](https://graphy.link/content.textual#verb_write) -- TriG writer
+## Performance Benchmarks
+🚀 [See how well `graphy` outperforms all others](https://github.com/blake-regalia/graphy.js/blob/master/perf/README.md).
 
 
-## [Command Line Interface](https://graphy.link/cli)
-`npm install --global graphy`
+## Command Line Interface
+[Documentation](https://graphy.link/cli)
 
+#### Install
+npm:
+```console
+$ npm install --global graphy
+$ graphy --help
+```
 
-## [Performance Benchmarks](https://github.com/blake-regalia/graphy.js/tree/master/perf)
+yarn:
+```console
+$ yarn global add graphy
+$ graphy --help
+```
 
 
 ## [Features](https://graphy.link/)
@@ -49,6 +34,29 @@ Writers
  - [Transform RDF data from the command-line](https://graphy.link/cli) by piping them through a series of sub-commands.
 
 
+## [See API Documentation](https://graphy.link/api)
+Find the package you need _or_ install the super-package `npm install --save graphy` .
+
+Core
+ - [DataFactory](https://graphy.link/core.data.factory)
+
+Memory
+ - [FastDataset](https://graphy.link/memory.dataset.fast)
+
+N-Triples
+ - [NTriplesReader](https://graphy.link/content.textual#verb_read), [NTriplesScanner](https://graphy.link/content.textual#verb_scan), [NTriplesWriter](https://graphy.link/content.textual#verb_write), [NTriplesScriber](https://graphy.link/content.textual#verb_scribe)
+
+N-Quads
+ - [NQuadsReader](https://graphy.link/content.textual#verb_read), [NQuadsScanner](https://graphy.link/content.textual#verb_scan), [NQuadsWriter](https://graphy.link/content.textual#verb_write), [NQuadsScriber](https://graphy.link/content.textual#verb_scribe)
+
+Turtle
+ - [TurtleReader](https://graphy.link/content.textual#verb_read), [TurtleWriter](https://graphy.link/content.textual#verb_write), [TurtleScriber](https://graphy.link/content.textual#verb_scribe)
+
+TriG
+ - [TriGReader](https://graphy.link/content.textual#verb_read), [TriGWriter](https://graphy.link/content.textual#verb_write), [TriGScriber](https://graphy.link/content.textual#verb_scribe)
+
+RDF/XML
+ - [RdfXmlScriber](https://graphy.link/content.textual#verb_scribe)
 
 
 ## License

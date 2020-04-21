@@ -137,7 +137,7 @@ const H_PARTIES = {
 	graphy: {
 		label: 'graphy',
 		href: 'https://github.com/blake-regalia/graphy.js',
-		version: require('graphy/package.json').version,
+		version: require('../package.json').version,
 
 		tasks: {
 			count: H_TASK_PERMS.count({

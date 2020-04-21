@@ -31,9 +31,12 @@ const H_DESCRIBE = {
 	'ttl-nt': 'Turtle as input => N-Triples as output',
 };
 
+const quads = p => (+p.replace(/^.*(\d+)M\.\w+$/, '$1')) * 1e6;
+
 const H_TRANSFORM = {
-	elapsed: (h, si) => h? h[si].avg / 1000: Infinity,
-	memory: (h, si) => h? h[si].avg / 1024 / 1024: Infinity,
+	// elapsed: (h, si) => h? h[si].avg / 1000: Infinity,
+	elapsed: (g, si) => g.summary? (quads(g.input) / g.summary[si].avg): Infinity,
+	memory: (g, si) => g.summary? g.summary[si].avg / 1024 / 1024: Infinity,
 };
 
 const H_COLORS = {
@@ -41,12 +44,13 @@ const H_COLORS = {
 	'graphy/relaxed': 'rgba(0, 0, 127, 1)',
 	'graphy/scan.2': 'rgb(204, 51, 255)',
 	'graphy/scan.4': 'rgb(153, 102, 255)',
-	'graphy/scan.6': 'rgb(153, 153, 255)',
+	'graphy/scan.8': 'rgb(153, 153, 255)',
 	'N3/default': 'rgba(127, 0, 0, 1)',
 };
 
 const H_REVIEWS = {
-	elapsed: 'Time Elapsed (s)',
+	// elapsed: 'Time Elapsed (s)',
+	elapsed: 'Velocity (Quads/ms)',
 	memory: 'Memory Usage (MiB)',
 };
 
@@ -194,7 +198,7 @@ async function* r() {
 							backgroundColor: 'rgba(0, 0, 0, 0)',
 							borderColor: H_COLORS[si_test],
 							borderWidth: 1.5,
-						}).data.push(H_TRANSFORM[s_review](g_test.summary, s_review));
+						}).data.push(H_TRANSFORM[s_review](g_test, s_review));
 					}
 
 					let si_chart = `${si_task}_${s_flavor}_${s_label}_${s_review}`;
@@ -224,7 +228,9 @@ async function* r() {
 		# Performance Benchmarks
 		The following diagrams plot the mean value of 5 trials for each data point.
 
-		The X-axis units are in Millions of Quads, and correspond to the number of triples/quads fed into the process via stdin.
+		The X-axis units for all charts are in Millions of Quads, and correspond to the number of triples/quads fed into the process via stdin.
+
+		The Y-axis for 'Velocity' charts denotes the number of Quads per millisecond (Quads/ms) the task completed at.
 
 		There are multiple modes for \`graphy\`:
 		  - the default mode with validation enabled for reading

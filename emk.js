@@ -656,7 +656,7 @@ module.exports = async() => {
 					],
 
 					run: /* syntax: bash */ `
-						npx mocha --colors $3
+						npx mocha --timeout 5000 --colors $3
 					`,
 				}),
 
@@ -668,7 +668,7 @@ module.exports = async() => {
 					],
 
 					run: /* syntax: bash */ `
-						npx mocha --colors $1
+						npx mocha --timeout 5000 --colors $1
 					`,
 				}),
 

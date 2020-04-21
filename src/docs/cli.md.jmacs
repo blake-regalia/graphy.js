@@ -174,7 +174,7 @@ _Examples:_
 ### [`scan`](#command_scan)` [OPTIONS]`
 Scan RDF content, i.e., deserialize it and do stuff using multiple threads.
 
-> EXPERIMENTAL! The `scan` verb is currently experimental. Use at your own risk.
+> EXPERIMENTAL! The `scan` verb is currently experimental.
 
 @{transform_nnsq()}
 

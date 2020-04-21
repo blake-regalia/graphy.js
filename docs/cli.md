@@ -119,7 +119,7 @@ _Examples:_
 ### [`scan`](#command_scan)` [OPTIONS]`
 Scan RDF content, i.e., deserialize it and do stuff using multiple threads.
 
-> EXPERIMENTAL! The `scan` verb is currently experimental. Use at your own risk.
+> EXPERIMENTAL! The `scan` verb is currently experimental.
 
 **Stream Multiplicity:**
  - `N-to-N<string, `[`QuadStream`](#class_quad-stream)`>` -- **maps** 1 or more input streams of utf-8 encoded strings into 1 or more output streams of [Quad](core.data.factory#class_quad) objects.
