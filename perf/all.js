@@ -80,10 +80,10 @@ const H_MODES_GRAPHY_READ_SCAN = {
 		N_THREADS: 8,
 	},
 	'scan.16': {
-		N_THREADS: 8,
+		N_THREADS: 16,
 	},
 	'relaxed-scan.16': {
-		N_THREADS: 8,
+		N_THREADS: 16,
 		SJ_CONFIG_READ: /* syntax: js.object-literal */ `
 			relax: true,
 		`,
