@@ -33,7 +33,7 @@ There are multiple modes for `graphy`:
  - [Distinct Task](#distinct-task) -- Count the distinct number of triples/quads in an RDF document.
  - [Convert Task](#convert-task) -- Convert an RDF document from one serialization format to another.
 
-<p align="center">⬇️&nbsp;&nbsp;&nbsp;&nbsp;⬇️&nbsp;&nbsp;&nbsp;&nbsp;⬇️</p>
+<p align="center">⬇️&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⬇️&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⬇️</p>
 
 ------------
 

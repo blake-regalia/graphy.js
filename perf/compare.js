@@ -258,7 +258,7 @@ async function* r() {
 		## Task Objectives
 		${[...new Set(a_bench.map(g => g.task))].map(s => ` - [${proper(s)} Task](#${s}-task) -- ${H_COMPARE[s].info}`).join('\n')}
 
-		<p align="center">⬇️&nbsp;&nbsp;&nbsp;&nbsp;⬇️&nbsp;&nbsp;&nbsp;&nbsp;⬇️</p>
+		<p align="center">⬇️&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⬇️&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⬇️</p>
 	`)+'\n');
 	for await (let s_chunk of r()) {
 		console.log(s_chunk);
