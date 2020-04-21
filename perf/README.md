@@ -19,7 +19,7 @@ Memory usage represents the resident stack size (RSS) at the moment the results 
 Want to see how other libraries stack up? Feel free to [open an issue](https://github.com/blake-regalia/graphy.js/issues).
 
 ## Competitors
- - [N3.js](https://github.com/rdfjs/N3.js) v1.3.5
+ - [N3.js](https://github.com/rdfjs/N3.js) v1.3.6
  - [graphy](https://github.com/blake-regalia/graphy.js) v4.2.0
 
 
@@ -44,13 +44,13 @@ Count the number of statements in an RDF document.
 
 Input File: Wikidata Data Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for count Task with N-Triples as input](chart/count_nt_wikidata_elapsed.png) | ![Performance Review of memory for count Task with N-Triples as input](chart/count_nt_wikidata_memory.png)
 
 Input File: DBpedia "Person Data" Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for count Task with N-Triples as input](chart/count_nt_persondata_en_elapsed.png) | ![Performance Review of memory for count Task with N-Triples as input](chart/count_nt_persondata_en_memory.png)
 
@@ -60,13 +60,13 @@ Velocity (Quads/ms) | Memory Usage (MiB)
 
 Input File: Wikidata Data Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for count Task with Turtle as input](chart/count_ttl_wikidata_elapsed.png) | ![Performance Review of memory for count Task with Turtle as input](chart/count_ttl_wikidata_memory.png)
 
 Input File: DBpedia "Person Data" Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for count Task with Turtle as input](chart/count_ttl_persondata_en_elapsed.png) | ![Performance Review of memory for count Task with Turtle as input](chart/count_ttl_persondata_en_memory.png)
 
@@ -86,13 +86,13 @@ Count the distinct number of triples/quads in an RDF document.
 
 Input File: Wikidata Data Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for distinct Task with N-Triples as input](chart/distinct_nt_wikidata_elapsed.png) | ![Performance Review of memory for distinct Task with N-Triples as input](chart/distinct_nt_wikidata_memory.png)
 
 Input File: DBpedia "Person Data" Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for distinct Task with N-Triples as input](chart/distinct_nt_persondata_en_elapsed.png) | ![Performance Review of memory for distinct Task with N-Triples as input](chart/distinct_nt_persondata_en_memory.png)
 
@@ -102,13 +102,13 @@ Velocity (Quads/ms) | Memory Usage (MiB)
 
 Input File: Wikidata Data Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for distinct Task with Turtle as input](chart/distinct_ttl_wikidata_elapsed.png) | ![Performance Review of memory for distinct Task with Turtle as input](chart/distinct_ttl_wikidata_memory.png)
 
 Input File: DBpedia "Person Data" Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for distinct Task with Turtle as input](chart/distinct_ttl_persondata_en_elapsed.png) | ![Performance Review of memory for distinct Task with Turtle as input](chart/distinct_ttl_persondata_en_memory.png)
 
@@ -128,13 +128,13 @@ Convert an RDF document from one serialization format to another.
 
 Input File: Wikidata Data Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for convert Task with N-Triples as input => Turtle as output](chart/convert_nt-ttl_wikidata_elapsed.png) | ![Performance Review of memory for convert Task with N-Triples as input => Turtle as output](chart/convert_nt-ttl_wikidata_memory.png)
 
 Input File: DBpedia "Person Data" Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for convert Task with N-Triples as input => Turtle as output](chart/convert_nt-ttl_persondata_en_elapsed.png) | ![Performance Review of memory for convert Task with N-Triples as input => Turtle as output](chart/convert_nt-ttl_persondata_en_memory.png)
 
@@ -144,13 +144,13 @@ Velocity (Quads/ms) | Memory Usage (MiB)
 
 Input File: Wikidata Data Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for convert Task with Turtle as input => N-Triples as output](chart/convert_ttl-nt_wikidata_elapsed.png) | ![Performance Review of memory for convert Task with Turtle as input => N-Triples as output](chart/convert_ttl-nt_wikidata_memory.png)
 
 Input File: DBpedia "Person Data" Dump
 
-Velocity (Quads/ms) | Memory Usage (MiB)
+Velocity (Quads/ms) ⬆=👍 | Memory Usage (MiB) ⬇=👍
 :---:|:---:
 ![Performance Review of elapsed for convert Task with Turtle as input => N-Triples as output](chart/convert_ttl-nt_persondata_en_elapsed.png) | ![Performance Review of memory for convert Task with Turtle as input => N-Triples as output](chart/convert_ttl-nt_persondata_en_memory.png)
 

@@ -11,18 +11,18 @@
 ## Command Line Interface
 📑 [See documentation for CLI here](https://graphy.link/cli).
 
-#### Install
-npm:
-```console
-$ npm install --global graphy
-$ graphy --help
-```
+### Install the `graphy` bin CLI
+ - npm:
+   ```console
+   $ npm install --global graphy
+   $ graphy --help
+   ```
 
-yarn:
-```console
-$ yarn global add graphy
-$ graphy --help
-```
+ - yarn:
+   ```console
+   $ yarn global add graphy
+   $ graphy --help
+   ```
 
 
 ## [Features](https://graphy.link/)
