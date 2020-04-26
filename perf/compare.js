@@ -241,7 +241,7 @@ async function* r() {
 
 		## Disclaimers
 		 - Memory-intensive tasks were run with the \`--max-old-space-size=8192\` node.js option (e.g., the [distinct task](#distinct-task)). Some charts show a non-linear progression in time due to the fact that V8's GC starts aggressively trying to free up memory.
-		 - Memory usage represents the resident stack size (RSS) at the moment the results are reported. For \`graphy/scan\` modes, memory usage stats are not yet available.
+		 - Memory usage represents the resident stack size (RSS) at the moment the results are reported.
 		 - All Turtle input files are using prefixed names for identifiers when possible.
 
 
