@@ -1,5 +1,17 @@
 # Changelog
 
+## v4.2.1 (2020-05-05)
+------------------------
+
+Removed an unused dependency that could interfere with the installation on some platforms.
+
+
+### 🔧 Fixes
+
+#### Dependencies
+ - Removed `worker`.
+
+
 ## v4.2.0 (2020-04-20)
 ------------------------
 
