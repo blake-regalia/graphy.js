@@ -54,10 +54,10 @@
  - **RDF/XML**: [RdfXmlScriber](https://graphy.link/content.textual#verb_scribe)
 
 ## Changelog
-🍭⚡︎🔧 [See history of changes here.](https://github.com/blake-regalia/graphy.js/blob/master/CHANGELOG.md).
+🍭⚡︎🔧  [See history of changes here](https://github.com/blake-regalia/graphy.js/blob/master/CHANGELOG.md).
 
 ## Roadmap
-🚧 [See the list of planned features.](https://github.com/blake-regalia/graphy.js/blob/master/ROADMAP.md).
+🚧  [See the list of planned features](https://github.com/blake-regalia/graphy.js/blob/master/ROADMAP.md).
 
 ## License
 
