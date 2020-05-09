@@ -105,7 +105,38 @@ const h_lib_root_package_json = {
 };
 
 // package map
-const h_packages = {};
+const h_packages = {
+	core: {
+		description: 'Contains DataFactory',
+		links: ['core.data.factory'],
+	},
+
+	memory: {
+		description: 'Contains FastDataset',
+		links: ['memory.dataset.fast'],
+	},
+
+	content: {
+		description: 'Contains NTriplesReader, NTriplesScanner, NTriplesWriterScriber, NTriplesWriter, NQuadsReader, NQuadsScanner, NQuadsScriber, NQuadsWriter, TurtleReader, TurtleScriber, TurtleWriter, TriGReader, TriGScriber, TriGWriter, RdfXmlScriber',
+		links: [
+			'content.nt.read',
+			'content.nt.scan',
+			'content.nt.scribe',
+			'content.nt.write',
+			'content.nq.read',
+			'content.nq.scan',
+			'content.nq.scribe',
+			'content.nq.write',
+			'content.ttl.read',
+			'content.ttl.scribe',
+			'content.ttl.write',
+			'content.trig.read',
+			'content.trig.scribe',
+			'content.trig.write',
+			'content.xml.scribe',
+		],
+	},
+};
 
 // each package in the tree
 (function map_tree(h_tree, s_path='') {
@@ -363,7 +394,6 @@ const carry_sub = (pd_src, h_recipe={}, pdr_package=null) => {
 	return a_direct.length? a_direct: a_deps;
 	// return a_deps;
 };
-
 
 
 let a_messages = fs.readdirSync('messages').sort().reverse().map(s => `messages/${s}`);
