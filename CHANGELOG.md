@@ -1,5 +1,15 @@
 # Changelog
 
+## v4.3.0 (2020-08-22)
+------------------------
+
+Added [`.directives` option](https://graphy.link/content.textual#config_write) to writers.
+
+
+### 🔧 Features
+ - Added `.directives` option to writers.
+
+
 ## v4.2.1 (2020-05-05)
 ------------------------
 

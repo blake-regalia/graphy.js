@@ -909,7 +909,7 @@ module.exports = async() => {
 							},
 						},
 
-						'api.js': () => jmacs_lint([`src/main/graphy.js.jmacs`]),
+						'api.js': () => jmacs_lint([`src/main/graphy.js.jmacs`], ['package.json']),
 
 						'cli.js': () => jmacs_lint([`src/cli/cli.js.jmacs`]),
 
