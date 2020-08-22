@@ -696,6 +696,96 @@ writer_suite({
 				demo:Banana rdf:type dbo:Fruit .
 			`,
 		}),
+
+		'directives styling: sparql': () => ({
+			config: {
+				style: {
+					directives: 'sparql',
+				},
+			},
+			type: 'array',
+			write: [],
+			output: /* syntax: turtle */ `
+				${Object.entries(H_PREFIXES)
+					.reduce((s_out, [s_prefix_id, p_iri]) => /* syntax: turtle */ ''
+						+`${s_out}prefix ${s_prefix_id}: <${p_iri}>\n`, '').replace(/\n$/, '')}
+			`
+		}),
+
+		'directives styling: Sparql': () => ({
+			config: {
+				style: {
+					directives: 'Sparql',
+				},
+			},
+			type: 'array',
+			write: [],
+			output: /* syntax: turtle */ `
+				${Object.entries(H_PREFIXES)
+					.reduce((s_out, [s_prefix_id, p_iri]) => /* syntax: turtle */ ''
+						+`${s_out}Prefix ${s_prefix_id}: <${p_iri}>\n`, '').replace(/\n$/, '')}
+			`
+		}),
+
+		'directives styling: SPARQL': () => ({
+			config: {
+				style: {
+					directives: 'SPARQL',
+				},
+			},
+			type: 'array',
+			write: [],
+			output: /* syntax: turtle */ `
+				${Object.entries(H_PREFIXES)
+					.reduce((s_out, [s_prefix_id, p_iri]) => /* syntax: turtle */ ''
+						+`${s_out}PREFIX ${s_prefix_id}: <${p_iri}>\n`, '').replace(/\n$/, '')}
+			`
+		}),
+		
+		'directives styling: turtle': () => ({
+			config: {
+				style: {
+					directives: 'turtle',
+				},
+			},
+			type: 'array',
+			write: [],
+			output: /* syntax: turtle */ `
+				${Object.entries(H_PREFIXES)
+					.reduce((s_out, [s_prefix_id, p_iri]) => /* syntax: turtle */ ''
+						+`${s_out}@prefix ${s_prefix_id}: <${p_iri}> .\n`, '').replace(/\n$/, '')}
+			`
+		}),
+
+		'directives styling: Turtle': () => ({
+			config: {
+				style: {
+					directives: 'Turtle',
+				},
+			},
+			type: 'array',
+			write: [],
+			output: /* syntax: turtle */ `
+				${Object.entries(H_PREFIXES)
+					.reduce((s_out, [s_prefix_id, p_iri]) => /* syntax: turtle */ ''
+						+`${s_out}@Prefix ${s_prefix_id}: <${p_iri}> .\n`, '').replace(/\n$/, '')}
+			`
+		}),
+
+		'directives styling: TURTLE': () => ({
+			config: {
+				style: {
+					directives: 'TURTLE',
+				},
+			},
+			type: 'array',
+			write: [],
+			output: /* syntax: turtle */ `
+				${Object.entries(H_PREFIXES)
+					.reduce((s_out, [s_prefix_id, p_iri]) => /* syntax: turtle */ ''
+						+`${s_out}@PREFIX ${s_prefix_id}: <${p_iri}> .\n`, '').replace(/\n$/, '')}
+			`
+		}),
 	});
 
 	const R_ERR_PREDICATE = /predicate position/;

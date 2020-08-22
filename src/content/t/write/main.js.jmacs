@@ -24,6 +24,10 @@ const Writable = require('@{channel('core.class.writable')}');
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
 const N_MAX_STRING_BUFFER = 1 << 12;
 
+const XC_DIRECTIVES_TYPE_SPARQL = 0b001;
+const XC_DIRECTIVES_CASE_PASCAL = 0b010;
+const XC_DIRECTIVES_CASE_UPPER = 0b100;
+
 @.{/*
 const P_IRI_RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 */}
@@ -43,6 +47,8 @@ class @{S_LABEL}_Writer extends Writable {
 			_b_debug: b_debug,
 			_s_indent: '\t',
 			_b_simplify_default_graph: false,
+			_xc_directives: 0,
+			_s_token_prefix: '@prefix',
 		});
 
 		@- B_QUADS
@@ -83,6 +89,50 @@ class @{S_LABEL}_Writer extends Writable {
 			// indent
 			if(gc_style.indent) {
 				this._s_indent = gc_style.indent.replace(/[^\s]/g, '');
+			}
+
+			// use sparql directives
+			let z_directives = gc_style.directives || gc_style.directives;
+			if(z_directives) {
+				switch(z_directives) {
+					case 'sparql': {
+						this._xc_directives = XC_DIRECTIVES_TYPE_SPARQL;
+						this._s_token_prefix = 'prefix';
+						break;
+					}
+
+					case 'Sparql': {
+						this._xc_directives = XC_DIRECTIVES_TYPE_SPARQL | XC_DIRECTIVES_CASE_PASCAL;
+						this._s_token_prefix = 'Prefix';
+						break;
+					}
+
+					case 'SPARQL': {
+						this._xc_directives = XC_DIRECTIVES_TYPE_SPARQL | XC_DIRECTIVES_CASE_UPPER;
+						this._s_token_prefix = 'PREFIX';
+						break;
+					}
+
+					case 'turtle': {
+						break;
+					}
+
+					case 'Turtle': {
+						this._xc_directives = XC_DIRECTIVES_CASE_PASCAL;
+						this._s_token_prefix = '@Prefix';
+						break;
+					}
+
+					case 'TURTLE': {
+						this._xc_directives = XC_DIRECTIVES_CASE_UPPER;
+						this._s_token_prefix = '@PREFIX';
+						break;
+					}
+
+					default: {
+						throw new Error(`Value not understood for 'directives' option: ${z_directives}`);
+					}
+				}
 			}
 		}
 
@@ -125,6 +175,8 @@ class @{S_LABEL}_Writer extends Writable {
 		}
 
 		// serialize initial prefix mappings
+		let s_token_prefix = this._s_token_prefix;
+		let s_prefix_eol = (this._xc_directives & XC_DIRECTIVES_TYPE_SPARQL)? '\n': ' .\n';
 		let s_prefixes = '';
 		try {
 			// each user-defined prefix
@@ -135,7 +187,7 @@ class @{S_LABEL}_Writer extends Writable {
 				}
 				
 				// append to string
-				s_prefixes += `@prefix ${s_prefix_id}: ${factory.namedNode(h_prefixes[s_prefix_id]).verbose()} .\n`;
+				s_prefixes += `${s_token_prefix} ${s_prefix_id}: ${factory.namedNode(h_prefixes[s_prefix_id]).verbose()}${s_prefix_eol}`;
 			}
 		}
 		// serialization error
@@ -160,6 +212,12 @@ class @{S_LABEL}_Writer extends Writable {
 		// clone prefixes
 		this._h_prefixes = {...this._h_prefixes};
 
+		// ref prefix token
+		let s_token_prefix = this._s_token_prefix;
+
+		// prep eol string
+		let s_prefix_eol = (this._xc_directives & XC_DIRECTIVES_TYPE_SPARQL)? '\n': ' .\n';
+
 		// each user-defined prefix
 		for(let s_prefix_id in h_prefixes) {
 			// invalid prefix id
@@ -168,7 +226,7 @@ class @{S_LABEL}_Writer extends Writable {
 			}
 
 			// append to string
-			s_prefixes += `@prefix ${s_prefix_id}: ${factory.namedNode(h_prefixes[s_prefix_id]).verbose()} .\n`;
+			s_prefixes += `${s_token_prefix} ${s_prefix_id}: ${factory.namedNode(h_prefixes[s_prefix_id]).verbose()}${s_prefix_eol}`;
 
 			// set prefix
 			this._h_prefixes[s_prefix_id] = h_prefixes[s_prefix_id];
