@@ -833,6 +833,7 @@ An interface that defines the config object passed to a content writer.
      - `.indent` : `string='\t'` -- sets the indentation string to use.
      - `.graphKeyword` : `boolean | string=''` -- only supported by TriG writer. If `true`, will write `GRAPH` before each graph open block. If a `string` is given, it must match `/^graph$/i`.
      - `.simplifyDefaultGraph` : `boolean=false` -- only supported by TriG writer. If `true`, will omit serializating the surrounding optional graph block for quads within the default graph ([see Example 3 from TriG specification](https://www.w3.org/TR/trig/#sec-graph-statements)).
+     - `.directives` : `string='turtle'` -- acceptable values are `'turtle'`, `'Turtle'`, `'TURTLE'`, `'sparql'`, `'Sparql'`, or `'SPARQL'`, to indicate both the token type (i.e., Turtle-style `@prefix` or SPARQL-style `prefix`) and the capitalization (i.e., lower-case `@prefix` / `prefix`; pascal-case `@Prefix` / `Prefix`; or upper-case `@PREFIX` / `PREFIX`).
 
 <a name="config_lists" />
 
