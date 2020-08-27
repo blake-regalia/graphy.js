@@ -1,6 +1,6 @@
 # ROADMAP
 
-A list of planned features for `graphy`, lossely grouped and sorted by priority.
+A list of planned features for `graphy`, loosely grouped and sorted by priority.
 
 ## Level 3: In Progress
  - ES Module Support for top-level groups.
