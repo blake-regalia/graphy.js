@@ -105,7 +105,7 @@ const h_lib_root_package_json = {
 };
 
 // package map
-const h_packages = {
+const h_packages_top = {
 	core: {
 		description: 'Contains DataFactory',
 		links: ['core.data.factory'],
@@ -137,6 +137,10 @@ const h_packages = {
 		],
 	},
 };
+
+const h_packages = {
+	...h_packages_top,
+}
 
 // each package in the tree
 (function map_tree(h_tree, s_path='') {
@@ -464,6 +468,9 @@ module.exports = async() => {
 		defs: {
 			// contet sub enum
 			content_sub: a_content_subs,
+
+			// top packages
+			package_top: h_packages_top,
 
 			...(Object.entries(h_manifest_deps).reduce((h_out, [si_key, h_deps]) => ({
 				...h_out,
@@ -833,6 +840,26 @@ module.exports = async() => {
 				},
 
 				package: {
+					// supers
+					':package_top': [si_package => ({
+						[si_package]: (g_package => ({
+							...scoped_package(si_package),
+
+							'main.js': () => ({
+								deps: [
+									...a_content_subs.map(s => `build/package/${s}/**`),
+								],
+								write: /* syntax: js */ `
+									import 
+									${g_package.links.map}
+								`,
+								run: /* syntax: bash */ `
+									npx jmacs emk
+								`,
+							}),
+						}))(h_packages_top[si_package]),
+					})],
+
 					// content subs
 					':content_sub': [si_package => ({
 						[si_package]: (g_package => ({
