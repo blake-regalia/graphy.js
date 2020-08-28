@@ -1,5 +1,15 @@
 # Changelog
 
+## v4.3.1 (2020-08-27)
+------------------------
+
+Fixed XML Scriber normalizing quads from other libs.
+
+
+### 🔧 Fixes
+ - `@graphy/content.xml.scribe` - XML Scriber now normalizes quad-like objects before serializing.
+
+
 ## v4.3.0 (2020-08-22)
 ------------------------
 
