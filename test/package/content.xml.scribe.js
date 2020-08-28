@@ -69,6 +69,47 @@ serializer_suite({
 						:list-c1-literals "object"@en, "object"^^:d, "object"^^<x://d> .
 				`,
 			}),
+
+			'quad-like': () => ({
+				type: 'array',
+				write: [
+					{
+						subject: {
+							termType: 'NamedNode',
+							value: 'z://y/subject',
+						},
+						predicate: {
+							termType: 'NamedNode',
+							value: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+						},
+						object: {
+							termType: 'NamedNode',
+							value: 'z://y/type',
+						},
+					},
+					{
+						subject: {
+							termType: 'NamedNode',
+							value: 'z://y/subject',
+						},
+						predicate: {
+							termType: 'NamedNode',
+							value: 'z://y/literal',
+						},
+						object: {
+							termType: 'Literal',
+							value: 'object',
+							language: '',
+							datatype: null,
+						},
+					},
+				],
+				validate: `
+					:subject a :type ;
+						:literal "object" ;
+						.
+				`,
+			}),
 		},
 	});
 

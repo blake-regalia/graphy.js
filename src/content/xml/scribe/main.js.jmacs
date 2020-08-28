@@ -345,6 +345,9 @@ class XML_Scriber extends Scribable {
 	}
 
 	_serialize_quad(g_quad) {
+		// normalize quad
+		let kq_quad = factory.from.quad(g_quad);
+
 		// no longer able to modify prefixes
 		if(this._b_prefixes_open) {
 			this._s_push += '>';
@@ -355,7 +358,7 @@ class XML_Scriber extends Scribable {
 			subject: kt_subject,
 			predicate: kt_predicate,
 			object: kt_object,
-		} = g_quad;
+		} = kq_quad;
 
 		// serialize predicate
 		let [sx1_predicate, sx_arc] = XML_Serializer$predicate(this, kt_predicate);
