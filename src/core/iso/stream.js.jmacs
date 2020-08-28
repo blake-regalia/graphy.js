@@ -119,10 +119,12 @@ const stream = require('readable-stream');
 	@//@object-literal
 	// rdfjs impl
 	import(ds_source) {
-		return ds_source
+		ds_source
 			.on('data', w_chunk => this.write(w_chunk))
 			.on('end', () => this.end())
 			.on('error', e_read => this.emit('error', e_read));
+
+		return this;
 	}
 @;
 

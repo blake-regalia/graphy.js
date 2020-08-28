@@ -1,5 +1,15 @@
 # Changelog
 
+## v4.3.2 (2020-08-28)
+------------------------
+
+Dependency upgrades and RDFJS compatibility fixes.
+
+### 🔧 Fixes
+ - Upgraded dependencies (and devDependencies), removed unused dependency on `uuid`.
+ - Fixed RDFJS `.import` method returning the wrong stream.
+
+
 ## v4.3.1 (2020-08-27)
 ------------------------
 
