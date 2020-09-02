@@ -2050,6 +2050,14 @@ class Reader {
 			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
+		// rdf-star
+		@{else_if_char('<<')}
+			// advance to next token
+			@{whitespace('i+2')}
+
+			// 
+			@{push_state('triple_x')}
+
 		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
 		@{else_retry()}
 
