@@ -22,6 +22,8 @@ const H_XML_ESCAPES = {
 	"'": '&apos;',
 };
 
+const R_NS_XML = /^xml/i;
+
 const escape_xml_text = s_text => s_text.replace(R_XML_ESCAPES, s => H_XML_ESCAPES[s]);
 
 const R_XML_NAME_SIMPLE_EOS = /([A-Za-z_][A-Za-z_.0-9-]*)$/;
@@ -150,6 +152,9 @@ function XML_Serializer$predicate(k_self, kt_predicate) {
 						break PREFIX_LOOKUP;
 					}
 				}
+
+				// prefix not found
+				break;
 			}
 		}
 
@@ -225,6 +230,11 @@ class XML_Scriber extends Scribable {
 				else {
 					throw new Error(`Cannot change prefixes in RDF/XML serializer. Attempted to modify '${si_prefix}' from <${h_prefixes[si_prefix]}> to <${h_prefixes_in[si_prefix]}>`);
 				}
+			}
+
+			// prefix not allowed
+			if(R_NS_XML.test(si_prefix)) {
+				throw new Error(`Cannot serialize prefix '${si_prefix}' since it is reserved under the blanket XML namespace.`);
 			}
 
 			// serialize prefix

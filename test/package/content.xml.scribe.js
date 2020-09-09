@@ -431,5 +431,33 @@ serializer_suite({
 		}),
 
 	});
+
+	serializer.throws({
+		'xml prefix': () => ({
+			type: 'prefixes',
+			write: {
+				xml: 'http://noop/',
+			},
+			match: /^Cannot serialize prefix 'xml'/,
+		}),
+
+		'xmlns prefix': () => ({
+			type: 'prefixes',
+			write: {
+				xmlns: 'http://noop/',
+			},
+
+			match: /^Cannot serialize prefix 'xmlns'/,
+		}),
+
+		'xml-stylesheet prefix': () => ({
+			type: 'prefixes',
+			write: {
+				'xml-stylesheet': 'http://noop/',
+			},
+
+			match: /^Cannot serialize prefix 'xml-stylesheet'/,
+		}),
+	});
 });
 
