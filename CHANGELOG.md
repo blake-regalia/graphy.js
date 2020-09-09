@@ -1,5 +1,15 @@
 # Changelog
 
+## v4.3.3 (2020-09-08)
+------------------------
+
+Fixed handling of prefixes in XML Scriber.
+
+### 🔧 Fixes
+ - `@graphy/content.xml.sribe` - Patched bug in XML Scriber when serializing prefixes that could lead to an infinite loop. Also, now prevents user from serializing any namespace beginning with 'xml' as these are reserved namespaces.
+ - Upgraded dependency on `uri-js`.
+
+
 ## v4.3.2 (2020-08-28)
 ------------------------
 
