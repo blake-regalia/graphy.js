@@ -1099,107 +1099,69 @@ DefaultGraph.prototype = Object.assign(
 		},
 	});
 
-function NoGraph() {}
-NoGraph.prototype = Object.assign(
-	Object.create(GenericTerm.prototype), {
-		value: '',
-		termType: 'NoGraph',
-
-		concise() {
-			return '';
-		},
-
-		terse() {
-			return '';
-		},
-
-		verbose() {
-			return '';
-		},
-
-		isolate() {
-			return {
-				termType: 'NoGraph',
-				value: '',
-			};
-		},
-	});
-
 const KT_DEFAULT_GRAPH = new DefaultGraph();
 function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 	this.subject = h_subject;
 	this.predicate = h_predicate;
 	this.object = h_object;
 	this.graph = h_graph;
-} Object.assign(Quad.prototype, {
-	isGraphyQuad: true,
+}
+Quad.prototype = Object.assign(
+	Object.create(GenericTerm.prototype), {
+		value: '',
+		termType: 'Quad',
+		isGraphyQuad: true,
 
-	equals(z_other) {
-		return z_other
-			? this === z_other
-				|| (this.object.equals(z_other.object)
-					&& this.subject.equals(z_other.subject)
-					&& this.predicate.equals(z_other.predicate)
-					&& this.graph.equals(z_other.graph))
-			: false;
-	},
+		equals(z_other) {
+			return z_other
+				? this === z_other
+					|| (this.object.equals(z_other.object)
+						&& this.subject.equals(z_other.subject)
+						&& this.predicate.equals(z_other.predicate)
+						&& this.graph.equals(z_other.graph))
+				: false;
+		},
 
-	valueOf() {
-		return this.verbose();
-	},
+		valueOf() {
+			return this.verbose();
+		},
 
-	concise(h_prefixes={}) {
-		return [
-			this.subject.concise(h_prefixes),
-			this.predicate.concise(h_prefixes),
-			this.object.concise(h_prefixes),
-			this.graph.concise(h_prefixes),
-		];
-	},
+		concise(h_prefixes={}) {
+			return [
+				this.subject.concise(h_prefixes),
+				this.predicate.concise(h_prefixes),
+				this.object.concise(h_prefixes),
+				this.graph.concise(h_prefixes),
+			];
+		},
 
-	terse(h_prefixes) {
-		let b_default_graph = this.graph.isDefaultGraph;
-		return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
-			+this.subject.terse(h_prefixes)
-			+' '+this.predicate.terse(h_prefixes)
-			+' '+this.object.terse(h_prefixes)+' .'
-			+(b_default_graph? '': ' }');
-	},
+		terse(h_prefixes) {
+			let b_default_graph = this.graph.isDefaultGraph;
+			return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
+				+this.subject.terse(h_prefixes)
+				+' '+this.predicate.terse(h_prefixes)
+				+' '+this.object.terse(h_prefixes)+' .'
+				+(b_default_graph? '': ' }');
+		},
 
-	verbose() {
-		return this.subject.verbose()
-			+' '+this.predicate.verbose()
-			+' '+this.object.verbose()
-			+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
-	},
+		verbose() {
+			return this.subject.verbose()
+				+' '+this.predicate.verbose()
+				+' '+this.object.verbose()
+				+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
+		},
 
-	isolate() {
-		return {
-			subject: this.subject.isolate(),
-			predicate: this.predicate.isolate(),
-			object: this.object.isolate(),
-			graph: this.graph.isolate(),
-		};
-	},
-});
-
-@.{/*
-const H_NO_GRAPH = new NoGraph();
-function Triple(h_subject, h_predicate, h_object) {
-	this.subject = h_subject;
-	this.predicate = h_predicate;
-	this.object = h_object;
-	this.graph = H_NO_GRAPH;
-} Triple.prototype = Object.assign(
-	Object.create(Quad.prototype, {
-		// equals(y_other) {
-		// 	return this === y_other
-		// 		|| (this.object.equals(y_other.object)
-		// 			&& this.subject.equals(y_other.subject)
-		// 			&& this.predicate.equals(y_other.predicate));
-		// },
-	}));
-*/}
+		isolate() {
+			return {
+				termType: 'Quad',
+				value: '',
+				subject: this.subject.isolate(),
+				predicate: this.predicate.isolate(),
+				object: this.object.isolate(),
+				graph: this.graph.isolate(),
+			};
+		},
+	});
 
 let g_raw = {
 	namedNode(p_iri) {
