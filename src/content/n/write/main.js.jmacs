@@ -323,7 +323,7 @@ class @{S_LABEL}_Writer extends Writable {
 				}
 				// RDFJS term
 				else if(z_objects.termType) {
-					return s_pre+factory.from.term(z_objects).verbose()+s_post;
+					return s_pre+factory.fromTerm(z_objects).verbose()+s_post;
 				}
 			}
 

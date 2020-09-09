@@ -13,15 +13,14 @@ const crypto = require('crypto');
 
 const stream = require('@{channel('core.iso.stream')}');
 const factory = require('@{channel('core.data.factory')}');
-const factory_from = factory.from;
 
 const $_KEYS = Symbol('key-count');
 const $_QUADS = Symbol('quad-count');
 const $_KIDS = Symbol('has-descendents');
 const $_THIN = Symbol('has-thin-keys');
 
-const from_term = factory.from.term;
-const from_quad = factory.from.quad;
+const from_term = factory.fromTerm;
+const from_quad = factory.fromQuad;
 const KT_DEFAULT_GRAPH = factory.defaultGraph();
 const F_SORT_LINE = (g_a, g_b) => g_a.line < g_b.line? -1: 1;
 
@@ -77,7 +76,7 @@ class Matcher {
 		// Term
 		else if('string' === typeof @{s_term}.value) {
 			// convert to graphy term
-			let kt_@{s_role} = factory_from.rdfjs_term(@{s_term});
+			let kt_@{s_role} = factory.fromRdfjsTerm(@{s_term});
 
 			// convert to verbose-term string
 			let svt_@{s_role} = kt_@{s_role}.concise();
@@ -90,7 +89,7 @@ class Matcher {
 		@- 'graph' === s_role
 			// null or default graph; add subtree to list
 			else if('defaultGraph' === @{s_term}.type) {
-				@{s_list}.push(['*', factory_from.rdfjs_term(@{s_term})]);
+				@{s_list}.push(['*', factory.fromRdfjsTerm(@{s_term})]);
 			}
 		@;
 		// invalid
@@ -161,7 +160,7 @@ class Matcher {
 						// Term
 						else if('string' === typeof z_object.value) {
 							// convert to graphy term
-							let kt_object = factory_from.rdfjs_term(z_object);
+							let kt_object = factory.fromRdfjsTerm(z_object);
 
 							// term is in set; yield quad
 							if(as_objects.has(kt_object.concise())) {
@@ -2958,7 +2957,7 @@ class FastDataset extends stream.Duplex {
 				if('concise' in z) return z.concise();
 
 				// foreign term; make graphy
-				return factory_from.rdfjs_term(z).concise();
+				return factory.fromRdfjsTerm(z).concise();
 			}
 
 			// null

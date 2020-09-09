@@ -507,7 +507,7 @@ class @{S_LABEL}_Writer extends Writable {
 				}
 				// RDFJS term
 				else if(z_objects.termType) {
-					return factory.from.term(z_objects).terse(h_prefixes);
+					return factory.fromTerm(z_objects).terse(h_prefixes);
 				}
 			}
 
@@ -554,7 +554,7 @@ class @{S_LABEL}_Writer extends Writable {
 	// rdfjs quad
 	_serialize_quad(g_quad) {
 		let h_prefixes = this._h_prefixes;
-		let kq_quad = factory.from.quad(g_quad);
+		let kq_quad = factory.fromQuad(g_quad);
 
 		@- B_QUADS
 			let st_graph = kq_quad.graph.terse(h_prefixes);

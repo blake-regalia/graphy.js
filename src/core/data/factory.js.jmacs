@@ -1385,7 +1385,7 @@ const factory = module.exports = {
 		}
 		// rdfjs term
 		else {
-			return factory.from.rdfjs_term(z_term);
+			return factory.fromRdfjsTerm(z_term);
 		}
 	},
 
@@ -1625,77 +1625,72 @@ const factory = module.exports = {
 		}
 	},
 
-	from: {
-		term(z_term) {
-			if(z_term.isGraphyTerm) return z_term;
+	fromTerm(z_term) {
+		if(z_term.isGraphyTerm) return z_term;
 
-			return factory.from.rdfjs_term(z_term);
-		},
-
-		quad(g_quad) {
-			if(g_quad.isGraphyQuad) return g_quad;
-
-			let g_from = factory.from;
-			return new Quad(
-				g_from.rdfjs_term(g_quad.subject),
-				g_from.rdfjs_term(g_quad.predicate),
-				g_from.rdfjs_term(g_quad.object),
-				g_quad.graph? g_from.rdfjs_term(g_quad.graph): KT_DEFAULT_GRAPH,
-			);
-		},
-
-		rdfjs_term(g_term) {
-			switch(g_term.termType) {
-				case 'NamedNode': return new NamedNode(g_term.value);
-				case 'BlankNode': return new BlankNode(g_term.value);
-				case 'Literal': return factory.literal(g_term.value, g_term.language
-					? g_term.language
-					: (g_term.datatype
-						? new NamedNode(g_term.datatype.value)
-						: null));
-				case 'DefaultGraph': return new DefaultGraph();
-				default: {
-					throw new TypeError(`invalid termType: ${g_term.termType}`);
-				}
-			}
-		},
-
-		sparql_result(g_term) {
-			switch(g_term.type) {
-				case 'uri': {
-					return new NamedNode(g_term.value);
-				}
-
-				case 'literal':
-				case 'typed-literal': {
-					if('xml:lang' in g_term) {
-						return new LanguagedLiteral(g_term.value, g_term['xml:lang']);
-					}
-					else if('datatype' in g_term && '@{P_IRI_XSD}string' !== g_term.datatype) {
-						return new ExplicitlyDatatypedLiteral(g_term.value, new NamedNode(g_term.datatype));
-					}
-					else {
-						return new SimpleLiteral(g_term.value);
-					}
-				}
-
-				case 'bnode': {
-					return new BlankNode(g_term.value);
-				}
-
-				default: {
-					throw new Error(`unexpected SPARQL Result JSON Format Term type: ${g_term.type}`);
-				}
-			}
-		},
+		return factory.fromRdfjsTerm(z_term);
 	},
 
-	to: {
-		boolean: s_boolean => Literal_Boolean.from(s_boolean),
-		integer: s_integer => Literal_Integer.from(s_integer),
-		decimal: s_decimal => Literal_Decimal.from(s_decimal),
-		double: s_double => Literal_Double.from(s_double),
+	fromQuad(g_quad) {
+		if(g_quad.isGraphyQuad) return g_quad;
+
+		return new Quad(
+			factory.fromRdfjsTerm(g_quad.subject),
+			factory.fromRdfjsTerm(g_quad.predicate),
+			factory.fromRdfjsTerm(g_quad.object),
+			g_quad.graph? factory.fromRdfjsTerm(g_quad.graph): KT_DEFAULT_GRAPH,
+		);
 	},
+
+	fromRdfjsTerm(g_term) {
+		switch(g_term.termType) {
+			case 'NamedNode': return new NamedNode(g_term.value);
+			case 'BlankNode': return new BlankNode(g_term.value);
+			case 'Literal': return factory.literal(g_term.value, g_term.language
+				? g_term.language
+				: (g_term.datatype
+					? new NamedNode(g_term.datatype.value)
+					: null));
+			case 'DefaultGraph': return new DefaultGraph();
+			default: {
+				throw new TypeError(`invalid termType: ${g_term.termType}`);
+			}
+		}
+	},
+
+	fromSparqlResult(g_term) {
+		switch(g_term.type) {
+			case 'uri': {
+				return new NamedNode(g_term.value);
+			}
+
+			case 'literal':
+			case 'typed-literal': {
+				if('xml:lang' in g_term) {
+					return new LanguagedLiteral(g_term.value, g_term['xml:lang']);
+				}
+				else if('datatype' in g_term && '@{P_IRI_XSD}string' !== g_term.datatype) {
+					return new ExplicitlyDatatypedLiteral(g_term.value, new NamedNode(g_term.datatype));
+				}
+				else {
+					return new SimpleLiteral(g_term.value);
+				}
+			}
+
+			case 'bnode': {
+				return new BlankNode(g_term.value);
+			}
+
+			default: {
+				throw new Error(`unexpected SPARQL Result JSON Format Term type: ${g_term.type}`);
+			}
+		}
+	},
+
+	toBoolean: s_boolean => Literal_Boolean.from(s_boolean),
+	toInteger: s_integer => Literal_Integer.from(s_integer),
+	toDecimal: s_decimal => Literal_Decimal.from(s_decimal),
+	toDouble: s_double => Literal_Double.from(s_double),
 
 
 	/**
@@ -1733,7 +1728,7 @@ const factory = module.exports = {
 	 */
 	hash(g_quad) {
 		// normalize quad
-		let k_quad = factory.from.quad(g_quad);
+		let k_quad = factory.fromQuad(g_quad);
 
 		// create hash
 		let d_hash = crypto.createHash('sha256');
@@ -1759,6 +1754,4 @@ const factory = module.exports = {
 Object.assign(factory, {
 	c3: factory.triples,
 	c4: factory.quads,
-	fromTerm: factory.from.term,
-	fromQuad: factory.from.quad,
 });
