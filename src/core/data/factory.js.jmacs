@@ -369,13 +369,46 @@ function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 	}
 }
 
+@$ R_DECLARE = /^\s*class\s*([^\s]+)\s*(?:extends\s*([^\s]+)\s*)/;
+
+@def declare(s_declare, g_def)
+	@.{
+		const [, s_class, s_extends] = R_DECLARE.exec(s_declare);
+		const sj_constructor = Object.hasOwnProperty.call(g_def, 'constructor')
+			? g_def.constructor.toString().replace(/^constructor/, '')
+			: /* syntax: js */ `() {}`;
+
+		const g_methods = Object.getOwnPropertyDescriptors(g_def.methods? g_def.methods.prototype : {});
+		delete g_methods.constructor;
+	}
+	function @{s_class}@{sj_constructor} {
+		@{Object.keys(g_methods).length? /* syntax: js */ `const gp_self = `: ''}@{s_class}.prototype = Object.create(@{s_extends}.prototype);
+		@*{
+			for(let [si_method, g_method] of Object.entries(g_methods)) {
+				if('function' === typeof g_method.value) {
+					yield /* syntax: js */ `
+						gp_self.${si_method} = function ${s_class}$${g_method.value.toString()};
+					`;
+				}
+				else if('function' === typeof g_method.get) {
+					yield /* syntax: j */ `
+						Object.defineProperty(gp_self, '${si_method}', {
+							get${g_method.get.toString().replace(/^get [^\(]+/, '')},
+						})
+					`;
+				}
+			}
+		} @*{
+			for(let [si_property, sj_value] of Object.entries(g_def.properties || {})) {
+				yield /* syntax: js */ `
+					gp_self.${si_property} = ${sj_value};`;
+			}
+		}
+	}
+@;
 
 class GenericTerm {
 	valueOf() {
-		return this.concise();
-	}
-
-	toString() {
 		return this.concise();
 	}
 
@@ -385,39 +418,44 @@ class GenericTerm {
 				|| (z_other.termType === this.termType && z_other.value === this.value)
 			: false;
 	}
-} Object.assign(GenericTerm.prototype, {
-	isGraphyTerm: true,
-});
+} {
+	const gp_self = GenericTerm.prototype;
+	gp_self.isGraphyTerm = true;
+	gp_self.toString = gp_self.valueOf;
+}
 
-
-class NamedNode extends GenericTerm {
+@{declare(/* syntax: js */ `class NamedNode extends GenericTerm`, {
 	constructor(s_iri) {
-		super();
 		this.value = s_iri;
-	}
+	},
+	/* eslint-disable no-undef */
+	methods: class {
+		concise(h_prefixes={}) {
+			return concise(this.value, h_prefixes);
+		}
 
-	concise(h_prefixes={}) {
-		return concise(this.value, h_prefixes);
-	}
+		terse(h_prefixes={}, b_opt=false) {
+			return terse(clean_iri(this.value), h_prefixes, b_opt);
+		}
 
-	terse(h_prefixes={}, b_opt=false) {
-		return terse(clean_iri(this.value), h_prefixes, b_opt);
-	}
+		verbose() {
+			return '<'+clean_iri(this.value)+'>';
+		}
 
-	verbose() {
-		return '<'+clean_iri(this.value)+'>';
-	}
-
-	isolate() {
-		return {
-			termType: 'NamedNode',
-			value: this.value,
-		};
-	}
-} Object.assign(NamedNode.prototype, {
-	termType: 'NamedNode',
-	isNamedNode: true,
-});
+		isolate() {
+			return {
+				termType: 'NamedNode',
+				value: this.value,
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		termType: /* syntax: js */ `'NamedNode'`,
+		isNamedNode: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
 
 const KT_RDF_TYPE = new NamedNode('@{P_IRI_RDF}type');
 KT_RDF_TYPE.isRdfTypeAlias = true;  // for serialization
@@ -433,219 +471,242 @@ const KT_XSD_DATE = new NamedNode('@{P_IRI_XSD}date');
 const KT_XSD_DATETIME = new NamedNode('@{P_IRI_XSD}dateTime');
 const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 
-class GenericLiteral extends GenericTerm {
-	equals(z_other) {
-		return z_other
-			? this === z_other
-				|| ('Literal' === z_other.termType && z_other.value === this.value
-					&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
-			: false;
-	}
-
-	verbose() {
-		return JSON.stringify(this.value)
-			+ (this.language
-				? '@'+this.language
-				: '^^'+this.datatype.verbose());
-	}
-
-	concise(h_prefixes) {
-		if(this.language) {
-			return '@'+this.language+'"'+this.value;
+@{declare(/* syntax: js */ `class GenericLiteral extends GenericTerm`, {
+	/* eslint-disable no-undef */
+	methods: class {
+		equals(z_other) {
+			return z_other
+				? this === z_other
+					|| ('Literal' === z_other.termType && z_other.value === this.value
+						&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
+				: false;
 		}
-		else {
-			return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+
+		verbose() {
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: '^^'+this.datatype.verbose());
 		}
-	}
 
-	terse(h_prefixes={}) {
-		// turn into terse
-		let st_datatype = this.datatype.terse(h_prefixes);
+		concise(h_prefixes) {
+			if(this.language) {
+				return '@'+this.language+'"'+this.value;
+			}
+			else {
+				return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+			}
+		}
 
-		// stringify literal
-		return JSON.stringify(this.value)
-			+ (this.language
-				? '@'+this.language
-				: '^^'+st_datatype);
-	}
+		terse(h_prefixes={}) {
+			// turn into terse
+			let st_datatype = this.datatype.terse(h_prefixes);
 
-	isolate() {
-		return {
-			termType: 'Literal',
-			value: this.value,
-			language: this.language,
-			datatype: this.datatype.isolate(),
-		};
-	}
-} Object.assign(GenericLiteral.prototype, {
-	datatype: KT_XSD_STRING,
-	language: '',
-	termType: 'Literal',
-	isLiteral: true,
-	isSimple: false,
-});
+			// stringify literal
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: '^^'+st_datatype);
+		}
 
-class LanguagedLiteral extends GenericLiteral {
+		isolate() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: this.language,
+				datatype: this.datatype.isolate(),
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		datatype: /* syntax: js */ `KT_XSD_STRING`,
+		language: /* syntax: js */ `''`,
+		termType: /* syntax: js */ `'Literal'`,
+		isLiteral: /* syntax: js */ `true`,
+		isSimple: /* syntax: js */ `false`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
+
+@{declare(/* syntax: js */ `class LanguagedLiteral extends GenericLiteral`, {
 	constructor(s_value, s_lang) {
-		super();
 		this.value = s_value;
 
 		// remove optional '@' character from beginning
 		this.language = ('@' === s_lang[0]? s_lang.slice(1): s_lang).toLowerCase();
-	}
+	},
+	/* eslint-disable no-undef */
+	methods: class {
+		verbose() {
+			return JSON.stringify(this.value)+'@'+this.language;
+		}
 
-	verbose() {
-		return JSON.stringify(this.value)+'@'+this.language;
-	}
-
-	concise() {
-		return '@'+this.language+'"'+this.value;
-	}
-
-	terse() {
-		// stringify literal
-		return JSON.stringify(this.value)+'@'+this.language;
-	}
-
-	isolate() {
-		return {
-			termType: 'Literal',
-			value: this.value,
-			language: this.language,
-			datatype: G_ISOLATE_RDF_LANG_STRING,
-		};
-	}
-} Object.assign(LanguagedLiteral.prototype, {
-	datatype: KT_RDF_LANG_STRING,
-	isLanguaged: true,
-});
-
-
-class DatatypedLiteral extends GenericLiteral {
-	verbose() {
-		return JSON.stringify(this.value)+'^^'+this.datatype.verbose();
-	}
-
-	concise(h_prefixes) {
-		return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
-	}
-
-	terse(h_prefixes={}) {
-		// turn into terse
-		let st_datatype = this.datatype.terse(h_prefixes);
-
-		// stringify literal
-		return JSON.stringify(this.value)+'^^'+st_datatype;
-	}
-
-	isolate() {
-		return {
-			termType: 'Literal',
-			value: this.value,
-			language: this.language,
-			datatype: this.datatype.isolate(),
-		};
-	}
-} Object.assign(DatatypedLiteral.prototype, {
-	isDatatyped: true,
-});
-
-class ExplicitlyDatatypedLiteral extends DatatypedLiteral {
-	constructor(s_value, kt_datatype) {
-		super();
-		this.value = s_value;
-		this.datatype = kt_datatype;
-	}
-}
-
-class RawLiteral extends GenericTerm {
-	constructor(s_value) {
-		super();
-		this.value = s_value;
-	}
-
-	get isSimple() {
-		return !this.language && !this.datatype.equals(KT_XSD_STRING);
-	}
-
-	get isLanguaged() {
-		return !!this.language;
-	}
-
-	get isDatatyped() {
-		return KT_XSD_STRING.equals(this.datatype);
-	}
-
-	equals(z_other) {
-		return z_other
-			? this === z_other
-				|| ('Literal' === z_other.termType && z_other.value === this.value
-					&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
-			: false;
-	}
-
-	verbose() {
-		return JSON.stringify(this.value)
-			+ (this.language
-				? '@'+this.language
-				: '^^'+this.datatype.verbose());
-	}
-
-	concise(h_prefixes) {
-		if(this.language) {
+		concise() {
 			return '@'+this.language+'"'+this.value;
 		}
-		else {
+
+		terse() {
+			// stringify literal
+			return JSON.stringify(this.value)+'@'+this.language;
+		}
+
+		isolate() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: this.language,
+				datatype: G_ISOLATE_RDF_LANG_STRING,
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		datatype: /* syntax: js */ `KT_RDF_LANG_STRING`,
+		isLanguaged: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
+
+
+@{declare(/* syntax: js */ `class DatatypedLiteral extends GenericLiteral`, {
+	/* eslint-disable no-undef */
+	methods: class {
+		verbose() {
+			return JSON.stringify(this.value)+'^^'+this.datatype.verbose();
+		}
+
+		concise(h_prefixes) {
 			return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
 		}
-	}
 
-	terse(h_prefixes={}) {
-		// turn into terse
-		let st_datatype = this.datatype.terse(h_prefixes);
+		terse(h_prefixes={}) {
+			// turn into terse
+			let st_datatype = this.datatype.terse(h_prefixes);
 
-		// stringify literal
-		return JSON.stringify(this.value)
-			+ (this.language
-				? '@'+this.language
-				: '^^'+st_datatype);
-	}
+			// stringify literal
+			return JSON.stringify(this.value)+'^^'+st_datatype;
+		}
 
-	isolate() {
-		return {
-			termType: 'Literal',
-			value: this.value,
-			language: this.language,
-			datatype: this.datatype.isolate(),
-		};
-	}
-} Object.assign(RawLiteral.prototype, {
-	datatype: KT_XSD_STRING,
-	language: '',
-	termType: 'Literal',
-	isLiteral: true,
-});
+		isolate() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: this.language,
+				datatype: this.datatype.isolate(),
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		isDatatyped: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
 
-class SimpleLiteral extends GenericLiteral {
-	constructor(s_value) {
-		super();
+@{declare(/* syntax: js */ `class ExplicitlyDatatypedLiteral extends DatatypedLiteral`, {
+	constructor(s_value, kt_datatype) {
 		this.value = s_value;
-	}
+		this.datatype = kt_datatype;
+	},
+})}
 
-	verbose() {
-		return JSON.stringify(this.value);
-	}
+@{declare(/* syntax: js */ `class RawLiteral extends GenericTerm`, {
+	constructor(s_value) {
+		this.value = s_value;
+	},
+	/* eslint-disable no-undef */
+	methods: class {
+		get isSimple() {
+			return !this.language && !this.datatype.equals(KT_XSD_STRING);
+		}
 
-	concise() {
-		return '"'+this.value;
-	}
+		get isLanguaged() {
+			return !!this.language;
+		}
 
-	terse() {
-		return JSON.stringify(this.value);
-	}
-} Object.assign(SimpleLiteral.prototype, {
-	isSimple: true,
-});
+		get isDatatyped() {
+			return KT_XSD_STRING.equals(this.datatype);
+		}
+
+		equals(z_other) {
+			return z_other
+				? this === z_other
+					|| ('Literal' === z_other.termType && z_other.value === this.value
+						&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
+				: false;
+		}
+
+		verbose() {
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: '^^'+this.datatype.verbose());
+		}
+
+		concise(h_prefixes) {
+			if(this.language) {
+				return '@'+this.language+'"'+this.value;
+			}
+			else {
+				return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+			}
+		}
+
+		terse(h_prefixes={}) {
+			// turn into terse
+			let st_datatype = this.datatype.terse(h_prefixes);
+
+			// stringify literal
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: '^^'+st_datatype);
+		}
+
+		isolate() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: this.language,
+				datatype: this.datatype.isolate(),
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		datatype: /* syntax: js */ `KT_XSD_STRING`,
+		language: /* syntax: js */ `''`,
+		termType: /* syntax: js */ `'Literal'`,
+		isLiteral: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
+
+@{declare(/* syntax: js */ `class SimpleLiteral extends GenericLiteral`, {
+	constructor(s_value) {
+		this.value = s_value;
+	},
+	/* eslint-disable no-undef */
+	methods: class {
+		verbose() {
+			return JSON.stringify(this.value);
+		}
+
+		concise() {
+			return '"'+this.value;
+		}
+
+		terse() {
+			return JSON.stringify(this.value);
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		isSimple: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
 
 
 @> literal(s_type, g_config)
@@ -679,15 +740,17 @@ class SimpleLiteral extends GenericLiteral {
 		terse() {
 			@{g_config.terse}
 		}
-	} Object.assign(Literal_@{s_type_proper}.prototype, {
-		datatype: KT_XSD_@{s_type_caps},
+	} {
+		const gp_self = Literal_@{s_type_proper}.prototype;
+		gp_self.datatype = KT_XSD_@{s_type_caps};
 		@- b_boolean
-			isBoolean: true,
+			gp_self.isBoolean = true;
 		@:
-			isNumeric: true,
-			is@{s_type_proper}: true,
+			gp_self.isNumeric = true;
+			gp_self.is@{s_type_proper} = true;
 		@;
-	});
+		gp_self.star = gp_self.terse;
+	}
 @;
 
 
@@ -947,9 +1010,11 @@ class Literal_PositiveInfinity extends Literal_Double {
 	terse(h_prefixes) {
 		return '"INF"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
-} Object.assign(Literal_PositiveInfinity.prototype, {
-	isInfinite: true,
-});
+} {
+	const gp_self = Literal_PositiveInfinity.prototype;
+	gp_self.isInfinite = true;
+	gp_self.star = gp_self.terse;
+}
 
 class Literal_NegativeInfinity extends Literal_Double {
 	constructor() {
@@ -960,9 +1025,11 @@ class Literal_NegativeInfinity extends Literal_Double {
 	terse(h_prefixes) {
 		return '"-INF"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
-} Object.assign(Literal_NegativeInfinity.prototype, {
-	isInfinite: true,
-});
+} {
+	const gp_self = Literal_NegativeInfinity.prototype;
+	gp_self.isInfinite = true;
+	gp_self.star = gp_self.terse;
+}
 
 class Literal_NaN extends Literal_Double {
 	constructor() {
@@ -973,145 +1040,155 @@ class Literal_NaN extends Literal_Double {
 	terse(h_prefixes) {
 		return '"NaN"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
-} Object.assign(Literal_NaN.prototype, {
-	isNaN: true,
-});
+} {
+	const gp_self = Literal_NaN.prototype;
+	gp_self.isNaN = true;
+	gp_self.star = gp_self.terse;
+}
 
 
-function BlankNode(s_value, b_anonymous=false) {
-	this.value = s_value;
-	this.isAnonymous = b_anonymous;
-} BlankNode.prototype = Object.assign(
-	Object.create(GenericTerm.prototype), {
-		termType: 'BlankNode',
-		isBlankNode: true,
-
-		concise() {
-			return '_:'+this.value;
-		},
-
-		terse() {
-			return '_:'+this.value;
-		},
-
+@{declare(/* syntax: js */ `class BlankNode extends GenericTerm`, {
+	constructor(s_value, b_anonymous=false) {
+		this.value = s_value;
+		this.isAnonymous = b_anonymous;
+	},
+	/* eslint-disable no-undef */
+	methods: class {
 		verbose() {
 			return '_:'+this.value;
-		},
+		}
 
 		isolate() {
 			return {
 				termType: 'BlankNode',
 				value: this.value,
 			};
-		},
-	});
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		termType: /* syntax: js */ `'BlankNode'`,
+		isBlankNode: /* syntax: js */ `true`,
+		concise: /* syntax: js */ `gp_self.terse = gp_self.star = gp_self.verbose`,
+	},
+})}
 
 
-function EphemeralBlankNode() {}
-EphemeralBlankNode.prototype = Object.assign(
-	Object.create(BlankNode.prototype), {
-		isAnonymous: true,
-		isEphemeral: true,
+@{declare(/* syntax: js */ `class EphemeralBlankNode extends BlankNode`, {
+	/* eslint-disable no-undef */
+	methods: class {
+		get value() {
+			return '_'+uuid_v4();
+		}
 
 		concise() {
 			return '_:#'+this.value;
-		},
+		}
 
 		terse() {
 			return '[]';
-		},
+		}
 
 		verbose() {
 			return '_:'+this.value;
-		},
+		}
 
 		isolate() {
 			return {
 				termType: 'BlankNode',
 				value: this.value,
 			};
-		},
+		}
 
 		equals() {
 			return false;
-		},
-	});
-Object.defineProperty(EphemeralBlankNode.prototype, 'value', {
-	get() {
-		return '_'+uuid_v4();
+		}
 	},
-});
+	/* eslint-enable no-undef */
+	properties: {
+		isAnonymous: /* syntax: js */ `true`,
+		isEphemeral: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
 
-class Variable extends GenericTerm {
+
+@{declare(/* syntax: js */ `class Variable extends GenericTerm`, {
 	constructor(s_label) {
-		super();
 		this.value = s_label;
-	}
-
-	concise() {
-		return '?'+this.value;
-	}
-
-	terse() {
-		throw new Error(`Cannot call .terse() on 'Variable' term type`);
-	}
-
-	verbose() {
-		throw new Error(`Cannot call .verbose() on 'Variable' term type`);
-	}
-
-	isolate() {
-		return {
-			termType: 'Variable',
-			value: this.value,
-		};
-	}
-} Object.assign(Variable.prototype, {
-	termType: 'Variable',
-	isVariable: true,
-});
-
-
-function DefaultGraph() {}
-DefaultGraph.prototype = Object.assign(
-	Object.create(GenericTerm.prototype), {
-		value: '',
-		termType: 'DefaultGraph',
-		isDefaultGraph: true,
-
+	},
+	/* eslint-disable no-undef */
+	methods: class {
 		concise() {
-			return '*';
-		},
+			return '?'+this.value;
+		}
 
 		terse() {
-			return '';
-		},
+			throw new Error(`Cannot call .terse() on 'Variable' term type`);
+		}
+
+		star() {
+			throw new Error(`Cannot call .star() on 'Variable' term type`);
+		}
+
+		verbose() {
+			throw new Error(`Cannot call .verbose() on 'Variable' term type`);
+		}
+
+		isolate() {
+			return {
+				termType: 'Variable',
+				value: this.value,
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		termType: /* syntax: js */ `'Variable'`,
+		isVariable: /* syntax: js */ `true`,
+	},
+})}
+
+
+@{declare(/* syntax: js */ `class DefaultGraph extends GenericTerm`, {
+	/* eslint-disable no-undef */
+	methods: class {
+		concise() {
+			return '*';
+		}
 
 		verbose() {
 			return '';
-		},
+		}
 
 		isolate() {
 			return {
 				termType: 'DefaultGraph',
 				value: '',
 			};
-		},
-	});
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		value: /* syntax: js */ `''`,
+		termType: /* syntax: js */ `'DefaultGraph'`,
+		isDefaultGraph: /* syntax: js */ `true`,
+		terse: /* syntax: js */ `gp_self.star = gp_self.verbose`,
+	},
+})}
+
 
 const KT_DEFAULT_GRAPH = new DefaultGraph();
-function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
-	this.subject = h_subject;
-	this.predicate = h_predicate;
-	this.object = h_object;
-	this.graph = h_graph;
-}
-Quad.prototype = Object.assign(
-	Object.create(GenericTerm.prototype), {
-		termType: 'Quad',
-		value: '',
-		isGraphyQuad: true,
 
+@{declare(/* syntax: js */ `class Quad extends GenericTerm`, {
+	/* eslint-disable no-undef */
+	constructor(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
+		this.subject = h_subject;
+		this.predicate = h_predicate;
+		this.object = h_object;
+		this.graph = h_graph;
+	},
+	methods: class {
 		equals(z_other) {
 			return z_other
 				? this === z_other
@@ -1120,11 +1197,11 @@ Quad.prototype = Object.assign(
 						&& this.predicate.equals(z_other.predicate)
 						&& this.graph.equals(z_other.graph))
 				: false;
-		},
+		}
 
 		valueOf() {
 			return this.verbose();
-		},
+		}
 
 		concise(h_prefixes={}) {
 			return [
@@ -1133,7 +1210,7 @@ Quad.prototype = Object.assign(
 				this.object.concise(h_prefixes),
 				this.graph.concise(h_prefixes),
 			];
-		},
+		}
 
 		terse(h_prefixes) {
 			let b_default_graph = this.graph.isDefaultGraph;
@@ -1142,14 +1219,23 @@ Quad.prototype = Object.assign(
 				+' '+this.predicate.terse(h_prefixes)
 				+' '+this.object.terse(h_prefixes)+' .'
 				+(b_default_graph? '': ' }');
-		},
+		}
 
 		verbose() {
 			return this.subject.verbose()
 				+' '+this.predicate.verbose()
 				+' '+this.object.verbose()
 				+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
-		},
+		}
+
+		star(h_prefixes) {
+			return '<<'
+				+this.subject.star(h_prefixes)
+				+' '+this.predicate.star(h_prefixes)
+				+' '+this.object.star(h_prefixes)
+				+(this.graph.isDefaultGraph? '': ' '+this.graph.star())
+				+' >>';
+		}
 
 		isolate() {
 			return {
@@ -1160,8 +1246,16 @@ Quad.prototype = Object.assign(
 				object: this.object.isolate(),
 				graph: this.graph.isolate(),
 			};
-		},
-	});
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		termType: /* syntax: js */ `'Quad'`,
+		value: /* syntax: js */ `''`,
+		isGraphyQuad: /* syntax: js */ `true`,
+	},
+})}
+
 
 let g_raw = {
 	namedNode(p_iri) {
@@ -1751,7 +1845,5 @@ const factory = module.exports = {
 	$_PREFIX_CACHE,
 };
 
-Object.assign(factory, {
-	c3: factory.triples,
-	c4: factory.quads,
-});
+factory.c3 = factory.triples;
+factory.c4 = factory.quads;
