@@ -13,6 +13,7 @@
 
 @$ S_LABEL = TTL? 'Turtle': 'TriG';
 
+@$ B_STAR = true;
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
 
@@ -96,6 +97,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			+';'  // predicate-object list
 			+'\\]'  // blank node property list
 			+')'  // collection
+			+(B_STAR? '>': '')  // triple_x terminate
 			,
 	},
 	terminal: {
@@ -136,12 +138,12 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 @>> R_CHAR(s_delims='')
 	@//@regex
-	[^\s#@<[("'@{s_delims}@{QUADS? '{}': ''}]
+	[^\s#@<@{B_STAR? '>':''}[("'@{s_delims}@{QUADS? '{}': ''}]
 @;
 
-@>> R_CHAR_NO_CLOSERS(s_puncts='.;,')
+@>> R_CHAR_NO_CLOSERS(s_puncts=null)
 	@//@regex
-	[^\s#@<[("'@{s_puncts}@{QUADS? '{}': ''})\]\\]
+	[^\s#@<@{B_STAR? '>':''}[("'@{s_puncts || '.;,'+(B_STAR? '>': '')}@{QUADS? '{}': ''})\]\\]
 @;
 
 @>> R_PREFIX_ID()
@@ -157,18 +159,11 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	)
 @;
 
-@>> R_CONTENT_LOOKAHEAD_OLD()
-	@//@regex
-	(?=
-		\.[<[("';,)\]#@{QUADS? '{}': ''}\s\0]
-		| [<[("';,)\]#@{QUADS? '{}': ''}]
-	)
-@;
-
 @>> R_CONTENT_LOOKAHEAD()
 	@//@regex
 	(?=
 		\.?[<[("';,)\]#@{QUADS? '{}': ''}]
+		@{B_STAR? '| >':''}
 		| \.[\s\0]
 	)
 @;
@@ -197,7 +192,7 @@ const R_PREFIXED_NAME_QUICK = /@{R_PREFIXED_NAME_QUICK()}/y;
 		(?:
 			@{R_CHAR_NO_CLOSERS()}
 			(?:
-				@{R_CHAR_NO_CLOSERS(';,')}*
+				@{R_CHAR_NO_CLOSERS(';,'+(B_STAR? '>': ''))}*
 				@{R_CHAR_NO_CLOSERS()}
 			)?
 		)?
@@ -226,7 +221,7 @@ const R_PREFIXED_NAME_ESCAPELESS = /@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 			)
 			(?:									@// middle name chars
 				(?:
-					@{R_CHAR_NO_CLOSERS(';,')}	@// not invalid name chars
+					@{R_CHAR_NO_CLOSERS(';,'+(B_STAR? '>': ''))}	@// not invalid name chars
 					| @{R_ESCAPE_SEQUENCE()}	@// or an escape sequence
 				)*
 				(?:								@// last name char
@@ -282,6 +277,7 @@ const R_BASE_KEYWORD = /(?:(@base)|[bB][aA][sS][eE])\s*/y;
 @;
 
 const R_COMMENT = /(#[^\n]*\n\s*)+/y;
+const R_COMMENT_EOF = /(#[^\n]*(?:\n\s*|$))+/y;
 
 const RT_IRI_ABSOLUTE = /^[A-Za-z][A-Za-z0-9.\-+]*:/;
 const R_RELATIVE_URI = /^(\/[^?#]+)([?#].*)?$/;
@@ -424,25 +420,23 @@ const match_prefixed_name = (s, i) => {
 
 
 @// set object value and datatype for numeric literal
-@> numeric_literal(b_star)
-	@. let s_field = '_kt_object'+(b_star? '_star': '');
-	@. s_field = '_kt_object';
+@> numeric_literal()
 	// it has exponent term, xsd:double
 	if(m_numeric_literal[4]) {
-		this.@{s_field} = this._dc_factory.double(m_numeric_literal[1]);
+		this._kt_object = this._dc_factory.double(m_numeric_literal[1]);
 	}
 	// contains decimal point, xsd:decimal
 	else if(m_numeric_literal[2] || m_numeric_literal[3]) {
-		this.@{s_field} = this._dc_factory.decimal(m_numeric_literal[1]);
+		this._kt_object = this._dc_factory.decimal(m_numeric_literal[1]);
 	}
 	// otherwise, it is an integer
 	else {
-		this.@{s_field} = this._dc_factory.integer(m_numeric_literal[1]);
+		this._kt_object = this._dc_factory.integer(m_numeric_literal[1]);
 	}
 @;
 
 @// set object value and datatype for boolean literal
-@> boolean_literal(b_star)
+@> boolean_literal()
 	// make literal
 	this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
 @;
@@ -771,6 +765,7 @@ class Reader {
 			_kt_object: null,
 			_kt_graph: kt_default_graph,
 			_s_literal: '',
+			_kq_star: null,
 
 			// static terms
 			_kt_rdf_type: dc_factory.namedNode('@{P_IRI_RDF}type'),
@@ -791,6 +786,7 @@ class Reader {
 
 			// for restoring the original event callback when resuming paused stream
 			restore_data: this.emit_data,
+			restore_after_eos: null,
 
 			// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
 			_a_queue_event: [],
@@ -1242,12 +1238,12 @@ class Reader {
 			let s = this.s;
 			let i = this.i;
 			@{whitespace('i', true)}
-			R_COMMENT.lastIndex = i;
-			let m_comment = R_COMMENT.exec(s);
+			R_COMMENT_EOF.lastIndex = i;
+			let m_comment = R_COMMENT_EOF.exec(s);
 
 			// advance beyond comment
-			if(R_COMMENT.lastIndex > i) {
-				this.i = i = R_COMMENT.lastIndex;
+			if(R_COMMENT_EOF.lastIndex > i) {
+				this.i = i = R_COMMENT_EOF.lastIndex;
 				if(this.emit_comments) this.emit_comments(m_comment[0]);
 			}
 
@@ -1277,6 +1273,12 @@ class Reader {
 		ds_transform.push(null);
 	};
 
+	@- B_STAR
+		exit_star() {
+			// create quad
+			this._kq_star = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object);
+		}
+	@;
 
 
 @$ H_PARSE_EVENTS = {
@@ -1358,6 +1360,11 @@ class Reader {
 		}
 		// benchmarks indicate: regex for end of blank node property list faster than ch
 		@- B_OPTIMIZE_PAIRS
+			@.{
+				if(b_star) {
+					throw new Error(`B_OPTIMIZE_PAIRS and B_STAR not compatible; check goto('post_object') call`);
+				}
+			}
 			// optimize
 			@{if_match('R_OPTIMIZED_PAIRS', 'm_prefixed_named_pairs')}
 				@{valid_prefix('m_prefixed_named_pairs', 1)}
@@ -1446,9 +1453,6 @@ class Reader {
 			let {
 				b_star=false,
 			} = gc_gen;
-
-			let s_field_short = `object`;
-			let s_field_full = `_kt_${s_field_short}`;
 		}
 		@//@
 
@@ -1464,18 +1468,18 @@ class Reader {
 			@{valid_prefix('m_pnq_object')}
 
 			// commit object iri from resolve prefixed name
-			this.@{s_field_full} = @{prefixed_name('s_prefix_id', 'm_pnq_object[2]')};
+			this._kt_object = @{prefixed_name('s_prefix_id', 'm_pnq_object[2]')};
 
 		// iriref
 		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_object')}
-			@{iriref(s_field_short, 'm_iriref_e_object', true)}
+			@{iriref('object', 'm_iriref_e_object', true)}
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_object')}
 			@{valid_prefix('m_prefixed_named_e_object')}
 
 			// commit object iri from resolve prefixed name
-			this.@{s_field_full} = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
+			this._kt_object = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
 
 		// string literal * single
 		@{else_if_char("'")}
@@ -1483,11 +1487,11 @@ class Reader {
 
 		// numeric literal
 		@{else_if_match('R_NUMERIC_LITERAL', 'm_numeric_literal')}
-			@{numeric_literal(b_star)}
+			@{numeric_literal()}
 
 		// boolean literal
 		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal')}
-			@{boolean_literal(b_star)}
+			@{boolean_literal()}
 
 		@- !b_star
 			// blank node property list
@@ -1505,7 +1509,7 @@ class Reader {
 				@{push_state('post_object')}
 
 				// set new subject
-				this.@{s_field_full} = kt_blank_node;
+				this._kt_object = kt_blank_node;
 
 				// goto parsing pairs state
 				@{goto('pairs')}
@@ -1517,7 +1521,7 @@ class Reader {
 			let s_label = m_blank_node_label_object[1];
 
 			// make object
-			this.@{s_field_full} = this.blank_node(s_label);
+			this._kt_object = this.blank_node(s_label);
 
 		@- !b_star
 			// collection
@@ -1534,7 +1538,7 @@ class Reader {
 
 		// iriref
 		@{else_if_match('R_IRIREF', 'm_iriref_object')}
-			@{iriref(s_field_short, 'm_iriref_object', true, false, true)}
+			@{iriref('object', 'm_iriref_object', true, false, true)}
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_object')}
@@ -1543,7 +1547,7 @@ class Reader {
 			@{suffix('m_prefixed_named_object')}
 
 			// commit object iri from resolve prefixed name
-			this.@{s_field_full} = @{prefixed_name('s_prefix_id', 's_suffix')};
+			this._kt_object = @{prefixed_name('s_prefix_id', 's_suffix')};
 
 		@{else_if_match('R_COMMENT', 'm_comment', true)}
 			if(this.emit_comments) this.emit_comments(m_comment[0]);
@@ -1554,49 +1558,94 @@ class Reader {
 			// advance to next token
 			@{whitespace('i+2')}
 
-			@{push_state('object_x_close')}
+			@- b_star
+				this.data = this.exit_star;
+				this.restore_after_eos = this.after_end_of_statement;
+				this.after_end_of_statement = this.triple_x_close;
+
+				@{push_state('star_post_object_x')}
+			@:
+				@{push_state('star_post_object')}
+			@;
 
 			@{goto('triple_x')}
 
 		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
 		@{else_retry()}
 
-		@- b_star
-			@{goto('object_x_close')}
+		@- b_star && false
+			// create quad
+			this._kq_star = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object);
+
+			// 
+			@{goto('triple_x_close')}
 		@:
 			// fall through for cases that did not change state on their own
 			@{end_of_statement()}
 		@;
 	@;
 
-
-	@{method('subject_x_close')}
+	@{method('triple_x_close')}
 		// triple_x terminate
 		@{if_char_only('>>')}
-			debugger;
-			// create quad object
-			this._kt_subject = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object);
+			// advance to next token
+			@{whitespace('i+2')}
 
 			// pop state
 			@{pop_state(`end of "triple x" Turtle* '>>'`)}
 
 		@{else_retry()}
-	@{end_method('subject_x_close')}
+	@{end_method('triple_x_close')}
 
 
-	@{method('object_x_close')}
-		// triple_x terminate
-		@{if_char_only('>>')}
-			debugger;
-			// create quad object
-			this._kt_object = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object);
+	@//@class
+	star_predicate_x() {
+		debugger;
 
-			// pop state
-			@{pop_state(`end of "triple x" Turtle* '>>'`)}
+		// set as subject
+		this._kt_subject = this._kq_star;
 
-		@{else_retry()}
+		@{goto('predicate_x')}
+	}
 
-	@{end_method('object_x_close')}
+	star_pairs() {
+		debugger;  // what HAPPENS?!
+
+		// set as subject
+		this._kt_subject = this._kq_star;
+
+		// restore data and after_eos
+		this.data = this.emit_data;
+		this.after_end_of_statement = this.restore_after_eos
+
+		@{goto('pairs')}
+	}
+
+	star_post_object_x() {
+		// set as object
+		this._kq_star = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kq_star);
+
+		// 
+		debugger
+		@{goto('triple_x_close')}
+	}
+
+	star_post_object() {
+		// set as object
+		this._kt_object = this._kq_star;
+debugger;
+		// restore data and after_eos
+		this.data = this.emit_data;
+		this.after_end_of_statement = this.restore_after_eos
+
+		// emit
+		this.data();
+
+		// 
+		debugger
+		@{goto('post_object')}
+	}
+	@//@
 
 
 	@// sub-macro for reusing statement productions
@@ -1748,7 +1797,13 @@ class Reader {
 			// advance to next token
 			@{whitespace('i+2')}
 
-			@{push_state('subject_x_close')}
+			@- b_star
+				@{push_state('star_predicate_x')}
+			@:
+				this.data = this.exit_star;
+				this.after_end_of_statement = this.triple_x_close;
+				@{push_state('star_pairs')}
+			@;
 
 			@{goto('triple_x')}
 
@@ -2075,7 +2130,6 @@ class Reader {
 
 
 	@{method('object_x')}
-		debugger;
 		@{gen_object_targets({
 			b_star: true,
 		})}
