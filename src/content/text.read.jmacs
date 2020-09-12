@@ -407,9 +407,14 @@
 	if(@{_if_str(a_strs, '===', 'x')}) {
 @;
 
+@// else, test the current character without use of intermediate variable
+@> if_char_only(...a_strs)
+	if(@{_if_str(a_strs, '===', 's[i]')}) {
+@;
+
 @// else, test the current character
 @> else_if_char(...a_strs)
-	} else @{if_char(a_strs)}
+	} else @{if_char(...a_strs)}
 @;
 
 @> else_if_not_char(...a_strs)
@@ -418,7 +423,7 @@
 
 @// else, test the current character without use of intermediate variable
 @> else_if_char_only(...a_strs)
-	} else if (@{_if_str(a_strs, '===', 's[i]')}) {
+	} else if(@{_if_str(a_strs, '===', 's[i]')}) {
 @;
 
 

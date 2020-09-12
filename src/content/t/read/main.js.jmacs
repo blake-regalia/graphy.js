@@ -14,7 +14,6 @@
 @$ S_LABEL = TTL? 'Turtle': 'TriG';
 
 @$ B_OPTIMIZE_PAIRS = false;
-@$ B_UPGRADE_FACTORY = true;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
 
 @// 1% speedup
@@ -29,23 +28,12 @@
 
 	let terms_equal;
 
-	if(B_UPGRADE_FACTORY) {
-		SJ_RDF_TYPE = 'this._kt_rdf_type';
-		SJ_RDF_FIRST = 'this._kt_rdf_first';
-		SJ_RDF_REST = 'this._kt_rdf_rest';
-		SJ_RDF_NIL = 'this._kt_rdf_nil';
-		SJ_DEFAULT_GRAPH = 'this._kt_default_graph';
-		terms_equal = (sj_a, sj_b) => /* syntax: js */ `${sj_a}.equals(${sj_b})`;
-	}
-	else {
-		SJ_RDF_TYPE = 'KT_RDF_TYPE';
-		SJ_RDF_FIRST = 'KT_RDF_FIRST';
-		SJ_RDF_REST = 'KT_RDF_REST';
-		SJ_RDF_NIL = 'KT_RDF_NIL';
-		SJ_DEFAULT_GRAPH = 'KT_DEFAULT_GRAPH';
-		terms_equal = (sj_a, sj_b) => /* syntax: js */ `${sj_a} === ${sj_b}`;
-	}
-
+	SJ_RDF_TYPE = 'this._kt_rdf_type';
+	SJ_RDF_FIRST = 'this._kt_rdf_first';
+	SJ_RDF_REST = 'this._kt_rdf_rest';
+	SJ_RDF_NIL = 'this._kt_rdf_nil';
+	SJ_DEFAULT_GRAPH = 'this._kt_default_graph';
+	terms_equal = (sj_a, sj_b) => /* syntax: js */ `${sj_a}.equals(${sj_b})`;
 
 	let prefixed_name;
 
@@ -269,8 +257,8 @@ const R_PN_LOCAL_ESCAPES = /\\(.)/g;
 const R_BLANK_NODE_LABEL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node')}/y;
 const R_BLANK_NODE_LABEL_TERMINAL = /@{R_BLANK_NODE_LABEL()}@{lookahead('blank_node', '|(?=\\.[\\s@#<({[}])', '\\.?')}/y;
 
-const R_IRIREF_ESCAPELESS = /<([^\\>]*)>\s*/y;
-const R_IRIREF = /<([^>]*)>\s*/y;
+const R_IRIREF_ESCAPELESS = /<([^\\<>]*)>\s*/y;
+const R_IRIREF = /<([^<>]*)>\s*/y;
 
 const R_NUMERIC_LITERAL = /([+-]?(?:[0-9]+(\.[0-9]+)?|(\.[0-9]+))(\.?[eE][+-]?[0-9]+)?)(?:\s+|(?=\.[^eE0-9]|[;,)\]]))/y;
 const R_BOOLEAN_LITERAL = /(?:(true|TRUE)|false|FALSE)\s*/y;
@@ -324,17 +312,6 @@ const R_CHAR_KET = /\]\s*/y
 @;
 
 const R_CHAR_STOP = /\.\s*/y;
-
-@- !B_UPGRADE_FACTORY
-	const KT_RDF_LANG_STRING = factory.namedNode('@{P_IRI_RDF}langString');
-	const KT_RDF_TYPE = factory.namedNode('@{P_IRI_RDF}type');
-	const KT_RDF_FIRST = factory.namedNode('@{P_IRI_RDF}first');
-	const KT_RDF_REST = factory.namedNode('@{P_IRI_RDF}rest');
-	const KT_RDF_NIL = factory.namedNode('@{P_IRI_RDF}nil');
-
-	const KT_DEFAULT_GRAPH = factory.defaultGraph();
-@;
-
 
 
 
@@ -447,45 +424,27 @@ const match_prefixed_name = (s, i) => {
 
 
 @// set object value and datatype for numeric literal
-@> numeric_literal()
-	@- B_UPGRADE_FACTORY
-		// it has exponent term, xsd:double
-		if(m_numeric_literal[4]) {
-			this._kt_object = this._dc_factory.double(m_numeric_literal[1]);
-		}
-		// contains decimal point, xsd:decimal
-		else if(m_numeric_literal[2] || m_numeric_literal[3]) {
-			this._kt_object = this._dc_factory.decimal(m_numeric_literal[1]);
-		}
-		// otherwise, it is an integer
-		else {
-			this._kt_object = this._dc_factory.integer(m_numeric_literal[1]);
-		}
-	@:
-		// it has exponent term, xsd:double
-		if(m_numeric_literal[4]) {
-			this._kt_object = factory.double(m_numeric_literal[1]);
-		}
-		// contains decimal point, xsd:decimal
-		else if(m_numeric_literal[2] || m_numeric_literal[3]) {
-			this._kt_object = factory.decimal(m_numeric_literal[1]);
-		}
-		// otherwise, it is an integer
-		else {
-			this._kt_object = factory.integer(m_numeric_literal[1]);
-		}
-	@;
+@> numeric_literal(b_star)
+	@. let s_field = '_kt_object'+(b_star? '_star': '');
+	@. s_field = '_kt_object';
+	// it has exponent term, xsd:double
+	if(m_numeric_literal[4]) {
+		this.@{s_field} = this._dc_factory.double(m_numeric_literal[1]);
+	}
+	// contains decimal point, xsd:decimal
+	else if(m_numeric_literal[2] || m_numeric_literal[3]) {
+		this.@{s_field} = this._dc_factory.decimal(m_numeric_literal[1]);
+	}
+	// otherwise, it is an integer
+	else {
+		this.@{s_field} = this._dc_factory.integer(m_numeric_literal[1]);
+	}
 @;
 
 @// set object value and datatype for boolean literal
-@> boolean_literal()
-	@- B_UPGRADE_FACTORY
-		// make literal
-		this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
-	@:
-		// make literal
-		this._kt_object = factory.boolean(m_boolean_literal[1]? true: false);
-	@;
+@> boolean_literal(b_star)
+	// make literal
+	this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
 @;
 
 
@@ -494,8 +453,13 @@ const match_prefixed_name = (s, i) => {
 	this._a_nested.push([this._kt_subject, this._kt_predicate, '@{state}']);
 @;
 
+
 @// restore previous state from stack
-@> pop_state()
+@> pop_state(s_err)
+	// invalid place to pop
+	if(!this._a_nested.length) {
+		return this.error(`Unexpected @{s_err}`);
+	}
 	let s_resume_state;
 	[this._kt_subject, this._kt_predicate, s_resume_state] = this._a_nested.pop();
 	return this[s_resume_state]();
@@ -567,11 +531,7 @@ const match_prefixed_name = (s, i) => {
 
 @// emit a statement event to listener using current subject/predicate/object
 @> emit_statement()
-	@- B_UPGRADE_FACTORY
-		this.data();
-	@:
-		this.data(quad(this));
-	@;
+	this.data();
 @;
 
 @// extract name from suffix
@@ -585,12 +545,7 @@ const match_prefixed_name = (s, i) => {
 
 @// set the object value of a string literal
 @> set_string_literal(match, version)
-	@- B_UPGRADE_FACTORY
-		this._s_literal =
-	@:
-		// set literal value
-		h_literal.value = 
-	@;
+	this._s_literal =
 	@- 'no-escape' === version
 		@{match}[1];
 	@:
@@ -743,38 +698,29 @@ class Reader {
 		} = g_state;
 
 
-		@- B_UPGRADE_FACTORY
-			let dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
+		let dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
 
-			let kt_default_graph = dc_factory.defaultGraph();
+		let kt_default_graph = dc_factory.defaultGraph();
 
-			// if data factory is not graphy, it might be returning the same object on each call to .defaultGraph()
-			if(dc_factory !== factory.unfiltered) {
-				// do not trust it, create a new object
-				kt_default_graph = Object.create(kt_default_graph);
+		// if data factory is not graphy, it might be returning the same object on each call to .defaultGraph()
+		if(dc_factory !== factory.unfiltered) {
+			// do not trust it, create a new object
+			kt_default_graph = Object.create(kt_default_graph);
+		}
+
+		let kt_rdf_first = dc_factory.namedNode('@{P_IRI_RDF}first');
+
+		let blankNode = dc_factory.blankNode;
+		let namedNode = dc_factory.namedNode;
+
+		this.emit_data = factory.unfiltered === dc_factory
+			? function() {
+				ds_transform.push(quad(this));
 			}
-
-			let kt_rdf_first = dc_factory.namedNode('@{P_IRI_RDF}first');
-
-			let blankNode = dc_factory.blankNode;
-			let namedNode = dc_factory.namedNode;
-
-			this.emit_data = factory.unfiltered === dc_factory
-				? function() {
-					ds_transform.push(quad(this));
-				}
-				: function() {
-					let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-					ds_transform.push(g_quad);
-				};
-		@:
-			let blankNode = factory.blankNode;
-			let namedNode = factory.namedNode;
-
-			this.emit_data = function(g_quad) {
-				this.transform.push(g_quad);
+			: function() {
+				let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
+				ds_transform.push(g_quad);
 			};
-		@;
 
 		// fields
 		Object.assign(this, {
@@ -796,10 +742,8 @@ class Reader {
 			// relax
 			_b_relax: g_config.relax || false,
 
-			@- B_UPGRADE_FACTORY
-				// factory
-				_dc_factory: dc_factory,
-			@;
+			// factory
+			_dc_factory: dc_factory,
 
 			// current reader state
 			_f_state: this.@{S_STATE_PRIMARY},
@@ -823,19 +767,17 @@ class Reader {
 
 			// current data
 			_kt_subject: null,
-			_kt_predicate: @{B_UPGRADE_FACTORY? 'kt_rdf_first': 'KT_RDF_FIRST'},
+			_kt_predicate: kt_rdf_first,
 			_kt_object: null,
-			_kt_graph: @{B_UPGRADE_FACTORY? 'kt_default_graph': 'KT_DEFAULT_GRAPH'},
+			_kt_graph: kt_default_graph,
 			_s_literal: '',
 
-			@- B_UPGRADE_FACTORY
-				// static terms
-				_kt_rdf_type: dc_factory.namedNode('@{P_IRI_RDF}type'),
-				_kt_rdf_first: kt_rdf_first,
-				_kt_rdf_rest: dc_factory.namedNode('@{P_IRI_RDF}rest'),
-				_kt_rdf_nil: dc_factory.namedNode('@{P_IRI_RDF}nil'),
-				_kt_default_graph: kt_default_graph,
-			@;
+			// static terms
+			_kt_rdf_type: dc_factory.namedNode('@{P_IRI_RDF}type'),
+			_kt_rdf_first: kt_rdf_first,
+			_kt_rdf_rest: dc_factory.namedNode('@{P_IRI_RDF}rest'),
+			_kt_rdf_nil: dc_factory.namedNode('@{P_IRI_RDF}nil'),
+			_kt_default_graph: kt_default_graph,
 
 			// queue of nested subject, predicate, state for blanknodes and collections
 			_a_nested: [],
@@ -1135,10 +1077,8 @@ class Reader {
 				// byte tracking is enabled
 				if(b_byte_tracking) {
 					// overwrite emit_data method
-					this.emit_data = this.data = this.restore_data = function(@{B_UPGRADE_FACTORY? '': 'g_quad'}) {
-						@- B_UPGRADE_FACTORY
-							let g_quad = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-						@;
+					this.emit_data = this.data = this.restore_data = function() {
+						let g_quad = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
 						let nb_post = Buffer.from(this.s.slice(this.i)).length;
 						let ib_post = this._nb_seen - nb_post;
 						g_quad.byteRange = [this._nb_curr, ib_post];
@@ -1218,13 +1158,6 @@ class Reader {
 		// okay
 		return true;
 	}
-
-@//	emit_data(@{B_UPGRADE_FACTORY? '': 'g_quad'}) {
-@//		@- B_UPGRADE_FACTORY
-@//			let g_quad = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-@//		@;
-@//		this.transform.push(g_quad);
-@//	}
 
 	emit(s_event, ...a_args) {
 		this.transform.emit(s_event, ...a_args);
@@ -1418,66 +1351,294 @@ class Reader {
 	}
 	@. a_methods.push('post_blank_subject');
 
-	@// regexes are faster than character[0] switching in this context
-	@{method('statement')}
-		@//@
 
-		// prefixed name quick
-		@{if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_subject')}
-			@{valid_prefix('m_pnq_subject')}
+	@def gen_predicate(b_star=false)
+		@.{
+			const gtg = b_star? () => goto('object_x'): () => goto('object_list');
+		}
+		// benchmarks indicate: regex for end of blank node property list faster than ch
+		@- B_OPTIMIZE_PAIRS
+			// optimize
+			@{if_match('R_OPTIMIZED_PAIRS', 'm_prefixed_named_pairs')}
+				@{valid_prefix('m_prefixed_named_pairs', 1)}
+				@{valid_prefix('m_prefixed_named_pairs', 3)}
+				@//@
 
-			// commit subject iri from resolve prefixed name
-			this._kt_subject = @{prefixed_name('s_prefix_id', 'm_pnq_subject[2]')};
+				// make predicate key
+				this._kt_predicate = @{prefixed_name('s_prefix_id_1', 'm_prefixed_named_pairs[2]')};
 
-			// predicate-object pairs state
-			@{goto('pairs')}
+				// make object
+				this._kt_object = @{prefixed_name('s_prefix_id_3', 'm_prefixed_named_pairs[4]')};
+
+				// change state
+				@{goto('post_object')}
+
+			// iriref
+			@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_predicate')}
+				@{iriref('predicate', 'm_iriref_e_predicate', true)}
+
+				// change state
+				@{gtg()}
+		@:
+			// iriref
+			@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_predicate')}
+				@{iriref('predicate', 'm_iriref_e_predicate', true)}
+
+				// change state
+				@{gtg()}
+		@;
+
+		// prefixed name
+		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_predicate')}
+			@{valid_prefix('m_prefixed_named_e_predicate')}
+
+			// make predicate key
+			this._kt_predicate = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_predicate[2]')};
+
+			// change state
+			@{gtg()}
+
+		// 'a'
+		@{else_if_match('R_A')}
+			// make predicate key
+			this._kt_predicate = @{SJ_RDF_TYPE};
+
+			// object-list state
+			@{gtg()}
+
+		@- !b_star
+			// ']' end of blank node property list
+			@{else_if_match('R_CHAR_KET')}
+				@{pop_state(`end of blank node property list ']'`)}
+		@;
 
 		// iriref
-		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_subject')}
-			@{iriref('subject', 'm_iriref_e_subject', true)}
+		@{else_if_match('R_IRIREF', 'm_iriref_predicate')}
+			@{iriref('predicate', 'm_iriref_predicate', true, false, true)}
+
+			// object-list state
+			@{gtg()}
+
+		// prefixed name
+		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_predicate')}
+			@{valid_prefix('m_prefixed_named_predicate')}
+
+			@{suffix('m_prefixed_named_predicate')}
+
+			// make predicate key
+			this._kt_predicate = @{prefixed_name('s_prefix_id', 's_suffix')};
+
+			// object-list state
+			@{gtg()}
+
+
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
+			continue;
+
+		// not iriref, not prefixed name, not 'a'
+		@{else_retry()}
+	@;
+
+
+	@def gen_object_targets(gc_gen={})
+		@.{
+			let {
+				b_star=false,
+			} = gc_gen;
+
+			let s_field_short = `object`;
+			let s_field_full = `_kt_${s_field_short}`;
+		}
+		@//@
+
+		// ref char
+		let x = s[i];
+
+		// string literal * double
+		@{if_char('"')}
+			@{deduce_strlit_path('double')}
+
+		// prefixed name quick
+		@{else_if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_object')}
+			@{valid_prefix('m_pnq_object')}
+
+			// commit object iri from resolve prefixed name
+			this.@{s_field_full} = @{prefixed_name('s_prefix_id', 'm_pnq_object[2]')};
+
+		// iriref
+		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_object')}
+			@{iriref(s_field_short, 'm_iriref_e_object', true)}
+
+		// prefixed name
+		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_object')}
+			@{valid_prefix('m_prefixed_named_e_object')}
+
+			// commit object iri from resolve prefixed name
+			this.@{s_field_full} = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
+
+		// string literal * single
+		@{else_if_char("'")}
+			@{deduce_strlit_path('single')}
+
+		// numeric literal
+		@{else_if_match('R_NUMERIC_LITERAL', 'm_numeric_literal')}
+			@{numeric_literal(b_star)}
+
+		// boolean literal
+		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal')}
+			@{boolean_literal(b_star)}
+
+		@- !b_star
+			// blank node property list
+			@{else_if_char('[')}
+				// advance index to next token
+				@{whitespace('i+1')}
+
+				// make object
+				let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
+
+				// emit statement event
+				@{emit_statement()}
+
+				// push state to stack
+				@{push_state('post_object')}
+
+				// set new subject
+				this.@{s_field_full} = kt_blank_node;
+
+				// goto parsing pairs state
+				@{goto('pairs')}
+		@;
+
+		// labeled blank node
+		@{else_if_match('R_BLANK_NODE_LABEL_TERMINAL', 'm_blank_node_label_object')}
+			// ref blank node label
+			let s_label = m_blank_node_label_object[1];
+
+			// make object
+			this.@{s_field_full} = this.blank_node(s_label);
+
+		@- !b_star
+			// collection
+			@{else_if_char('(')}
+				// advance index to next token
+				@{whitespace('i+1')}
+
+				// state to resume after collection ends
+				@{push_state('post_object')}
+
+				// goto collection-object state
+				@{goto('collection_object')}
+		@;
+
+		// iriref
+		@{else_if_match('R_IRIREF', 'm_iriref_object')}
+			@{iriref(s_field_short, 'm_iriref_object', true, false, true)}
+
+		// prefixed name
+		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_object')}
+			@{valid_prefix('m_prefixed_named_object')}
+
+			@{suffix('m_prefixed_named_object')}
+
+			// commit object iri from resolve prefixed name
+			this.@{s_field_full} = @{prefixed_name('s_prefix_id', 's_suffix')};
+
+		@{else_if_match('R_COMMENT', 'm_comment', true)}
+			if(this.emit_comments) this.emit_comments(m_comment[0]);
+			continue;
+
+		// rdf-star
+		@{else_if_char('<<')}
+			// advance to next token
+			@{whitespace('i+2')}
+
+			@{push_state('object_x_close')}
+
+			@{goto('triple_x')}
+
+		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
+		@{else_retry()}
+
+		@- b_star
+			@{goto('object_x_close')}
+		@:
+			// fall through for cases that did not change state on their own
+			@{end_of_statement()}
+		@;
+	@;
+
+
+	@{method('subject_x_close')}
+		// triple_x terminate
+		@{if_char_only('>>')}
+			debugger;
+			// create quad object
+			this._kt_subject = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object);
+
+			// pop state
+			@{pop_state(`end of "triple x" Turtle* '>>'`)}
+
+		@{else_retry()}
+	@{end_method('subject_x_close')}
+
+
+	@{method('object_x_close')}
+		// triple_x terminate
+		@{if_char_only('>>')}
+			debugger;
+			// create quad object
+			this._kt_object = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object);
+
+			// pop state
+			@{pop_state(`end of "triple x" Turtle* '>>'`)}
+
+		@{else_retry()}
+
+	@{end_method('object_x_close')}
+
+
+	@// sub-macro for reusing statement productions
+	@def triples(directives=false, b_star=false)
+		@.{
+			let gtg = () => goto('pairs');
+			if(directives) {
+				gtg = (s_alt='graph_or_subject') => goto(s_alt);
+			}
+		}
+
+		// prefixed name
+		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_subject')}
+
+			@{valid_prefix('m_prefixed_named_e_subject')}
+
+			// make subject key
+			this._kt_subject = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_subject[2]')}
 
 			// predicate-object pairs state
-			@{goto('pairs')}
+			@{gtg()}
 
-		@// sub-macro for reusing statement productions
-		@def triples(directives=false)
-			@.{
-				let gtg = () => goto('pairs');
-				if(directives) {
-					gtg = (s_alt='graph_or_subject') => goto(s_alt);
-				}
-			}
+		// blank node label
+		@{else_if_match('R_BLANK_NODE_LABEL', 'm_blank_node_label_subject')}
+			// extract label
+			let s_label = m_blank_node_label_subject[1];
 
-			// prefixed name
-			@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_subject')}
+			// make subject key
+			this._kt_subject = this.blank_node(s_label);
 
-				@{valid_prefix('m_prefixed_named_e_subject')}
+			// predicate-object pairs state
+			@{gtg()}
 
-				// make subject key
-				this._kt_subject = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_subject[2]')}
+		// anonymous blank node subject
+		@{else_if_match('R_ANONYMOUS_BLANK_NODE')}
+			// set new blank node as subject
+			this._kt_subject = this.anonymous_blank_node(this.next_label());
 
-				// predicate-object pairs state
-				@{gtg()}
+			// goto pairs state for inside property list
+			@{gtg()}
 
-			// blank node label
-			@{else_if_match('R_BLANK_NODE_LABEL', 'm_blank_node_label_subject')}
-				// extract label
-				let s_label = m_blank_node_label_subject[1];
-
-				// make subject key
-				this._kt_subject = this.blank_node(s_label);
-
-				// predicate-object pairs state
-				@{gtg()}
-
-			// anonymous blank node subject
-			@{else_if_match('R_ANONYMOUS_BLANK_NODE')}
-				// set new blank node as subject
-				this._kt_subject = this.anonymous_blank_node(this.next_label());
-
-				// goto pairs state for inside property list
-				@{gtg()}
-
+		@- !b_star
 			// anonymous blank node property list subject
 			@{else_if_match('R_CHAR_BLANK_NODE')}
 				// enter blank node
@@ -1530,44 +1691,77 @@ class Reader {
 					// goto block state
 					@{goto('block')}
 			@;
-
-			// iriref
-			@{else_if_match('R_IRIREF', 'm_iriref_subject')}
-				@{iriref('subject', 'm_iriref_subject', true, false, true)}
-
-				// predicate-object pairs state
-				@{gtg()}
-
-			// prefixed name
-			@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_subject')}
-				@{valid_prefix('m_prefixed_named_subject')}
-
-				@{suffix('m_prefixed_named_subject')}
-
-				// make subject key
-				this._kt_subject = @{prefixed_name('s_prefix_id', 's_suffix')};
-
-				// predicate-object pairs state
-				@{gtg()}
 		@;
 
-		@{triples()}
+		// iriref
+		@{else_if_match('R_IRIREF', 'm_iriref_subject')}
+			@{iriref('subject', 'm_iriref_subject', true, false, true)}
 
-		@// dead code
-		@// @// for trig only
-		@// @- TRIG
-		@// 	@{else_if_match('R_CHAR_CLOSE')}
-		@// 		this._kt_graph = @{SJ_DEFAULT_GRAPH};
-		@// 		@{goto('block')}
-		@// @;
+			// predicate-object pairs state
+			@{gtg()}
+
+		// prefixed name
+		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_subject')}
+			@{valid_prefix('m_prefixed_named_subject')}
+
+			@{suffix('m_prefixed_named_subject')}
+
+			// make subject key
+			this._kt_subject = @{prefixed_name('s_prefix_id', 's_suffix')};
+
+			// predicate-object pairs state
+			@{gtg()}
+	@;
+
+
+	@def gen_subject(b_star=false)
+		@.{
+			const next = b_star? () => goto('predicate_x'): () => goto('pairs');
+		}
+
+		// prefixed name quick
+		@{if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_subject')}
+			@{valid_prefix('m_pnq_subject')}
+
+			// commit subject iri from resolve prefixed name
+			this._kt_subject = @{prefixed_name('s_prefix_id', 'm_pnq_subject[2]')};
+
+			// predicate-object pairs state
+			@{next()}
+
+		// iriref
+		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_subject')}
+			@{iriref('subject', 'm_iriref_e_subject', true)}
+
+			// predicate-object pairs state
+			@{next()}
+
+		@{triples(false, b_star)}
 
 		// comment
 		@{else_if_match('R_COMMENT', 'm_comment', true)}
 			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
+		// triple_x
+		@{else_if_char_only('<<')}
+			// advance to next token
+			@{whitespace('i+2')}
+
+			@{push_state('subject_x_close')}
+
+			@{goto('triple_x')}
+
 		// not iriref, not prefixed name, not blank node label, not prefix id, not base
 		@{else_retry()}
+	@;
+
+
+	@// regexes are faster than character[0] switching in this context
+	@{method('statement')}
+		@//@
+
+		@{gen_subject()}
 
 	@{end_method('statement')}
 
@@ -1594,13 +1788,8 @@ class Reader {
 				@{goto('statement')}
 
 			@{else_if_match('R_CHAR_OPEN')}
-				@- B_UPGRADE_FACTORY
-					// make new default graph
-					this._kt_graph = this._dc_factory.defaultGraph();
-				@:
-					// make new default graph
-					this._kt_graph = factory.defaultGraph();
-				@;
+				// make new default graph
+				this._kt_graph = this._dc_factory.defaultGraph();
 
 				@{emit_graph_open()}
 
@@ -1837,88 +2026,12 @@ class Reader {
 
 
 	@{method('pairs')}
-		// benchmarks indicate: regex for end of blank node property list faster than ch
-
-		@- B_OPTIMIZE_PAIRS
-			// optimize
-			@{if_match('R_OPTIMIZED_PAIRS', 'm_prefixed_named_pairs')}
-				@{valid_prefix('m_prefixed_named_pairs', 1)}
-				@{valid_prefix('m_prefixed_named_pairs', 3)}
-
-				// make predicate key
-				this._kt_predicate = @{prefixed_name('s_prefix_id_1', 'm_prefixed_named_pairs[2]')};
-
-				// make object
-				this._kt_object = @{prefixed_name('s_prefix_id_3', 'm_prefixed_named_pairs[4]')};
-
-				//
-				@{goto('post_object')}
-
-			// iriref
-			@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_predicate')}
-				@{iriref('predicate', 'm_iriref_e_predicate', true)}
-
-				// object-list state
-				@{goto('object_list')}
-		@:
-			// iriref
-			@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_predicate')}
-				@{iriref('predicate', 'm_iriref_e_predicate', true)}
-
-				// object-list state
-				@{goto('object_list')}
-		@;
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_predicate')}
-			@{valid_prefix('m_prefixed_named_e_predicate')}
-
-			// make predicate key
-			this._kt_predicate = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_predicate[2]')};
-
-			// object-list state
-			@{goto('object_list')}
-
-		// 'a'
-		@{else_if_match('R_A')}
-			// make predicate key
-			this._kt_predicate = @{SJ_RDF_TYPE};
-
-			// object-list state
-			@{goto('object_list')}
-
-		// ']' end of blank node property list
-		@{else_if_match('R_CHAR_KET')}
-			@{pop_state()}
-
-		// iriref
-		@{else_if_match('R_IRIREF', 'm_iriref_predicate')}
-			@{iriref('predicate', 'm_iriref_predicate', true, false, true)}
-
-			// object-list state
-			@{goto('object_list')}
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_predicate')}
-			@{valid_prefix('m_prefixed_named_predicate')}
-
-			@{suffix('m_prefixed_named_predicate')}
-
-			// make predicate key
-			this._kt_predicate = @{prefixed_name('s_prefix_id', 's_suffix')};
-
-			// object-list state
-			@{goto('object_list')}
-
-
-		@{else_if_match('R_COMMENT', 'm_comment', true)}
-			if(this.emit_comments) this.emit_comments(m_comment[0]);
-			continue;
-
-		// not iriref, not prefixed name, not 'a'
-		@{else_retry()}
-
+		@{gen_predicate()};
 	@{end_method('pairs')}
+
+	@{method('predicate_x')}
+		@{gen_predicate(true)}
+	@{end_method('predicate_x')}
 
 
 	@> deduce_strlit_path(s_mode)
@@ -1957,113 +2070,21 @@ class Reader {
 	@;
 
 	@{method('object_list')}
-		// ref char
-		let x = s[i];
-
-		// string literal * double
-		@{if_char('"')}
-			@{deduce_strlit_path('double')}
-
-		// prefixed name quick
-		@{else_if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_object')}
-			@{valid_prefix('m_pnq_object')}
-
-			// commit object iri from resolve prefixed name
-			this._kt_object = @{prefixed_name('s_prefix_id', 'm_pnq_object[2]')};
-
-		// iriref
-		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_object')}
-			@{iriref('object', 'm_iriref_e_object', true)}
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_object')}
-			@{valid_prefix('m_prefixed_named_e_object')}
-
-			// commit object iri from resolve prefixed name
-			this._kt_object = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
-
-		// string literal * single
-		@{else_if_char("'")}
-			@{deduce_strlit_path('single')}
-
-		// numeric literal
-		@{else_if_match('R_NUMERIC_LITERAL', 'm_numeric_literal')}
-			@{numeric_literal()}
-
-		// boolean literal
-		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal')}
-			@{boolean_literal()}
-
-		// blank node property list
-		@{else_if_char('[')}
-			// advance index to next token
-			@{whitespace('i+1')}
-
-			// make object
-			let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
-
-			// emit statement event
-			@{emit_statement()}
-
-			// push state to stack
-			@{push_state('post_object')}
-
-			// set new subject
-			this._kt_subject = kt_blank_node;
-
-			// goto parsing pairs state
-			@{goto('pairs')}
-
-		// labeled blank node
-		@{else_if_match('R_BLANK_NODE_LABEL_TERMINAL', 'm_blank_node_label_object')}
-			// ref blank node label
-			let s_label = m_blank_node_label_object[1];
-
-			// make object
-			this._kt_object = this.blank_node(s_label);
-
-		// collection
-		@{else_if_char('(')}
-			// advance index to next token
-			@{whitespace('i+1')}
-
-			// state to resume after collection ends
-			@{push_state('post_object')}
-
-			// goto collection-object state
-			@{goto('collection_object')}
-
-		// iriref
-		@{else_if_match('R_IRIREF', 'm_iriref_object')}
-			@{iriref('object', 'm_iriref_object', true, false, true)}
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_object')}
-			@{valid_prefix('m_prefixed_named_object')}
-
-			@{suffix('m_prefixed_named_object')}
-
-			// commit object iri from resolve prefixed name
-			this._kt_object = @{prefixed_name('s_prefix_id', 's_suffix')};
-
-		@{else_if_match('R_COMMENT', 'm_comment', true)}
-			if(this.emit_comments) this.emit_comments(m_comment[0]);
-			continue;
-
-		// rdf-star
-		@{else_if_char('<<')}
-			// advance to next token
-			@{whitespace('i+2')}
-
-			// 
-			@{push_state('triple_x')}
-
-		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
-		@{else_retry()}
-
-		// fall through for cases that did not change state on their own
-		@{end_of_statement()}
+		@{gen_object_targets()}
 	@{end_method('object_list')}
+
+
+	@{method('object_x')}
+		debugger;
+		@{gen_object_targets({
+			b_star: true,
+		})}
+	@{end_method('object_x')}
+
+
+	@{method('triple_x')}
+		@{gen_subject(true)}
+	@{end_method('triple_x')}
 
 
 	@> string_literal_short(s_mode)
@@ -2333,16 +2354,10 @@ class Reader {
 
 			// '@' language tag
 			@{else_if_match('R_LANGTAG', 'm_langtag')}
-				@- B_UPGRADE_FACTORY
-					this._kt_object = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
+				this._kt_object = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
 
-					// reset literal
-					this._s_literal = '';
-				@:
-					// set literal language type
-					this._kt_object.language = m_langtag[1].toLowerCase();
-					this._kt_object.datatype = KT_RDF_LANG_STRING;
-				@;
+				// reset literal
+				this._s_literal = '';
 
 			// next token definitely datatype or langtag, we are just being interrupted by eos
 			@{else_retry()}
@@ -2351,13 +2366,11 @@ class Reader {
 			if(this.emit_comments) this.emit_comments(m_comment[0]);
 			continue;
 
-		@- B_UPGRADE_FACTORY
-			@{else_any()}
-				this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+		@{else_any()}
+			this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
 
-				// reset literal
-				this._s_literal = '';
-		@;
+			// reset literal
+			this._s_literal = '';
 
 		// not datatype, not language tag => that's okay! those are optional
 		@{end_else()}
@@ -2368,9 +2381,7 @@ class Reader {
 
 
 	@{method('datatype')}
-		@- B_UPGRADE_FACTORY
-			let kt_datatype = null;
-		@;
+		let kt_datatype = null;
 
 		// prefixed name quick
 		@{if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_datatype')}
@@ -2384,35 +2395,20 @@ class Reader {
 			let p_datatype;
 			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, false, true)}
 
-			@- B_UPGRADE_FACTORY
-				kt_datatype = this.check_named_node_escapeless(p_datatype);
-			@:
-				// set literal datatype
-				this._kt_object.datatype = this.check_named_node_escapeless(p_datatype);
-			@;
+			kt_datatype = this.check_named_node_escapeless(p_datatype);
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_datatype')}
 			@{valid_prefix('m_prefixed_named_e_datatype')}
 
-			@- B_UPGRADE_FACTORY
-				kt_datatype = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_datatype[2]')};
-			@:
-				// set literal datatype
-				this._kt_object.datatype = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_datatype[2]')};
-			@;
+			kt_datatype = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_datatype[2]')};
 
 		// iriref
 		@{else_if_match('R_IRIREF', 'm_iriref_datatype')}
 			let p_datatype;
 			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, true, true)}
 
-			@- B_UPGRADE_FACTORY
-				kt_datatype = this.check_named_node(p_datatype);
-			@:
-				// set literal datatype
-				this._kt_object.datatype = this.check_named_node(p_datatype);
-			@;
+			kt_datatype = this.check_named_node(p_datatype);
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_datatype')}
@@ -2420,23 +2416,16 @@ class Reader {
 
 			@{suffix('m_prefixed_named_datatype')}
 
-			@- B_UPGRADE_FACTORY
-				// set literal datatype
-				kt_datatype = @{prefixed_name('s_prefix_id', 's_suffix')};
-			@:
-				// set literal datatype
-				this._kt_object.datatype = @{prefixed_name('s_prefix_id', 's_suffix')};
-			@;
+			// set literal datatype
+			kt_datatype = @{prefixed_name('s_prefix_id', 's_suffix')};
 
 		// not iriref, not prefixed name
 		@{else_retry()}
 
-		@- B_UPGRADE_FACTORY
-			this._kt_object = this._dc_factory.datatypedLiteral(this._s_literal, kt_datatype);
+		this._kt_object = this._dc_factory.datatypedLiteral(this._s_literal, kt_datatype);
 
-			// reset literal
-			this._s_literal = '';
-		@;
+		// reset literal
+		this._s_literal = '';
 
 		// goto end of statement state
 		@{end_of_statement()}
@@ -2512,7 +2501,7 @@ class Reader {
 
 		// ']' end of property-object pairs
 		@{else_if_char(']')}
-			@{pop_state()}
+			@{pop_state(`end of property-object pairs ']`)}
 
 		// ')' end of collection
 		@{else_if_char(')')}
@@ -2732,7 +2721,7 @@ class Reader {
 			@{emit_statement()}
 
 			// restore state from stack
-			@{pop_state()}
+			@{pop_state(`end of collection ')'`)}
 		@{end_else()}
 
 
@@ -2797,14 +2786,9 @@ class Reader {
 
 		// boolean literal
 		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal', true)}
-			@- B_UPGRADE_FACTORY
-				// make literal
-				this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
-			@:
-				// make literal
-				this._kt_object = factory.boolean(m_boolean_literal[1]? true: false);
-			@;
-
+			// make literal
+			this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
+			
 		// blank node property list
 		@{else_if_char('[')}
 			// advance index to next token
@@ -3022,7 +3006,7 @@ class Reader {
 			@{emit_statement()}
 
 			// restore previous state
-			@{pop_state()}
+			@{pop_state(`end of collection ')'`)}
 		@{end_else()}
 
 
@@ -3069,14 +3053,9 @@ class Reader {
 
 		// boolean literal
 		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal', true)}
-			@- B_UPGRADE_FACTORY
-				// make literal
-				this._kt_object = this._dc_factory.booelan(m_boolean_literal[1]? true: false);
-			@:
-				// make literal
-				this._kt_object = factory.booelan(m_boolean_literal[1]? true: false);
-			@;
-
+			// make literal
+			this._kt_object = this._dc_factory.booelan(m_boolean_literal[1]? true: false);
+		
 		// blank node property list
 		@{else_if_char('[')}
 			// advance index to next token
