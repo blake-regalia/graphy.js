@@ -459,6 +459,10 @@ class GenericTerm {
 
 const KT_RDF_TYPE = new NamedNode('@{P_IRI_RDF}type');
 KT_RDF_TYPE.isRdfTypeAlias = true;  // for serialization
+const KT_RDF_SUBJECT = new NamedNode('@{P_IRI_RDF}subject');
+const KT_RDF_PREDICATE = new NamedNode('@{P_IRI_RDF}predicate');
+const KT_RDF_OBJECT = new NamedNode('@{P_IRI_RDF}object');
+const KT_RDF_STATEMENT = new NamedNode('@{P_IRI_RDF}Statement');
 
 const KT_RDF_LANG_STRING = new NamedNode('@{P_IRI_RDF}langString');
 const G_ISOLATE_RDF_LANG_STRING = KT_RDF_LANG_STRING.isolate();
@@ -1214,22 +1218,62 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 
 		terse(h_prefixes) {
 			let b_default_graph = this.graph.isDefaultGraph;
+			let kt_subject = this.subject;
+			let kt_object = this.object;
 			return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
-				+this.subject.terse(h_prefixes)
+				+(kt_subject.isGraphyQuad? kt_subject.star(h_prefixes): kt_subject.terse(h_prefixes))
 				+' '+this.predicate.terse(h_prefixes)
-				+' '+this.object.terse(h_prefixes)+' .'
+				+' '+(kt_object.isGraphyQuad? kt_object.star(h_prefixes): kt_object.terse(h_prefixes))+' .'
 				+(b_default_graph? '': ' }');
 		}
 
 		verbose() {
-			return this.subject.verbose()
+			// prep output string
+			let s_out = '';
+
+			// ref subject
+			let kt_subject = this.subject;
+
+			// prep subject string
+			let sv1_subject = '';
+
+			// subject is a quad; reify
+			if(kt_subject.isGraphyQuad) {
+				const [kq_0, kq_1, kq_2, kq_3] = reify(kt_subject);
+				s_out += kq_0.verbose()+'\n'+kq_1.verbose()+'\n'+kq_2.verbose()+'\n'+kq_3.verbose()+'\n';
+				sv1_subject = kq_0.subject.verbose();
+			}
+			// subejct is a term
+			else {
+				sv1_subject = kt_subject.verbose();
+			}
+
+			// ref object
+			let kt_object = this.object;
+
+			// prep object string
+			let sv1_object = '';
+
+			// object is a quad; reify
+			if(kt_object.isGraphyQuad) {
+				const [kq_0, kq_1, kq_2, kq_3] = reify(kt_object);
+				s_out += kq_0.verbose()+'\n'+kq_1.verbose()+'\n'+kq_2.verbose()+'\n'+kq_3.verbose()+'\n';
+				sv1_object = kq_0.subject.verbose();
+			}
+			// object is a term
+			else {
+				sv1_object = kt_object.verbose();
+			}
+
+			// serialize quad
+			return s_out+sv1_subject
 				+' '+this.predicate.verbose()
-				+' '+this.object.verbose()
+				+' '+sv1_object
 				+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
 		}
 
 		star(h_prefixes) {
-			return '<<'
+			return '<< '
 				+this.subject.star(h_prefixes)
 				+' '+this.predicate.star(h_prefixes)
 				+' '+this.object.star(h_prefixes)
@@ -1256,6 +1300,36 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 	},
 })}
 
+
+class NakedQuad extends Quad {
+	terse(h_prefixes) {
+		let b_default_graph = this.graph.isDefaultGraph;
+		return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
+			+' '+this.subject.terse(h_prefixes)
+			+' '+this.predicate.terse(h_prefixes)
+			+' '+this.object.terse(h_prefixes)+' .'
+			+(b_default_graph? '': ' }');
+	}
+
+	verbose() {
+		return this.subject.verbose()
+			+' '+this.predicate.verbose()
+			+' '+this.object.verbose()
+			+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
+	}
+}
+
+
+function reify(kt_quad) {
+	let kt_reify = new BlankNode('_'+uuid_v4(), true);
+
+	return [
+		new Quad(kt_reify, KT_RDF_TYPE, KT_RDF_STATEMENT),
+		new Quad(kt_reify, KT_RDF_SUBJECT, kt_quad.subject),
+		new Quad(kt_reify, KT_RDF_PREDICATE, kt_quad.predicate),
+		new Quad(kt_reify, KT_RDF_OBJECT, kt_quad.object),
+	];
+}
 
 let g_raw = {
 	namedNode(p_iri) {
