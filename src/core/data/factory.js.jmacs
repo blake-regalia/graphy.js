@@ -382,7 +382,8 @@ function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 		delete g_methods.constructor;
 	}
 	function @{s_class}@{sj_constructor} {
-		@{Object.keys(g_methods).length? /* syntax: js */ `const gp_self = `: ''}@{s_class}.prototype = Object.create(@{s_extends}.prototype);
+		const gp_self = @{s_class}.prototype = Object.create(@{s_extends}.prototype);
+		gp_self.constructor = @{s_class};
 		@*{
 			for(let [si_method, g_method] of Object.entries(g_methods)) {
 				if('function' === typeof g_method.value) {

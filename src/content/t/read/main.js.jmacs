@@ -555,12 +555,12 @@ const match_prefixed_name = (s, i) => {
 @;
 
 @// emit statement and return control to whatever function asked for it
-@> end_of_statement()
+@> eot()
 	// at this point, a new statement has been parsed
 	@{emit_statement()}
 
 	// goto next parsing state; bail out of stack
-	return this.after_end_of_statement;
+	return this.after_eot;
 @;
 
 @.{/*
@@ -731,10 +731,10 @@ class Reader {
 			pre: g_config.prepend || '',
 
 			// debug state
-			_b_debug: g_config.debug || false,
+			_b_debug: !!g_config.debug,
 
 			// relax
-			_b_relax: g_config.relax || false,
+			_b_relax: !!g_config.relax,
 
 			// factory
 			_dc_factory: dc_factory,
@@ -752,6 +752,9 @@ class Reader {
 
 			// reader was destroyed by an error
 			_b_destroyed: false,
+
+			// rdf-star
+			_b_rdf_star: !!g_config.star,
 
 			// current @base url
 			_s_base_url: '',
@@ -786,7 +789,6 @@ class Reader {
 
 			// for restoring the original event callback when resuming paused stream
 			restore_data: this.emit_data,
-			restore_after_eos: null,
 
 			// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
 			_a_queue_event: [],
@@ -816,7 +818,8 @@ class Reader {
 			eos: null,
 
 			// which state to go to after end of statement
-			after_end_of_statement: this.post_object,
+			after_eot: this.post_object,
+			restore_after_eot: null,
 
 			// maximum length of a token: defaults to 2048 => http://stackoverflow.com/a/417184/1641160
 			_n_max_token_length: g_config.max_token_length || g_config.maxTokenLength || 2048,
@@ -1555,16 +1558,19 @@ class Reader {
 
 		// rdf-star
 		@{else_if_char('<<')}
+			// rdf-star not enabled
+			if(!this._b_rdf_star) break;
+
 			// advance to next token
 			@{whitespace('i+2')}
 
 			@- b_star
-				this.data = this.exit_star;
-				this.restore_after_eos = this.after_end_of_statement;
-				this.after_end_of_statement = this.triple_x_close;
-
 				@{push_state('star_post_object_x')}
 			@:
+				this.data = this.exit_star;
+				this.restore_after_eot = this.after_eot;
+				this.after_eot = this.triple_x_close;
+
 				@{push_state('star_post_object')}
 			@;
 
@@ -1573,16 +1579,8 @@ class Reader {
 		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
 		@{else_retry()}
 
-		@- b_star && false
-			// create quad
-			this._kq_star = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object);
-
-			// 
-			@{goto('triple_x_close')}
-		@:
-			// fall through for cases that did not change state on their own
-			@{end_of_statement()}
-		@;
+		// fall through for cases that did not change state on their own
+		@{eot()}
 	@;
 
 	@{method('triple_x_close')}
@@ -1600,24 +1598,22 @@ class Reader {
 
 	@//@class
 	star_predicate_x() {
-		debugger;
-
 		// set as subject
 		this._kt_subject = this._kq_star;
 
+		// resume
 		@{goto('predicate_x')}
 	}
 
 	star_pairs() {
-		debugger;  // what HAPPENS?!
-
 		// set as subject
 		this._kt_subject = this._kq_star;
 
-		// restore data and after_eos
+		// restore data and after_eot
 		this.data = this.emit_data;
-		this.after_end_of_statement = this.restore_after_eos
+		this.after_eot = this.restore_after_eot
 
+		// resume
 		@{goto('pairs')}
 	}
 
@@ -1625,24 +1621,22 @@ class Reader {
 		// set as object
 		this._kq_star = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kq_star);
 
-		// 
-		debugger
+		// resume
 		@{goto('triple_x_close')}
 	}
 
 	star_post_object() {
 		// set as object
 		this._kt_object = this._kq_star;
-debugger;
-		// restore data and after_eos
-		this.data = this.emit_data;
-		this.after_end_of_statement = this.restore_after_eos
 
-		// emit
+		// restore data and after_eot
+		this.data = this.emit_data;
+		this.after_eot = this.restore_after_eot;
+
+		// emit data
 		this.data();
 
-		// 
-		debugger
+		// resume
 		@{goto('post_object')}
 	}
 	@//@
@@ -1794,6 +1788,9 @@ debugger;
 
 		// triple_x
 		@{else_if_char_only('<<')}
+			// rdf-star not enabled
+			if(!this._b_rdf_star) break;
+
 			// advance to next token
 			@{whitespace('i+2')}
 
@@ -1801,7 +1798,7 @@ debugger;
 				@{push_state('star_predicate_x')}
 			@:
 				this.data = this.exit_star;
-				this.after_end_of_statement = this.triple_x_close;
+				this.after_eot = this.triple_x_close;
 				@{push_state('star_pairs')}
 			@;
 
@@ -2430,7 +2427,7 @@ debugger;
 		@{end_else()}
 
 		// goto end of statement state
-		@{end_of_statement()}
+		@{eot()}
 	@{end_method('datatype_or_langtag')}
 
 
@@ -2482,7 +2479,7 @@ debugger;
 		this._s_literal = '';
 
 		// goto end of statement state
-		@{end_of_statement()}
+		@{eot()}
 	@{end_method('datatype')}
 
 
@@ -2827,9 +2824,9 @@ debugger;
 			}
 
 			// how to resume collection subject state after object literal
-			this.after_end_of_statement = function() {
+			this.after_eot = function() {
 				this._kt_predicate = @{SJ_RDF_REST};
-				this.after_end_of_statement = this.post_object;
+				this.after_eot = this.post_object;
 				return this.collection_subject();
 			};
 			@{goto('string_literal')}
@@ -3094,9 +3091,9 @@ debugger;
 			this._kt_subject = kt_blank_node;
 			this._kt_predicate = @{SJ_RDF_FIRST};
 
-			this.after_end_of_statement = function() {
+			this.after_eot = function() {
 				this._kt_predicate = @{SJ_RDF_REST};
-				this.after_end_of_statement = this.post_object;
+				this.after_eot = this.post_object;
 				return this.collection_object();
 			};
 			@{goto('string_literal')}
