@@ -139,8 +139,8 @@ const h_packages_top = {
 };
 
 const h_packages = {
-	...h_packages_top,
-}
+	// ...h_packages_top,
+};
 
 // each package in the tree
 (function map_tree(h_tree, s_path='') {
@@ -195,7 +195,7 @@ for(let [s_content, g_content] of Object.entries(h_content_packages)) {
 		}
 	}
 }
-
+debugger;
 
 // normalize packages
 let h_super_deps = Object.assign(g_package_json_super.dependencies);
@@ -470,7 +470,7 @@ module.exports = async() => {
 			content_sub: a_content_subs,
 
 			// top packages
-			package_top: h_packages_top,
+			package_top: Object.keys(h_packages_top),
 
 			...(Object.entries(h_manifest_deps).reduce((h_out, [si_key, h_deps]) => ({
 				...h_out,
@@ -840,25 +840,25 @@ module.exports = async() => {
 				},
 
 				package: {
-					// supers
-					':package_top': [si_package => ({
-						[si_package]: (g_package => ({
-							...scoped_package(si_package),
+					// // supers
+					// ':package_top': [si_package => ({
+					// 	[si_package]: (g_package => ({
+					// 		...scoped_package(si_package),
 
-							'main.js': () => ({
-								deps: [
-									...a_content_subs.map(s => `build/package/${s}/**`),
-								],
-								write: /* syntax: js */ `
-									import 
-									${g_package.links.map}
-								`,
-								run: /* syntax: bash */ `
-									npx jmacs emk
-								`,
-							}),
-						}))(h_packages_top[si_package]),
-					})],
+					// 		'main.js': () => ({
+					// 			deps: [
+					// 				...a_content_subs.map(s => `build/package/${s}/**`),
+					// 			],
+					// 			write: /* syntax: js */ `
+					// 				import 
+					// 				${g_package.links.map}
+					// 			`,
+					// 			run: /* syntax: bash */ `
+					// 				npx jmacs emk
+					// 			`,
+					// 		}),
+					// 	}))(h_packages_top[si_package]),
+					// })],
 
 					// content subs
 					':content_sub': [si_package => ({
