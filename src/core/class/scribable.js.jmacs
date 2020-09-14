@@ -8,6 +8,9 @@
 const factory = require('@{channel('core.data.factory')}');
 const stream = require('@{channel('core.iso.stream')}');
 
+const {
+	SI_PREFIX_BASE,
+} = factory;
 
 // max string buffer size
 const N_DEFAULT_MAX_BUFFER = 1 << 15;  // 32 KiB
@@ -89,6 +92,17 @@ class Scribable extends stream.Transform {
 					`.trim()+'\n';
 			}
 		}
+	}
+
+	_serialize_base(p_base) {
+		// update prefixes object
+		Object.defineProperty(this._h_prefixes, SI_PREFIX_BASE, {
+			enumerable: false,
+			value: p_base,
+		});
+
+		// save base value
+		this._p_base = p_base;
 	}
 
 	_serialize_hash_comment(s_comment) {
