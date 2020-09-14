@@ -146,8 +146,8 @@ const uuidv4 = () => {
 };
 
 
-// symbol to access cache on a prefix mapping
-const $_PREFIX_CACHE = Symbol('prefix-cache');
+// key to access cache on a prefix mapping
+const SI_PREFIX_CACHE = ' (cache)';
 
 // escape characters for compiling regexes
 const R_REGEX_ESCAPE = /[$^*()+[\\{}|.?]/g;
@@ -182,10 +182,13 @@ function cache_prefixes(h_prefixes, b_terse=false) {
 	if(!a_cache.length) return h_prefixes;
 
 	// save cache object
-	h_prefixes[$_PREFIX_CACHE] = {
-		_r_iris: new RegExp(`^(${a_cache.join('|')})${SR_PN_LOCAL}`, 'u'),
-		_h_inverse: h_inverse,
-	};
+	Object.defineProperty(h_prefixes, SI_PREFIX_CACHE, {
+		enumerable: false,
+		value: {
+			_r_iris: new RegExp(`^(${a_cache.join('|')})${SR_PN_LOCAL}`, 'u'),
+			_h_inverse: h_inverse,
+		},
+	});
 
 	// freeze object
 	return Object.freeze(h_prefixes);
@@ -200,7 +203,7 @@ function cache_prefixes(h_prefixes, b_terse=false) {
 
 @> curi_prefix_cache()
 	// ref cache
-	let g_cache = h_prefixes[$_PREFIX_CACHE];
+	let g_cache = h_prefixes[SI_PREFIX_CACHE];
 
 	// cache exists
 	if(g_cache) {
@@ -2059,5 +2062,5 @@ const factory = module.exports = {
 	clean_iri,
 	cleanIri: clean_iri,
 
-	$_PREFIX_CACHE,
+	SI_PREFIX_CACHE,
 };
