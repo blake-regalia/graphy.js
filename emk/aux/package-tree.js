@@ -14,6 +14,7 @@ module.exports = {
 		},
 		data: {
 			factory: () => ({
+				export: 'DataFactory',
 				description: 'Create instances of Terms and Triples/Quads. Implements @RDFJS DataFactory',
 				dependencies: [
 					'uri-js',
@@ -63,6 +64,7 @@ module.exports = {
 	memory: {
 		dataset: {
 			fast: () => ({
+				export: 'FastDataset',
 				links: ['core.data.factory', 'core.iso.stream'],
 				description: 'Create a dataset of quads in memory for comparison and set operations such as union, intersection, difference, etc.',
 			}),

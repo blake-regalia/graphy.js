@@ -25,6 +25,7 @@ module.exports = {
 	packages: {
 		nt: {
 			super: 'n',
+			export_prefix: 'NTriples',
 			description: 'RDF N-Triples',
 			modes: G_MODES_N_FAMILY,
 			manifest: 'https://w3c.github.io/rdf-tests/ntriples/manifest.ttl',
@@ -32,6 +33,7 @@ module.exports = {
 		},
 		nq: {
 			super: 'n',
+			export_prefix: 'NQuads',
 			description: 'RDF N-Quads',
 			modes: G_MODES_N_FAMILY,
 			manifest: 'https://w3c.github.io/rdf-tests/nquads/manifest.ttl',
@@ -39,6 +41,7 @@ module.exports = {
 		},
 		ttl: {
 			super: 't',
+			export_prefix: 'Turtle',
 			description: 'RDF Turtle',
 			modes: G_MODES_T_FAMILY,
 			manifest: 'https://w3c.github.io/rdf-tests/turtle/manifest.ttl',
@@ -46,6 +49,7 @@ module.exports = {
 		},
 		trig: {
 			super: 't',
+			export_prefixes: 'TriG',
 			description: 'RDF TriG',
 			modes: G_MODES_T_FAMILY,
 			manifest: 'https://w3c.github.io/rdf-tests/trig/manifest.ttl',
@@ -53,6 +57,7 @@ module.exports = {
 		},
 		xml: {
 			super: 'xml',
+			export_prefix: 'RdfXml',
 			description: 'RDF/XML',
 			modes: {
 				scribe: {},
@@ -65,6 +70,7 @@ module.exports = {
 	// content modes
 	modes: {
 		read: {
+			export_suffix: 'Reader',
 			description: s => `Single-threaded ${s} content reader`,
 			links: [
 				'core.data.factory',
@@ -76,6 +82,7 @@ module.exports = {
 		},
 
 		scan: {
+			export_suffix: 'Scanner',
 			description: s => `Multi-threaded ${s} content reader`,
 			links: [
 				'core.data.factory',
@@ -89,6 +96,7 @@ module.exports = {
 		},
 
 		write: {
+			export_suffix: 'Writer',
 			description: s => `${s} content writer for dynamic and stylized output`,
 			links: [
 				'core.data.factory',
@@ -100,6 +108,7 @@ module.exports = {
 		},
 
 		scribe: {
+			export_suffix: 'Scriber',
 			description: s => `${s} content scriber for fast and simple output`,
 			links: [
 				'core.data.factory',

@@ -9,7 +9,7 @@
 
 @$ B_QUADS = B_TRIG;
 
-@$ S_LABEL = B_TTL? 'Turtle': 'TriG';
+@$ S_LABEL = B_TTL? 'Turtle': 'Trig';
 
 const factory = require('@{channel('core.data.factory')}');
 const Scribable = require('@{channel('core.class.scribable')}');
@@ -24,27 +24,52 @@ const {
 @;
 
 
+function star(yq_input, h_prefixes) {
+	return '<< '
+		+terse_s(yq_input.subject, h_prefixes)
+		+' '+terse_p(yq_input.predicate.value, h_prefixes)
+		+' '+terse_o(yq_input.object, h_prefixes)
+		@- B_QUADS
+			+(yq_input.graph.isDefaultGraph? '': ' '+terse_g(yq_input.graph, h_prefixes))
+		@;
+		+' >>';
+}
+
 function terse_s(yt_subject, h_prefixes) {
-	if('NamedNode' === yt_subject.termType) {
-		return terse(yt_subject.value, h_prefixes);
-	}
-	else {
-		return '_:'+yt_subject.value;
+	switch(yt_subject.termType) {
+		// named node
+		case 'NamedNode': return terse(yt_subject.value, h_prefixes);
+
+		// blank node
+		case 'BlankNode': return '_:'+yt_subject.value;
+
+		// quad
+		case 'Quad': return star(yt_subject, h_prefixes);
+
+		// other
+		default: {
+			throw new Error(`Cannot serialize term type '${yt_subject.termType}' in subject position: '${yt_subject}'`);
+		}
 	}
 }
 
 
 @- B_QUADS
-	function terse_g(yt_subject, h_prefixes) {
-		switch(yt_subject.termType) {
+	function terse_g(yt_grpah, h_prefixes) {
+		switch(yt_grpah.termType) {
 			// default graph
 			case 'DefaultGraph': return '';
 
 			// named node
-			case 'NamedNode': return terse(yt_subject.value, h_prefixes);
+			case 'NamedNode': return terse(yt_grpah.value, h_prefixes);
 
 			// blank node
-			default: return '_:'+yt_subject.value;
+			case 'BlankNode': return '_:'+yt_grpah.value;
+
+			// other
+			default: {
+				throw new Error(`Cannot serialize term type '${yt_graph.termType}' in graph position: '${yt_graph}'`);
+			}
 		}
 	}
 @;
@@ -74,13 +99,21 @@ function terse_o(yt_object, h_prefixes) {
 		}
 
 		// blank node
-		default: return '_:'+yt_object.value;
+		case 'BlankNode': return '_:'+yt_object.value;
+
+		// quad
+		case 'Quad': return star(yt_object, h_prefixes);
+
+		// other
+		default: {
+			throw new Error(`Cannot serialize term type '${yt_object.termType}' in graph position: '${yt_object}'`);
+		}
 	}
 }
 
 
 
-class @{S_LABEL}_Scriber extends Scribable {
+class @{S_LABEL}Scriber extends Scribable {
 	constructor(gc_scriber={}) {
 		super(gc_scriber);
 
@@ -354,7 +387,7 @@ class @{S_LABEL}_Scriber extends Scribable {
 
 	_flush() {
 		// flush buffer
-		@{S_LABEL}_Scriber._flush_buffer(this);
+		@{S_LABEL}Scriber._flush_buffer(this);
 
 		// triple needs closing
 		if(this._yt_subject) {
@@ -366,10 +399,10 @@ class @{S_LABEL}_Scriber extends Scribable {
 	}
 };
 
-Object.assign(@{S_LABEL}_Scriber, {
+Object.assign(@{S_LABEL}Scriber, {
 	_serialize_comment: Scribable.prototype._serialize_hash_comment,
 });
 
 module.exports = function(g_config) {
-	return new @{S_LABEL}_Scriber(g_config);
+	return new @{S_LABEL}Scriber(g_config);
 };

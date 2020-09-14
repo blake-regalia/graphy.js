@@ -13,7 +13,7 @@
 @$ B_TRIG = 'trig' === FORMAT;
 @$ B_QUADS = B_TRIG;
 
-@$ S_LABEL = B_TTL? 'Turtle': 'TriG';
+@$ S_LABEL = B_TTL? 'Turtle': 'Trig';
 
 @$ S_CONTENT_TYPE = B_TTL? 'text/turtle': 'application/trig';
 
@@ -32,7 +32,41 @@ const XC_DIRECTIVES_CASE_UPPER = 0b100;
 const P_IRI_RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 */}
 
-class @{S_LABEL}_Writer extends Writable {
+
+function Writer$_reify(kq_input) {
+	// non-default graph
+	if(!kq_input.graph.isDefaultGraph) {
+		// warn about non-default graph
+		let s_warning = `The RDF vocabulary does not describe a predicate to use for the graph component of a reified statement; default reification function is dropping non-default graph component for the quad: ${kq_input.verbose()}`;
+
+		// emit warning, wasn't listened to; force thru warn/stderr channel
+		if(!this.emit('warning', s_warning)) {
+			console.warn(s_warning);
+		}
+	}
+
+	// reified node
+	let sc1_reified = '_:_'+factory.uuidv4();
+
+	// result
+	return {
+		node: sc1_reified,
+		quads: {
+			type: 'c3',
+			value: {
+				[sc1_reified]: {
+					a: '>@{P_IRI_RDF}Statement',
+					'>@{P_IRI_RDF}subject': kq_input.subject,
+					'>@{P_IRI_RDF}predicate': kq_input.predicate,
+					'>@{P_IRI_RDF}object': kq_input.object,
+				},
+			},
+		},
+	};
+}
+
+
+class @{S_LABEL}Writer extends Writable {
 	constructor(gc_writer={}) {
 		super(gc_writer);
 
@@ -41,7 +75,14 @@ class @{S_LABEL}_Writer extends Writable {
 			lists: gc_lists=null,
 			debug: b_debug=false,
 			style: gc_style=null,
+			star: b_star=false,
+			reify: f_reify=null,
 		} = gc_writer;
+
+		// conflict
+		if(b_star && f_reify) {
+			throw new Error(`Conflicting options passed to @{S_LABEL}Writer; '.star' and '.reify' are mutually exclusive.`);
+		}
 
 		Object.assign(this, {
 			_b_debug: b_debug,
@@ -49,6 +90,8 @@ class @{S_LABEL}_Writer extends Writable {
 			_b_simplify_default_graph: false,
 			_xc_directives: 0,
 			_s_token_prefix: '@prefix',
+			_b_star: !!b_star,
+			_f_reify: f_reify || Writer$_reify,
 		});
 
 		@- B_QUADS
@@ -255,6 +298,7 @@ class @{S_LABEL}_Writer extends Writable {
 		let {
 			_h_prefixes: h_prefixes,
 			_s_indent: s_indent,
+			_b_star: b_star,
 			@.{/*alias_rdf_type: b_alias_rdf_type,*/}
 		} = this;
 
@@ -333,8 +377,69 @@ class @{S_LABEL}_Writer extends Writable {
 				// position before subject
 				let i_triples = s_write.length;
 
-				// serialize subject
-				s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}factory.c1_node(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
+				// data
+				let a_stars = [];
+				if('{' === sc1_subject[0]) {
+					let g_data;
+					try {
+						g_data = JSON.parse(sc1_subject);
+					}
+					catch(e_parse) {
+						throw new Error(`Invalid concise-term string; failed to parse JSON '${sc1_subject}'`);
+					}
+
+					// c3 object
+					if('c3' === g_data.type) {
+						// spread triples
+						a_stars = [...factory.c3(g_data.value, h_prefixes)];
+
+						// no data
+						if(!a_stars.length) {
+							throw new Error(`Concise-term data string is empty, but must have triples for subject term: '${sc1_subject}'`);
+						}
+
+						// rdf-star supported; first triple
+						if(b_star) {
+							s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}a_stars[0].star(h_prefixes)+' ';
+						}
+						// no rdf-star
+						else {
+							// reified nodes list
+							let a_reified_nodes = [];
+
+							// reify quads
+							for(let kq_star of a_stars) {  /* eslint-disable no-loop-func */
+								let {
+									node: z_reify,
+									quads: w_quads,
+								} = this._f_reify(kq_star);
+
+								// write reified statements
+								this.write(w_quads);
+
+								// add reified node
+								a_reified_nodes.push('string' === typeof z_reify? factory.c1_node(z_reify, h_prefixes): factory.fromQuad(z_reify));
+							}  /* eslint-disable no-loop-func */
+
+							// delimit triple(s)
+							s_delim_triples = '\n';
+
+							// reset stars list
+							a_stars = a_reified_nodes;
+
+							// write first node
+							s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}a_stars[0].terse(h_prefixes)+' ';
+						}
+					}
+					// invalid
+					else {
+						throw new Error(`Invalid concise-term data type: '${g_data.type}'`);
+					}
+				}
+				// concise-term; serialize object
+				else {
+					s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}factory.c1_node(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
+				}
 
 				// pair indent & terminator
 				let s_indent_pairs = '';
@@ -431,6 +536,20 @@ class @{S_LABEL}_Writer extends Writable {
 
 				// close triple
 				s_write += `${s_term_pairs? ' ': s_indent_pairs}.\n`; // @{b_c4? '\\n': ''}
+
+				// write all stars
+				if(a_stars.length > 1) {
+					// prep rewrite string
+					let s_rewrite = s_write.slice(i_pairs);
+
+					// serialization method to use
+					let s_method = b_star? 'star': 'terse';
+
+					// each star; rewrite
+					for(let i_star=1, nl_stars=a_stars.length; i_star<nl_stars; i_star++) {
+						s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}a_stars[i_star][s_method](h_prefixes)+' '+s_rewrite;
+					}
+				}
 
 				// call exit subject listener
 				if(f_exit_subject) f_exit_subject();
@@ -565,7 +684,7 @@ class @{S_LABEL}_Writer extends Writable {
 				}
 				// RDFJS term
 				else if(z_objects.termType) {
-					return factory.from.term(z_objects).terse(h_prefixes);
+					return factory.fromTerm(z_objects).terse(h_prefixes);
 				}
 			}
 
@@ -612,7 +731,7 @@ class @{S_LABEL}_Writer extends Writable {
 	// rdfjs quad
 	_serialize_quad(g_quad) {
 		let h_prefixes = this._h_prefixes;
-		let kq_quad = factory.from.quad(g_quad);
+		let kq_quad = factory.fromQuad(g_quad);
 
 		@- B_QUADS
 			let st_graph = kq_quad.graph.terse(h_prefixes);
@@ -634,17 +753,16 @@ class @{S_LABEL}_Writer extends Writable {
 		// update state
 		this._xc_state = @{XC_STATE_DATA};
 	}
-
 }
 
-Object.assign(@{S_LABEL}_Writer.prototype, {
+Object.assign(@{S_LABEL}Writer.prototype, {
 	anonymous_blank_nodes: true,
-	_serialize_c3r: @{S_LABEL}_Writer.prototype._serialize_c3,
-	_serialize_c4r: @{S_LABEL}_Writer.prototype._serialize_c4,
+	_serialize_c3r: @{S_LABEL}Writer.prototype._serialize_c3,
+	_serialize_c4r: @{S_LABEL}Writer.prototype._serialize_c4,
 	_serialize_comment: Writable.prototype._serialize_hash_comment,
-	_serialize_list_object: @{S_LABEL}_Writer.prototype._serialize_collection_object,
+	_serialize_list_object: @{S_LABEL}Writer.prototype._serialize_collection_object,
 });
 
 module.exports = function(gc_writer) {
-	return new @{S_LABEL}_Writer(gc_writer);
+	return new @{S_LABEL}Writer(gc_writer);
 };

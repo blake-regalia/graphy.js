@@ -1,4 +1,3 @@
-@$ S_VERSION = '4.0.0';
 @$ S_GRAPHY_CHANNEL = process.env.GRAPHY_CHANNEL || 'graphy';
 
 @>> channel(s_package)

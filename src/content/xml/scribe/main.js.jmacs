@@ -10,7 +10,7 @@ const Scribable = require('@{channel('core.class.scribable')}');
 const {
 	c1,
 	namedNode,
-	$_PREFIX_CACHE,
+	SI_PREFIX_CACHE,
 } = factory;
 
 const R_XML_ESCAPES = /[&"<>']/g;
@@ -113,8 +113,8 @@ function XML_Serializer$predicate(k_self, kt_predicate) {
 		PREFIX_LOOKUP:
 		for(;;) {
 			// prefix cache
-			if(h_prefixes[$_PREFIX_CACHE]) {
-				let h_inverse = h_prefixes[$_PREFIX_CACHE]._h_inverse;
+			if(h_prefixes[SI_PREFIX_CACHE]) {
+				let h_inverse = h_prefixes[SI_PREFIX_CACHE]._h_inverse;
 
 				// prefix exists
 				if(p_edge_prefix_iri in h_inverse) {

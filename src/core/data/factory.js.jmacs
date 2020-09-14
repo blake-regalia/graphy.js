@@ -135,7 +135,7 @@ const RT_BOOLEAN_FALSE = /^([Ff](alse)?|FALSE)$/;
 const S_UUID_V4 = 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx';
 const R_UUID_V4 = /[xy]/g;
 
-const uuid_v4 = () => {
+const uuidv4 = () => {
 	let dt_now = Date.now();
 	if('undefined' !== typeof performance) dt_now += performance.now();
 	return S_UUID_V4.replace(R_UUID_V4, (s) => {
@@ -146,8 +146,8 @@ const uuid_v4 = () => {
 };
 
 
-// symbol to access cache on a prefix mapping
-const $_PREFIX_CACHE = Symbol('prefix-cache');
+// key to access cache on a prefix mapping
+const SI_PREFIX_CACHE = ' (cache)';
 
 // escape characters for compiling regexes
 const R_REGEX_ESCAPE = /[$^*()+[\\{}|.?]/g;
@@ -182,10 +182,13 @@ function cache_prefixes(h_prefixes, b_terse=false) {
 	if(!a_cache.length) return h_prefixes;
 
 	// save cache object
-	h_prefixes[$_PREFIX_CACHE] = {
-		_r_iris: new RegExp(`^(${a_cache.join('|')})${SR_PN_LOCAL}`, 'u'),
-		_h_inverse: h_inverse,
-	};
+	Object.defineProperty(h_prefixes, SI_PREFIX_CACHE, {
+		enumerable: false,
+		value: {
+			_r_iris: new RegExp(`^(${a_cache.join('|')})${SR_PN_LOCAL}`, 'u'),
+			_h_inverse: h_inverse,
+		},
+	});
 
 	// freeze object
 	return Object.freeze(h_prefixes);
@@ -200,7 +203,7 @@ function cache_prefixes(h_prefixes, b_terse=false) {
 
 @> curi_prefix_cache()
 	// ref cache
-	let g_cache = h_prefixes[$_PREFIX_CACHE];
+	let g_cache = h_prefixes[SI_PREFIX_CACHE];
 
 	// cache exists
 	if(g_cache) {
@@ -369,13 +372,47 @@ function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 	}
 }
 
+@$ R_DECLARE = /^\s*class\s*([^\s]+)\s*(?:extends\s*([^\s]+)\s*)/;
+
+@def declare(s_declare, g_def)
+	@.{
+		const [, s_class, s_extends] = R_DECLARE.exec(s_declare);
+		const sj_constructor = Object.hasOwnProperty.call(g_def, 'constructor')
+			? g_def.constructor.toString().replace(/^constructor/, '')
+			: /* syntax: js */ `() {}`;
+
+		const g_methods = Object.getOwnPropertyDescriptors(g_def.methods? g_def.methods.prototype : {});
+		delete g_methods.constructor;
+	}
+	function @{s_class}@{sj_constructor} {
+		const gp_self = @{s_class}.prototype = Object.create(@{s_extends}.prototype);
+		gp_self.constructor = @{s_class};
+		@*{
+			for(let [si_method, g_method] of Object.entries(g_methods)) {
+				if('function' === typeof g_method.value) {
+					yield /* syntax: js */ `
+						gp_self.${si_method} = function ${s_class}$${g_method.value.toString()};
+					`;
+				}
+				else if('function' === typeof g_method.get) {
+					yield /* syntax: j */ `
+						Object.defineProperty(gp_self, '${si_method}', {
+							get${g_method.get.toString().replace(/^get [^\(]+/, '')},
+						})
+					`;
+				}
+			}
+		} @*{
+			for(let [si_property, sj_value] of Object.entries(g_def.properties || {})) {
+				yield /* syntax: js */ `
+					gp_self.${si_property} = ${sj_value};`;
+			}
+		}
+	}
+@;
 
 class GenericTerm {
 	valueOf() {
-		return this.concise();
-	}
-
-	toString() {
 		return this.concise();
 	}
 
@@ -385,42 +422,51 @@ class GenericTerm {
 				|| (z_other.termType === this.termType && z_other.value === this.value)
 			: false;
 	}
-} Object.assign(GenericTerm.prototype, {
-	isGraphyTerm: true,
-});
+} {
+	const gp_self = GenericTerm.prototype;
+	gp_self.isGraphyTerm = true;
+	gp_self.toString = gp_self.valueOf;
+}
 
-
-class NamedNode extends GenericTerm {
+@{declare(/* syntax: js */ `class NamedNode extends GenericTerm`, {
 	constructor(s_iri) {
-		super();
 		this.value = s_iri;
-	}
+	},
+	/* eslint-disable no-undef */
+	methods: class {
+		concise(h_prefixes={}) {
+			return concise(this.value, h_prefixes);
+		}
 
-	concise(h_prefixes={}) {
-		return concise(this.value, h_prefixes);
-	}
+		terse(h_prefixes={}, b_opt=false) {
+			return terse(clean_iri(this.value), h_prefixes, b_opt);
+		}
 
-	terse(h_prefixes={}, b_opt=false) {
-		return terse(clean_iri(this.value), h_prefixes, b_opt);
-	}
+		verbose() {
+			return '<'+clean_iri(this.value)+'>';
+		}
 
-	verbose() {
-		return '<'+clean_iri(this.value)+'>';
-	}
-
-	isolate() {
-		return {
-			termType: 'NamedNode',
-			value: this.value,
-		};
-	}
-} Object.assign(NamedNode.prototype, {
-	termType: 'NamedNode',
-	isNamedNode: true,
-});
+		isolate() {
+			return {
+				termType: 'NamedNode',
+				value: this.value,
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		termType: /* syntax: js */ `'NamedNode'`,
+		isNamedNode: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
 
 const KT_RDF_TYPE = new NamedNode('@{P_IRI_RDF}type');
 KT_RDF_TYPE.isRdfTypeAlias = true;  // for serialization
+const KT_RDF_SUBJECT = new NamedNode('@{P_IRI_RDF}subject');
+const KT_RDF_PREDICATE = new NamedNode('@{P_IRI_RDF}predicate');
+const KT_RDF_OBJECT = new NamedNode('@{P_IRI_RDF}object');
+const KT_RDF_STATEMENT = new NamedNode('@{P_IRI_RDF}Statement');
 
 const KT_RDF_LANG_STRING = new NamedNode('@{P_IRI_RDF}langString');
 const G_ISOLATE_RDF_LANG_STRING = KT_RDF_LANG_STRING.isolate();
@@ -433,219 +479,242 @@ const KT_XSD_DATE = new NamedNode('@{P_IRI_XSD}date');
 const KT_XSD_DATETIME = new NamedNode('@{P_IRI_XSD}dateTime');
 const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 
-class GenericLiteral extends GenericTerm {
-	equals(z_other) {
-		return z_other
-			? this === z_other
-				|| ('Literal' === z_other.termType && z_other.value === this.value
-					&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
-			: false;
-	}
-
-	verbose() {
-		return JSON.stringify(this.value)
-			+ (this.language
-				? '@'+this.language
-				: '^^'+this.datatype.verbose());
-	}
-
-	concise(h_prefixes) {
-		if(this.language) {
-			return '@'+this.language+'"'+this.value;
+@{declare(/* syntax: js */ `class GenericLiteral extends GenericTerm`, {
+	/* eslint-disable no-undef */
+	methods: class {
+		equals(z_other) {
+			return z_other
+				? this === z_other
+					|| ('Literal' === z_other.termType && z_other.value === this.value
+						&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
+				: false;
 		}
-		else {
-			return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+
+		verbose() {
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: '^^'+this.datatype.verbose());
 		}
-	}
 
-	terse(h_prefixes={}) {
-		// turn into terse
-		let st_datatype = this.datatype.terse(h_prefixes);
+		concise(h_prefixes={}) {
+			if(this.language) {
+				return '@'+this.language+'"'+this.value;
+			}
+			else {
+				return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+			}
+		}
 
-		// stringify literal
-		return JSON.stringify(this.value)
-			+ (this.language
-				? '@'+this.language
-				: '^^'+st_datatype);
-	}
+		terse(h_prefixes={}) {
+			// turn into terse
+			let st_datatype = this.datatype.terse(h_prefixes);
 
-	isolate() {
-		return {
-			termType: 'Literal',
-			value: this.value,
-			language: this.language,
-			datatype: this.datatype.isolate(),
-		};
-	}
-} Object.assign(GenericLiteral.prototype, {
-	datatype: KT_XSD_STRING,
-	language: '',
-	termType: 'Literal',
-	isLiteral: true,
-	isSimple: false,
-});
+			// stringify literal
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: '^^'+st_datatype);
+		}
 
-class LanguagedLiteral extends GenericLiteral {
+		isolate() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: this.language,
+				datatype: this.datatype.isolate(),
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		datatype: /* syntax: js */ `KT_XSD_STRING`,
+		language: /* syntax: js */ `''`,
+		termType: /* syntax: js */ `'Literal'`,
+		isLiteral: /* syntax: js */ `true`,
+		isSimple: /* syntax: js */ `false`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
+
+@{declare(/* syntax: js */ `class LanguagedLiteral extends GenericLiteral`, {
 	constructor(s_value, s_lang) {
-		super();
 		this.value = s_value;
 
 		// remove optional '@' character from beginning
 		this.language = ('@' === s_lang[0]? s_lang.slice(1): s_lang).toLowerCase();
-	}
+	},
+	/* eslint-disable no-undef */
+	methods: class {
+		verbose() {
+			return JSON.stringify(this.value)+'@'+this.language;
+		}
 
-	verbose() {
-		return JSON.stringify(this.value)+'@'+this.language;
-	}
-
-	concise() {
-		return '@'+this.language+'"'+this.value;
-	}
-
-	terse() {
-		// stringify literal
-		return JSON.stringify(this.value)+'@'+this.language;
-	}
-
-	isolate() {
-		return {
-			termType: 'Literal',
-			value: this.value,
-			language: this.language,
-			datatype: G_ISOLATE_RDF_LANG_STRING,
-		};
-	}
-} Object.assign(LanguagedLiteral.prototype, {
-	datatype: KT_RDF_LANG_STRING,
-	isLanguaged: true,
-});
-
-
-class DatatypedLiteral extends GenericLiteral {
-	verbose() {
-		return JSON.stringify(this.value)+'^^'+this.datatype.verbose();
-	}
-
-	concise(h_prefixes) {
-		return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
-	}
-
-	terse(h_prefixes={}) {
-		// turn into terse
-		let st_datatype = this.datatype.terse(h_prefixes);
-
-		// stringify literal
-		return JSON.stringify(this.value)+'^^'+st_datatype;
-	}
-
-	isolate() {
-		return {
-			termType: 'Literal',
-			value: this.value,
-			language: this.language,
-			datatype: this.datatype.isolate(),
-		};
-	}
-} Object.assign(DatatypedLiteral.prototype, {
-	isDatatyped: true,
-});
-
-class ExplicitlyDatatypedLiteral extends DatatypedLiteral {
-	constructor(s_value, kt_datatype) {
-		super();
-		this.value = s_value;
-		this.datatype = kt_datatype;
-	}
-}
-
-class RawLiteral extends GenericTerm {
-	constructor(s_value) {
-		super();
-		this.value = s_value;
-	}
-
-	get isSimple() {
-		return !this.language && !this.datatype.equals(KT_XSD_STRING);
-	}
-
-	get isLanguaged() {
-		return !!this.language;
-	}
-
-	get isDatatyped() {
-		return KT_XSD_STRING.equals(this.datatype);
-	}
-
-	equals(z_other) {
-		return z_other
-			? this === z_other
-				|| ('Literal' === z_other.termType && z_other.value === this.value
-					&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
-			: false;
-	}
-
-	verbose() {
-		return JSON.stringify(this.value)
-			+ (this.language
-				? '@'+this.language
-				: '^^'+this.datatype.verbose());
-	}
-
-	concise(h_prefixes) {
-		if(this.language) {
+		concise() {
 			return '@'+this.language+'"'+this.value;
 		}
-		else {
+
+		terse() {
+			// stringify literal
+			return JSON.stringify(this.value)+'@'+this.language;
+		}
+
+		isolate() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: this.language,
+				datatype: G_ISOLATE_RDF_LANG_STRING,
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		datatype: /* syntax: js */ `KT_RDF_LANG_STRING`,
+		isLanguaged: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
+
+
+@{declare(/* syntax: js */ `class DatatypedLiteral extends GenericLiteral`, {
+	/* eslint-disable no-undef */
+	methods: class {
+		verbose() {
+			return JSON.stringify(this.value)+'^^'+this.datatype.verbose();
+		}
+
+		concise(h_prefixes={}) {
 			return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
 		}
-	}
 
-	terse(h_prefixes={}) {
-		// turn into terse
-		let st_datatype = this.datatype.terse(h_prefixes);
+		terse(h_prefixes={}) {
+			// turn into terse
+			let st_datatype = this.datatype.terse(h_prefixes);
 
-		// stringify literal
-		return JSON.stringify(this.value)
-			+ (this.language
-				? '@'+this.language
-				: '^^'+st_datatype);
-	}
+			// stringify literal
+			return JSON.stringify(this.value)+'^^'+st_datatype;
+		}
 
-	isolate() {
-		return {
-			termType: 'Literal',
-			value: this.value,
-			language: this.language,
-			datatype: this.datatype.isolate(),
-		};
-	}
-} Object.assign(RawLiteral.prototype, {
-	datatype: KT_XSD_STRING,
-	language: '',
-	termType: 'Literal',
-	isLiteral: true,
-});
+		isolate() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: this.language,
+				datatype: this.datatype.isolate(),
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		isDatatyped: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
 
-class SimpleLiteral extends GenericLiteral {
-	constructor(s_value) {
-		super();
+@{declare(/* syntax: js */ `class ExplicitlyDatatypedLiteral extends DatatypedLiteral`, {
+	constructor(s_value, kt_datatype) {
 		this.value = s_value;
-	}
+		this.datatype = kt_datatype;
+	},
+})}
 
-	verbose() {
-		return JSON.stringify(this.value);
-	}
+@{declare(/* syntax: js */ `class RawLiteral extends GenericTerm`, {
+	constructor(s_value) {
+		this.value = s_value;
+	},
+	/* eslint-disable no-undef */
+	methods: class {
+		get isSimple() {
+			return !this.language && !this.datatype.equals(KT_XSD_STRING);
+		}
 
-	concise() {
-		return '"'+this.value;
-	}
+		get isLanguaged() {
+			return !!this.language;
+		}
 
-	terse() {
-		return JSON.stringify(this.value);
-	}
-} Object.assign(SimpleLiteral.prototype, {
-	isSimple: true,
-});
+		get isDatatyped() {
+			return KT_XSD_STRING.equals(this.datatype);
+		}
+
+		equals(z_other) {
+			return z_other
+				? this === z_other
+					|| ('Literal' === z_other.termType && z_other.value === this.value
+						&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
+				: false;
+		}
+
+		verbose() {
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: '^^'+this.datatype.verbose());
+		}
+
+		concise(h_prefixes={}) {
+			if(this.language) {
+				return '@'+this.language+'"'+this.value;
+			}
+			else {
+				return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+			}
+		}
+
+		terse(h_prefixes={}) {
+			// turn into terse
+			let st_datatype = this.datatype.terse(h_prefixes);
+
+			// stringify literal
+			return JSON.stringify(this.value)
+				+ (this.language
+					? '@'+this.language
+					: '^^'+st_datatype);
+		}
+
+		isolate() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: this.language,
+				datatype: this.datatype.isolate(),
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		datatype: /* syntax: js */ `KT_XSD_STRING`,
+		language: /* syntax: js */ `''`,
+		termType: /* syntax: js */ `'Literal'`,
+		isLiteral: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
+
+@{declare(/* syntax: js */ `class SimpleLiteral extends GenericLiteral`, {
+	constructor(s_value) {
+		this.value = s_value;
+	},
+	/* eslint-disable no-undef */
+	methods: class {
+		verbose() {
+			return JSON.stringify(this.value);
+		}
+
+		concise() {
+			return '"'+this.value;
+		}
+
+		terse() {
+			return JSON.stringify(this.value);
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		isSimple: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
 
 
 @> literal(s_type, g_config)
@@ -679,15 +748,17 @@ class SimpleLiteral extends GenericLiteral {
 		terse() {
 			@{g_config.terse}
 		}
-	} Object.assign(Literal_@{s_type_proper}.prototype, {
-		datatype: KT_XSD_@{s_type_caps},
+	} {
+		const gp_self = Literal_@{s_type_proper}.prototype;
+		gp_self.datatype = KT_XSD_@{s_type_caps};
 		@- b_boolean
-			isBoolean: true,
+			gp_self.isBoolean = true;
 		@:
-			isNumeric: true,
-			is@{s_type_proper}: true,
+			gp_self.isNumeric = true;
+			gp_self.is@{s_type_proper} = true;
 		@;
-	});
+		gp_self.star = gp_self.terse;
+	}
 @;
 
 
@@ -944,12 +1015,14 @@ class Literal_PositiveInfinity extends Literal_Double {
 		this.value = 'INF';
 	}
 
-	terse(h_prefixes) {
+	terse(h_prefixes={}) {
 		return '"INF"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
-} Object.assign(Literal_PositiveInfinity.prototype, {
-	isInfinite: true,
-});
+} {
+	const gp_self = Literal_PositiveInfinity.prototype;
+	gp_self.isInfinite = true;
+	gp_self.star = gp_self.terse;
+}
 
 class Literal_NegativeInfinity extends Literal_Double {
 	constructor() {
@@ -957,12 +1030,14 @@ class Literal_NegativeInfinity extends Literal_Double {
 		this.value = '-INF';
 	}
 
-	terse(h_prefixes) {
+	terse(h_prefixes={}) {
 		return '"-INF"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
-} Object.assign(Literal_NegativeInfinity.prototype, {
-	isInfinite: true,
-});
+} {
+	const gp_self = Literal_NegativeInfinity.prototype;
+	gp_self.isInfinite = true;
+	gp_self.star = gp_self.terse;
+}
 
 class Literal_NaN extends Literal_Double {
 	constructor() {
@@ -970,236 +1045,360 @@ class Literal_NaN extends Literal_Double {
 		this.value = 'NaN';
 	}
 
-	terse(h_prefixes) {
+	terse(h_prefixes={}) {
 		return '"NaN"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
-} Object.assign(Literal_NaN.prototype, {
-	isNaN: true,
-});
+} {
+	const gp_self = Literal_NaN.prototype;
+	gp_self.isNaN = true;
+	gp_self.star = gp_self.terse;
+}
 
 
-function BlankNode(s_value, b_anonymous=false) {
-	this.value = s_value;
-	this.isAnonymous = b_anonymous;
-} BlankNode.prototype = Object.assign(
-	Object.create(GenericTerm.prototype), {
-		termType: 'BlankNode',
-		isBlankNode: true,
-
-		concise() {
-			return '_:'+this.value;
-		},
-
-		terse() {
-			return '_:'+this.value;
-		},
-
+@{declare(/* syntax: js */ `class BlankNode extends GenericTerm`, {
+	constructor(s_value, b_anonymous=false) {
+		this.value = s_value;
+		this.isAnonymous = b_anonymous;
+	},
+	/* eslint-disable no-undef */
+	methods: class {
 		verbose() {
 			return '_:'+this.value;
-		},
+		}
 
 		isolate() {
 			return {
 				termType: 'BlankNode',
 				value: this.value,
 			};
-		},
-	});
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		termType: /* syntax: js */ `'BlankNode'`,
+		isBlankNode: /* syntax: js */ `true`,
+		concise: /* syntax: js */ `gp_self.terse = gp_self.star = gp_self.verbose`,
+	},
+})}
 
 
-function EphemeralBlankNode() {}
-EphemeralBlankNode.prototype = Object.assign(
-	Object.create(BlankNode.prototype), {
-		isAnonymous: true,
-		isEphemeral: true,
+@{declare(/* syntax: js */ `class EphemeralBlankNode extends BlankNode`, {
+	/* eslint-disable no-undef */
+	methods: class {
+		get value() {
+			return '_'+uuidv4();
+		}
 
 		concise() {
 			return '_:#'+this.value;
-		},
+		}
 
 		terse() {
 			return '[]';
-		},
+		}
 
 		verbose() {
 			return '_:'+this.value;
-		},
+		}
 
 		isolate() {
 			return {
 				termType: 'BlankNode',
 				value: this.value,
 			};
-		},
+		}
 
 		equals() {
 			return false;
-		},
-	});
-Object.defineProperty(EphemeralBlankNode.prototype, 'value', {
-	get() {
-		return '_'+uuid_v4();
+		}
 	},
-});
+	/* eslint-enable no-undef */
+	properties: {
+		isAnonymous: /* syntax: js */ `true`,
+		isEphemeral: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
 
-class Variable extends GenericTerm {
+
+@{declare(/* syntax: js */ `class Variable extends GenericTerm`, {
 	constructor(s_label) {
-		super();
 		this.value = s_label;
-	}
-
-	concise() {
-		return '?'+this.value;
-	}
-
-	terse() {
-		throw new Error(`Cannot call .terse() on 'Variable' term type`);
-	}
-
-	verbose() {
-		throw new Error(`Cannot call .verbose() on 'Variable' term type`);
-	}
-
-	isolate() {
-		return {
-			termType: 'Variable',
-			value: this.value,
-		};
-	}
-} Object.assign(Variable.prototype, {
-	termType: 'Variable',
-	isVariable: true,
-});
-
-
-function DefaultGraph() {}
-DefaultGraph.prototype = Object.assign(
-	Object.create(GenericTerm.prototype), {
-		value: '',
-		termType: 'DefaultGraph',
-		isDefaultGraph: true,
-
+	},
+	/* eslint-disable no-undef */
+	methods: class {
 		concise() {
-			return '*';
-		},
+			return '?'+this.value;
+		}
 
 		terse() {
-			return '';
-		},
+			throw new Error(`Cannot call .terse() on 'Variable' term type`);
+		}
+
+		star() {
+			throw new Error(`Cannot call .star() on 'Variable' term type`);
+		}
+
+		verbose() {
+			throw new Error(`Cannot call .verbose() on 'Variable' term type`);
+		}
+
+		isolate() {
+			return {
+				termType: 'Variable',
+				value: this.value,
+			};
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		termType: /* syntax: js */ `'Variable'`,
+		isVariable: /* syntax: js */ `true`,
+	},
+})}
+
+
+@{declare(/* syntax: js */ `class DefaultGraph extends GenericTerm`, {
+	/* eslint-disable no-undef */
+	methods: class {
+		concise() {
+			return '*';
+		}
 
 		verbose() {
 			return '';
-		},
+		}
 
 		isolate() {
 			return {
 				termType: 'DefaultGraph',
 				value: '',
 			};
-		},
-	});
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		value: /* syntax: js */ `''`,
+		termType: /* syntax: js */ `'DefaultGraph'`,
+		isDefaultGraph: /* syntax: js */ `true`,
+		terse: /* syntax: js */ `gp_self.star = gp_self.verbose`,
+	},
+})}
 
-function NoGraph() {}
-NoGraph.prototype = Object.assign(
-	Object.create(GenericTerm.prototype), {
-		value: '',
-		termType: 'NoGraph',
 
-		concise() {
-			return '';
-		},
+const KT_DEFAULT_GRAPH = new DefaultGraph();
 
-		terse() {
-			return '';
-		},
+@{declare(/* syntax: js */ `class Quad extends GenericTerm`, {
+	/* eslint-disable no-undef */
+	constructor(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
+		this.subject = h_subject;
+		this.predicate = h_predicate;
+		this.object = h_object;
+		this.graph = h_graph;
+	},
+	methods: class {
+		equals(z_other) {
+			return z_other
+				? this === z_other
+					|| (this.object.equals(z_other.object)
+						&& this.subject.equals(z_other.subject)
+						&& this.predicate.equals(z_other.predicate)
+						&& this.graph.equals(z_other.graph))
+				: false;
+		}
+
+		valueOf() {
+			return this.verbose();
+		}
+
+		concise(h_prefixes={}) {
+			return [
+				this.subject.concise(h_prefixes),
+				this.predicate.concise(h_prefixes),
+				this.object.concise(h_prefixes),
+				this.graph.concise(h_prefixes),
+			];
+		}
+
+		terse(h_prefixes={}) {
+			let b_default_graph = this.graph.isDefaultGraph;
+
+			// prep output string
+			let s_out = '';
+
+			// ref subject
+			let kt_subject = this.subject;
+
+			// prep subject string
+			let st1_subject = '';
+
+			// subject is a quad; reify
+			if(kt_subject.isGraphyQuad) {
+				const {
+					node: kt_reified,
+					quads: [kq_0, kq_1, kq_2, kq_3],
+				} = kt_subject.reify();
+
+				s_out += kq_0.terse(h_prefixes)+'\n'+kq_1.verbose(h_prefixes)+'\n'+kq_2.verbose(h_prefixes)+'\n'+kq_3.verbose(h_prefixes)+'\n';
+
+				st1_subject = kt_reified.terse(h_prefixes);
+			}
+			// subejct is a term
+			else {
+				st1_subject = kt_subject.terse(h_prefixes);
+			}
+
+			// prep object string
+			let st1_object = '';
+
+			// ref object
+			let kt_object = this.object;
+
+			// object is a quad; reify
+			if(kt_object.isGraphyQuad) {
+				const {
+					node: kt_reified,
+					quads: [kq_0, kq_1, kq_2, kq_3],
+				} = kt_object.reify();
+
+				s_out += kq_0.terse(h_prefixes)+'\n'+kq_1.terse(h_prefixes)+'\n'+kq_2.terse(h_prefixes)+'\n'+kq_3.terse(h_prefixes)+'\n';
+
+				st1_object = kt_reified.terse(h_prefixes);
+			}
+			// object is a term
+			else {
+				st1_object = kt_object.terse(h_prefixes);
+			}
+
+			// serialize quad
+			return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
+				+s_out+st1_subject
+				+' '+this.predicate.terse(h_prefixes)
+				+' '+st1_object+' .'
+				+(b_default_graph? '': ' }');
+		}
 
 		verbose() {
-			return '';
-		},
+			// prep output string
+			let s_out = '';
+
+			// ref subject
+			let kt_subject = this.subject;
+
+			// prep subject string
+			let sv1_subject = '';
+
+			// subject is a quad; reify
+			if(kt_subject.isGraphyQuad) {
+				const {
+					node: kt_reified,
+					quads: [kq_0, kq_1, kq_2, kq_3],
+				} = kt_subject.reify();
+
+				s_out += kq_0.verbose()+'\n'+kq_1.verbose()+'\n'+kq_2.verbose()+'\n'+kq_3.verbose()+'\n';
+				
+				sv1_subject = kt_reified.verbose();
+			}
+			// subejct is a term
+			else {
+				sv1_subject = kt_subject.verbose();
+			}
+
+			// ref object
+			let kt_object = this.object;
+
+			// prep object string
+			let sv1_object = '';
+
+			// object is a quad; reify
+			if(kt_object.isGraphyQuad) {
+				const {
+					node: kt_reified,
+					quads: [kq_0, kq_1, kq_2, kq_3],
+				} = kt_object.reify();
+
+				s_out += kq_0.verbose()+'\n'+kq_1.verbose()+'\n'+kq_2.verbose()+'\n'+kq_3.verbose()+'\n';
+
+				sv1_object = kt_reified.verbose();
+			}
+			// object is a term
+			else {
+				sv1_object = kt_object.verbose();
+			}
+
+			// serialize quad
+			return s_out+sv1_subject
+				+' '+this.predicate.verbose()
+				+' '+sv1_object
+				+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
+		}
+
+		star(h_prefixes={}) {
+			return '<< '
+				+this.subject.star(h_prefixes)
+				+' '+this.predicate.star(h_prefixes)
+				+' '+this.object.star(h_prefixes)
+				+(this.graph.isDefaultGraph? '': ' '+this.graph.star(h_prefixes))
+				+' >>';
+		}
 
 		isolate() {
 			return {
-				termType: 'NoGraph',
+				termType: 'Quad',
 				value: '',
+				subject: this.subject.isolate(),
+				predicate: this.predicate.isolate(),
+				object: this.object.isolate(),
+				graph: this.graph.isolate(),
 			};
-		},
-	});
+		}
 
-const KT_DEFAULT_GRAPH = new DefaultGraph();
-function Quad(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
-	this.subject = h_subject;
-	this.predicate = h_predicate;
-	this.object = h_object;
-	this.graph = h_graph;
-} Object.assign(Quad.prototype, {
-	isGraphyQuad: true,
+		reify(s_label='') {
+			let kt_reify = new BlankNode(s_label || '_'+uuidv4());
 
-	equals(z_other) {
-		return z_other
-			? this === z_other
-				|| (this.object.equals(z_other.object)
-					&& this.subject.equals(z_other.subject)
-					&& this.predicate.equals(z_other.predicate)
-					&& this.graph.equals(z_other.graph))
-			: false;
+			// non-default graph
+			if(!this.graph.isDefaultGraph) {
+				console.warn(`WARNING: reify'ing quad with a non-default graph component will result in information loss ${this+''}`);
+			}
+
+			return {
+				node: kt_reify,
+				quads: [
+					new Quad(kt_reify, KT_RDF_TYPE, KT_RDF_STATEMENT),
+					new Quad(kt_reify, KT_RDF_SUBJECT, this.subject),
+					new Quad(kt_reify, KT_RDF_PREDICATE, this.predicate),
+					new Quad(kt_reify, KT_RDF_OBJECT, this.object),
+				],
+			};
+		}
 	},
-
-	valueOf() {
-		return this.verbose();
+	/* eslint-enable no-undef */
+	properties: {
+		termType: /* syntax: js */ `'Quad'`,
+		value: /* syntax: js */ `''`,
+		isGraphyQuad: /* syntax: js */ `true`,
 	},
+})}
 
-	concise(h_prefixes={}) {
-		return [
-			this.subject.concise(h_prefixes),
-			this.predicate.concise(h_prefixes),
-			this.object.concise(h_prefixes),
-			this.graph.concise(h_prefixes),
-		];
-	},
 
-	terse(h_prefixes) {
+class NakedQuad extends Quad {
+	terse(h_prefixes={}) {
 		let b_default_graph = this.graph.isDefaultGraph;
 		return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
-			+this.subject.terse(h_prefixes)
+			+' '+this.subject.terse(h_prefixes)
 			+' '+this.predicate.terse(h_prefixes)
 			+' '+this.object.terse(h_prefixes)+' .'
 			+(b_default_graph? '': ' }');
-	},
+	}
 
 	verbose() {
 		return this.subject.verbose()
 			+' '+this.predicate.verbose()
 			+' '+this.object.verbose()
 			+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
-	},
+	}
+}
 
-	isolate() {
-		return {
-			subject: this.subject.isolate(),
-			predicate: this.predicate.isolate(),
-			object: this.object.isolate(),
-			graph: this.graph.isolate(),
-		};
-	},
-});
-
-@.{/*
-const H_NO_GRAPH = new NoGraph();
-function Triple(h_subject, h_predicate, h_object) {
-	this.subject = h_subject;
-	this.predicate = h_predicate;
-	this.object = h_object;
-	this.graph = H_NO_GRAPH;
-} Triple.prototype = Object.assign(
-	Object.create(Quad.prototype, {
-		// equals(y_other) {
-		// 	return this === y_other
-		// 		|| (this.object.equals(y_other.object)
-		// 			&& this.subject.equals(y_other.subject)
-		// 			&& this.predicate.equals(y_other.predicate));
-		// },
-	}));
-*/}
 
 let g_raw = {
 	namedNode(p_iri) {
@@ -1235,6 +1434,9 @@ let g_raw = {
 	}
 };
 
+function C3Proxy$_toString() {
+	return '|'+JSON.stringify([...this()].map(w => w.concise()));
+}
 
 const factory = module.exports = {
 	concise,
@@ -1366,7 +1568,7 @@ const factory = module.exports = {
 		// no label given, generate a UUID
 		if(!z_label) {
 			// eslint-disable-next-line no-undef
-			return new BlankNode('_'+uuid_v4(), true);
+			return new BlankNode('_'+uuidv4(), true);
 		}
 		// label given
 		else if('string' === typeof z_label) {
@@ -1423,7 +1625,36 @@ const factory = module.exports = {
 		}
 		// rdfjs term
 		else {
-			return factory.from.rdfjs_term(z_term);
+			return factory.fromRdfjsTerm(z_term);
+		}
+	},
+
+	/**
+	 * construct a namedNode from a concise term string
+	 * @param  {c1_string} sp1_term - a representation of the predicate to create
+	 * @param  {Object} h_prefixes - mappings for prefixes
+	 * @return {Term} - an RDFJS-compatible term object
+	 */
+	p1(sp1_node, h_prefixes={}) {
+		// find prefix delimiter
+		let i_delim = sp1_node.indexOf('_');
+
+		// no delimter; invalid concise-term string for node
+		if(-1 === i_delim) throw new Error(`A relative or prefixed node must include a ':' or '_' character. \nInvalid concise-term string for node: '${sp1_node}'`);
+
+		// prefix id
+		let s_prefix_id = sp1_node.slice(0, i_delim);
+
+		// suffix
+		let s_suffix = sp1_node.slice(i_delim+1);
+
+		// find prefix in hash
+		if(s_prefix_id in h_prefixes) {
+			return factory.namedNode(h_prefixes[s_prefix_id]+s_suffix);
+		}
+		// prefix not exists
+		else {
+			throw new Error(`Prefix not defined: '${s_prefix_id}'`);
 		}
 	},
 
@@ -1489,9 +1720,10 @@ const factory = module.exports = {
 		// default graph
 		if('*' === sc1_node) return factory.defaultGraph();
 
-		// blank node
+		// blank node?
 		if('_' === sc1_node[0]) {
-			if(':' !== sc1_node[1]) throw new Error(`Invliad concise-term string, prefixes are not allowed to start with an underscore: '${sc1_node}'`);
+			// prefixed name
+			if(':' !== sc1_node[1]) return factory.p1(sc1_node, h_prefixes);
 
 			// interpret ephemeral hint
 			if('#' === sc1_node[2] || 2 === sc1_node.length) return factory.ephemeral();
@@ -1520,6 +1752,15 @@ const factory = module.exports = {
 			// iri
 			case '>': return factory.namedNode(sc1_node.slice(1));
 
+			// prefixed name
+			case '_': {
+				// blank nodes not allowed
+				if(':' === sc1_node[1]) throw new Error(`BlankNode is not allowed here: ${sc1_node}`);
+
+				// prefixed name
+				return factory.p1(sc1_node, h_prefixes);
+			}
+
 			// invalid concise-term string
 			case '<': throw new Error(`Whoops! It looks like this concise-term string starts with a '<' character. Remember to use '>' if you are trying to make an absolute IRI reference.\nInvalid concise-term string '${sc1_node}'`);
 			case '`': throw new Error(`The backtick character '\`' is reserved for concise-struct key directives and should not be used in the object position.\nInvalid concise-term string '${sc1_node}'`);
@@ -1534,8 +1775,8 @@ const factory = module.exports = {
 		// find prefix delimiter
 		let i_colon = sc1_node.indexOf(':');
 
-		// no delimter; invalid concise-term string for node
-		if(-1 === i_colon) throw new Error(`A relative or prefixed node must include a ':' character. \nInvalid concise-term string for node: '${sc1_node}'`);
+		// no delimter; try prefixed name
+		if(-1 === i_colon) return factory.p1(sc1_node, h_prefixes);
 
 		// prefix id
 		let s_prefix_id = sc1_node.slice(0, i_colon);
@@ -1561,6 +1802,21 @@ const factory = module.exports = {
 		}
 	},
 
+	c4(hc4_quads, h_prefixes={}) {
+		return {
+			[Symbol.iterator]: function *() {
+				for(let sc1_graph in hc4_quads) {
+					yield* factory.triples(hc4_quads[sc1_graph], h_prefixes, sc1_graph);
+				}
+			},
+
+			toString: () => JSON.stringify({
+				type: 'c4',
+				value: hc4_quads,
+			}),
+		};
+	},
+
 	* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
 		let k_graph = factory.c1(sc1_graph, h_prefixes);
 		for(let sc1_subject in hc3_triples) {
@@ -1571,9 +1827,28 @@ const factory = module.exports = {
 		}
 	},
 
+	c3(hc3_triples, h_prefixes={}, sc1_graph='*') {
+		return {
+			[Symbol.iterator]: function *() {
+				let k_graph = factory.c1(sc1_graph, h_prefixes);
+				for(let sc1_subject in hc3_triples) {
+					let k_subject = factory.c1(sc1_subject, h_prefixes);
+					let hc2_pairs = hc3_triples[sc1_subject];
+
+					yield* factory.pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
+				}
+			},
+
+			toString: () => JSON.stringify({
+				type: 'c3',
+				value: hc3_triples,
+			}),
+		};
+	},
+
 	* pairs(k_graph, k_subject, hc2_pairs, h_prefixes={}) {
 		for(let sc1_predicate in hc2_pairs) {
-			let k_predicate = factory.c1(sc1_predicate, h_prefixes);
+			let k_predicate = factory.c1_named_node(sc1_predicate, h_prefixes);
 			let z_objects = hc2_pairs[sc1_predicate];
 
 			yield* factory.objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes);
@@ -1663,77 +1938,72 @@ const factory = module.exports = {
 		}
 	},
 
-	from: {
-		term(z_term) {
-			if(z_term.isGraphyTerm) return z_term;
+	fromTerm(z_term) {
+		if(z_term.isGraphyTerm) return z_term;
 
-			return factory.from.rdfjs_term(z_term);
-		},
-
-		quad(g_quad) {
-			if(g_quad.isGraphyQuad) return g_quad;
-
-			let g_from = factory.from;
-			return new Quad(
-				g_from.rdfjs_term(g_quad.subject),
-				g_from.rdfjs_term(g_quad.predicate),
-				g_from.rdfjs_term(g_quad.object),
-				g_quad.graph? g_from.rdfjs_term(g_quad.graph): KT_DEFAULT_GRAPH,
-			);
-		},
-
-		rdfjs_term(g_term) {
-			switch(g_term.termType) {
-				case 'NamedNode': return new NamedNode(g_term.value);
-				case 'BlankNode': return new BlankNode(g_term.value);
-				case 'Literal': return factory.literal(g_term.value, g_term.language
-					? g_term.language
-					: (g_term.datatype
-						? new NamedNode(g_term.datatype.value)
-						: null));
-				case 'DefaultGraph': return new DefaultGraph();
-				default: {
-					throw new TypeError(`invalid termType: ${g_term.termType}`);
-				}
-			}
-		},
-
-		sparql_result(g_term) {
-			switch(g_term.type) {
-				case 'uri': {
-					return new NamedNode(g_term.value);
-				}
-
-				case 'literal':
-				case 'typed-literal': {
-					if('xml:lang' in g_term) {
-						return new LanguagedLiteral(g_term.value, g_term['xml:lang']);
-					}
-					else if('datatype' in g_term && '@{P_IRI_XSD}string' !== g_term.datatype) {
-						return new ExplicitlyDatatypedLiteral(g_term.value, new NamedNode(g_term.datatype));
-					}
-					else {
-						return new SimpleLiteral(g_term.value);
-					}
-				}
-
-				case 'bnode': {
-					return new BlankNode(g_term.value);
-				}
-
-				default: {
-					throw new Error(`unexpected SPARQL Result JSON Format Term type: ${g_term.type}`);
-				}
-			}
-		},
+		return factory.fromRdfjsTerm(z_term);
 	},
 
-	to: {
-		boolean: s_boolean => Literal_Boolean.from(s_boolean),
-		integer: s_integer => Literal_Integer.from(s_integer),
-		decimal: s_decimal => Literal_Decimal.from(s_decimal),
-		double: s_double => Literal_Double.from(s_double),
+	fromQuad(g_quad) {
+		if(g_quad.isGraphyQuad) return g_quad;
+
+		return new Quad(
+			factory.fromRdfjsTerm(g_quad.subject),
+			factory.fromRdfjsTerm(g_quad.predicate),
+			factory.fromRdfjsTerm(g_quad.object),
+			g_quad.graph? factory.fromRdfjsTerm(g_quad.graph): KT_DEFAULT_GRAPH,
+		);
 	},
+
+	fromRdfjsTerm(g_term) {
+		switch(g_term.termType) {
+			case 'NamedNode': return new NamedNode(g_term.value);
+			case 'BlankNode': return new BlankNode(g_term.value);
+			case 'Literal': return factory.literal(g_term.value, g_term.language
+				? g_term.language
+				: (g_term.datatype
+					? new NamedNode(g_term.datatype.value)
+					: null));
+			case 'DefaultGraph': return new DefaultGraph();
+			default: {
+				throw new TypeError(`invalid termType: ${g_term.termType}`);
+			}
+		}
+	},
+
+	fromSparqlResult(g_term) {
+		switch(g_term.type) {
+			case 'uri': {
+				return new NamedNode(g_term.value);
+			}
+
+			case 'literal':
+			case 'typed-literal': {
+				if('xml:lang' in g_term) {
+					return new LanguagedLiteral(g_term.value, g_term['xml:lang']);
+				}
+				else if('datatype' in g_term && '@{P_IRI_XSD}string' !== g_term.datatype) {
+					return new ExplicitlyDatatypedLiteral(g_term.value, new NamedNode(g_term.datatype));
+				}
+				else {
+					return new SimpleLiteral(g_term.value);
+				}
+			}
+
+			case 'bnode': {
+				return new BlankNode(g_term.value);
+			}
+
+			default: {
+				throw new Error(`unexpected SPARQL Result JSON Format Term type: ${g_term.type}`);
+			}
+		}
+	},
+
+	toBoolean: s_boolean => Literal_Boolean.from(s_boolean),
+	toInteger: s_integer => Literal_Integer.from(s_integer),
+	toDecimal: s_decimal => Literal_Decimal.from(s_decimal),
+	toDouble: s_double => Literal_Double.from(s_double),
 
 
 	/**
@@ -1742,7 +2012,7 @@ const factory = module.exports = {
 	 * 	in order to write a comment to the document (only works with supporting serializers)
 	 */
 	comment(gc_comment={}) {
-		return `\`[${uuid_v4()}]${JSON.stringify({...gc_comment, type:'comment'})}`;
+		return `\`[${uuidv4()}]${JSON.stringify({...gc_comment, type:'comment'})}`;
 	},
 
 	/**
@@ -1752,7 +2022,7 @@ const factory = module.exports = {
 	 */
 	newlines() {
 		// if(!Number.isInteger(n_line_count)) throw new TypeError('graphy/core.data.factory#newlines() expects `line_count` argument to be an integer');
-		return `\`[${uuid_v4()}]{"type":"newlines"}`;
+		return `\`[${uuidv4()}]{"type":"newlines"}`;
 	},
 
 	/**
@@ -1762,7 +2032,7 @@ const factory = module.exports = {
 	 */
 	config(s_key) {
 		if('string' !== typeof s_key) throw new TypeError(`Expected 'key' argument to be a string, instead found ${typeof s_key}`);
-		return `\`[${uuid_v4()}]{"type":"config","value":${JSON.stringify(s_key)}}`;
+		return `\`[${uuidv4()}]{"type":"config","value":${JSON.stringify(s_key)}}`;
 	},
 
 	/**
@@ -1771,7 +2041,7 @@ const factory = module.exports = {
 	 */
 	hash(g_quad) {
 		// normalize quad
-		let k_quad = factory.from.quad(g_quad);
+		let k_quad = factory.fromQuad(g_quad);
 
 		// create hash
 		let d_hash = crypto.createHash('sha256');
@@ -1783,6 +2053,7 @@ const factory = module.exports = {
 		return d_hash.digest('hex');
 	},
 
+	uuidv4,
 
 	cache_prefixes,
 	cachePrefixes: cache_prefixes,
@@ -1791,12 +2062,5 @@ const factory = module.exports = {
 	clean_iri,
 	cleanIri: clean_iri,
 
-	$_PREFIX_CACHE,
+	SI_PREFIX_CACHE,
 };
-
-Object.assign(factory, {
-	c3: factory.triples,
-	c4: factory.quads,
-	fromTerm: factory.from.term,
-	fromQuad: factory.from.quad,
-});

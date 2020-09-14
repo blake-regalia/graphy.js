@@ -105,7 +105,42 @@ const h_lib_root_package_json = {
 };
 
 // package map
-const h_packages = {};
+const h_packages_top = {
+	core: {
+		description: 'Contains DataFactory',
+		links: ['core.data.factory'],
+	},
+
+	memory: {
+		description: 'Contains FastDataset',
+		links: ['memory.dataset.fast'],
+	},
+
+	content: {
+		description: 'Contains NTriplesReader, NTriplesScanner, NTriplesWriterScriber, NTriplesWriter, NQuadsReader, NQuadsScanner, NQuadsScriber, NQuadsWriter, TurtleReader, TurtleScriber, TurtleWriter, TriGReader, TriGScriber, TriGWriter, RdfXmlScriber',
+		links: [
+			'content.nt.read',
+			'content.nt.scan',
+			'content.nt.scribe',
+			'content.nt.write',
+			'content.nq.read',
+			'content.nq.scan',
+			'content.nq.scribe',
+			'content.nq.write',
+			'content.ttl.read',
+			'content.ttl.scribe',
+			'content.ttl.write',
+			'content.trig.read',
+			'content.trig.scribe',
+			'content.trig.write',
+			'content.xml.scribe',
+		],
+	},
+};
+
+const h_packages = {
+	// ...h_packages_top,
+};
 
 // each package in the tree
 (function map_tree(h_tree, s_path='') {
@@ -160,7 +195,7 @@ for(let [s_content, g_content] of Object.entries(h_content_packages)) {
 		}
 	}
 }
-
+debugger;
 
 // normalize packages
 let h_super_deps = Object.assign(g_package_json_super.dependencies);
@@ -365,7 +400,6 @@ const carry_sub = (pd_src, h_recipe={}, pdr_package=null) => {
 };
 
 
-
 let a_messages = fs.readdirSync('messages').sort().reverse().map(s => `messages/${s}`);
 
 // emk struct
@@ -434,6 +468,9 @@ module.exports = async() => {
 		defs: {
 			// contet sub enum
 			content_sub: a_content_subs,
+
+			// top packages
+			package_top: Object.keys(h_packages_top),
 
 			...(Object.entries(h_manifest_deps).reduce((h_out, [si_key, h_deps]) => ({
 				...h_out,
@@ -803,6 +840,26 @@ module.exports = async() => {
 				},
 
 				package: {
+					// // supers
+					// ':package_top': [si_package => ({
+					// 	[si_package]: (g_package => ({
+					// 		...scoped_package(si_package),
+
+					// 		'main.js': () => ({
+					// 			deps: [
+					// 				...a_content_subs.map(s => `build/package/${s}/**`),
+					// 			],
+					// 			write: /* syntax: js */ `
+					// 				import 
+					// 				${g_package.links.map}
+					// 			`,
+					// 			run: /* syntax: bash */ `
+					// 				npx jmacs emk
+					// 			`,
+					// 		}),
+					// 	}))(h_packages_top[si_package]),
+					// })],
+
 					// content subs
 					':content_sub': [si_package => ({
 						[si_package]: (g_package => ({
