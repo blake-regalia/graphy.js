@@ -75,12 +75,17 @@ class @{S_LABEL}Writer extends Writable {
 			reify: f_reify=null,
 		} = gc_writer;
 
+		// conflict
+		if(b_star && f_reify) {
+			throw new Error(`Conflicting options passed to @{S_LABEL}Writer; '.star' and '.reify' are mutually exclusive.`);
+		}
+
 		Object.assign(this, {
 			_b_debug: b_debug,
 			_s_indent: '\t',
 			_b_simplify_default_graph: false,
 			_b_star: !!b_star,
-			_f_reify: 'function' === typeof f_reify? f_reify: Writer$_reify,
+			_f_reify: f_reify || Writer$_reify,
 		});
 
 		@- B_QUADS
