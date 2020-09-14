@@ -34,7 +34,12 @@ class Scribable extends stream.Transform {
 
 		let {
 			prefixes: h_prefixes={},
+			baseIRI: p_base=null,
+			_terse: b_terse,
 		} = gc_scribable;
+
+		// set base
+		this._p_base = p_base;
 
 		// internal buffer
 		this._s_push = '';
@@ -43,7 +48,7 @@ class Scribable extends stream.Transform {
 		this._n_max_buffer = gc_scribable.max_buffer || gc_scribable.maxBuffer || N_DEFAULT_MAX_BUFFER;
 
 		// prefixes
-		this._h_prefixes = factory.cache_prefixes(h_prefixes || {});
+		this._h_prefixes = factory.cache_prefixes(h_prefixes || {}, b_terse, p_base);
 
 		// on new source(s)
 		this.on('pipe', (ds_src) => {
@@ -276,20 +281,19 @@ class Scribable extends stream.Transform {
 			case 'c4': return this._serialize_c4(g_event.value);
 
 			// prefixes
-			case 'prefixes': {
-				return this._serialize_prefixes(g_event.value);
-			}
+			case 'prefixes': return this._serialize_prefixes(g_event.value);
 
 			// comment
-			case 'comment': {
-				return this._serialize_comment(g_event.value);
-			}
+			case 'comment': return this._serialize_comment(g_event.value);
 
 			// newline(s)
 			case 'newline':
 			case 'newlines': {
 				return this._serialize_newlines(g_event.value);
 			}
+
+			// base
+			case 'base': return this._serialize_base(g_event.value);
 
 			// no such event type
 			default: {

@@ -20,6 +20,10 @@
 const factory = require('@{channel('core.data.factory')}');
 const Writable = require('@{channel('core.class.writable')}');
 
+const {
+	SI_PREFIX_BASE,
+} = factory;
+
 // eslint-disable-next-line no-misleading-character-class
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
 const N_MAX_STRING_BUFFER = 1 << 12;
@@ -68,7 +72,10 @@ function Writer$_reify(kq_input) {
 
 class @{S_LABEL}Writer extends Writable {
 	constructor(gc_writer={}) {
-		super(gc_writer);
+		super({
+			...gc_writer,
+			_terse: true,
+		});
 
 		let {
 			prefixes: h_prefixes={},
@@ -90,6 +97,7 @@ class @{S_LABEL}Writer extends Writable {
 			_b_simplify_default_graph: false,
 			_xc_directives: 0,
 			_s_token_prefix: '@prefix',
+			_s_token_base: '@base',
 			_b_star: !!b_star,
 			_f_reify: f_reify || Writer$_reify,
 		});
@@ -141,18 +149,21 @@ class @{S_LABEL}Writer extends Writable {
 					case 'sparql': {
 						this._xc_directives = XC_DIRECTIVES_TYPE_SPARQL;
 						this._s_token_prefix = 'prefix';
+						this._s_token_base = 'base';
 						break;
 					}
 
 					case 'Sparql': {
 						this._xc_directives = XC_DIRECTIVES_TYPE_SPARQL | XC_DIRECTIVES_CASE_PASCAL;
 						this._s_token_prefix = 'Prefix';
+						this._s_token_base = 'Base';
 						break;
 					}
 
 					case 'SPARQL': {
 						this._xc_directives = XC_DIRECTIVES_TYPE_SPARQL | XC_DIRECTIVES_CASE_UPPER;
 						this._s_token_prefix = 'PREFIX';
+						this._s_token_base = 'BASE';
 						break;
 					}
 
@@ -163,12 +174,14 @@ class @{S_LABEL}Writer extends Writable {
 					case 'Turtle': {
 						this._xc_directives = XC_DIRECTIVES_CASE_PASCAL;
 						this._s_token_prefix = '@Prefix';
+						this._s_token_base = '@Base';
 						break;
 					}
 
 					case 'TURTLE': {
 						this._xc_directives = XC_DIRECTIVES_CASE_UPPER;
 						this._s_token_prefix = '@PREFIX';
+						this._s_token_base = '@BASE';
 						break;
 					}
 
@@ -217,10 +230,17 @@ class @{S_LABEL}Writer extends Writable {
 			};
 		}
 
+		// head string
+		let s_head = '';
+		let s_directive_eol = (this._xc_directives & XC_DIRECTIVES_TYPE_SPARQL)? '\n': ' .\n';
+
+		// serialize base
+		if(this._p_base) {
+			s_head += `${this._s_base_prefix} ${factory.namedNode(this._p_base).verbose()}${s_directive_eol}`;
+		}
+
 		// serialize initial prefix mappings
 		let s_token_prefix = this._s_token_prefix;
-		let s_prefix_eol = (this._xc_directives & XC_DIRECTIVES_TYPE_SPARQL)? '\n': ' .\n';
-		let s_prefixes = '';
 		try {
 			// each user-defined prefix
 			for(let s_prefix_id in h_prefixes) {
@@ -230,7 +250,7 @@ class @{S_LABEL}Writer extends Writable {
 				}
 				
 				// append to string
-				s_prefixes += `${s_token_prefix} ${s_prefix_id}: ${factory.namedNode(h_prefixes[s_prefix_id]).verbose()}${s_prefix_eol}`;
+				s_head += `${s_token_prefix} ${s_prefix_id}: ${factory.namedNode(h_prefixes[s_prefix_id]).verbose()}${s_directive_eol}`;
 			}
 		}
 		// serialization error
@@ -240,8 +260,29 @@ class @{S_LABEL}Writer extends Writable {
 			});
 		}
 
-		// push prefixes
-		if(s_prefixes) this.push(s_prefixes);
+		// push head
+		if(s_head) this.push(s_head);
+	}
+
+	// serialize base
+	_serialize_base(p_base) {
+		// update state
+		this._xc_state = @{XC_STATE_INITIAL};
+
+		// update prefixes object
+		Object.defineProperty(this._h_prefixes, SI_PREFIX_BASE, {
+			enumerable: false,
+			value: p_base,
+		});
+
+		// save base value
+		this._p_base = p_base;
+
+		// render string
+		return ((@{XC_STATE_DATA} === this._xc_state)? '\n\n': '')
+			+this._s_token_base
+			+' '+factory.namedNode(p_base).verbose()
+			+((this._xc_directives & XC_DIRECTIVES_TYPE_SPARQL)? '\n': ' .\n');
 	}
 
 	// serialize prefixes

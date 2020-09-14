@@ -279,7 +279,8 @@ const R_BASE_KEYWORD = /(?:(@base)|[bB][aA][sS][eE])\s*/y;
 const R_COMMENT = /(#[^\n]*\n\s*)+/y;
 const R_COMMENT_EOF = /(#[^\n]*(?:\n\s*|$))+/y;
 
-const RT_IRI_ABSOLUTE = /^[A-Za-z][A-Za-z0-9.\-+]*:/;
+// const RT_IRI_ABSOLUTE = /^[A-Za-z][A-Za-z0-9\-._~]*:/;
+const RT_IRI_ABSOLUTE = /^[A-Za-z]/;
 const R_RELATIVE_URI = /^(\/[^?#]+)([?#].*)?$/;
 @>> R_BASE_IRI()
 	@//@regex

@@ -129,6 +129,9 @@ const RT_AVOID_PNAME_NS = /@{MK_RT_AVOID_PNAME_NS()}/;
 // eslint-disable-next-line no-misleading-character-class
 const RT_AVOID_PNAME_LOCAL = /@{MK_RT_AVOID_PNAME_LOCAL()}/;
 
+// absolute iri tester
+const RT_IRI_ABSOLUTE = /^[A-Za-z]/;
+
 const RT_BOOLEAN_TRUE = /^([Tt](rue)?|TRUE)$/;
 const RT_BOOLEAN_FALSE = /^([Ff](alse)?|FALSE)$/;
 
@@ -148,6 +151,9 @@ const uuidv4 = () => {
 
 // key to access cache on a prefix mapping
 const SI_PREFIX_CACHE = ' (cache)';
+
+// key to access base
+const SI_PREFIX_BASE = ' (base)';
 
 // escape characters for compiling regexes
 const R_REGEX_ESCAPE = /[$^*()+[\\{}|.?]/g;
@@ -438,8 +444,8 @@ class GenericTerm {
 			return concise(this.value, h_prefixes);
 		}
 
-		terse(h_prefixes={}, b_opt=false) {
-			return terse(clean_iri(this.value), h_prefixes, b_opt);
+		terse(h_prefixes={}) {
+			return terse(clean_iri(this.value), h_prefixes);
 		}
 
 		verbose() {
@@ -457,6 +463,38 @@ class GenericTerm {
 	properties: {
 		termType: /* syntax: js */ `'NamedNode'`,
 		isNamedNode: /* syntax: js */ `true`,
+		star: /* syntax: js */ `gp_self.terse`,
+	},
+})}
+
+@{declare(/* syntax: js */ `class RelativeNamedNode extends NamedNode`, {
+	/* eslint-disable no-undef */
+	methods: class {
+		concise(h_prefixes={}) {
+			if(h_prefixes[SI_PREFIX_BASE]) {
+				return (new NamedNode(h_prefixes[SI_PREFIX_BASE]+this.value)).concise(h_prefixes);
+			}
+			else {
+				throw new Error(`Cannot create concise string out of relative IRI: '${this.value}'`);
+			}
+		}
+
+		terse(h_prefixes={}) {
+			if(h_prefixes[SI_PREFIX_BASE]) {
+				return (new NamedNode(h_prefixes[SI_PREFIX_BASE]+this.value)).terse(h_prefixes);
+			}
+			else {
+				return '<'+clean_iri(this.value)+'>';
+			}
+		}
+
+		verbose() {
+			throw new Error(`Cannot create verbose string (absolute IRI) out of relative IRI: '${this.value}'`);
+		}
+	},
+	/* eslint-enable no-undef */
+	properties: {
+		isRelative: /* syntax: js */ `true`,
 		star: /* syntax: js */ `gp_self.terse`,
 	},
 })}
@@ -1495,6 +1533,7 @@ const factory = module.exports = {
 	raw: g_raw,
 	unfiltered: {
 		...g_raw,
+
 		literal(s_value, z_datatype_or_lang) {
 			if(!z_datatype_or_lang || KT_XSD_STRING.equals(z_datatype_or_lang)) {
 				return new SimpleLiteral(s_value);
@@ -1551,8 +1590,15 @@ const factory = module.exports = {
 		return factory.literal(dt.toISOString(), KT_XSD_DATETIME);
 	},
 
-	namedNode(p_iri) {
-		return new NamedNode(p_iri);
+	namedNode(pr_iri) {
+		// absolute iri
+		if(RT_IRI_ABSOLUTE.test(pr_iri)) {
+			return new NamedNode(pr_iri);
+		}
+		// relative iri
+		else {
+			return new RelativeNamedNode(pr_iri);
+		}
 	},
 
 	ephemeral() {
@@ -1650,7 +1696,7 @@ const factory = module.exports = {
 
 		// find prefix in hash
 		if(s_prefix_id in h_prefixes) {
-			return factory.namedNode(h_prefixes[s_prefix_id]+s_suffix);
+			return g_raw.namedNode(h_prefixes[s_prefix_id]+s_suffix);
 		}
 		// prefix not exists
 		else {
@@ -1750,7 +1796,7 @@ const factory = module.exports = {
 		// deduce term type
 		switch(sc1_node[0]) {
 			// iri
-			case '>': return factory.namedNode(sc1_node.slice(1));
+			case '>': return g_raw.namedNode(sc1_node.slice(1));
 
 			// prefixed name
 			case '_': {
@@ -1786,7 +1832,7 @@ const factory = module.exports = {
 
 		// find prefix in hash
 		if(s_prefix_id in h_prefixes) {
-			return factory.namedNode(h_prefixes[s_prefix_id]+s_suffix);
+			return g_raw.namedNode(h_prefixes[s_prefix_id]+s_suffix);
 		}
 		// prefix not exists
 		else {
@@ -1957,12 +2003,12 @@ const factory = module.exports = {
 
 	fromRdfjsTerm(g_term) {
 		switch(g_term.termType) {
-			case 'NamedNode': return new NamedNode(g_term.value);
+			case 'NamedNode': return factory.namedNode(g_term.value);
 			case 'BlankNode': return new BlankNode(g_term.value);
 			case 'Literal': return factory.literal(g_term.value, g_term.language
 				? g_term.language
 				: (g_term.datatype
-					? new NamedNode(g_term.datatype.value)
+					? factory.namedNode(g_term.datatype.value)
 					: null));
 			case 'DefaultGraph': return new DefaultGraph();
 			default: {
@@ -2063,4 +2109,5 @@ const factory = module.exports = {
 	cleanIri: clean_iri,
 
 	SI_PREFIX_CACHE,
+	SI_PREFIX_BASE,
 };
