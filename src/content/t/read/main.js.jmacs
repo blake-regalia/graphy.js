@@ -1,7 +1,7 @@
 @import '../../../share/iris.jmacs'
 @import '../../../share/channel.jmacs'
 
-@./* global FORMAT */
+@./* global FORMAT B_LOAD */
 @//@
 
 @$ TTL = 'ttl' === FORMAT;
@@ -10,7 +10,6 @@
 
 @$ S_LABEL = TTL? 'Turtle': 'TriG';
 
-@$ B_LOAD = false;
 @$ B_STAR = true;
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
@@ -53,6 +52,14 @@ const string_decoder = require('string_decoder');
 const stream = require('@{channel('core.iso.stream')}');
 const factory = require('@{channel('core.data.factory')}');
 const quad = k => factory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
+
+@- B_LOAD
+	const dataset = require('@graphy/memory.dataset.fast');
+	const {
+		$_KEYS,
+		$_QUADS,
+	} = dataset;
+@;
 
 // eslint-disable-next-line no-misleading-character-class
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
@@ -376,12 +383,14 @@ const match_prefixed_name = (s, i) => {
 	// check valid prefix
 	let @{sj_var} = @{match}[@{n_group || 1}] || '';
 
-	@- B_OPTIMIZE_PREFIX_IDS
-		// invalid prefix
-		if(!(this._as_prefix_ids.has(@{sj_var}))) return this.error(`no such prefix "${@{sj_var}}"`);
-	@:
-		// invalid prefix
-		if(!OPHOP.call(this._h_prefixes, @{sj_var})) return this.error(`no such prefix "${@{sj_var}}"`);
+	@- !B_LOAD
+		@- B_OPTIMIZE_PREFIX_IDS
+			// invalid prefix
+			if(!(this._as_prefix_ids.has(@{sj_var}))) return this.error(`no such prefix "${@{sj_var}}"`);
+		@:
+			// invalid prefix
+			if(!OPHOP.call(this._h_prefixes, @{sj_var})) return this.error(`no such prefix "${@{sj_var}}"`);
+		@;
 	@;
 @;
 
@@ -389,10 +398,35 @@ const match_prefixed_name = (s, i) => {
 @// extract uri from absolute / relative iri refs
 @> iriref(sv_term, sv_match, b_object, b_set_base, b_has_escapes, b_not_this=false)
 	@.{
-		let sv_set = (b_not_this? '': ('this.'+(b_object? '_kt_': '_s_')))+sv_term;
-		let set = b_object
-			? s => `${sv_set} = this.check_named_node${b_has_escapes? '': '_escapeless'}(${s});`
-			: s => `${sv_set} = ${s};`;
+		let f_set;
+		if(B_LOAD) {
+			let f_load;
+			switch(sv_term) {
+				case 'graph': f_load = load_graph; break;
+				case 'subject': f_load = load_subject; break;
+				case 'predicate': f_load = load_predicate; break;
+				case 'object': f_load = load_object; break;
+				// default: {
+				// 	throw new Error(`unhandlded term label for iriref macro '${sv_term}'`);
+				// }
+			}
+
+			if(f_load) {
+				f_set = sj => f_load(/* syntax: js */ `'>'+${sj}`);
+			}
+			else {
+				let sv_set = (b_not_this? '': ('this.'+(b_object? '_sc1_': '_s_')))+sv_term;
+				f_set = b_object
+					? sj => /* syntax: js */ `${sv_set} = this.check_named_node${b_has_escapes? '': '_escapeless'}(${sj});`
+					: sj => /* syntax: js */ `${sv_set} = ${sj};`;
+			}
+		}
+		else {
+			let sv_set = (b_not_this? '': ('this.'+(b_object? '_kt_': '_s_')))+sv_term;
+			f_set = b_object
+				? sj => /* syntax: js */ `${sv_set} = this.check_named_node${b_has_escapes? '': '_escapeless'}(${sj});`
+				: sj => /* syntax: js */ `${sv_set} = ${sj};`;
+		}
 	}
 	// ref iri
 	let s_iri = @{sv_match}[1]@{b_has_escapes? `.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)`: ''};
@@ -400,11 +434,12 @@ const match_prefixed_name = (s, i) => {
 	// absolute iri
 	if(!this._s_base_url || RT_IRI_ABSOLUTE.test(s_iri)) {
 		// set @{sv_term}
-		@{set(/* syntax: js */ `s_iri`)}
+		@{f_set(/* syntax: js */ `s_iri`)}
 	}
 	// relative iri
 	else {
-		@{set(/* syntax: js */ `uri.resolve(this._s_base_url, s_iri)`)}
+		// set @{sv_term}
+		@{f_set(/* syntax: js */ `uri.resolve(this._s_base_url, s_iri)`)}
 	}
 
 	@// update the base iri
@@ -418,26 +453,49 @@ const match_prefixed_name = (s, i) => {
 @;
 
 
+@- B_LOAD
+	const SCP_XSD_DOUBLE = '>@{P_IRI_XSD}double"';
+	const SCP_XSD_DECIMAL = '>@{P_IRI_XSD}decimal"';
+	const SCP_XSD_INTEGER = '>@{P_IRI_XSD}integer"';
+	const SCP_XSD_BOOLEAN = '>@{P_IRI_XSD}boolean"';
+@;
+
 @// set object value and datatype for numeric literal
 @> numeric_literal()
 	// it has exponent term, xsd:double
 	if(m_numeric_literal[4]) {
-		this._kt_object = this._dc_factory.double(m_numeric_literal[1]);
+		@- B_LOAD
+			@{load_object(/* syntax: js */ `+m_numeric_literal[1]`)}
+		@:
+			this._kt_object = this._dc_factory.double(m_numeric_literal[1]);
+		@;
 	}
 	// contains decimal point, xsd:decimal
 	else if(m_numeric_literal[2] || m_numeric_literal[3]) {
-		this._kt_object = this._dc_factory.decimal(m_numeric_literal[1]);
+		@- B_LOAD
+			@{load_object(/* syntax: js */ `this._scp_xsd_decimal+m_numeric_literal[1]`)}
+		@:
+			this._kt_object = this._dc_factory.decimal(m_numeric_literal[1]);
+		@;
 	}
 	// otherwise, it is an integer
 	else {
-		this._kt_object = this._dc_factory.integer(m_numeric_literal[1]);
+		@- B_LOAD
+			@{load_object(/* syntax: js */ `+m_numeric_literal[1]`)}
+		@:
+			this._kt_object = this._dc_factory.integer(m_numeric_literal[1]);
+		@;
 	}
 @;
 
 @// set object value and datatype for boolean literal
 @> boolean_literal()
-	// make literal
-	this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
+	@- B_LOAD
+		@{load_object(/* syntax: js */ `m_boolean_literal[1]? true: false`)}
+	@:
+		// make literal
+		this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
+	@;
 @;
 
 
@@ -553,10 +611,97 @@ const match_prefixed_name = (s, i) => {
 	}
 @;
 
+
+@> load_default_graph()
+	this._sc1_graph = '*';
+	let hc4_quads = this._hc4_quads;
+
+	// not first encounter w/ graph
+	if('*' in hc3_triples) {
+		this._hc3_triples = hc4_quads['*'];
+	}
+	// first encounter of graph
+	else {
+		hc4_quads[$_KEYS] += 1;
+		this._hc3_triples = hc4_quads['*'] = {
+			[$_KEYS]: 0,
+			[$_QUADS]: 0,
+		};
+	}
+@;
+
+@> load_graph(sj_expr)
+	let sc1_graph = this._sc1_graph = @{sj_expr};
+	let hc4_quads = this._hc4_quads;
+
+	// not first encounter w/ graph
+	if(sc1_subject in hc3_triples) {
+		this._hc3_triples = hc4_quads[sc1_graph];
+	}
+	// first encounter of graph
+	else {
+		hc4_quads[$_KEYS] += 1;
+		this._hc3_triples = hc4_quads[sc1_graph] = {
+			[$_KEYS]: 0,
+			[$_QUADS]: 0,
+		};
+	}
+@;
+
+@> load_subject(sj_expr)
+	let sc1_subject = this._sc1_subject = @{sj_expr};
+	let hc3_triples = this._hc3_triples;
+
+	// not first encounter w/ subject
+	if(sc1_subject in hc3_triples) {
+		this._hc2_pairs = hc3_triples[sc1_subject];
+	}
+	// first encounter of subject
+	else {
+		hc3_triples[$_KEYS] += 1;
+		this._hc2_pairs = hc3_triples[sc1_subject] = {
+			[$_KEYS]: 0,
+			[$_QUADS]: 0,
+		};
+	}
+@;
+
+@> load_predicate(sj_expr)
+	let sc1_predicate = this._sc1_predicate = @{sj_expr};
+	let hc2_pairs = this._hc2_pairs;
+
+	// not first encounter w/ predicate
+	if(sc1_predicate in hc2_pairs) {
+		this._as_objects = hc2_pairs[sc1_predicate];
+	}
+	// first encounter of predicate
+	else {
+		hc2_pairs[$_KEYS] += 1
+		this._as_objects = hc2_pairs[sc1_predicate] = new Set();
+	}
+@;
+
+@> load_object(sj_expr)
+	@- 'sc1_object' !== sj_expr
+		let sc1_object = @{sj_expr};
+	@;
+
+	// first encounter w/ object
+	let as_objects = this._as_objects;
+	if(!as_objects.has(sc1_object)) {
+		this._hc3_triples[$_QUADS] += 1;
+		this._hc2_pairs[$_QUADS] += 1;
+		as_objects.add(@{sj_expr});
+	}
+@;
+
+
 @// emit statement and return control to whatever function asked for it
 @> eot()
-	// at this point, a new statement has been parsed
-	@{emit_statement()}
+	@- !B_LOAD
+		// at this point, a new statement has been parsed
+		@{emit_statement()}
+	@;
 
 	// goto next parsing state; bail out of stack
 	return this.after_eot;
@@ -652,8 +797,10 @@ class Reader {
 		} = g_state;
 
 
-		let dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
+		// in case user provides a factory, adopt it so reader can still create special literals
+		const dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
 
+		// default graph
 		let kt_default_graph = dc_factory.defaultGraph();
 
 		// if data factory is not graphy, it might be returning the same object on each call to .defaultGraph()
@@ -662,19 +809,33 @@ class Reader {
 			kt_default_graph = Object.create(kt_default_graph);
 		}
 
-		let kt_rdf_first = dc_factory.namedNode('@{P_IRI_RDF}first');
+		const kt_rdf_first = dc_factory.namedNode('@{P_IRI_RDF}first');
 
-		let blankNode = dc_factory.blankNode;
-		let namedNode = dc_factory.namedNode;
+		const blankNode = dc_factory.blankNode;
+		const namedNode = dc_factory.namedNode;
 
-		this.emit_data = factory.unfiltered === dc_factory
-			? function() {
-				ds_transform.push(quad(this));
-			}
-			: function() {
-				let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-				ds_transform.push(g_quad);
+		@- B_LOAD
+			this.emit_data = function() {
+				ds_transform.push({
+					'*': this._hc3_triples,
+				});
+
+				// this._hc3_triples = {
+				// 	[this._sc1_subject]: (this._hc2_pairs = {
+				// 		[this._sc1_predicate]: (this._as_objects = new Set()),
+				// 	}),
+				// };
 			};
+		@:
+			this.emit_data = factory.unfiltered === dc_factory
+				? function() {
+					ds_transform.push(quad(this));
+				}
+				: function() {
+					let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
+					ds_transform.push(g_quad);
+				};
+		@;
 
 		// fields
 		Object.assign(this, {
@@ -723,19 +884,44 @@ class Reader {
 			_s_base_url_path: '',
 
 			// current data
-			_kt_subject: null,
-			_kt_predicate: kt_rdf_first,
-			_kt_object: null,
-			_kt_graph: kt_default_graph,
-			_s_literal: '',
-			_kq_star: null,
+			@- B_LOAD
+				_sc1_subject: '',
+				_sc1_predicate: '',
+				_sc1_object: '',
+				_sc1_graph: '*',
+				@- QUADS
+					_hc4_quads: {
+						[$_KEYS]: 0,
+						[$_QUADS]: 0,
+					},
+					_hc3_triples: null,
+				@:
+					_hc3_triples: {
+						[$_KEYS]: 0,
+						[$_QUADS]: 0,
+					},
+				@;
+				_hc2_pairs: null,
+				_a_objects: null,
+			@:
+				_kt_subject: null,
+				_kt_predicate: kt_rdf_first,
+				_kt_object: null,
+				_kt_graph: kt_default_graph,
+				_kq_star: null,
+			@;
+				_s_literal: '',
 
 			// static terms
-			_kt_rdf_type: dc_factory.namedNode('@{P_IRI_RDF}type'),
-			_kt_rdf_first: kt_rdf_first,
-			_kt_rdf_rest: dc_factory.namedNode('@{P_IRI_RDF}rest'),
-			_kt_rdf_nil: dc_factory.namedNode('@{P_IRI_RDF}nil'),
-			_kt_default_graph: kt_default_graph,
+			@- B_LOAD
+				_scp_xsd_decimal: SCP_XSD_DECIMAL,
+			@:
+				_kt_rdf_type: dc_factory.namedNode('@{P_IRI_RDF}type'),
+				_kt_rdf_first: kt_rdf_first,
+				_kt_rdf_rest: dc_factory.namedNode('@{P_IRI_RDF}rest'),
+				_kt_rdf_nil: dc_factory.namedNode('@{P_IRI_RDF}nil'),
+				_kt_default_graph: kt_default_graph,
+			@;
 
 			// queue of nested subject, predicate, state for blanknodes and collections
 			_a_nested: [],
@@ -891,15 +1077,16 @@ class Reader {
 					@{no_label_conflict()}
 
 					// make term
-					return blankNode(s_label);
+					@- B_LOAD
+						return '_:'+s_label;
+					@:
+						return blankNode(s_label);
+					@;
 				},
 
 				check_named_node: namedNode,
-
 				check_named_node_escapeless: namedNode,
-
 				match_prefixed_name_escapeless,
-
 				match_prefixed_name,
 			});
 
@@ -952,6 +1139,10 @@ class Reader {
 
 				// resume parsing; no errors
 				if(this.safe_parse(true)) {
+					@- B_LOAD
+						// debugger;
+						// this.data();
+					@;
 					// emit progress event updates
 					ds_transform.emit('progress', s_chunk.length);
 
@@ -1232,6 +1423,10 @@ class Reader {
 		// call end event listener
 		ds_transform.emit('eof', this._h_prefixes);
 
+		@- B_LOAD
+			this.data();
+		@;
+
 		// close write stream (EOF-signaling)
 		ds_transform.push(null);
 	};
@@ -1304,7 +1499,11 @@ class Reader {
 				@{emit_graph_close()}
 
 				// reset graph
-				this._kt_graph = @{SJ_DEFAULT_GRAPH};
+				@- B_LOAD
+					@{load_default_graph()}
+				@:
+					this._kt_graph = @{SJ_DEFAULT_GRAPH};
+				@;
 
 				// goto block state
 				@{goto('block')}
@@ -1362,16 +1561,26 @@ class Reader {
 		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_predicate')}
 			@{valid_prefix('m_prefixed_named_e_predicate')}
 
-			// make predicate key
-			this._kt_predicate = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_predicate[2]')};
+			@- B_LOAD
+				// make object list for predicate key
+				@{load_predicate(/* syntax: js */ `s_prefix_id+':'+m_prefixed_named_e_predicate[2]`)}
+			@:
+				// make predicate key
+				this._kt_predicate = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_predicate[2]')};
+			@;
 
 			// change state
 			@{gtg()}
 
 		// 'a'
 		@{else_if_match('R_A')}
-			// make predicate key
-			this._kt_predicate = @{SJ_RDF_TYPE};
+			@- B_LOAD
+				// make object list for predicate key
+				@{load_predicate(/* syntax: js */ `'a'`)}
+			@:
+				// make predicate key
+				this._kt_predicate = @{SJ_RDF_TYPE};
+			@;
 
 			// object-list state
 			@{gtg()}
@@ -1396,7 +1605,11 @@ class Reader {
 			@{suffix('m_prefixed_named_predicate')}
 
 			// make predicate key
-			this._kt_predicate = @{prefixed_name('s_prefix_id', 's_suffix')};
+			@- B_LOAD
+				@{load_predicate(/* syntax: js */ `s_prefix_id+':'+s_suffix`)}
+			@:
+				this._kt_predicate = @{prefixed_name('s_prefix_id', 's_suffix')};
+			@;
 
 			// object-list state
 			@{gtg()}
@@ -1431,7 +1644,11 @@ class Reader {
 			@{valid_prefix('m_pnq_object')}
 
 			// commit object iri from resolve prefixed name
-			this._kt_object = @{prefixed_name('s_prefix_id', 'm_pnq_object[2]')};
+			@- B_LOAD
+				@{load_object(/* syntax: js */ `s_prefix_id+':'+m_pnq_object[2]`)}
+			@:
+				this._kt_object = @{prefixed_name('s_prefix_id', 'm_pnq_object[2]')};
+			@;
 
 		// iriref
 		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_object')}
@@ -1442,7 +1659,11 @@ class Reader {
 			@{valid_prefix('m_prefixed_named_e_object')}
 
 			// commit object iri from resolve prefixed name
-			this._kt_object = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
+			@- B_LOAD
+				@{load_object(/* syntax: js */ `s_prefix_id+':'+m_prefixed_named_e_object[2]`)}
+			@:
+				@{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
+			@;
 
 		// string literal * single
 		@{else_if_char("'")}
@@ -1463,7 +1684,11 @@ class Reader {
 				@{whitespace('i+1')}
 
 				// make object
-				let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
+				@- B_LOAD
+					let sc1_object = this._sc1_object = '_:'+this.next_label();
+				@:
+					let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
+				@;
 
 				// emit statement event
 				@{emit_statement()}
@@ -1472,7 +1697,11 @@ class Reader {
 				@{push_state('post_object')}
 
 				// set new subject
-				this._kt_object = kt_blank_node;
+				@- B_LOAD
+					@{load_object(/* syntax: js */ `sc1_object`)}
+				@:
+					this._kt_object = kt_blank_node;
+				@;
 
 				// goto parsing pairs state
 				@{goto('pairs')}
@@ -1484,7 +1713,11 @@ class Reader {
 			let s_label = m_blank_node_label_object[1];
 
 			// make object
-			this._kt_object = this.blank_node(s_label);
+			@- B_LOAD
+				@{load_object(/* syntax: js */ `'_:'+s_label`)}
+			@:
+				this._kt_object = this.blank_node(s_label);
+			@;
 
 		@- !b_star
 			// collection
@@ -1510,7 +1743,12 @@ class Reader {
 			@{suffix('m_prefixed_named_object')}
 
 			// commit object iri from resolve prefixed name
-			this._kt_object = @{prefixed_name('s_prefix_id', 's_suffix')};
+			@- B_LOAD
+				@{load_object(/* syntax: js */ `s_prefix_id+':'+s_suffix`)}
+			@:
+				this._kt_object = @{prefixed_name('s_prefix_id', 's_suffix')};
+			@;
+
 
 		@{else_if_match('R_COMMENT', 'm_comment', true)}
 			if(this.emit_comments) this.emit_comments(m_comment[0]);
@@ -1617,7 +1855,11 @@ class Reader {
 			@{valid_prefix('m_prefixed_named_e_subject')}
 
 			// make subject key
-			this._kt_subject = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_subject[2]')}
+			@- B_LOAD
+				@{load_subject(/* syntax: js */ `s_prefix_id+':'+m_prefixed_named_e_subject[2]`)}
+			@:
+				this._kt_subject = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_subject[2]')}
+			@;
 
 			// predicate-object pairs state
 			@{gtg()}
@@ -1628,7 +1870,11 @@ class Reader {
 			let s_label = m_blank_node_label_subject[1];
 
 			// make subject key
-			this._kt_subject = this.blank_node(s_label);
+			@- B_LOAD
+				@{load_subject(/* syntax: js */ `'_:'+s_label`)}
+			@:
+				this._kt_subject = this.blank_node(s_label);
+			@;
 
 			// predicate-object pairs state
 			@{gtg()}
@@ -1636,7 +1882,11 @@ class Reader {
 		// anonymous blank node subject
 		@{else_if_match('R_ANONYMOUS_BLANK_NODE')}
 			// set new blank node as subject
-			this._kt_subject = this.anonymous_blank_node(this.next_label());
+			@- B_LOAD
+				@{load_subject(/* syntax: js */ `'_:'+this.next_label()`)}
+			@:
+				this._kt_subject = this.anonymous_blank_node(this.next_label());
+			@;
 
 			// goto pairs state for inside property list
 			@{gtg()}
@@ -1645,7 +1895,11 @@ class Reader {
 			// anonymous blank node property list subject
 			@{else_if_match('R_CHAR_BLANK_NODE')}
 				// enter blank node
-				this._kt_subject = this.anonymous_blank_node(this.next_label());
+				@- B_LOAD
+					@{load_subject(/* syntax: js */ `'_:'+this.next_label()`)}
+				@:
+					this._kt_subject = this.anonymous_blank_node(this.next_label());
+				@;
 
 				// how to resume when we pop state
 				@{push_state('post_blank_subject')}
@@ -1657,7 +1911,11 @@ class Reader {
 			// rdf collection
 			@{else_if_match('R_CHAR_COLLECTION')}
 				// indicate that collection subject should emit an initial statement
-				this._kt_subject = null;
+				@- B_LOAD
+					this._sc1_subject = null;
+				@:
+					this._kt_subject = null;
+				@;
 				
 				// (don't push state, we don't have a subject yet)
 
@@ -1689,7 +1947,11 @@ class Reader {
 					@{emit_graph_close()}
 
 					// reset graph
-					this._kt_graph = @{SJ_DEFAULT_GRAPH};
+					@- B_LOAD
+						@{load_default_graph()}
+					@:
+						this._kt_graph = @{SJ_DEFAULT_GRAPH};
+					@;
 
 					// goto block state
 					@{goto('block')}
@@ -1709,8 +1971,12 @@ class Reader {
 
 			@{suffix('m_prefixed_named_subject')}
 
-			// make subject key
-			this._kt_subject = @{prefixed_name('s_prefix_id', 's_suffix')};
+			@- B_LOAD
+				@{load_subject(/* syntax: js */ `s_prefix_id+':'+s_suffix`)}
+			@:
+				// make subject key
+				this._kt_subject = @{prefixed_name('s_prefix_id', 's_suffix')};
+			@;
 
 			// predicate-object pairs state
 			@{gtg()}
@@ -1727,7 +1993,11 @@ class Reader {
 			@{valid_prefix('m_pnq_subject')}
 
 			// commit subject iri from resolve prefixed name
-			this._kt_subject = @{prefixed_name('s_prefix_id', 'm_pnq_subject[2]')};
+			@- B_LOAD
+				@{load_subject(/* syntax: js */ `s_prefix_id+':'+m_pnq_subject[2]`)}
+			@:
+				this._kt_subject = @{prefixed_name('s_prefix_id', 'm_pnq_subject[2]')};
+			@;
 
 			// predicate-object pairs state
 			@{next()}
@@ -1791,8 +2061,12 @@ class Reader {
 			@{else_if_match('R_GRAPH_PREFIXED_NAME', 'm_graph_prefixed_name')}
 				@{valid_prefix('m_graph_prefixed_name')}
 
-				// make subject key
-				this._kt_graph = @{prefixed_name('s_prefix_id', 'm_graph_prefixed_name[2]')};
+				// make graph key
+				@- B_LOAD
+					@{load_graph(/* syntax: js */ `s_prefix_id+':'+m_graph_prefixed_name[2]`)}
+				@:
+					this._kt_graph = @{prefixed_name('s_prefix_id', 'm_graph_prefixed_name[2]')};
+				@;
 
 				@{emit_graph_open()}
 
@@ -1801,7 +2075,11 @@ class Reader {
 
 			@{else_if_match('R_CHAR_OPEN')}
 				// make new default graph
-				this._kt_graph = this._dc_factory.defaultGraph();
+				@- B_LOAD
+					@{load_default_graph()}
+				@:
+					this._kt_graph = this._dc_factory.defaultGraph();
+				@;
 
 				@{emit_graph_open()}
 
@@ -1810,7 +2088,11 @@ class Reader {
 
 			@{else_if_match('R_GRAPH_ANONYMOUS_BLANK_NODE', 'm_graph_anonymous_blank_node')}
 				// make new label & set graph to blank node
-				this._kt_graph = this.anonymous_blank_node(this.next_label());
+				@- B_LOAD
+					@{load_graph(/* syntax: js */ `'_:'+this.next_label()`)}
+				@:
+					this._kt_graph = this.anonymous_blank_node(this.next_label());
+				@;
 
 				@{emit_graph_open()}
 
@@ -1820,7 +2102,11 @@ class Reader {
 			@{else_if_match('R_GRAPH_LABELED_BLANK_NODE', 'm_graph_labeled_blank_node')}
 				let s_label = m_graph_labeled_blank_node[1];
 
-				this._kt_graph = this.blank_node(s_label);
+				@- B_LOAD
+					@{load_graph(/* syntax: js */ `'_:'+s_label`)}
+				@:
+					this._kt_graph = this.blank_node(s_label);
+				@;
 
 				@{emit_graph_open()}
 
@@ -1867,12 +2153,20 @@ class Reader {
 				@{whitespace('i+1')}
 
 				// shift placeholder subject
-				this._kt_graph = this._kt_subject;
+				@- B_LOAD
+					@{load_graph(/* syntax: js */ `this._sc1_subject`)}
+				@:
+					this._kt_graph = this._kt_subject;
+				@;
 
 				@{emit_graph_open()}
 
 				// reset subject in case of collections
-				this._kt_subject = null;
+				@- B_LOAD
+					this._sc1_subject = null;
+				@:
+					this._kt_subject = null;
+				@;
 
 				// statement state
 				@{goto('statement')}
@@ -2365,7 +2659,11 @@ class Reader {
 
 			// '@' language tag
 			@{else_if_match('R_LANGTAG', 'm_langtag')}
-				this._kt_object = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
+				@- B_LOAD
+					@{load_object(/* syntax: js */ `'@'+m_langtag[1]+'"'+this._s_literal`)}
+				@:
+					this._kt_object = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
+				@;
 
 				// reset literal
 				this._s_literal = '';
@@ -2378,7 +2676,11 @@ class Reader {
 			continue;
 
 		@{else_any()}
-			this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+			@- B_LOAD
+				@{load_object(/* syntax: js */ `'"'+this._s_literal`)}
+			@:
+				this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+			@;
 
 			// reset literal
 			this._s_literal = '';
@@ -2392,34 +2694,54 @@ class Reader {
 
 
 	@{method('datatype')}
-		let kt_datatype = null;
+		@- B_LOAD
+			let sc1_datatype = '';
+		@:
+			let kt_datatype = null;
+		@;
 
 		// prefixed name quick
 		@{if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_datatype')}
 			@{valid_prefix('m_pnq_datatype')}
 
-			// commit object iri from resolve prefixed name
-			kt_datatype = @{prefixed_name('s_prefix_id', 'm_pnq_datatype[2]')};
+			@- B_LOAD
+				sc1_datatype = s_prefix_id+':'+m_pnq_datatype[2];
+			@:
+				// commit object iri from resolve prefixed name
+				kt_datatype = @{prefixed_name('s_prefix_id', 'm_pnq_datatype[2]')};
+			@;
 
 		// iriref
 		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_datatype')}
 			let p_datatype;
 			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, false, true)}
 
-			kt_datatype = this.check_named_node_escapeless(p_datatype);
+			@- B_LOAD
+				sc1_datatype = '>'+p_datatype;
+			@:
+				kt_datatype = this.check_named_node_escapeless(p_datatype);
+			@;
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_datatype')}
 			@{valid_prefix('m_prefixed_named_e_datatype')}
 
-			kt_datatype = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_datatype[2]')};
+			@- B_LOAD
+				sc1_datatype = s_prefix_id+':'+m_prefixed_named_e_datatype[2];
+			@:
+				kt_datatype = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_datatype[2]')};
+			@;
 
 		// iriref
 		@{else_if_match('R_IRIREF', 'm_iriref_datatype')}
 			let p_datatype;
 			@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, true, true)}
 
-			kt_datatype = this.check_named_node(p_datatype);
+			@- B_LOAD
+				sc1_datatype = '>'+p_datatype;
+			@:
+				kt_datatype = this.check_named_node(p_datatype);
+			@;
 
 		// prefixed name
 		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_datatype')}
@@ -2428,12 +2750,20 @@ class Reader {
 			@{suffix('m_prefixed_named_datatype')}
 
 			// set literal datatype
-			kt_datatype = @{prefixed_name('s_prefix_id', 's_suffix')};
+			@- B_LOAD
+				sc1_datatype = s_prefix_id+':'+s_suffix;
+			@:
+				kt_datatype = @{prefixed_name('s_prefix_id', 's_suffix')};
+			@;
 
 		// not iriref, not prefixed name
 		@{else_retry()}
 
-		this._kt_object = this._dc_factory.datatypedLiteral(this._s_literal, kt_datatype);
+		@- B_LOAD
+			@{load_object(/* syntax: js */ `'^'+sc1_datatype+'"'+this._s_literal`)}
+		@:
+			this._kt_object = this._dc_factory.datatypedLiteral(this._s_literal, kt_datatype);
+		@;
 
 		// reset literal
 		this._s_literal = '';
@@ -2643,6 +2973,11 @@ class Reader {
 		return this.error(`Invalid IRI found in prefix delcaration: "${s_iri}"`);
 	}
 
+	@- B_LOAD
+		// update xsd scp string
+		this._scp_xsd_decimal = '@{P_IRI_XSD}' === h_prefixes.xsd? '^xsd:decimal"': SCP_XSD_DECIMAL;
+	@;
+
 	// emit prefix event
 	this.event('prefix', s_prefix_id, p_prefix_iri);
 @;
@@ -2710,6 +3045,10 @@ class Reader {
 
 
 	@{method('collection_subject')}
+		@- B_LOAD
+			debugger;
+		@;
+
 		// ref char
 		let x = s[i];
 
@@ -3004,6 +3343,9 @@ class Reader {
 
 
 	@{method('collection_object')}
+		@- B_LOAD
+			debugger;
+		@;
 
 		// ref char
 		let x = s[i];

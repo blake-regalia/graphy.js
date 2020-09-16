@@ -874,7 +874,10 @@ module.exports = async() => {
 									],
 
 									run: /* syntax: bash */ `
-										npx jmacs -g "{FORMAT:'${si_package.split(/\./g)[1]}'}" $1 > $@ \
+										npx jmacs -g '${JSON.stringify({/* eslint-disable indent */
+											...g_package.jmacs,
+											FORMAT: si_package.split(/\./g)[1],
+										})/* eslint-enable indent */}' $1 > $@ \
 										 && ${eslint(/* syntax: bash */ `
 											node emk/pretty-print.js $@
 										`)}

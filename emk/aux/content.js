@@ -17,6 +17,7 @@ const G_MODES_T_FAMILY = {
 		],
 	},
 	scribe: {},
+	load: {},
 };
 
 // content
@@ -78,6 +79,21 @@ module.exports = {
 			],
 			files: {
 				'main.js': ['../text.read.jmacs'],
+			},
+		},
+
+		load: {
+			export_suffix: 'Loader',
+			description: s => `Single-threaded ${s} content loader`,
+			links: [
+				'core.data.factory',
+				'core.iso.stream',
+			],
+			files: {
+				'main.js': [
+					'./read/main.js.jmacs',
+					'../text.read.jmacs',
+				],
 			},
 		},
 

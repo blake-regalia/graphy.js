@@ -3097,6 +3097,8 @@ Object.assign(FastDataset.prototype, {
 module.exports = Object.assign(function(...a_args) {
 	return new FastDataset(...a_args);
 }, {
+	$_KEYS,
+	$_QUADS,
 	keys: $_KEYS,
 	quads: $_QUADS,
 });
