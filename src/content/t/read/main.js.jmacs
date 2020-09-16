@@ -1,11 +1,8 @@
 @import '../../../share/iris.jmacs'
 @import '../../../share/channel.jmacs'
-@import '../../../share/polyfills.jmacs'
 
 @./* global FORMAT */
 @//@
-
-@{polyfill.queueMicrotask()}
 
 @$ TTL = 'ttl' === FORMAT;
 @$ TRIG = 'trig' === FORMAT;
@@ -13,6 +10,7 @@
 
 @$ S_LABEL = TTL? 'Turtle': 'TriG';
 
+@$ B_LOAD = false;
 @$ B_STAR = true;
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
@@ -563,45 +561,6 @@ const match_prefixed_name = (s, i) => {
 	// goto next parsing state; bail out of stack
 	return this.after_eot;
 @;
-
-@.{/*
-// instead of putting this in a macro to be unrolled at every IRI resolution,
-// ... spare the monstrosity from the source and make it a function
-const F_DOT_SEGMENTS = (s_rel_iri) => {
-	let m_rel_iri = R_RELATIVE_URI.exec(s_rel_iri);
-	if(!m_rel_iri) return s_rel_iri;
-	let [, s_iri, s_qs_hash] = m_rel_iri;
-
-	let a_segments = s_iri.split('/');
-	let a_output = [];
-	let b_empty = true;
-
-	for(let i=0; i<a_segments.length; i++) {
-		let s_segment = a_segments[i];
-		b_empty = false;
-
-		// up a hierarchical level
-		if('..' === s_segment) {
-			if(a_output.length > 1) {
-				a_output.pop();
-				if(i === a_segments.length-1) {
-					a_output.push('');
-				}
-			}
-		}
-		// down a level level
-		else if('.' !== s_segment && (s_segment || !i || i === a_segments.length-1)) {
-			a_output.push(s_segment);
-		}
-		// special case
-		else if('.' === s_segment && i === a_segments.length-1) {
-			a_output.push('');
-		}
-	}
-
-	return a_output.join('/')+(s_qs_hash || '');
-};
-*/}
 
 function Reader$syntax_error(k_self, i, si_state, s_info) {
 	let i_off = Math.min(i, Math.abs(i-15));

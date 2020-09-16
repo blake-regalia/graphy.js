@@ -6,12 +6,8 @@ const run = sjx_eval => eval(sjx_eval);
 // iiaf to isolate scope from eval
 (function() {
 
-@import '../../../share/polyfills.jmacs'
-
 @// import parser macros
 @import '../../text.read.jmacs'
-
-@{polyfill.queueMicrotask()}
 
 @$ S_LABEL = 'nt' === FORMAT? 'NTriples': 'NQuads';
 

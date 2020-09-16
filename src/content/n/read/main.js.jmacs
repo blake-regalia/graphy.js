@@ -1,8 +1,5 @@
 @import '../../../share/iris.jmacs'
 @import '../../../share/channel.jmacs'
-@import '../../../share/polyfills.jmacs'
-
-@{polyfill.queueMicrotask()}
 
 @./* global FORMAT */
 @//@

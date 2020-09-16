@@ -1,7 +1,4 @@
 @import '../../share/channel.jmacs'
-@import '../../share/polyfills.jmacs'
-
-@{polyfill.queueMicrotask()}
 
 /* eslint-disable no-prototype-builtins */
 

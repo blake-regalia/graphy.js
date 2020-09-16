@@ -6,10 +6,6 @@ const run = sjx_eval => eval(sjx_eval);
 // iiaf to isolate scope from eval
 (function() {
 
-@import '../../../share/polyfills.jmacs'
-
-@{polyfill.queueMicrotask()}
-
 @$ XC_SLOT_OWNER_MASTER = 0x00;
 @$ XC_SLOT_OWNER_NONE = 0xff;
 

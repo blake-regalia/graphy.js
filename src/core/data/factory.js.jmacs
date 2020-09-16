@@ -1480,6 +1480,10 @@ const factory = module.exports = {
 	concise,
 
 	adopt(dc_factory) {
+		// already exact factory
+		if(factory === dc_factory || factory.unfiltered === dc_factory) return dc_factory;
+
+		// prep to extend
 		let dc_extend = Object.create(dc_factory);
 		let b_use_extend = false;
 
