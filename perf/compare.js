@@ -36,7 +36,7 @@ const quads = p => (+p.replace(/^.*(\d+)M\.\w+$/, '$1')) * 1e6;
 const H_TRANSFORM = {
 	// elapsed: (h, si) => h? h[si].avg / 1000: Infinity,
 	elapsed: (g, si) => g.summary? (quads(g.input) / g.summary[si].avg): Infinity,
-	memory: (g, si) => g.summary? g.summary[si].avg / 1024 / 1024: Infinity,
+	memory: (g, si) => g.summary? (quads(g.input) / g.summary[si].avg / 1024): 0,
 };
 
 const H_COLORS = {
@@ -52,7 +52,7 @@ const H_COLORS = {
 const H_REVIEWS = {
 	// elapsed: 'Time Elapsed (s)',
 	elapsed: 'Velocity (Quads/ms)  ▲=👍',
-	memory: 'Memory Usage (MiB)  ▼=👍',
+	memory: 'Density (Quads/KiB)  ▲=👍',
 };
 
 const H_SOURCES = {
@@ -237,6 +237,7 @@ async function* r() {
 		 - Each data point in the following charts represents the mean value of 5 trials.
 		 - The **X-axis units** for all charts are in **Millions of Quads**, and correspond to the number of triples/quads fed into the process via stdin
 		 - The **Y-axis for each 'Velocity' chart** denotes the number of **Quads per millisecond (Quads/ms)** at which the task objective completed.
+		 - The **Y-axis for each 'Density' chart** denotes the number of **Quads per kibibyte (Quads/KiB)** at which the task objective completed.
 
 
 		## Disclaimers
