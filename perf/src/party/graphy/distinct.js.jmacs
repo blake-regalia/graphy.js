@@ -1,18 +1,36 @@
+@. /* global S_FORMAT_IN SJ_CONFIG_READ SJ_CONFIG_DATASET B_LOAD */
+@//@
 @import '../../share/perf.jmacs'
-let read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
-let dataset = require('@{channel(`memory.dataset.fast`)}');
+@- B_LOAD
+	const load = require('@{channel(`content.${S_FORMAT_IN}.load`)}');
 
-let ds_dataset = process.stdin
-	.pipe(read({
-		@{SJ_CONFIG_READ || ''}
-	}))
-	.pipe(dataset({
-		@{SJ_CONFIG_DATASET || ''}
-	}));
+	process.stdin
+		.pipe(load({
+			@{SJ_CONFIG_READ || ''}
+			@{SJ_CONFIG_DATASET || ''}
+		}))
+		.on('data', (ds_dataset) => {
+			let n_size = ds_dataset.size;
+			@{end_test({
+				size: /* syntax: js */ `n_size`,
+			})}
+		});
+@:
+	const read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
+	const dataset = require('@{channel(`memory.dataset.fast`)}');
 
-ds_dataset.on('finish', () => {
-	let n_size = ds_dataset.size;
-	@{end_test({
-		size: /* syntax: js */ `n_size`,
-	})}
-});
+	let ds_dataset = process.stdin
+		.pipe(read({
+			@{SJ_CONFIG_READ || ''}
+		}))
+		.pipe(dataset({
+			@{SJ_CONFIG_DATASET || ''}
+		}));
+
+	ds_dataset.on('finish', () => {
+		let n_size = ds_dataset.size;
+		@{end_test({
+			size: /* syntax: js */ `n_size`,
+		})}
+	});
+@;

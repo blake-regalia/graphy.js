@@ -60,11 +60,18 @@ const H_MODES_DEFAULT = {
 };
 
 const H_MODES_GRAPHY_READ = {
-	default: {}, // default
+	default: {},  // default
 	relaxed: {
 		SJ_CONFIG_READ: /* syntax: js.object-literal */ `
 			relax: true,
 		`,
+	},
+};
+
+const H_MODES_GRAPHY_READ_LOAD = {
+	default: {},  // default
+	load: {
+		B_LOAD: true,
 	},
 };
 
@@ -153,7 +160,7 @@ const H_PARTIES = {
 				modes: H_MODES_GRAPHY_READ_SCAN,
 			}),
 			distinct: H_TASK_PERMS.distinct({
-				modes: H_MODES_GRAPHY_READ,
+				modes: H_MODES_GRAPHY_READ_LOAD,
 			}),
 			convert: H_TASK_PERMS.convert({
 				modes: H_MODES_GRAPHY_READ_SCAN,
