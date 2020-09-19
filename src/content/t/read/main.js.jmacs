@@ -1659,7 +1659,7 @@ class Reader {
 			@- B_LOAD
 				@{load_object(/* syntax: js */ `s_prefix_id+':'+m_prefixed_named_e_object[2]`)}
 			@:
-				@{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
+				this._kt_object = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_object[2]')};
 			@;
 
 		// string literal * single
