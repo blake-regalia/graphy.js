@@ -54,6 +54,9 @@ const factory = require('@{channel('core.data.factory')}');
 const quad = k => factory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
 
 @- B_LOAD
+	const {
+		concise,
+	} = factory;
 	const dataset = require('@graphy/memory.dataset.fast');
 	const {
 		$_KEYS,
@@ -412,13 +415,11 @@ const match_prefixed_name = (s, i) => {
 			}
 
 			if(f_load) {
-				f_set = sj => f_load(/* syntax: js */ `'>'+${sj}`);
+				f_set = sj => f_load(/* syntax: js */ `concise(${sj}, this._h_prefixes)`);
 			}
 			else {
 				let sv_set = (b_not_this? '': ('this.'+(b_object? '_sc1_': '_s_')))+sv_term;
-				f_set = b_object
-					? sj => /* syntax: js */ `${sv_set} = this.check_named_node${b_has_escapes? '': '_escapeless'}(${sj});`
-					: sj => /* syntax: js */ `${sv_set} = ${sj};`;
+				f_set = sj => /* syntax: js */ `${sv_set} = ${sj};`;
 			}
 		}
 		else {
@@ -453,12 +454,6 @@ const match_prefixed_name = (s, i) => {
 @;
 
 
-@- B_LOAD
-	const SCP_XSD_DOUBLE = '>@{P_IRI_XSD}double"';
-	const SCP_XSD_DECIMAL = '>@{P_IRI_XSD}decimal"';
-	const SCP_XSD_INTEGER = '>@{P_IRI_XSD}integer"';
-	const SCP_XSD_BOOLEAN = '>@{P_IRI_XSD}boolean"';
-@;
 
 @// set object value and datatype for numeric literal
 @> numeric_literal()
@@ -912,10 +907,12 @@ class Reader {
 			@;
 				_s_literal: '',
 
-			// static terms
 			@- B_LOAD
-				_scp_xsd_decimal: SCP_XSD_DECIMAL,
+				// cached concise-term strings
+				_scp_xsd_decimal: null,
+				_sc1_rdf_type: null,
 			@:
+				// static terms
 				_kt_rdf_type: dc_factory.namedNode('@{P_IRI_RDF}type'),
 				_kt_rdf_first: kt_rdf_first,
 				_kt_rdf_rest: dc_factory.namedNode('@{P_IRI_RDF}rest'),
@@ -1576,7 +1573,7 @@ class Reader {
 		@{else_if_match('R_A')}
 			@- B_LOAD
 				// make object list for predicate key
-				@{load_predicate(/* syntax: js */ `'a'`)}
+				@{load_predicate(/* syntax: js */ `this._sc1_rdf_type`)}
 			@:
 				// make predicate key
 				this._kt_predicate = @{SJ_RDF_TYPE};
@@ -1841,10 +1838,15 @@ class Reader {
 
 
 	@// sub-macro for reusing statement productions
-	@def triples(directives=false, b_star=false)
+	@def triples(gc_triples={})
 		@.{
+			const {
+				b_directives=false,
+				b_star=false,
+			} = gc_triples;
+
 			let gtg = () => goto('pairs');
-			if(directives) {
+			if(b_directives) {
 				gtg = (s_alt='graph_or_subject') => goto(s_alt);
 			}
 		}
@@ -1922,7 +1924,7 @@ class Reader {
 				// goto collection-subject state
 				@{goto('collection_subject')}
 
-			@- TTL || directives
+			@- TTL || b_directives
 				// prefix with interupt (e.g., a comment)
 				@{else_if_match('R_PREFIX_KEYWORD', 'm_prefix_keyword')}
 					// save whether or not to expect a full stop
@@ -1940,7 +1942,7 @@ class Reader {
 					@{goto('base_iri')}
 			@;
 
-			@- TRIG && !directives
+			@- TRIG && !b_directives
 				// closing graph '}'
 				@{else_if_match('R_CHAR_CLOSE')}
 					// emit graph_close event
@@ -2009,7 +2011,10 @@ class Reader {
 			// predicate-object pairs state
 			@{next()}
 
-		@{triples(false, b_star)}
+		@{triples({
+			b_directives: false,
+			b_star,
+		})}
 
 		// comment
 		@{else_if_match('R_COMMENT', 'm_comment', true)}
@@ -2121,7 +2126,10 @@ class Reader {
 				@{goto('graph_or_subject')}
 
 			@// try triples productions
-			@{triples(true)}
+			@{triples({
+				b_directives: true,
+				b_star: false,
+			})}
 
 			@// then try other graph keywords
 			@{else_if_match('R_GRAPH_IRI', 'm_graph_iriref_graph')}
@@ -2943,13 +2951,17 @@ class Reader {
 	@;
 		// doesn't match existing
 		if(p_prefix_iri !== h_prefixes[s_prefix_id]) {
-			// emit change event
-			if(this.prefix_change) {
-				this.prefix_change(s_prefix_id, h_prefixes[s_prefix_id], p_prefix_iri);
-			}
+			@- B_LOAD
+				return this.error(`Input document must be 'well-formed' to use with Loader; prefix mappings are not allowed to change. Detected IRI change of prefix namespace '${s_prefix_id}' from '${h_prefixes[s_prefix_id]}' to '${p_prefix_iri}'`);
+			@:
+				// emit change event
+				if(this.prefix_change) {
+					this.prefix_change(s_prefix_id, h_prefixes[s_prefix_id], p_prefix_iri);
+				}
 
-			// update prefix
-			h_prefixes[s_prefix_id] = p_prefix_iri;
+				// update prefix
+				h_prefixes[s_prefix_id] = p_prefix_iri;
+			@;
 		}
 	}
 	// first mapping
@@ -2960,7 +2972,15 @@ class Reader {
 		}
 
 		// set prefix
-		h_prefixes[s_prefix_id] = p_prefix_iri;
+		@- B_LOAD
+			// prefixes are cached and frozen, clone them while assigning new preifx
+			h_prefixes = {
+				...h_prefixes,
+				[s_prefix_id]: p_prefix_iri,
+			};
+		@:
+			h_prefixes[s_prefix_id] = p_prefix_iri;
+		@;
 
 		@- B_OPTIMIZE_PREFIX_IDS
 			as_prefix_ids.add(s_prefix_id);
@@ -2974,8 +2994,12 @@ class Reader {
 	}
 
 	@- B_LOAD
+		// re-cache prefixes
+		this._h_prefixes = factory.cachePrefixes(h_prefixes);
+
 		// update xsd scp string
-		this._scp_xsd_decimal = '@{P_IRI_XSD}' === h_prefixes.xsd? '^xsd:decimal"': SCP_XSD_DECIMAL;
+		this._scp_xsd_decimal = concise('^@{P_IRI_XSD}decimal"');
+		this._sc1_rdf_type = concise('@{P_IRI_RDF}type', h_prefixes);
 	@;
 
 	// emit prefix event
