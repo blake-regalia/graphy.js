@@ -10,6 +10,7 @@
 
 @$ S_LABEL = TTL? 'Turtle': 'TriG';
 
+@$ S_MODE = B_LOAD? 'load': 'read';
 @$ B_STAR = true;
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
@@ -82,6 +83,10 @@ const F_REPLACE_UNICODE_ANY = @{F_REPLACE_UNICODE_ANY()};
 const OPHOP = Object.prototype.hasOwnProperty;
 
 
+@.{
+	const modal = (h_modes) => h_modes[S_MODE];
+}
+
 @$ H_LOOKAHEADS = {
 	comment: {
 		chars: '#',
@@ -132,6 +137,270 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	},
 };
 
+@.{
+	const gen_rule_iri = ({escapeless:b_escapeless}) => ({role:s_role}) => ({
+		type: 'regex',
+		test: /* syntax: js */ `R_IRIREF`,
+		action: ({matched:sj_matched}) => [
+			irief(),
+			// 	let p_datatype;
+	// 	@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, true, true)}
+			modal({
+				read: /* syntax: js */ `
+					kt_${s_role} = this.check_named_node${b_escapeless? '_escapeless': ''}(p_${s_role});
+				`,
+				load: /* syntax: js */ `
+					sc1_${s_role} = concise('>'+p_${s_role}, this._h_prefixes);
+				`,
+			}),
+		],
+	});
+
+	const gen_action_prefixed_name = ({escapeless:b_escapeless=false, role:s_role}) => ({matched:sj_matched}) => [
+		modal({
+			read: /* syntax: js */ `
+				${valid_prefix(sj_matched)}
+
+				// commit ${s_role} iri from resolved prefixed name
+				kt_${s_role} = ${prefixed_name('s_prefix_id', sj_matched+'[2]')};
+			`,
+			load: /* syntax: js */ `
+				sc1_${s_role} = ${sj_matched}[1];
+			`,
+		}),
+	];
+
+	const gen_rule_prefixed_name = modal({
+		read: ({escapeless:b_escapeless}) => ({role:s_role}) => ({
+			type: 'call',
+			test: /* syntax: js */ `this.match_prefixed_name_escapeless`,
+			action: gen_action_prefixed_name({
+				escapeless: b_escapeless,
+				role: s_role,
+			}),
+		}),
+		load: ({escapeless:b_escapeless}) => ({role:s_role}) => ({
+			type: 'regex',
+			test: /* syntax: js */ `R_PREFIXED_NAME${b_escapeless? '_ESCAPELESS': ''}`,
+			action: gen_action_prefixed_name({
+				escapeless: b_escapeless,
+				role: s_role.
+			}),
+		}),
+	});
+
+	const gen_rule_literal = (s_which) => ({role:s_role}) => ({
+		type: 'chars',
+		test: 'single' === s_which? `'`: `"`,
+		action: deduce_strlit_path(s_which),
+	});
+
+	const gen_rule_labeled_blank_node = ({terminal:b_terminal}) => ({role:s_role}) => ({
+		type: 'regex',
+		test: /* syntax: js */ `R_BLANK_NODE_LABEL${b_terminal? '_TERMINAL': ''}`,
+		action: ({matched:sj_matched}) => [
+			/* syntax: js */ `
+				// extract label
+				let s_label = ${sj_matched}[1];
+			`,
+			modal({
+				read: /* syntax: js */ `
+					// make ${s_role} key
+					this._kt_${s_role} = this.blank_node(s_label);
+				`,
+				load: load_term(s_role, /* syntax: js */ `'_:'+s_label`),
+			})
+		],
+	});
+
+	const H_RULES = {
+		prefixed_name_quick: ({role:s_role}) => ({
+			type: 'regex',
+			test: /* syntax: js */ `R_PREFIXED_NAME_QUICK`,
+			action: gen_action_prefixed_name({role:s_role}),
+		}),
+		
+		iriref: gen_rule_iri({escapeless:false}),
+		iriref_escapeless: gen_rule_iri({escapeless:true}),
+
+		prefixed_name: gen_rule_prefixed_name({escapeless:false}),
+		prefixed_name_escapeless: gen_rule_prefixed_name({escapeless:true}),
+
+		labeled_blank_node: gen_rule_labeled_blank_node(),
+
+		anonymous_blank_node: ({role:s_role}) => ({
+			type: 'regex',
+			test: /* syntax: js */ `R_BLANK_NODE_LABEL`,
+			action: modal({
+				read: /* syntax: js */ `
+					// make subject key
+					this._kt_subject = this.anonymous_blank_node(this.next_label());
+				`,
+				load: load_term(s_role, /* syntax: js */ `'_:'+this.next_label()`),
+			}),
+		}),
+
+		string_literal_single: gen_rule_literal('single'),
+		string_literal_double: gen_rule_literal('double'),
+
+		numeric_literal: () => ({
+			type: 'regex',
+			test: /* syntax: js */ `R_NUMERIC_LITERAL`,
+			action: ({matched:sj_matched}) => /* syntax: js */ `
+				// it has exponent term, xsd:double
+				if(${sj_matched}[4]) {
+					${modal({
+						read: /* syntax: js */ `
+							this._kt_${s_role} = this._ds_factory.double(${sj_matched}[1]);
+						`
+						load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'double"'+${sj_matched}[1]`),
+					})}
+				}
+				// contains decimal point, xsd:decimal
+				else if(${sj_matched}[2] || ${sj_matched}[3]) {
+					${modal({
+						read: /* syntax: js */ `
+							this._kt_${s_role} = this._dc_factory.decimal(${sj_matched}[1]);
+						`,
+						load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'decimal"'+${sj_matched}[1]`),
+					})}
+				}
+				// otherwise, it is an integer
+				else {
+					${modal({
+						read: /* syntax: js */ `
+							this._kt_${s_role} = this._dc_factory.integer(${sj_matched}[1]);
+						`,
+						load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'integer"'+${sj_matched}[1]`),
+					})}
+				}
+			`,
+		}),
+
+		boolean_literal: () => ({
+			type: 'regex',
+			test: /* syntax: js */ `R_BOOLEAN_LITERAL`,
+			action: ({matched:sj_matched}) => modal({
+				read: /* syntax: js */ `
+					// make literal
+					this._kt_${s_role} = this._dc_factory.boolean(${sj_matched}[1]? true: false);
+				`,
+				load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'boolean"'+(${sj_matched}[1]? 'true': 'false')`),
+			}),
+		}),
+
+		collection: () => ({
+			type: 'chars',
+			test: '(',
+			action: [
+				whitespace(+1),
+				push_state('post_object'),
+			],
+			goto: 'collection_object',
+		}),
+
+		rdf_star: ({role:s_role, star:b_star=false}) => ({
+			type: 'chars',
+			test: '<<',
+			action: /* syntax: js */ `
+				// rdf-star not enabled
+				if(!this._b_rdf_star) break;
+
+				// advance to next token
+				${whitespace(/* syntax: js */ `i+2`)}
+
+				${b_star
+					? push_state('subject' === s_role? 'star_predicate_x': 'star_post_object_x')
+					: /* syntax: js */ `
+						this.data = this.exit_star;
+						this.restore_after_eot = this.after_eot;
+						this.after_eot = this.triple_x_close;
+
+						${push_state('subject' === s_role? 'star_pairs': 'star_post_object')}
+					`},
+			`,
+			goto: 'triple_x',
+		}),
+
+		comment: () => ({
+			type: 'regex',
+			test: /* syntax: js */ `R_COMMENT`,
+			action: /* syntax: js */ `
+				if(this.emit_comments) this.emit_comments(m_comment[0]);
+				continue;
+			`,
+			goto: null.
+		}),
+
+		// // prefixed name
+		// @{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_datatype')}
+		// 	@{valid_prefix('m_prefixed_named_e_datatype')}
+
+		// 	@- B_LOAD
+		// 		sc1_datatype = s_prefix_id+':'+m_prefixed_named_e_datatype[2];
+		// 	@:
+		// 		kt_datatype = @{prefixed_name('s_prefix_id', 'm_prefixed_named_e_datatype[2]')};
+		// 	@;
+
+		// // iriref
+		// @{else_if_match('R_IRIREF', 'm_iriref_datatype')}
+		// 	let p_datatype;
+		// 	@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, true, true)}
+
+		// 	@- B_LOAD
+		// 		sc1_datatype = '>'+p_datatype;
+		// 	@:
+		// 		kt_datatype = this.check_named_node(p_datatype);
+		// 	@;
+
+		// // prefixed name
+		// @{else_if_call('this.match_prefixed_name', 'm_prefixed_named_datatype')}
+		// 	@{valid_prefix('m_prefixed_named_datatype')}
+
+		// 	@{suffix('m_prefixed_named_datatype')}
+
+		// 	// set literal datatype
+		// 	@- B_LOAD
+		// 		sc1_datatype = s_prefix_id+':'+s_suffix;
+		// 	@:
+		// 		kt_datatype = @{prefixed_name('s_prefix_id', 's_suffix')};
+		// 	@;
+
+		// };
+	};
+
+	function rules(gc_rules) {
+		let {
+			apply: h_apply,
+			series: a_series,
+		} = gc_rules;
+
+		for(let [si_rule, z_rule] of a_series) {
+			let h_args = {
+				...w_apply,
+				...gc_rule,
+			};
+
+			let f_rule;
+
+			// inline rule
+			if('function' === typeof z_rule) {
+				f_rule = z_rule
+			}
+			// rule specifier
+			else {
+				f_rule = H_RULES[si_rule];
+			}
+
+			let g_spec = f_rule(h_args);
+
+			let s_action = Array.isArray(g_spec.action)? z_action.join('\n'): z_action+'';
+			if(g_spec.goto) s_action += goto(g_spec.goto);
+		}
+	}
+}
+
+
 @>> lookahead(s_key, s_append='', s_prepend='')
 	@//@regex
 	(?:\s+|(?=@{s_prepend}[@*{
@@ -181,7 +450,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	(
 		[A-Za-z]  @// PN_CHARS_BASE simplified
 		[A-Za-z0-9_-]*  @// PN_CHARS (omit '.' from middle for perf)
-	)? :(
+	@{B_LOAD? ':': ')? :('}  @// load mode can use 1 capture group instead of 2
 		[A-Za-z_0-9:]  @// PN_LOCAL[0]
 		[A-Za-z0-9_:-]*  @// PN_LOCAL[1-$]
 	)
@@ -195,8 +464,8 @@ const R_PREFIXED_NAME_QUICK = /@{R_PREFIXED_NAME_QUICK()}/y;
 
 @>> R_PREFIXED_NAME_ESCAPELESS()
 	@//@regex
-	(@{R_PREFIX_ID()})? :
-	(
+	(@{R_PREFIX_ID()}
+	@{B_LOAD? ':': ')? :('}  @// load mode can use 1 capture group instead of 2
 		(?:
 			@{R_CHAR_NO_CLOSERS()}
 			(?:
@@ -220,7 +489,8 @@ const R_PREFIXED_NAME_ESCAPELESS = /@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 
 @>> R_PREFIXED_NAME(b_lookahead=false)
 	@//@regex
-	(@{R_PREFIX_ID()})? :				@// 1: prefix id
+	(@{R_PREFIX_ID()}				@// 1: prefix id
+	@{B_LOAD? ':': ')? :('}  @// load mode can use 1 capture group instead of 2
 	(											@// 2: prefix iri
 		(?:
 			(?:									@// firt name char
@@ -371,7 +641,8 @@ const match_prefixed_name = (s, i) => {
 
 
 @// consume whitespace
-@> whitespace(s_offset='0', b_local=false)
+@> whitespace(z_offset='0', b_local=false)
+	@. let s_offset = 'number' === typeof z_offset? `i+${z_offset}`: z_offset
 	// consume whitespace (and incidentally reset index)
 	R_WS.lastIndex = @{s_offset};
 	R_WS.exec(s);
@@ -677,19 +948,19 @@ const match_prefixed_name = (s, i) => {
 @;
 
 @> load_object(sj_expr)
-	@- 'sc1_object' !== sj_expr
-		let sc1_object = @{sj_expr};
-	@;
-
-	// first encounter w/ object
-	let as_objects = this._as_objects;
-	if(!as_objects.has(sc1_object)) {
-		this._hc3_triples[$_QUADS] += 1;
-		this._hc2_pairs[$_QUADS] += 1;
-		as_objects.add(@{sj_expr});
-	}
+	this.load_object(@{sj_expr});
 @;
 
+@.{
+	const H_LOADERS = {
+		subject: load_object,
+		predicate: load_predicate,
+		object: load_object,
+		graph: load_graph,
+	};
+
+	const load_term = (s_role, sj_expr) => H_LOADERS[s_role](sj_expr);
+}
 
 @// emit statement and return control to whatever function asked for it
 @> eot()
@@ -1347,6 +1618,18 @@ class Reader {
 			+s_message);
 	}
 
+	@- B_LOAD
+		load_object(sc1_object) {
+			// first encounter w/ object
+			let as_objects = this._as_objects;
+			if(!as_objects.has(sc1_object)) {
+				this._hc3_triples[$_QUADS] += 1;
+				this._hc2_pairs[$_QUADS] += 1;
+				as_objects.add(sc1_object);
+			}
+		}
+	@;
+
 	// end of file
 	eof() {
 		// there are events queued
@@ -1517,6 +1800,47 @@ class Reader {
 		@.{
 			const gtg = b_star? () => goto('object_x'): () => goto('object_list');
 		}
+
+		@{rules({
+			apply: {
+				role: 'predicate',
+				goto: b_star? 'object_x': 'object_list',
+			},
+			series: {
+				prefixed_name_quick: {},
+				rdf_type_alias: () => ({
+					type: 'regex',
+					test: /* syntax: js */ `R_A`,
+					action: [
+						modal({
+							read: /* syntax: js */ `
+								this._kt_predicate = ${SJ_RDF_TYPE};
+							`,
+							load: load_predicate(/* syntax: js */ `this._sc1_rdf_type`),
+						}),
+					],
+				}),
+				iriref_escapeless: {},
+				prefixed_name_escapeless: {},
+				iriref: {},
+				prefixed_name: {},
+				...(!b_star
+					? {
+						blank_node_property_list_terminator: () => ({
+							type: 'regex',
+							test: /* syntax: js */ `R_CHAR_KET`,
+							action: [
+								pop_state(`end of blank node property list ']'`),
+							],
+							goto: null,
+						}),
+					}: {}),
+				comment: {},
+				retry: {},
+			},
+
+		})}
+
 		// benchmarks indicate: regex for end of blank node property list faster than ch
 		@- B_OPTIMIZE_PAIRS
 			@.{
@@ -1632,6 +1956,79 @@ class Reader {
 		// ref char
 		let x = s[i];
 
+		@{rules({
+			series: {
+				string_literal_double: {},
+				prefixed_name_quick: {},
+				iriref_escapeless: {},
+				prefixed_name_escapeless: {},
+				string_literal_single: {},
+				numeric_literal: {},
+				boolean_literal: {},
+				...(!b_star? {
+					blank_node_property_list: () => ({
+						type: 'chars',
+						test: '[',
+						action: [
+							/* syntax: js */ `
+								// advance index to next token
+								${whitespace(/* syntax: js */ `i+1`)}
+							`,
+							modal({
+								read: /* syntax: js */ `
+									// make blank node
+									let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
+
+									// emit statement event
+									${emit_statement()}
+
+									// push state to stack
+									${push_state('post_object')}
+
+									// set new subject
+									this._kt_subject = kt_blank_node;
+								`,
+								load: /* syntax: js */ `
+									// make blank node
+									let sc1_blank_node = this._sc1_object = '_:'+this.next_label();
+
+									// commit to memory
+									${load_object(/* syntax: js */ `sc1_blank_node`)}
+
+									// push state to stack
+									${push_state('post_object')}
+
+									// set new subject
+									${load_subject(/* syntax: js */ `sc1_blank_node`)}
+								`,
+							}),
+						],
+						goto: 'pairs',
+					}),
+				}: {}),
+				blank_node_terminal: {},
+				...(!b_star? {
+					collection_object: () => ({
+						type: 'chars',
+						test: '(',
+						action: /* syntax: js */ `
+							// advance index to next token
+							${whitespace(/* syntax: js */ `i+1`)}
+
+							// state to resume after collection ends
+							${push_state('post_object')}
+						`,
+						goto: 'collection_object',
+					}),
+				}: {}),
+				iriref: {},
+				prefixed_name: {},
+				rdf_star: {},
+				comment: {},
+				retry: {},
+			},
+		})}
+
 		// string literal * double
 		@{if_char('"')}
 			@{deduce_strlit_path('double')}
@@ -1697,7 +2094,7 @@ class Reader {
 				@- B_LOAD
 					@{load_object(/* syntax: js */ `sc1_object`)}
 				@:
-					this._kt_object = kt_blank_node;
+					this._kt_subject = kt_blank_node;
 				@;
 
 				// goto parsing pairs state
@@ -2707,6 +3104,19 @@ class Reader {
 		@:
 			let kt_datatype = null;
 		@;
+
+		@{rules({
+			apply: {
+				role: 'datatype',
+			},
+			series: {
+				prefixed_name_quick: {},
+				iriref_escapeless: {},
+				prefixed_name_escapeless: {},
+				iriref: {},
+				prefixed_name: {},
+			},
+		})}
 
 		// prefixed name quick
 		@{if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_datatype')}
