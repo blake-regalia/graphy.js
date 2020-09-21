@@ -159,9 +159,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		load: load_term(s_role, sj_expr),
 	});
 
-	const gen_rule_iri = ({b_escapeless}) => ({role:s_role}) => ({
+	const gen_rule_iri = ({b_escapeless}) => ({role:s_role, node_mod:s_mod}) => ({
 		type: 'match',
-		test: /* syntax: js */ `R_${'graph' === s_role? 'GRAPH_': ''}IRIREF${b_escapeless? '_ESCAPELESS': ''}`,
+		test: /* syntax: js */ `R_${'graph' === s_mod? 'GRAPH_': ''}IRIREF${b_escapeless? '_ESCAPELESS': ''}`,
 		action: ({sj_matched}) => [
 			irief(),
 			// 	let p_datatype;
@@ -204,9 +204,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		}),
 	});
 
-	const gen_rule_labeled_blank_node = ({b_terminal}) => ({role:s_role}) => ({
+	const gen_rule_labeled_blank_node = ({b_terminal}) => ({role:s_role, node_mod:s_mod}) => ({
 		type: 'match',
-		test: /* syntax: js */ `R_${'graph' === s_role? 'GRAPH_': ''}BLANK_NODE_LABEL${b_terminal? '_TERMINAL': ''}`,
+		test: /* syntax: js */ `R_${'graph' === s_mod? 'GRAPH_': ''}BLANK_NODE_LABEL${b_terminal? '_TERMINAL': ''}`,
 		action: ({sj_matched}) => [
 			/* syntax: js */ `
 				// extract label
@@ -216,7 +216,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				read: save_term(s_role, /* syntax: js */ `this.blank_node(s_label)`),
 				load: load_term(s_role, /* syntax: js */ `'_:'+s_label`),
 			}),
-			...('graph' === s_role? [emit_graph_open()]: []),
+			...('graph' === s_mod? [emit_graph_open()]: []),
 		],
 	});
 
@@ -278,6 +278,43 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			goto: 'block',
 		}),
 
+		non_comment: () => ({
+			type: 'not_chars',
+			test: '#',
+			action: [],
+			goto: 'pairs',
+		}),
+
+		disambiguating_graph_open: ({anonymous:b_anon}) => ({
+			type: 'chars',
+			test: '{',
+			action: [
+				modal({
+					read: /* syntax: js */ `
+						// shift placeholder subject
+						${load_graph(/* syntax: js */ `this._sc1_subject`)}
+
+						// reset subject in case of collections
+						this._sc1_subject = null;
+					`,
+					load: /* syntax: js */ `
+						// shift placeholder subject
+						this._kt_graph = this._kt_subject;
+
+						${emit_graph_open()}
+
+						// reset subject in case of collections
+						this._kt_subject = null;
+					`,
+				}),
+				b_anon? /* syntax: js */ `
+					// pop dummy state
+					this._a_nested.pop();
+				`: '',
+			],
+			goto: 'statement',
+		}),
+
 		prefixed_name_quick: ({role:s_role}) => ({
 			type: 'match',
 			test: /* syntax: js */ `R_PREFIXED_NAME_QUICK`,
@@ -293,15 +330,15 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		labeled_blank_node: gen_rule_labeled_blank_node({b_terminal:false}),
 		labeled_blank_node_terminal: gen_rule_labeled_blank_node({b_terminal:true}),
 
-		anonymous_blank_node: ({role:s_role}) => ({
+		anonymous_blank_node: ({role:s_role, node_mod:s_mod}) => ({
 			type: 'match',
-			test: /* syntax: js */ `R_${'graph' === s_role? 'GRAPH_': ''}BLANK_NODE_LABEL`,
+			test: /* syntax: js */ `R_${'graph' === s_mod? 'GRAPH_': ''}BLANK_NODE_LABEL`,
 			action: [
 				modal({
 					read: save_term(s_role, /* syntax: js */ `this.anonymous_blank_node(this.next_label())`),
 					load: load_term(s_role, /* syntax: js */ `'_:'+this.next_label()`),
 				}),
-				...('graph' === s_role? [emit_graph_open()]: []),
+				...('graph' === s_mod? [emit_graph_open()]: []),
 			],
 		}),
 
@@ -500,8 +537,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			for(let [si_rule, z_rule] of g_state.rules) {
 				// create args
 				let h_args = {
-					...w_apply,
-					...gc_rule,
+					...(g_state.apply || {}),
 				};
 
 				// prep rule
@@ -509,7 +545,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 				// function; inline rule
 				if('function' === typeof z_rule) {
-					f_rule = z_rule
+					f_rule = z_rule;
 				}
 				// string
 				else if('string' === typeof z_rule) {
@@ -526,7 +562,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 					}
 					// reference
 					else {
+						// ref rule function
 						f_rule = H_RULES[si_rule];
+
+						// spread object value into args
+						h_args = {
+							...h_args,
+							...z_rule,
+						};
 					}
 				}
 				// invalid
@@ -579,7 +622,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				}
 
 				// coalesce action into string
-				let s_action = Array.isArray(z_action)? z_action.join('\n'): z_action+'';
+				let s_action = Array.isArray(z_action)? z_action.flat(Infinity).join('\n'): z_action+'';
 
 				// there is a goto action, append it
 				if(g_spec.goto) s_action += goto(g_spec.goto);
@@ -599,7 +642,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 						${s_body}
 					}
 
-					${resume_state(si_state, false)}
+					${resume_state(si_state, false, g_state.max)}
 				}
 			`;
 		}
@@ -927,46 +970,6 @@ const match_prefixed_name = (s, i) => {
 		this._s_@{sv_term}_root = m_base_iri[2] || '';
 		this._s_@{sv_term}_scheme = m_base_iri[3] || '';
 		this._s_@{sv_term}_path = m_base_iri[4] || ''; 
-	@;
-@;
-
-
-
-@// set object value and datatype for numeric literal
-@> numeric_literal()
-	// it has exponent term, xsd:double
-	if(m_numeric_literal[4]) {
-		@- B_LOAD
-			@{load_object(/* syntax: js */ `+m_numeric_literal[1]`)}
-		@:
-			this._kt_object = this._dc_factory.double(m_numeric_literal[1]);
-		@;
-	}
-	// contains decimal point, xsd:decimal
-	else if(m_numeric_literal[2] || m_numeric_literal[3]) {
-		@- B_LOAD
-			@{load_object(/* syntax: js */ `this._scp_xsd_decimal+m_numeric_literal[1]`)}
-		@:
-			this._kt_object = this._dc_factory.decimal(m_numeric_literal[1]);
-		@;
-	}
-	// otherwise, it is an integer
-	else {
-		@- B_LOAD
-			@{load_object(/* syntax: js */ `+m_numeric_literal[1]`)}
-		@:
-			this._kt_object = this._dc_factory.integer(m_numeric_literal[1]);
-		@;
-	}
-@;
-
-@// set object value and datatype for boolean literal
-@> boolean_literal()
-	@- B_LOAD
-		@{load_object(/* syntax: js */ `m_boolean_literal[1]? true: false`)}
-	@:
-		// make literal
-		this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
 	@;
 @;
 
@@ -2151,6 +2154,11 @@ class Reader {
 			}
 		}
 
+		const SJ_REF_X_CHAR = /* syntax: js */ `
+			// ref char
+			let x = s[i];
+		`;
+
 		const gen_state_predicate = ({b_star=false}) => ({
 			apply: {
 				role: 'predicate',
@@ -2183,10 +2191,7 @@ class Reader {
 		});
 
 		const gen_state_object = ({b_star=false}) => ({
-			preamble: /* syntax: js */ `
-				// ref char
-				let x = s[i];
-			`,
+			preamble: SJ_REF_X_CHAR,
 			apply: {
 				role: 'object',
 			},
@@ -2339,58 +2344,123 @@ class Reader {
 	}
 
 	@{states({
-		...(B_TRIG
-			? {
-				block: {
-					apply: {
-						role: 'subject',
-						goto: 'statement',
-					},
-					rules: {
-						iriref_escapeless: {},
-						prefixed_name: {},
-						graph_open: () => ({
-							type: 'test',
-							test: /* syntax: js */ `R_CHAR_OPEN`,
-							action: modal({
-								read: [
-									save_term('graph', /* syntax: js */ `this._dc_factory.defaultGraph()`),
-									emit_graph_open(),
-								],
-								load: load_default_graph(),
-							}),
-						}),
-						anonymous_blank_node: {},
-						iriref_escapeless: {
-							role: 'subject',
-							goto: 'graph_or_subject',
-						},
-						labeled_blank_node: {},
-						...subassign(gen_rules_triples({b_directives:true, b_star:false}), {
-							role: 'subject',
-							goto: 'pairs',
-						}),
-						prefixed_name: {},
-						comment: {},
-						graph: () => ({
-							type: 'test',
-							test: /* syntax: js */ `R_GRAPH`,
-							action: [],
-							goto: 'graph_keyword',
+		...(B_TRIG? {
+			block: {
+				apply: {
+					role: 'graph',
+					goto: 'statement',
+					node_mod: 'graph',
+				},
+				rules: {
+					iriref_escapeless: {},
+					prefixed_name: {},
+					graph_open: () => ({
+						type: 'test',
+						test: /* syntax: js */ `R_CHAR_OPEN`,
+						action: modal({
+							read: [
+								save_term('graph', /* syntax: js */ `this._dc_factory.defaultGraph()`),
+								emit_graph_open(),
+							],
+							load: load_default_graph(),
 						}),
 					}),
-
-					graph_keyword: () => ({
-						apply: {
-							role: 'graph',
-							goto: 'graph_post_name',
-						},
-						rules: {
-							prefixed_name_quick: {},
-						},
+					anonymous_blank_node: {},
+					labeled_blank_node: {},
+					iriref_escapeless: {
+						role: 'subject',
+						goto: 'graph_or_subject',
+					},
+					...subassign(gen_rules_triples({b_directives:true, b_star:false}), {
+						role: 'subject',
+						goto: 'pairs',
+					}),
+					graph_iri: () => ({
+						type: 'match',
+						test: /* syntax: js */ `R_GRAPH_IRI`,
+						action: ({sj_matched}) => [
+							iriref('graph', sj_matched),
+							modal({
+								read: emit_graph_open(),
+								load: '',
+							}),
+						],
+					}),
+					comment: {},
+					graph: () => ({
+						type: 'test',
+						test: /* syntax: js */ `R_GRAPH`,
+						action: [],
+						goto: 'graph_keyword',
 					}),
 				},
-			}: {}),
+			},
+
+			graph_or_subject: {
+				preamble: SJ_REF_X_CHAR,
+				rules: {
+					disambiguating_graph_open: {},
+					non_comment: {},
+					comment: {},
+				},
+			},
+
+			graph_or_subject_property_list: {
+				preamble: SJ_REF_X_CHAR,
+				rules: {
+					blank_node_property_list_terminator: () => ({
+						type: 'chars',
+						test: ']',
+						goto: 'graph_or_subject_anon',
+					}),
+					non_comment: {},
+					comment: {},
+				},
+			},
+
+			graph_or_subject_anon: {
+				preamble: SJ_REF_X_CHAR,
+				rules: {
+					disambiguating_graph_open: {
+						anonymous: true,
+					},
+					non_comment: {},
+					comment: {},
+				},
+			},
+
+			graph_keyword: () => ({
+				apply: {
+					role: 'graph',
+					goto: 'graph_post_name',
+				},
+				rules: {
+					prefixed_name_quick: {},
+					iriref_escapeless: {},
+					labeled_blank_node: {},
+					anonymous_blank_node: {},
+					iriref: {},
+					prefixed_name: {},
+					comment: {},
+				},
+			}),
+
+			graph_post_name: () => ({
+				preamble: SJ_REF_X_CHAR,
+				rules: {
+					graph_open_block: () => ({
+						type: 'chars',
+						test: '{',
+						action: modal({
+							read: emit_graph_open(),
+							load: '',
+						}),
+						goto: 'statement',
+					}),
+					comment: {},
+				},
+			}),
+		}: {}),
 
 		statement: gen_state_subject({b_star:false}),
 		triple_x: gen_state_subject({b_star:true}),
@@ -2411,6 +2481,16 @@ class Reader {
 						pop_state(`end of "triple x" Turtle* '>>'`),
 					],
 				}),
+			},
+		},
+
+		// do not risk deducing type in certain states, defer to own string literal state
+		string_literal: {
+			max: 'max_string_length',
+			preamble: SJ_REF_X_CHAR,
+			rules: {
+				string_literal_double: {},
+				string_literal_single: {},
 			},
 		},
 
@@ -2448,7 +2528,7 @@ class Reader {
 		},
 
 		post_object: {
-			preable: /* syntax: js */ `
+			preamble: /* syntax: js */ `
 				// cache current index
 				let i_reset = i;
 
@@ -2604,10 +2684,7 @@ class Reader {
 		},
 
 		collection_subject: {
-			preamble: /* syntax: js */ `
-				// ref char
-				let x = s[i];
-			`,
+			preamble: SJ_REF_X_CHAR,
 			rules: {
 				collection_terminator: () => ({
 					type: 'chars',
@@ -2661,7 +2738,7 @@ class Reader {
 						s_pointer_label = this.next_label();
 						${sj_subject} = ${modal({
 							read: /* syntax: js */ `this.anonymous_blank_node(s_pointer_label)`,
-							load: /* syntax: js */ `s_pointer_label`,
+							load: /* syntax: js */ `'_:'+s_pointer_label`,
 						})}
 						${push_state('pairs')}
 						// reset subject for later conditional branch
@@ -2669,17 +2746,242 @@ class Reader {
 						b_pushed = true;
 					}
 				`)(`this._${B_LOAD? 'sc1': 'kt'}_subject`),
-				irief: {},
+				iriref_escapeless: {},
 				prefixed_name_escapeless: {},
+				string_literal: () => ({
+					type: 'raw',
+					test: /* syntax: js */ `'"' === x || "'" === x`,
+					action: modal({
+						read: /* syntax: js */ `
+							// first item in list
+							if(null === this._kt_subject) {
+								s_pointer_label = this.next_label();
+								this._kt_subject = this.anonymous_blank_node(s_pointer_label);
+								this._kt_predicate = ${SJ_RDF_FIRST};
+							}
+							// not first item in list
+							else {
+								// make nest list item
+								s_pointer_label = this.next_label();
+								let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
+								${emit_statement()}
 
+								// setup for object literal
+								this._kt_subject = kt_blank_node;
+								this._kt_predicate = ${SJ_RDF_FIRST};
+							}
+
+							// how to resume collection subject state after object literal
+							this.after_eot = function() {
+								this._kt_predicate = ${SJ_RDF_REST};
+								this.after_eot = this.post_object;
+								return this.collection_subject();
+							};
+						`,
+						load: /* syntax: js */ `
+							// first item in list
+							if(null === this._sc1_subject) {
+								s_pointer_label = this.next_label();
+								${load_subject(/* syntax: js */ `'_:'+s_pointer_label`)}
+								${load_predicate(SJ_RDF_FIRST)}
+							}
+							// not first item in list
+							else {
+								// make nest list item
+								s_pointer_label = this.next_label();
+								let sc1_blank_node = '_:'+s_pointer_label;
+								${load_object(/* syntax: js */ `sc1_blank_node`)}
+
+								// setup for object literal
+								${load_subject(/* syntax: js */ `sc1_blank_node`)}
+								${load_predicate(SJ_RDF_FIRST)}
+							}
+
+							// how to resume collection subject state after object literal
+							this.after_eot = function() {
+								${load_predicate(SJ_RDF_REST)}
+								this.after_eot = this.post_object;
+								return this.collection_subject();
+							};
+						`,
+					}),
+					goto: 'string_literal',
+				}),
+				numeric_literal: {},
+				boolean_literal: {},
+				blank_node_property_list: () => ({
+					type: 'chars',
+					test: '[',
+					action: modal({
+						read: /* syntax: js */ `
+							// this blank node is just the next item in the list
+							s_pointer_label = this.next_label();
+							let kt_blank_node;
+							if(null !== this._kt_subject) {
+								kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
+								${emit_statement()}
+							}
+
+							// subject needs to be set
+							this._kt_subject = kt_blank_node || this.anonymous_blank_node(s_pointer_label);
+							this._kt_predicate = ${SJ_RDF_FIRST};
+							let s_label = this.next_label();
+							kt_blank_node = this._kt_object = this.anonymous_blank_node(s_label);
+							${emit_statement()}
+
+							// when resume
+							this._kt_predicate = ${SJ_RDF_REST};
+
+							// push state
+							${push_state('collection_subject')}
+
+							// prepare next triple
+							this._kt_subject = kt_blank_node;
+						`,
+						load: /* syntax: js */ `
+							// this blank node is just the next item in the list
+							s_pointer_label = '_:'+this.next_label();
+							let sc1_blank_node;
+							if(null !== this._sc1_subject) {
+								sc1_blank_node = '_:'+s_pointer_label;
+								${load_object(/* syntax: js */ `sc1_blank_node`)}
+							}
+
+							// subject needs to be set
+							this._sc1_subject = sc1_blank_node || '_:'+s_pointer_label;
+							this._sc1_predicate = ${SJ_RDF_FIRST};
+							let s_label = this.next_label();
+							sc1_blank_node = '_:'+s_label;
+							${load_object(/* syntax: js */ `sc1_blank_node`)}
+
+							// when resume
+							${load_predicate(SJ_RDF_REST)}
+
+							// push state
+							${push_state('collection_subject')}
+
+							// prepare next triple
+							${load_subject(/* syntax: js */ `sc1_blank_node`)}
+						`,
+					}),
+					goto: 'pairs',
+				}),
+				nested_collection: () => ({
+					type: 'chars',
+					test: '(',
+					action: ((sj_term) => /* syntax: js */ `
+						// empty collection
+						if(')' === s[i]) {
+							this.i = i;
+							${sj_term}_subject = this._a_nested[this._a_nested.length-1][0];
+							${sj_term}_predicate = ${SJ_RDF_FIRST};
+
+							this._a_nested.push([
+								${sj_term}_subject,
+								${SJ_RDF_REST},
+								'collection_subject',
+							]);
+							${goto('collection_object')}
+
+							// commit list item pointer
+							s_pointer_label = this.next_label();
+
+							${modal({
+								read: /* syntax: js */ `
+									let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
+									${emit_statement()}
+
+									// add this list as an item to the outer list
+									this._kt_subject = kt_blank_node;
+								`,
+								load: /* syntax: js */ `
+									let sc1_blank_node = '_:'+s_pointer_label;
+									${load_object(/* syntax: js */ `sc1_blank_node`)}
+
+									// add this list as an item to the outer list
+									this._sc1_subject = sc1_blank_node;
+								`,
+							})}
+
+							${sj_set}_predicate = ${SJ_RDF_REST};
+							${push_state('collection_object')}
+
+							// prepare next triple
+							${sj_set}_predicate = ${SJ_RDF_FIRST};
+						}
+					`)(`this._${B_LOAD? 'sc1': 'kt'}`),
+				}),
+				labeled_blank_node: {},
+				iriref: {},
+				prefixed_name: {},
+				comment: {},
 			},
+			cleanup: /* syntax: js */ `
+				// ran out of characters after pushing state, pop it
+				if(b_pushed) this._a_nested.pop();
+			`,
+			postscript: modal({
+				read: /* syntax: js */ `
+					let kt_blank_node_outer;
+					if(!s_pointer_label) s_pointer_label = this.next_label();
+
+					// not the very first item of collection subject
+					if(this._kt_subject !== null) {
+						// ref object
+						let w_object = this._kt_object;
+
+						// create blanknode to embed list
+						kt_blank_node_outer = this._kt_object = this.anonymous_blank_node(s_pointer_label);
+
+						// emit statement that functions as collection's head "pointer"
+						${emit_statement()}
+
+						// swap back object
+						this._kt_object = w_object;
+					}
+
+					// emit statement that is item
+					this._kt_subject = kt_blank_node_outer || this.anonymous_blank_node(s_pointer_label);
+					this._kt_predicate = ${SJ_RDF_FIRST};
+					${emit_statement()}
+
+					// prepare next predicate
+					this._kt_predicate = ${SJ_RDF_REST};
+				`,
+				load: /* syntax: js */ `
+					let sc1_blank_node_outer;
+					if(!s_pointer_label) s_pointer_label = this.next_label();
+
+					// not the very first item of collection subject
+					if(this._sc1_subject !== null) {
+						// ref object
+						// ?????
+						throw new Error('in LOAD mode, ._sc1_object is not used as a local field');
+						let w_object = this._sc1_object;
+
+						// create blanknode to embed list
+						sc1_blank_node_outer = '_:'+s_pointer_label;
+
+						// commit statement that functions as collection's head "pointer"
+						${load_object(/* syntax: js */ `sc1_blank_node_outer`)}
+
+						// swap back object
+						this._sc1_object = w_object;
+					}
+
+					// emit statement that is item
+					this._kt_subject = kt_blank_node_outer || this.anonymous_blank_node(s_pointer_label);
+					this._kt_predicate = ${SJ_RDF_FIRST};
+					${emit_statement()}
+
+					// prepare next predicate
+					this._kt_predicate = ${SJ_RDF_REST};
+				`,
+			}),
 		},
 
 		collection_object: {
-			preamble: /* syntax: js */ `
-				// ref char
-				let x = s[i];
-			`,
+			preamble: SJ_REF_X_CHAR,
 			rules: {
 				collection_terminator: () => ({
 					type: 'chars',
@@ -2728,7 +3030,7 @@ class Reader {
 							this.i = i;
 
 							// create blanknode to embed list
-							let sc1_blank_node = this.next_label();
+							let sc1_blank_node = '_:'+this.next_label();
 
 							// commit statement that functions as collection's head "pointer"
 							${load_object(/* syntax: js */ `sc1_blank_node`)}
@@ -2789,7 +3091,7 @@ class Reader {
 
 								// enter blank node
 								${load_predicate(/* syntax: js */ `this._sc1_rdf+'first`)}
-								sc1_blank_node = this.next_label();
+								sc1_blank_node = '_:'+this.next_label();
 								${load_object(/* syntax: js */ `sc1_blank_node`)}
 
 								// prepare next triple
@@ -2828,7 +3130,8 @@ class Reader {
 						`,
 						load: /* syntax: js */ `
 							// commit list item pointer
-							let sc1_blank_node = s_pointer_label = this.next_label();
+							s_pointer_label = this.next_label();
+							let sc1_blank_node = '_:'+s_pointer_label;
 							if(null === this._sc1_subject) {
 								let a_recent = this._a_nested[this._a_nested.length-1];
 								${load_subject(/* syntax: js */ `a_recent[0]`)}
@@ -2861,7 +3164,7 @@ class Reader {
 
 						${modal({
 							read: save_term('object', /* syntax: js */ `this.blank_node(s_label)`),
-							load: load_term('object', /* syntax: js */ `s_label`),
+							load: load_term('object', /* syntax: js */ `'_:'+s_label`),
 						})}
 					`
 				}),
@@ -3174,292 +3477,6 @@ class Reader {
 
 	@{end_method('statement')}
 
-	@- TRIG
-		@{method('block')}
-
-			@{if_match('R_GRAPH_IRI_ESCAPELESS', 'm_graph_iriref_e_graph')}
-				@{iriref('graph', 'm_graph_iriref_e_graph', true)}
-
-				@{emit_graph_open()}
-
-				// statement state
-				@{goto('statement')}
-
-			@{else_if_match('R_GRAPH_PREFIXED_NAME', 'm_graph_prefixed_name')}
-				@{valid_prefix('m_graph_prefixed_name')}
-
-				// make graph key
-				@- B_LOAD
-					@{load_graph(/* syntax: js */ `s_prefix_id+':'+m_graph_prefixed_name[2]`)}
-				@:
-					this._kt_graph = @{prefixed_named('m_graph_prefixed_name[2]')};
-				@;
-
-				@{emit_graph_open()}
-
-				// statement state
-				@{goto('statement')}
-
-			@{else_if_match('R_CHAR_OPEN')}
-				// make new default graph
-				@- B_LOAD
-					@{load_default_graph()}
-				@:
-					this._kt_graph = this._dc_factory.defaultGraph();
-				@;
-
-				@{emit_graph_open()}
-
-				// goto statement state
-				@{goto('statement')}
-
-			@{else_if_match('R_GRAPH_ANONYMOUS_BLANK_NODE', 'm_graph_anonymous_blank_node')}
-				// make new label & set graph to blank node
-				@- B_LOAD
-					@{load_graph(/* syntax: js */ `'_:'+this.next_label()`)}
-				@:
-					this._kt_graph = this.anonymous_blank_node(this.next_label());
-				@;
-
-				@{emit_graph_open()}
-
-				// statement state
-				@{goto('statement')}
-
-			@{else_if_match('R_GRAPH_LABELED_BLANK_NODE', 'm_graph_labeled_blank_node')}
-				let s_label = m_graph_labeled_blank_node[1];
-
-				@- B_LOAD
-					@{load_graph(/* syntax: js */ `'_:'+s_label`)}
-				@:
-					this._kt_graph = this.blank_node(s_label);
-				@;
-
-				@{emit_graph_open()}
-
-				// statement state
-				@{goto('statement')}
-
-			// iriref
-			@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_graph_subject')}
-				@{iriref('subject', 'm_iriref_e_graph_subject', true)}
-
-				// graph or subject
-				@{goto('graph_or_subject')}
-
-			@// try triples productions
-			@{triples({
-				b_directives: true,
-				b_star: false,
-			})}
-
-			@// then try other graph keywords
-			@{else_if_match('R_GRAPH_IRI', 'm_graph_iriref_graph')}
-				@{iriref('graph', 'm_graph_iriref_graph', true, false, true)}
-
-				@{emit_graph_open()}
-
-				// statement state
-				@{goto('statement')}
-
-			// comment
-			@{else_if_match('R_COMMENT', 'm_comment', true)}
-				if(this.emit_comments) this.emit_comments(m_comment[0]);
-				continue;
-
-			@{else_if_match('R_GRAPH')}
-				@{goto('graph_keyword')}
-
-			// not iriref, not prefixed name, not blank node label, not prefix id, not base
-			@{else_retry()}
-
-		@{end_method('block')}
-
-
-		@{method('graph_or_subject')}
-			let x = s[i];
-
-			@{if_char('{')}
-				@{whitespace('i+1')}
-
-				// shift placeholder subject
-				@- B_LOAD
-					@{load_graph(/* syntax: js */ `this._sc1_subject`)}
-				@:
-					this._kt_graph = this._kt_subject;
-				@;
-
-				@{emit_graph_open()}
-
-				// reset subject in case of collections
-				@- B_LOAD
-					this._sc1_subject = null;
-				@:
-					this._kt_subject = null;
-				@;
-
-				// statement state
-				@{goto('statement')}
-
-			// non-comment
-			@{else_if_not_char('#')}
-				@{goto('pairs')};
-
-			// comment
-			@{else_if_match('R_COMMENT', 'm_comment', true)}
-				if(this.emit_comments) this.emit_comments(m_comment[0]);
-				continue;
-
-			@{else_retry()}
-
-		@{end_method('graph_or_subject')}
-
-
-		@{method('graph_or_subject_property_list')}
-			let x = s[i];
-
-			@{if_char(']')}
-				@{whitespace('i+1')}
-
-				// next state
-				@{goto('graph_or_subject_anon')}
-
-			// non-comment
-			@{else_if_not_char('#')}
-				@{goto('pairs')};
-
-			// comment
-			@{else_if_match('R_COMMENT', 'm_comment', true)}
-				if(this.emit_comments) this.emit_comments(m_comment[0]);
-				continue;
-
-			@{else_retry()}
-		@{end_method('graph_or_subject_property_list')}
-
-
-		@{method('graph_or_subject_anon')}
-			let x = s[i];
-
-			@{if_char('{')}
-				@{whitespace('i+1')}
-
-				// shift placeholder subject
-				this._kt_graph = this._kt_subject;
-
-				@{emit_graph_open()}
-
-				// reset subject in case of collections
-				this._kt_subject = null;
-
-				// pop dummy state
-				this._a_nested.pop();
-
-				// statement state
-				@{goto('statement')}
-
-			// non-comment
-			@{else_if_not_char('#')}
-				@{goto('pairs')};
-
-			// comment
-			@{else_if_match('R_COMMENT', 'm_comment', true)}
-				if(this.emit_comments) this.emit_comments(m_comment[0]);
-				continue;
-
-			@{else_retry()}
-		@{end_method('graph_or_subject_anon')}
-
-
-		@{method('graph_keyword')}
-
-			// prefixed name
-			@{if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_graph')}
-
-				@{valid_prefix('m_prefixed_named_e_graph')}
-
-				// make subject key
-				this._kt_graph = @{prefixed_named('m_prefixed_named_e_graph[2]')};
-
-				// predicate-object pairs state
-				@{goto('graph_post_name')}
-
-			// iriref
-			@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_graph')}
-				@{iriref('graph', 'm_iriref_e_graph', true)}
-
-				// graph
-				@{goto('graph_post_name')}
-
-			// blank node label
-			@{else_if_match('R_LABELED_BLANK_NODE', 'm_blank_node_label_graph')}
-				// extract label
-				let s_label = m_blank_node_label_graph[1];
-
-				// make graph key
-				this._kt_graph = this.blank_node(s_label);
-
-				// predicate-object pairs state
-				@{goto('graph_post_name')}
-
-			// anonymous blank node graph
-			@{else_if_match('R_ANONYMOUS_BLANK_NODE')}
-				// set new blank node as graph
-				this._kt_graph = this.anonymous_blank_node(this.next_label());
-
-				// goto pairs state for inside property list
-				@{goto('graph_post_name')}
-
-			// iriref
-			@{else_if_match('R_IRIREF', 'm_iriref_graph')}
-				@{iriref('graph', 'm_iriref_graph', true, false, true)}
-
-				// predicate-object pairs state
-				@{goto('graph_post_name')}
-
-			// prefixed name
-			@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_graph')}
-				@{valid_prefix('m_prefixed_named_graph')}
-
-				@{suffix('m_prefixed_named_graph')}
-
-				// make subject key
-				this._kt_graph = @{prefixed_named('s_suffix')};
-
-				// predicate-object pairs state
-				@{goto('graph_post_name')}
-
-			// comment
-			@{else_if_match('R_COMMENT', 'm_comment', true)}
-				if(this.emit_comments) this.emit_comments(m_comment[0]);
-				continue;
-
-			// not iriref, not prefixed name, not blank node label, not prefix id, not base
-			@{else_retry()}
-
-		@{end_method('graph_keyword')}
-
-
-		@{method('graph_post_name')}
-			let x = s[i];
-
-			@{if_char('{')}
-				@{whitespace('i+1')}
-
-				@{emit_graph_open()}
-
-				// statement state
-				@{goto('statement')}
-
-			// comment
-			@{else_if_match('R_COMMENT', 'm_comment', true)}
-				if(this.emit_comments) this.emit_comments(m_comment[0]);
-				continue;
-
-			@{else_retry()}
-
-		@{end_method('graph_post_name')}
-	@;
-
 
 	@> deduce_strlit_path(s_mode)
 		@. let sj_char = 'single' === s_mode? `"'"`: `'"'`;
@@ -3495,11 +3512,6 @@ class Reader {
 			break;
 		}
 	@;
-
-
-	@{method('triple_x')}
-		@{gen_subject(true)}
-	@{end_method('triple_x')}
 
 
 	@> string_literal_short(s_mode)
@@ -3734,29 +3746,6 @@ class Reader {
 	@{string_literal_long('single')}
 
 
-	@//@ do not risk deducing type in certain states, defer to own string literal state
-	@{method('string_literal')}
-		// ref character
-		let x = s[i];
-
-		// string literal * double
-		@{if_char('"')}
-			@{deduce_strlit_path('double')}
-			
-		// string literal * single
-		@{else_if_char("'")}
-			@{deduce_strlit_path('single')}
-
-		// not string literal long single quote, not string literal single quote
-		@{else_retry()}
-
-@// this is disabled since string literal handled in own state
-@//		// complete literal
-@//		@{goto('datatype_or_langtag')}
-	@{end_method('string_literal', 'max_string_length')}
-
-
-
 	@{method('datatype_or_langtag')}
 		// ref character
 		let x = s[i];
@@ -3868,304 +3857,6 @@ class Reader {
 	// emit prefix event
 	this.event('prefix', s_prefix_id, p_prefix_iri);
 @;
-
-
-
-	@{method('collection_subject')}
-		@- B_LOAD
-			debugger;
-		@;
-
-		// ref char
-		let x = s[i];
-
-		// end of collection
-		@{if_char(')')}
-			@{whitespace('i+1')}
-
-			// no items in collection subject
-			if(null === this._kt_subject) {
-				// prepare subject
-				this._kt_subject = @{SJ_RDF_NIL};
-
-				// state was never pushed to stack, jump to post_subject state
-				@{goto('post_blank_subject')}
-			}
-			// otherwise, there must be items in collection
-
-			// commit collection end
-			this._kt_object = @{SJ_RDF_NIL};
-			@{emit_statement()}
-
-			// restore state from stack
-			@{pop_state(`end of collection ')'`)}
-		@{end_else()}
-
-
-		// otherwise, pre-emptively secure the next blank node label
-		let s_pointer_label;
-
-		// very first collection object
-		let b_pushed = false;
-		if(null === this._kt_subject) {
-			// set quasi subject (really for resume state)
-			s_pointer_label = this.next_label();
-			this._kt_subject = this.anonymous_blank_node(s_pointer_label);
-			@{push_state('pairs')}
-			// reset subject for later conditional branch
-			this._kt_subject = null;
-			b_pushed = true;
-		}
-
-		// iriref
-		@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_object', true)}
-			@// commit object iri as is
-			@{iriref('object', 'm_iriref_e_object', true)}
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_object', true)}
-			@{valid_prefix('m_prefixed_named_e_object')}
-
-			// commit object iri from resolve prefixed name
-			this._kt_object = @{prefixed_named('m_prefixed_named_e_object[2]')};
-
-		// string literal
-		@{else_if_char('"', "'")}
-			// first item in list
-			if(null === this._kt_subject) {
-				s_pointer_label = this.next_label();
-				this._kt_subject = this.anonymous_blank_node(s_pointer_label);
-				this._kt_predicate = @{SJ_RDF_FIRST};
-			}
-			// not first item in list
-			else {
-				// make nest list item
-				s_pointer_label = this.next_label();
-				let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
-				@{emit_statement()}
-
-				// setup for object literal
-				this._kt_subject = kt_blank_node;
-				this._kt_predicate = @{SJ_RDF_FIRST};
-			}
-
-			// how to resume collection subject state after object literal
-			this.after_eot = function() {
-				this._kt_predicate = @{SJ_RDF_REST};
-				this.after_eot = this.post_object;
-				return this.collection_subject();
-			};
-			@{goto('string_literal')}
-
-		// numeric literal
-		@{else_if_match('R_NUMERIC_LITERAL', 'm_numeric_literal', true)}
-			@{numeric_literal()}
-
-		// boolean literal
-		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal', true)}
-			// make literal
-			this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
-			
-		// blank node property list
-		@{else_if_char('[')}
-			// advance index to next token
-			@{whitespace('i+1')}
-
-			// this blank node is just the next item in the list
-			s_pointer_label = this.next_label();
-			let kt_blank_node;
-			if(null !== this._kt_subject) {
-				kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
-				@{emit_statement()}
-			}
-
-			// subject needs to be set
-			this._kt_subject = kt_blank_node || this.anonymous_blank_node(s_pointer_label);
-			this._kt_predicate = @{SJ_RDF_FIRST};
-			let s_label = this.next_label();
-			kt_blank_node = this._kt_object = this.anonymous_blank_node(s_label);
-			@{emit_statement()}
-
-			// when resume
-			this._kt_predicate = @{SJ_RDF_REST};
-
-			// push state
-			@{push_state('collection_subject')}
-
-			// prepare next triple
-			this._kt_subject = kt_blank_node;
-
-			// goto parsing pairs state
-			@{goto('pairs')}
-
-		// new collection
-		@{else_if_char('(')}
-			@{whitespace('i+1', true)}
-
-			// empty collection
-			if(')' === s[i]) {
-				this.i = i;
-				this._kt_subject = this._a_nested[this._a_nested.length-1][0];
-				this._kt_predicate = @{SJ_RDF_FIRST};
-				this._a_nested.push([
-					this._kt_subject,
-					@{SJ_RDF_REST},
-					'collection_subject',
-				]);
-				@{goto('collection_object')}
-			}
-
-@.{/*
-			// commit list item pointer
-			if(null !== this._kt_subject) {
-				s_pointer_label = this.next_label();
-				let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
-				@{emit_statement()}
-
-				// add this list as an item to the outer list
-				this._kt_subject = kt_blank_node;
-				this._kt_predicate = @{SJ_RDF_REST};
-
-				@{push_state('collection_object')}
-			}
-			else {
-				this._a_nested.push([
-					this._a_nested[this._a_nested.length-1][0],
-					@{SJ_RDF_REST},
-					'collection_object',
-				]);
-			}
-
-
-			// prepare next triple
-			this._kt_predicate = @{SJ_RDF_FIRST};
-*/}
-
-
-
-			// commit list item pointer
-			s_pointer_label = this.next_label();
-			let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
-			@{emit_statement()}
-
-			// add this list as an item to the outer list
-			this._kt_subject = kt_blank_node;
-			this._kt_predicate = @{SJ_RDF_REST};
-			@{push_state('collection_object')}
-
-			// prepare next triple
-			this._kt_predicate = @{SJ_RDF_FIRST};
-
-
-
-@.{/*
-
-			// commit list item pointer
-			s_pointer_label = this.next_label();
-			let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
-			if(null === this._kt_subject) {
-				let a_recent = this._a_nested[this._a_nested.length-1];
-				this._kt_subject = a_recent[0];
-				this._kt_predicate = a_recent[1];
-			}
-			@{emit_statement()}
-
-			// add this list as an item to the outer list
-			this._kt_subject = kt_blank_node;
-			this._kt_predicate = @{SJ_RDF_REST};
-			@{push_state('collection_object')}
-
-			// prepare next triple
-			this._kt_predicate = @{SJ_RDF_FIRST};
-
-
-			// this blank node is just the next item in the list
-			s_pointer_label = this.next_label();
-			let kt_blank_node;
-			if(null !== this._kt_subject) {
-				kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
-				@{emit_statement()}
-			}
-
-			// subject needs to be set
-			this._kt_subject = kt_blank_node || this.anonymous_blank_node(s_pointer_label);
-			this._kt_predicate = @{SJ_RDF_FIRST};
-			let s_label = this.next_label();
-			kt_blank_node = this._kt_object = this.anonymous_blank_node(s_label);
-			@{emit_statement()}
-
-			// when resume
-			this._kt_predicate = @{SJ_RDF_REST};
-
-			// push state
-			@{push_state('collection_subject')}
-
-			// prepare next triple
-			this._kt_subject = kt_blank_node;
-*/}
-
-			// flowing
-			continue;
-
-		// labeled blank node
-		@{else_if_match('R_LABELED_BLANK_NODE', 'm_blank_node_label_object', true)}
-			// ref blank node label
-			let s_label = m_blank_node_label_object[1];
-
-			// make object
-			this._kt_object = this.blank_node(s_label);
-
-		// iriref
-		@{else_if_match('R_IRIREF', 'm_iriref_object', true)}
-			@// commit object iri as is
-			@{iriref('object', 'm_iriref_object', true, false, true)}
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_object', true)}
-			@{valid_prefix('m_prefixed_named_object')}
-
-			@{suffix('m_prefixed_named_object')}
-
-			// commit object iri from resolve prefixed name
-			this._kt_object = @{prefixed_named('s_suffix')};
-
-		@{else_if_match('R_COMMENT', 'm_comment', true)}
-			if(this.emit_comments) this.emit_comments(m_comment[0]);
-			continue;
-
-		// not iriref, not prefixed name, not string literal, not numeric literal, not boolean literal, not blank node property list, not collection
-		@{else_retry(/* syntax: js */ `
-			// ran out of characters after pushing state, pop it
-			if(b_pushed) this._a_nested.pop();
-		`)}
-
-		let kt_blank_node_outer;
-		if(!s_pointer_label) s_pointer_label = this.next_label();
-
-		// not the very first item of collection subject
-		if(this._kt_subject !== null) {
-			// ref object
-			let w_object = this._kt_object;
-
-			// create blanknode to embed list
-			kt_blank_node_outer = this._kt_object = this.anonymous_blank_node(s_pointer_label);
-
-			// emit statement that functions as collection's head "pointer"
-			@{emit_statement()}
-
-			// swap back object
-			this._kt_object = w_object;
-		}
-
-		// emit statement that is item
-		this._kt_subject = kt_blank_node_outer || this.anonymous_blank_node(s_pointer_label);
-		this._kt_predicate = @{SJ_RDF_FIRST};
-		@{emit_statement()}
-
-		// prepare next predicate
-		this._kt_predicate = @{SJ_RDF_REST};
-
-	@{end_method('collection_subject')}
 
 
 
