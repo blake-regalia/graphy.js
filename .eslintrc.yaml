@@ -95,6 +95,7 @@
     no-void: error
     no-warning-comments: warn
     no-with: error
+    prefer-const: warn
     prefer-promise-reject-errors: warn
     require-await: error
     wrap-iife:
