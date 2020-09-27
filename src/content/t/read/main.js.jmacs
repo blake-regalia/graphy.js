@@ -6,17 +6,21 @@
 
 @$ TTL = 'ttl' === FORMAT;
 @$ TRIG = 'trig' === FORMAT;
-@$ QUADS = TRIG;
+@$ B_QUADS = TRIG;
 
 @$ B_TURTLE = TTL
 @$ B_TRIG = TRIG
 
 @$ S_LABEL = TTL? 'Turtle': 'TriG';
 
+@$ S_STATE_PRIMARY = B_TURTLE? 'statement': 'block';
+
 @$ S_MODE = B_LOAD? 'load': 'read';
 @$ B_STAR = true;
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
+
+@$ B_LOAD_GSPO_BUILDER = true;
 
 @// 1% speedup
 @$ B_OPTIMIZE_PN = true;
@@ -151,6 +155,115 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	this._kt_@{s_role} = @{sj_expr};
 @;
 
+
+@// extract uri from absolute / relative iri refs
+@> iriref({s_role, sj_matched, b_escapeless=false})
+	@.{
+		let f_load;
+		let b_not_this = false;
+
+		// g, s, p, o or d
+		let b_gspod = true;
+		switch(s_role) {
+			case 'graph': f_load = load_graph; break;
+			case 'subject': f_load = load_subject; break;
+			case 'predicate': f_load = load_predicate; break;
+			case 'object': f_load = load_object; break;
+
+			case 'datatype': {
+				b_not_this = true;
+				break;
+			}
+
+			case 'base_url': {
+				b_not_this = true;
+				b_gspod = false;
+				break;
+			}
+
+			default: {
+				b_gspod = false;
+				break;
+			}
+		}
+
+		let f_set;
+		if(B_LOAD) {
+			if(f_load) {
+				f_set = sj => f_load(/* syntax: js */ `concise(${sj}, this._h_prefixes)`);
+			}
+			else {
+				let sv_set = (b_not_this? '': 'this._')+(b_gspod? 'sc1_': 's_')+s_role;
+				f_set = sj => /* syntax: js */ `${sv_set} = ${sj};`;
+			}
+		}
+		else {
+			let sv_set = (b_not_this? '': 'this._')+(b_gspod? 'kt_': 's_')+s_role;
+			f_set = b_gspod
+				? sj => /* syntax: js */ `${sv_set} = this.check_named_node${b_escapeless? '_escapeless': ''}(${sj});`
+				: sj => /* syntax: js */ `${sv_set} = ${sj};`;
+		}
+	}
+	// ref iri
+	let p_@{s_role} = @{sj_matched}[1]@{b_escapeless? '': `.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)`};
+
+	// absolute iri
+	if(!this._s_base_url || RT_IRI_ABSOLUTE.test(p_@{s_role})) {
+		// set @{s_role}
+		@{f_set(/* syntax: js */ `p_${s_role}`)}
+	}
+	// relative iri
+	else {
+		// set @{s_role}
+		@{f_set(/* syntax: js */ `uri.resolve(this._s_base_url, p_${s_role})`)}
+	}
+
+	@// update the base iri
+	@- 'base_url' === s_role
+		let m_base_iri = R_BASE_IRI.exec(this._p_@{s_role});
+		this._s_@{s_role} = m_base_iri[1];
+		this._s_@{s_role}_root = m_base_iri[2] || '';
+		this._s_@{s_role}_scheme = m_base_iri[3] || '';
+		this._s_@{s_role}_path = m_base_iri[4] || ''; 
+	@;
+@;
+
+@> deduce_strlit_path(s_mode)
+	@. let sj_char = 'single' === s_mode? `"'"`: `'"'`;
+	// enough chars to deduce type
+	if((i+2) < n) {
+		// long type
+		if(@{sj_char} === s[i+1] && @{sj_char} === s[i+2]) {
+			// advance index beyond token
+			this.i = i + 3;
+
+			// read contents
+			@{goto('string_literal_long_'+s_mode)}
+		}
+		// not long type
+		else {
+			// advance index beyond token
+			this.i = i + 1;
+
+			// read contents
+			@{goto('string_literal_short_'+s_mode)}
+		}
+	}
+	// enough chars to eliminate long type
+	else if((i+1) < n && @{sj_char} !== s[i+1]) {
+		// advance index beyond token
+		this.i = i + 1;
+
+		// read contents
+		@{goto('string_literal_short_'+s_mode)}
+	}
+	// not enough chars to deduce type; retry next chunk
+	else {
+		break;
+	}
+@;
+
+
 @.{
 	const modal = (h_modes) => h_modes[S_MODE];
 
@@ -163,14 +276,12 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		type: 'match',
 		test: /* syntax: js */ `R_${'graph' === s_mod? 'GRAPH_': ''}IRIREF${b_escapeless? '_ESCAPELESS': ''}`,
 		action: ({sj_matched}) => [
-			irief(),
+			iriref({s_role, sj_matched, b_escapeless}),
 			// 	let p_datatype;
 	// 	@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, true, true)}
 			modal({
 				read: save_term(s_role, /* syntax: js */ `this.check_named_node${b_escapeless? '_escapeless': ''}(p_${s_role})`),
-				load: /* syntax: js */ `
-					sc1_${s_role} = concise('>'+p_${s_role}, this._h_prefixes);
-				`,
+				load: load_term(s_role, /* syntax: js */ `concise(p_${s_role}, this._h_prefixes)`),
 			}),
 		],
 	});
@@ -179,9 +290,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		valid_prefix(sj_matched),
 		modal({
 			read: save_term(s_role, /* syntax: js */ `prefixed_name(sj_matched+'[2]')`),
-			load: /* syntax: js */ `
-				sc1_${s_role} = ${sj_matched}[1];
-			`,
+			load: load_term(s_role, /* syntax: js */ `${sj_matched}[1]`),
 		}),
 	];
 
@@ -199,14 +308,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			test: /* syntax: js */ `R_PREFIXED_NAME${b_escapeless? '_ESCAPELESS': ''}`,
 			action: gen_action_prefixed_name({
 				escapeless: b_escapeless,
-				role: s_role.
+				role: s_role,
 			}),
 		}),
 	});
 
 	const gen_rule_labeled_blank_node = ({b_terminal}) => ({role:s_role, node_mod:s_mod}) => ({
 		type: 'match',
-		test: /* syntax: js */ `R_${'graph' === s_mod? 'GRAPH_': ''}BLANK_NODE_LABEL${b_terminal? '_TERMINAL': ''}`,
+		test: /* syntax: js */ `R_${'graph' === s_mod? 'GRAPH_': ''}LABELED_BLANK_NODE${b_terminal? '_TERMINAL': ''}`,
 		action: ({sj_matched}) => [
 			/* syntax: js */ `
 				// extract label
@@ -229,8 +338,8 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	const gen_rule_base_iriref = ({b_escapeless}) => () => ({
 		type: 'match',
 		test: /* syntax: js */ `R_IRIREF${b_escapeless? '_ESCAPELESS': ''}`,
-		action: [
-			iriref('base_iri'),
+		action: ({sj_matched}) => [
+			iriref({s_role:'base_iri', sj_matched, b_escapeless}),
 			modal({
 				read: /* syntax: js */ `
 					// emit base event
@@ -247,8 +356,8 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	const gen_rule_prefix_iriref = ({b_escapeless}) => () => ({
 		type: 'match',
 		test: /* syntax: js */ `R_IRIREF${b_escapeless? '_ESCAPELESS': ''}`,
-		action: [
-			iriref('prefix_iri'),
+		action: ({sj_matched}) => [
+			iriref({s_role:'prefix_iri', sj_matched, b_escapeless}),
 			modal({
 				read: /* syntax: js */ `
 					this._update_prefixes();
@@ -323,6 +432,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		
 		iriref: gen_rule_iri({b_escapeless:false}),
 		iriref_escapeless: gen_rule_iri({b_escapeless:true}),
+		graph_iriref_escapeless: ({role:s_role}) => gen_rule_iri({b_escapeless:true})({role:s_role, node_mod:'graph'}),
 
 		prefixed_name: gen_rule_prefixed_name({b_escapeless:false}),
 		prefixed_name_escapeless: gen_rule_prefixed_name({b_escapeless:true}),
@@ -332,7 +442,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 		anonymous_blank_node: ({role:s_role, node_mod:s_mod}) => ({
 			type: 'match',
-			test: /* syntax: js */ `R_${'graph' === s_mod? 'GRAPH_': ''}BLANK_NODE_LABEL`,
+			test: /* syntax: js */ `R_${'graph' === s_mod? 'GRAPH_': ''}ANONYMOUS_BLANK_NODE`,
 			action: [
 				modal({
 					read: save_term(s_role, /* syntax: js */ `this.anonymous_blank_node(this.next_label())`),
@@ -345,14 +455,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		string_literal_single: gen_rule_literal('single'),
 		string_literal_double: gen_rule_literal('double'),
 
-		numeric_literal: () => ({
+		numeric_literal: ({role:s_role}) => ({
 			type: 'match',
 			test: /* syntax: js */ `R_NUMERIC_LITERAL`,
 			action: ({sj_matched}) => /* syntax: js */ `
 				// it has exponent term, xsd:double
 				if(${sj_matched}[4]) {
 					${modal({
-						read: save_term(s_role, /* syntax: js */ `this._ds_factory.double(${sj_matched}[1])`),
+						read: save_term(s_role, /* syntax: js */ `this._dc_factory.double(${sj_matched}[1])`),
 						load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'double"'+${sj_matched}[1]`),
 					})}
 				}
@@ -373,7 +483,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			`,
 		}),
 
-		boolean_literal: () => ({
+		boolean_literal: ({role:s_role}) => ({
 			type: 'match',
 			test: /* syntax: js */ `R_BOOLEAN_LITERAL`,
 			action: ({sj_matched}) => modal({
@@ -385,10 +495,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		collection: () => ({
 			type: 'chars',
 			test: '(',
-			action: [
-				whitespace(+1),
-				push_state('post_object'),
-			],
+			action: push_state('post_object'),
 			goto: 'collection_object',
 		}),
 
@@ -399,9 +506,6 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				// rdf-star not enabled
 				if(!this._b_rdf_star) break;
 
-				// advance to next token
-				${whitespace(/* syntax: js */ `i+2`)}
-
 				${b_star
 					? push_state('subject' === s_role? 'star_predicate_x': 'star_post_object_x')
 					: /* syntax: js */ `
@@ -410,7 +514,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 						this.after_eot = this.triple_x_close;
 
 						${push_state('subject' === s_role? 'star_pairs': 'star_post_object')}
-					`},
+					`}
 			`,
 			goto: 'triple_x',
 		}),
@@ -422,7 +526,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				if(this.emit_comments) this.emit_comments(${sj_matched}[0]);
 				continue;
 			`,
-			goto: null.
+			goto: null,
 		}),
 	};
 
@@ -433,7 +537,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				.join(' && ')+(b_mono? '': ')');
 		}).join(' || ');
 
-	const gen_matcher_regex = (b_match=false) => (sj_var, {role:s_role}) => {
+	const gen_matcher_regex = (b_match=false) => (sj_var, {role:s_role='it', local_i:b_local_i=false}) => {
 		let sj_matched = /* syntax: js */ `m_${sj_var.replace(/^R_/, '').toLowerCase()}_${s_role}`;
 
 		return {
@@ -458,26 +562,31 @@ const OPHOP = Object.prototype.hasOwnProperty;
 					`}
 
 					// advance index
-					${b_local? '': 'this.'}i = ${sj_var}.lastIndex;
+					${b_local_i? '': 'this.'}i = ${sj_var}.lastIndex;
 			`,
 		};
 	};
 
 	const H_MATCHERS = {
+		raw: {
+			apply: (s_raw) => /* syntax: js */ `
+				if(${s_raw}) {
+			`,
+		},
 		strs: {
-			apply: (a_strs) => /* syntax: js */ `
-				if(${gen_matcher_strs(a_strs)}) {
+			apply: (a_strs, {uncached_char:b_uncached=false}) => /* syntax: js */ `
+				if(${gen_matcher_strs(a_strs, '===', b_uncached? 's[i]': 'x')}) {
 			`,
 		},
 		chars: {
-			apply: (a_chars) => /* syntax: js */ `
-				if(${gen_matcher_strs([a_chars])}) {
+			apply: (a_chars, {uncached_char:b_uncached=false}) => /* syntax: js */ `
+				if(${gen_matcher_strs([a_chars], '===', b_uncached? 's[i]': 'x')}) {
 					${whitespace(a_chars.length)}
 			`,
 		},
 		not_chars: {
-			apply: (a_chars) => /* syntax: js */ `
-				if(${gen_matcher_strs([a_chars], '!==')}) {
+			apply: (a_chars, {uncached_char:b_uncached=false}) => /* syntax: js */ `
+				if(${gen_matcher_strs([a_chars], '!==', b_uncached? 's[i]': 'x')}) {
 			`,
 		},
 		test: {
@@ -490,7 +599,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		},
 		call: {
 			branches: true,
-			apply: (sj_method, {role:s_role, local:b_local=false}) => {
+			apply: (sj_method, {role:s_role, local_i:b_local_i=false}) => {
 				let sj_no_shadow = sj_method.replace(/[^a-z0-9]/gi, '_');
 				let sj_matched = /* syntax: js */ `m_${sj_method.replace(/^this\./, '')}_${s_role}`;
 				return {
@@ -499,7 +608,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 					},
 					render: /* syntax: js */ `
 						// try match
-						let aw_valid_${s_no_shadow} = ${sj_method}(s, i);
+						let aw_valid_${sj_no_shadow} = ${sj_method}(s, i);
 
 						// stack bail out
 						if(!aw_valid_${sj_no_shadow}) return true;
@@ -509,20 +618,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 						// ${s_role} passes ${sj_method}
 						if(${sj_matched}) {
 							// advance index
-							${b_local? '': 'this.'}i = i${sj_matched};
+							${b_local_i? '': 'this.'}i = i${sj_matched};
 					`,
 				};
 			},
 		},
-		retry: {
-			apply: /* syntax: js */ `
-				// break loop to retry on next chunk if eos
-				break;
-			`
-		},
 	};
 
-	function states(h_states) {
+	function* states(h_states) {
 		for(let [si_state, g_state] of Object.entries(h_states)) {
 			// prep body string
 			let s_body = '';
@@ -531,10 +634,10 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			let b_else = false;
 
 			// branch counter
-			let c_branches = 0;
+			let c_branches = 1;
 
 			// each rule
-			for(let [si_rule, z_rule] of g_state.rules) {
+			for(let [si_rule, z_rule] of Object.entries(g_state.rules)) {
 				// create args
 				let h_args = {
 					...(g_state.apply || {}),
@@ -543,25 +646,20 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				// prep rule
 				let f_rule;
 
-				// function; inline rule
-				if('function' === typeof z_rule) {
-					f_rule = z_rule;
-				}
-				// string
-				else if('string' === typeof z_rule) {
-					// special
-					if(si_rule.startsWith('_')) {
-						// break continuity
-						b_else = false;
-
-						// append directly
-						s_body += z_rule;
-
-						// continue on with rules
-						continue;
+				switch(typeof z_rule) {
+					// function; inline rule
+					case 'function': {
+						f_rule = z_rule;
+						break;
 					}
-					// reference
-					else {
+
+					// object
+					case 'object': {
+						// rule id not exist
+						if(!(si_rule in H_RULES)) {
+							throw new Error(`rule id '${si_rule}' not found in mapping`);
+						}
+
 						// ref rule function
 						f_rule = H_RULES[si_rule];
 
@@ -570,18 +668,42 @@ const OPHOP = Object.prototype.hasOwnProperty;
 							...h_args,
 							...z_rule,
 						};
+						break;
 					}
-				}
-				// invalid
-				else {
-					throw new Error(`invalid rule type: ${z_rule}`);
+
+					// string
+					case 'string': {
+						// special
+						if(si_rule.startsWith('_')) {
+							// close if
+							if(b_else) s_body += '\n}\n';
+
+							// break continuity
+							b_else = false;
+
+							// append directly
+							s_body += z_rule;
+
+							// continue on with rules
+							continue;
+						}
+					}
+
+					// fallthrough or other
+					default: {
+						throw new Error(`invalid rule at '${si_rule}': ${z_rule}`);
+					}
 				}
 
 				// specifier
 				let g_spec = f_rule(h_args);
 
 				let si_matcher = g_spec.type;
-				let g_matcher = H_MATCHERS[si_matcher]();
+				let g_matcher = H_MATCHERS[si_matcher];
+
+				if(!g_matcher) {
+					 throw new Error(`no such matcher defined '${si_matcher}'`);
+				}
 
 				// render within else branch
 				if(b_else) {
@@ -594,8 +716,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 					}
 				}
 
+				// now within else
+				b_else = true;
+
 				// apply matcher
-				let z_applied = g_matcher.apply(g_spec.test, h_args);
+				let z_applied = g_matcher.apply(g_spec.test, {
+					...h_args,
+					...(g_spec.args || {}),
+				});
 
 				// prep render and context
 				let s_render;
@@ -610,8 +738,11 @@ const OPHOP = Object.prototype.hasOwnProperty;
 					({
 						render: s_render,
 						context: h_context,
-					}) = z_applied;
+					} = z_applied);
 				}
+
+				// append rendered string to body (strip leading ws from if blocks)
+				s_body += s_render.replace(/^\s+if\b/, 'if');
 
 				// rule actions
 				let z_action = g_spec.action;
@@ -622,10 +753,25 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				}
 
 				// coalesce action into string
-				let s_action = Array.isArray(z_action)? z_action.flat(Infinity).join('\n'): z_action+'';
+				s_body += Array.isArray(z_action)? z_action.flat(Infinity).join('\n'): (z_action || '')+'';
 
 				// there is a goto action, append it
-				if(g_spec.goto) s_action += goto(g_spec.goto);
+				if(g_spec.goto) s_body += goto(g_spec.goto);
+			}
+
+			// final else branch
+			s_body += /* syntax: js.if */ `} else {`;
+
+			// else body is defined
+			if(g_state.else) {
+				s_body += g_state.else;
+			}
+			// default to retry
+			else {
+				s_body += (g_state.cleanup || '')+/* syntax: js */ `
+					// break loop to retry on next chunk if eos
+					break;
+				`;
 			}
 
 			// close branches
@@ -637,12 +783,17 @@ const OPHOP = Object.prototype.hasOwnProperty;
 					// destruct chunk, length, and index
 					let {s, n, i} = this;
 
+					${g_state.preamble || ''}
+
 					// start labeled loop, run while there are characters
 					${si_state.toUpperCase()}: while(i < n) {  // eslint-disable-line no-unmodified-loop-condition
 						${s_body}
+						${g_state.fallthrough || ''}
 					}
 
-					${resume_state(si_state, false, g_state.max)}
+					${g_state.postscript || ''}
+
+					${g_state.no_auto_resume? '': resume_state(si_state, false, g_state.max)}
 				}
 			`;
 		}
@@ -664,12 +815,12 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 @>> R_CHAR(s_delims='')
 	@//@regex
-	[^\s#@<@{B_STAR? '>':''}[("'@{s_delims}@{QUADS? '{}': ''}]
+	[^\s#@<@{B_STAR? '>':''}[("'@{s_delims}@{B_QUADS? '{}': ''}]
 @;
 
 @>> R_CHAR_NO_CLOSERS(s_puncts=null)
 	@//@regex
-	[^\s#@<@{B_STAR? '>':''}[("'@{s_puncts || '.;,'+(B_STAR? '>': '')}@{QUADS? '{}': ''})\]\\]
+	[^\s#@<@{B_STAR? '>':''}[("'@{s_puncts || '.;,'+(B_STAR? '>': '')}@{B_QUADS? '{}': ''})\]\\]
 @;
 
 @>> R_PREFIX_ID()
@@ -688,7 +839,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 @>> R_CONTENT_LOOKAHEAD()
 	@//@regex
 	(?=
-		\.?[<[("';,)\]#@{QUADS? '{}': ''}]
+		\.?[<[("';,)\]#@{B_QUADS? '{}': ''}]
 		@{B_STAR? '| >':''}
 		| \.[\s\0]
 	)
@@ -740,7 +891,7 @@ const R_PREFIXED_NAME_ESCAPELESS = /@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 	@//@regex
 	(@{R_PREFIX_ID()}				@// 1: prefix id
 	@{B_LOAD? ':': ')? :('}  @// load mode can use 1 capture group instead of 2
-	(											@// 2: prefix iri
+												@// 2: prefix iri
 		(?:
 			(?:									@// firt name char
 				@{R_CHAR_NO_CLOSERS()}			@// not invalid name char
@@ -773,7 +924,7 @@ const R_PN_LOCAL_ESCAPES = /\\(.)/g;
 @// blank node labels
 @>> R_LABELED_BLANK_NODE()
 	@//@regex
-	_:(.(?:[^\s:<;,)\]#@{QUADS? '}': ''}]*[^\s:<.;,)\]#@{QUADS? '}': ''}])?)
+	_:(.(?:[^\s:<;,)\]#@{B_QUADS? '}': ''}]*[^\s:<.;,)\]#@{B_QUADS? '}': ''}])?)
 @;
 
 const R_LABELED_BLANK_NODE = /@{R_LABELED_BLANK_NODE()}@{lookahead('blank_node')}/y;
@@ -901,12 +1052,12 @@ const match_prefixed_name = (s, i) => {
 
 @// assert the prefix found in prefixed name is valid
 @> valid_prefix(match, n_group)
-	@. let sj_var = `s_prefix_id${n_group? '_'+n_group: ''}`;
-
-	// check valid prefix
-	let @{sj_var} = @{match}[@{n_group || 1}] || '';
-
 	@- !B_LOAD
+		@. let sj_var = `s_prefix_id${n_group? '_'+n_group: ''}`;
+
+		// check valid prefix
+		let @{sj_var} = @{match}[@{n_group || 1}] || '';
+
 		@- B_OPTIMIZE_PREFIX_IDS
 			// invalid prefix
 			if(!(this._as_prefix_ids.has(@{sj_var}))) return this.error(`no such prefix "${@{sj_var}}"`);
@@ -917,61 +1068,6 @@ const match_prefixed_name = (s, i) => {
 	@;
 @;
 
-
-@// extract uri from absolute / relative iri refs
-@> iriref(sv_term, sv_match, b_object, b_set_base, b_has_escapes, b_not_this=false)
-	@.{
-		let f_set;
-		if(B_LOAD) {
-			let f_load;
-			switch(sv_term) {
-				case 'graph': f_load = load_graph; break;
-				case 'subject': f_load = load_subject; break;
-				case 'predicate': f_load = load_predicate; break;
-				case 'object': f_load = load_object; break;
-				// default: {
-				// 	throw new Error(`unhandlded term label for iriref macro '${sv_term}'`);
-				// }
-			}
-
-			if(f_load) {
-				f_set = sj => f_load(/* syntax: js */ `concise(${sj}, this._h_prefixes)`);
-			}
-			else {
-				let sv_set = (b_not_this? '': ('this.'+(b_object? '_sc1_': '_s_')))+sv_term;
-				f_set = sj => /* syntax: js */ `${sv_set} = ${sj};`;
-			}
-		}
-		else {
-			let sv_set = (b_not_this? '': ('this.'+(b_object? '_kt_': '_s_')))+sv_term;
-			f_set = b_object
-				? sj => /* syntax: js */ `${sv_set} = this.check_named_node${b_has_escapes? '': '_escapeless'}(${sj});`
-				: sj => /* syntax: js */ `${sv_set} = ${sj};`;
-		}
-	}
-	// ref iri
-	let s_iri = @{sv_match}[1]@{b_has_escapes? `.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)`: ''};
-
-	// absolute iri
-	if(!this._s_base_url || RT_IRI_ABSOLUTE.test(s_iri)) {
-		// set @{sv_term}
-		@{f_set(/* syntax: js */ `s_iri`)}
-	}
-	// relative iri
-	else {
-		// set @{sv_term}
-		@{f_set(/* syntax: js */ `uri.resolve(this._s_base_url, s_iri)`)}
-	}
-
-	@// update the base iri
-	@- b_set_base
-		let m_base_iri = R_BASE_IRI.exec(this._s_base_url);
-		this._s_@{sv_term} = m_base_iri[1];
-		this._s_@{sv_term}_root = m_base_iri[2] || '';
-		this._s_@{sv_term}_scheme = m_base_iri[3] || '';
-		this._s_@{sv_term}_path = m_base_iri[4] || ''; 
-	@;
-@;
 
 
 @// save current state to stack
@@ -1106,54 +1202,66 @@ const match_prefixed_name = (s, i) => {
 @;
 
 @> load_graph(sj_expr)
-	let sc1_graph = this._sc1_graph = @{sj_expr};
-	let hc4_quads = this._hc4_quads;
+	@- B_LOAD_GSPO_BUILDER
+		this._kh_graph = this._k_builder.addGraph(@{sj_expr});
+	@:
+		let sc1_graph = this._sc1_graph = @{sj_expr};
+		let hc4_quads = this._hc4_quads;
 
-	// not first encounter w/ graph
-	if(sc1_subject in hc3_triples) {
-		this._hc3_triples = hc4_quads[sc1_graph];
-	}
-	// first encounter of graph
-	else {
-		hc4_quads[$_KEYS] += 1;
-		this._hc3_triples = hc4_quads[sc1_graph] = {
-			[$_KEYS]: 0,
-			[$_QUADS]: 0,
-		};
-	}
+		// not first encounter w/ graph
+		if(sc1_subject in hc3_triples) {
+			this._hc3_triples = hc4_quads[sc1_graph];
+		}
+		// first encounter of graph
+		else {
+			hc4_quads[$_KEYS] += 1;
+			this._hc3_triples = hc4_quads[sc1_graph] = {
+				[$_KEYS]: 0,
+				[$_QUADS]: 0,
+			};
+		}
+	@;
 @;
 
 @> load_subject(sj_expr)
-	let sc1_subject = this._sc1_subject = @{sj_expr};
-	let hc3_triples = this._hc3_triples;
+	@- B_LOAD_GSPO_BUILDER
+		this._kh_grub = this._kh_graph.addSubject(@{sj_expr});
+	@:
+		let sc1_subject = this._sc1_subject = @{sj_expr};
+		let hc3_triples = this._hc3_triples;
 
-	// not first encounter w/ subject
-	if(sc1_subject in hc3_triples) {
-		this._hc2_pairs = hc3_triples[sc1_subject];
-	}
-	// first encounter of subject
-	else {
-		hc3_triples[$_KEYS] += 1;
-		this._hc2_pairs = hc3_triples[sc1_subject] = {
-			[$_KEYS]: 0,
-			[$_QUADS]: 0,
-		};
-	}
+		// not first encounter w/ subject
+		if(sc1_subject in hc3_triples) {
+			this._hc2_pairs = hc3_triples[sc1_subject];
+		}
+		// first encounter of subject
+		else {
+			hc3_triples[$_KEYS] += 1;
+			this._hc2_pairs = hc3_triples[sc1_subject] = {
+				[$_KEYS]: 0,
+				[$_QUADS]: 0,
+			};
+		}
+	@;
 @;
 
 @> load_predicate(sj_expr)
-	let sc1_predicate = this._sc1_predicate = @{sj_expr};
-	let hc2_pairs = this._hc2_pairs;
+	@- B_LOAD_GSPO_BUILDER
+		this._kh_greed = this._kh_grub.addPredicate(@{sj_expr});
+	@:
+		let sc1_predicate = this._sc1_predicate = @{sj_expr};
+		let hc2_pairs = this._hc2_pairs;
 
-	// not first encounter w/ predicate
-	if(sc1_predicate in hc2_pairs) {
-		this._as_objects = hc2_pairs[sc1_predicate];
-	}
-	// first encounter of predicate
-	else {
-		hc2_pairs[$_KEYS] += 1
-		this._as_objects = hc2_pairs[sc1_predicate] = new Set();
-	}
+		// not first encounter w/ predicate
+		if(sc1_predicate in hc2_pairs) {
+			this._as_objects = hc2_pairs[sc1_predicate];
+		}
+		// first encounter of predicate
+		else {
+			hc2_pairs[$_KEYS] += 1
+			this._as_objects = hc2_pairs[sc1_predicate] = new Set();
+		}
+	@;
 @;
 
 @> load_object(sj_expr)
@@ -1162,13 +1270,20 @@ const match_prefixed_name = (s, i) => {
 
 @.{
 	const H_LOADERS = {
-		subject: load_object,
+		subject: load_subject,
 		predicate: load_predicate,
 		object: load_object,
 		graph: load_graph,
+		datatype: (sj_expr) => /* syntax: js */ `
+			sc1_datatype = ${sj_expr};
+		`,
 	};
 
-	const load_term = (s_role, sj_expr) => H_LOADERS[s_role](sj_expr);
+	const load_term = (s_role, sj_expr) => {
+		const f_loader = H_LOADERS[s_role];
+		if(!f_loader) throw new Error(`no such term loader for '${s_role}'`);
+		return f_loader(sj_expr);
+	};
 }
 
 @// emit statement and return control to whatever function asked for it
@@ -1192,12 +1307,6 @@ function Reader$syntax_error(k_self, i, si_state, s_info) {
 		+`expected ${si_state} ${s_info || ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
 }
 
-
-@- TTL
-	@$ S_STATE_PRIMARY = 'statement';
-@:
-	@$ S_STATE_PRIMARY = 'block';
-@;
 
 class @{S_LABEL}_Reader extends stream.Transform {
 	constructor(g_impls) {
@@ -1364,20 +1473,27 @@ class Reader {
 				_sc1_predicate: '',
 				_sc1_object: '',
 				_sc1_graph: '*',
-				@- QUADS
-					_hc4_quads: {
-						[$_KEYS]: 0,
-						[$_QUADS]: 0,
-					},
-					_hc3_triples: null,
+				@- B_LOAD_GSPO_BUILDER
+					_k_builder: null,
+					_kh_graph: null,
+					_kh_grub: null,
+					_kh_greed: null,
 				@:
-					_hc3_triples: {
-						[$_KEYS]: 0,
-						[$_QUADS]: 0,
-					},
+					@- B_QUADS
+						_hc4_quads: {
+							[$_KEYS]: 0,
+							[$_QUADS]: 0,
+						},
+						_hc3_triples: null,
+					@:
+						_hc3_triples: {
+							[$_KEYS]: 0,
+							[$_QUADS]: 0,
+						},
+					@;
+					_hc2_pairs: null,
+					_a_objects: null,
 				@;
-				_hc2_pairs: null,
-				_a_objects: null,
 			@:
 				_kt_subject: null,
 				_kt_predicate: kt_rdf_first,
@@ -1828,15 +1944,21 @@ class Reader {
 	}
 
 	@- B_LOAD
-		load_object(sc1_object) {
-			// first encounter w/ object
-			let as_objects = this._as_objects;
-			if(!as_objects.has(sc1_object)) {
-				this._hc3_triples[$_QUADS] += 1;
-				this._hc2_pairs[$_QUADS] += 1;
-				as_objects.add(sc1_object);
+		@- B_LOAD_GSPO_BUILDER
+			load_object(sc1_object) {
+				this._kh_greed.addObject(sc1_object);
 			}
-		}
+		@:
+			load_object(sc1_object) {
+				// first encounter w/ object
+				let as_objects = this._as_objects;
+				if(!as_objects.has(sc1_object)) {
+					this._hc3_triples[$_QUADS] += 1;
+					this._hc2_pairs[$_QUADS] += 1;
+					as_objects.add(sc1_object);
+				}
+			}
+		@;
 	@;
 
 	// end of file
@@ -1931,7 +2053,7 @@ class Reader {
 @$ H_PARSE_EVENTS = {
 	base: {},
 	prefix: {},
-	...(QUADS
+	...(B_QUADS
 		? {
 			enter: {},
 			exit: {},
@@ -1965,7 +2087,7 @@ class Reader {
 		if('.' === s[i]) {
 			@{whitespace(+1)}
 
-			@-QUADS
+			@-B_QUADS
 				// not inside block
 				if(@{SJ_DEFAULT_GRAPH} === this._kt_graph) {
 					@{goto('block')}
@@ -1977,7 +2099,7 @@ class Reader {
 			@:
 				@{goto('statement')}
 			@;
-		@- QUADS
+		@- B_QUADS
 			@{else_if_match('R_CHAR_CLOSE')}
 				// empty collection
 				if(@{terms_equal(SJ_RDF_NIL, 'this._kt_subject')}) {
@@ -2005,148 +2127,6 @@ class Reader {
 	@. a_methods.push('post_blank_subject');
 
 
-	@def gen_predicate(b_star=false)
-		@.{
-			const gtg = b_star? () => goto('object_x'): () => goto('object_list');
-		}
-
-		@{rules({
-			apply: {
-				role: 'predicate',
-				goto: b_star? 'object_x': 'object_list',
-			},
-			series: {
-				prefixed_name_quick: {},
-				rdf_type_alias: () => ({
-					type: 'test',
-					test: /* syntax: js */ `R_A`,
-					action: commit_term('predicate', SJ_RDF_TYPE),
-				}),
-				iriref_escapeless: {},
-				prefixed_name_escapeless: {},
-				iriref: {},
-				prefixed_name: {},
-				...(!b_star
-					? {
-						blank_node_property_list_terminator: () => ({
-							type: 'test',
-							test: /* syntax: js */ `R_CHAR_KET`,
-							action: [
-								pop_state(`end of blank node property list ']'`),
-							],
-							goto: null,
-						}),
-					}: {}),
-				comment: {},
-				retry: {},
-			},
-
-		})}
-
-		// benchmarks indicate: regex for end of blank node property list faster than ch
-		@- B_OPTIMIZE_PAIRS
-			@.{
-				if(b_star) {
-					throw new Error(`B_OPTIMIZE_PAIRS and B_STAR not compatible; check goto('post_object') call`);
-				}
-			}
-			// optimize
-			@{if_match('R_OPTIMIZED_PAIRS', 'm_prefixed_named_pairs')}
-				@{valid_prefix('m_prefixed_named_pairs', 1)}
-				@{valid_prefix('m_prefixed_named_pairs', 3)}
-				@//@
-
-				// make predicate key
-				this._kt_predicate = @{prefixed_name('m_prefixed_named_pairs[2]', 's_prefix_id_1')};
-
-				// make object
-				this._kt_object = @{prefixed_name('m_prefixed_named_pairs[4]', 's_prefix_id_3')};
-
-				// change state
-				@{goto('post_object')}
-
-			// iriref
-			@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_predicate')}
-				@{iriref('predicate', 'm_iriref_e_predicate', true)}
-
-				// change state
-				@{gtg()}
-		@:
-			// iriref
-			@{if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_predicate')}
-				@{iriref('predicate', 'm_iriref_e_predicate', true)}
-
-				// change state
-				@{gtg()}
-		@;
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_predicate')}
-			@{valid_prefix('m_prefixed_named_e_predicate')}
-
-			@- B_LOAD
-				// make object list for predicate key
-				@{load_predicate(/* syntax: js */ `s_prefix_id+':'+m_prefixed_named_e_predicate[2]`)}
-			@:
-				// make predicate key
-				this._kt_predicate = @{prefixed_name('m_prefixed_named_e_predicate[2]')};
-			@;
-
-			// change state
-			@{gtg()}
-
-		// 'a'
-		@{else_if_match('R_A')}
-			@- B_LOAD
-				// make object list for predicate key
-				@{load_predicate(/* syntax: js */ `this._sc1_rdf_type`)}
-			@:
-				// make predicate key
-				this._kt_predicate = @{SJ_RDF_TYPE};
-			@;
-
-			// object-list state
-			@{gtg()}
-
-		@- !b_star
-			// ']' end of blank node property list
-			@{else_if_match('R_CHAR_KET')}
-				@{pop_state(`end of blank node property list ']'`)}
-		@;
-
-		// iriref
-		@{else_if_match('R_IRIREF', 'm_iriref_predicate')}
-			@{iriref('predicate', 'm_iriref_predicate', true, false, true)}
-
-			// object-list state
-			@{gtg()}
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_predicate')}
-			@{valid_prefix('m_prefixed_named_predicate')}
-
-			@{suffix('m_prefixed_named_predicate')}
-
-			// make predicate key
-			@- B_LOAD
-				@{load_predicate(/* syntax: js */ `s_prefix_id+':'+s_suffix`)}
-			@:
-				this._kt_predicate = @{prefixed_name('s_suffix')};
-			@;
-
-			// object-list state
-			@{gtg()}
-
-
-		@{else_if_match('R_COMMENT', 'm_comment', true)}
-			if(this.emit_comments) this.emit_comments(m_comment[0]);
-			continue;
-
-		// not iriref, not prefixed name, not 'a'
-		@{else_retry()}
-	@;
-
-
 	@.{
 		function subassign(h_source, h_add) {
 			for(let [, h_sub] of Object.entries(h_source)) {
@@ -2167,7 +2147,7 @@ class Reader {
 			rules: {
 				prefixed_name_quick: {},
 				rdf_type_alias: () => ({
-					type: 'regex',
+					type: 'match',
 					test: /* syntax: js */ `R_A`,
 					action: commit_term('predicate', SJ_RDF_TYPE),
 				}),
@@ -2178,7 +2158,7 @@ class Reader {
 				...(!b_star
 					? {
 						blank_node_property_list_terminator: () => ({
-							type: 'regex',
+							type: 'match',
 							test: /* syntax: js */ `R_CHAR_KET`,
 							action: [
 								pop_state(`end of blank node property list ']'`),
@@ -2207,55 +2187,43 @@ class Reader {
 					blank_node_property_list: () => ({
 						type: 'chars',
 						test: '[',
-						action: [
-							/* syntax: js */ `
-								// advance index to next token
-								${whitespace(/* syntax: js */ `i+1`)}
+						action: modal({
+							read: /* syntax: js */ `
+								// make blank node
+								let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
+
+								// emit statement event
+								${emit_statement()}
+
+								// push state to stack
+								${push_state('post_object')}
+
+								// set new subject
+								this._kt_subject = kt_blank_node;
 							`,
-							modal({
-								read: /* syntax: js */ `
-									// make blank node
-									let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
+							load: /* syntax: js */ `
+								// make blank node
+								let sc1_blank_node = this._sc1_object = '_:'+this.next_label();
 
-									// emit statement event
-									${emit_statement()}
+								// commit to memory
+								${load_object(/* syntax: js */ `sc1_blank_node`)}
 
-									// push state to stack
-									${push_state('post_object')}
+								// push state to stack
+								${push_state('post_object')}
 
-									// set new subject
-									this._kt_subject = kt_blank_node;
-								`,
-								load: /* syntax: js */ `
-									// make blank node
-									let sc1_blank_node = this._sc1_object = '_:'+this.next_label();
-
-									// commit to memory
-									${load_object(/* syntax: js */ `sc1_blank_node`)}
-
-									// push state to stack
-									${push_state('post_object')}
-
-									// set new subject
-									${load_subject(/* syntax: js */ `sc1_blank_node`)}
-								`,
-							}),
-						],
+								// set new subject
+								${load_subject(/* syntax: js */ `sc1_blank_node`)}
+							`,
+						}),
 						goto: 'pairs',
 					}),
 				}: {}),
-				blank_node_terminal: {},
+				labeled_blank_node_terminal: {},
 				...(!b_star? {
 					collection_object: () => ({
 						type: 'chars',
 						test: '(',
-						action: /* syntax: js */ `
-							// advance index to next token
-							${whitespace(/* syntax: js */ `i+1`)}
-
-							// state to resume after collection ends
-							${push_state('post_object')}
-						`,
+						action: push_state('post_object'),
 						goto: 'collection_object',
 					}),
 				}: {}),
@@ -2264,8 +2232,8 @@ class Reader {
 				rdf_star: {},
 				comment: {},
 			},
-			// fall through for cases that did not change state on their own
-			postscript: eot(),
+			// fallthrough for cases that did not change state on their own
+			fallthrough: eot(),
 		});
 
 		const gen_rules_triples = ({h_prepend={}, h_append={}, b_directives=false, b_star=false}) => ({
@@ -2275,9 +2243,12 @@ class Reader {
 			anonymous_blank_node: {},
 			...(!b_star
 				? {
-					blank_node_property_list: {
+					blank_node_property_list: () => ({
+						type: 'chars',
+						test: '[',
+						action: [],
 						goto: 'graph_or_subject_property_list',
-					}
+					}),
 				}: {}),
 			collection: () => ({
 				type: 'test',
@@ -2293,7 +2264,7 @@ class Reader {
 			...((B_TURTLE || b_directives)
 				? {
 					// prefix with interupt (e.g., a comment or eos)
-					prefix_keyword: {
+					prefix_keyword: () => ({
 						type: 'match',
 						test: /* syntax: js */ `R_PREFIX_KEYWORD`,
 						action: ({sj_matched}) => /* syntax: js */ `
@@ -2301,9 +2272,9 @@ class Reader {
 							this._b_expecting_full_stop = ${sj_matched}[1]? true: false;
 						`,
 						goto: 'prefix_id',
-					},
+					}),
 					// prefix with interupt (e.g., a comment or eos)
-					base_keyword: {
+					base_keyword: () => ({
 						type: 'match',
 						test: /* syntax: js */ `R_BASE_KEYWORD`,
 						action: ({sj_matched}) => /* syntax: js */ `
@@ -2311,7 +2282,7 @@ class Reader {
 							this._b_expecting_full_stop = ${sj_matched}[1]? true: false;
 						`,
 						goto: 'base_iri',
-					},
+					}),
 				}: {}),
 			...((B_TRIG && !b_directives)
 				? {
@@ -2327,6 +2298,7 @@ class Reader {
 			apply: {
 				role: 'subject',
 				goto: b_star? 'predicate_x': 'pairs',
+				uncached_char: true,
 			},
 			rules: gen_rules_triples({
 				b_directives: false,
@@ -2336,14 +2308,164 @@ class Reader {
 					iriref_escapeless: {},
 				},
 				h_append: {
-					triple_x: {},
+					triple_x: () => ({
+						type: 'chars',
+						test: '<<',
+						action: /* syntax: js */ `
+							// rdf-star not enabled
+							if(!this._b_rdf_star) break;
+
+							${b_star? push_state('star_predicate_x'): ''}
+
+							this.data = this.exit_star;
+							this.after_eot = this.triple_x_close;
+							${push_state('star_pairs')}
+						`,
+						goto: 'triple_x',
+					}),
 					comment: {},
 				},
 			}),
 		});
+
+		const gen_state_literal = (s_type, s_which) => ({
+			rules: {
+				type: 'match',
+				test: /* syntax: js */ `R_STRLIT_${s_type.toUpperCase()}_${s_which.toUpperCase()}_BREAK`,
+				action: /* syntax: js */ `
+					// index of break
+					let i_break = m_break.index;
+
+					// add to contents
+					this._s_literal += s.slice(i, i_break);
+
+					// depending on char
+					switch(s[i_break]) {
+						// terminator
+						case ${'single' === s_which? `"'"`: `'"'`}: {
+							// advance index to next token beyond delimiter
+							${whitespace(/* syntax: js */ `i_break + ${'short' === s_type? 1: 3}`)}
+
+							// resume eating whitespace at start of next chunk
+							this._b_trim_start = true;
+
+							// consume rest
+							${goto('datatype_or_langtag')}
+						}
+
+						// escape
+						case '\\\\': {
+							// try to find end
+							R_STRLIT_${s_type.toUpperCase()}_${s_which.toUpperCase()}_TERM.lastIndex = i_break;
+							let m_term = R_STRLIT_${s_type.toUpperCase()}_${s_which.toUpperCase()}_TERM.exec(s);
+
+							// end is in this chunk
+							if(m_term) {
+								// index of terminator
+								let i_term = m_term.index;
+
+								// extract dirty potion
+								let s_dirty = s.slice(i_break, i_term);
+
+								// clean and save
+								this._s_literal += unescape_literal_${s_type}_hard(s_dirty);
+
+								// advance index beyond terminator
+								this.i = i_term + m_term[0].length;
+
+								// resume eating whitespace at start of next chunk
+								this._b_trim_start = true;
+
+								// consume rest
+								${goto('datatype_or_langtag')}
+							}
+							// end is not in this chunk
+							else {
+								// extract whole portion
+								let s_dirty = s.slice(i_break);
+
+								// unescape to clean part
+								let [s_clean, s_incomplete] = unescape_literal_${s_type}_soft(s_dirty);
+
+								// save
+								this._s_literal += s_clean;
+
+								// set unparsed index
+								i = n - s_incomplete.length;
+
+								// reached eos; pause normally
+								break string_literal_${s_type}_${s_which};
+							}
+						}
+
+						${'short' === s_type
+							? /* syntax: js.switch */ `
+								// invalid '\\n'
+								case '\\n': {
+									return this.info_error(\`expected string_literal_${s_type}_${s_which} but invalid line feed character '\\\\n' (newline) within contents. failed to parse a valid token\`);
+								}
+
+								// invalid '\\r'
+								case '\\r': {
+									return this.info_error(\`expected string_literal_${s_type}_${s_which} but invalid form feed character '\\\\r' (carriage return) within contents. failed to parse a valid token\`);
+								}
+
+								// invalid
+								default: {
+									console.assert(\`Unhandle invalid character \${JSON.stringify(s[i_break])} case for string_literal_${s_type}_${s_which}\`);
+								}
+							`: ''}
+					}
+				`,
+			},
+			else: 'single' === s_type
+				? /* syntax: js */ `
+					// save
+					this._s_literal += i? s.slice(i): s;
+
+					// set unparsed index
+					i = n;
+
+					// reached eos; pause normally
+					break;
+				`
+				: /* syntax: js */ `
+					// could be unfinished terminator
+					R_STRLIT_LONG_${s_which.toUpperCase()}_UNFINISHED_TERM.lastIndex = i;
+					let m_unfinished = R_STRLIT_LONG_${s_which.toUpperCase()}_UNFINISHED_TERM.exec(s);
+
+					// unfinished terminator
+					if(m_unfinished) {
+						// save valid portion
+						this._s_literal += s.slice(i, m_unfinished.index);
+
+						// set unparsed index
+						i = m_unfinished.index;
+					}
+					// not unfinished
+					else {
+						// save
+						this._s_literal += i? s.slice(i): s;
+
+						// set unparsed index
+						i = n;
+					}
+
+					// reached eos; pause normally
+					break;
+				`,
+			postscript: /* syntax: js */ `
+				// do not eat whitespace at start of next chunk
+				this._b_trim_start = false;
+
+				// ran out of characters
+				${resume_state(`string_literal_${s_type}_${s_which}`, false)}
+			`,
+			no_auto_resume: true,
+		});
 	}
 
-	@{states({
+	@*{yield* states({
 		...(B_TRIG? {
 			block: {
 				apply: {
@@ -2352,7 +2474,7 @@ class Reader {
 					node_mod: 'graph',
 				},
 				rules: {
-					iriref_escapeless: {},
+					graph_iriref_escapeless: {},
 					prefixed_name: {},
 					graph_open: () => ({
 						type: 'test',
@@ -2379,7 +2501,7 @@ class Reader {
 						type: 'match',
 						test: /* syntax: js */ `R_GRAPH_IRI`,
 						action: ({sj_matched}) => [
-							iriref('graph', sj_matched),
+							iriref({s_role:'graph', sj_matched}),
 							modal({
 								read: emit_graph_open(),
 								load: '',
@@ -2468,18 +2590,18 @@ class Reader {
 		pairs: gen_state_predicate({b_star:false}),
 		predicate_x: gen_state_predicate({b_star:true}),
 
-		object_list: gen_object_targets({b_star:false}),
-		object_x: gen_object_targets({b_star:true}),
+		object_list: gen_state_object({b_star:false}),
+		object_x: gen_state_object({b_star:true}),
 
 		triple_x_close: {
 			rules: {
 				rdf_star_terminator: () => ({
 					type: 'chars',
 					test: '>>',
-					action: [
-						whitespace(+2),
-						pop_state(`end of "triple x" Turtle* '>>'`),
-					],
+					args: {
+						uncached_char: true,
+					},
+					action: pop_state(`end of "triple x" Turtle* '>>'`),
 				}),
 			},
 		},
@@ -2493,6 +2615,8 @@ class Reader {
 				string_literal_single: {},
 			},
 		},
+
+		// string_literal_short: gen_state_literal('short', 'single'),
 
 		datatype: {
 			apply: {
@@ -2513,10 +2637,10 @@ class Reader {
 				iriref: {},
 				prefixed_name: {},
 			},
-			postscript: /* syntax: js */ `
+			fallthrough: /* syntax: js */ `
 				${modal({
 					read: save_term('object', /* syntax: js */ `this._dc_factory.datatypedLiteral(this._s_literal, kt_datatype)`),
-					load: load_object('object', /* syntax: js */ `'^'+sc1_datatype+'"'+this._s_literal`),
+					load: load_object(/* syntax: js */ `'^'+sc1_datatype+'"'+this._s_literal`),
 				})}
 
 				// reset literal
@@ -2549,7 +2673,7 @@ class Reader {
 						for(;;) {
 							// next token is end of outer section
 							let s_peek = s[this.i];
-							if('.' === s_peek || ']' === s_peek || ';' === s_peek ${QUADS? /* syntax: js */ `|| '}' === s_peek`: ''}) {
+							if('.' === s_peek || ']' === s_peek || ';' === s_peek ${B_QUADS? /* syntax: js */ `|| '}' === s_peek`: ''}) {
 								// goto post_object state
 								${goto('post_object')}
 							}
@@ -2643,9 +2767,9 @@ class Reader {
 				prefix_id: () => ({
 					type: 'match',
 					test: /* syntax: js */ `R_PREFIX_ID`,
-					action: /* syntax: js */ `
+					action: ({sj_matched}) => /* syntax: js */ `
 						// set temp prefix id
-						this._s_temp_prefix_id = m_prefix_id[1];
+						this._s_temp_prefix_id = ${sj_matched}[1];
 					`,
 					goto: 'prefix_iri',
 				}),
@@ -2656,11 +2780,10 @@ class Reader {
 		prefix_iri: {
 			preamble: /* syntax: js */ `
 				let h_prefixes = this._h_prefixes;
-				${B_OPTIMIZE_PREFIX_IDS && /* syntax: js */ `
+				${B_OPTIMIZE_PREFIX_IDS? /* syntax: js */ `
 					let as_prefix_ids = this._as_prefix_ids;
-				`}
+				`: ''}
 				let s_prefix_id = this._s_temp_prefix_id;
-				let p_prefix_iri;
 			`,
 			rules: {
 				iriref_escapeless: gen_rule_prefix_iriref({b_escapeless:true}),
@@ -2685,6 +2808,9 @@ class Reader {
 
 		collection_subject: {
 			preamble: SJ_REF_X_CHAR,
+			apply: {
+				role: 'object',
+			},
 			rules: {
 				collection_terminator: () => ({
 					type: 'chars',
@@ -2747,7 +2873,9 @@ class Reader {
 					}
 				`)(`this._${B_LOAD? 'sc1': 'kt'}_subject`),
 				iriref_escapeless: {},
-				prefixed_name_escapeless: {},
+				prefixed_name_escapeless: {
+					local_i: true,
+				},
 				string_literal: () => ({
 					type: 'raw',
 					test: /* syntax: js */ `'"' === x || "'" === x`,
@@ -2869,6 +2997,9 @@ class Reader {
 				nested_collection: () => ({
 					type: 'chars',
 					test: '(',
+					args: {
+						b_local_i: true,
+					},
 					action: ((sj_term) => /* syntax: js */ `
 						// empty collection
 						if(')' === s[i]) {
@@ -2882,45 +3013,47 @@ class Reader {
 								'collection_subject',
 							]);
 							${goto('collection_object')}
-
-							// commit list item pointer
-							s_pointer_label = this.next_label();
-
-							${modal({
-								read: /* syntax: js */ `
-									let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
-									${emit_statement()}
-
-									// add this list as an item to the outer list
-									this._kt_subject = kt_blank_node;
-								`,
-								load: /* syntax: js */ `
-									let sc1_blank_node = '_:'+s_pointer_label;
-									${load_object(/* syntax: js */ `sc1_blank_node`)}
-
-									// add this list as an item to the outer list
-									this._sc1_subject = sc1_blank_node;
-								`,
-							})}
-
-							${sj_set}_predicate = ${SJ_RDF_REST};
-							${push_state('collection_object')}
-
-							// prepare next triple
-							${sj_set}_predicate = ${SJ_RDF_FIRST};
 						}
+
+						// commit list item pointer
+						s_pointer_label = this.next_label();
+
+						${modal({
+							read: /* syntax: js */ `
+								let kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
+								${emit_statement()}
+
+								// add this list as an item to the outer list
+								this._kt_subject = kt_blank_node;
+							`,
+							load: /* syntax: js */ `
+								let sc1_blank_node = '_:'+s_pointer_label;
+								${load_object(/* syntax: js */ `sc1_blank_node`)}
+
+								// add this list as an item to the outer list
+								this._sc1_subject = sc1_blank_node;
+							`,
+						})}
+
+						${sj_term}_predicate = ${SJ_RDF_REST};
+						${push_state('collection_object')}
+
+						// prepare next triple
+						${sj_term}_predicate = ${SJ_RDF_FIRST};
 					`)(`this._${B_LOAD? 'sc1': 'kt'}`),
 				}),
 				labeled_blank_node: {},
 				iriref: {},
-				prefixed_name: {},
+				prefixed_name: {
+					local_i: true,
+				},
 				comment: {},
 			},
 			cleanup: /* syntax: js */ `
 				// ran out of characters after pushing state, pop it
 				if(b_pushed) this._a_nested.pop();
 			`,
-			postscript: modal({
+			fallthrough: modal({
 				read: /* syntax: js */ `
 					let kt_blank_node_outer;
 					if(!s_pointer_label) s_pointer_label = this.next_label();
@@ -2957,6 +3090,8 @@ class Reader {
 						// ref object
 						// ?????
 						throw new Error('in LOAD mode, ._sc1_object is not used as a local field');
+						// TODO: fix
+						/*
 						let w_object = this._sc1_object;
 
 						// create blanknode to embed list
@@ -2967,21 +3102,25 @@ class Reader {
 
 						// swap back object
 						this._sc1_object = w_object;
+						*/
 					}
 
 					// emit statement that is item
-					this._kt_subject = kt_blank_node_outer || this.anonymous_blank_node(s_pointer_label);
-					this._kt_predicate = ${SJ_RDF_FIRST};
-					${emit_statement()}
+					this._open_subject(sc1_blank_node_outer || '_:'+s_pointer_label);
+					this._open_predicate(${SJ_RDF_FIRST});
+					this._add_object(this._sc1_object);
 
 					// prepare next predicate
-					this._kt_predicate = ${SJ_RDF_REST};
+					this._open_predicate(${SJ_RDF_REST});
 				`,
 			}),
 		},
 
 		collection_object: {
 			preamble: SJ_REF_X_CHAR,
+			apply: {
+				role: 'object',
+			},
 			rules: {
 				collection_terminator: () => ({
 					type: 'chars',
@@ -2989,18 +3128,22 @@ class Reader {
 					action: [
 						// make & emit collection's tail "pointer"
 						modal({
-							read: save_term('object', SJ_RDF_NIL),
-							load: load_term('object', /* syntax: js */ `this._sc1_rdf+'nil'`),
+							read: [
+								save_term('object', SJ_RDF_NIL),
+								emit_statement(),
+							],
+							load: load_object(/* syntax: js */ `this._sc1_rdf+'nil'`),
 						}),
-						emit_statement(),
-					]
+					],
 				}),
 				_continue: /* syntax: js */ `
 					// otherwise, pre-emptively secure the next blank node label
 					let s_pointer_label;
 				`,
 				iriref_escapeless: {},
-				prefixed_name_escapeless: {},
+				prefixed_name_escapeless: {
+					local_i: true,
+				},
 				string_literal: () => ({
 					type: 'raw',
 					test: /* syntax: js */ `'"' === x || "'" === x`,
@@ -3037,10 +3180,10 @@ class Reader {
 
 							// prepare statement that is item
 							${load_subject(/* syntax: js */ `sc1_blank_node`)}
-							${load_prediate(SJ_RDF_FIRST)}
+							${load_predicate(SJ_RDF_FIRST)}
 
 							this.after_eot = function() {
-								${load_prediate(SJ_RDF_REST)}
+								${load_predicate(SJ_RDF_REST)}
 								this.after_eot = this.post_object;
 								return this.collection_object();
 							};
@@ -3053,58 +3196,58 @@ class Reader {
 				blank_node_property_list: () => ({
 					type: 'chars',
 					test: '[',
-					action: [
-						whitespace(+1),
-						modal({
-							read: /* syntax: js */ `
-								// make blank node
-								let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
+					action: modal({
+						read: /* syntax: js */ `
+							// make blank node
+							let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
 
-								// emit statement event
-								${emit_statement()}
+							// emit statement event
+							${emit_statement()}
 
-								// setup state to resume and push
-								this._kt_subject = kt_blank_node;
-								this._kt_predicate = ${SJ_RDF_REST};
-								${push_state('collection_object')}
+							// setup state to resume and push
+							this._kt_subject = kt_blank_node;
+							this._kt_predicate = ${SJ_RDF_REST};
+							${push_state('collection_object')}
 
-								// enter blank node
-								this._kt_predicate = ${SJ_RDF_FIRST};
-								kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
-								${emit_statement()}
+							// enter blank node
+							this._kt_predicate = ${SJ_RDF_FIRST};
+							kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
+							${emit_statement()}
 
-								// prepare next triple
-								this._kt_subject = kt_blank_node;
-								this._kt_predicate = ${SJ_RDF_FIRST};
-							`,
-							load: /* syntax: js */ `
-								// make blank node
-								let sc1_blank_node = '_:'+this.next_label();
+							// prepare next triple
+							this._kt_subject = kt_blank_node;
+							this._kt_predicate = ${SJ_RDF_FIRST};
+						`,
+						load: /* syntax: js */ `
+							// make blank node
+							let sc1_blank_node = '_:'+this.next_label();
 
-								// commit to memory
-								${load_object(/* syntax: js */ `sc1_blank_node`)}
+							// commit to memory
+							${load_object(/* syntax: js */ `sc1_blank_node`)}
 
-								// setup state to resume and push
-								${load_subject(/* syntax: js */ `sc1_blank_node`)}
-								${load_predicate(/* syntax: js */ `this._sc1_rdf+'rest'`)}
-								${push_state('collection_object')}
+							// setup state to resume and push
+							${load_subject(/* syntax: js */ `sc1_blank_node`)}
+							${load_predicate(/* syntax: js */ `this._sc1_rdf+'rest'`)}
+							${push_state('collection_object')}
 
-								// enter blank node
-								${load_predicate(/* syntax: js */ `this._sc1_rdf+'first`)}
-								sc1_blank_node = '_:'+this.next_label();
-								${load_object(/* syntax: js */ `sc1_blank_node`)}
+							// enter blank node
+							${load_predicate(/* syntax: js */ `this._sc1_rdf+'first'`)}
+							sc1_blank_node = '_:'+this.next_label();
+							${load_object(/* syntax: js */ `sc1_blank_node`)}
 
-								// prepare next triple
-								${load_subject(/* syntax: js */ `sc1_blank_node`)}
-								${load_predicate(/* syntax: js */ `this._sc1_rdf+'first'`)}
-							`,
-						}),
-					],
+							// prepare next triple
+							${load_subject(/* syntax: js */ `sc1_blank_node`)}
+							${load_predicate(/* syntax: js */ `this._sc1_rdf+'first'`)}
+						`,
+					}),
 					goto: 'pairs',
 				}),
 				nested_collection: () => ({
 					type: 'chars',
 					test: '(',
+					args: {
+						local_i: true,
+					},
 					action: modal({
 						read: /* syntax: js */ `
 							// commit list item pointer
@@ -3164,15 +3307,17 @@ class Reader {
 
 						${modal({
 							read: save_term('object', /* syntax: js */ `this.blank_node(s_label)`),
-							load: load_term('object', /* syntax: js */ `'_:'+s_label`),
+							load: load_object(/* syntax: js */ `'_:'+s_label`),
 						})}
 					`
 				}),
 				iriref: {},
-				prefixed_name: {},
+				prefixed_name: {
+					local_i: true,
+				},
 				comment: {},
 			},
-			postscript: modal({
+			fallthrough: modal({
 				read: /* syntax: js */ `
 					// ref object
 					let w_object = this._kt_object;
@@ -3262,536 +3407,6 @@ class Reader {
 	@//@
 
 
-	@// sub-macro for reusing statement productions
-	@def triples(gc_triples={})
-		@.{
-			const {
-				b_directives=false,
-				b_star=false,
-			} = gc_triples;
-
-			let gtg = () => goto('pairs');
-			if(b_directives) {
-				gtg = (s_alt='graph_or_subject') => goto(s_alt);
-			}
-		}
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name_escapeless', 'm_prefixed_named_e_subject')}
-
-			@{valid_prefix('m_prefixed_named_e_subject')}
-
-			// make subject key
-			@- B_LOAD
-				@{load_subject(/* syntax: js */ `s_prefix_id+':'+m_prefixed_named_e_subject[2]`)}
-			@:
-				this._kt_subject = @{prefixed_named('m_prefixed_named_e_subject[2]')}
-			@;
-
-			// predicate-object pairs state
-			@{gtg()}
-
-		// blank node label
-		@{else_if_match('R_LABELED_BLANK_NODE', 'm_blank_node_label_subject')}
-			// extract label
-			let s_label = m_blank_node_label_subject[1];
-
-			// make subject key
-			@- B_LOAD
-				@{load_subject(/* syntax: js */ `'_:'+s_label`)}
-			@:
-				this._kt_subject = this.blank_node(s_label);
-			@;
-
-			// predicate-object pairs state
-			@{gtg()}
-
-		// anonymous blank node subject
-		@{else_if_match('R_ANONYMOUS_BLANK_NODE')}
-			// set new blank node as subject
-			@- B_LOAD
-				@{load_subject(/* syntax: js */ `'_:'+this.next_label()`)}
-			@:
-				this._kt_subject = this.anonymous_blank_node(this.next_label());
-			@;
-
-			// goto pairs state for inside property list
-			@{gtg()}
-
-		@- !b_star
-			// anonymous blank node property list subject
-			@{else_if_match('R_CHAR_BLANK_NODE')}
-				// enter blank node
-				@- B_LOAD
-					@{load_subject(/* syntax: js */ `'_:'+this.next_label()`)}
-				@:
-					this._kt_subject = this.anonymous_blank_node(this.next_label());
-				@;
-
-				// how to resume when we pop state
-				@{push_state('post_blank_subject')}
-
-				// goto pairs state for inside property list
-				@{gtg('graph_or_subject_property_list')}
-
-			@//@ this token can only be a subject, skip graph check
-			// rdf collection
-			@{else_if_match('R_CHAR_COLLECTION')}
-				// indicate that collection subject should emit an initial statement
-				@- B_LOAD
-					this._sc1_subject = null;
-				@:
-					this._kt_subject = null;
-				@;
-				
-				// (don't push state, we don't have a subject yet)
-
-				// goto collection-subject state
-				@{goto('collection_subject')}
-
-			@- TTL || b_directives
-				// prefix with interupt (e.g., a comment)
-				@{else_if_match('R_PREFIX_KEYWORD', 'm_prefix_keyword')}
-					// save whether or not to expect a full stop
-					this._b_expecting_full_stop = m_prefix_keyword[1]? true: false;
-
-					// goto prefix state
-					@{goto('prefix_id')}
-
-				// base with interupt (e.g., a comment)
-				@{else_if_match('R_BASE_KEYWORD', 'm_base_keyword')}
-					// save whether or not to expect a full stop
-					this._b_expecting_full_stop = m_base_keyword[1]? true: false;
-
-					// goto base state
-					@{goto('base_iri')}
-			@;
-
-			@- TRIG && !b_directives
-				// closing graph '}'
-				@{else_if_match('R_CHAR_CLOSE')}
-					// emit graph_close event
-					@{emit_graph_close()}
-
-					// reset graph
-					@- B_LOAD
-						@{load_default_graph()}
-					@:
-						this._kt_graph = @{SJ_DEFAULT_GRAPH};
-					@;
-
-					// goto block state
-					@{goto('block')}
-			@;
-		@;
-
-		// iriref
-		@{else_if_match('R_IRIREF', 'm_iriref_subject')}
-			@{iriref('subject', 'm_iriref_subject', true, false, true)}
-
-			// predicate-object pairs state
-			@{gtg()}
-
-		// prefixed name
-		@{else_if_call('this.match_prefixed_name', 'm_prefixed_named_subject')}
-			@{valid_prefix('m_prefixed_named_subject')}
-
-			@{suffix('m_prefixed_named_subject')}
-
-			@- B_LOAD
-				@{load_subject(/* syntax: js */ `s_prefix_id+':'+s_suffix`)}
-			@:
-				// make subject key
-				this._kt_subject = @{prefixed_named('s_suffix')};
-			@;
-
-			// predicate-object pairs state
-			@{gtg()}
-	@;
-
-
-	@def gen_subject(b_star=false)
-		@.{
-			const next = b_star? () => goto('predicate_x'): () => goto('pairs');
-		}
-
-		// prefixed name quick
-		@{if_match('R_PREFIXED_NAME_QUICK', 'm_pnq_subject')}
-			@{valid_prefix('m_pnq_subject')}
-
-			// commit subject iri from resolve prefixed name
-			@- B_LOAD
-				@{load_subject(/* syntax: js */ `s_prefix_id+':'+m_pnq_subject[2]`)}
-			@:
-				this._kt_subject = @{prefixed_named('m_pnq_subject[2]')};
-			@;
-
-			// predicate-object pairs state
-			@{next()}
-
-		// iriref
-		@{else_if_match('R_IRIREF_ESCAPELESS', 'm_iriref_e_subject')}
-			@{iriref('subject', 'm_iriref_e_subject', true)}
-
-			// predicate-object pairs state
-			@{next()}
-
-		@{triples({
-			b_directives: false,
-			b_star,
-		})}
-
-		// comment
-		@{else_if_match('R_COMMENT', 'm_comment', true)}
-			if(this.emit_comments) this.emit_comments(m_comment[0]);
-			continue;
-
-		// triple_x
-		@{else_if_char_only('<<')}
-			// rdf-star not enabled
-			if(!this._b_rdf_star) break;
-
-			// advance to next token
-			@{whitespace('i+2')}
-
-			@- b_star
-				@{push_state('star_predicate_x')}
-			@:
-				this.data = this.exit_star;
-				this.after_eot = this.triple_x_close;
-				@{push_state('star_pairs')}
-			@;
-
-			@{goto('triple_x')}
-
-		// not iriref, not prefixed name, not blank node label, not prefix id, not base
-		@{else_retry()}
-	@;
-
-
-	@// regexes are faster than character[0] switching in this context
-	@{method('statement')}
-		@//@
-
-		@{gen_subject()}
-
-	@{end_method('statement')}
-
-
-	@> deduce_strlit_path(s_mode)
-		@. let sj_char = 'single' === s_mode? `"'"`: `'"'`;
-		// enough chars to deduce type
-		if((i+2) < n) {
-			// long type
-			if(@{sj_char} === s[i+1] && @{sj_char} === s[i+2]) {
-				// advance index beyond token
-				this.i = i + 3;
-
-				// read contents
-				@{goto('string_literal_long_'+s_mode)}
-			}
-			// not long type
-			else {
-				// advance index beyond token
-				this.i = i + 1;
-
-				// read contents
-				@{goto('string_literal_short_'+s_mode)}
-			}
-		}
-		// enough chars to eliminate long type
-		else if((i+1) < n && @{sj_char} !== s[i+1]) {
-			// advance index beyond token
-			this.i = i + 1;
-
-			// read contents
-			@{goto('string_literal_short_'+s_mode)}
-		}
-		// not enough chars to deduce type; retry next chunk
-		else {
-			break;
-		}
-	@;
-
-
-	@> string_literal_short(s_mode)
-		@{method('string_literal_short_'+s_mode)}
-			// something breaks string in this chunk
-			@{if_match(`R_STRLIT_SHORT_${s_mode.toUpperCase()}_BREAK`, 'm_break')}
-				// index of break
-				let i_break = m_break.index;
-
-				// add to contents
-				this._s_literal += s.slice(i, i_break);
-
-				// depending on char
-				switch(s[i_break]) {
-					// terminator
-					case @{'single' === s_mode? `"'"`: `'"'`}: {
-						// advance index to next token beyond delimiter
-						@{whitespace('i_break + 1')}
-
-						// resume eating whitespace at start of next chunk
-						this._b_trim_start = true;
-
-						// consume rest
-						@{goto('datatype_or_langtag')}
-					}
-
-					// escape
-					case '\\': {
-						// try to find end
-						R_STRLIT_SHORT_@{s_mode.toUpperCase()}_TERM.lastIndex = i_break;
-						let m_term = R_STRLIT_SHORT_@{s_mode.toUpperCase()}_TERM.exec(s);
-
-						// end is in this chunk
-						if(m_term) {
-							// index of terminator
-							let i_term = m_term.index;
-
-							// extract dirty potion
-							let s_dirty = s.slice(i_break, i_term);
-
-							// clean and save
-							this._s_literal += unescape_literal_short_hard(s_dirty);
-
-							// advance index beyond terminator
-							this.i = i_term + m_term[0].length;
-
-							// resume eating whitespace at start of next chunk
-							this._b_trim_start = true;
-
-							// consume rest
-							@{goto('datatype_or_langtag')}
-						}
-						// end is not in this chunk
-						else {
-							// extract whole portion
-							let s_dirty = s.slice(i_break);
-
-							// unescape to clean part
-							let [s_clean, s_incomplete] = unescape_literal_short_soft(s_dirty);
-
-							// save
-							this._s_literal += s_clean;
-
-							// set unparsed index
-							i = n - s_incomplete.length;
-
-							// reached eos; pause normally
-							break string_literal_short_@{s_mode};
-						}
-					}
-
-					// invalid '\n'
-					case '\n': {
-						return this.info_error(`expected string_literal_short_@{s_mode} but invalid line feed character '\\n' (newline) within contents. failed to parse a valid token`);
-					}
-
-					// invalid '\r'
-					case '\r': {
-						return this.info_error(`expected string_literal_short_@{s_mode} but invalid form feed character '\\r' (carriage return) within contents. failed to parse a valid token`);
-					}
-
-					// invalid
-					default: {
-						console.assert(`Unhandle invalid character ${JSON.stringify(s[i_break])} case for string_literal_short_@{s_mode}`);
-					}
-				}
-
-			// no terminator and nothing to escape
-			@{else_any()}
-				// save
-				this._s_literal += i? s.slice(i): s;
-
-				// set unparsed index
-				i = n;
-
-				// reached eos; pause normally
-				break;
-
-			@{end_else()}
-		}
-
-		// do not eat whitespace at start of next chunk
-		this._b_trim_start = false;
-
-		// ran out of characters
-		@{resume_state('string_literal_short_'+s_mode, false)}
-	}
-	@;
-
-
-	@{string_literal_short('double')}
-
-	@{string_literal_short('single')}
-
-
-
-	@> string_literal_long(s_mode)
-		@{method('string_literal_long_'+s_mode)}
-			// something breaks string in this chunk
-			@{if_match(`R_STRLIT_LONG_${s_mode.toUpperCase()}_BREAK`, 'm_break')}
-				// index of break
-				let i_break = m_break.index;
-
-				// add to contents
-				this._s_literal += s.slice(i, i_break);
-
-				// depending on char
-				switch(s[i_break]) {
-					// terminator
-					case @{'single' === s_mode? `"'"`: `'"'`}: {
-						// advance index to next token beyond delimiter
-						@{whitespace('i_break + 3')}
-
-						// resume eating whitespace at start of next chunk
-						this._b_trim_start = true;
-
-						// consume rest
-						@{goto('datatype_or_langtag')}
-					}
-
-					// escape
-					case '\\': {
-						// try to find end
-						R_STRLIT_LONG_@{s_mode.toUpperCase()}_TERM.lastIndex = i_break;
-						let m_term = R_STRLIT_LONG_@{s_mode.toUpperCase()}_TERM.exec(s);
-
-						// end is in this chunk
-						if(m_term) {
-							// index of terminator
-							let i_term = m_term.index;
-
-							// extract dirty potion
-							let s_dirty = s.slice(i_break, i_term);
-
-							// clean and save
-							this._s_literal += unescape_literal_long_hard(s_dirty);
-
-							// advance index beyond terminator
-							this.i = i_term + m_term[0].length;
-
-							// resume eating whitespace at start of next chunk
-							this._b_trim_start = true;
-
-							// consume rest
-							@{goto('datatype_or_langtag')}
-						}
-						// end is not in this chunk
-						else {
-							// extract whole portion
-							let s_dirty = s.slice(i_break);
-
-							// unescape to clean part
-							let [s_clean, s_incomplete] = unescape_literal_long_soft(s_dirty);
-
-							// save
-							this._s_literal += s_clean;
-
-							// set unparsed index
-							i = n - s_incomplete.length;
-
-							// reached eos; pause normally
-							break string_literal_long_@{s_mode};
-						}
-					}
-
-					// invalid
-					default: {
-						console.assert(`Unhandle invalid character ${JSON.stringify(s[i_break])} case for string_literal_long_@{s_mode}`);
-					}
-				}
-
-			// no terminator and nothing to escape
-			@{else_any()}
-				// could be unfinished terminator
-				R_STRLIT_LONG_@{s_mode.toUpperCase()}_UNFINISHED_TERM.lastIndex = i;
-				let m_unfinished = R_STRLIT_LONG_@{s_mode.toUpperCase()}_UNFINISHED_TERM.exec(s);
-
-				// unfinished terminator
-				if(m_unfinished) {
-					// save valid portion
-					this._s_literal += s.slice(i, m_unfinished.index);
-
-					// set unparsed index
-					i = m_unfinished.index;
-				}
-				// not unfinished
-				else {
-					// save
-					this._s_literal += i? s.slice(i): s;
-
-					// set unparsed index
-					i = n;
-				}
-
-				// reached eos; pause normally
-				break;
-
-			@{end_else()}
-		}
-
-		// do not eat whitespace at start of next chunk
-		this._b_trim_start = false;
-
-		// ran out of characters
-		@{resume_state('string_literal_long_'+s_mode, false)}
-	}
-	@;
-
-
-	@{string_literal_long('double')}
-
-	@{string_literal_long('single')}
-
-
-	@{method('datatype_or_langtag')}
-		// ref character
-		let x = s[i];
-
-		// next token indicates datatype or langtag
-		@{if_char('^', '@')}
-			// '^^' datatype
-			@{if_match('R_DOUBLE_CARET')}
-				@{goto('datatype')}
-
-			// '@' language tag
-			@{else_if_match('R_LANGTAG', 'm_langtag')}
-				@- B_LOAD
-					@{load_object(/* syntax: js */ `'@'+m_langtag[1]+'"'+this._s_literal`)}
-				@:
-					this._kt_object = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
-				@;
-
-				// reset literal
-				this._s_literal = '';
-
-			// next token definitely datatype or langtag, we are just being interrupted by eos
-			@{else_retry()}
-
-		@{else_if_match('R_COMMENT', 'm_comment', true)}
-			if(this.emit_comments) this.emit_comments(m_comment[0]);
-			continue;
-
-		@{else_any()}
-			@- B_LOAD
-				@{load_object(/* syntax: js */ `'"'+this._s_literal`)}
-			@:
-				this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
-			@;
-
-			// reset literal
-			this._s_literal = '';
-
-		// not datatype, not language tag => that's okay! those are optional
-		@{end_else()}
-
-		// goto end of statement state
-		@{eot()}
-	@{end_method('datatype_or_langtag')}
-
-
 @> update_prefixes()
 	let b_relax = this._b_relax;
 
@@ -3850,7 +3465,7 @@ class Reader {
 		this._h_prefixes = factory.cachePrefixes(h_prefixes);
 
 		// update xsd scp string
-		this._scp_xsd_decimal = concise('^@{P_IRI_XSD}decimal"');
+		this._scp_xsd_decimal = '^'+concise('@{P_IRI_XSD}decimal', h_prefixes)+'"';
 		this._sc1_rdf_type = concise('@{P_IRI_RDF}type', h_prefixes);
 	@;
 
