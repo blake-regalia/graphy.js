@@ -1,3 +1,0 @@
-@$ B_LOAD = true
-
-@import '../read/main.js.jmacs'

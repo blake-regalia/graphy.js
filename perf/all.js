@@ -70,8 +70,28 @@ const H_MODES_GRAPHY_READ = {
 
 const H_MODES_GRAPHY_READ_LOAD = {
 	default: {},  // default
-	load: {
+	relaxed: {
+		SJ_CONFIG_READ: /* syntax: js.object-literal */ `
+			relax: true,
+		`,
+	},
+	'load.uito': {
 		B_LOAD: true,
+		SJ_CONFIG_DATASET: /* syntax: js.object-literal */ `
+			into: new lazy.UnindexedTrigDataset(),
+		`,
+	},
+	'load.pito': {
+		B_LOAD: true,
+		SJ_CONFIG_DATASET: /* syntax: js.object-literal */ `
+			into: new lazy.PartiallyIndexedTrigDataset(),
+		`,
+	},
+	'load.sito': {
+		B_LOAD: true,
+		SJ_CONFIG_DATASET: /* syntax: js.object-literal */ `
+			into: new lazy.SemiIndexedTrigDataset(),
+		`,
 	},
 };
 

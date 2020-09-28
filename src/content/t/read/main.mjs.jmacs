@@ -1,0 +1,3 @@
+@$ S_MODE = 'read';
+
+@import '../parse.jmacs';

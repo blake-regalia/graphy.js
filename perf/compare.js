@@ -46,7 +46,9 @@ const H_COLORS = {
 	'graphy/scan.4': 'rgb(153, 153, 255)',
 	'graphy/scan.8': 'rgb(153, 102, 255)',
 	'graphy/scan.16': 'rgb(204, 102, 255)',
-	'graphy/load': 'rgb(216, 60, 255)',
+	'graphy/load.uito': 'rgb(216, 60, 255)',
+	'graphy/load.pito': 'rgb(21, 125, 195)',
+	'graphy/load.sito': 'rgb(20, 25, 260)',
 	'N3/default': 'rgba(127, 0, 0, 1)',
 };
 

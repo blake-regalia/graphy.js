@@ -1249,13 +1249,29 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 			return this.verbose();
 		}
 
-		concise(h_prefixes={}) {
+		gspo() {
 			return [
-				this.subject.concise(h_prefixes),
-				this.predicate.concise(h_prefixes),
-				this.object.concise(h_prefixes),
-				this.graph.concise(h_prefixes),
+				this.graph,
+				this.subject,
+				this.predicate,
+				this.object,
 			];
+		}
+
+		spog() {
+			return [
+				this.subject,
+				this.predicate,
+				this.object,
+				this.graph,
+			];
+		}
+
+		concise(h_prefixes={}) {
+			return this.graph.concise(h_prefixes)
+				+'\9'+this.subject.concise(h_prefixes)
+				+'\8'+this.predicate.concise(h_prefixes)
+				+'\0'+this.object.concise(h_prefixes);
 		}
 
 		terse(h_prefixes={}) {

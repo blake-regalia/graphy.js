@@ -1,7 +1,9 @@
-@import '../../../share/iris.jmacs'
-@import '../../../share/channel.jmacs'
+'use strict';
 
-@./* global FORMAT B_LOAD */
+@import '../../share/iris.jmacs'
+@import '../../share/channel.jmacs'
+
+@./* global FORMAT S_MODE */
 @//@
 
 @$ TTL = 'ttl' === FORMAT;
@@ -15,7 +17,7 @@
 
 @$ S_STATE_PRIMARY = B_TURTLE? 'statement': 'block';
 
-@$ S_MODE = B_LOAD? 'load': 'read';
+@$ B_LOAD = 'load' === S_MODE;
 @$ B_STAR = true;
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
@@ -62,24 +64,25 @@
 }
 
 @// import parser macros
-@import '../../text.read.jmacs'
+@import '../text.read.jmacs'
 
-const uri = require('uri-js');
-const string_decoder = require('string_decoder');
+import uri from 'uri-js';
+import string_decoder from 'string_decoder';
 
-const stream = require('@{channel('core.iso.stream')}');
-const factory = require('@{channel('core.data.factory')}');
+import * as stream from '@{channel('core.iso.stream')}';
+import * as factory from '@{channel('core.data.factory')}';
 const quad = k => factory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
 
 @- B_LOAD
+	@- B_LOAD_GSPO_BUILDER
+		import {PartiallyIndexedTrigDataset} from '@graphy/memory';
+	@:
 	const {
 		concise,
 	} = factory;
-	const dataset = require('@graphy/memory.dataset.fast');
-	const {
-		$_KEYS,
-		$_QUADS,
-	} = dataset;
+
+	const $_KEYS = Symbol(' keys');
+	const $_QUADS = Symbol(' quads');
 @;
 
 // eslint-disable-next-line no-misleading-character-class
@@ -152,7 +155,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 @> save_term(s_role, sj_expr)
 	// save @{s_role} term to field
-	this._kt_@{s_role} = @{sj_expr};
+	@{'datatype' === s_role? '': 'this._'}kt_@{s_role} = @{sj_expr};
 @;
 
 
@@ -264,6 +267,73 @@ const OPHOP = Object.prototype.hasOwnProperty;
 @;
 
 
+@> update_prefixes()
+	let b_relax = this._b_relax;
+
+	// existing mapping
+	@- B_OPTIMIZE_PREFIX_IDS
+		if(as_prefix_ids.has(s_prefix_id)) {
+	@:
+		if(s_prefix_id in h_prefixes) {
+	@;
+		// doesn't match existing
+		if(p_prefix_iri !== h_prefixes[s_prefix_id]) {
+			@- B_LOAD
+				return this.error(`Input document must be 'well-formed' to use with Loader; prefix mappings are not allowed to change. Detected IRI change of prefix namespace '${s_prefix_id}' from '${h_prefixes[s_prefix_id]}' to '${p_prefix_iri}'`);
+			@:
+				// emit change event
+				if(this.prefix_change) {
+					this.prefix_change(s_prefix_id, h_prefixes[s_prefix_id], p_prefix_iri);
+				}
+
+				// update prefix
+				h_prefixes[s_prefix_id] = p_prefix_iri;
+			@;
+		}
+	}
+	// first mapping
+	else {
+		// check namespace, invalid
+		if(!b_relax && !RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
+			return this.error(`Invalid namespace for prefixed name: "${s_prefix_id}:"`);
+		}
+
+		// set prefix
+		@- B_LOAD
+			// prefixes are cached and frozen, clone them while assigning new preifx
+			h_prefixes = {
+				...h_prefixes,
+				[s_prefix_id]: p_prefix_iri,
+			};
+		@:
+			h_prefixes[s_prefix_id] = p_prefix_iri;
+		@;
+
+		@- B_OPTIMIZE_PREFIX_IDS
+			as_prefix_ids.add(s_prefix_id);
+			// this._as_prefix_ids = new Set(Object.keys(h_prefixes).sort());
+		@;
+	}
+
+	// check iri, invalid
+	if(!b_relax && !RT_NAMED_NODE_VALID.test(p_prefix_iri)) {
+		return this.error(`Invalid IRI found in prefix delcaration: "${p_prefix_iri}"`);
+	}
+
+	@- B_LOAD
+		// re-cache prefixes
+		this._h_prefixes = factory.cachePrefixes(h_prefixes);
+
+		// update xsd scp string
+		this._scp_xsd_decimal = '^'+concise('@{P_IRI_XSD}decimal', h_prefixes)+'"';
+		this._sc1_rdf_type = concise('@{P_IRI_RDF}type', h_prefixes);
+	@;
+
+	// emit prefix event
+	this.event('prefix', s_prefix_id, p_prefix_iri);
+@;
+
+
 @.{
 	const modal = (h_modes) => h_modes[S_MODE];
 
@@ -289,7 +359,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	const gen_action_prefixed_name = ({b_escapeless, role:s_role}) => ({sj_matched}) => [
 		valid_prefix(sj_matched),
 		modal({
-			read: save_term(s_role, /* syntax: js */ `prefixed_name(sj_matched+'[2]')`),
+			read: save_term(s_role, /* syntax: js */ `this.prefixed_name(${sj_matched}[2])`),
 			load: load_term(s_role, /* syntax: js */ `${sj_matched}[1]`),
 		}),
 	];
@@ -297,7 +367,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	const gen_rule_prefixed_name = modal({
 		read: ({b_escapeless}) => ({role:s_role}) => ({
 			type: 'call',
-			test: /* syntax: js */ `this.match_prefixed_name_escapeless`,
+			test: /* syntax: js */ `this.match_prefixed_name${b_escapeless? '_escapeless': ''}`,
 			action: gen_action_prefixed_name({
 				escapeless: b_escapeless,
 				role: s_role,
@@ -360,7 +430,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			iriref({s_role:'prefix_iri', sj_matched, b_escapeless}),
 			modal({
 				read: /* syntax: js */ `
-					this._update_prefixes();
+					${update_prefixes()}
 				`,
 				load: '',
 			}),
@@ -600,7 +670,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		call: {
 			branches: true,
 			apply: (sj_method, {role:s_role, local_i:b_local_i=false}) => {
-				let sj_no_shadow = sj_method.replace(/[^a-z0-9]/gi, '_');
+				let sj_no_shadow = (sj_method+'_'+s_role).replace(/[^a-z0-9]/gi, '_');
 				let sj_matched = /* syntax: js */ `m_${sj_method.replace(/^this\./, '')}_${s_role}`;
 				return {
 					context: {
@@ -756,7 +826,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				s_body += Array.isArray(z_action)? z_action.flat(Infinity).join('\n'): (z_action || '')+'';
 
 				// there is a goto action, append it
-				if(g_spec.goto) s_body += goto(g_spec.goto);
+				if(g_spec.goto || (null !== g_spec.goto && h_args.goto)) s_body += goto(g_spec.goto || h_args.goto);
 			}
 
 			// final else branch
@@ -781,7 +851,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				// parse state for ${si_state}
 				${si_state}() {
 					// destruct chunk, length, and index
-					let {s, n, i} = this;
+					let s = this.s;
+					let i = this.i;
+					let n = this.n;
 
 					${g_state.preamble || ''}
 
@@ -1184,26 +1256,30 @@ const match_prefixed_name = (s, i) => {
 
 
 @> load_default_graph()
-	this._sc1_graph = '*';
-	let hc4_quads = this._hc4_quads;
+	@- B_LOAD_GSPO_BUILDER
+		this._kh_graph = this._k_builder.openC1Graph('*');
+	@:
+		this._sc1_graph = '*';
+		let hc4_quads = this._hc4_quads;
 
-	// not first encounter w/ graph
-	if('*' in hc3_triples) {
-		this._hc3_triples = hc4_quads['*'];
-	}
-	// first encounter of graph
-	else {
-		hc4_quads[$_KEYS] += 1;
-		this._hc3_triples = hc4_quads['*'] = {
-			[$_KEYS]: 0,
-			[$_QUADS]: 0,
-		};
-	}
+		// not first encounter w/ graph
+		if('*' in hc3_triples) {
+			this._hc3_triples = hc4_quads['*'];
+		}
+		// first encounter of graph
+		else {
+			hc4_quads[$_KEYS] += 1;
+			this._hc3_triples = hc4_quads['*'] = {
+				[$_KEYS]: 0,
+				[$_QUADS]: 0,
+			};
+		}
+	@;
 @;
 
 @> load_graph(sj_expr)
 	@- B_LOAD_GSPO_BUILDER
-		this._kh_graph = this._k_builder.addGraph(@{sj_expr});
+		this._kh_graph = this._k_builder.openC1Graph(@{sj_expr});
 	@:
 		let sc1_graph = this._sc1_graph = @{sj_expr};
 		let hc4_quads = this._hc4_quads;
@@ -1225,19 +1301,25 @@ const match_prefixed_name = (s, i) => {
 
 @> load_subject(sj_expr)
 	@- B_LOAD_GSPO_BUILDER
-		this._kh_grub = this._kh_graph.addSubject(@{sj_expr});
+		this._kh_grub = this._kh_graph.openC1Subject(@{sj_expr});
 	@:
-		let sc1_subject = this._sc1_subject = @{sj_expr};
-		let hc3_triples = this._hc3_triples;
+		@.{
+			const s_rand = Math.round(Math.random()*10e8);
+			const sj_subject = /* syntax: js */ `sc1_subject_${s_rand}`;
+			const sj_triples = /* syntax: js */ `hc3_triples${s_rand}`;
+		}
+
+		let @{sj_subject} = this._sc1_subject = @{sj_expr};
+		let @{sj_triples} = this._hc3_triples;
 
 		// not first encounter w/ subject
-		if(sc1_subject in hc3_triples) {
-			this._hc2_pairs = hc3_triples[sc1_subject];
+		if(@{sj_subject} in @{sj_triples}) {
+			this._hc2_pairs = @{sj_triples}[@{sj_subject}];
 		}
 		// first encounter of subject
 		else {
-			hc3_triples[$_KEYS] += 1;
-			this._hc2_pairs = hc3_triples[sc1_subject] = {
+			@{sj_triples}[$_KEYS] += 1;
+			this._hc2_pairs = @{sj_triples}[@{sj_subject}] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
 			};
@@ -1247,25 +1329,34 @@ const match_prefixed_name = (s, i) => {
 
 @> load_predicate(sj_expr)
 	@- B_LOAD_GSPO_BUILDER
-		this._kh_greed = this._kh_grub.addPredicate(@{sj_expr});
+		this._kh_greed = this._kh_grub.openC1Predicate(@{sj_expr});
 	@:
-		let sc1_predicate = this._sc1_predicate = @{sj_expr};
-		let hc2_pairs = this._hc2_pairs;
+		@.{
+			const s_rand = Math.round(Math.random()*10e8);
+			const sj_predicate = /* syntax: js */ `sc1_predicate_${s_rand}`;
+			const sj_pairs = /* syntax: js */ `hc2_pairs_${s_rand}`;
+		}
+		let @{sj_predicate} = this._sc1_predicate = @{sj_expr};
+		let @{sj_pairs} = this._hc2_pairs;
 
 		// not first encounter w/ predicate
-		if(sc1_predicate in hc2_pairs) {
-			this._as_objects = hc2_pairs[sc1_predicate];
+		if(@{sj_predicate} in @{sj_pairs}) {
+			this._as_objects = @{sj_pairs}[@{sj_predicate}];
 		}
 		// first encounter of predicate
 		else {
-			hc2_pairs[$_KEYS] += 1
-			this._as_objects = hc2_pairs[sc1_predicate] = new Set();
+			@{sj_pairs}[$_KEYS] += 1
+			this._as_objects = @{sj_pairs}[@{sj_predicate}] = new Set();
 		}
 	@;
 @;
 
 @> load_object(sj_expr)
-	this.load_object(@{sj_expr});
+	@- B_LOAD_GSPO_BUILDER
+		this._kh_greed.addC1Object(@{sj_expr});
+	@:
+		this.load_object(@{sj_expr});
+	@;
 @;
 
 @.{
@@ -1410,6 +1501,10 @@ class Reader {
 				// 	}),
 				// };
 			};
+
+			@- B_LOAD_GSPO_BUILDER
+				const k_builder = g_config.into || new PartiallyIndexedTrigDataset();
+			@;
 		@:
 			this.emit_data = factory.unfiltered === dc_factory
 				? function() {
@@ -1474,8 +1569,8 @@ class Reader {
 				_sc1_object: '',
 				_sc1_graph: '*',
 				@- B_LOAD_GSPO_BUILDER
-					_k_builder: null,
-					_kh_graph: null,
+					_k_builder: k_builder,
+					_kh_graph: k_builder.openC1Graph('*'),
 					_kh_grub: null,
 					_kh_greed: null,
 				@:
@@ -1946,7 +2041,7 @@ class Reader {
 	@- B_LOAD
 		@- B_LOAD_GSPO_BUILDER
 			load_object(sc1_object) {
-				this._kh_greed.addObject(sc1_object);
+				this._kh_greed.addC1Object(sc1_object);
 			}
 		@:
 			load_object(sc1_object) {
@@ -2035,7 +2130,24 @@ class Reader {
 		ds_transform.emit('eof', this._h_prefixes);
 
 		@- B_LOAD
-			this.data();
+			@- B_LOAD_GSPO_BUILDER
+				(async() => {
+					const k_dataset = await this._k_builder.deliver();
+
+					ds_transform.emit('load', k_dataset);
+				})();
+			@:
+				const k_self = this;
+				ds_transform.emit('load-trad', {
+					get size() {
+						return k_self._hc3_triples[$_QUADS];
+					},
+
+					distinct() {
+						return k_self._hc3_triples[$_KEYS];
+					},
+				});
+			@;
 		@;
 
 		// close write stream (EOF-signaling)
@@ -2330,48 +2442,22 @@ class Reader {
 
 		const gen_state_literal = (s_type, s_which) => ({
 			rules: {
-				type: 'match',
-				test: /* syntax: js */ `R_STRLIT_${s_type.toUpperCase()}_${s_which.toUpperCase()}_BREAK`,
-				action: /* syntax: js */ `
-					// index of break
-					let i_break = m_break.index;
+				string: () => ({
+					type: 'match',
+					test: /* syntax: js */ `R_STRLIT_${s_type.toUpperCase()}_${s_which.toUpperCase()}_BREAK`,
+					action: ({sj_matched}) => /* syntax: js */ `
+						// index of break
+						let i_break = ${sj_matched}.index;
 
-					// add to contents
-					this._s_literal += s.slice(i, i_break);
+						// add to contents
+						this._s_literal += s.slice(i, i_break);
 
-					// depending on char
-					switch(s[i_break]) {
-						// terminator
-						case ${'single' === s_which? `"'"`: `'"'`}: {
-							// advance index to next token beyond delimiter
-							${whitespace(/* syntax: js */ `i_break + ${'short' === s_type? 1: 3}`)}
-
-							// resume eating whitespace at start of next chunk
-							this._b_trim_start = true;
-
-							// consume rest
-							${goto('datatype_or_langtag')}
-						}
-
-						// escape
-						case '\\\\': {
-							// try to find end
-							R_STRLIT_${s_type.toUpperCase()}_${s_which.toUpperCase()}_TERM.lastIndex = i_break;
-							let m_term = R_STRLIT_${s_type.toUpperCase()}_${s_which.toUpperCase()}_TERM.exec(s);
-
-							// end is in this chunk
-							if(m_term) {
-								// index of terminator
-								let i_term = m_term.index;
-
-								// extract dirty potion
-								let s_dirty = s.slice(i_break, i_term);
-
-								// clean and save
-								this._s_literal += unescape_literal_${s_type}_hard(s_dirty);
-
-								// advance index beyond terminator
-								this.i = i_term + m_term[0].length;
+						// depending on char
+						switch(s[i_break]) {
+							// terminator
+							case ${'single' === s_which? `"'"`: `'"'`}: {
+								// advance index to next token beyond delimiter
+								${whitespace(/* syntax: js */ `i_break + ${'short' === s_type? 1: 3}`)}
 
 								// resume eating whitespace at start of next chunk
 								this._b_trim_start = true;
@@ -2379,44 +2465,72 @@ class Reader {
 								// consume rest
 								${goto('datatype_or_langtag')}
 							}
-							// end is not in this chunk
-							else {
-								// extract whole portion
-								let s_dirty = s.slice(i_break);
 
-								// unescape to clean part
-								let [s_clean, s_incomplete] = unescape_literal_${s_type}_soft(s_dirty);
+							// escape
+							case '\\\\': {
+								// try to find end
+								R_STRLIT_${s_type.toUpperCase()}_${s_which.toUpperCase()}_TERM.lastIndex = i_break;
+								let m_term = R_STRLIT_${s_type.toUpperCase()}_${s_which.toUpperCase()}_TERM.exec(s);
 
-								// save
-								this._s_literal += s_clean;
+								// end is in this chunk
+								if(m_term) {
+									// index of terminator
+									let i_term = m_term.index;
 
-								// set unparsed index
-								i = n - s_incomplete.length;
+									// extract dirty potion
+									let s_dirty = s.slice(i_break, i_term);
 
-								// reached eos; pause normally
-								break string_literal_${s_type}_${s_which};
+									// clean and save
+									this._s_literal += unescape_literal_${s_type}_hard(s_dirty);
+
+									// advance index beyond terminator
+									this.i = i_term + m_term[0].length;
+
+									// resume eating whitespace at start of next chunk
+									this._b_trim_start = true;
+
+									// consume rest
+									${goto('datatype_or_langtag')}
+								}
+								// end is not in this chunk
+								else {
+									// extract whole portion
+									let s_dirty = s.slice(i_break);
+
+									// unescape to clean part
+									let [s_clean, s_incomplete] = unescape_literal_${s_type}_soft(s_dirty);
+
+									// save
+									this._s_literal += s_clean;
+
+									// set unparsed index
+									i = n - s_incomplete.length;
+
+									// reached eos; pause normally
+									break STRING_LITERAL_${s_type.toUpperCase()}_${s_which.toUpperCase()};
+								}
+							}
+
+							${'short' === s_type
+								? /* syntax: js.switch */ `
+									// invalid '\\n'
+									case '\\n': {
+										return this.info_error(\`expected string_literal_${s_type}_${s_which} but invalid line feed character '\\\\n' (newline) within contents. failed to parse a valid token\`);
+									}
+
+									// invalid '\\r'
+									case '\\r': {
+										return this.info_error(\`expected string_literal_${s_type}_${s_which} but invalid form feed character '\\\\r' (carriage return) within contents. failed to parse a valid token\`);
+									}
+								`: ''}
+
+							// invalid
+							default: {
+								console.assert(\`Unhandle invalid character \${JSON.stringify(s[i_break])} case for string_literal_${s_type}_${s_which}\`);
 							}
 						}
-
-						${'short' === s_type
-							? /* syntax: js.switch */ `
-								// invalid '\\n'
-								case '\\n': {
-									return this.info_error(\`expected string_literal_${s_type}_${s_which} but invalid line feed character '\\\\n' (newline) within contents. failed to parse a valid token\`);
-								}
-
-								// invalid '\\r'
-								case '\\r': {
-									return this.info_error(\`expected string_literal_${s_type}_${s_which} but invalid form feed character '\\\\r' (carriage return) within contents. failed to parse a valid token\`);
-								}
-
-								// invalid
-								default: {
-									console.assert(\`Unhandle invalid character \${JSON.stringify(s[i_break])} case for string_literal_${s_type}_${s_which}\`);
-								}
-							`: ''}
-					}
-				`,
+					`,
+				}),
 			},
 			else: 'single' === s_type
 				? /* syntax: js */ `
@@ -2616,11 +2730,15 @@ class Reader {
 			},
 		},
 
-		// string_literal_short: gen_state_literal('short', 'single'),
+		string_literal_short_single: gen_state_literal('short', 'single'),
+		string_literal_short_double: gen_state_literal('short', 'double'),
+		string_literal_long_single: gen_state_literal('long', 'single'),
+		string_literal_long_double: gen_state_literal('long', 'double'),
 
 		datatype: {
 			apply: {
 				role: 'datatype',
+
 			},
 			preamble: modal({
 				read: /* syntax: js */ `
@@ -2646,6 +2764,55 @@ class Reader {
 				// reset literal
 				this._s_literal = '';
 
+				// goto end of statement state
+				${eot()}
+			`,
+		},
+
+		datatype_or_langtag: {
+			apply: {
+				role: 'datatype',
+			},
+			preamble: SJ_REF_X_CHAR,
+			rules: {
+				datatype_or_langtag: () => ({
+					type: 'strs',
+					test: ['^', '@'],
+					action: [
+						// '^^' datatype
+						if_match('R_DOUBLE_CARET'),
+							goto('datatype'),
+
+						// '@' language tag
+						else_if_match('R_LANGTAG', 'm_langtag'),
+							modal({
+								read: /* syntax: js */ `
+									this._kt_object = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
+								`,
+								load: load_object(/* syntax: js */ `'@'+m_langtag[1]+'"'+this._s_literal`),
+							}),
+
+						/* syntax: js */ `
+							// reset literal
+							this._s_literal = '';
+						`,
+
+						// next token definitely datatype or langtag, we are just being interrupted by eos
+						else_retry(),
+					],
+				}),
+				comment: {},
+			},
+			else: /* syntax: js */ `
+				${modal({
+					read: save_term('object', /* syntax: js */ `this._dc_factory.simpleLiteral(this._s_literal)`),
+					load: load_object(/* syntax: js */ `'"'+this._s_literal`),
+				})}
+
+				// reset literal
+				this._s_literal = '';
+			`,
+			fallthrough: /* syntax: js */ `
 				// goto end of statement state
 				${eot()}
 			`,
@@ -3399,80 +3566,12 @@ class Reader {
 		this.after_eot = this.restore_after_eot;
 
 		// emit data
-		this.data();
+		@{emit_data()}
 
 		// resume
 		@{goto('post_object')}
 	}
 	@//@
-
-
-@> update_prefixes()
-	let b_relax = this._b_relax;
-
-	// existing mapping
-	@- B_OPTIMIZE_PREFIX_IDS
-		if(as_prefix_ids.has(s_prefix_id)) {
-	@:
-		if(s_prefix_id in h_prefixes) {
-	@;
-		// doesn't match existing
-		if(p_prefix_iri !== h_prefixes[s_prefix_id]) {
-			@- B_LOAD
-				return this.error(`Input document must be 'well-formed' to use with Loader; prefix mappings are not allowed to change. Detected IRI change of prefix namespace '${s_prefix_id}' from '${h_prefixes[s_prefix_id]}' to '${p_prefix_iri}'`);
-			@:
-				// emit change event
-				if(this.prefix_change) {
-					this.prefix_change(s_prefix_id, h_prefixes[s_prefix_id], p_prefix_iri);
-				}
-
-				// update prefix
-				h_prefixes[s_prefix_id] = p_prefix_iri;
-			@;
-		}
-	}
-	// first mapping
-	else {
-		// check namespace, invalid
-		if(!b_relax && !RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
-			return this.error(`Invalid namespace for prefixed name: "${s_prefix_id}:"`);
-		}
-
-		// set prefix
-		@- B_LOAD
-			// prefixes are cached and frozen, clone them while assigning new preifx
-			h_prefixes = {
-				...h_prefixes,
-				[s_prefix_id]: p_prefix_iri,
-			};
-		@:
-			h_prefixes[s_prefix_id] = p_prefix_iri;
-		@;
-
-		@- B_OPTIMIZE_PREFIX_IDS
-			as_prefix_ids.add(s_prefix_id);
-			// this._as_prefix_ids = new Set(Object.keys(h_prefixes).sort());
-		@;
-	}
-
-	// check iri, invalid
-	if(!b_relax && !RT_NAMED_NODE_VALID.test(p_prefix_iri)) {
-		return this.error(`Invalid IRI found in prefix delcaration: "${s_iri}"`);
-	}
-
-	@- B_LOAD
-		// re-cache prefixes
-		this._h_prefixes = factory.cachePrefixes(h_prefixes);
-
-		// update xsd scp string
-		this._scp_xsd_decimal = '^'+concise('@{P_IRI_XSD}decimal', h_prefixes)+'"';
-		this._sc1_rdf_type = concise('@{P_IRI_RDF}type', h_prefixes);
-	@;
-
-	// emit prefix event
-	this.event('prefix', s_prefix_id, p_prefix_iri);
-@;
-
 
 
 	@//@object-literal

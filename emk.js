@@ -4,6 +4,7 @@ const url = require('url').URL;
 
 const jmacs = require('jmacs');
 const detective = require('detective');
+const ts = require('typescript');
 
 const h_package_tree = require('./emk/aux/package-tree.js');
 const {
@@ -294,6 +295,36 @@ const jmacs_lint = (a_deps=[], a_deps_strict=[]) => ({
 	`,
 });
 
+// recipe to build ts file
+const ts_lint = (a_deps=[], a_deps_strict=[]) => ({
+	deps: [
+		...a_deps,
+		...a_deps_strict,
+		...(a_deps.reduce((a_requires, p_dep) => {
+			// skip directories
+			if(fs.statSync(p_dep).isDirectory()) return a_requires;
+
+			// preprocess using ts
+			let g_preprocess = ts.preprocessFile(fs.readFileSync(p_dep, 'utf8')+'');
+
+			return [
+				...g_preprocess.importedFiles.map(g => g.fileName)
+					.filter(s => s.startsWith('.')),
+			];
+			// .filter(s => s.startsWith('/'))
+			// 	.map(p => path.relative(process.cwd(), p));
+		}, [])),
+	],
+	run: /* syntax: bash */ `
+		npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \
+			--strict --esModuleInterop --skipLibCheck --forceConsistentCasingInfFileNames \
+			--outDir $(dirname $@) -d \
+			&& ${eslint(/* syntax: bash */ `
+				node emk/pretty-print.js $@/$(basename $1)
+			`)}
+	`,
+});
+
 // create intra-library links for development & testing
 const package_node_modules = si_package => ({
 	[`@${s_super}`]: {
@@ -378,8 +409,14 @@ const carry_sub = (pd_src, h_recipe={}, pdr_package=null) => {
 		}
 		// *.jmacs files
 		else if(s_file.endsWith('.js.jmacs')) {
-			let s_dst = s_file.slice(0, -'.jmacs'.length);
+			const s_dst = s_file.replace(/\.jmacs$/, '');
 			h_recipe[s_dst] = () => jmacs_lint([p_src]);
+			a_deps.push(`${pd_dst}/${s_dst}`);
+		}
+		// *.ts file
+		else if(s_file.endsWith('.ts')) {
+			const s_dst = s_file.replace(/\.ts$/, '.js');
+			h_recipe[s_dst] = () => ts_lint([p_src]);
 			a_deps.push(`${pd_dst}/${s_dst}`);
 		}
 		// subdirectory
@@ -392,6 +429,10 @@ const carry_sub = (pd_src, h_recipe={}, pdr_package=null) => {
 
 			// simple deps
 			a_direct.push(`${pd_dst}/${s_file}/**`);
+		}
+		// otherwise, notice
+		else {
+			console.warn(`ignoring '${pd_src}/${s_file}'`);
 		}
 	}
 
@@ -427,7 +468,7 @@ module.exports = async() => {
 
 			let ttl_read;
 			try {
-				ttl_read = require(`@${s_super}/content.ttl.read`);  // eslint-disable-line global-require
+				ttl_read = require(`@${s_super}-stable/content.ttl.read`);  // eslint-disable-line global-require
 			}
 			catch(e_require) {
 				continue;

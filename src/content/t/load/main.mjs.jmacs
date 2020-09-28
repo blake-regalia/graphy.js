@@ -1,0 +1,3 @@
+@$ S_MODE = 'load';
+
+@import '../parse.jmacs';
