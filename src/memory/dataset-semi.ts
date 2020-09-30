@@ -1,32 +1,33 @@
-import * as RDFJS from 'rdf-js';
-
 import {
-	IGreedHandle,
-	IGrubHandle,
-	IGraphHandle,
-	IConciseGspoBuilder,
-	IDataset,
-} from './dataset-interface';
-
-
-import {
+	RDFJS,
 	ConciseNamedNode,
 	ConciseTerm,
 	ConciseNode,
 	PrefixMap,
-	DataFactory,
 	Quad,
 	GraphRole,
-} from '../core/data/factory';
+} from '@graphy/types';
+
+import {
+	DataFactory,
+} from '@graphy/core';
 
 const {
-	concise,
-	fromTerm,
 	c1GraphRole,
 	c1SubjectRole,
 	c1PredicateRole,
 	c1ObjectRole,
+	concise,
+	fromTerm,
 } = DataFactory;
+
+import {
+	IDataset,
+	IConciseGspoBuilder,
+	IGraphHandle,
+	IGrubHandle,
+	IGreedHandle,
+} from './dataset-interface';
 
 
 /**

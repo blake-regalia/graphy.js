@@ -1,21 +1,11 @@
-import * as RDFJS from 'rdf-js';
-
-type RDFJS_QuadGraph = RDFJS.DefaultGraph | RDFJS.NamedNode | RDFJS.BlankNode;
-type RDFJS_QuadSubject = RDFJS.NamedNode | RDFJS.BlankNode;
-type RDFJS_QuadPredicate = RDFJS.NamedNode;
-type RDFJS_QuadObject = RDFJS.NamedNode | RDFJS.BlankNode | RDFJS.Literal;
-
 import {
+	RDFJS,
 	ConciseNamedNode,
 	ConciseTerm,
 	ConciseNode,
 	PrefixMap,
-	SubjectRole,
-	PredicateRole,
-	ObjectRole,
-	GraphRole,
 	Quad,
-} from '../core/data/factory';
+} from '@graphy/types';
 
 /**
  * A handle on a specific (graph, subject, predicate) within an `IConciseGspoTreeBuilder`

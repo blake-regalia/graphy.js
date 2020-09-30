@@ -1500,54 +1500,41 @@ const factory = module.exports = {
 		if(factory === dc_factory || factory.unfiltered === dc_factory) return dc_factory;
 
 		// prep to extend
-		let dc_extend = Object.create(dc_factory);
+		const dc_extend = Object.create(dc_factory);
 		let b_use_extend = false;
 
-		if('function' !== typeof dc_factory.boolean) {
-			let kt_xsd_boolean = dc_factory.namedNode('@{P_IRI_XSD}boolean');
-			dc_extend.boolean = b_value => dc_factory.literal(b_value, kt_xsd_boolean);
-			b_use_extend = true;
+		@*{
+			const H_DATA_CONSTRUCTORS = {
+				xsd: {
+					boolean: /* syntax: js */ `b_value => dc_factory.literal(b_value, kt_xsd_boolean)`,
+					double: /* syntax: js */ `s_value => dc_factory.double(s_value, kt_xsd_double)`,
+					decimal: /* syntax: js */ `s_value => dc_factory.decimal(s_value, kt_xsd_decimal)`,
+					integer: /* syntax: js */ `s_value => dc_factory.integer(s_value, kt_xsd_integer)`,
+				},
+				literal: {
+					simpleLiteral: /* syntax: js */ `s_value => dc_factory.literal(s_value)`,
+					languagedLiteral: /* syntax: js */ `(s_value, s_lang) => dc_factory.literal(s_value, s_lang)`,
+					datatypedLiteral: /* syntax: js */ `(s_value, kt_datatype) => dc_factory.literal(s_value, kt_datatype)`,
+				},
+			};
+
+			for(const [s_type, h_values] of Object.entries(H_DATA_CONSTRUCTORS)) {
+				for(const [si_value, sj_constructor] of Object.entries(h_values)) {
+					yield /* syntax: js */ `
+						if('function' !== typeof dc_factory.${si_value}) {
+							${'xsd' === s_type
+								? /* syntax: js */ `const kt_xsd_${si_value} = dc_factory.namedNode('${P_IRI_XSD}${si_value}');`
+								: ''}
+							dc_extend.${si_value} = ${sj_constructor};
+							b_use_extend = true;
+						}
+					`;
+				}
+			}
 		}
 
-		if('function' !== typeof dc_factory.double) {
-			let kt_xsd_double = dc_factory.namedNode('@{P_IRI_XSD}double');
-			dc_extend.double = s_value => dc_factory.double(s_value, kt_xsd_double);
-			b_use_extend = true;
-		}
-
-		if('function' !== typeof dc_factory.decimal) {
-			let kt_xsd_decimal = dc_factory.namedNode('@{P_IRI_XSD}decimal');
-			dc_extend.decimal = s_value => dc_factory.decimal(s_value, kt_xsd_decimal);
-			b_use_extend = true;
-		}
-
-		if('function' !== typeof dc_factory.integer) {
-			let kt_xsd_integer = dc_factory.namedNode('@{P_IRI_XSD}integer');
-			dc_extend.integer = s_value => dc_factory.integer(s_value, kt_xsd_integer);
-			b_use_extend = true;
-		}
-
-		if('function' !== typeof dc_factory.simpleLiteral) {
-			dc_extend.simpleLiteral = s_value => dc_factory.literal(s_value);
-			b_use_extend = true;
-		}
-
-		if('function' !== typeof dc_factory.languagedLiteral) {
-			dc_extend.languagedLiteral = (s_value, s_lang) => dc_factory.literal(s_value, s_lang);
-			b_use_extend = true;
-		}
-
-		if('function' !== typeof dc_factory.datatypedLiteral) {
-			dc_extend.datatypedLiteral = (s_value, kt_datatype) => dc_factory.literal(s_value, kt_datatype);
-			b_use_extend = true;
-		}
-
-		if(b_use_extend) {
-			return dc_extend;
-		}
-		else {
-			return dc_factory;
-		}
+		// extended or not
+		return b_use_extend? dc_extend: dc_factory
 	},
 
 	raw: g_raw,

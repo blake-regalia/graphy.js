@@ -16,7 +16,7 @@ import {
 	DataFactory,
 	Quad,
 	GraphRole,
-} from '../core/data/factory';
+} from '@graphy/core.data.factory';
 
 const {
 	c1GraphRole,

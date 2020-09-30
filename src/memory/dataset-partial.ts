@@ -1,28 +1,16 @@
-import * as RDFJS from 'rdf-js';
-
-type RDFJS_QuadGraph = RDFJS.DefaultGraph | RDFJS.NamedNode | RDFJS.BlankNode;
-type RDFJS_QuadSubject = RDFJS.NamedNode | RDFJS.BlankNode;
-type RDFJS_QuadPredicate = RDFJS.NamedNode;
-type RDFJS_QuadObject = RDFJS.NamedNode | RDFJS.BlankNode | RDFJS.Literal;
-
 import {
+	RDFJS,
 	ConciseNamedNode,
 	ConciseTerm,
 	ConciseNode,
 	PrefixMap,
-	DataFactory,
 	Quad,
 	GraphRole,
-} from '../core/data/factory';
+} from '@graphy/types';
 
 import {
-	IDataset,
-	IConciseGspoBuilder,
-	IGraphHandle,
-	IGrubHandle,
-	IGreedHandle,
-} from './dataset-interface';
-
+	DataFactory,
+} from '@graphy/core';
 
 const {
 	c1GraphRole,
@@ -32,6 +20,14 @@ const {
 	concise,
 	fromTerm,
 } = DataFactory;
+
+import {
+	IDataset,
+	IConciseGspoBuilder,
+	IGraphHandle,
+	IGrubHandle,
+	IGreedHandle,
+} from './dataset-interface';
 
 
 /**
@@ -428,7 +424,7 @@ export class PartiallyIndexedTrigDataset implements IInternalGraphHandle, IConci
 		const h_prefixes = this._h_prefixes;
 		const yt_subject = g_quad.subject;
 
-		this.openC1Graph(graph_to_c1(g_quad.graph as RDFJS_QuadGraph, h_prefixes))
+		this.openC1Graph(graph_to_c1(g_quad.graph as GraphRole, h_prefixes))
 			.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, h_prefixes): '_:'+yt_subject.value)
 			.openC1Predicate(concise(g_quad.predicate.value, h_prefixes))
 			.addC1Object(fromTerm(g_quad.object).concise());
@@ -441,7 +437,7 @@ export class PartiallyIndexedTrigDataset implements IInternalGraphHandle, IConci
 		const h_prefixes = this._h_prefixes;
 
 		// fetch triples tree
-		const hc3_triples = this._hc4_quads[graph_to_c1(g_quad.graph as RDFJS_QuadGraph, h_prefixes)];
+		const hc3_triples = this._hc4_quads[graph_to_c1(g_quad.graph as GraphRole, h_prefixes)];
 
 		// none
 		if(!hc3_triples) return false;

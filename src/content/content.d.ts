@@ -1,8 +1,11 @@
-import * as RDF from 'rdf-js';
 import EventEmitter = NodeJS.EventEmitter;
+
 import {
     Transform,
 } from 'stream';
+
+import * from '@graphy/types';
+
 import {
     PrefixMap,
     ConciseNamedNode,
