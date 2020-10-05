@@ -1,36 +1,16 @@
 const stream = require('readable-stream');
 
-@> until()
-	@//@object-literal
-	until(s_event, b_return_stream) {
-		return new Promise((fk_until, fe_until) => {
-			// convert error to rejected promise
-			this.on('error', (e_stream) => {
-				fe_until(e_stream);
-			});
-
-			// special cases returns `this`
-			if(b_return_stream) {
-				this.once(s_event, (...a_args) => {
-					fk_until(this, ...a_args);
-				});
-			}
-			else {
-				this.once(s_event, fk_until);
-			}
-		});
-	}
-@;
 
 @> bucket()
+	@//@class
 	bucket(s_encoding='utf8') {
-		let g_readable = this._readableState;
+		const g_readable = this._readableState;
 
 		// object mode
 		if(g_readable.objectMode) {
 			// async operation
 			return new Promise((fk_bucket, fe_bucket) => {
-				let a_data = [];
+				const a_data = [];
 
 				// pipe to writable
 				this.pipe(new stream.Writable({
@@ -139,26 +119,18 @@ class Readable extends stream.Readable {
 		}
 	}
 
-	@{until()}
-
 	@{bucket()}
 }
 
 class Writable extends stream.Writable {
-	@{until()}
-
 	@{rdfjs_import()}
 }
 
 class Duplex extends stream.Duplex {
-	@{until()}
-
 	@{bucket()}
 }
 
 class Transform extends stream.Transform {
-	@{until()}
-
 	@{bucket()}
 
 	@{rdfjs_import()}
@@ -185,52 +157,6 @@ class Transform extends stream.Transform {
 			return stream.Transform.prototype.destroy.call(this, e_destroy);
 		}
 	}
-}
-
-// eslint-disable-next-line no-new-func
-const b_is_node = (new Function(/* syntax: js */ `try {return this===global;}catch(e){return false;}`))();
-
-// deduce the runtime environment
-const [B_BROWSER, B_BROWSERIFY] = (() => 'undefined' === typeof process
-	? [true, false]
-	: (process.browser
-		? [true, true]
-		: ('undefined' === process.versions || 'undefined' === process.versions.node
-			? [true, false]
-			: [false, false])))();
-
-// node.js or browserify; patch for node < v10
-if(B_BROWSERIFY || (b_is_node && (+(/^v(\d+)/.exec(process.version)[1])) < 10)) {
-	// override destroy methods
-	Transform.prototype.destroy = Duplex.prototype.destroy = function(e_destroy, fke_destroy) {
-		this._readableState.destroyed = true;
-		this._writableState.destroyed = true;
-
-		let f_emit_close = () => {
-			if(!this._writableState.emitClose) return;
-			if(!this._readableState.emitClose) return;
-			this.emit('close');
-		};
-
-		this._destroy(e_destroy || null, (e_destroy_re) => {
-			if(!fke_destroy && e_destroy_re) {
-				process.nextTick(() => {
-					this.emit('error', e_destroy_re);
-					f_emit_close();
-				});
-				this._writableState.errorEmitted = true;
-			}
-			else  {
-				process.nextTick(f_emit_close);
-				if(fke_destroy) fke_destroy(e_destroy_re);
-			}
-		});
-
-		return this;
-	};
-
-	// override default _destroy implementations
-	Transform.prototype._destroy = Duplex.prototype._destroy = (e_destroy, fke_destroy) => fke_destroy(e_destroy);
 }
 
 class QuadsToOther extends Transform {

@@ -428,6 +428,14 @@ class GenericTerm {
 				|| (z_other.termType === this.termType && z_other.value === this.value)
 			: false;
 	}
+
+	replace(w_pattern, w_replace) {
+		return new this.constructor(this.value.replace(w_pattern, w_replace));
+	}
+
+	replaceAll(w_pattern, w_replace) {
+		return new this.constructor(this.value.replaceAll(w_pattern, w_replace));
+	}
 } {
 	const gp_self = GenericTerm.prototype;
 	gp_self.isGraphyTerm = true;
@@ -605,6 +613,14 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 				datatype: G_ISOLATE_RDF_LANG_STRING,
 			};
 		}
+
+		replace(w_pattern, w_replace) {
+			return new LanguagedLiteral(this.value.replace(w_pattern, w_replace), this.language);
+		}
+
+		replaceAll(w_pattern, w_replace) {
+			return new LanguagedLiteral(this.value.replaceAll(w_pattern, w_replace), this.language);
+		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -641,6 +657,14 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 				language: this.language,
 				datatype: this.datatype.isolate(),
 			};
+		}
+
+		replace(w_pattern, w_replace) {
+			return new ExplicitlyDatatypedLiteral(this.value.replace(w_pattern, w_replace), this.datatype);
+		}
+
+		replaceAll(w_pattern, w_replace) {
+			return new ExplicitlyDatatypedLiteral(this.value.replaceAll(w_pattern, w_replace), this.datatype);
 		}
 	},
 	/* eslint-enable no-undef */
@@ -1424,6 +1448,24 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 					new Quad(kt_reify, KT_RDF_OBJECT, this.object),
 				],
 			};
+		}
+
+		replace(w_pattern, w_replace) {
+			return new Quad(
+				this.subject.replace(w_pattern, w_replace),
+				this.predicate.replace(w_pattern, w_replace),
+				this.object.replace(w_pattern, w_replace),
+				this.graph.replace(w_pattern, w_replace)
+			);
+		}
+
+		replaceAll(w_pattern, w_replace) {
+			return new Quad(
+				this.subject.replaceAll(w_pattern, w_replace),
+				this.predicate.replaceAll(w_pattern, w_replace),
+				this.object.replaceAll(w_pattern, w_replace),
+				this.graph.replaceAll(w_pattern, w_replace)
+			);
 		}
 	},
 	/* eslint-enable no-undef */

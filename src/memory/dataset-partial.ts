@@ -1,16 +1,21 @@
+/* eslint-disable no-use-before-define */
+
 import {
 	RDFJS,
-	ConciseNamedNode,
-	ConciseTerm,
-	ConciseNode,
+	Concise,
 	PrefixMap,
 	Quad,
-	GraphRole,
-} from '@graphy/types';
+	Dataset,
+	Role,
+// } from '@graphy/types';
+} from '../types/types';
+
+import SyncDataset = Dataset.SyncDataset;
 
 import {
 	DataFactory,
-} from '@graphy/core';
+// } from '@graphy/core';
+} from '../core/core';
 
 const {
 	c1GraphRole,
@@ -22,13 +27,16 @@ const {
 } = DataFactory;
 
 import {
-	IDataset,
-	IConciseGspoBuilder,
-	IGraphHandle,
-	IGrubHandle,
-	IGreedHandle,
-} from './dataset-interface';
+	TrigDataset,
+} from './dataset/trig';
 
+import {
+	$_KEYS,
+	$_QUADS,
+	PartiallyIndexed,
+} from './common';
+import { PartiallyIndexedTrigDataset } from '../../build/ts/memory/dataset-partial';
+import { Graphable } from '../../build/package/core.data.factory/main';
 
 /**
  * @fileoverview
@@ -51,59 +59,22 @@ import {
  */
 
 
-const $_KEYS = Symbol(' (keys)');
-const $_QUADS = Symbol(' (quads)');
+class PartiallyIndexedGreedHandle implements Dataset.GreedHandle {
+	_k_builder: TrigDatasetBuilder;
+	_kh_grub: PartiallyIndexedGrubHandle;
+	_sc1_predicate: Concise.NamedNode;
+	_sc1_subject: Concise.Node;
+	_as_objects: Set<Concise.Term>; 
 
-interface ICountableKeys {
-	[$_KEYS]: number;
-}
-
-interface ICountableQuads extends ICountableKeys {
-	[$_QUADS]: number;
-}
-
-type IObjectReferencesMap = ICountableQuads & {
-	[sc1_predicate: string]: Set<ConciseNode>;
-};
-
-interface IObjectDescriptor {
-	value: ConciseTerm;
-	refs: IObjectReferencesMap;
-}
-
-type IObjectStore = ICountableKeys & {
-	[sc1_object: string]: IObjectDescriptor;
-}
-
-type IProbsTree = ICountableQuads & {
-	[sc1_predicate: string]: Set<ConciseTerm>;
-}
-
-type ITriplesTree = ICountableQuads & {
-	[sc1_subject: string]: IProbsTree;
-}
-
-type IQuadsTree = ICountableQuads & {
-	[sc1_graph: string]: ITriplesTree;
-}
-
-
-class PartiallyIndexedGreedHandle implements IGreedHandle {
-	_k_dataset: PartiallyIndexedTrigDataset;
-	_kh_grub: GrubHandle;
-	_sc1_predicate: ConciseNamedNode;
-	_sc1_subject: ConciseNode;
-	_as_objects: Set<ConciseTerm>; 
-
-	constructor(kh_grub: GrubHandle, sc1_predicate: ConciseNamedNode, as_objects: Set<ConciseNamedNode>) {
-		this._k_dataset = kh_grub._k_dataset;
+	constructor(kh_grub: PartiallyIndexedGrubHandle, sc1_predicate: Concise.NamedNode, as_objects: Set<Concise.NamedNode>) {
+		this._k_builder = kh_grub._k_builder;
 		this._kh_grub = kh_grub;
 		this._sc1_subject = kh_grub._sc1_subject;
 		this._sc1_predicate = sc1_predicate;
 		this._as_objects = as_objects;
 	}
 
-	addC1Object(sc1_object: ConciseTerm): boolean {
+	addC1Object(sc1_object: Concise.Term): boolean {
 		// ref object store
 		const as_objects = this._as_objects;
 
@@ -114,7 +85,7 @@ class PartiallyIndexedGreedHandle implements IGreedHandle {
 		as_objects.add(sc1_object);
 
 		// ref quads tree
-		const hc4_quads = this._k_dataset._hc4_quads;
+		const hc4_quads = this._k_builder._hc4_quads;
 
 		// update quads counter on quads tree
 		hc4_quads[$_QUADS] += 1;
@@ -132,26 +103,26 @@ class PartiallyIndexedGreedHandle implements IGreedHandle {
 		return true;
 	}
 
-	deleteC1Object(sc1_object: ConciseTerm): boolean {
+	deleteC1Object(sc1_object: Concise.Term): boolean {
 		return false;
 	}
 }
 
 
-class GrubHandle implements IGrubHandle {
-	_k_dataset: PartiallyIndexedTrigDataset;
-	_kh_graph: IInternalGraphHandle;
+class PartiallyIndexedGrubHandle implements Dataset.GrubHandle {
+	_k_builder: TrigDatasetBuilder;
+	_kh_graph: InternalGraphHandle;
 	_sc1_subject: string;
-   _hc2_probs: IProbsTree;
+	_hc2_probs: PartiallyIndexed.ProbsTree;
 
-	constructor(k_dataset: PartiallyIndexedTrigDataset, kh_graph: IInternalGraphHandle, sc1_subject: ConciseNode, hc2_probs: IProbsTree) {
-		this._k_dataset = k_dataset;
+	constructor(k_dataset: TrigDatasetBuilder, kh_graph: InternalGraphHandle, sc1_subject: Concise.Node, hc2_probs: PartiallyIndexed.ProbsTree) {
+		this._k_builder = k_dataset;
 		this._kh_graph = kh_graph;
 		this._sc1_subject = sc1_subject;
 		this._hc2_probs = hc2_probs;
 	}
 
-	openC1Predicate(sc1_predicate: ConciseNamedNode): IGreedHandle {
+	openC1Predicate(sc1_predicate: Concise.NamedNode): Dataset.GreedHandle {
 		// increment keys counter
 		const hc2_probs = this._hc2_probs;
 
@@ -172,29 +143,31 @@ class GrubHandle implements IGrubHandle {
 	}
 }
 
-interface IInternalGraphHandle {
-	 _sc1_graph: string;
-	_hc3_triples: ITriplesTree;
+interface InternalGraphHandle {
+	_sc1_graph: string;
+	_hc3_triples: PartiallyIndexed.TriplesTree;
+
+	openC1Subject(sc1_subject: Concise.Node): Dataset.GrubHandle;
 }
 
-class GraphHandle implements IInternalGraphHandle, IGraphHandle {
-	_k_dataset: PartiallyIndexedTrigDataset;
-	 _sc1_graph: string;
-	_hc3_triples: ITriplesTree;
+class PartiallyIndexedGraphHandle implements InternalGraphHandle, Dataset.GraphHandle {
+	_k_builder: TrigDatasetBuilder;
+	_sc1_graph: string;
+	_hc3_triples: PartiallyIndexed.TriplesTree;
 	 
-	constructor(k_dataset: PartiallyIndexedTrigDataset, sc1_graph: ConciseNode, hc3_triples: ITriplesTree) {
-		this._k_dataset = k_dataset;
+	constructor(k_dataset: TrigDatasetBuilder, sc1_graph: Concise.Node, hc3_triples: PartiallyIndexed.TriplesTree) {
+		this._k_builder = k_dataset;
 		this._sc1_graph = sc1_graph;
 		this._hc3_triples = hc3_triples;
 	}
 
-	openC1Subject(sc1_subject: ConciseNode): IGrubHandle {
+	openC1Subject(sc1_subject: Concise.Node): Dataset.GrubHandle {
 		// ref triples tree
 		const hc3_triples = this._hc3_triples;
 
 		// subject exists; return subject handle
 		if(sc1_subject in hc3_triples) {
-			return new GrubHandle(this._k_dataset, this, sc1_subject, hc3_triples[sc1_subject]);
+			return new PartiallyIndexedGrubHandle(this._k_builder, this, sc1_subject, hc3_triples[sc1_subject]);
 		}
 		else {
 			// increment keys counter
@@ -204,15 +177,15 @@ class GraphHandle implements IInternalGraphHandle, IGraphHandle {
 			const hc2_probs = hc3_triples[sc1_subject] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
-			} as IProbsTree;
+			} as PartiallyIndexed.ProbsTree;
 
 			// return subject handle
-			return new GrubHandle(this._k_dataset, this, sc1_subject, hc2_probs);
+			return new PartiallyIndexedGrubHandle(this._k_builder, this, sc1_subject, hc2_probs);
 		}
 	}
 }
 
-function graph_to_c1(yt_graph: GraphRole, h_prefixes: PrefixMap) {
+function graph_to_c1(yt_graph: Role.Graph, h_prefixes: PrefixMap): Concise.Graphable {
 	// depending on graph term type
 	switch(yt_graph.termType) {
 		// default graph
@@ -226,10 +199,19 @@ function graph_to_c1(yt_graph: GraphRole, h_prefixes: PrefixMap) {
 		}
 
 		// blank node
-		default: {
+		case 'BlankNode': {
 			return '_:'+yt_graph.value;
 		}
+
+		// other
+		default: {
+			return '';
+		}
 	}
+}
+
+function dataset_delivered(): never {
+	throw new Error(`Cannot use builder after dataset has been delivered`);;
 }
 
 /**
@@ -238,11 +220,10 @@ function graph_to_c1(yt_graph: GraphRole, h_prefixes: PrefixMap) {
  * SOME: gs?o
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
-export class PartiallyIndexedTrigDataset implements IInternalGraphHandle, IConciseGspoBuilder<IDataset>, IDataset {
-	_h_objects: IObjectStore;
+export class TrigDatasetBuilder implements InternalGraphHandle, Dataset.GspoBuilder<SyncDataset> {
 	_sc1_graph = '*';
-	_hc3_triples: ITriplesTree;
-	_hc4_quads: IQuadsTree;
+	_hc3_triples: PartiallyIndexed.TriplesTree;
+	_hc4_quads: PartiallyIndexed.QuadsTree;
 	_h_prefixes: PrefixMap;
 
 	static supportsStar = false;
@@ -250,132 +231,25 @@ export class PartiallyIndexedTrigDataset implements IInternalGraphHandle, IConci
 	constructor(h_prefixes={} as PrefixMap) {
 		this._h_prefixes = h_prefixes;
 
-		this._h_objects = {
-			[$_KEYS]: 0,
-		} as IObjectStore;
-
-		let hc3_triples = this._hc3_triples = {
+		const hc3_triples = this._hc3_triples = {
 			[$_KEYS]: 0,
 			[$_QUADS]: 0,
-		} as ITriplesTree;
+		} as PartiallyIndexed.TriplesTree;
 
 		this._hc4_quads = {
 			[$_KEYS]: 1,
 			[$_QUADS]: 0,
 			'*': hc3_triples,
-		} as IQuadsTree;
+		} as PartiallyIndexed.QuadsTree;
 	}
 
-	get size() {
-		return this._hc4_quads[$_QUADS];
-	}
-
-	async deliver(): Promise<IDataset> {
-		return this;
-	}
-
-	*[Symbol.iterator](): Iterator<Quad> {
-		// ref prefixes
-		const h_prefixes = this._h_prefixes;
-
-		// ref quads tree
-		const hc4_quads = this._hc4_quads;
-
-		// each graph
-		for(const sc1_graph in hc4_quads) {
-			// make graph node
-			const kt_graph = c1GraphRole(sc1_graph, h_prefixes);
-
-			// ref triples tree
-			const hc3_triples = hc4_quads[sc1_graph];
-
-			// each subject
-			for(const sc1_subject in hc3_triples) {
-				// make subject node
-				const kt_subject = c1SubjectRole(sc1_subject, h_prefixes);
-
-				// ref probs tree
-				const hc2_probs = hc3_triples[sc1_subject];
-
-				// each predicate
-				for(const sc1_predicate in hc2_probs) {
-					// make predicate node
-					const kt_predicate = c1PredicateRole(sc1_predicate, h_prefixes);
-
-					// ref objects
-					const as_objects = hc2_probs[sc1_predicate];
-
-					// each object
-					for(const sc1_object of as_objects) {
-						// make object node
-						const kt_object = c1ObjectRole(sc1_object, h_prefixes);
-
-						// yield quad
-						yield DataFactory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
-					}
-				}
-			}
-		}
-	}
-
-	distinct(s_which: 'graphs' | 'subjects' | 'predicates' | 'objects') {
-		switch(s_which) {
-			case 'graphs': return this._hc4_quads[$_KEYS];
-			case 'subjects': {
-				// only default graph
-				if(1 === this._hc4_quads[$_KEYS]) {
-					return this._hc3_triples[$_KEYS];
-				}
-				// multiple graphs
-				else {
-					let as_subjects = new Set();
-					for(let sc1_graph in this._hc4_quads) {
-						as_subjects = new Set([...as_subjects, ...Object.keys(this._hc4_quads[sc1_graph])]);
-					}
-					return as_subjects.size;
-				}
-			}
-			case 'predicates': {
-				// only default graph
-				if(1 === this._hc4_quads[$_KEYS]) {
-					let as_predicates = new Set();
-					for(let sc1_predicate in this._hc3_triples) {
-						as_predicates.add(sc1_predicate);
-					}
-					return as_predicates.size;
-				}
-				// multiple graphs
-				else {
-					let as_predicates = new Set();
-					const h_objects = this._h_objects;
-					for(let sc1_object in h_objects) {
-						for(let sc1_predicate in Object.keys(h_objects[sc1_object].refs)) {
-							as_predicates.add(sc1_predicate);
-						}
-					}
-					return as_predicates.size;
-				}
-			}
-			case 'objects': {
-				return this._h_objects[$_KEYS];
-			}
-			default: {
-				throw new Error(`cannot query for distinct '${s_which}'`);
-			}
-		}
-	}
-
-	attachPrefixes(h_prefixes: PrefixMap) {
-		this._h_prefixes = h_prefixes;
-	}
-
-	openC1Graph(sc1_graph: ConciseNode): IGraphHandle {
+	openC1Graph(sc1_graph: Concise.Graphable): Dataset.GraphHandle {
 		// ref quads tree
 		const hc4_quads = this._hc4_quads;
 
 		// graph exists; return subject handle
 		if(sc1_graph in hc4_quads) {
-			return new GraphHandle(this, sc1_graph, hc4_quads[sc1_graph]);
+			return new PartiallyIndexedGraphHandle(this, sc1_graph, hc4_quads[sc1_graph]);
 		}
 		else {
 			// increment keys counter
@@ -385,20 +259,20 @@ export class PartiallyIndexedTrigDataset implements IInternalGraphHandle, IConci
 			const hc3_triples = hc4_quads[sc1_graph] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
-			} as ITriplesTree;
+			} as PartiallyIndexed.TriplesTree;
 
 			// return subject handle
-			return new GraphHandle(this, sc1_graph, hc3_triples);
+			return new PartiallyIndexedGraphHandle(this, sc1_graph, hc3_triples);
 		}
 	}
 
-	openC1Subject(sc1_subject: ConciseNode): IGrubHandle {
+	openC1Subject(sc1_subject: Concise.Node): Dataset.GrubHandle {
 		// ref default graph triples tree
 		const hc3_triples = this._hc3_triples;
 
 		// subject exists; return subject handle
 		if(sc1_subject in hc3_triples) {
-			return new GrubHandle(this, this, sc1_subject, hc3_triples[sc1_subject]);
+			return new PartiallyIndexedGrubHandle(this, this, sc1_subject, hc3_triples[sc1_subject]);
 		}
 		// subject not yet exists
 		else {
@@ -409,81 +283,31 @@ export class PartiallyIndexedTrigDataset implements IInternalGraphHandle, IConci
 			const hc2_probs = hc3_triples[sc1_subject] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
-			} as IProbsTree;
+			} as PartiallyIndexed.ProbsTree;
 
 			// return subject handle
-			return new GrubHandle(this, this, sc1_subject, hc2_probs);
+			return new PartiallyIndexedGrubHandle(this, this, sc1_subject, hc2_probs);
 		}
 	}
 
-	addTriple(sc1_subject: ConciseNode, sc1_predicate: ConciseNamedNode, sc1_object: ConciseTerm) {
-		return this.openC1Subject(sc1_subject).openC1Predicate(sc1_predicate).addC1Object(sc1_object);
+	openGraph(yt_graph: Role.Graph): Dataset.GraphHandle {
+		return this.openC1Graph(graph_to_c1(yt_graph, this._h_prefixes));
 	}
 
-	add(g_quad: RDFJS.Quad): IDataset {
-		const h_prefixes = this._h_prefixes;
-		const yt_subject = g_quad.subject;
-
-		this.openC1Graph(graph_to_c1(g_quad.graph as GraphRole, h_prefixes))
-			.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, h_prefixes): '_:'+yt_subject.value)
-			.openC1Predicate(concise(g_quad.predicate.value, h_prefixes))
-			.addC1Object(fromTerm(g_quad.object).concise());
-
-		return this;
+	openSubject(yt_subject: Role.Subject): Dataset.GrubHandle {
+		return this.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, this._h_prefixes): '_:'+yt_subject.value);
 	}
 
-	has(g_quad: RDFJS.Quad): boolean {
-		// ref prefixes
-		const h_prefixes = this._h_prefixes;
+	async deliver(dc_dataset: { new(): SyncDataset }=TrigDataset): Promise<SyncDataset> {  // eslint-disable-line require-await
+		// simplify garbage collection and prevent future modifications to dataset
+		const hc4_quads = this._hc4_quads;
+		this._hc4_quads = null as unknown as PartiallyIndexed.QuadsTree;
+		this._hc3_triples = null as unknown as PartiallyIndexed.TriplesTree;
+		this.openC1Subject = dataset_delivered;
+		this.openC1Graph = dataset_delivered;
 
-		// fetch triples tree
-		const hc3_triples = this._hc4_quads[graph_to_c1(g_quad.graph as GraphRole, h_prefixes)];
 
-		// none
-		if(!hc3_triples) return false;
-
-		// ref subject
-		const yt_subject = g_quad.subject;
-
-		// create subject c1
-		const sc1_subject = 'NamedNode' === yt_subject.termType? concise(yt_subject.value, h_prefixes): '_:'+yt_subject.value;
-
-		// fetch probs tree
-		const hc2_probs = hc3_triples[concise(sc1_subject, h_prefixes)]
-
-		// none
-		if(!hc2_probs) return false;
-
-		// fetch objects list
-		const as_objects = hc2_probs[concise(g_quad.predicate.value, h_prefixes)]
-
-		// none
-		if(!as_objects) return false;
-
-		// create object c1
-		const sc1_object = fromTerm(g_quad.object).concise(h_prefixes);
-
-		// use native set .has()
-		return as_objects.has(sc1_object);
-	}
-
-	_match_subject(sc1_subject: ConciseNode) {
-
-	}
-
-	match(yt_subject?: RDFJS.Term, yt_predicate?: RDFJS.Term, yt_object?: RDFJS.Term, yt_graph?: RDFJS.Term): IDataset {
-		return this;
-	}
-
-	delete(g_quad: RDFJS.Quad): IDataset {
-		const h_prefixes = this._h_prefixes;
-		const yt_subject = g_quad.subject;
-
-		this.openC1Graph(graph_to_c1(g_quad.graph as GraphRole, h_prefixes))
-			.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, h_prefixes): '_:'+yt_subject.value)
-			.openC1Predicate(concise(g_quad.predicate.value, h_prefixes))
-			.deleteC1Object(fromTerm(g_quad.object).concise(h_prefixes));
-
-		return this;
+		// create dataset
+		return new dc_dataset(hc4_quads, this._h_prefixes);
 	}
 }
