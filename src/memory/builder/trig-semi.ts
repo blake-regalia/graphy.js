@@ -1,18 +1,15 @@
 /* eslint-disable no-use-before-define */
 import {
 	RDFJS,
-	ConciseNamedNode,
-	ConciseTerm,
-	ConciseNode,
-	PrefixMap,
+	C1,
+	Role,
 	Quad,
-	GraphRole,
-	SyncDataset,
-	ConciseGspoBuilder,
-	GraphHandle,
-	GrubHandle,
-	GreedHandle,
+	PrefixMap,
+	Dataset,
 } from '@graphy/types';
+
+import SyncC1Dataset = Dataset.SyncC1Dataset;
+import SyncGspoBuilder = Dataset.SyncGspoBuilder;
 
 import {
 	DataFactory,
@@ -62,11 +59,11 @@ interface CountableQuads extends CountableKeys {
 }
 
 type ObjectReferencesMap = CountableQuads & {
-	[sc1_predicate: string]: Set<ConciseNode>;
+	[sc1_predicate: string]: Set<C1.Object>;
 };
 
 interface ObjectDescriptor {
-	value: ConciseTerm;
+	value: C1.Object;
 	refs: ObjectReferencesMap;
 }
 
@@ -87,14 +84,14 @@ type QuadsTree = CountableQuads & {
 }
 
 
-class SemiIndexedGreedHandle implements GreedHandle {
+class SemiIndexedGreedHandle implements Dataset.GraspHandle {
 	_k_dataset: SemiIndexedTrigDataset;
 	_kh_grub: SemiIndexedGrubHandle;
-	_sc1_predicate: ConciseNamedNode;
-	_sc1_subject: ConciseNode;
+	_sc1_predicate: C1.Predicate;
+	_sc1_subject: C1.Subject;
 	_as_objects: Set<ObjectDescriptor>;
 
-	constructor(kh_grub: SemiIndexedGrubHandle, sc1_predicate: ConciseNamedNode, as_objects: Set<ObjectDescriptor>) {
+	constructor(kh_grub: SemiIndexedGrubHandle, sc1_predicate: C1.Predicate, as_objects: Set<ObjectDescriptor>) {
 		this._k_dataset = kh_grub._k_dataset;
 		this._kh_grub = kh_grub;
 		this._sc1_subject = kh_grub._sc1_subject;
@@ -102,7 +99,7 @@ class SemiIndexedGreedHandle implements GreedHandle {
 		this._as_objects = as_objects;
 	}
 
-	addC1Object(sc1_object: ConciseTerm): boolean {
+	addC1Object(sc1_object: C1.Object): boolean {
 		// ref object store
 		const h_objects = this._k_dataset._h_objects;
 		const as_objects = this._as_objects;
@@ -183,7 +180,7 @@ class SemiIndexedGreedHandle implements GreedHandle {
 	}
 
 
-	deleteC1Object(sc1_object: ConciseTerm): boolean {
+	deleteC1Object(sc1_object: C1.Object): boolean {
 		// ref object store
 		const h_objects = this._k_dataset._h_objects;
 
@@ -319,20 +316,20 @@ class SemiIndexedGreedHandle implements GreedHandle {
 }
 
 
-class SemiIndexedGrubHandle implements GrubHandle {
+class SemiIndexedGrubHandle implements Dataset.GrubHandle {
 	_k_dataset: SemiIndexedTrigDataset;
 	_kh_graph: InternalGraphHandle;
 	_sc1_subject: string;
 	_hc2_probs: ProbsTree;
 
-	constructor(k_dataset: SemiIndexedTrigDataset, kh_graph: InternalGraphHandle, sc1_subject: ConciseNode, hc2_probs: ProbsTree) {
+	constructor(k_dataset: SemiIndexedTrigDataset, kh_graph: InternalGraphHandle, sc1_subject: C1.Subject, hc2_probs: ProbsTree) {
 		this._k_dataset = k_dataset;
 		this._kh_graph = kh_graph;
 		this._sc1_subject = sc1_subject;
 		this._hc2_probs = hc2_probs;
 	}
 
-	openC1Predicate(sc1_predicate: ConciseNamedNode): GreedHandle {
+	openC1Predicate(sc1_predicate: C1.Predicate): Dataset.GraspHandle {
 		// increment keys counter
 		const hc2_probs = this._hc2_probs;
 
@@ -358,18 +355,18 @@ interface InternalGraphHandle {
 	_hc3_triples: TriplesTree;
 }
 
-class SemiIndexedGraphHandle implements InternalGraphHandle, GraphHandle {
+class SemiIndexedGraphHandle implements InternalGraphHandle, Dataset.GraphHandle {
 	_k_dataset: SemiIndexedTrigDataset;
 	_sc1_graph: string;
 	_hc3_triples: TriplesTree;
 
-	constructor(k_dataset: SemiIndexedTrigDataset, sc1_graph: ConciseNode, hc3_triples: TriplesTree) {
+	constructor(k_dataset: SemiIndexedTrigDataset, sc1_graph: C1.Graph, hc3_triples: TriplesTree) {
 		this._k_dataset = k_dataset;
 		this._sc1_graph = sc1_graph;
 		this._hc3_triples = hc3_triples;
 	}
 
-	openC1Subject(sc1_subject: ConciseNode): GrubHandle {
+	openC1Subject(sc1_subject: C1.Subject): Dataset.GrubHandle {
 		// ref triples tree
 		const hc3_triples = this._hc3_triples;
 
@@ -393,7 +390,7 @@ class SemiIndexedGraphHandle implements InternalGraphHandle, GraphHandle {
 	}
 }
 
-function graph_to_c1(yt_graph: GraphRole, h_prefixes: PrefixMap) {
+function graph_to_c1(yt_graph: Role.Graph, h_prefixes: PrefixMap) {
 	// depending on graph term type
 	switch(yt_graph.termType) {
 		// default graph
@@ -420,7 +417,7 @@ function graph_to_c1(yt_graph: GraphRole, h_prefixes: PrefixMap) {
  * SOME: gs?o
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
-export class SemiIndexedTrigDataset implements InternalGraphHandle, ConciseGspoBuilder<SyncDataset>, SyncDataset {
+export class SemiIndexedTrigDataset implements InternalGraphHandle, SyncGspoBuilder<SyncC1Dataset>, Dataset.SyncDataset {
 	_h_objects: ObjectStore;
 	_sc1_graph = '*';
 	_hc3_triples: TriplesTree;
@@ -452,8 +449,8 @@ export class SemiIndexedTrigDataset implements InternalGraphHandle, ConciseGspoB
 		return this._hc4_quads[$_QUADS];
 	}
 
-	async deliver(): Promise<SyncDataset> {  // eslint-disable-line require-await
-		return this as SyncDataset;
+	deliver(): Dataset.SyncC1Dataset {
+		return new SemiIndexedTrigDataset();
 	}
 
 	* [Symbol.iterator](): Iterator<Quad> {

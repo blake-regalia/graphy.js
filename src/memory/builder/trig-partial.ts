@@ -2,41 +2,43 @@
 
 import {
 	RDFJS,
-	Concise,
+	C1,
 	PrefixMap,
 	Quad,
 	Dataset,
 	Role,
-// } from '@graphy/types';
-} from '../types/types';
+} from '@graphy/types';
 
-import SyncDataset = Dataset.SyncDataset;
+import SyncC1Dataset = Dataset.SyncC1Dataset;
 
 import {
 	DataFactory,
 // } from '@graphy/core';
-} from '../core/core';
+} from '../../core/core';
 
 const {
-	c1GraphRole,
-	c1SubjectRole,
-	c1PredicateRole,
-	c1ObjectRole,
+	c1Graph,
+	c1Subject,
+	c1Predicate,
+	c1Object,
 	concise,
 	fromTerm,
 } = DataFactory;
 
 import {
 	TrigDataset,
-} from './dataset/trig';
+} from '../dataset/trig-partial';
 
 import {
 	$_KEYS,
+	$_OVERLAY,
 	$_QUADS,
+	$_SUPPORTING,
+	Generic,
 	PartiallyIndexed,
-} from './common';
-import { PartiallyIndexedTrigDataset } from '../../build/ts/memory/dataset-partial';
-import { Graphable } from '../../build/package/core.data.factory/main';
+} from '../common';
+
+import overlayTree = Generic.overlayTree;
 
 /**
  * @fileoverview
@@ -47,7 +49,7 @@ import { Graphable } from '../../build/package/core.data.factory/main';
  *  ├─────────┴───────────┼─────────────┴──────────┤
  *  │        grub         │           prob         │
  *  ├─────────────────────┴─────────────┬──────────┤
- *  │               greed               │░░░░░░░░░░│
+ *  │               grasp               │░░░░░░░░░░│
  *  ├─────────┬─────────────────────────┴──────────┤
  *  │░░░░░░░░░│         spred           │░░░░░░░░░░│
  *  ├─────────┼─────────────────────────┴──────────┤
@@ -58,15 +60,19 @@ import { Graphable } from '../../build/package/core.data.factory/main';
  * 
  */
 
+type Deliverable = Function & {
+	new(hc4_quads: PartiallyIndexed.QuadsTree, h_prefixes: PrefixMap): SyncC1Dataset;
+}
 
-class PartiallyIndexedGreedHandle implements Dataset.GreedHandle {
+
+class GraspHandle implements PartiallyIndexed.GraspHandle {
 	_k_builder: TrigDatasetBuilder;
-	_kh_grub: PartiallyIndexedGrubHandle;
-	_sc1_predicate: Concise.NamedNode;
-	_sc1_subject: Concise.Node;
-	_as_objects: Set<Concise.Term>; 
+	_kh_grub: GrubHandle;
+	_sc1_predicate: C1.Predicate;
+	_sc1_subject: C1.Subject;
+	_as_objects: Set<C1.Term>; 
 
-	constructor(kh_grub: PartiallyIndexedGrubHandle, sc1_predicate: Concise.NamedNode, as_objects: Set<Concise.NamedNode>) {
+	constructor(kh_grub: GrubHandle, sc1_predicate: C1.Predicate, as_objects: Set<C1.NamedNode>) {
 		this._k_builder = kh_grub._k_builder;
 		this._kh_grub = kh_grub;
 		this._sc1_subject = kh_grub._sc1_subject;
@@ -74,7 +80,7 @@ class PartiallyIndexedGreedHandle implements Dataset.GreedHandle {
 		this._as_objects = as_objects;
 	}
 
-	addC1Object(sc1_object: Concise.Term): boolean {
+	addC1Object(sc1_object: C1.Object): boolean {
 		// ref object store
 		const as_objects = this._as_objects;
 
@@ -103,32 +109,32 @@ class PartiallyIndexedGreedHandle implements Dataset.GreedHandle {
 		return true;
 	}
 
-	deleteC1Object(sc1_object: Concise.Term): boolean {
+	deleteC1Object(sc1_object: C1.Object): boolean {
 		return false;
 	}
 }
 
 
-class PartiallyIndexedGrubHandle implements Dataset.GrubHandle {
+class GrubHandle implements PartiallyIndexed.GrubHandle {
 	_k_builder: TrigDatasetBuilder;
-	_kh_graph: InternalGraphHandle;
-	_sc1_subject: string;
+	_kh_graph: PartiallyIndexed.GraphHandle;
+	_sc1_subject: C1.Subject;
 	_hc2_probs: PartiallyIndexed.ProbsTree;
 
-	constructor(k_dataset: TrigDatasetBuilder, kh_graph: InternalGraphHandle, sc1_subject: Concise.Node, hc2_probs: PartiallyIndexed.ProbsTree) {
+	constructor(k_dataset: TrigDatasetBuilder, kh_graph: PartiallyIndexed.GraphHandle, sc1_subject: C1.Subject, hc2_probs: PartiallyIndexed.ProbsTree) {
 		this._k_builder = k_dataset;
 		this._kh_graph = kh_graph;
 		this._sc1_subject = sc1_subject;
 		this._hc2_probs = hc2_probs;
 	}
 
-	openC1Predicate(sc1_predicate: Concise.NamedNode): Dataset.GreedHandle {
+	openC1Predicate(sc1_predicate: C1.Predicate): Dataset.GraspHandle {
 		// increment keys counter
 		const hc2_probs = this._hc2_probs;
 
 		// predicate exists; return tuple handle
 		if(sc1_predicate in hc2_probs) {
-			return new PartiallyIndexedGreedHandle(this, sc1_predicate, hc2_probs[sc1_predicate]);
+			return new GraspHandle(this, sc1_predicate, hc2_probs[sc1_predicate]);
 		}
 		else {
 			// increment keys counter
@@ -138,54 +144,44 @@ class PartiallyIndexedGrubHandle implements Dataset.GrubHandle {
 			const as_objects = hc2_probs[sc1_predicate] = new Set();
 
 			// return tuple handle
-			return new PartiallyIndexedGreedHandle(this, sc1_predicate, as_objects);
+			return new GraspHandle(this, sc1_predicate, as_objects);
 		}
 	}
 }
 
-interface InternalGraphHandle {
-	_sc1_graph: string;
-	_hc3_triples: PartiallyIndexed.TriplesTree;
-
-	openC1Subject(sc1_subject: Concise.Node): Dataset.GrubHandle;
-}
-
-class PartiallyIndexedGraphHandle implements InternalGraphHandle, Dataset.GraphHandle {
+class StandaloneGraphHandle implements PartiallyIndexed.GraphHandle {
 	_k_builder: TrigDatasetBuilder;
 	_sc1_graph: string;
 	_hc3_triples: PartiallyIndexed.TriplesTree;
 	 
-	constructor(k_dataset: TrigDatasetBuilder, sc1_graph: Concise.Node, hc3_triples: PartiallyIndexed.TriplesTree) {
+	constructor(k_dataset: TrigDatasetBuilder, sc1_graph: C1.Graph, hc3_triples: PartiallyIndexed.TriplesTree) {
 		this._k_builder = k_dataset;
 		this._sc1_graph = sc1_graph;
 		this._hc3_triples = hc3_triples;
 	}
 
-	openC1Subject(sc1_subject: Concise.Node): Dataset.GrubHandle {
+	openC1Subject(sc1_subject: C1.Subject): Dataset.GrubHandle {
 		// ref triples tree
 		const hc3_triples = this._hc3_triples;
 
 		// subject exists; return subject handle
 		if(sc1_subject in hc3_triples) {
-			return new PartiallyIndexedGrubHandle(this._k_builder, this, sc1_subject, hc3_triples[sc1_subject]);
+			return new GrubHandle(this._k_builder, this, sc1_subject, hc3_triples[sc1_subject]);
 		}
 		else {
 			// increment keys counter
 			hc3_triples[$_KEYS] += 1;
 
 			// create subject w/ empty probs tree
-			const hc2_probs = hc3_triples[sc1_subject] = {
-				[$_KEYS]: 0,
-				[$_QUADS]: 0,
-			} as PartiallyIndexed.ProbsTree;
+			const hc2_probs = hc3_triples[sc1_subject] = overlayTree() as PartiallyIndexed.ProbsTree;
 
 			// return subject handle
-			return new PartiallyIndexedGrubHandle(this._k_builder, this, sc1_subject, hc2_probs);
+			return new GrubHandle(this._k_builder, this, sc1_subject, hc2_probs);
 		}
 	}
 }
 
-function graph_to_c1(yt_graph: Role.Graph, h_prefixes: PrefixMap): Concise.Graphable {
+function graph_to_c1(yt_graph: Role.Graph, h_prefixes: PrefixMap): C1.Graph {
 	// depending on graph term type
 	switch(yt_graph.termType) {
 		// default graph
@@ -220,7 +216,7 @@ function dataset_delivered(): never {
  * SOME: gs?o
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
-export class TrigDatasetBuilder implements InternalGraphHandle, Dataset.GspoBuilder<SyncDataset> {
+export class TrigDatasetBuilder implements PartiallyIndexed.GraphHandle, Dataset.SyncGspoBuilder<SyncC1Dataset> {
 	_sc1_graph = '*';
 	_hc3_triples: PartiallyIndexed.TriplesTree;
 	_hc4_quads: PartiallyIndexed.QuadsTree;
@@ -228,51 +224,40 @@ export class TrigDatasetBuilder implements InternalGraphHandle, Dataset.GspoBuil
 
 	static supportsStar = false;
 
-	constructor(h_prefixes={} as PrefixMap) {
+	constructor(h_prefixes={} as PrefixMap, kd_init=TrigDataset.empty(h_prefixes)) {
 		this._h_prefixes = h_prefixes;
 
-		const hc3_triples = this._hc3_triples = {
-			[$_KEYS]: 0,
-			[$_QUADS]: 0,
-		} as PartiallyIndexed.TriplesTree;
-
-		this._hc4_quads = {
-			[$_KEYS]: 1,
-			[$_QUADS]: 0,
-			'*': hc3_triples,
-		} as PartiallyIndexed.QuadsTree;
+		this._hc4_quads = kd_init._hc4_quads as PartiallyIndexed.QuadsTree;
+		this._hc3_triples = kd_init._hc3_triples as PartiallyIndexed.TriplesTree;
 	}
 
-	openC1Graph(sc1_graph: Concise.Graphable): Dataset.GraphHandle {
+	openC1Graph(sc1_graph: C1.Graphable): Dataset.GraphHandle {
 		// ref quads tree
 		const hc4_quads = this._hc4_quads;
 
 		// graph exists; return subject handle
 		if(sc1_graph in hc4_quads) {
-			return new PartiallyIndexedGraphHandle(this, sc1_graph, hc4_quads[sc1_graph]);
+			return new StandaloneGraphHandle(this, sc1_graph, hc4_quads[sc1_graph]);
 		}
 		else {
 			// increment keys counter
 			hc4_quads[$_KEYS] += 1;
 
 			// create graph w/ empty triples tree
-			const hc3_triples = hc4_quads[sc1_graph] = {
-				[$_KEYS]: 0,
-				[$_QUADS]: 0,
-			} as PartiallyIndexed.TriplesTree;
+			const hc3_triples = hc4_quads[sc1_graph] = overlayTree() as PartiallyIndexed.TriplesTree;
 
 			// return subject handle
-			return new PartiallyIndexedGraphHandle(this, sc1_graph, hc3_triples);
+			return new StandaloneGraphHandle(this, sc1_graph, hc3_triples);
 		}
 	}
 
-	openC1Subject(sc1_subject: Concise.Node): Dataset.GrubHandle {
+	openC1Subject(sc1_subject: C1.Node): Dataset.GrubHandle {
 		// ref default graph triples tree
 		const hc3_triples = this._hc3_triples;
 
 		// subject exists; return subject handle
 		if(sc1_subject in hc3_triples) {
-			return new PartiallyIndexedGrubHandle(this, this, sc1_subject, hc3_triples[sc1_subject]);
+			return new GrubHandle(this, this, sc1_subject, hc3_triples[sc1_subject]);
 		}
 		// subject not yet exists
 		else {
@@ -280,13 +265,10 @@ export class TrigDatasetBuilder implements InternalGraphHandle, Dataset.GspoBuil
 			hc3_triples[$_KEYS] += 1;
 
 			// create subject w/ empty probs tree
-			const hc2_probs = hc3_triples[sc1_subject] = {
-				[$_KEYS]: 0,
-				[$_QUADS]: 0,
-			} as PartiallyIndexed.ProbsTree;
+			const hc2_probs = hc3_triples[sc1_subject] = overlayTree() as PartiallyIndexed.ProbsTree;
 
 			// return subject handle
-			return new PartiallyIndexedGrubHandle(this, this, sc1_subject, hc2_probs);
+			return new GrubHandle(this, this, sc1_subject, hc2_probs);
 		}
 	}
 
@@ -298,7 +280,7 @@ export class TrigDatasetBuilder implements InternalGraphHandle, Dataset.GspoBuil
 		return this.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, this._h_prefixes): '_:'+yt_subject.value);
 	}
 
-	async deliver(dc_dataset: { new(): SyncDataset }=TrigDataset): Promise<SyncDataset> {  // eslint-disable-line require-await
+	deliver(dc_dataset: Deliverable=TrigDataset): SyncC1Dataset {  // eslint-disable-line require-await
 		// simplify garbage collection and prevent future modifications to dataset
 		const hc4_quads = this._hc4_quads;
 		this._hc4_quads = null as unknown as PartiallyIndexed.QuadsTree;

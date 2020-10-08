@@ -1,5 +1,5 @@
 import * as RDFJS from 'rdf-js';
-import { ConciseNamedNode } from '../../build/package/core.data.factory/main';
+import { ConciseNamedNode, ObjectRole, SubjectRole } from '../../build/package/core.data.factory/main';
 
 export {
 	RDFJS as RDFJS,
@@ -41,10 +41,10 @@ export namespace Role {
 
 export type Iri = string;
 
-export namespace Concise {
+export namespace C1 {
 	export type NamedNode = string;
 	export type BlankNode = string;
-	export type DefaultGraph = '';
+	export type DefaultGraph = '*';
 	export type Literal = string;
 	export type Variable = string;
 	export type QuadTerm = string;
@@ -53,16 +53,18 @@ export namespace Concise {
 	export type Graphable = Node | DefaultGraph;
 	export type DataTerm = Graphable | Literal;
 	
-	export type GraphRole = Graphable;
-	export type SubjectRole = Node | QuadTerm;
-	export type PredicateRole = NamedNode;
-	export type ObjectRole = Node | Literal | QuadTerm;
+	export type Graph = Graphable;
+	export type Subject = Node | QuadTerm;
+	export type Predicate = NamedNode;
+	export type Object = Node | Literal | QuadTerm;
 
 	export type Json = string;
 	export type Directive = string;
 
 	export type Term = DataTerm | Variable | Json | Directive | QuadTerm;
+}
 
+export namespace C4 {
 	export type ObjectsTarget = boolean | number | Term | GenericTerm;
 	export type ObjectsList = Array<ObjectsTarget> | Set<ObjectsTarget>;
 	export type ObjectsCollection = Array<ObjectsList> | Set<ObjectsList>;
@@ -150,7 +152,7 @@ export namespace Star {
 	export type Term = DataTerm | Variable | QuadTerm;
 }
 
-export namespace  Isolated {
+export namespace Isolated {
 	interface NamedNode {
 		termType: 'NamedNode';
 		value: string;
@@ -178,21 +180,30 @@ export namespace  Isolated {
 		value: string;
 	}
 	
-	type Node = NamedNode | BlankNode;
-	type Graphable = Node | DefaultGraph;
-	type DataTerm = Graphable | Literal;
-	type Data = DataTerm | Quad;
-	type Term = Data | Variable;
+	export type NodeTerm = NamedNode | BlankNode;
+	export type GraphableTerm = NodeTerm | DefaultGraph;
+	export type ObjectTerm = NodeTerm | GenericLiteral;
+	// type DataTerm = GraphTerm | Literal;
+	// type Data = DataTerm | Quad;
+
+	type AnyTerm = GraphableTerm | Literal | Quad | Variable;
 	
 	interface Quad {
 		termType: 'Quad';
 		value: '';
-		subject: Node;
+		subject: NodeTerm;
 		predicate: NamedNode;
-		object: Term;
-		graph: Graphable;
+		object: ObjectTerm;
+		graph: GraphableTerm;
 	}
 	
+}
+
+export namespace Term {
+	export type Graph = Node | DefaultGraph;
+	export type Subject = Node;
+	export type Predicate = NamedNode;
+	export type Object = Node | GenericLiteral;
 }
 
 export interface PrefixMap {
@@ -225,11 +236,11 @@ export interface GenericTerm {
 	readonly value: string;
 
 	equals(other: RDFJS.Term): boolean;
-	concise(prefixes?: PrefixMap): Concise.Term;
+	concise(prefixes?: PrefixMap): C1.Term;
 	terse(prefixes?: PrefixMap): Terse.Term;
 	star(prefixes?: PrefixMap): Star.Term;
 	verbose(): Verbose.Term;
-	isolate(): Isolated.Term;
+	isolate(): Isolated.AnyTerm;
 	replace(searchValue: any, replaceValue: any): GenericTerm;
 	replaceAll(searchValue: any, replaceValue: any): GenericTerm;
 }
@@ -262,8 +273,6 @@ export interface Node extends Graphable implements Role.Data, Role.Subject, Role
 	readonly termType: 'NamedNode' | 'BlankNode';
 }
 
-export type ObjectTerm = Node | GenericLiteral;
-
 export interface GenericLiteral extends GenericTerm implements Role.Data, Role.Object {
 	readonly isGraphyQuad: false;
 	readonly isGraphable: false;
@@ -280,7 +289,7 @@ export interface GenericLiteral extends GenericTerm implements Role.Data, Role.O
 	readonly language: string;
 	readonly datatype: NamedNode;
 
-	concise(prefixes?: PrefixMap): Concise.Literal;
+	concise(prefixes?: PrefixMap): C1.Literal;
 	terse(prefixes?: PrefixMap): Terse.Literal;
 	star(prefixes?: PrefixMap): Star.Literal;
 	verbose(): Verbose.Literal;
@@ -298,7 +307,7 @@ export interface NamedNode extends Node implements RDFJS.NamedNode implements Ro
 	readonly value: Iri;
 
 	constructor(iri: Iri);
-	concise(prefixes?: PrefixMap): Concise.NamedNode;
+	concise(prefixes?: PrefixMap): C1.NamedNode;
 	terse(prefix?: PrefixMap): Terse.NamedNode;
 	star(prefixes?: PrefixMap): Star.NamedNode;
 	verbose(): Verbose.NamedNode;
@@ -316,7 +325,7 @@ export interface BlankNode extends Node implements RDFJS.BlankNode {
 	readonly value: string;    
 
 	constructor(label: string);
-	concise(prefixes?: PrefixMap): Concise.BlankNode;
+	concise(prefixes?: PrefixMap): C1.BlankNode;
 	terse(prefixes?: PrefixMap): Terse.BlankNode;
 	star(prefixes?: PrefixMap): Star.BlankNode;
 	verbose(): Verbose.BlankNode;
@@ -460,7 +469,7 @@ export interface DefaultGraph extends Graphable implements RDFJS.DefaultGraph {
 	readonly value: '';
 	
 	constructor();
-	concise(prefixes?: PrefixMap): Concise.DefaultGraph;
+	concise(prefixes?: PrefixMap): C1.DefaultGraph;
 	terse(prefix?: PrefixMap): Terse.DefaultGraph;
 	star(prefixes?: PrefixMap): Star.DefaultGraph;
 	verbose(): Verbose.DefaultGraph;
@@ -487,7 +496,7 @@ export interface Variable extends NonDataTerm implements RDFJS.Variable {
 	readonly value: string;
 	constructor(value: string);
 
-	concise(prefixes?: PrefixMap): Concise.Variable;
+	concise(prefixes?: PrefixMap): C1.Variable;
 	terse(prefixes?: PrefixMap): Terse.Variable;
 	star(prefixes?: PrefixMap): Star.Variable;
 	verbose(): Verbose.Variable;
@@ -507,15 +516,15 @@ export interface Quad extends NonDataTerm implements RDFJS.Quad {
 
 	readonly termType: 'Quad';
 	readonly value: '';
-	readonly subject: Node;
-	readonly predicate: NamedNode;
-	readonly object: ObjectTerm;
-	readonly graph: Graphable;
+	readonly subject: Term.Subject;
+	readonly predicate: Term.Predicate;
+	readonly object: Term.Object;
+	readonly graph: Term.Graph;
 	constructor(subject: Role.Subject, predicate: Role.Predicate, object: Role.Object, graph?: Role.Graph);
 	isolate(): IsolatedQuad;
 	reify(label?: string): Reification;
 
-	concise(prefixes?: PrefixMap): Concise.QuadTerm;
+	concise(prefixes?: PrefixMap): C1.QuadTerm;
 	terse(prefixes?: PrefixMap): Terse.Quad;
 	star(prefixes?: PrefixMap): Star.QuadTerm;
 	verbose(): Verbose.Quad;
@@ -526,65 +535,68 @@ export interface Quad extends NonDataTerm implements RDFJS.Quad {
 
 export interface IterablePortableQuads implements Iterable<Quad> {
 	[Symbol.iterator]: () => Iterator<Quad>;
-	toString(): Concise.Json;
+	toString(): C1.Json;
 }
 
 
 export namespace Dataset {
 	/**
-	 * A handle on a specific (graph, subject, predicate) within an `ConciseGspoTreeBuilder`
+	 * A handle on a specific (graph, subject, predicate) within an `GspoBuilder`
 	 */
-	export interface GreedHandle {
+	export interface GraspHandle {
 		/**
 		 * Attempt to add a quad given by (graph, subject, predicate, `object`) to the dataset.
 		 * @param object
 		 * @returns `true` if the quad was inserted (indicates it did not previously exist), `false` otherwise
 		 */
-		addC1Object(object: Concise.Term): boolean;
+		addC1Object(object: C1.Term): boolean;
 
 		/**
 		 * Attempt to delete a quad given by (graph, subject, predicate, `object`) from the dataset.
 		 * @param object
 		 * @returns `true` if the quad was deleted (indicates it previously existed), `false` otherwise
 		 */
-		deleteC1Object(object: Concise.Term): boolean;
+		deleteC1Object(object: C1.Term): boolean;
 	}
 
 
 	/**
-	 * A handle on a specific (graph, subject) within a `ConciseGspoTreeBuilder`.
+	 * A handle on a specific (graph, subject) within a `GspoBuilder`.
 	 */
 	export interface GrubHandle {
 		/**
 		 * Open a new handle to obtain (graph, subject, `predicate`).
 		 * @param predicate
 		 */
-		openC1Predicate(predicate: Concise.NamedNode): GreedHandle;
+		openC1Predicate(predicate: C1.NamedNode): GraspHandle;
 	}
 
 
 	/**
-	 * A handle on a specific graph within a `ConciseGspoTreeBuilder`.
+	 * A handle on a specific graph within a `GspoBuilder`.
 	 */
 	export interface GraphHandle {
 		/**
 		 * Open a new handle to obtain (graph, `subject`).
 		 * @param subject 
 		 */
-		openC1Subject(subject: Concise.Node): GrubHandle;
+		openC1Subject(subject: C1.Node): GrubHandle;
 	}
 
 
 	/**
 	 * An interface for building a dataset in (graph, subject, predicate, object) order using concise terms.
 	 */
-	export interface GspoBuilder<Deliverable extends Dataset> extends GraphHandle {
+	export interface GspoBuilder extends GraphHandle {
 		attachPrefixes(prefixes: PrefixMap): void;
-		openC1Graph(graph: Concise.Graphable): GraphHandle;
-		openC1Subject(subject: Concise.Node): GrubHandle;
+		openC1Graph(graph: C1.Graphable): GraphHandle;
+		openC1Subject(subject: C1.Node): GrubHandle;
 		openGraph(graph: Role.Graph): GraphHandle;
-		openSubject(subject: Role.Subject): GrubHandle
-		deliver(dc_dataset?: { new(): SyncDataset }): Promise<Deliverable>;
+		openSubject(subject: Role.Subject): GrubHandle;
+	}
+
+	export interface SyncGspoBuilder<Deliverable extends SyncDataset> extends GspoBuilder {
+		deliver(dc_dataset?: { new(): SyncDataset }): Deliverable;
 	}
 
 	/**
@@ -604,6 +616,18 @@ export namespace Dataset {
 		distinctSubjectCount(): number;
 		distinctPredicateCount(): number;
 		distinctObjectCount(): number;
+
+		distinctGraphs(): Iterator<Term.Graph>;
+		distinctSubjects(): Iterator<Term.Subject>;
+		distinctPredicates(): Iteratort<Term.Predicate>;
+		distinctObjects(): Iterator<Term.Object>;
+	}
+
+	export interface SyncC1Dataset extends SyncDataset {
+		distinctC1Graphs(): Set<C1.Graph>;
+		distinctC1Subjects(): Set<C1.Subject>;
+		distinctC1Predicates(): Set<C1.Predicate>;
+		distinctC1Objects(): Set<C1.Object>;
 	}
 
 	export interface AsyncDataset {
