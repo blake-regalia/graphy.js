@@ -1,12 +1,34 @@
 import {
-	C1, Dataset,
+	C1,
+	Dataset,
+	PrefixMap,
 } from '../types/types';
 import { SemiIndexedTrigDataset } from './memory';
 
+/**
+ * Caches the number of 'keys' stored in the tree.
+ */
 export const $_KEYS = Symbol(' (keys)');
+
+/**
+ * Tracks the total count of quads stored at all descendent levels of the tree.
+ */
 export const $_QUADS = Symbol(' (quads)');
+
+/**
+ * When present, indicates that the tree is overlaying another object via prototype.
+ *   This allows for super quick set operations, such as `union` and `difference`, on
+ *   the average case and significantly reduces memory consumption and GC time.
+ */
 export const $_OVERLAY = Symbol(' (overlay)');
-export const $_BURIED = Symbol(' (supporting)');
+
+/**
+ * When present, indicates that the tree was used to create an overlay for another tree.
+ *   The implication is that if `add` or `delete` is called on a buried tree, the method
+ *   will have to create a new tree since the original object may still be referenced.
+ */
+export const $_BURIED = Symbol(' (buried)');
+
 
 export interface CountableKeys {
 	[$_KEYS]: number;
@@ -37,7 +59,7 @@ export namespace PartiallyIndexed {
 
 	export interface GraphHandle extends Dataset.GraphHandle {
 		_sc1_graph: C1.Graph;
-		_hc3_triples: PartiallyIndexed.TriplesTree;
+		_hc3_trips: PartiallyIndexed.TriplesTree;
 	}
 
 	export interface GrubHandle extends Dataset.GrubHandle {
@@ -128,4 +150,11 @@ export namespace Generic {
 
 		return hcw_dst;
 	};
+
+	export interface Constructor<DatasetType, BuilderType extends Dataset.GspoBuilder, TransferType extends QuadsTree> extends Dataset.Constructor<DatasetType, BuilderType, TransferType> {
+		empty(prefixes: PrefixMap): DatasetType;
+		builder(prefixes: PrefixMap): BuilderType;
+
+		new(transfer: TransferType, prefixes: PrefixMap): DatasetType;
+	}
 }

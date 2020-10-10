@@ -1534,6 +1534,14 @@ function C3Proxy$_toString() {
 	return '|'+JSON.stringify([...this()].map(w => w.concise()));
 }
 
+function c1_expand_prefixed_named_node(sc1_term, h_prefixes) {
+	// deconstruct prefixed name
+	let [, si_prefix, s_suffix] = R_C1N_DECONSTRUCT.exec(sc1_term);
+
+	// return expanded form
+	return '>'+h_prefixes[si_prefix]+s_suffix;
+}
+
 const factory = module.exports = {
 	concise,
 
@@ -2093,6 +2101,38 @@ const factory = module.exports = {
 				throw new Error(`unexpected SPARQL Result JSON Format Term type: ${g_term.type}`);
 			}
 		}
+	},
+
+	c1ExpandData(sc1_term, h_prefixes) {
+		switch(sc1_term[0]) {
+			case '"':
+			case '@':
+			case '>':
+			case '_':
+			case '*': {
+				return sc1_term;
+			}
+
+			case '^': {
+				const i_contents = sc1_term.indexOf('"');
+				const sc1_datatype = sc1_term.slice(1, i_contents);
+				return '^'+c1_expand_prefixed_named_node(sc1_datatype)+sc1_term.slice(i_contents);
+			}
+
+			default: {
+				return c1_expand_prefixed_named_node(sc1_term);
+			}
+		}
+	},
+
+	c1FromGraphRole() {
+
+	},
+
+	c1FromSubjectRole(yt_subject) {
+		return 'NamedNode' === yt_subject.termType
+			? concise(yt_subject.value, h_prefixes)
+			: '_:'+yt_subject.value;
 	},
 
 	toBoolean: s_boolean => Literal_Boolean.from(s_boolean),

@@ -6,10 +6,31 @@
     browser: true
     node: true
     commonjs: true
+  # parser: '@typescript-eslint/parser'
+  # plugins:
+  #   - '@typescript-eslint'
   extends:
     - 'eslint:recommended'
+    # - 'plugin:@typescript-eslint/recommended'
     - 'plugin:jmacs/all'
     # - 'plugin:elite/all'
+
+  overrides:
+    - files:
+      - '**/*.ts'
+      env:
+        es2020: true
+        node: true
+        commonjs: true
+      parser: '@typescript-eslint/parser'
+      plugins:
+        - '@typescript-eslint'
+      extends:
+        - 'eslint:recommended'
+        - 'plugin:@typescript-eslint/recommended'
+      rules:
+        no-use-before-define: off
+
   rules:
 
     # "Possible Errors"
@@ -315,6 +336,9 @@
     yield-star-spacing: warn
 
     no-fallthrough: warn
+
+    no-this-alias: off
+    no-this-assignment: off
 
     # Custom Rules
 

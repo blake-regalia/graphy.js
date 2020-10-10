@@ -10,7 +10,7 @@ import {
 } from '@graphy/types';
 
 import {
-	TrigDataset,
+	PartiallyIndexedTrigDataset,
 } from './trig-partial';
 
 import SyncDataset = Dataset.SyncDataset;
@@ -38,7 +38,7 @@ const {
 } = DataFactory;
 
 
-export class SemiIndexedTrigDataset extends TrigDataset {
+export class SemiIndexedTrigDataset extends PartiallyIndexedTrigDataset {
 	_h_objects: SemiIndexed.ObjectStore;
 
 	constructor(h_objects: SemiIndexed.ObjectStore, hc4_quads: SemiIndexed.QuadsTree, h_prefixes: PrefixMap) {
@@ -112,9 +112,6 @@ export class SemiIndexedTrigDataset extends TrigDataset {
 
 
 	_total_distinct_objects(): Set<C1.Object> {
-		// ref quads tree
-		const hc4_quads = this._hc4_quads;
-
 		// distinct objects set
 		let as_objects = new Set<C1.Object>();
 
@@ -133,3 +130,24 @@ export class SemiIndexedTrigDataset extends TrigDataset {
 
 
 }
+
+
+
+SemiIndexedTrigDataset.prototype.datasetStorageType = `
+	descriptor {
+		value: c1;
+		refs: {
+			[p: c1]: s;
+		};
+	};
+	objects {
+		[o: c1]: descriptor;
+	};
+	quads {
+		[g: c1]: trips {
+			[s: c1]: probs {
+				[p: c1]: Set<descriptor>;
+			};
+		};
+	};
+`.replace(/\s+/g, '');

@@ -588,7 +588,6 @@ export namespace Dataset {
 	 * An interface for building a dataset in (graph, subject, predicate, object) order using concise terms.
 	 */
 	export interface GspoBuilder extends GraphHandle {
-		attachPrefixes(prefixes: PrefixMap): void;
 		openC1Graph(graph: C1.Graphable): GraphHandle;
 		openC1Subject(subject: C1.Node): GrubHandle;
 		openGraph(graph: Role.Graph): GraphHandle;
@@ -596,21 +595,31 @@ export namespace Dataset {
 	}
 
 	export interface SyncGspoBuilder<Deliverable extends SyncDataset> extends GspoBuilder {
-		deliver(dc_dataset?: { new(): SyncDataset }): Deliverable;
+		deliver(datasetClass?: { new(...args: any[]): SyncDataset }): Deliverable;
+	}
+
+
+	export interface Constructor<DatasetType, BuilderType, TransferType> {
+		empty(prefixes: PrefixMap): DatasetType;
+		builder(prefixes: PrefixMap): BuilderType;
+
+		new(transfer: TransferType, prefixes: PrefixMap): DatasetType;
 	}
 
 	/**
 	 * 
 	 */
 	export interface SyncDataset {
+		readonly isGraphyDataset: true;
+		readonly datasetStorageType: string;
 		readonly size: number;
+
+		[Symbol.iterator](): Iterator<Quad>;
 
 		add(quad: RDFJS.Quad): this;
 		delete(quad: RDFJS.Quad): this;
 		has(quad: RDFJS.Quad): boolean;
 		match(subject?: Role.Subject | null, predicate?: Role.Predicate | null, object?: Role.Object | null, graph?: Role.Graph| null): SyncDataset;
-
-		[Symbol.iterator](): Iterator<Quad>;
 
 		distinctGraphCount(): number;
 		distinctSubjectCount(): number;

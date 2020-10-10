@@ -4,6 +4,14 @@ import * as graphy from '../types/types';
 import Term = graphy.Term;
 import C1 = graphy.C1;
 
+export enum Topology {
+	CONTAIN = 0b101,
+	WITHIN = 0b011,
+	EQUAL = 0b111,
+	DISJOINT = 0b000,
+	OVERLAP = 0b001,
+}
+
 export namespace DataFactory {
 	function namedNode(value: graphy.Iri): graphy.NamedNode;
 	function blankNode(value?: string): graphy.BlankNode;
@@ -36,7 +44,10 @@ export namespace DataFactory {
 	function concise(iri: graphy.Iri, prefixes?: PrefixMap): graphy.ConciseNamedNode;
 	function terse(iri: graphy.Iri, prefixes?: PrefixMap): graphy.TerseNamedNode;
 
-	function c1(term: graphy.ConciseTerm, prefixes?: graphy.PrefixMap): graphy.GenericTerm;
+	// should be `fromC1` ?
+	function c1(term: graphy.C1.Term, prefixes?: graphy.PrefixMap): graphy.GenericTerm;
+	
+	function c1ExpandData(term: graphy.C1.DataTerm, prefixes: graphy.PrefixMap): C1.DataTerm;
 
 	function c1Graph(graph: C1.Graph, prefixes: PrefixMap): Term.Graph;
 	function c1Subject(subject: C1.Subject, prefixes: PrefixMap): Term.Subject;
@@ -56,4 +67,6 @@ export namespace DataFactory {
 
 	function c3(triples: graphy.ConciseTriples, prefixes?: graphy.PrefixMap, graph?: graphy.ConciseGraphable): graphy.IterablePortableQuads;
 	function c4(quads: graphy.ConciseQuads, prefixes?: graphy.PrefixMap): graphy.IterablePortableQuads;
+
+	function relateMaps(prefixesA: PrefixMap, prefixesB: PrefixMap): Topology;
 }
