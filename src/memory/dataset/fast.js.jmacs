@@ -293,8 +293,7 @@ class Canonicalizer_ct {
 			_a_quads: a_quads,
 		} = this;
 
-		let h_hashes = {};
-		let h_non_normal = {};
+		const as_non_normal = new Set();
 
 		// each quad
 		for(let a_quad of a_quads) {
@@ -307,7 +306,7 @@ class Canonicalizer_ct {
 					}
 					else {
 						h_blanks[@{s_var}] = {quads:[a_quad]};
-						h_non_normal[@{s_var}] = true;
+						as_non_normal.add(@{s_var});
 					}
 				}
 			@;
@@ -318,14 +317,16 @@ class Canonicalizer_ct {
 			}
 		}
 
+		let h_hashes = {};
 		let b_simple = false;
+		const a_keys = [];
 
 		do {
 			b_simple = false;
 
 			h_hashes = {};
 
-			for(let sc1_blank in h_non_normal) {
+			for(let sc1_blank of as_non_normal) {
 				let p_blank = this.hash_first_degree_quads(sc1_blank);
 
 				if(p_blank in h_hashes) {
@@ -334,24 +335,26 @@ class Canonicalizer_ct {
 				else {
 					h_hashes[p_blank] = [sc1_blank];
 				}
+
+				a_keys.push(p_blank);
 			}
 
-			for(let p_blank of Object.keys(h_hashes).sort()) {
+			// each blank node id in sorted keys (keys now sorted in fall-through)
+			for(let p_blank of a_keys.sort()) {
 				let a_blanks = h_hashes[p_blank];
 				if(a_blanks.length > 1) continue;
 
 				let sc1_blank_0 = a_blanks[0];
 				k_issuer.issue(sc1_blank_0);
 
-				delete h_non_normal[sc1_blank_0];
-
-				delete h_hashes[p_blank];
+				as_non_normal.delete(sc1_blank_0);
 
 				b_simple = true;
 			}
 		} while(b_simple);
 
-		for(let p_blank of Object.keys(h_hashes).sort()) {
+		// keys now sorted
+		for(let p_blank of a_keys) {
 			let a_paths = [];
 			for(let sc1_blank of h_hashes[p_blank]) {
 				if(k_issuer.has(sc1_blank)) continue;
