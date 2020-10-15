@@ -108,10 +108,6 @@ class GraspHandle implements PartiallyIndexed.GraspHandle {
 		// new triple added
 		return true;
 	}
-
-	deleteC1Object(sc1_object: C1.Object): boolean {
-		return false;
-	}
 }
 
 

@@ -550,15 +550,7 @@ export namespace Dataset {
 		 * @returns `true` if the quad was inserted (indicates it did not previously exist), `false` otherwise
 		 */
 		addC1Object(object: C1.Term): boolean;
-
-		/**
-		 * Attempt to delete a quad given by (graph, subject, predicate, `object`) from the dataset.
-		 * @param object
-		 * @returns `true` if the quad was deleted (indicates it previously existed), `false` otherwise
-		 */
-		deleteC1Object(object: C1.Term): boolean;
 	}
-
 
 	/**
 	 * A handle on a specific (graph, subject) within a `GspoBuilder`.
@@ -570,7 +562,6 @@ export namespace Dataset {
 		 */
 		openC1Predicate(predicate: C1.NamedNode): GraspHandle;
 	}
-
 
 	/**
 	 * A handle on a specific graph within a `GspoBuilder`.
@@ -630,6 +621,18 @@ export namespace Dataset {
 		distinctSubjects(): Iterator<Term.Subject>;
 		distinctPredicates(): Iteratort<Term.Predicate>;
 		distinctObjects(): Iterator<Term.Object>;
+
+		equals(other: SyncDataset): boolean;
+		contains(other: SyncDataset): boolean;
+		disjoint(other: SyncDataset): boolean;
+
+		union(other: SyncDataset): SyncDataset;
+		intersection(other: SyncDataset): SyncDataset;
+		minus(other: SyncDataset): SyncDataset;
+		difference(other: SyncDataset): SyncDataset;
+
+		canonicalize(): SyncDataset;
+		delta(other: SyncDataset): Delta
 	}
 
 	export interface SyncC1Dataset extends SyncDataset {

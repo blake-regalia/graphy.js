@@ -1,5 +1,6 @@
 /* global $_KEYS $_QUADS $_OVERLAY $_BURIED */
 
+
 @.{
 	const A_LEVELS = [
 		{
@@ -67,7 +68,7 @@
 	const @{sj_tree}_u = Object.create(@{sj_tree}_a);
 
 	// union is now overlay
-	@{sj_tree}_u[$_OVERLAY] =1;
+	@{sj_tree}_u[$_OVERLAY] = 1;
 
 	// quads to add under @{s_tree}
 	let c_quads_add_@{s_tree} = 0;
@@ -238,6 +239,10 @@ class PartiallyIndexedTrigDataset {
 			// copy prefixes
 			...this._h_prefixes,
 		});
+	}
+
+	minus() {
+		// TODO: in some cases, it will be faster to replace a tree in 'src' with an overlay of a tree from 'dst', and then delete keys from original tree
 	}
 }
 
