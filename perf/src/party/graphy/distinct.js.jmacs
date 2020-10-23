@@ -3,14 +3,27 @@
 @import '../../share/perf.jmacs'
 @- B_LOAD
 	const load = require('@{channel(`content.${S_FORMAT_IN}.load`)}');
+	const lazy = {
+		get UnindexedTrigDataset() {
+			return require('../../../../../../build/ts/memory/dataset-unindexed.js').UnindexedTrigDataset;
+		},
+
+		get PartiallyIndexedTrigDataset() {
+			return require('../../../../../../build/ts/memory/dataset-partial.js').PartiallyIndexedTrigDataset;
+		},
+
+		get SemiIndexedTrigDataset() {
+			return require('../../../../../../build/ts/memory/dataset-semi.js').SemiIndexedTrigDataset;
+		},
+	};
 
 	process.stdin
 		.pipe(load({
 			@{SJ_CONFIG_READ || ''}
 			@{SJ_CONFIG_DATASET || ''}
 		}))
-		.on('data', (ds_dataset) => {
-			let n_size = ds_dataset.size;
+		.on('load', (ds_dataset) => {
+			const n_size = ds_dataset.size;
 			@{end_test({
 				size: /* syntax: js */ `n_size`,
 			})}
@@ -19,7 +32,7 @@
 	const read = require('@{channel(`content.${S_FORMAT_IN}.read`)}');
 	const dataset = require('@{channel(`memory.dataset.fast`)}');
 
-	let ds_dataset = process.stdin
+	const ds_dataset = process.stdin
 		.pipe(read({
 			@{SJ_CONFIG_READ || ''}
 		}))
@@ -28,7 +41,7 @@
 		}));
 
 	ds_dataset.on('finish', () => {
-		let n_size = ds_dataset.size;
+		const n_size = ds_dataset.size;
 		@{end_test({
 			size: /* syntax: js */ `n_size`,
 		})}
