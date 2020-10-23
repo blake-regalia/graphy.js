@@ -70,7 +70,7 @@ import uri from 'uri-js';
 import string_decoder from 'string_decoder';
 
 import * as stream from '@{channel('core.iso.stream')}';
-import * as factory from '@{channel('core.data.factory')}';
+import {DataFactory} from '@graphy/core';
 const quad = k => factory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
 
 @- B_LOAD
@@ -266,9 +266,8 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	}
 @;
 
-
 @> update_prefixes()
-	let b_relax = this._b_relax;
+	let b_prevalid = this._b_prevalid;
 
 	// existing mapping
 	@- B_OPTIMIZE_PREFIX_IDS
@@ -279,7 +278,10 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		// doesn't match existing
 		if(p_prefix_iri !== h_prefixes[s_prefix_id]) {
 			@- B_LOAD
-				return this.error(`Input document must be 'well-formed' to use with Loader; prefix mappings are not allowed to change. Detected IRI change of prefix namespace '${s_prefix_id}' from '${h_prefixes[s_prefix_id]}' to '${p_prefix_iri}'`);
+				throw new InvalidStateChangeError({
+					message :`Loader requires all prefix mappings declared before data statements. Detected IRI change of prefix namespace '${s_prefix_id}' from <${h_prefixes[s_prefix_id]}> to <${p_prefix_iri}>`,
+					@{error_args()}
+				});
 			@:
 				// emit change event
 				if(this.prefix_change) {
@@ -294,8 +296,11 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	// first mapping
 	else {
 		// check namespace, invalid
-		if(!b_relax && !RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
-			return this.error(`Invalid namespace for prefixed name: "${s_prefix_id}:"`);
+		if(!b_prevalid && !RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
+			throw new TurtleSyntaxError({
+				message: `Invalid namespace for prefixed name: '${s_prefix_id}:'`,
+				@{error_args()}
+			});
 		}
 
 		// set prefix
@@ -316,8 +321,11 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	}
 
 	// check iri, invalid
-	if(!b_relax && !RT_NAMED_NODE_VALID.test(p_prefix_iri)) {
-		return this.error(`Invalid IRI found in prefix delcaration: "${p_prefix_iri}"`);
+	if(!b_prevalid && !RT_NAMED_NODE_VALID.test(p_prefix_iri)) {
+		throw new TurtleSyntaxError({
+			message: `Invalid IRI found in prefix delcaration: "${p_prefix_iri}"`,
+			@{error_args()}
+		});
 	}
 
 	@- B_LOAD
@@ -1132,10 +1140,19 @@ const match_prefixed_name = (s, i) => {
 
 		@- B_OPTIMIZE_PREFIX_IDS
 			// invalid prefix
-			if(!(this._as_prefix_ids.has(@{sj_var}))) return this.error(`no such prefix "${@{sj_var}}"`);
+			if(!(this._as_prefix_ids.has(@{sj_var}))) {
+				return new NoSuchPrefixError({
+					prefix: @{sj_var},
+					@{error_args()}
+				});
 		@:
 			// invalid prefix
-			if(!OPHOP.call(this._h_prefixes, @{sj_var})) return this.error(`no such prefix "${@{sj_var}}"`);
+			if(!OPHOP.call(this._h_prefixes, @{sj_var})) {
+				return new NoSuchPrefixError({
+					prefix: @{sj_var},
+					@{error_args()}
+				});
+			}
 		@;
 	@;
 @;
@@ -1152,7 +1169,10 @@ const match_prefixed_name = (s, i) => {
 @> pop_state(s_err)
 	// invalid place to pop
 	if(!this._a_nested.length) {
-		return this.error(`Unexpected @{s_err}`);
+		throw new TurtleSyntaxError({
+			message: `Unexpected @{s_err}`,
+			@{error_args()}
+		});
 	}
 	let s_resume_state;
 	[this._kt_subject, this._kt_predicate, s_resume_state] = this._a_nested.pop();
@@ -1207,7 +1227,12 @@ const match_prefixed_name = (s, i) => {
 		if(0 === i) {
 			// we've exceeded the maximum token length
 			if(this.n > this.@{s_max_token || 'max_token_length'}) {
-				return this.parse_error('@{s_state}');
+				throw new EMTLError({
+					state: '@{s_state}',
+					mtl: this.@{s_max_token || 'max_token_length'},
+					constraint: '',
+					@{error_args()}
+				});
 			}
 		}
 	}
@@ -1388,68 +1413,98 @@ const match_prefixed_name = (s, i) => {
 	return this.after_eot;
 @;
 
-function Reader$syntax_error(k_self, i, si_state, s_info) {
-	let i_off = Math.min(i, Math.abs(i-15));
+function count_lines(s_chunk, i_until=Infinity) {
+	let c_lines = 0;
+	let i_scan = 0;
 
-	let s = k_self.s;
-
-	return k_self.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
-		+` ${' '.repeat(i-i_off)}^\n`
-		+`expected ${si_state} ${s_info || ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
-}
-
-
-class @{S_LABEL}_Reader extends stream.Transform {
-	constructor(g_impls) {
-		super({
-			// do not decode strings into buffers
-			decodeStrings: false,
-
-			// accept strings as input on writable side
-			writableObjectMode: false,
-
-			// output quad objects on readable side
-			readableObjectMode: true,
-
-			// implementations
-			flush: g_impls.flush,
-			transform: g_impls.transform,
-		});
+	if(Number.isFinite(i_until)) {
+		for(;;) {
+			let i_next = s_chunk.indexOf('\n', i_scan);
+			if(i_next < 0 || i_next >= i_until) return c_lines;
+			c_lines += 1;
+			i_scan = i_next;
+		}
 	}
-
-	// intercept pipe
-	pipe(ds_out) {
-		let ds_dst = ds_out;
-
-		// non-object mode
-		if(!ds_dst._writableState.objectMode) {
-			// transform to JSON
-			ds_out = stream.quads_to_json();
+	else {
+		while((i_scan = s_chunk.indexOf('\n', i_scan)) >= 0) {
+			c_lines += 1;
 		}
-		// yet object mode and graphy writable
-		else if(ds_out.isGraphyWritable) {
-			// transform to writable data events
-			ds_out = stream.quads_to_writable();
-		}
-
-		// interim stream created
-		if(ds_out !== ds_dst) {
-			// forward output to super
-			super.pipe(ds_out);
-
-			// pipe outpu to destination
-			return ds_out.pipe(ds_dst);
-		}
-		// forward as-is to super
-		else {
-			return super.pipe(ds_dst);
-		}
+		return c_lines;
 	}
 }
 
+@$ S_EXPORT = S_LABEL+S_MODE[0]+S_MODE.substr(1)+'er';
 
-class Reader {
-	constructor(g_config={}) {
+@- 'load' === S_MODE
+	export class @{S_EXPORT} extends stream.Writable {
+		constructor(gc_consumer={}) {
+			super({
+				// do not decode strings into buffers
+				decodeStrings: false,
+
+				// accept strings as input on writable side
+				writableObjectMode: false,
+			});
+
+			// instantiate consumer
+			new Consumer(this, gc_consumer);
+		}
+	}
+@+ 'read' === S_MODE
+	export class @{S_EXPORT} extends stream.Transform {
+		constructor(gc_consumer={}) {
+			super({
+				// do not decode strings into buffers
+				decodeStrings: false,
+
+				// accept strings as input on writable side
+				writableObjectMode: false,
+
+				// output quad objects on readable side
+				readableObjectMode: true,
+			});
+
+			// instantiate consumer
+			new Consumer(this, gc_consumer);
+		}
+
+		// intercept pipe
+		pipe(ds_out) {
+			let ds_dst = ds_out;
+
+			// non-object mode
+			if(!ds_dst._writableState.objectMode) {
+				// transform to JSON
+				ds_out = stream.quads_to_json();
+			}
+			// yet object mode and graphy writable
+			else if(ds_out.isGraphyWritable) {
+				// transform to writable data events
+				ds_out = stream.quads_to_writable();
+			}
+
+			// interim stream created
+			if(ds_out !== ds_dst) {
+				// forward output to super
+				super.pipe(ds_out);
+
+				// pipe outpu to destination
+				return ds_out.pipe(ds_dst);
+			}
+			// forward as-is to super
+			else {
+				return super.pipe(ds_dst);
+			}
+		}
+	}
+@;
+
+export default @{S_EXPORT};
+
+class Consumer {
+	constructor(ds_stream, gc_consumer) {
+		gc_consumer = normalize_reader_config(gc_consumer);
+
 		// impl-specific configs
 		let {
 			// input medium
@@ -1457,7 +1512,7 @@ class Reader {
 
 			// a state to inherit
 			state: g_state={},
-		} = g_config;
+		} = gc_consumer;
 
 		// inherit state from creator
 		let {
@@ -1473,7 +1528,7 @@ class Reader {
 
 
 		// in case user provides a factory, adopt it so reader can still create special literals
-		const dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
+		const dc_factory = factory.adopt(gc_consumer.dataFactory || gc_consumer.data_factory || factory.unfiltered);
 
 		// default graph
 		let kt_default_graph = dc_factory.defaultGraph();
@@ -1490,29 +1545,19 @@ class Reader {
 		const namedNode = dc_factory.namedNode;
 
 		@- B_LOAD
+			const k_builder = gc_consumer.into || new PartiallyIndexedTrigDataset();
+
 			this.emit_data = function() {
-				ds_transform.push({
-					'*': this._hc3_triples,
-				});
-
-				// this._hc3_triples = {
-				// 	[this._sc1_subject]: (this._hc2_pairs = {
-				// 		[this._sc1_predicate]: (this._as_objects = new Set()),
-				// 	}),
-				// };
+				ds_stream.emit('load', k_builder.deliver());
 			};
-
-			@- B_LOAD_GSPO_BUILDER
-				const k_builder = g_config.into || new PartiallyIndexedTrigDataset();
-			@;
 		@:
 			this.emit_data = factory.unfiltered === dc_factory
 				? function() {
-					ds_transform.push(quad(this));
+					ds_stream.push(quad(this));
 				}
 				: function() {
 					let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-					ds_transform.push(g_quad);
+					ds_stream.push(g_quad);
 				};
 		@;
 
@@ -1528,13 +1573,13 @@ class Reader {
 			n: 0,
 
 			// left-over string from previous data chunk
-			pre: g_config.prepend || '',
+			pre: gc_consumer.prepend || '',
 
 			// debug state
-			_b_debug: !!g_config.debug,
+			_b_debug: !!gc_consumer.debug,
 
-			// relax
-			_b_relax: !!g_config.relax,
+			// prevalid
+			_b_prevalid: !!gc_consumer.prevalidated || !!gc_consumer.prevalid || !!gc_consumer.relax,
 
 			// factory
 			_dc_factory: dc_factory,
@@ -1554,7 +1599,7 @@ class Reader {
 			_b_destroyed: false,
 
 			// rdf-star
-			_b_rdf_star: !!g_config.star,
+			_b_rdf_star: !!gc_consumer.star,
 
 			// current @base url
 			_s_base_url: '',
@@ -1656,23 +1701,27 @@ class Reader {
 			restore_after_eot: null,
 
 			// maximum length of a token: defaults to 2048 => http://stackoverflow.com/a/417184/1641160
-			_n_max_token_length: g_config.max_token_length || g_config.maxTokenLength || 2048,
+			_n_max_token_length: gc_consumer.max_token_length || gc_consumer.maxTokenLength || 2048,
 
 			// maximum length of a string (overrides max_token_length): defaults to Infinity
-			_n_max_string_length: g_config.max_string_length || g_config.maxStringLength || Infinity,
+			_n_max_string_length: gc_consumer.max_string_length || gc_consumer.maxStringLength || Infinity,
 
 			// byte tracking
-			_b_byte_tracking: g_config.byte_tracking || g_config.byteTracking || false,
+			_b_byte_tracking: gc_consumer.byte_tracking || gc_consumer.byteTracking || false,
 			_nb_seen: 0,
 			_nb_last: 0,
 			_nb_curr: 0,
+
+			// line tracking
+			_b_line_tracking: gc_consumer.line_tracking || gc_consumer.lineTracking || false,
+			_c_lines: 0,
 		});
 
-	if(g_config.relaxed) {
+	if(gc_consumer.relaxed) {
 		console.warn((new Error(`no such option 'relaxed'; did you mean 'relax' ?`)).stack.replace(/^Error:/, 'Warning:'));
 	}
-	if('validate' in g_config) {
-		console.warn((new Error(`option 'validate' has been deprecated. Validation is now enabled by default. Use the 'relax' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+	if('validate' in gc_consumer) {
+		console.warn((new Error(`option 'validate' has been deprecated. Validation is now enabled by default. Use the 'prevalidated' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
 	}
 
 
@@ -1702,11 +1751,16 @@ class Reader {
 @;
 
 		// term constructors
-		Object.assign(this, !g_config.relax
+		Object.assign(this, !gc_consumer.relax
 			? {
 				blank_node(s_label) {
 					// test valid blank node label
-					if(!RT_BLANK_NODE_VALID.test(s_label)) return this.error(`invalid blank node label: "${s_label}"`);
+					if(!RT_BLANK_NODE_VALID.test(s_label)) {
+						throw new TurtleSyntaxError({
+							message: `Invalid blank node label: '${s_label}'`
+							@{error_args()}
+						});
+					}
 
 					@// check for conflicts
 					@{no_label_conflict()}
@@ -1716,12 +1770,22 @@ class Reader {
 				},
 
 				check_named_node(p_iri) {
-					if(!RT_NAMED_NODE_VALID.test(p_iri)) return this.error(`invalid IRI: "${p_iri}"`);
+					if(!RT_NAMED_NODE_VALID.test(p_iri)) {
+						throw new TurtleSyntaxError({
+							message: `Invalid IRI: <${p_iri}>`,
+							@{error_args()}
+						});
+					}
 					return namedNode(p_iri);
 				},
 
 				check_named_node_escapeless(p_iri) {
-					if(!RT_NAMED_NODE_ESCAPELESS_VALID.test(p_iri)) return this.error(`invalid IRI: "${p_iri}"`);
+					if(!RT_NAMED_NODE_ESCAPELESS_VALID.test(p_iri)) {
+						throw new TurtleSyntaxError({
+							message: `invalid IRI: <${p_iri}>`,
+							@{error_args()}
+						});
+					}
 					return namedNode(p_iri);
 				},
 
@@ -1736,8 +1800,10 @@ class Reader {
 						@// no need to check namespace since it was validated during declaration
 						// invalid local name
 						if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name_e[2]) && m_prefixed_name_e[2]) {
-							this.error(`invalid prefixed name local name: "${m_prefixed_name_e[2]}:"`);
-							return;
+							throw new TurtleSyntaxError({
+								message: `Invalid prefixed name local name: '${m_prefixed_name_e[2]}:'`,
+								@{error_args()}
+							});
 						}
 					}
 
@@ -1750,8 +1816,10 @@ class Reader {
 						@// no need to check namespace since it was validated during declaration
 						// invalid local name
 						if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name[2])) {
-							this.error(`invalid prefixed name local name: "${m_prefixed_name[2]}:"`);
-							return;
+							throw new TurtleSyntaxError({
+								message: `Invalid prefixed name local name: '${m_prefixed_name[2]}:'`,
+								@{error_args()}
+							});
 						}
 					}
 
@@ -1787,13 +1855,13 @@ class Reader {
 
 
 		// oops -- user passed string into `base`
-		if('string' === typeof g_config.base) {
-			throw new TypeError(`invalid type 'string' was given for 'base' event listener: '${g_config.base}'\n`
+		if('string' === typeof gc_consumer.base) {
+			throw new TypeError(`invalid type 'string' was given for 'base' event listener: '${gc_consumer.base}'\n`
 				+`did you mean to use the 'base_uri' key instead?`)
 		}
 
 		// base uri
-		let p_set_base_uri = g_config.base_uri || g_config.baseUri || g_config.baseURI || g_config.base_iri || g_config.baseIri || g_config.baseIRI;
+		let p_set_base_uri = gc_consumer.base_uri || gc_consumer.baseUri || gc_consumer.baseURI || gc_consumer.base_iri || gc_consumer.baseIri || gc_consumer.baseIRI;
 		if(p_set_base_uri) {
 			let m_base_iri = R_BASE_IRI.exec(p_set_base_uri);
 			this._s_base_url = m_base_iri[1];
@@ -1802,12 +1870,12 @@ class Reader {
 			this._s_base_url_path = m_base_iri[4] || ''; 
 		}
 		// not set; 'url' variant is
-		else if(g_config.base_url || g_config.baseUrl || g_config.baseURL) {
-			throw new Error(`invalid option: .base${g_config.base_url? '_url': g_config.baseUrl? 'Url': g_config.baseURL? 'URL': ''}; use the '.base_uri' key instead`);
+		else if(gc_consumer.base_url || gc_consumer.baseUrl || gc_consumer.baseURL) {
+			throw new Error(`invalid option: .base${gc_consumer.base_url? '_url': gc_consumer.baseUrl? 'Url': gc_consumer.baseURL? 'URL': ''}; use the '.base_uri' key instead`);
 		}
 
 		// transform stream
-		let ds_transform = this.transform = new @{S_LABEL}_Reader({
+		let ds_stream = this.transform = new @{S_LABEL}Transform({
 			// on data event
 			transform: (s_chunk, s_encoding, fke_chunk) => {
 				// concatenate current chunk to previous chunk
@@ -1832,7 +1900,12 @@ class Reader {
 						// this.data();
 					@;
 					// emit progress event updates
-					ds_transform.emit('progress', s_chunk.length);
+					ds_stream.emit('progress', s_chunk.length);
+
+					// count lines
+					if(this._b_line_tracking) {
+						this._c_lines += count_lines(s_chunk, -1);
+					}
 
 					// done transforming this chunk
 					fke_chunk();
@@ -1860,7 +1933,7 @@ class Reader {
 		});
 
 		// when the writable side is piped into
-		ds_transform.on('pipe', (ds_input) => {
+		ds_stream.on('pipe', (ds_input) => {
 			this._ds_input = ds_input;
 
 			let b_byte_tracking = this._b_byte_tracking;
@@ -1871,7 +1944,7 @@ class Reader {
 			}
 			// set decoding on write
 			else {
-				let f_write = ds_transform.write;
+				let f_write = ds_stream.write;
 				let d_decoder = new string_decoder.StringDecoder('utf8');
 
 				let f_write_track = (s_chunk, s_encoding, fk_write) => {
@@ -1879,37 +1952,37 @@ class Reader {
 					let nb_chunk = Buffer.from(s_chunk, 'utf8').length;
 					this._nb_seen += nb_chunk;
 					this._nb_last = nb_chunk;
-					return f_write.call(ds_transform, s_chunk, s_encoding, fk_write);
+					return f_write.call(ds_stream, s_chunk, s_encoding, fk_write);
 				};
 
 				let f_decode_write_track = (ab_chunk, s_encoding, fk_write) => {
 					let nb_chunk = this._nb_last = ab_chunk.length;
 					this._nb_seen += nb_chunk;
-					return f_write.call(ds_transform, d_decoder.write(ab_chunk), s_encoding, fk_write);
+					return f_write.call(ds_stream, d_decoder.write(ab_chunk), s_encoding, fk_write);
 				};
 
 				let f_decode_write = (ab_chunk, s_encoding, fk_write) => {
-					return f_write.call(ds_transform, d_decoder.write(ab_chunk), s_encoding, fk_write);
+					return f_write.call(ds_stream, d_decoder.write(ab_chunk), s_encoding, fk_write);
 				};
 
-				ds_transform.write = function(z_chunk, s_encoding, fk_write) {
+				ds_stream.write = function(z_chunk, s_encoding, fk_write) {
 					// not null
 					if(null !== z_chunk) {
 						// chunk is string; adapt by resetting method to original
 						if('string' === typeof z_chunk) {
-							ds_transform.write = b_byte_tracking? f_write_track: f_write;
+							ds_stream.write = b_byte_tracking? f_write_track: f_write;
 						}
 						// chunk is buffer; adapt by setting decoder write method
 						else {
-							ds_transform.write = b_byte_tracking? f_decode_write_track: f_decode_write;
+							ds_stream.write = b_byte_tracking? f_decode_write_track: f_decode_write;
 						}
 
 						// use set method
-						return ds_transform.write(z_chunk, s_encoding, fk_write);
+						return ds_stream.write(z_chunk, s_encoding, fk_write);
 					}
 
 					// null, use parent
-					return f_write.call(ds_transform, z_chunk, s_encoding, fk_write);
+					return f_write.call(ds_stream, z_chunk, s_encoding, fk_write);
 				};
 
 				// byte tracking is enabled
@@ -1928,26 +2001,26 @@ class Reader {
 		});
 
 		// new listener added
-		ds_transform.on('newListener', (s_event) => {
+		ds_stream.on('newListener', (s_event) => {
 			// comment
 			if('comment' === s_event) {
 				this.emit_comments = (s_captured) => {
 					let a_comments = s_captured.slice(1).replace(/\n\s+$/, '').split(/\n+\s*#/g);
 
 					for(let s_comment of a_comments) {
-						ds_transform.emit('comment', s_comment);
+						ds_stream.emit('comment', s_comment);
 					}
 				};
 			}
 		});
 
 		// destroy
-		ds_transform._destroy = (...a_args) => {
+		ds_stream._destroy = (...a_args) => {
 			this.destroy(...a_args);
 		};
 
 		// bind events to transform stream
-		this.bind(g_config);
+		this.bind(gc_consumer);
 
 		// input given
 		if(g_input) {
@@ -1957,7 +2030,7 @@ class Reader {
 
 				// go async so caller has chance to bind event listeners
 				queueMicrotask(() => {
-					ds_input.pipe(ds_transform);
+					ds_input.pipe(ds_stream);
 				});
 			}
 			// string
@@ -1966,7 +2039,7 @@ class Reader {
 
 				// go async so caller has chance to bind event listeners
 				queueMicrotask(() => {
-					ds_transform.end(s_input, 'utf8');
+					ds_stream.end(s_input, 'utf8');
 				});
 			}
 			// invalid arg
@@ -2008,35 +2081,19 @@ class Reader {
 		});
 	}
 
-	error(s_message) {
-		// bail out
-		throw new Error(s_message);
-	}
+@> error_args()
+	@//@object-literal
+	content: this,
+	source: s,
+	position: i,
+	...this._b_line_tracking? {
+		location: {
+			line: this._c_lines+count_lines(s, i),
+			col: i - s.lastIndexOf('\n', i),
+		},
+	}: {},
+@;
 
-	// parse_error (not meant to be an event callback)
-	parse_error(s_expected, b_eof=false) {
-		let i = this.i;
-
-		let i_off = Math.min(i, Math.abs(i-15));
-
-		let s = this.s;
-
-		return this.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
-			+` ${' '.repeat(i-i_off)}^\n`
-			+`expected ${s_expected} ${b_eof? 'but encountered <<EOF>>': ''}.  failed to parse a valid token starting at ${s[i]? '"'+s[i]+'"': '<<EOF>>'}`);
-	}
-
-	info_error(s_message) {
-		let i = this.i;
-
-		let i_off = Math.min(i, Math.abs(i-15));
-
-		let s = this.s;
-
-		this.error(`\n\`${s.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\`\n`
-			+` ${' '.repeat(i-i_off)}^\n`
-			+s_message);
-	}
 
 	@- B_LOAD
 		@- B_LOAD_GSPO_BUILDER
@@ -2087,7 +2144,11 @@ class Reader {
 
 				// still invalid parsing state
 				if(this.@{S_STATE_PRIMARY} !== this._f_state) {
-					return this.parse_error(this._f_state.name, true);
+					throw new TurtleUnexpectedTokenError({
+						state: this._f_state.name,
+						found: '<<EOF>>',
+						@{error_args()}
+					});
 				}
 			}
 		}
@@ -2112,7 +2173,10 @@ class Reader {
 				// not EOF
 				if(!(i === this.n - 1 && '\0' === s[i])) {
 					// bad input; parse error
-					return this.parse_error(this._f_state.name);
+					throw new TurtleUnexpectedTokenError({
+						state: this._f_state.name,
+						@{error_args()}
+					});
 				}
 			}
 		}
@@ -2121,24 +2185,24 @@ class Reader {
 		this.s = null;
 
 		// transform stream
-		let ds_transform = this.transform;
+		let ds_stream = this.transform;
 
 		// final progress update: no additional bytes were read
-		ds_transform.emit('progress', 0);
+		ds_stream.emit('progress', 0);
 
 		// call end event listener
-		ds_transform.emit('eof', this._h_prefixes);
+		ds_stream.emit('eof', this._h_prefixes);
 
 		@- B_LOAD
 			@- B_LOAD_GSPO_BUILDER
 				(async() => {
 					const k_dataset = await this._k_builder.deliver();
 
-					ds_transform.emit('load', k_dataset);
+					ds_stream.emit('load', k_dataset);
 				})();
 			@:
 				const k_self = this;
-				ds_transform.emit('load-trad', {
+				ds_stream.emit('load-trad', {
 					get size() {
 						return k_self._hc3_triples[$_QUADS];
 					},
@@ -2151,7 +2215,7 @@ class Reader {
 		@;
 
 		// close write stream (EOF-signaling)
-		ds_transform.push(null);
+		ds_stream.push(null);
 	};
 
 	@- B_STAR
@@ -2182,19 +2246,19 @@ class Reader {
 };
 
 	// bind event listeners to transform stream
-	bind(g_config) {
-		let ds_transform = this.transform;
+	bind(gc_consumer) {
+		let ds_stream = this.transform;
 		@*{
 			for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
 				yield /* syntax: js */ `
-					if(g_config.${s_event}) ds_transform.${g_event.once? 'once': 'on'}('${s_event}', g_config.${s_event});
+					if(gc_consumer.${s_event}) ds_stream.${g_event.once? 'once': 'on'}('${s_event}', gc_consumer.${s_event});
 					`.trim()+'\n';
 			}
 		}
 	}
 
 	// after a blank node subject (either property-list or colleciton)
-	post_blank_subject() {
+	post_blank_subject_DELETE_THIS() {
 		let {s, i} = this;
 		if('.' === s[i]) {
 			@{whitespace(+1)}
@@ -2215,7 +2279,7 @@ class Reader {
 			@{else_if_match('R_CHAR_CLOSE')}
 				// empty collection
 				if(@{terms_equal(SJ_RDF_NIL, 'this._kt_subject')}) {
-					return this.error('empty collection');
+					throw new Error('empty collection');
 				}
 
 				// emit graph_close event
@@ -2515,12 +2579,18 @@ class Reader {
 								? /* syntax: js.switch */ `
 									// invalid '\\n'
 									case '\\n': {
-										return this.info_error(\`expected string_literal_${s_type}_${s_which} but invalid line feed character '\\\\n' (newline) within contents. failed to parse a valid token\`);
+										throw new TurtleSyntaxError({
+											message: \`Expected string_literal_${s_type}_${s_which} but found an invalid line feed character '\\\\n' (newline) within contents.\`,
+											${error_args()}
+										});
 									}
 
 									// invalid '\\r'
 									case '\\r': {
-										return this.info_error(\`expected string_literal_${s_type}_${s_which} but invalid form feed character '\\\\r' (carriage return) within contents. failed to parse a valid token\`);
+										throw new TurtleSyntaxError({
+											message: \`Expected string_literal_${s_type}_${s_which} but found an invalid form feed character '\\\\r' (carriage return) within contents.\`,
+											${error_args()}
+										});
 									}
 								`: ''}
 
@@ -2885,7 +2955,10 @@ class Reader {
 								this.i = i;
 
 								// emit parse error
-								return this.parse_error('end_of_property_list');
+								throw new TurtleUnexpectedTokenError({
+									state: 'end_of_property_list',
+									${error_args()}
+								});
 							}
 						`,
 						B_TURTLE
@@ -2910,7 +2983,11 @@ class Reader {
 					test: ')',
 					action: /* syntax: js */ `
 						// should not be here
-						return Reader$syntax_error(this, i, 'post_object', 'but encountered end of collection');
+						throw new TurtleUnexpectedTokenError({
+							state: 'post_object',
+							found: 'end of collection',
+							${error_args()}
+						});
 					`,
 				}),
 				...(B_QUADS? {
@@ -3600,11 +3677,6 @@ class Reader {
 	}
 }
 
-module.exports = function(...a_args) {
-	let g_config = {};
+// delete this once post_blank_subject calls have been refactored
+Consumer.prototype.post_blank_subject = Consumer.prototype.pairs;
 
-	@{normalize_reader_config('g_config')}
-
-	// create reader, return transform stream
-	return (new Reader(g_config)).transform;
-};

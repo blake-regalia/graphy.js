@@ -42,6 +42,7 @@ import {
 	DataFactory, Topology,
 // } from '@graphy/core';
 } from '../../core/core';
+import { PartiallyIndexedTrigDataset } from './trig-partial';
 
 const {
 	concise,
@@ -62,3 +63,20 @@ type StaticSelf = Function & {
 	builder(h_prefixes: PrefixMap): TrigDatasetBuilder;
 	new(hc4_quads: Generic.QuadsTree, h_prefixes: PrefixMap): PartiallyIndexedTrigDataset;
 };
+
+export class PartiallyIndexedNQuadsDataset extends PartiallyIndexedTrigDataset {
+	
+}
+
+
+PartiallyIndexedNQuadsDataset.prototype.datasetStorageType = `
+	quads {
+		[g: c1e]: trips {
+			[s: c1e]: probs {
+				[p: c1e]: Set<o: c1e>;
+			};
+		};
+	};
+`.replace(/\s+/g, '');
+
+

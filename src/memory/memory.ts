@@ -1,11 +1,15 @@
 
 import {
-	SemiIndexedTrigDataset,
-} from './dataset-semi';
+	TrigDatasetBuilder,
+} from './builder/trig-partial';
 
 import {
 	TrigDataset,
-} from './dataset-partial';
+} from './dataset/trig-partial';
+
+import {
+	SemiIndexedTrigDataset,
+} from './dataset/trig-semi';
 
 import {
 	UnindexedTrigDataset,
@@ -13,7 +17,7 @@ import {
 
 export {
 	// UnindexedTrigDataset,
+	TrigDatasetBuilder,
 	TrigDataset,
-	TrigDataset as PartiallyIndexedTrigDataset,
 	SemiIndexedTrigDataset,
 };

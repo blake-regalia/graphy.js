@@ -1496,6 +1496,93 @@ class NakedQuad extends Quad {
 }
 
 
+const XC_EXTRA_A  = 0b01;
+const XC_EXTRA_B  = 0b10;
+
+const A_RELATIONS = [
+	'equal',
+	'superset',
+	'subset',
+	'overlap',
+];
+
+function relate_maps(h_a, h_b) {
+	const a_keys_a = Object.keys(h_a);
+	const a_keys_b = Object.keys(h_b);
+
+	let xc_extra_a = XC_EXTRA_A;
+	let xc_extra_b = XC_EXTRA_B;
+	if(a_keys_a.length < a_keys_b.length) {
+		const h_swap = h_a;
+		h_a = h_b;
+		h_b = h_swap;
+		xc_extra_a = xc_extra_b;
+		xc_extra_b = xc_extra_a;
+	}
+
+	const a_conflicts = [];
+	let b_overlap = false;
+	let xm_relation = 0;
+
+	// each key in 'a'
+	for(const si_a in h_a) {
+		// key is also in 'b'
+		if(si_a in h_b) {
+			// value is same in 'b'
+			if(h_a[si_a] === h_b[si_a]) {
+				b_overlap = true;
+			}
+			// value is different
+			else {
+				a_conflicts.push(si_a);
+			}
+		}
+		// key is not in 'b'
+		else {
+			xm_relation |= xc_extra_a;
+		}
+	}
+
+	// each key in 'b'
+	for(const si_a in h_a) {
+		// key is not in 'a'
+		if(!(si_a in h_a)) {
+			xm_relation |= xc_extra_b;
+		}
+	}
+
+	return {
+		relation: b_overlap? A_RELATIONS[xm_relation]: 'disjoint',
+		conflicts: a_conflicts,
+	};
+}
+
+function maps_differ(h_a, h_b) {
+	// each key in 'a'
+	for(const si_a in h_a) {
+		// key is also in 'b'
+		if(si_a in h_b) {
+			// value is different in 'b'
+			if(h_a[si_a] !== h_b[si_a]) {
+				return true;
+			}
+		}
+		// key is not in 'b'
+		else {
+			return true;
+		}
+	}
+
+	// each key in 'b'
+	for(const si_a in h_a) {
+		// key is not in 'a'
+		if(!(si_a in h_a)) {
+			return true;
+		}
+	}
+}
+
+
 let g_raw = {
 	namedNode(p_iri) {
 		return new NamedNode(p_iri);
@@ -2187,6 +2274,10 @@ const factory = module.exports = {
 		// return hash string
 		return d_hash.digest('hex');
 	},
+
+	relateMaps: relate_maps,
+	mapsDiffer: maps_differ,
+
 
 	uuidv4,
 

@@ -1,0 +1,763 @@
+
+/*
+
+interface BlankNodePaths {
+	// 1st level of tree, it either is a graph or not
+	graph: boolean;
+
+	// list of graphs where the subjects are contained
+	subject: Array<C1.GraphRole>;
+
+	// list of g/s/p paths to object
+	object: Array<[C1.GraphRole, C1.SubjectRole, C1.PredicateRole]>;
+}
+
+ */
+
+const F_SORT_CANONICALIZER_HASH = (g_a, g_b) => g_a.hash < g_b.hash? -1: (g_a.hash > g_b.hash? 1: 0);
+
+const hash = s => crypto.createHash('sha256').update(s).digest('hex');
+
+function hash_1dq(sc1_blank, a_bquads) {
+	const a_local = [];
+	for(const s_bquad of a_bquads) {
+		a_local.push(s_bquad.replace(/_:[^\8\9\0]+/g, s => s === sc1_blank? '_:i': '_:o'));
+	}
+	return hash(a_local.sort().join('\b'));
+}
+
+
+// the fastest and most memory efficient implemntation of heap's method for javascript
+// adapted from <https://stackoverflow.com/a/37580979/1641160>
+function permute(a_list, f_yield) {
+	f_yield(a_list.slice(), f_yield);
+
+	const nl_list = a_list.length;
+	const a_counts = nl_list < 256
+		? new Uint8Array(nl_list)
+		: (nl_list < 65536
+			? new Uint16Array(nl_list)
+			: (new Array(nl_list)).fill(0));
+	let i_pos = 1;
+	let i_other = 0;
+	let z_swap = a_list[0];
+
+	while(i_pos < nl_list) {
+		if(a_counts[i_pos] < i_pos) {
+			i_other = (i_pos % 2) && a_counts[i_pos];
+			z_swap = a_list[i_pos];
+			a_list[i_pos] = a_list[i_other];
+			a_list[i_other] = z_swap;
+			a_counts[i_pos] += 1;
+			i_pos = 1;
+			f_yield(a_list.slice());
+		}
+		else {
+			a_counts[i_pos++] = 0;
+		}
+	}
+}
+
+
+
+class Issuer {
+	constructor(s_prefix='_:c14n', c_counter=0, h_existing={}) {
+		this._s_prefix = s_prefix;
+		this._c_counter = c_counter;
+		this._h_existing = h_existing;
+	}
+
+	issue(s_label) {
+		if(s_label in this._h_existing) return this._h_existing[s_label];
+
+		return (this._h_existing[s_label] = this._s_prefix+(this._c_counter++));
+	}
+
+	clone() {
+		return new Issuer(this._s_prefix, this._c_counter, this._h_existing);
+	}
+}
+
+/*
+
+		// each graph
+		for(const sc1_graph of hc4_quads) {
+			// whether or not the quad includes a blank node
+			let b_bquad_g = false;
+
+			// prep norm string
+			const s_norm_g = sc1_graph+'\9';
+
+			// graph is blank node
+			if('_' === sc1_graph[0]) {
+				// add it to set
+				as_non_normal.add(sc1_graph);
+
+				// quad includes blank node
+				b_bquad_g = true;
+
+				// blank node is registered; update it
+				if(sc1_graph in h_blanks) {
+					h_blanks[sc1_graph].graph = 1;
+				}
+				// blank node is unregistered; register it
+				else {
+					h_blanks[sc1_graph] = {
+						graph: 1,
+						subject: [],
+						object: [],
+					};
+				}
+			}
+
+			// ref trips tree
+			const hc3_trips = hc4_quads[sc1_graph];
+
+			// each subject
+			for(const sc1_subject of hc3_trips) {
+				// whether or not the quad includes a blank node
+				let b_bquad_s = b_bquad_g;
+
+				// prep norm string
+				const s_norm_gs = s_norm_g+sc1_subject+'\8';
+
+				// subject is blank node and different from graph
+				if('_' === sc1_subject && sc1_graph !== sc1_subject) {
+					// add it to set
+					as_non_normal.add(sc1_subject);
+
+					// quad includes blank node
+					b_bquad_s = true;
+
+					// blank node is registered; update it
+					if(sc1_subject in h_blanks) {
+						h_blanks[sc1_subject].subject.push(sc1_graph);
+					}
+					// blank node is unregistered; register it
+					else {
+						h_blanks[sc1_subject] = {
+							graph: 0,
+							subject: [sc1_graph],
+							object: [],
+						};
+					}
+				}
+
+				// ref probs tree
+				const hc2_probs = hc3_trips[sc1_subject];
+
+				// each predicate
+				for(const sc1_predicate of hc2_probs) {
+					// prep norm string
+					const s_norm_gsp = s_norm_gs+sc1_predicate+'\0';
+
+					// ref objects set
+					const as_objects = hc2_probs[sc1_predicate];
+
+					// each object
+					for(const sc1_object of as_objects) {
+						// object is blank node and different from subject and graph
+						if('_' === sc1_object[0] && sc1_subject !== sc1_object && sc1_graph !== sc1_object) {
+							// add it to set
+							as_non_normal.add(sc1_object);
+
+							// quad includes blank node, commit it
+							a_bquads.push(s_norm_gsp+sc1_object);
+
+							// blank node is registered; update it
+							if(sc1_object in h_blanks) {
+								h_blanks[sc1_object].object.push([sc1_graph, sc1_subject, sc1_predicate]);
+							}
+							// blank node is unregistered; register it
+							else {
+								h_blanks[sc1_object] = {
+									graph: 0,
+									subject: [],
+									object:[
+										[sc1_graph, sc1_subject, sc1_predicate],
+									],
+								};
+							}
+						}
+						// quad includes blank node, commit it
+						else if(b_bquad_s) {
+							a_bquads.push(s_norm_gsp+sc1_object);
+						}
+					}
+				}
+			}
+		}
+ */
+
+
+module.exports = class Normalizer {
+	constructor(kd_source) {
+		this._kd_source = kd_source;
+		this._hc4_quads = kd_source._hc4_quads;
+		this._k_issuer = new Issuer('_:r');
+		this._h_blanks = null;
+	}
+	
+
+	normalize() {
+		const {
+			_k_issuer: k_issuer,
+			_hc4_quads: hc4_quads,
+		} = this;
+
+		const h_blanks = this._h_blanks = {};
+
+		const as_non_normal = new Set();
+
+		// each graph
+		for(const sc1_graph of hc4_quads) {
+			// graph is blank node
+			if('_' === sc1_graph[0]) {
+				// add it to set
+				as_non_normal.add(sc1_graph);
+
+				// blank node is registered; update it
+				if(sc1_graph in h_blanks) {
+					h_blanks[sc1_graph].graph = 1;
+				}
+				// blank node is unregistered; register it
+				else {
+					h_blanks[sc1_graph] = {
+						graph: 1,
+						subject: [],
+						object: [],
+					};
+				}
+			}
+
+			// ref trips tree
+			const hc3_trips = hc4_quads[sc1_graph];
+
+			// each subject
+			for(const sc1_subject of hc3_trips) {
+				// subject is blank node and different from graph
+				if('_' === sc1_subject && sc1_graph !== sc1_subject) {
+					// add it to set
+					as_non_normal.add(sc1_subject);
+
+					// blank node is registered; update it
+					if(sc1_subject in h_blanks) {
+						h_blanks[sc1_subject].subject.push(sc1_graph);
+					}
+					// blank node is unregistered; register it
+					else {
+						h_blanks[sc1_subject] = {
+							graph: 0,
+							subject: [sc1_graph],
+							object: [],
+						};
+					}
+				}
+
+				// ref probs tree
+				const hc2_probs = hc3_trips[sc1_subject];
+
+				// each predicate
+				for(const sc1_predicate of hc2_probs) {
+					// ref objects set
+					const as_objects = hc2_probs[sc1_predicate];
+
+					// each object
+					for(const sc1_object of as_objects) {
+						// object is blank node and different from subject and graph
+						if('_' === sc1_object[0] && sc1_subject !== sc1_object && sc1_graph !== sc1_object) {
+							// add it to set
+							as_non_normal.add(sc1_object);
+
+							// blank node is registered; update it
+							if(sc1_object in h_blanks) {
+								h_blanks[sc1_object].object.push([sc1_graph, sc1_subject, sc1_predicate]);
+							}
+							// blank node is unregistered; register it
+							else {
+								h_blanks[sc1_object] = {
+									graph: 0,
+									subject: [],
+									object:[
+										[sc1_graph, sc1_subject, sc1_predicate],
+									],
+								};
+							}
+						}
+					}
+				}
+			}
+		}
+
+		const h_hashes = this._h_hashes = {};
+		let h_assoc = {};
+		const a_keys = [];
+
+		// first iteration
+		{
+			// each blank node
+			for(const sc1_blank of as_non_normal) {
+				// hash 1-degree blanks and storer
+				const si_norm = h_hashes[sc1_blank] = this.hash_1dq(sc1_blank);
+
+				// commit assoc
+				h_assoc[si_norm] = [sc1_blank];
+
+				// hash exists; add blank to assoc
+				if(si_norm in h_assoc) {
+					h_assoc[si_norm].push(sc1_blank);
+				}
+				// first encounter; create list
+				else {
+					h_assoc[si_norm] = [sc1_blank];
+				}
+
+				// add to keys
+				a_keys.push(si_norm);
+			}
+
+			// each blank node id in sorted keys (keys now sorted in fall-through)
+			for(const si_norm of a_keys.sort()) {
+				const a_blanks = h_assoc[si_norm];
+				if(a_blanks.length > 1) continue;
+
+				const sc1_blank_0 = a_blanks[0];
+				k_issuer.issue(sc1_blank_0);
+
+				as_non_normal.delete(sc1_blank_0);
+			}
+		}
+
+		// subsequent iterations
+		let b_simple = false;
+		do {
+			b_simple = false;
+
+			// reset assoc
+			h_assoc = {};
+
+			// each blank node
+			for(const sc1_blank of as_non_normal) {
+				// fetch hash
+				const si_norm = h_hashes[sc1_blank];
+
+				// hash exists; add blank to assoc
+				if(si_norm in h_assoc) {
+					h_assoc[si_norm].push(sc1_blank);
+				}
+				// first encounter; create list
+				else {
+					h_assoc[si_norm] = [sc1_blank];
+				}
+
+				// add to keys
+				a_keys.push(si_norm);
+			}
+
+			// each blank node id in sorted keys (keys now sorted in fall-through)
+			for(const si_norm of a_keys.sort()) {
+				const a_blanks = h_assoc[si_norm];
+				if(a_blanks.length > 1) continue;
+
+				const sc1_blank_0 = a_blanks[0];
+				k_issuer.issue(sc1_blank_0);
+
+				as_non_normal.delete(sc1_blank_0);
+
+				b_simple = true;
+			}
+		} while(b_simple);
+
+		// keys now sorted
+		for(const si_blank of a_keys) {
+			const a_paths = [];
+			for(const sc1_blank of h_assoc[si_blank]) {
+				if(sc1_blank in k_issuer._h_existing) continue;
+
+				const k_issuer_tmp = new Issuer('_:g');
+				k_issuer_tmp.issue(sc1_blank);
+				
+				a_paths.push(this.hash_ndq(sc1_blank, k_issuer_tmp));
+			}
+
+			for(const g_hash_result of a_paths.sort(F_SORT_CANONICALIZER_HASH)) {
+				for(const sc1_existing in g_hash_result.issuer._h_existing) {
+					k_issuer.issue(sc1_existing);
+				}
+			}
+		}
+
+		// build output
+		const kb_out = new this._kd_source.constructor.builder(Object.assign({}, this._kd_source._h_prefixes));
+
+		// 
+		const s_issuer_prefix = k_issuer._s_prefix;
+
+		// each graph
+		for(let sc1_graph of hc4_quads) {
+
+			if('_' === sc1_graph[0] && !sc1_graph.startsWith(s_issuer_prefix)) {
+				sc1_graph = k_issuer._h_existing[sc1_graph];
+			}
+
+			// open graph
+			const kh_graph = kb_out.openC1Graph(sc1_graph);
+
+			// ref trips tree
+			const hc3_trips = hc4_quads[sc1_graph];
+
+			// each subject
+			for(let sc1_subject of hc3_trips) {
+
+				if('_' === sc1_subject[0] && !sc1_subject.startsWith(s_issuer_prefix)) {
+					sc1_subject = k_issuer._h_existing[sc1_subject];
+				}
+
+				// open subject
+				const kh_grub = kh_graph.openC1Subject(sc1_subject);
+
+				// ref probs tree
+				const hc2_probs = hc4_quads[sc1_subject];
+
+				// each predicate
+				for(const sc1_predicate of hc2_probs) {
+					// open predicate
+					const kh_grasp = kh_grub.openC1GPredicate(sc1_predicate);
+
+					// ref objects set
+					for(const as_objects of hc2_probs[sc1_predicate]) {
+						// each object
+						for(let sc1_object of as_objects) {
+							if('_' === sc1_object[0] && !sc1_object.startsWith(s_issuer_prefix)) {
+								sc1_object = k_issuer._h_existing[sc1_object];
+							}
+
+							kh_grasp.addC1Object(sc1_object);
+						}
+					}
+				}
+			}
+		}
+
+		// deliver canonicalized dataset
+		return kb_out.deliver();
+	}
+
+
+	hash_1dq(sc1_blank) {
+		const {
+			_h_blanks: h_blanks,
+			_hc4_quads: hc4_quads,
+		} = this;
+
+		const a_norms = [];
+
+		// ref blank node paths
+		const g_blank = h_blanks[sc1_blank];
+
+		// occurs as graph
+		if(g_blank.graph) {
+			// ref trips tree
+			const hc3_trips = hc4_quads[sc1_blank];
+
+			// create norm string
+			const s_norm_g = '_:a\9';
+
+			// each subject
+			for(const sc1_subject of hc3_trips) {
+				// ref probs tree
+				const hc2_probs = hc3_trips[sc1_subject];
+
+				// create norm string
+				const s_norm_gs = s_norm_g+('_' === sc1_subject[0]
+					? (sc1_subject === sc1_blank ? '_:a\8': '_:z\8')
+					: sc1_subject+'\8');
+
+				// each predicate
+				for(const sc1_predicate of hc2_probs) {
+					// ref objects set
+					const as_objects = hc2_probs[sc1_predicate];
+
+					// create norm string
+					const s_norm_gsp = s_norm_gs+sc1_predicate+'\0';
+
+					// each object
+					for(const sc1_object of as_objects) {
+						// push norm string
+						if('_' === sc1_object[0]) {
+							a_norms.push(s_norm_gsp+(sc1_object===sc1_blank? '_:a': '_:z'));
+						}
+						else {
+							a_norms.push(s_norm_gsp+sc1_object);
+						}
+					}
+				}
+			}
+		}
+
+		// each occurrence of subject
+		for(const sc1_graph of g_blank.subject) {
+			// ref probs tree
+			const hc2_probs = hc4_quads[sc1_graph][sc1_blank];
+
+			// create norm string
+			const s_norm_gs = ('_' === sc1_graph[0]? '_:z\9': sc1_graph+'\9')+'_:a\8';
+
+			// each predicate
+			for(const sc1_predicate of hc2_probs) {
+				// ref objects set
+				const as_objects = hc2_probs[sc1_predicate];
+
+				// create norm string
+				const s_norm_gsp = s_norm_gs+sc1_predicate+'\0';
+
+				// each object
+				for(const sc1_object of as_objects) {
+					// push norm string
+					if('_' === sc1_object[0]) {
+						a_norms.push(s_norm_gsp+(sc1_object===sc1_blank? '_:a': '_:z'));
+					}
+					else {
+						a_norms.push(s_norm_gsp+sc1_object);
+					}
+				}
+			}
+		}
+
+		// each occurrence of object
+		for(const [sc1_graph, sc1_subject, sc1_predicate] of g_blank.object) {
+			// init norm string
+			let si_norm_gs = sc1_graph+'\9';
+
+			// graph is blank node
+			if('_' === sc1_graph[0]) {
+				si_norm_gs = sc1_graph === sc1_blank? '_:a\9': '_:z\9'
+			}
+
+			// subject is blank node
+			if('_' === sc1_subject[0]) {
+				si_norm_gs += sc1_subject === sc1_blank? '_:a\8': '_:z\8';
+			}
+			else {
+				si_norm_gs += sc1_subject+'\8';
+			}
+
+			// push norm string
+			a_norms.push(si_norm_gs+sc1_predicate+'\0_:a');
+		}
+
+		// done
+		return hash(a_norms.sort().join('\b'));
+	}
+
+
+	hash_ndq(sc1_blank, k_issuer) {
+		const {
+			_k_issuer: k_issuer_root,
+		} = this;
+
+		const h_related = this.hash_related(sc1_blank, k_issuer);
+
+		let s_input = '';
+
+		for(const si_norm of Object.keys(h_related).sort()) {
+			let s_path_chosen = '';
+			let k_issuer_chosen;
+
+			// eslint-disable-next-line no-loop-func
+			permute(h_related[si_norm], (a_perm) => {
+				let k_issuer_copy = k_issuer.clone();
+				let s_path = '';
+				const a_recurse = [];
+
+				for(const si_related of a_perm) {
+					const si_issued = k_issuer_root._h_existing[si_related];
+					if(si_issued) {
+						s_path += si_issued;
+					}
+					else {
+						if(!k_issuer_copy._h_existing[si_related]) {
+							a_recurse.push(si_related);
+						}
+
+						s_path += k_issuer_copy.issue(si_related);
+					}
+
+					if(s_path_chosen.length
+						&& s_path.length >= s_path_chosen.length
+						&& s_path > s_path_chosen
+					) {
+						return;
+					}
+				}
+
+				for(const si_related of a_recurse) {
+					const g_hash_result = this.hash_ndq(si_related, k_issuer_copy);
+
+					s_path += k_issuer_copy.issue(si_related);
+
+					s_path += '<'+g_hash_result.hash+'>';
+
+					k_issuer_copy = g_hash_result.issuer;
+
+					if(s_path_chosen.length
+						&& s_path.length >= s_path_chosen.length
+						&& s_path > s_path_chosen
+					) {
+						return;
+					}
+				}
+
+				if(!s_path_chosen.length || s_path < s_path_chosen) {
+					s_path_chosen = s_path;
+					k_issuer_chosen = k_issuer_copy;
+				}
+			});
+
+			s_input += si_norm+s_path_chosen;
+
+			k_issuer = k_issuer_chosen;
+		}
+
+		return {
+			hash: hash(s_input),
+			issuer: k_issuer,
+		};
+	}
+
+
+	hash_relative(sc1_blank, sc1_predicate, k_issuer, i_role) {
+		return hash(''+i_role+(i_role? '<'+sc1_predicate+'>': '')+(
+			this._k_issuer._h_existing[sc1_blank]
+				|| k_issuer._h_existing[sc1_blank]
+				|| this._h_hashes[sc1_blank]));
+	}
+
+
+	hash_related(sc1_blank, k_issuer) {
+		const {
+			_h_blanks: h_blanks,
+			_hc4_quads: hc4_quads,
+		} = this;
+
+		const h_related = {};
+
+		// ref blank node paths
+		const g_blank = h_blanks[sc1_blank];
+
+		// occurs as graph
+		if(g_blank.graph) {
+			// ref trips tree
+			const hc3_trips = hc4_quads[sc1_blank];
+
+			// each subject
+			for(const sc1_subject of hc3_trips) {
+				// relate to subject
+				const b_relate_subject = ('_' === sc1_subject[0] && sc1_subject !== sc1_blank);
+
+				// ref probs tree
+				const hc2_probs = hc3_trips[sc1_subject];
+
+				// each predicate
+				for(const sc1_predicate of hc2_probs) {
+					// relate to subject
+					if(b_relate_subject) {
+						const si_related = this.hash_relative(sc1_subject, sc1_predicate, k_issuer, 1);
+						if(si_related in h_related) {
+							h_related[si_related].push(sc1_subject);
+						}
+						else {
+							h_related[si_related] = [sc1_subject];
+						}
+					}
+
+					// ref objects set
+					const as_objects = hc2_probs[sc1_predicate];
+
+					// each object
+					for(const sc1_object of as_objects) {
+						// relate to object
+						if('_' === sc1_object[0] && sc1_object !== sc1_blank) {
+							const si_related = this.hash_relative(sc1_object, sc1_predicate, k_issuer, 2);
+							if(si_related in h_related) {
+								h_related[si_related].push(sc1_object);
+							}
+							else {
+								h_related[si_related] = [sc1_object];
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// each occurrence of subject
+		for(const sc1_graph of g_blank.subject) {
+			// relate to graph (guaranteed to not be graph)
+			const b_relate_graph = '_' === sc1_graph[0];
+
+			// ref probs tree
+			const hc2_probs = hc4_quads[sc1_graph][sc1_blank];
+
+			// each predicate
+			for(const sc1_predicate of hc2_probs) {
+				// relate to graph
+				if(b_relate_graph) {
+					const si_related = this.hash_relative(sc1_graph, sc1_predicate, k_issuer, 0);
+					if(si_related in h_related) {
+						h_related[si_related].push(sc1_graph);
+					}
+					else {
+						h_related[si_related] = [sc1_graph];
+					}
+				}
+
+				// ref objects set
+				const as_objects = hc2_probs[sc1_predicate];
+
+				// each object
+				for(const sc1_object of as_objects) {
+					// relate to object
+					if('_' === sc1_object[0] && sc1_object !== sc1_blank) {
+						const si_related = this.hash_relative(sc1_object, sc1_predicate, k_issuer, 2);
+						if(si_related in h_related) {
+							h_related[si_related].push(sc1_object);
+						}
+						else {
+							h_related[si_related] = [sc1_object];
+						}
+					}
+				}
+			}
+		}
+
+		// each occurrence of object
+		for(const [sc1_graph, sc1_subject, sc1_predicate] of g_blank.object) {
+			// relate to graph
+			if('_' === sc1_graph[0]) {
+				const si_related = this.hash_relative(sc1_graph, sc1_predicate, k_issuer, 0);
+				if(si_related in h_related) {
+					h_related[si_related].push(sc1_graph);
+				}
+				else {
+					h_related[si_related] = [sc1_graph];
+				}
+			}
+
+			// relate to subject
+			if('_' === sc1_subject[0]) {
+				const si_related = this.hash_relative(sc1_subject, sc1_predicate, k_issuer, 1);
+				if(si_related in h_related) {
+					h_related[si_related].push(sc1_subject);
+				}
+				else {
+					h_related[si_related] = [sc1_subject];
+				}
+			}
+		}
+
+		// done
+		return h_related;
+	}
+
+}

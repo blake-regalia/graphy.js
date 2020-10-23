@@ -244,6 +244,10 @@ class PartiallyIndexedTrigDataset {
 	minus() {
 		// TODO: in some cases, it will be faster to replace a tree in 'src' with an overlay of a tree from 'dst', and then delete keys from original tree
 	}
+
+	normalize() {
+		return (new Normalizer(this)).normalize();
+	}
 }
 
 

@@ -68,5 +68,6 @@ export namespace DataFactory {
 	function c3(triples: graphy.ConciseTriples, prefixes?: graphy.PrefixMap, graph?: graphy.ConciseGraphable): graphy.IterablePortableQuads;
 	function c4(quads: graphy.ConciseQuads, prefixes?: graphy.PrefixMap): graphy.IterablePortableQuads;
 
-	function relateMaps(prefixesA: PrefixMap, prefixesB: PrefixMap): Topology;
+	function relatePrefixMaps(prefixesA: PrefixMap, prefixesB: PrefixMap): graphy.PrefixMapRelation;
+	function prefixMapsDiffer(prefixesA: PrefixMap, prefixesB: PrefixMap): boolean;
 }

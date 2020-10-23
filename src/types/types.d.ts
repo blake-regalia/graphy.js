@@ -538,6 +538,10 @@ export interface IterablePortableQuads implements Iterable<Quad> {
 	toString(): C1.Json;
 }
 
+export interface PrefixMapRelation {
+	relation: 'disjoint' | 'equal' | 'superset' | 'subset' | 'overlap';
+	conflicts: Array<string>;
+}
 
 export namespace Dataset {
 	/**

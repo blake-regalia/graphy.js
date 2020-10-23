@@ -281,17 +281,18 @@ const permutations = function *(a_list) {
 class Canonicalizer_ct {
 	constructor(k_tree) {
 		this._k_tree = k_tree;
-		this._h_blanks = {};
+		this._h_blanks = null;
 		this._k_issuer = new Issuer('_:r');
 		this._a_quads = [...k_tree.ct_quads()];
 	}
 
 	normalize() {
 		let {
-			_h_blanks: h_blanks,
 			_k_issuer: k_issuer,
 			_a_quads: a_quads,
 		} = this;
+
+		const h_blanks = this._h_blanks = {};
 
 		const as_non_normal = new Set();
 
