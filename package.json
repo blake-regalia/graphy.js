@@ -4,31 +4,36 @@
   "devVersion": "0.0.42",
   "description": "A collection of RDF libraries for JavaScript developers that focus on performance and usability",
   "keywords": [
-    "semantic-web",
     "rdf",
-    "linked-data",
-    "n-quads",
-    "n-triples",
-    "nq",
-    "nt",
     "rdfjs",
-    "trig",
-    "ttl",
+    "semantic-web",
+    "linked-data",
     "turtle",
+    "ttl",
+    "trig",
+    "n-quads",
+    "nq",
+    "n-triples",
+    "nt",
     "rdf/xml",
-    "streaming",
     "parser",
-    "serializer"
+    "serializer",
+    "reader",
+    "writer",
+    "dataset",
+    "triplestore",
+    "quadstore",
+    "streaming"
   ],
   "engines": {
-    "node": ">=8.4.0"
+    "node": ">=12.0.0"
   },
   "license": "ISC",
   "author": {
     "name": "Blake Regalia",
     "email": "blake.regalia@gmail.com"
   },
-  "repository": "blake-regalia/graphy.js",
+  "repository": "github:blake-regalia/graphy.js",
   "scripts": {
     "build": "npx emk local.*",
     "test": "npm run build && npx emk build/cache/specs/** && npx emk test.*",

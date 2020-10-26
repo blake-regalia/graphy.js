@@ -1,7 +1,7 @@
-@import '../../share/iris.jmacs'
-@import '../../content/text.read.jmacs'
+@import '../share/iris.jmacs'
+@import '../content/text.read.jmacs'
 
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 const R_INVALID_IRIREF = /([\x00-\x20<>"{}|^`\\]|%(?![0-9A-F][0-9A-F]))/g;
 const F_REPLACE_INVALID_IRIREF = (s_, s_v) => {
@@ -10,6 +10,8 @@ const F_REPLACE_INVALID_IRIREF = (s_, s_v) => {
 		? '\\U'+s_code.padStart(8, '0')
 		: '\\u'+s_code.padStart(4, '0');
 }
+
+const hash = s => crypto.createHash('sha256').update(s).digest('base64');
 
 const clean_iri = p_iri_dirty => p_iri_dirty.replace(R_INVALID_IRIREF, F_REPLACE_INVALID_IRIREF);
 
@@ -429,6 +431,10 @@ class GenericTerm {
 			: false;
 	}
 
+	hash() {
+		return hash(this.concise());
+	}
+
 	replace(w_pattern, w_replace) {
 		return new this.constructor(this.value.replace(w_pattern, w_replace));
 	}
@@ -453,11 +459,11 @@ class GenericTerm {
 		}
 
 		terse(h_prefixes={}) {
-			return terse(clean_iri(this.value), h_prefixes);
+			return terse(this.value, h_prefixes);
 		}
 
 		verbose() {
-			return '<'+clean_iri(this.value)+'>';
+			return '<'+this.value+'>';
 		}
 
 		isolate() {
@@ -465,6 +471,10 @@ class GenericTerm {
 				termType: 'NamedNode',
 				value: this.value,
 			};
+		}
+
+		hash() {
+			return hash('>'+this.value);
 		}
 	},
 	/* eslint-enable no-undef */
@@ -492,12 +502,20 @@ class GenericTerm {
 				return (new NamedNode(h_prefixes[SI_PREFIX_BASE]+this.value)).terse(h_prefixes);
 			}
 			else {
-				return '<'+clean_iri(this.value)+'>';
+				return '<'+this.value+'>';
 			}
 		}
 
 		verbose() {
-			throw new Error(`Cannot create verbose string (absolute IRI) out of relative IRI: '${this.value}'`);
+			throw new Error(`Cannot create verbose string (absolute IRI) out of relative IRI: <${this.value}>`);
+		}
+
+		isolate() {
+			throw new Error(`Cannot create isolated term out of relative IRI: <${this.value}>`);
+		}
+
+		hash() {
+			throw new Error(`Cannot create hash digest out of relative IRI: <${this.value}>`);
 		}
 	},
 	/* eslint-enable no-undef */
@@ -570,6 +588,15 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 				language: this.language,
 				datatype: this.datatype.isolate(),
 			};
+		}
+
+		hash() {
+			if(this.language) {
+				return hash('@'+this.language+'"'+this.value);
+			}
+			else {
+				return hash('^>'+this.datatype.value+'"'+this.value);
+			}
 		}
 	},
 	/* eslint-enable no-undef */
@@ -659,6 +686,10 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 			};
 		}
 
+		hash() {
+			return hash('^>'+this.datatype.value+'"'+this.value);
+		}
+
 		replace(w_pattern, w_replace) {
 			return new ExplicitlyDatatypedLiteral(this.value.replace(w_pattern, w_replace), this.datatype);
 		}
@@ -742,6 +773,15 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 				datatype: this.datatype.isolate(),
 			};
 		}
+
+		hash() {
+			if(this.language) {
+				return hash('@'+this.language+'"'+this.value);
+			}
+			else {
+				return hash('^>'+this.datatype.value+'"'+this.value);
+			}
+		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -809,6 +849,10 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 
 		terse() {
 			@{g_config.terse}
+		}
+
+		hash() {
+			return hash('^>@{P_IRI_XSD}@{s_type}"'+this.value);
 		}
 	} {
 		const gp_self = Literal_@{s_type_proper}.prototype;
@@ -1237,6 +1281,10 @@ class Literal_NaN extends Literal_Double {
 				value: '',
 			};
 		}
+
+		hash() {
+			return '@{require('crypto').createHash('sha256').update('*').digest('base64')}';
+		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -1557,31 +1605,6 @@ function relate_maps(h_a, h_b) {
 	};
 }
 
-function maps_differ(h_a, h_b) {
-	// each key in 'a'
-	for(const si_a in h_a) {
-		// key is also in 'b'
-		if(si_a in h_b) {
-			// value is different in 'b'
-			if(h_a[si_a] !== h_b[si_a]) {
-				return true;
-			}
-		}
-		// key is not in 'b'
-		else {
-			return true;
-		}
-	}
-
-	// each key in 'b'
-	for(const si_a in h_a) {
-		// key is not in 'a'
-		if(!(si_a in h_a)) {
-			return true;
-		}
-	}
-}
-
 
 let g_raw = {
 	namedNode(p_iri) {
@@ -1629,7 +1652,7 @@ function c1_expand_prefixed_named_node(sc1_term, h_prefixes) {
 	return '>'+h_prefixes[si_prefix]+s_suffix;
 }
 
-const factory = module.exports = {
+const factory = {
 	concise,
 
 	adopt(dc_factory) {
@@ -1735,6 +1758,9 @@ const factory = module.exports = {
 	},
 
 	namedNode(pr_iri) {
+		// clean iri
+		pr_iri = clean_iri(pr_iri);
+
 		// absolute iri
 		if(RT_IRI_ABSOLUTE.test(pr_iri)) {
 			return new NamedNode(pr_iri);
@@ -2257,27 +2283,32 @@ const factory = module.exports = {
 		return `\`[${uuidv4()}]{"type":"config","value":${JSON.stringify(s_key)}}`;
 	},
 
-	/**
-	 * @param {AnyQuad} g_quad - quad to hash
-	 * @return {string} a sha256 hash of the quad
-	 */
-	hash(g_quad) {
-		// normalize quad
-		let k_quad = factory.fromQuad(g_quad);
+	relatePrefixMaps: relate_maps,
 
-		// create hash
-		let d_hash = crypto.createHash('sha256');
+	prefixMapsDiffer(h_a, h_b) {
+		// each key in 'a'
+		for(const si_a in h_a) {
+			// key is also in 'b'
+			if(si_a in h_b) {
+				// value is different in 'b'
+				if(h_a[si_a] !== h_b[si_a]) {
+					return true;
+				}
+			}
+			// key is not in 'b'
+			else {
+				return true;
+			}
+		}
 
-		// verbose quad
-		d_hash.update(k_quad.verbose());
-
-		// return hash string
-		return d_hash.digest('hex');
+		// each key in 'b'
+		for(const si_a in h_a) {
+			// key is not in 'a'
+			if(!(si_a in h_a)) {
+				return true;
+			}
+		}
 	},
-
-	relateMaps: relate_maps,
-	mapsDiffer: maps_differ,
-
 
 	uuidv4,
 
@@ -2291,3 +2322,7 @@ const factory = module.exports = {
 	SI_PREFIX_CACHE,
 	SI_PREFIX_BASE,
 };
+
+export {factory as DataFactory};
+export default factory;
+

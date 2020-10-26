@@ -1,10 +1,13 @@
 import * as RDFJS from 'rdf-js';
-import { ConciseNamedNode, ObjectRole, SubjectRole } from '../../build/package/core.data.factory/main';
+import { resolve } from 'uri-js';
 
 export {
 	RDFJS as RDFJS,
 };
 
+/**
+ * Namespace for cross-library Term role interfaces
+ */
 export namespace Role {
 	export interface Data {
 		readonly termType: 'DefaultGraph' | 'NamedNode' | 'BlankNode' | 'Literal';
@@ -39,6 +42,341 @@ export namespace Role {
 	}
 }
 
+/**
+ * Namespace for graphy-specific Term interfaces
+ */
+export namespace Term {
+	export type Graph = Node | DefaultGraph;
+	export type Subject = Node;
+	export type Predicate = NamedNode;
+	export type Object = Node | GenericLiteral;
+
+	export interface GenericTerm {
+		readonly isGraphyTerm: true;
+		readonly isGraphyQuad: boolean;
+		readonly isGraphable: boolean;
+		readonly isDefaultGraph: boolean;
+		readonly isNode: boolean;
+		readonly isNamedNode: boolean;
+		readonly isBlankNode: boolean;
+		readonly isAnonymousBlankNode: boolean;
+		readonly isEphemeralBlankNode: boolean;
+		readonly isLiteral: boolean;
+		readonly isLanguagedLiteral: boolean;
+		readonly isDatatypedLiteral: boolean;
+		readonly isSimpleLiteral: boolean;
+		readonly isNumericLiteral: boolean;
+		readonly isIntegerLiteral: boolean;
+		readonly isDoubleLiteral: boolean;
+		readonly isDecimalLiteral: boolean;
+		readonly isBooleanLiteral: boolean;
+		readonly isInfiniteLiteral: boolean;
+		readonly isNaNLiteral: boolean;
+
+		readonly termType: string;
+		readonly value: string;
+
+		equals(other: RDFJS.Term): boolean;
+		concise(prefixes?: PrefixMap): C1.Term;
+		terse(prefixes?: PrefixMap): Terse.Term;
+		star(prefixes?: PrefixMap): Star.Term;
+		verbose(): Verbose.Term;
+		isolate(): Isolated.AnyTerm;
+		hash(): string;
+		replace(searchValue: any, replaceValue: any): GenericTerm;
+		replaceAll(searchValue: any, replaceValue: any): GenericTerm;
+	}
+
+	interface NonLiteralTerm extends GenericTerm {
+		readonly isLiteral: false;
+		readonly isLanguagedLiteral: false;
+		readonly isDatatypedLiteral: false;
+		readonly isSimpleLiteral: false;
+		readonly isNumericLiteral: false;
+		readonly isIntegerLiteral: false;
+		readonly isDoubleLiteral: false;
+		readonly isDecimalLiteral: false;
+		readonly isBooleanLiteral: false;
+		readonly isInfiniteLiteral: false;
+		readonly isNaNLiteral: false;
+	}
+
+	interface Graphable extends NonLiteralTerm implements Role.Graph, Role.Data {
+		readonly isGraphyQuad: false;
+		readonly isGraphable: true;
+
+		readonly termType: 'DefaultGraph' | 'NamedNode' | 'BlankNode';
+	}
+
+	export interface Node extends Graphable implements Role.Data, Role.Subject, Role.Object {
+		readonly isDefaultGraph: false;
+		readonly isNode: true;
+
+		readonly termType: 'NamedNode' | 'BlankNode';
+	}
+
+	export interface GenericLiteral extends GenericTerm implements Role.Data, Role.Object {
+		readonly isGraphyQuad: false;
+		readonly isGraphable: false;
+		readonly isDefaultGraph: false;
+		readonly isNode: false;
+		readonly isNamedNode: false;
+		readonly isBlankNode: false;
+		readonly isAnonymousBlankNode: false;
+		readonly isEphemeralBlankNode: false;
+		readonly isLiteral: true;
+
+		readonly termType: 'Literal';
+		readonly value: string;
+		readonly language: string;
+		readonly datatype: NamedNode;
+
+		concise(prefixes?: PrefixMap): C1.Literal;
+		terse(prefixes?: PrefixMap): Terse.Literal;
+		star(prefixes?: PrefixMap): Star.Literal;
+		verbose(): Verbose.Literal;
+		isolate(): Isolated.Literal;
+	}
+
+	export interface NamedNode extends Node implements RDFJS.NamedNode implements Role.Predicate {
+		readonly isDefaultGraph: false;
+		readonly isNamedNode: true;
+		readonly isBlankNode: false;
+		readonly isAnonymousBlankNode: false;
+		readonly isEphemeralBlankNode: false;
+
+		readonly termType: 'NamedNode';
+		readonly value: Iri;
+
+		constructor(iri: Iri);
+		concise(prefixes?: PrefixMap): C1.NamedNode;
+		terse(prefix?: PrefixMap): Terse.NamedNode;
+		star(prefixes?: PrefixMap): Star.NamedNode;
+		verbose(): Verbose.NamedNode;
+		isolate(): Isolated.NamedNode;
+		replace(searchValue: any, replaceValue: any): NamedNode;
+		replaceAll(searchValue: any, replaceValue: any): NamedNode;
+	}
+
+	export interface BlankNode extends Node implements RDFJS.BlankNode {
+		readonly isDefaultGraph: false;
+		readonly isNamedNode: false;
+		readonly isBlankNode: true;
+
+		readonly termType: 'BlankNode';
+		readonly value: string;    
+
+		constructor(label: string);
+		concise(prefixes?: PrefixMap): C1.BlankNode;
+		terse(prefixes?: PrefixMap): Terse.BlankNode;
+		star(prefixes?: PrefixMap): Star.BlankNode;
+		verbose(): Verbose.BlankNode;
+		isolate(): Isolated.BlankNode;
+		replace(searchValue: any, replaceValue: any): BlankNode;
+		replaceAll(searchValue: any, replaceValue: any): BlankNode;
+	}
+
+	export interface AnonymousBlankNode extends BlankNode implements RDFJS.BlankNode {
+		readonly isAnonymousBlankNode: true;
+	}
+
+	export interface EphemeralBlankNode extends AnonymousBlankNode implements RDFJS.BlankNode {
+		readonly isEphemeralBlankNode: true;
+	}
+
+	export interface LanguagedLiteral extends GenericLiteral implements RDFJS.Literal {
+		readonly isLanguagedLiteral: true;
+		readonly isDatatypedLiteral: false;
+		readonly isSimpleLiteral: false;
+		readonly isNumericLiteral: false;
+		readonly isIntegerLiteral: false;
+		readonly isDoubleLiteral: false;
+		readonly isDecimalLiteral: false;
+		readonly isBooleanLiteral: false;
+		readonly isInfiniteLiteral: false;
+		readonly isNaNLiteral: false;
+
+		constructor(value: string, language: string);
+		replace(searchValue: any, replaceValue: any): LanguagedLiteral;
+		replaceAll(searchValue: any, replaceValue: any): LanguagedLiteral;
+	}
+
+	export interface DatatypedLiteral extends GenericLiteral implements RDFJS.Literal {
+		readonly isNamedNode: false;
+		readonly isBlankNode: false;
+		// --
+		readonly isLanguagedLiteral: false;
+		readonly isDatatypedLiteral: true;
+		readonly isSimpleLiteral: false;
+
+		constructor(value: string, datatype: NamedNode);
+		replace(searchValue: any, replaceValue: any): DatatypedLiteral;
+		replaceAll(searchValue: any, replaceValue: any): DatatypedLiteral;
+	}
+
+	export interface NumericLiteral extends DatatypedLiteral {
+		readonly isNumericLiteral: true;
+		readonly isBooleanLiteral: false;
+
+		readonly number: number;
+	}
+
+	export interface IntegerLiteral extends NumericLiteral {
+		readonly isIntegerLiteral: true;
+		readonly isDoubleLiteral: false;
+		readonly isDecimalLiteral: false;
+		readonly isInfiniteLiteral: false;
+		readonly isNaNLiteral: false;
+
+		constructor(value: number | string);
+	}
+
+	export interface DoubleLiteral extends NumericLiteral {
+		readonly isIntegerLiteral: false;
+		readonly isDoubleLiteral: true;
+		readonly isDecimalLiteral: false;
+
+		constructor(value: number | string);
+	}
+
+	export interface InfiniteLiteral extends DoubleLiteral {
+		readonly isInfiniteLiteral: true;
+		readonly isNaNLiteral: false;
+
+		readonly boolean: boolean;
+	}
+
+	export interface PositiveInfinityLiteral extends InfiniteLiteral {
+		readonly value: 'INF';
+		// readonly number: Infinity;
+	}
+
+	export interface NegativeInfinityLiteral extends InfiniteLiteral {
+		readonly value: '-INF';
+		// readonly number: -Infinity;
+	}
+
+	export interface NaNLiteral extends DoubleLiteral {
+		readonly isNaNLiteral: true;
+
+		readonly value: 'NaN';
+	}
+
+	export interface DecimalLiteral extends NumericLiteral {
+		readonly isIntegerLiteral: false;
+		readonly isDoubleLiteral: false;
+		readonly isDecimalLiteral: true;
+		readonly isInfiniteLiteral: false;
+		readonly isNaNLiteral: false;
+
+		constructor(value: number | string);
+	}
+
+	export interface BooleanLiteral extends DatatypedLiteral {
+		readonly isNumericLiteral: false;
+		readonly isIntegerLiteral: false;
+		readonly isDoubleLiteral: false;
+		readonly isDecimalLiteral: false;
+		readonly isBooleanLiteral: true;
+		readonly isInfiniteLiteral: false;
+		readonly isNaNLiteral: false;
+
+		readonly boolean: boolean;
+	}
+
+	export interface SimpleLiteral extends GenericLiteral implements RDFJS.Literal {
+		readonly isNamedNode: false;
+		readonly isBlankNode: false;
+		// --
+		readonly isLanguagedLiteral: false;
+		readonly isDatatypedLiteral: false;
+		readonly isSimpleLiteral: true;
+		readonly isNumericLiteral: false;
+		readonly isIntegerLiteral: false;
+		readonly isDoubleLiteral: false;
+		readonly isDecimalLiteral: false;
+		readonly isBooleanLiteral: false;
+		readonly isInfiniteLiteral: false;
+		readonly isNaNLiteral: false;
+
+		constructor(value: string, datatype: NamedNode);
+		replace(searchValue: any, replaceValue: any): SimpleLiteral;
+		replaceAll(searchValue: any, replaceValue: any): SimpleLiteral;
+	}
+
+	export interface DefaultGraph extends Graphable implements RDFJS.DefaultGraph {
+		readonly isDefaultGraph: true;
+		
+		readonly termType: 'DefaultGraph';
+		readonly value: '';
+		
+		constructor();
+		concise(prefixes?: PrefixMap): C1.DefaultGraph;
+		terse(prefix?: PrefixMap): Terse.DefaultGraph;
+		star(prefixes?: PrefixMap): Star.DefaultGraph;
+		verbose(): Verbose.DefaultGraph;
+		isolate(): Isolated.DefaultGraph;
+		replace(searchValue: any, replaceValue: any): DefaultGraph;
+		replaceAll(searchValue: any, replaceValue: any): DefaultGraph;
+	}
+
+	interface NonDataTerm extends NonLiteralTerm {
+		readonly isDefaultGraph: false;
+		readonly isGraphable: false;
+		readonly isNode: false;
+		readonly isNamedNode: false;
+		readonly isBlankNode: false;
+		readonly isAnonymousBlankNode: false;
+		readonly isEphemeralBlankNode: false;
+	}
+
+	export interface Variable extends NonDataTerm implements RDFJS.Variable {
+		readonly isGraphyQuad: false;
+		readonly isVariable: true;
+
+		readonly termType: 'Variable';
+		readonly value: string;
+		constructor(value: string);
+
+		concise(prefixes?: PrefixMap): C1.Variable;
+		terse(prefixes?: PrefixMap): Terse.Variable;
+		star(prefixes?: PrefixMap): Star.Variable;
+		verbose(): Verbose.Variable;
+		isolate(): Isolated.Variable;
+		replace(searchValue: any, replaceValue: any): Variable;
+		replaceAll(searchValue: any, replaceValue: any): Variable;
+	}
+
+	export interface Reification {
+		readonly node: BlankNode;
+		readonly quads: Array<Quad>;
+	}
+
+	export interface Quad extends NonDataTerm implements RDFJS.Quad {
+		readonly isGraphyQuad: true;
+		readonly isVariable: false;
+
+		readonly termType: 'Quad';
+		readonly value: '';
+		readonly subject: Term.Subject;
+		readonly predicate: Term.Predicate;
+		readonly object: Term.Object;
+		readonly graph: Term.Graph;
+		constructor(subject: Role.Subject, predicate: Role.Predicate, object: Role.Object, graph?: Role.Graph);
+		isolate(): IsolatedQuad;
+		reify(label?: string): Reification;
+
+		concise(prefixes?: PrefixMap): C1.QuadTerm;
+		terse(prefixes?: PrefixMap): Terse.Quad;
+		star(prefixes?: PrefixMap): Star.QuadTerm;
+		verbose(): Verbose.Quad;
+		isolate(): Isolated.Quad;
+		replace(searchValue: any, replaceValue: any): Quad;
+		replaceAll(searchValue: any, replaceValue: any): Quad;
+	}
+
+}
+
 export type Iri = string;
 
 export namespace C1 {
@@ -62,15 +400,20 @@ export namespace C1 {
 	export type Directive = string;
 
 	export type Term = DataTerm | Variable | Json | Directive | QuadTerm;
+
+	export interface QuadBundle implements Iterable<Quad> {
+		[Symbol.iterator]: () => Iterator<Quad>;
+		toString(): C1.Json;
+	}
 }
 
 export namespace C4 {
-	export type ObjectsTarget = boolean | number | Term | GenericTerm;
+	export type ObjectsTarget = boolean | number | Role.Object;
 	export type ObjectsList = Array<ObjectsTarget> | Set<ObjectsTarget>;
 	export type ObjectsCollection = Array<ObjectsList> | Set<ObjectsList>;
 	export type Objects = ObjectsTarget | ObjectsList | ObjectsCollection;
 
-	export type StrictObjects = Array<Term>;
+	export type StrictObjects = Array<Role.Object>;
 
 	export interface Pairs {
 		// [predicate: ConciseNamedNode]: ConciseObjects;
@@ -180,362 +523,26 @@ export namespace Isolated {
 		value: string;
 	}
 	
-	export type NodeTerm = NamedNode | BlankNode;
-	export type GraphableTerm = NodeTerm | DefaultGraph;
-	export type ObjectTerm = NodeTerm | GenericLiteral;
-	// type DataTerm = GraphTerm | Literal;
+	export type Node = NamedNode | BlankNode;
+	export type Graphable = Node | DefaultGraph;
+	export type Object = Node | GenericLiteral;
+	export type DataTerm = GraphTerm | Literal;
 	// type Data = DataTerm | Quad;
 
-	type AnyTerm = GraphableTerm | Literal | Quad | Variable;
+	type Any = Graphable | Literal | Quad | Variable;
 	
 	interface Quad {
 		termType: 'Quad';
 		value: '';
-		subject: NodeTerm;
+		subject: Node;
 		predicate: NamedNode;
-		object: ObjectTerm;
-		graph: GraphableTerm;
+		object: Object;
+		graph: Graphable;
 	}
-	
-}
-
-export namespace Term {
-	export type Graph = Node | DefaultGraph;
-	export type Subject = Node;
-	export type Predicate = NamedNode;
-	export type Object = Node | GenericLiteral;
 }
 
 export interface PrefixMap {
 	[prefixId: string]: Iri;
-}
-
-export interface GenericTerm {
-	readonly isGraphyTerm: true;
-	readonly isGraphyQuad: boolean;
-	readonly isGraphable: boolean;
-	readonly isDefaultGraph: boolean;
-	readonly isNode: boolean;
-	readonly isNamedNode: boolean;
-	readonly isBlankNode: boolean;
-	readonly isAnonymousBlankNode: boolean;
-	readonly isEphemeralBlankNode: boolean;
-	readonly isLiteral: boolean;
-	readonly isLanguagedLiteral: boolean;
-	readonly isDatatypedLiteral: boolean;
-	readonly isSimpleLiteral: boolean;
-	readonly isNumericLiteral: boolean;
-	readonly isIntegerLiteral: boolean;
-	readonly isDoubleLiteral: boolean;
-	readonly isDecimalLiteral: boolean;
-	readonly isBooleanLiteral: boolean;
-	readonly isInfiniteLiteral: boolean;
-	readonly isNaNLiteral: boolean;
-
-	readonly termType: string;
-	readonly value: string;
-
-	equals(other: RDFJS.Term): boolean;
-	concise(prefixes?: PrefixMap): C1.Term;
-	terse(prefixes?: PrefixMap): Terse.Term;
-	star(prefixes?: PrefixMap): Star.Term;
-	verbose(): Verbose.Term;
-	isolate(): Isolated.AnyTerm;
-	replace(searchValue: any, replaceValue: any): GenericTerm;
-	replaceAll(searchValue: any, replaceValue: any): GenericTerm;
-}
-
-export interface NonLiteralTerm extends GenericTerm {
-	readonly isLiteral: false;
-	readonly isLanguagedLiteral: false;
-	readonly isDatatypedLiteral: false;
-	readonly isSimpleLiteral: false;
-	readonly isNumericLiteral: false;
-	readonly isIntegerLiteral: false;
-	readonly isDoubleLiteral: false;
-	readonly isDecimalLiteral: false;
-	readonly isBooleanLiteral: false;
-	readonly isInfiniteLiteral: false;
-	readonly isNaNLiteral: false;
-}
-
-export interface Graphable extends NonLiteralTerm implements Role.Graph, Role.Data {
-	readonly isGraphyQuad: false;
-	readonly isGraphable: true;
-
-	readonly termType: 'DefaultGraph' | 'NamedNode' | 'BlankNode';
-}
-
-export interface Node extends Graphable implements Role.Data, Role.Subject, Role.Object {
-	readonly isDefaultGraph: false;
-	readonly isNode: true;
-
-	readonly termType: 'NamedNode' | 'BlankNode';
-}
-
-export interface GenericLiteral extends GenericTerm implements Role.Data, Role.Object {
-	readonly isGraphyQuad: false;
-	readonly isGraphable: false;
-	readonly isDefaultGraph: false;
-	readonly isNode: false;
-	readonly isNamedNode: false;
-	readonly isBlankNode: false;
-	readonly isAnonymousBlankNode: false;
-	readonly isEphemeralBlankNode: false;
-	readonly isLiteral: true;
-
-	readonly termType: 'Literal';
-	readonly value: string;
-	readonly language: string;
-	readonly datatype: NamedNode;
-
-	concise(prefixes?: PrefixMap): C1.Literal;
-	terse(prefixes?: PrefixMap): Terse.Literal;
-	star(prefixes?: PrefixMap): Star.Literal;
-	verbose(): Verbose.Literal;
-	isolate(): Isolated.Literal;
-}
-
-export interface NamedNode extends Node implements RDFJS.NamedNode implements Role.Predicate {
-	readonly isDefaultGraph: false;
-	readonly isNamedNode: true;
-	readonly isBlankNode: false;
-	readonly isAnonymousBlankNode: false;
-	readonly isEphemeralBlankNode: false;
-
-	readonly termType: 'NamedNode';
-	readonly value: Iri;
-
-	constructor(iri: Iri);
-	concise(prefixes?: PrefixMap): C1.NamedNode;
-	terse(prefix?: PrefixMap): Terse.NamedNode;
-	star(prefixes?: PrefixMap): Star.NamedNode;
-	verbose(): Verbose.NamedNode;
-	isolate(): Isolated.NamedNode;
-	replace(searchValue: any, replaceValue: any): NamedNode;
-	replaceAll(searchValue: any, replaceValue: any): NamedNode;
-}
-
-export interface BlankNode extends Node implements RDFJS.BlankNode {
-	readonly isDefaultGraph: false;
-	readonly isNamedNode: false;
-	readonly isBlankNode: true;
-
-	readonly termType: 'BlankNode';
-	readonly value: string;    
-
-	constructor(label: string);
-	concise(prefixes?: PrefixMap): C1.BlankNode;
-	terse(prefixes?: PrefixMap): Terse.BlankNode;
-	star(prefixes?: PrefixMap): Star.BlankNode;
-	verbose(): Verbose.BlankNode;
-	isolate(): Isolated.BlankNode;
-	replace(searchValue: any, replaceValue: any): BlankNode;
-	replaceAll(searchValue: any, replaceValue: any): BlankNode;
-}
-
-export interface AnonymousBlankNode extends BlankNode implements RDFJS.BlankNode {
-	readonly isAnonymousBlankNode: true;
-}
-
-export interface EphemeralBlankNode extends AnonymousBlankNode implements RDFJS.BlankNode {
-	readonly isEphemeralBlankNode: true;
-}
-
-export interface LanguagedLiteral extends GenericLiteral implements RDFJS.Literal {
-	readonly isLanguagedLiteral: true;
-	readonly isDatatypedLiteral: false;
-	readonly isSimpleLiteral: false;
-	readonly isNumericLiteral: false;
-	readonly isIntegerLiteral: false;
-	readonly isDoubleLiteral: false;
-	readonly isDecimalLiteral: false;
-	readonly isBooleanLiteral: false;
-	readonly isInfiniteLiteral: false;
-	readonly isNaNLiteral: false;
-
-	constructor(value: string, language: string);
-	replace(searchValue: any, replaceValue: any): LanguagedLiteral;
-	replaceAll(searchValue: any, replaceValue: any): LanguagedLiteral;
-}
-
-export interface DatatypedLiteral extends GenericLiteral implements RDFJS.Literal {
-	readonly isNamedNode: false;
-	readonly isBlankNode: false;
-	// --
-	readonly isLanguagedLiteral: false;
-	readonly isDatatypedLiteral: true;
-	readonly isSimpleLiteral: false;
-
-	constructor(value: string, datatype: NamedNode);
-	replace(searchValue: any, replaceValue: any): DatatypedLiteral;
-	replaceAll(searchValue: any, replaceValue: any): DatatypedLiteral;
-}
-
-export interface NumericLiteral extends DatatypedLiteral {
-	readonly isNumericLiteral: true;
-	readonly isBooleanLiteral: false;
-
-	readonly number: number;
-}
-
-export interface IntegerLiteral extends NumericLiteral {
-	readonly isIntegerLiteral: true;
-	readonly isDoubleLiteral: false;
-	readonly isDecimalLiteral: false;
-	readonly isInfiniteLiteral: false;
-	readonly isNaNLiteral: false;
-
-	constructor(value: number | string);
-}
-
-export interface DoubleLiteral extends NumericLiteral {
-	readonly isIntegerLiteral: false;
-	readonly isDoubleLiteral: true;
-	readonly isDecimalLiteral: false;
-
-	constructor(value: number | string);
-}
-
-export interface InfiniteLiteral extends DoubleLiteral {
-	readonly isInfiniteLiteral: true;
-	readonly isNaNLiteral: false;
-
-	readonly boolean: boolean;
-}
-
-export interface PositiveInfinityLiteral extends InfiniteLiteral {
-	readonly value: 'INF';
-	// readonly number: Infinity;
-}
-
-export interface NegativeInfinityLiteral extends InfiniteLiteral {
-	readonly value: '-INF';
-	// readonly number: -Infinity;
-}
-
-export interface NaNLiteral extends DoubleLiteral {
-	readonly isNaNLiteral: true;
-
-	readonly value: 'NaN';
-}
-
-export interface DecimalLiteral extends NumericLiteral {
-	readonly isIntegerLiteral: false;
-	readonly isDoubleLiteral: false;
-	readonly isDecimalLiteral: true;
-	readonly isInfiniteLiteral: false;
-	readonly isNaNLiteral: false;
-
-	constructor(value: number | string);
-}
-
-export interface BooleanLiteral extends DatatypedLiteral {
-	readonly isNumericLiteral: false;
-	readonly isIntegerLiteral: false;
-	readonly isDoubleLiteral: false;
-	readonly isDecimalLiteral: false;
-	readonly isBooleanLiteral: true;
-	readonly isInfiniteLiteral: false;
-	readonly isNaNLiteral: false;
-
-	readonly boolean: boolean;
-}
-
-export interface SimpleLiteral extends GenericLiteral implements RDFJS.Literal {
-	readonly isNamedNode: false;
-	readonly isBlankNode: false;
-	// --
-	readonly isLanguagedLiteral: false;
-	readonly isDatatypedLiteral: false;
-	readonly isSimpleLiteral: true;
-	readonly isNumericLiteral: false;
-	readonly isIntegerLiteral: false;
-	readonly isDoubleLiteral: false;
-	readonly isDecimalLiteral: false;
-	readonly isBooleanLiteral: false;
-	readonly isInfiniteLiteral: false;
-	readonly isNaNLiteral: false;
-
-	constructor(value: string, datatype: NamedNode);
-	replace(searchValue: any, replaceValue: any): SimpleLiteral;
-	replaceAll(searchValue: any, replaceValue: any): SimpleLiteral;
-}
-
-export interface DefaultGraph extends Graphable implements RDFJS.DefaultGraph {
-	readonly isDefaultGraph: true;
-	
-	readonly termType: 'DefaultGraph';
-	readonly value: '';
-	
-	constructor();
-	concise(prefixes?: PrefixMap): C1.DefaultGraph;
-	terse(prefix?: PrefixMap): Terse.DefaultGraph;
-	star(prefixes?: PrefixMap): Star.DefaultGraph;
-	verbose(): Verbose.DefaultGraph;
-	isolate(): Isolated.DefaultGraph;
-	replace(searchValue: any, replaceValue: any): DefaultGraph;
-	replaceAll(searchValue: any, replaceValue: any): DefaultGraph;
-}
-
-export interface NonDataTerm extends NonLiteralTerm {
-	readonly isDefaultGraph: false;
-	readonly isGraphable: false;
-	readonly isNode: false;
-	readonly isNamedNode: false;
-	readonly isBlankNode: false;
-	readonly isAnonymousBlankNode: false;
-	readonly isEphemeralBlankNode: false;
-}
-
-export interface Variable extends NonDataTerm implements RDFJS.Variable {
-	readonly isGraphyQuad: false;
-	readonly isVariable: true;
-
-	readonly termType: 'Variable';
-	readonly value: string;
-	constructor(value: string);
-
-	concise(prefixes?: PrefixMap): C1.Variable;
-	terse(prefixes?: PrefixMap): Terse.Variable;
-	star(prefixes?: PrefixMap): Star.Variable;
-	verbose(): Verbose.Variable;
-	isolate(): Isolated.Variable;
-	replace(searchValue: any, replaceValue: any): Variable;
-	replaceAll(searchValue: any, replaceValue: any): Variable;
-}
-
-export interface Reification {
-	readonly node: BlankNode;
-	readonly quads: Array<Quad>;
-}
-
-export interface Quad extends NonDataTerm implements RDFJS.Quad {
-	readonly isGraphyQuad: true;
-	readonly isVariable: false;
-
-	readonly termType: 'Quad';
-	readonly value: '';
-	readonly subject: Term.Subject;
-	readonly predicate: Term.Predicate;
-	readonly object: Term.Object;
-	readonly graph: Term.Graph;
-	constructor(subject: Role.Subject, predicate: Role.Predicate, object: Role.Object, graph?: Role.Graph);
-	isolate(): IsolatedQuad;
-	reify(label?: string): Reification;
-
-	concise(prefixes?: PrefixMap): C1.QuadTerm;
-	terse(prefixes?: PrefixMap): Terse.Quad;
-	star(prefixes?: PrefixMap): Star.QuadTerm;
-	verbose(): Verbose.Quad;
-	isolate(): Isolated.Quad;
-	replace(searchValue: any, replaceValue: any): Quad;
-	replaceAll(searchValue: any, replaceValue: any): Quad;
-}
-
-export interface IterablePortableQuads implements Iterable<Quad> {
-	[Symbol.iterator]: () => Iterator<Quad>;
-	toString(): C1.Json;
 }
 
 export interface PrefixMapRelation {

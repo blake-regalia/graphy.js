@@ -1,53 +1,52 @@
-import { PrefixMap } from '../../build/package/core.data.factory/main';
-import * as graphy from '../types/types';
+import {
+	RDFJS,
+	Role,
+	Iri,
+	C1,
+	Term,
+} from '@graphy/types';
 
-import Term = graphy.Term;
-import C1 = graphy.C1;
-
-export enum Topology {
-	CONTAIN = 0b101,
-	WITHIN = 0b011,
-	EQUAL = 0b111,
-	DISJOINT = 0b000,
-	OVERLAP = 0b001,
+export interface PrefixMapRelation {
+	relation: 'equal' | 'superset' | 'subset' | 'overlap';
+	conflicts: Array<string>;
 }
 
 export namespace DataFactory {
-	function namedNode(value: graphy.Iri): graphy.NamedNode;
-	function blankNode(value?: string): graphy.BlankNode;
-	function literal(value: string, languageOrDatatype?: string | RDFJS.NamedNode): graphy.GenericLiteral;
-	function defaultGraph(): graphy.DefaultGraph;
-	function variable(value: string): graphy.Variable;
-	function quad(subject: graphy.SubjectRole, predicate: graphy.PredicateRole, object: graphy.ObjectRole, graph?: graphy.GraphRole): graphy.Quad;
+	function namedNode(value: Iri): Term.NamedNode;
+	function blankNode(value?: string): Term.BlankNode;
+	function literal(value: string, languageOrDatatype?: string | RDFJS.NamedNode): Term.Literal;
+	function defaultGraph(): Term.DefaultGraph;
+	function variable(value: string): Term.Variable;
+	function quad(subject: Term.Subject, predicate: Term.Predicate, object: Term.Object, graph?: Term.Graph): Term.Quad;
 
 	/**
 	 * @deprecated Use `.quad()` instead
 	 */
-	function triple(): graphy.Quad;
+	function triple(): Term.Quad;
 
-	function integer(value: number | string): graphy.IntegerLiteral;
-	function double(value: number | string): graphy.DoubleLiteral;
-	function decimal(value: number | string | bigint): graphy.DecimalLiteral;
-	function boolean(value: boolean | number | string): graphy.BooleanLiteral;
+	function integer(value: number | string): Term.IntegerLiteral;
+	function double(value: number | string): Term.DoubleLiteral;
+	function decimal(value: number | string | bigint): Term.DecimalLiteral;
+	function boolean(value: boolean | number | string): Term.BooleanLiteral;
 
-	function number(value: number | bigint): graphy.NumericLiteral;
-	function date(date: Date): graphy.DatatypedLiteral;
-	function dateTime(dateTime: Date): graphy.DatatypedLiteral;
-	function ephemeral(): graphy.EphemeralBlankNode;
+	function number(value: number | bigint): Term.NumericLiteral;
+	function date(date: Date): Term.DatatypedLiteral;
+	function dateTime(dateTime: Date): Term.DatatypedLiteral;
+	function ephemeral(): Term.EphemeralBlankNode;
 
-	function fromTerm(term: RDFJS.Term): graphy.GenericTerm;
-	function fromQuad(quad: RDFJS.Quad): graphy.Quad;
+	function fromTerm(term: RDFJS.Term): Term.GenericTerm;
+	function fromQuad(quad: RDFJS.Quad): Term.Quad;
 
-	function comment(): graphy.ConciseDirective;
-	function newlines(): graphy.ConciseDirective;
+	function comment(): C1.Directive;
+	function newlines(): C1.Directive;
 
-	function concise(iri: graphy.Iri, prefixes?: PrefixMap): graphy.ConciseNamedNode;
-	function terse(iri: graphy.Iri, prefixes?: PrefixMap): graphy.TerseNamedNode;
+	function concise(iri: Iri, prefixes?: PrefixMap): C1.NamedNode;
+	function terse(iri: Iri, prefixes?: PrefixMap): Terse.NamedNode;
 
 	// should be `fromC1` ?
-	function c1(term: graphy.C1.Term, prefixes?: graphy.PrefixMap): graphy.GenericTerm;
+	function c1(term: C1.GenericTerm, prefixes?: PrefixMap): Term.GenericTerm;
 	
-	function c1ExpandData(term: graphy.C1.DataTerm, prefixes: graphy.PrefixMap): C1.DataTerm;
+	function c1ExpandData(term: C1.DataTerm, prefixes: PrefixMap): C1.DataTerm;
 
 	function c1Graph(graph: C1.Graph, prefixes: PrefixMap): Term.Graph;
 	function c1Subject(subject: C1.Subject, prefixes: PrefixMap): Term.Subject;
@@ -65,9 +64,11 @@ export namespace DataFactory {
 	// function c1DataTerm(dataTerm: graphy.ConciseDataTerm): graphy.DataTerm;
 	// function c1Literal(dataTerm: graphy.ConciseLiteral): graphy.GenericLiteral;
 
-	function c3(triples: graphy.ConciseTriples, prefixes?: graphy.PrefixMap, graph?: graphy.ConciseGraphable): graphy.IterablePortableQuads;
-	function c4(quads: graphy.ConciseQuads, prefixes?: graphy.PrefixMap): graphy.IterablePortableQuads;
+	function c3(triples: C4.Triples, prefixes?: PrefixMap, graph?: C1.Graph): C1.QuadBundle;
+	function c4(quads: C4.Quads, prefixes?: PrefixMap): C1.QuadBundle;
 
-	function relatePrefixMaps(prefixesA: PrefixMap, prefixesB: PrefixMap): graphy.PrefixMapRelation;
+	function relatePrefixMaps(prefixesA: PrefixMap, prefixesB: PrefixMap): PrefixMapRelation;
 	function prefixMapsDiffer(prefixesA: PrefixMap, prefixesB: PrefixMap): boolean;
 }
+
+export default DataFactory;

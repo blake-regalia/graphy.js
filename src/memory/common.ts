@@ -2,32 +2,31 @@ import {
 	C1,
 	Dataset,
 	PrefixMap,
-} from '../types/types';
-import { SemiIndexedTrigDataset } from './memory';
+} from '@graphy/types';
 
 /**
  * Caches the number of 'keys' stored in the tree.
  */
-export const $_KEYS = Symbol(' (keys)');
+export const $_KEYS = Symbol('key-count');
 
 /**
  * Tracks the total count of quads stored at all descendent levels of the tree.
  */
-export const $_QUADS = Symbol(' (quads)');
+export const $_QUADS = Symbol('quad-count');
 
 /**
  * When present, indicates that the tree is overlaying another object via prototype.
  *   This allows for super quick set operations, such as `union` and `difference`, on
  *   the average case and significantly reduces memory consumption and GC time.
  */
-export const $_OVERLAY = Symbol(' (overlay)');
+export const $_OVERLAY = Symbol('overlay-status');
 
 /**
  * When present, indicates that the tree was used to create an overlay for another tree.
  *   The implication is that if `add` or `delete` is called on a buried tree, the method
  *   will have to create a new tree since the original object may still be referenced.
  */
-export const $_BURIED = Symbol(' (buried)');
+export const $_BURIED = Symbol('buried-status');
 
 
 export interface CountableKeys {

@@ -1,44 +1,3 @@
-/* eslint-disable no-use-before-define */
-
-import {
-	RDFJS,
-	C1,
-	PrefixMap,
-	Quad,
-	Dataset,
-	Role,
-} from '@graphy/types';
-
-import SyncC1Dataset = Dataset.SyncC1Dataset;
-
-import {
-	DataFactory,
-// } from '@graphy/core';
-} from '../../core/core';
-
-const {
-	c1Graph,
-	c1Subject,
-	c1Predicate,
-	c1Object,
-	concise,
-	fromTerm,
-} = DataFactory;
-
-import {
-	PartiallyIndexedTrigDataset,
-} from '../dataset/trig-partial';
-
-import {
-	$_KEYS,
-	$_OVERLAY,
-	$_QUADS,
-	$_BURIED,
-	Generic,
-	PartiallyIndexed,
-} from '../common';
-
-import overlayTree = Generic.overlayTree;
 
 /**
  * @fileoverview
@@ -60,13 +19,9 @@ import overlayTree = Generic.overlayTree;
  * 
  */
 
-type Deliverable = Function & {
-	new(hc4_quads: PartiallyIndexed.QuadsTree, h_prefixes: PrefixMap): SyncC1Dataset;
-}
-
 
 class GraspHandle implements PartiallyIndexed.GraspHandle {
-	_k_builder: TrigDatasetBuilder;
+	_k_builder: TreeDatasetBuilder;
 	_kh_grub: GrubHandle;
 	_sc1_predicate: C1.Predicate;
 	_sc1_subject: C1.Subject;
@@ -212,7 +167,7 @@ function dataset_delivered(): never {
  * SOME: gs?o
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
-export class TrigDatasetBuilder implements PartiallyIndexed.GraphHandle, Dataset.SyncGspoBuilder<SyncC1Dataset> {
+export class TreeDatasetBuilder implements PartiallyIndexed.GraphHandle, Dataset.SyncGspoBuilder<SyncC1Dataset> {
 	_sc1_graph = '*';
 	_hc3_trips: PartiallyIndexed.TriplesTree;
 	_hc4_quads: PartiallyIndexed.QuadsTree;
@@ -220,7 +175,7 @@ export class TrigDatasetBuilder implements PartiallyIndexed.GraphHandle, Dataset
 
 	static supportsStar = false;
 
-	constructor(h_prefixes={} as PrefixMap, kd_init=PartiallyIndexedTrigDataset.empty(h_prefixes)) {
+	constructor(h_prefixes={} as PrefixMap, kd_init=TreeDataset.empty(h_prefixes)) {
 		this._h_prefixes = h_prefixes;
 
 		this._hc4_quads = kd_init._hc4_quads as PartiallyIndexed.QuadsTree;

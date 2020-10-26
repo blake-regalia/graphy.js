@@ -1,3 +1,4 @@
+/* global crypto C1 Memory Dataset QuadsTree */
 
 /*
 
@@ -14,23 +15,14 @@ interface BlankNodePaths {
 
  */
 
-const F_SORT_CANONICALIZER_HASH = (g_a, g_b) => g_a.hash < g_b.hash? -1: (g_a.hash > g_b.hash? 1: 0);
+const F_SORT_CANONICALIZER_HASH = (g_a: HndqResult, g_b: HndqResult) => g_a.hash < g_b.hash? -1: (g_a.hash > g_b.hash? 1: 0);
 
-const hash = s => crypto.createHash('sha256').update(s).digest('hex');
-
-function hash_1dq(sc1_blank, a_bquads) {
-	const a_local = [];
-	for(const s_bquad of a_bquads) {
-		a_local.push(s_bquad.replace(/_:[^\8\9\0]+/g, s => s === sc1_blank? '_:i': '_:o'));
-	}
-	return hash(a_local.sort().join('\b'));
-}
-
+const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 
 // the fastest and most memory efficient implemntation of heap's method for javascript
 // adapted from <https://stackoverflow.com/a/37580979/1641160>
-function permute(a_list, f_yield) {
-	f_yield(a_list.slice(), f_yield);
+function permute(a_list: any[], f_yield: (a: any[]) => void) {
+	f_yield(a_list.slice());
 
 	const nl_list = a_list.length;
 	const a_counts = nl_list < 256
@@ -61,153 +53,74 @@ function permute(a_list, f_yield) {
 
 
 class Issuer {
+	_s_prefix: string;
+	_c_counter: number;
+	_h_existing: {
+		[s_label: string]: string;
+	};
+
 	constructor(s_prefix='_:c14n', c_counter=0, h_existing={}) {
 		this._s_prefix = s_prefix;
 		this._c_counter = c_counter;
 		this._h_existing = h_existing;
 	}
 
-	issue(s_label) {
+	issue(s_label: string): string {
 		if(s_label in this._h_existing) return this._h_existing[s_label];
 
 		return (this._h_existing[s_label] = this._s_prefix+(this._c_counter++));
 	}
 
-	clone() {
+	clone(): Issuer {
 		return new Issuer(this._s_prefix, this._c_counter, this._h_existing);
 	}
 }
 
-/*
+interface BlankNodeBookmark {
+	[sc1_blank: string]: {
+		graph: number;
+		subject: Array<C1.Graph>;
+		object: Array<[C1.Graph, C1.Subject, C1.Predicate]>;
+	};
+}
 
-		// each graph
-		for(const sc1_graph of hc4_quads) {
-			// whether or not the quad includes a blank node
-			let b_bquad_g = false;
+interface BlankNodeHashes {
+	[sc1_blank: string]: string;
+}
 
-			// prep norm string
-			const s_norm_g = sc1_graph+'\9';
+interface BlankNodeAssociations {
+	[sc1_blank: string]: Array<C1.BlankNode>;
+}
 
-			// graph is blank node
-			if('_' === sc1_graph[0]) {
-				// add it to set
-				as_non_normal.add(sc1_graph);
+interface HndqResult {
+	hash: string;
+	issuer: Issuer;
+}
 
-				// quad includes blank node
-				b_bquad_g = true;
+export class Normalizer {
+	_kd_source: Dataset;
+	_hc4_quads: QuadsTree;
+	_k_issuer: Issuer;
+	_h_blanks: BlankNodeBookmark;
+	_h_hashes: BlankNodeHashes;
 
-				// blank node is registered; update it
-				if(sc1_graph in h_blanks) {
-					h_blanks[sc1_graph].graph = 1;
-				}
-				// blank node is unregistered; register it
-				else {
-					h_blanks[sc1_graph] = {
-						graph: 1,
-						subject: [],
-						object: [],
-					};
-				}
-			}
-
-			// ref trips tree
-			const hc3_trips = hc4_quads[sc1_graph];
-
-			// each subject
-			for(const sc1_subject of hc3_trips) {
-				// whether or not the quad includes a blank node
-				let b_bquad_s = b_bquad_g;
-
-				// prep norm string
-				const s_norm_gs = s_norm_g+sc1_subject+'\8';
-
-				// subject is blank node and different from graph
-				if('_' === sc1_subject && sc1_graph !== sc1_subject) {
-					// add it to set
-					as_non_normal.add(sc1_subject);
-
-					// quad includes blank node
-					b_bquad_s = true;
-
-					// blank node is registered; update it
-					if(sc1_subject in h_blanks) {
-						h_blanks[sc1_subject].subject.push(sc1_graph);
-					}
-					// blank node is unregistered; register it
-					else {
-						h_blanks[sc1_subject] = {
-							graph: 0,
-							subject: [sc1_graph],
-							object: [],
-						};
-					}
-				}
-
-				// ref probs tree
-				const hc2_probs = hc3_trips[sc1_subject];
-
-				// each predicate
-				for(const sc1_predicate of hc2_probs) {
-					// prep norm string
-					const s_norm_gsp = s_norm_gs+sc1_predicate+'\0';
-
-					// ref objects set
-					const as_objects = hc2_probs[sc1_predicate];
-
-					// each object
-					for(const sc1_object of as_objects) {
-						// object is blank node and different from subject and graph
-						if('_' === sc1_object[0] && sc1_subject !== sc1_object && sc1_graph !== sc1_object) {
-							// add it to set
-							as_non_normal.add(sc1_object);
-
-							// quad includes blank node, commit it
-							a_bquads.push(s_norm_gsp+sc1_object);
-
-							// blank node is registered; update it
-							if(sc1_object in h_blanks) {
-								h_blanks[sc1_object].object.push([sc1_graph, sc1_subject, sc1_predicate]);
-							}
-							// blank node is unregistered; register it
-							else {
-								h_blanks[sc1_object] = {
-									graph: 0,
-									subject: [],
-									object:[
-										[sc1_graph, sc1_subject, sc1_predicate],
-									],
-								};
-							}
-						}
-						// quad includes blank node, commit it
-						else if(b_bquad_s) {
-							a_bquads.push(s_norm_gsp+sc1_object);
-						}
-					}
-				}
-			}
-		}
- */
-
-
-module.exports = class Normalizer {
-	constructor(kd_source) {
+	constructor(kd_source: Dataset) {
 		this._kd_source = kd_source;
 		this._hc4_quads = kd_source._hc4_quads;
 		this._k_issuer = new Issuer('_:r');
-		this._h_blanks = null;
+		this._h_blanks = null as unknown as BlankNodeBookmark;
+		this._h_hashes = null as unknown as BlankNodeHashes;
 	}
-	
 
-	normalize() {
+	normalize(): Dataset {
 		const {
 			_k_issuer: k_issuer,
 			_hc4_quads: hc4_quads,
 		} = this;
 
-		const h_blanks = this._h_blanks = {};
+		const h_blanks = this._h_blanks = {} as BlankNodeBookmark;
 
-		const as_non_normal = new Set();
+		const as_non_normal = new Set<C1.BlankNode>();
 
 		// each graph
 		for(const sc1_graph of hc4_quads) {
@@ -289,8 +202,8 @@ module.exports = class Normalizer {
 			}
 		}
 
-		const h_hashes = this._h_hashes = {};
-		let h_assoc = {};
+		const h_hashes = this._h_hashes = {} as BlankNodeHashes;
+		let h_assoc = {} as BlankNodeAssociations;
 		const a_keys = [];
 
 		// first iteration
@@ -376,7 +289,7 @@ module.exports = class Normalizer {
 
 				const k_issuer_tmp = new Issuer('_:g');
 				k_issuer_tmp.issue(sc1_blank);
-				
+
 				a_paths.push(this.hash_ndq(sc1_blank, k_issuer_tmp));
 			}
 
@@ -395,7 +308,7 @@ module.exports = class Normalizer {
 
 		// each graph
 		for(let sc1_graph of hc4_quads) {
-
+			// 
 			if('_' === sc1_graph[0] && !sc1_graph.startsWith(s_issuer_prefix)) {
 				sc1_graph = k_issuer._h_existing[sc1_graph];
 			}
@@ -408,7 +321,7 @@ module.exports = class Normalizer {
 
 			// each subject
 			for(let sc1_subject of hc3_trips) {
-
+				// 
 				if('_' === sc1_subject[0] && !sc1_subject.startsWith(s_issuer_prefix)) {
 					sc1_subject = k_issuer._h_existing[sc1_subject];
 				}
@@ -444,7 +357,7 @@ module.exports = class Normalizer {
 	}
 
 
-	hash_1dq(sc1_blank) {
+	hash_1dq(sc1_blank: C1.BlankNode): string {
 		const {
 			_h_blanks: h_blanks,
 			_hc4_quads: hc4_quads,
@@ -531,7 +444,7 @@ module.exports = class Normalizer {
 
 			// graph is blank node
 			if('_' === sc1_graph[0]) {
-				si_norm_gs = sc1_graph === sc1_blank? '_:a\9': '_:z\9'
+				si_norm_gs = sc1_graph === sc1_blank? '_:a\9': '_:z\9';
 			}
 
 			// subject is blank node
@@ -551,7 +464,7 @@ module.exports = class Normalizer {
 	}
 
 
-	hash_ndq(sc1_blank, k_issuer) {
+	hash_ndq(sc1_blank: C1.BlankNode, k_issuer: Issuer): HndqResult {
 		const {
 			_k_issuer: k_issuer_root,
 		} = this;
@@ -562,7 +475,7 @@ module.exports = class Normalizer {
 
 		for(const si_norm of Object.keys(h_related).sort()) {
 			let s_path_chosen = '';
-			let k_issuer_chosen;
+			let k_issuer_chosen: Issuer | undefined;
 
 			// eslint-disable-next-line no-loop-func
 			permute(h_related[si_norm], (a_perm) => {
@@ -616,7 +529,7 @@ module.exports = class Normalizer {
 
 			s_input += si_norm+s_path_chosen;
 
-			k_issuer = k_issuer_chosen;
+			k_issuer = k_issuer_chosen as Issuer;
 		}
 
 		return {
@@ -626,7 +539,7 @@ module.exports = class Normalizer {
 	}
 
 
-	hash_relative(sc1_blank, sc1_predicate, k_issuer, i_role) {
+	hash_relative(sc1_blank: C1.BlankNode, sc1_predicate: C1.Predicate, k_issuer: Issuer, i_role: number): string {
 		return hash(''+i_role+(i_role? '<'+sc1_predicate+'>': '')+(
 			this._k_issuer._h_existing[sc1_blank]
 				|| k_issuer._h_existing[sc1_blank]
@@ -634,13 +547,13 @@ module.exports = class Normalizer {
 	}
 
 
-	hash_related(sc1_blank, k_issuer) {
+	hash_related(sc1_blank: C1.BlankNode, k_issuer: Issuer): BlankNodeAssociations {
 		const {
 			_h_blanks: h_blanks,
 			_hc4_quads: hc4_quads,
 		} = this;
 
-		const h_related = {};
+		const h_related = {} as BlankNodeAssociations;
 
 		// ref blank node paths
 		const g_blank = h_blanks[sc1_blank];
@@ -759,5 +672,4 @@ module.exports = class Normalizer {
 		// done
 		return h_related;
 	}
-
 }

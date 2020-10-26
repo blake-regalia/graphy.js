@@ -1,48 +1,40 @@
 /* eslint-disable no-use-before-define */
+import crypto from 'crypto';
+
+import {DataFactory} from '@graphy/core';
 
 import {
 	RDFJS,
+	Role,
+	Term,
 	C1,
-	PrefixMap,
 	Quad,
-	Dataset,
-	Role, Graphable, Term
+	Memory,
+	PrefixMap,
 } from '@graphy/types';
 
-import SyncC1Dataset = Dataset.SyncC1Dataset;
-import SyncGspoBuilder = Dataset.SyncGspoBuilder;
+import SyncC1Dataset = Memory.SyncC1Dataset;
+import SyncGspoBuilder = Memory.SyncGspoBuilder;
 
 import {
 	$_KEYS,
 	$_QUADS,
 	$_OVERLAY,
 	$_BURIED,
-	PartiallyIndexed,
 	Generic,
-	SemiIndexed
-} from '../common';
+} from './common';
 
-import ProbsTree = PartiallyIndexed.ProbsTree;
-import TriplesTree = PartiallyIndexed.TriplesTree;
-import QuadsTree = PartiallyIndexed.QuadsTree;
-import GraphHandle = PartiallyIndexed.GraphHandle;
-import GrubHandle = PartiallyIndexed.GrubHandle;
-import GraspHandle = PartiallyIndexed.GraspHandle;
-import ObjectSet = PartiallyIndexed.ObjectSet;
+import ProbsTree = .ProbsTree;
+import TriplesTree = .TriplesTree;
+import QuadsTree = .QuadsTree;
+import GraphHandle = .GraphHandle;
+import GrubHandle = .GrubHandle;
+import GraspHandle = .GraspHandle;
+import ObjectSet = .ObjectSet;
 
 import overlayTree = Generic.overlayTree;
 import overlay = Generic.overlay;
 import trace = Generic.trace;
-
-import {
-	TrigDatasetBuilder,
-} from '../builder/trig-partial';
-
-import {
-	DataFactory, Topology,
-// } from '@graphy/core';
-} from '../../core/core';
-import { TrigDataset } from '../memory';
 
 const {
 	concise,
@@ -56,23 +48,28 @@ const {
 	c1FromPredicateRole,
 	c1FromObjectRole,
 	c1ExpandData,
-	relateMaps,
+	mapsDiffer,
 } = DataFactory;
 
+@import './embed/builder.ts.jmacs';
+@import './embed/normalizer.ts.jmacs';
+@import './embed/union-same.ts.jmacs';
+
 type StaticSelf = Function & {
-	empty(h_prefixes: PrefixMap): PartiallyIndexedTrigDataset;
-	builder(h_prefixes: PrefixMap): TrigDatasetBuilder;
-	new(hc4_quads: Generic.QuadsTree, h_prefixes: PrefixMap): PartiallyIndexedTrigDataset;
+	builder: {new(): TreeDatasetBuilder};
+	empty(h_prefixes: PrefixMap): TreeDataset;
+	new(hc4_quads: Generic.QuadsTree, h_prefixes: PrefixMap): TreeDataset;
 };
 
-export interface TrigDataset extends SyncC1Dataset {
+export interface TreeDataset extends SyncC1Dataset {
 
-	expand(): TrigDataset;
+	expand(): TreeDataset;
 }
 
-interface Constructor extends Generic.Constructor<PartiallyIndexedTrigDataset, TrigDatasetBuilder, Generic.QuadsTree> {}
+interface Constructor extends Generic.Constructor<TreeDataset, TreeDatasetBuilder, Generic.QuadsTree> {}
 
-export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTrigDataset implements TrigDataset {
+
+export const TreeDataset: Constructor = class TreeDataset implements TreeDataset {
 	/**
 	 * Authoritative and immutable prefix map to use for c1 creation and resolution
 	 */
@@ -91,7 +88,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 	/**
 	 * Internal self builder for creating match results or appending
 	 */
-	_k_builder: TrigDatasetBuilder;
+	_k_builder: TreeDatasetBuilder;
 
 	/**
 	 * If true, c1 strings are prefixed. Otherwise, c1 strings are expanded
@@ -102,8 +99,8 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 	 * Create new empty dataset
 	 * @param h_prefixes 
 	 */
-	static empty(h_prefixes: PrefixMap): PartiallyIndexedTrigDataset {
-		return new PartiallyIndexedTrigDataset({
+	static empty(h_prefixes: PrefixMap): TreeDataset {
+		return new TreeDataset({
 			[$_KEYS]: 1,
 			[$_QUADS]: 0,
 			// [$_OVERLAY]: 0,
@@ -118,15 +115,6 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 	}
 
 	/**
-	 * Create new empty dataset builder
-	 * @param h_prefixes 
-	 */
-	static builder(h_prefixes: PrefixMap): TrigDatasetBuilder {
-		return new TrigDatasetBuilder(h_prefixes);
-	}
-	
-
-	/**
 	 * Create new dataset
 	 * @param hc4_quads 
 	 * @param h_prefixes 
@@ -136,7 +124,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 		this._hc3_trips = hc4_quads['*'];
 		this._h_prefixes = h_prefixes;
 		this._b_prefixed = b_prefixed;
-		this._k_builder = new TrigDatasetBuilder(h_prefixes, this);
+		this._k_builder = new TreeDatasetBuilder(h_prefixes, this);
 	}
 
 	/**
@@ -411,7 +399,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 	addC1Quad(sc1_subject: C1.Subject, sc1_predicate: C1.Predicate, sc1_object: C1.Object, sc1_graph?:  C1.Graph): boolean {
 		const kh_handle: Dataset.GraphHandle = sc1_graph
 			? this._k_builder.openC1Graph(sc1_graph)
-			: this._k_builder as TrigDatasetBuilder;
+			: this._k_builder as TreeDatasetBuilder;
 
 		// use builder to efficiently add quad
 		return kh_handle.openC1Subject(sc1_subject).openC1Predicate(sc1_predicate).addC1Object(sc1_object);
@@ -476,8 +464,8 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 	}
 
 
-	_offspring(hc4_out: QuadsTree): PartiallyIndexedTrigDataset {
-		return new PartiallyIndexedTrigDataset(hc4_out, this._h_prefixes);
+	_offspring(hc4_out: QuadsTree): TreeDataset {
+		return new TreeDataset(hc4_out, this._h_prefixes);
 	}
 
 
@@ -491,7 +479,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 			const sc1_graph = c1FromGraphRole(yt_graph, h_prefixes);
 
 			// no such graph; return new empty tree
-			if(!(sc1_graph in hc4_src)) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+			if(!(sc1_graph in hc4_src)) return TreeDataset.empty(h_prefixes);
 
 			// ref triples tree
 			const hc3_src = hc4_src[sc1_graph];
@@ -502,7 +490,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 				let sc1_subject = c1FromSubjectRole(yt_subject, h_prefixes);
 
 				// no such subject; return new empty tree
-				if(!(sc1_subject in hc3_src)) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+				if(!(sc1_subject in hc3_src)) return TreeDataset.empty(h_prefixes);
 
 				// ref probs tree
 				const hc2_src = hc3_src[sc1_subject];
@@ -513,7 +501,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 					const sc1_predicate = c1FromPredicateRole(yt_predicate, h_prefixes);
 
 					// no such predicate; return new empty tree
-					if(!(sc1_predicate in hc2_src)) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+					if(!(sc1_predicate in hc2_src)) return TreeDataset.empty(h_prefixes);
 
 					// ref objects set
 					const as_objects_src = hc2_src[sc1_predicate];
@@ -528,7 +516,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 						const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
 
 						// no such object; return new empty tree
-						if(!as_objects_src.has(sc1_object)) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+						if(!as_objects_src.has(sc1_object)) return TreeDataset.empty(h_prefixes);
 						
 						// create set
 						as_objects_dst = new Set([sc1_object]);
@@ -593,7 +581,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 					}
 
 					// no quads; empty tree
-					if(!c_probs) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+					if(!c_probs) return TreeDataset.empty(h_prefixes);
 
 					// save keys and quads count
 					hc2_dst[$_KEYS] = c_probs;
@@ -702,7 +690,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 				}
 
 				// no quads; empty tree
-				if(!c_subjects) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+				if(!c_subjects) return TreeDataset.empty(h_prefixes);
 
 				// save quads and subject-keys counts to dst triples tree
 				hc3_dst[$_KEYS] = c_subjects;
@@ -774,7 +762,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 				}
 
 				// no quads; empty tree
-				if(!c_subjects) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+				if(!c_subjects) return TreeDataset.empty(h_prefixes);
 
 				// save quads and subject-keys count
 				hc3_dst[$_KEYS] = c_subjects;
@@ -905,7 +893,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 					}
 
 					// no quads; empty tree
-					if(!c_graphs) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+					if(!c_graphs) return TreeDataset.empty(h_prefixes);
 
 					// save quads and graph-keys counts
 					hc4_dst[$_KEYS] = c_graphs;
@@ -1009,7 +997,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 					}
 
 					// no quads; empty tree
-					if(!c_graphs) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+					if(!c_graphs) return TreeDataset.empty(h_prefixes);
 
 					// save graph-keys and quads count
 					hc4_dst[$_KEYS] = c_graphs;
@@ -1090,7 +1078,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+						if(!c_graphs) return TreeDataset.empty(h_prefixes);
 
 						// save graph-keys and quads count
 						hc4_dst[$_KEYS] = c_graphs;
@@ -1155,7 +1143,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+						if(!c_graphs) return TreeDataset.empty(h_prefixes);
 
 						// save graph-keys and quads counts
 						hc4_dst[$_KEYS] = c_graphs;
@@ -1248,7 +1236,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return PartiallyIndexedTrigDataset.empty(h_prefixes);
+						if(!c_graphs) return TreeDataset.empty(h_prefixes);
 
 						// save subject-keys and quads count
 						hc4_dst[$_KEYS] = c_graphs;
@@ -1260,7 +1248,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 					// -graph, -subject, -predicate, -object
 					else {
 						// same quad tree (clone)
-						return PartiallyIndexedTrigDataset.empty(h_prefixes);
+						return TreeDataset.empty(h_prefixes);
 					}
 				}
 			}
@@ -1291,7 +1279,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 			: this._h_prefixes;
 
 		// return new dataset
-		return new PartiallyIndexedTrigDataset(hc4_out, h_prefixes);
+		return new TreeDataset(hc4_out, h_prefixes);
 	}
 
 
@@ -1299,7 +1287,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 	/**
 	 * Create a new dataset by prefixing all c1 strings
 	 */
-	prefixed(): TrigDataset {
+	prefixed(): TreeDataset {
 		// already prefixed, just clone it
 		if(this._b_prefixed) return this.clone();
 
@@ -1310,7 +1298,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 	/**
 	 * Create a new dataset by expanding all c1 strings
 	 */
-	expanded(): TrigDataset {
+	expanded(): TreeDataset {
 		// already expanded, just clone it
 		if(!this._b_prefixed) return this.clone();
 
@@ -1356,7 +1344,7 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 		}
 
 		// return new dataset
-		return new TrigDataset(hc4_out, h_prefixes);
+		return new TreeDataset(hc4_out, h_prefixes);
 	}
 
 
@@ -1364,20 +1352,20 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 	 * Perform the union of two datasets
 	 * @param k_other 
 	 */
-	union(z_other: RDFJS.Dataset): PartiallyIndexedTrigDataset {
+	union(z_other: RDFJS.Dataset): TreeDataset {
 		// other is graphy dataset
 		if(z_other.isGraphyDataset) {
 			// deduce dataset type
 			switch(z_other.datasetType) {
 				// same dataset type
 				case this.datasetStorageType: {
-					// prefix maps are identical
-					if(Topology.EQUAL === relateMaps(this._h_prefixes, z_other._h_prefixes)) {
-						return this._union_same(z_other);
-					}
 					// prefix maps differ; perform expanded union
-					else {
+					if(mapsDiffer(this._h_prefixes, z_other._h_prefixes)) {
 						return this.toNQuadsDataset().union(z_other.toNQuadsDataset());
+					}
+					// prefix maps are identical
+					else {
+						return this._union_same(z_other);
 					}
 				}
 				
@@ -1401,15 +1389,40 @@ export const PartiallyIndexedTrigDataset: Constructor = class PartiallyIndexedTr
 	}
 
 
+	_union_same(k_other) {
+		// ref quads
+		let hc4_quads_a = this._hc4_quads;
+		let hc4_quads_b = k_other._hc4_quads;
+
+		// a has less keys than b; swap quads
+		if(hc4_quads_a[$_KEYS] < hc4_quads_b[$_KEYS]) {
+			[hc4_quads_a, hc4_quads_b] = [hc4_quads_b, hc4_quads_a];
+		}
+		@{union_same()}
+
+		// return new dataset
+		return new TreeDataset(hc4_quads_u, {
+			// copy prefixes
+			...this._h_prefixes,
+		});
+	}
+
+
 
 	minus() {
 		// TODO: in some cases, it will be faster to replace a tree in 'src' with an overlay of a tree from 'dst', and then delete keys from original tree
 	}
 
+
+	normalize() {
+		return (new Normalizer(this)).normalize();
+	}
 }
 
+TreeDataset.Builder = TreeDatasetBuilder;
 
-export interface PartiallyIndexedTrigDataset {
+
+export interface TreeDataset {
 	/**
 	 * Indicates at runtime without that this class is compatible as a graphy dataset
 	 */
@@ -1421,9 +1434,9 @@ export interface PartiallyIndexedTrigDataset {
 	datasetStorageType: string;
 }
 
-PartiallyIndexedTrigDataset.prototype.isGraphyDataset = true;
+TreeDataset.prototype.isGraphyDataset = true;
 
-PartiallyIndexedTrigDataset.prototype.datasetStorageType = `
+TreeDataset.prototype.datasetStorageType = `
 	quads {
 		[g: c1]: trips {
 			[s: c1]: probs {

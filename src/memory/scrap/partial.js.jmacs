@@ -1,0 +1,262 @@
+/* global $_KEYS $_QUADS $_OVERLAY $_BURIED */
+
+import Normalizer from '../normalizer.js';
+
+@.{
+	const A_LEVELS = [
+		{
+			s_role: 'graph',
+			s_short: 'graphs',
+			s_tree: 'quads',
+		},
+		{
+			s_role: 'subject',
+			s_short: 'subjs',
+			s_tree: 'trips',
+		},
+		{
+			s_role: 'predicate',
+			s_short: 'preds',
+			s_tree: 'probs',
+		},
+		{
+			s_role: 'object',
+			s_short: 'objs',
+			s_tree: 'objects',
+		},
+	];
+
+	// anonymous scope
+	{
+		// each level
+		const nl_levels = A_LEVELS.length;
+		for(let i_level=0; i_level<nl_levels-1; i_level++) {
+			const g_level = A_LEVELS[i_level];
+
+			// link sub/super
+			g_level.g_sub = A_LEVELS[i_level+1];
+			A_LEVELS[i_level+1].g_super = g_level;
+
+			// define sjs
+			g_level.sj_key = /* syntax: js */ `sc1_${g_level.s_role}`;
+			g_level.sj_tree = /* syntax: js */ `hc${4-i_level}_${g_level.s_tree}`;
+			g_level.sj_subtree = /* syntax: js */ `${i_level >=2? 'as': `hc${3-i_level}`}_${g_level.g_sub.s_tree}`;
+		}
+
+		// link final level to super
+		A_LEVELS[nl_levels-1].g_super = A_LEVELS[nl_levels-2];
+	}
+}
+
+@> union_same(i_level=0)
+	@.{
+		// destructure level fields
+		const {
+			s_role,
+			s_short,
+			s_tree,
+			sj_key,
+			sj_tree,
+			sj_subtree,
+			g_sub,
+			g_super,
+		} = A_LEVELS[i_level];
+
+		const s_subtype = g_sub.s_tree
+	}
+
+	// prep @{s_tree} union
+	const @{sj_tree}_u = Object.create(@{sj_tree}_a);
+
+	// union is now overlay
+	@{sj_tree}_u[$_OVERLAY] = 1;
+
+	// quads to add under @{s_tree}
+	let c_quads_add_@{s_tree} = 0;
+
+	// number of @{s_role} keys overriden
+	let c_traced_@{s_short} = 0;
+
+	// each @{s_role} in 'a'
+	for(const @{sj_key} in @{sj_tree}_a) {
+		// @{s_role} is also in 'b'
+		if(@{sj_key} in @{sj_tree}_b) {
+			@- 'predicate' === s_role
+				// ref objects
+				const as_objects_a = @{sj_tree}_a[@{sj_key}];
+				const as_objects_b = @{sj_tree}_b[@{sj_key}];
+
+				// union sets
+				const as_objects_u = new Set([...as_objects_a, ...as_objects_b]);
+				
+				// compute number of objects added
+				const nl_objects_add = as_objects_u.size - as_objects_a.size;
+
+				// at least one object was added to union objects set
+				if(nl_objects_add) {
+					// update quad counts with difference
+					c_quads_add_probs += nl_objects_add;
+
+					// save new objects set to probs union
+					@{sj_tree}_u[@{sj_key}] = as_objects_u;
+
+					// increment traced predicate key count
+					c_traced_@{g_super.s_short} += 1;
+				}
+				// otherwise, no difference between objects sets: keep overlay
+			@:
+				// ref @{g_sub.s_tree}
+				let @{sj_subtree}_a = @{sj_tree}_a[@{sj_key}];
+				let @{sj_subtree}_b = @{sj_tree}_b[@{sj_key}];
+
+				// @{s_role} are not swapped relative to parent
+				let b_swapped_@{g_sub.s_tree} = false;
+
+				// 'a' has less keys than 'b'
+				if(@{sj_subtree}_a[$_KEYS] < @{sj_subtree}_b[$_KEYS]) {
+					// swap @{s_tree}
+					[@{sj_subtree}_a, @{sj_subtree}_b] = [@{sj_subtree}_b, @{sj_subtree}_a];
+
+					// beware consequences of swap
+					b_swapped_@{g_sub.s_tree} = true;
+				}
+
+				@{union_same(i_level+1)}
+			@;
+		}
+		// otherwise, @{s_role} is not in 'b': keep overlay
+	}
+
+	// count key increment using local var
+	let c_keys_@{s_tree}_new = 0;
+
+	// each @{s_role} in 'b'
+	for(const @{sj_key} in @{sj_tree}_b) {
+		// @{s_role} is not in 'a'
+		if(!(@{sj_key} in @{sj_tree}_a)) {
+			@- 'predicate' === s_role
+				// add all objects from this predicate
+				const as_objects_u = hc2_probs_u[sc1_predicate] = new Set(hc2_probs_b[sc1_predicate]);
+
+				// update quad counts
+				c_quads_add_probs += as_objects_u.size;
+
+				// increment probs key count
+				c_keys_probs_new += 1;
+			@:
+				// ref @{g_sub.s_tree}
+				const @{sj_subtree}_b = @{sj_tree}_b[@{sj_key}];
+
+				// update quad counts
+				c_quads_add_@{s_tree} += @{sj_subtree}_b[$_QUADS];
+
+				// 'b' is now buried
+				@{sj_subtree}_b[$_BURIED] = 1;
+
+				// add all @{s_tree} from this @{s_role} and save to @{g_sub.s_tree} union
+				const @{sj_subtree}_u = @{sj_tree}_u[@{sj_key}] = Object.create(@{sj_subtree}_b);
+
+				// union is now overlay
+				@{sj_subtree}_u[$_OVERLAY] = 1;
+
+				// increment @{s_tree} key count
+				c_keys_@{s_tree}_new += 1;
+			@;
+		}
+		// otherwise, @{s_role} was already handled in previous loop block
+	}
+
+	// new keys were added to union @{s_tree} tree; update key count now outside loop
+	if(c_keys_@{s_tree}_new) @{sj_tree}_u[$_KEYS] += c_keys_@{s_tree}_new;
+
+	// union @{s_tree}* is different from 'a' @{s_tree}*
+	if(c_quads_add_@{s_tree}) {
+		@- g_super
+			// update counts
+			@{sj_tree}_u[$_QUADS] += c_quads_add_@{s_tree};
+			c_quads_add_@{g_super.s_tree} += c_quads_add_@{s_tree};
+		@;
+
+		// union overrides all prototype @{s_role} keys and overlays none
+		if(c_traced_@{s_short} === @{sj_tree}_a[$_KEYS]) {
+			// uninherit from 'a'
+			Object.setPrototypeOf(@{sj_tree}_u, {});
+			
+			// set own key count property
+			@{sj_tree}_u[$_KEYS] = c_traced_@{s_short};
+
+			// union @{s_tree} tree is no longer an overlay
+			delete @{sj_tree}_u[$_OVERLAY];
+		}
+		// union differs from prototype
+		else {
+			// 'a' is now buried
+			@{sj_tree}_a[$_BURIED] = 1;
+		}
+
+		@- g_super
+			// override @{g_super.s_role} in @{g_super.s_tree} union tree with @{s_tree} union tree
+			@{g_super.sj_tree}_u[sc1_@{g_super.s_role}] = @{sj_tree}_u;
+
+			// increment traced @{g_super.s_role} key count
+			c_traced_@{g_super.s_short} += 1;
+		@;
+	}
+	// union and 'a' are identical
+	else {
+		// 'a' is now buried
+		@{sj_tree}_a[$_BURIED] = 1;
+
+		@- g_super
+			// but union @{g_sub.s_tree} tree is not @{s_tree} 'a' value, need to overlay @{s_tree} union
+			if(b_swapped_@{s_tree}) {
+				// override @{g_super.s_role} in @{g_super.s_tree} union tree with @{s_tree} union tree
+				@{g_super.sj_tree}_u[sc1_@{g_super.s_role}] = @{sj_tree}_a;
+
+				// increment traced @{g_super.s_role} key count
+				c_traced_@{s_short} += 1;
+			}
+			// otherwise, key/value in overlay is same as @{s_tree} 'a'
+		@;
+	}
+@;
+
+
+
+class PartiallyIndexedTrigDataset {
+	_union_same(k_other) {
+		// ref quads
+		let hc4_quads_a = this._hc4_quads;
+		let hc4_quads_b = k_other._hc4_quads;
+
+		// a has less keys than b; swap quads
+		if(hc4_quads_a[$_KEYS] < hc4_quads_b[$_KEYS]) {
+			[hc4_quads_a, hc4_quads_b] = [hc4_quads_b, hc4_quads_a];
+		}
+		@{union_same()}
+
+		// return new dataset
+		return new PartiallyIndexedTrigDataset(hc4_quads_u, {
+			// copy prefixes
+			...this._h_prefixes,
+		});
+	}
+
+	minus() {
+		// TODO: in some cases, it will be faster to replace a tree in 'src' with an overlay of a tree from 'dst', and then delete keys from original tree
+	}
+
+	normalize() {
+		return (new Normalizer(this)).normalize();
+	}
+}
+
+
+
+
+
+
+
+
+
+

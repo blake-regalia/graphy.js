@@ -1,75 +1,73 @@
 import {
 	RDFJS,
-	ConciseNamedNode,
-	ConciseTerm,
-	ConciseNode,
+	C1,
 	PrefixMap,
 	Quad,
 } from '@graphy/types';
 
 /**
- * A handle on a specific (graph, subject, predicate) within an `IConciseGspoTreeBuilder`
+ * A handle on a specific (graph, subject, predicate) within an `ConciseGspoTreeBuilder`
  */
-export interface IGreedHandle {
+export interface GreedHandle {
 	/**
 	 * Attempt to add a quad given by (graph, subject, predicate, `object`) to the dataset.
 	 * @param object
 	 * @returns `true` if the quad was inserted (indicates it did not previously exist), `false` otherwise
 	 */
-	addC1Object(object: ConciseTerm): boolean;
+	addC1Object(object: C1.Object): boolean;
 
 	/**
 	 * Attempt to delete a quad given by (graph, subject, predicate, `object`) from the dataset.
 	 * @param object
 	 * @returns `true` if the quad was deleted (indicates it previously existed), `false` otherwise
 	 */
-	deleteC1Object(object: ConciseTerm): boolean;
+	deleteC1Object(object: C1.Object): boolean;
 }
 
 
 /**
- * A handle on a specific (graph, subject) within an `IConciseGspoTreeBuilder`.
+ * A handle on a specific (graph, subject) within a `ConciseGspoTreeBuilder`.
  */
-export interface IGrubHandle {
+export interface GrubHandle {
 	/**
 	 * Open a new handle to obtain (graph, subject, `predicate`).
 	 * @param predicate
 	 */
-	openC1Predicate(predicate: ConciseNamedNode): IGreedHandle;
+	openC1Predicate(predicate: C1.Predicate): GreedHandle;
 }
 
 
 /**
- * A handle on a specific graph within an `IConciseGspoTreeBuilder`.
+ * A handle on a specific graph within a `ConciseGspoTreeBuilder`.
  */
-export interface IGraphHandle {
+export interface GraphHandle {
 	/**
 	 * Open a new handle to obtain (graph, `subject`).
 	 * @param subject 
 	 */
-	openC1Subject(subject: ConciseNode): IGrubHandle;
+	openC1Subject(subject: C1.Subject): GrubHandle;
 }
 
 
 /**
  * An interface for building a dataset in (graph, subject, predicate, object) order using concise terms.
  */
-export interface IConciseGspoBuilder<dc_dataset extends IDataset> extends IGraphHandle {
+export interface ConciseGspoBuilder<dc_dataset extends Dataset> extends GraphHandle {
 	attachPrefixes(h_prefixes: PrefixMap): void;
-	openC1Graph(sc1_graph: ConciseNode): IGraphHandle;
+	openC1Graph(sc1_graph: C1.Graph): GraphHandle;
 	deliver(): Promise<dc_dataset>;
 }
 
 /**
  * 
  */
-export interface IDataset {
+export interface Dataset {
 	readonly size: number;
 
-	add(quad: RDFJS.Quad): IDataset;
-	delete(quad: RDFJS.Quad): IDataset;
+	add(quad: RDFJS.Quad): Dataset;
+	delete(quad: RDFJS.Quad): Dataset;
 	has(quad: RDFJS.Quad): boolean;
-	match(subject?: RDFJS.Term, predicate?: RDFJS.Term, object?: RDFJS.Term, graph?: RDFJS.Term): IDataset;
+	match(subject?: RDFJS.Term, predicate?: RDFJS.Term, object?: RDFJS.Term, graph?: RDFJS.Term): Dataset;
 
 	[Symbol.iterator](): Iterator<Quad>;
 }

@@ -16,7 +16,7 @@ const s_super = process.env.GRAPHY_CHANNEL || 'graphy';
 
 const g_package_json_super = require('./package.json');
 
-const P_PACKAGE_JSON_BASE = `./emk/aux/base-package-${s_super}.json`;
+const P_PACKAGE_JSON_BASE = `./emk/base-package-json.js`;
 const g_package_json_base = require(P_PACKAGE_JSON_BASE);
 const s_base_version = g_package_json_base.version;
 

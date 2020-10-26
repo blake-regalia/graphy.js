@@ -1,23 +1,7 @@
 
-import {
-	TrigDatasetBuilder,
-} from './builder/trig-partial';
 
 import {
-	TrigDataset,
-} from './dataset/trig-partial';
+	PartiallyIndexedTreeDataset,
+} from './indexed-tree';
 
-import {
-	SemiIndexedTrigDataset,
-} from './dataset/trig-semi';
-
-import {
-	UnindexedTrigDataset,
-} from './dataset-unindexed';
-
-export {
-	// UnindexedTrigDataset,
-	TrigDatasetBuilder,
-	TrigDataset,
-	SemiIndexedTrigDataset,
-};
+export PartiallyIndexedTreeDataset as TreeDataset;

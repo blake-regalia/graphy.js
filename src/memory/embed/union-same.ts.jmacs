@@ -1,6 +1,3 @@
-/* global $_KEYS $_QUADS $_OVERLAY $_BURIED */
-
-
 @.{
 	const A_LEVELS = [
 		{
@@ -46,7 +43,7 @@
 		A_LEVELS[nl_levels-1].g_super = A_LEVELS[nl_levels-2];
 	}
 }
-
+@//
 @> union_same(i_level=0)
 	@.{
 		// destructure level fields
@@ -219,43 +216,3 @@
 		@;
 	}
 @;
-
-
-
-class PartiallyIndexedTrigDataset {
-	_union_same(k_other) {
-		// ref quads
-		let hc4_quads_a = this._hc4_quads;
-		let hc4_quads_b = k_other._hc4_quads;
-
-		// a has less keys than b; swap quads
-		if(hc4_quads_a[$_KEYS] < hc4_quads_b[$_KEYS]) {
-			[hc4_quads_a, hc4_quads_b] = [hc4_quads_b, hc4_quads_a];
-		}
-		@{union_same()}
-
-		// return new dataset
-		return new PartiallyIndexedTrigDataset(hc4_quads_u, {
-			// copy prefixes
-			...this._h_prefixes,
-		});
-	}
-
-	minus() {
-		// TODO: in some cases, it will be faster to replace a tree in 'src' with an overlay of a tree from 'dst', and then delete keys from original tree
-	}
-
-	normalize() {
-		return (new Normalizer(this)).normalize();
-	}
-}
-
-
-
-
-
-
-
-
-
-
