@@ -8,31 +8,31 @@ const H_MODULES = {
 		links: [],
 		description: 'Typings for all graphy public classes and methods',
 	},
-	internal: {
-		links: ['types'],
-		description: 'Internal to graphy',
-		dependencies: [
-			'readable-stream',
-		],
-	},
-	core: {
-		links: ['types'],
-		description: 'Contains the core classes used by all other modules',
-		dependencies: [
-			'uri-js',
-		],
-	},
-	memory: {
-		links: ['types', 'core'],
-		description: 'Data structures and algorithms for RDF graphs',
-	},
-	content: {
-		links: ['types', 'core', 'memory'],
-		description: 'RDF content manipulators; read, write, scan, scribe, load',
-		dependencies: [
-			'uri-js',
-		],
-	},
+	// internal: {
+	// 	links: ['types'],
+	// 	description: 'Internal to graphy',
+	// 	dependencies: [
+	// 		'readable-stream',
+	// 	],
+	// },
+	// core: {
+	// 	links: ['types'],
+	// 	description: 'Contains the core classes used by all other modules',
+	// 	dependencies: [
+	// 		'uri-js',
+	// 	],
+	// },
+	// memory: {
+	// 	links: ['types', 'core'],
+	// 	description: 'Data structures and algorithms for RDF graphs',
+	// },
+	// content: {
+	// 	links: ['types', 'core', 'memory'],
+	// 	description: 'RDF content manipulators; read, write, scan, scribe, load',
+	// 	dependencies: [
+	// 		'uri-js',
+	// 	],
+	// },
 };
 
 // normalize module desciptors

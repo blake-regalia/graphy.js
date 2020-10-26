@@ -1,5 +1,4 @@
 import * as RDFJS from 'rdf-js';
-import { resolve } from 'uri-js';
 
 export {
 	RDFJS as RDFJS,
@@ -38,6 +37,12 @@ export namespace Role {
 		readonly value: string;
 		readonly language?: string;
 		readonly datatype?: RDFJS.NamedNode;
+		equals(other: RDFJS.Term): boolean;
+	}
+
+	export interface Datatype extends Data {
+		readonly termType: 'NamedNode';
+		readonly value: string;
 		equals(other: RDFJS.Term): boolean;
 	}
 }

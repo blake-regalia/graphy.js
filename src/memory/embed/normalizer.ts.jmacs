@@ -112,17 +112,20 @@ export class Normalizer {
 		this._h_hashes = null as unknown as BlankNodeHashes;
 	}
 
+	// implementation of §4.4.2: Normalization Algorithm
 	normalize(): Dataset {
 		const {
 			_k_issuer: k_issuer,
 			_hc4_quads: hc4_quads,
 		} = this;
 
+		// (1)
 		const h_blanks = this._h_blanks = {} as BlankNodeBookmark;
 
+		// (3)
 		const as_non_normal = new Set<C1.BlankNode>();
 
-		// each graph
+		// (2) each graph
 		for(const sc1_graph of hc4_quads) {
 			// graph is blank node
 			if('_' === sc1_graph[0]) {
@@ -202,17 +205,20 @@ export class Normalizer {
 			}
 		}
 
+		// (1)
 		const h_hashes = this._h_hashes = {} as BlankNodeHashes;
 		let h_assoc = {} as BlankNodeAssociations;
 		const a_keys = [];
 
 		// first iteration
+		// (5)
 		{
-			// each blank node
+			// (5.3) each blank node
 			for(const sc1_blank of as_non_normal) {
-				// hash 1-degree blanks and storer
+				// (5.3.1) hash 1-degree blanks and storer
 				const si_norm = h_hashes[sc1_blank] = this.hash_1dq(sc1_blank);
 
+				// (5.3.2)
 				// commit assoc
 				h_assoc[si_norm] = [sc1_blank];
 
@@ -229,32 +235,43 @@ export class Normalizer {
 				a_keys.push(si_norm);
 			}
 
-			// each blank node id in sorted keys (keys now sorted in fall-through)
+			// (5.4) each blank node id in sorted keys (keys now sorted in fall-through)
 			for(const si_norm of a_keys.sort()) {
+				// ref associated blank nodes list
 				const a_blanks = h_assoc[si_norm];
+
+				// (5.4.1)
 				if(a_blanks.length > 1) continue;
 
+				// ref first item in list
 				const sc1_blank_0 = a_blanks[0];
+
+				// (5.4.2)
 				k_issuer.issue(sc1_blank_0);
 
+				// (5.4.3)
 				as_non_normal.delete(sc1_blank_0);
 			}
 		}
 
 		// subsequent iterations
+		// (4)
 		let b_simple = false;
+
+		// (5)
 		do {
+			// (5.1)
 			b_simple = false;
 
-			// reset assoc
+			// (5.2) reset assoc
 			h_assoc = {};
 
-			// each blank node
+			// (5.3) each blank node
 			for(const sc1_blank of as_non_normal) {
-				// fetch hash
+				// ref hash
 				const si_norm = h_hashes[sc1_blank];
 
-				// hash exists; add blank to assoc
+				// (5.3.2) hash exists; add blank to assoc
 				if(si_norm in h_assoc) {
 					h_assoc[si_norm].push(sc1_blank);
 				}
@@ -267,33 +284,51 @@ export class Normalizer {
 				a_keys.push(si_norm);
 			}
 
-			// each blank node id in sorted keys (keys now sorted in fall-through)
+			// (5.4) each blank node id in sorted keys (keys now sorted in fall-through)
 			for(const si_norm of a_keys.sort()) {
+				// ref associated blank nodes list
 				const a_blanks = h_assoc[si_norm];
+
+				// (5.4.1)
 				if(a_blanks.length > 1) continue;
 
+				// ref first item in list
 				const sc1_blank_0 = a_blanks[0];
+
+				// (5.4.2)
 				k_issuer.issue(sc1_blank_0);
 
+				// (5.4.3)
 				as_non_normal.delete(sc1_blank_0);
 
+				// (5.4.5)
 				b_simple = true;
 			}
 		} while(b_simple);
 
-		// keys now sorted
+		// (6) keys now sorted
 		for(const si_blank of a_keys) {
+			// (6.1)
 			const a_paths = [];
+
+			// (6.2)
 			for(const sc1_blank of h_assoc[si_blank]) {
+				// (6.2.1)
 				if(sc1_blank in k_issuer._h_existing) continue;
 
+				// (6.2.2)
 				const k_issuer_tmp = new Issuer('_:g');
+
+				// (6.2.3)
 				k_issuer_tmp.issue(sc1_blank);
 
+				// (6.2.4)
 				a_paths.push(this.hash_ndq(sc1_blank, k_issuer_tmp));
 			}
 
+			// (6.3)
 			for(const g_hash_result of a_paths.sort(F_SORT_CANONICALIZER_HASH)) {
+				// (6.3.1)
 				for(const sc1_existing in g_hash_result.issuer._h_existing) {
 					k_issuer.issue(sc1_existing);
 				}
@@ -306,7 +341,7 @@ export class Normalizer {
 		// 
 		const s_issuer_prefix = k_issuer._s_prefix;
 
-		// each graph
+		// (7) each graph
 		for(let sc1_graph of hc4_quads) {
 			// 
 			if('_' === sc1_graph[0] && !sc1_graph.startsWith(s_issuer_prefix)) {
@@ -352,17 +387,18 @@ export class Normalizer {
 			}
 		}
 
-		// deliver canonicalized dataset
+		// (8) deliver canonicalized dataset
 		return kb_out.deliver();
 	}
 
-
+	// implementation of §4.6.2: Hash First Degree Quads Algorithm
 	hash_1dq(sc1_blank: C1.BlankNode): string {
 		const {
 			_h_blanks: h_blanks,
 			_hc4_quads: hc4_quads,
 		} = this;
 
+		// (1)
 		const a_norms = [];
 
 		// ref blank node paths
@@ -469,6 +505,7 @@ export class Normalizer {
 			_k_issuer: k_issuer_root,
 		} = this;
 
+		// (3)
 		const h_related = this.hash_related(sc1_blank, k_issuer);
 
 		let s_input = '';
@@ -539,6 +576,7 @@ export class Normalizer {
 	}
 
 
+	// implementation of §4.7.2: Hash Related Blank Node Algorithm
 	hash_relative(sc1_blank: C1.BlankNode, sc1_predicate: C1.Predicate, k_issuer: Issuer, i_role: number): string {
 		return hash(''+i_role+(i_role? '<'+sc1_predicate+'>': '')+(
 			this._k_issuer._h_existing[sc1_blank]
@@ -547,6 +585,7 @@ export class Normalizer {
 	}
 
 
+	// helper method for (3) in §4.8.2: Hash N-Degree Quads
 	hash_related(sc1_blank: C1.BlankNode, k_issuer: Issuer): BlankNodeAssociations {
 		const {
 			_h_blanks: h_blanks,

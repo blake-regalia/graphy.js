@@ -9,5 +9,6 @@ module.exports = {
 	keywords: G_PACKAGE_SUPER.keywords,
 	repository: G_PACKAGE_SUPER.repository,
 	main: 'main.js',
+	typings: 'main.d.ts',
 	dependencies: {},
 };

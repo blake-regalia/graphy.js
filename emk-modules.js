@@ -13,7 +13,7 @@ const P_PACKAGE_JSON_BASE = `./emk/base-package-json.js`;
 const H_MODULES = require('./emk/modules.js');
 
 // run some javscript from the command line
-const run_lambduh = sj => /* syntax: bash */ `npx lambduh "${sj.trim().replace(/(["`])/g)}"`;
+const run_lambduh = sj => /* syntax: bash */ `npx lambduh '${sj.trim().replace(/'/g, `\\'`)}'`;
 
 // static leaf to make .npmrc file
 const F_LEAF_NPMRC = () => ({
@@ -47,7 +47,7 @@ const gen_leaf_package_json = si_package => () => ({
 
 	run: /* syntax: bash */ `
 		# load base package.json and enter
-		cat $1 | ${run_lambduh(/* syntax: js */ `
+		node emk/json-stringify.js $1 | ${run_lambduh(/* syntax: js */ `
 				G_PACKAGE_JSON_BASE => {
 					// load package info
 					const g_package_json = ${JSON.stringify(H_MODULES[si_package].json)};
@@ -193,12 +193,13 @@ const expand_macros = (pd_src, h_recipe={}, pdr_package=null) => {
 	const a_direct = [];
 
 	// each file
-	for(const s_file of a_files) {
+	for(let s_file of a_files) {
 		const p_src = `${pd_src}/${s_file}`;
-		const pd_dst = `build/module/${pdr_package}`;
+		const pd_dst = `build/lib/${pdr_package}`;
 
 		// *.[tj]s files
 		if(s_file.endsWith('.js') || s_file.endsWith('.ts')) {
+			if(s_file.replace(/\.[tj]s$/, '') === pdr_package) s_file = 'main.ts';
 			h_recipe[s_file] = () => ({copy:p_src});
 			a_deps.push(`${pd_dst}/${s_file}`);
 		}
@@ -226,7 +227,6 @@ const expand_macros = (pd_src, h_recipe={}, pdr_package=null) => {
 	}
 
 	return a_direct.length? a_direct: a_deps;
-	// return a_deps;
 };
 
 
@@ -235,8 +235,10 @@ const A_MODULES = Object.keys(H_MODULES);
 const H_EXPANDED_MODULE_MACROS = A_MODULES.reduce((h_out, si_module) => ({
 	...h_out,
 	[si_module]: (() => {
-		const h_recipe = {};
-		const a_deps = expand_macros(`src/${si_module}`, h_recipe);
+		const h_recipe = {
+			...scoped_package(si_module),
+		};
+		const a_deps = expand_macros(`src/${si_module}`, h_recipe, si_module);
 		return {
 			deps: a_deps,
 			recipe: h_recipe,
@@ -260,17 +262,31 @@ module.exports = {
 	outputs: {
 		build: {
 			lib: {
-				memory: {
-					'memory.ts': () => gen_leaf_jmacs_lint([
-						`src/memory/memory.ts.jmacs`,
-					]),
-					'indexed-tree.ts': () => gen_leaf_jmacs_lint([
-						`src/memory/indexed-tree.ts.jmacs`,
+				types: {
+					'main.d.ts': () => ({copy:`src/types/types.d.ts`}),
+				},
+
+				core: {
+					'main.d.ts': () => ({copy:`src/core/core.d.ts`}),
+					'main.js': gen_leaf_jmacs_lint([
+						'src/core/core.js.jmacs',
 					]),
 				},
 
+				// memory: {
+				// 	'memory.ts': () => ({
+				// 		copy: 'src/memory/memory.ts',
+				// 	}),
+				// 	'indexed-tree.ts': () => gen_leaf_jmacs_lint([
+				// 		`src/memory/indexed-tree.ts.jmacs`,
+				// 	]),
+				// 	builder: {
+
+				// 	},
+				// },
+
 				// ':module': [si_module => ({
-				// 	[si_module]: H_EXPANDED_MODULE_MACROS[si_module],
+				// 	[si_module]: H_EXPANDED_MODULE_MACROS[si_module].recipe,
 				// })],
 			},
 
@@ -279,11 +295,12 @@ module.exports = {
 					[si_module]: {
 						...scoped_package(si_module),
 
-						'main.mjs': () => gen_leaf_ts_lint([
-							`lib/${si_module}/${si_module}.ts`,
-						], [
-							`build/module/${si_module}/package.json`,
-						]),
+						// 'main.mjs': () => gen_leaf_ts_lint([
+						// 	`build/lib/`
+						// ], [
+						// 	...H_EXPANDED_MODULE_MACROS[si_module].deps,
+						// 	`build/module/${si_module}/package.json`,
+						// ]),
 					},
 				})],
 			},
