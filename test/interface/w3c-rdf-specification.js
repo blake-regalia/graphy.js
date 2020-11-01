@@ -73,16 +73,18 @@ const A_TEST_TYPES_SYNTAX_POSITIVE = [
 
 class TestCase {
 	constructor(gc_test) {
+		this._f_reader = gc_test.reader;
+
 		Object.assign(this, {
 			...gc_test,
 		});
 	}
 
 	run() {
-		let s_input = fs.readFileSync(this.action, 'utf8');
+		const s_input = fs.readFileSync(this.action, 'utf8');
 
 		it(this.name+'; input:stream', (fke_test) => {
-			this.reader({
+			this._f_reader({
 				input: {stream:fs.createReadStream(this.action)},
 				base_uri: this.base,
 				...this.config(fke_test),
@@ -90,7 +92,7 @@ class TestCase {
 		});
 
 		it(this.name+'; input:string', (fke_test) => {
-			this.reader({
+			this._f_reader({
 				input: {string:s_input},
 				base_uri: this.base,
 				...this.config(fke_test),
@@ -98,7 +100,7 @@ class TestCase {
 		});
 
 		it(this.name+'; input:none', (fke_test) => {
-			fs.createReadStream(this.action).pipe(this.reader({
+			fs.createReadStream(this.action).pipe(this._f_reader({
 				base_uri: this.base,
 				...this.config(fke_test),
 			}));
@@ -111,7 +113,7 @@ class TestCase_Positive extends TestCase {
 		let s_input = fs.readFileSync(this.action, 'utf8');
 
 		it(this.name+'; input:stream; relax=false', (fke_test) => {
-			this.reader({
+			this._f_reader({
 				input: {stream:fs.createReadStream(this.action)},
 				base_uri: this.base,
 				...this.config(fke_test),
@@ -119,7 +121,7 @@ class TestCase_Positive extends TestCase {
 		});
 
 		it(this.name+'; input:stream; relax=true', (fke_test) => {
-			this.reader({
+			this._f_reader({
 				input: {stream:fs.createReadStream(this.action)},
 				base_uri: this.base,
 				relax: true,
@@ -128,7 +130,7 @@ class TestCase_Positive extends TestCase {
 		});
 
 		it(this.name+'; input:string; relax=false', (fke_test) => {
-			this.reader({
+			this._f_reader({
 				input: {string:s_input},
 				base_uri: this.base,
 				...this.config(fke_test),
@@ -136,7 +138,7 @@ class TestCase_Positive extends TestCase {
 		});
 
 		it(this.name+'; input:string; relax=true', (fke_test) => {
-			this.reader({
+			this._f_reader({
 				input: {string:s_input},
 				base_uri: this.base,
 				relax: true,
@@ -145,14 +147,14 @@ class TestCase_Positive extends TestCase {
 		});
 
 		it(this.name+'; input:none; relax=false', (fke_test) => {
-			fs.createReadStream(this.action).pipe(this.reader({
+			fs.createReadStream(this.action).pipe(this._f_reader({
 				base_uri: this.base,
 				...this.config(fke_test),
 			}));
 		});
 
 		it(this.name+'; input:none; relax=true', (fke_test) => {
-			fs.createReadStream(this.action).pipe(this.reader({
+			fs.createReadStream(this.action).pipe(this._f_reader({
 				base_uri: this.base,
 				relax: true,
 				...this.config(fke_test),

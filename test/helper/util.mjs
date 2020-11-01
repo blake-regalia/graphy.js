@@ -6,16 +6,24 @@ const P_IRI_RDF_NIL = P_IRI_RDF+'nil';
 const P_IRI_XSD = 'http://www.w3.org/2001/XMLSchema#';
 
 // const factory = require(`@${process.env.GRAPHY_CHANNEL || 'graphy'}/core.data.factory`);
-const factory = require('@graphy/core.data.factory');
-const chai = require('chai');
+import {
+	quad,
+	fromRdfjsTerm,
+} from '@graphy/core';
+
+import chai from 'chai';
 const expect = chai.expect;
-chai.use(require('chai-string'));
-chai.use(require('chai-iterator'));
+
+import chai_string from 'chai-string';
+chai.use(chai_string);
+
+import chai_iterator from 'chai-iterator';
+chai.use(chai_iterator);
 
 
 const F_BRANCH_DEFAULT = (s, f) => describe(s, f);
 
-const helper = module.exports = {
+export const helper = {
 	e1(ze1) {
 		let s_type = typeof ze1;
 
@@ -194,7 +202,7 @@ const helper = module.exports = {
 			graph: g_graph,
 		} = helper.e4(ao4);
 
-		return factory.quad(...[g_subject, g_predicate, g_object, g_graph].map(factory.from.rdfjs_term));
+		return quad(...[g_subject, g_predicate, g_object, g_graph].map(fromRdfjsTerm));
 	},
 
 	validate_quads(dg_actual, a_expect) {
@@ -320,3 +328,5 @@ const helper = module.exports = {
 			: st_nil;
 	},
 };
+
+export default helper;

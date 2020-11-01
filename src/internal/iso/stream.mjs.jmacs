@@ -1,4 +1,4 @@
-const stream = require('readable-stream');
+import stream from 'readable-stream';
 
 
 @> bucket()
@@ -109,7 +109,22 @@ const stream = require('readable-stream');
 @;
 
 @//@
-class Readable extends stream.Readable {
+export class Readable extends stream.Readable {
+	static fromData(w_push, s_encoding=null) {
+		// encoding not explicit, string given; assume utf8
+		if(!s_encoding && 'string' === typeof w_push) s_encoding = 'utf8';
+
+		// readable
+		return new Readable({
+			objectMode: !s_encoding && 'string' !== typeof w_push && !Buffer.isBuffer(w_push),
+
+			read() {
+				this.push(w_push, s_encoding);
+				this.push(null);
+			},
+		});
+	}
+
 	constructor(gc_readable={}) {
 		super(gc_readable);
 
@@ -122,15 +137,15 @@ class Readable extends stream.Readable {
 	@{bucket()}
 }
 
-class Writable extends stream.Writable {
+export class Writable extends stream.Writable {
 	@{rdfjs_import()}
 }
 
-class Duplex extends stream.Duplex {
+export class Duplex extends stream.Duplex {
 	@{bucket()}
 }
 
-class Transform extends stream.Transform {
+export class Transform extends stream.Transform {
 	@{bucket()}
 
 	@{rdfjs_import()}
@@ -159,7 +174,7 @@ class Transform extends stream.Transform {
 	}
 }
 
-class QuadsToOther extends Transform {
+export class QuadsToOther extends Transform {
 	constructor(gc_transform={}) {
 		super({
 			...gc_transform,
@@ -194,14 +209,14 @@ class QuadsToOther extends Transform {
 	}
 }
 
-class Quads_To_JSON_Transform extends QuadsToOther {
+export class QuadsToJsonTransform extends QuadsToOther {
 	// serializse json
 	_transform(g_quad, s_encoding, fk_transform) {
 		fk_transform(null, JSON.stringify(g_quad.isolate())+'\n');
 	}
 }
 
-class Quads_To_Writable extends QuadsToOther {
+export class QuadsToWritable extends QuadsToOther {
 	_transform(g_quad, s_encoding, fk_transform) {
 		fk_transform(null, {
 			type: 'quad',
@@ -212,38 +227,16 @@ class Quads_To_Writable extends QuadsToOther {
 
 Transform.QuadsToOther = QuadsToOther;
 
-module.exports = {
-	...stream,
-	Readable,
-	Writable,
-	Duplex,
-	Transform,
+const {
+	Stream,
+	PassThrough,
+	finished,
+	pipeline,
+} = stream;
 
-	QuadsToOther,
-
-	// create a transform from quad objects into JSON strings for trivial serialization
-	quads_to_json() {
-		return new Quads_To_JSON_Transform();
-	},
-
-	// create a transform from quad objects into writable data events
-	quads_to_writable() {
-		return new Quads_To_Writable();
-	},
-
-	// create a simple, single-event readable stream
-	source(w_push, s_encoding=null) {
-		// encoding not explicit, string given; assume utf8
-		if(!s_encoding && 'string' === typeof w_push) s_encoding = 'utf8';
-
-		// readable
-		return new Readable({
-			objectMode: !s_encoding && 'string' !== typeof w_push && !Buffer.isBuffer(w_push),
-
-			read() {
-				this.push(w_push, s_encoding);
-				this.push(null);
-			},
-		});
-	},
+export {
+	Stream,
+	PassThrough,
+	finished,
+	pipeline,
 };

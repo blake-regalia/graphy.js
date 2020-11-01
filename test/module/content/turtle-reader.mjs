@@ -1,18 +1,27 @@
 /* eslint indent: 0, padded-blocks: 0, quote-props: 0 */
-const expect = require('chai').expect;
+import chai from 'chai';
+const expect = chai.expect;
 
-const factory = require('@graphy/core.data.factory');
-const dataset_tree = require('@graphy-stable/memory.dataset.fast');
+import {
+	namedNode,
+	quad,
+	toInteger,
+	toDouble,
+	toDecimal,
+} from '@graphy-stable/core';
 
-const ttl_read = require('@graphy/content.ttl.read');
+import {TreeDataset} from '@graphy-stable/memory';
 
-const reader_suite = require('../helper/reader.js');
+import {TurtleReader} from '@graphy/content';
 
-let f_string_literals = s => ['#a', '#b', '"'+s];
+import ReaderSuite from '../../helper/reader-suite.mjs';
 
-reader_suite({
+const f_string_literals = s => ['#a', '#b', '"'+s];
+
+(new ReaderSuite({
 	alias: 'ttl',
-	reader: ttl_read,
+	syntax: 'Turtle',
+	reader: TurtleReader,
 	manifest: 'http://w3c.github.io/rdf-tests/turtle/manifest.ttl',
 	prefixes: {
 		'': '#',
@@ -765,24 +774,24 @@ reader_suite({
 			`, [
 				['#a', '#b', 0],
 				['#a', '#b', -2],
-				['#a', '#b', factory.to.integer('+20')],
+				['#a', '#b', toInteger('+20')],
 			]],
 
 			'decimals': () => [`
 				:a :b .0, 0.0, -0.2, +20.0 .
 			`, [
-				['#a', '#b', factory.to.decimal('.0')],
-				['#a', '#b', factory.to.decimal('0.0')],
-				['#a', '#b', factory.to.decimal('-0.2')],
-				['#a', '#b', factory.to.decimal('+20.0')],
+				['#a', '#b', toDecimal('.0')],
+				['#a', '#b', toDecimal('0.0')],
+				['#a', '#b', toDecimal('-0.2')],
+				['#a', '#b', toDecimal('+20.0')],
 			]],
 
 			'doubles': () => [`
 				:a :b 0.e1, -2.0e-1, +0.02e+3 .
 			`, [
-				['#a', '#b', factory.to.double('0.e1')],
-				['#a', '#b', factory.to.double('-2.0e-1')],
-				['#a', '#b', factory.to.double('+0.02e+3')],
+				['#a', '#b', toDouble('0.e1')],
+				['#a', '#b', toDouble('-2.0e-1')],
+				['#a', '#b', toDouble('+0.02e+3')],
 			]],
 		},
 
@@ -820,7 +829,7 @@ reader_suite({
 			]],
 
 			'numeric literals': () => [':a :b 25.12e-1 .', [
-				['#a', '#b', factory.to.double('25.12e-1')],
+				['#a', '#b', toDouble('25.12e-1')],
 			]],
 
 			'prefixed names with dots': () => [':a :b :c.d. :a :b "c"^^:d.e.', [
@@ -1107,16 +1116,16 @@ reader_suite({
 	});
 
 	reader.interfaces((f_interface) => {
-		let k_tree_expect = dataset_tree();
+		const kd_expect = new TreeDataset();
 
-		k_tree_expect.add(factory.quad(...[
-			factory.namedNode('test://a'),
-			factory.namedNode('test://b'),
-			factory.namedNode('test://c'),
+		kd_expect.add(quad(...[
+			namedNode('test://a'),
+			namedNode('test://b'),
+			namedNode('test://c'),
 		]));
 
 		f_interface({
-			reader: ttl_read,
+			reader: TurtleReader,
 			input: /* syntax: ttl */ `
 				@base <base://> .
 				@prefix : <test://> .
@@ -1146,12 +1155,12 @@ reader_suite({
 				},
 
 				data(a_events) {
-					let k_tree_actual = dataset_tree();
-					for(let [g_quad] of a_events) {
-						k_tree_actual.add(g_quad);
+					const kd_actual = new TreeDataset();
+					for(const [g_quad] of a_events) {
+						kd_actual.add(g_quad);
 					}
 
-					expect(k_tree_actual.equals(k_tree_expect)).to.be.true;
+					expect(kd_actual.equals(kd_expect)).to.be.true;
 				},
 
 				eof(a_eofs) {
@@ -1166,4 +1175,4 @@ reader_suite({
 	});
 
 	reader.specification();
-});
+})).run();

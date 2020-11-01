@@ -1,5 +1,5 @@
 
-module.exports = (fk_init) => {
+export default (fk_init) => {
 	onmessage = (e_msg) => {
 		let g_msg = e_msg.data;
 

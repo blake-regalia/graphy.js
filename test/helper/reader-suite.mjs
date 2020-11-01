@@ -1,31 +1,33 @@
 /* eslint indent: 0, padded-blocks: 0 */
-const expect = require('chai').expect;
+import chai from 'chai';
+const expect = chai.expect;
 
-const stream = require('@graphy/core.iso.stream');
+import stream from 'readable-stream';
 
-const w3c_rdf_specification = require('../interface/w3c-rdf-specification.js');
-const graphy_reader_interface = require('../interface/content-reader.js');
-const util = require('./util.js');
+import w3c_rdf_specification from '../interface/w3c-rdf-specification.mjs';
+import graphy_reader_interface from '../interface/content-reader.mjs';
+
+import util from './util.mjs';
 
 const R_WANTS_PREFIX = /^\s*[(:_[]/;
 
-class ReaderSuite {
+export class ReaderSuite {
 	constructor(gc_suite, f_suite) {
 		let s_prefix_string = '';
 		if(gc_suite.prefixes) {
-			let h_prefixes = gc_suite.prefixes;
-			for(let [s_prefix_id, p_iri] of Object.entries(h_prefixes)) {
+			const h_prefixes = gc_suite.prefixes;
+			for(const [s_prefix_id, p_iri] of Object.entries(h_prefixes)) {
 				s_prefix_string += `@prefix ${s_prefix_id}: <${p_iri}> .\n`;
 			}
 		}
 
-		Object.assign(this, {
-			...gc_suite,
-			prefix_string: s_prefix_string,
-			package: `content.${gc_suite.alias}.read`,
-		});
+		this._f_reader = (...a_args) => new gc_suite.reader(...a_args);
+		this._s_prefix_string = s_prefix_string;
+		this._si_module = 'content';
+		this._si_class = `${gc_suite.syntax}Reader`;
+		this._si_export = `@graphy/${this._si_module}:${this._si_class}`;
 
-		describe(this.package, () => {
+		describe(this._si_export, () => {
 			f_suite(this);
 		});
 	}
@@ -34,7 +36,7 @@ class ReaderSuite {
 		describe('emits read error for:', () => {
 			util.map_tree(h_tree, (s_label, f_leaf) => {
 				// destructure leaf node
-				let {
+				const {
 					input: st_input,
 					config: gc_read={},
 					char: s_char=null,
@@ -45,12 +47,7 @@ class ReaderSuite {
 				it(s_label, (fke_test) => {
 
 					// feed input one character at a time
-					let i_char = 0;
-					(new stream.Readable({
-						read() {
-							this.push(st_input[i_char++] || null);
-						},
-					})).pipe(this.reader({
+					stream.Readable.from([...st_input]).pipe(new this._f_reader({
 						debug: b_debug,
 						...gc_read,
 
@@ -61,7 +58,7 @@ class ReaderSuite {
 						error(e_parse) {
 							expect(e_parse).to.be.an('error');
 							if(s_char) {
-								let s_match = 'failed to parse a valid token'; // starting at '+('string' === typeof s_err_char? '"'+s_err_char+'"': '<<EOF>>');
+								const s_match = 'failed to parse a valid token'; // starting at '+('string' === typeof s_err_char? '"'+s_err_char+'"': '<<EOF>>');
 								expect(e_parse.message).to.have.string(s_match);
 								if(s_err_state) {
 									expect(/expected (\w+)/.exec(e_parse.message)[1]).to.equal(s_err_state);
@@ -77,7 +74,7 @@ class ReaderSuite {
 						},
 					}));
 
-					// this.reader(st_input, {
+					// this._f_reader(st_input, {
 					// 	debug: b_debug,
 
 					// 	// ignore data events
@@ -108,7 +105,7 @@ class ReaderSuite {
 	}
 
 	allows(h_tree) {
-		let g_modes = {
+		const g_modes = {
 			'validation enabled (not relaxed)': {
 				relax: false,
 			},
@@ -117,28 +114,23 @@ class ReaderSuite {
 			},
 		};
 
-		for(let [s_mode, gc_read] of Object.entries(g_modes)) {
+		for(const [s_mode, gc_read] of Object.entries(g_modes)) {
 			describe(s_mode, () => {
 				util.map_tree(h_tree, (s_label, f_leaf) => {
 					// destructure leaf node
 					let [st_input, a_validate, b_debug=false] = f_leaf();
 
 					// input wants prefixes
-					if(this.prefix_string && R_WANTS_PREFIX.test(st_input)) {
-						st_input = this.prefix_string+st_input;
+					if(this._s_prefix_string && R_WANTS_PREFIX.test(st_input)) {
+						st_input = this._s_prefix_string+st_input;
 					}
 
 					// create test case
 					it(s_label, (fke_test) => {
-						let a_quads = [];
+						const a_quads = [];
 
 						// feed input one character at a time
-						let i_char = 0;
-						(new stream.Readable({
-							read() {
-								this.push(st_input[i_char++] || null);
-							},
-						})).pipe(this.reader({
+						stream.Readable.from([...st_input]).pipe(this._f_reader({
 							debug: b_debug,
 							...gc_read,
 
@@ -173,14 +165,10 @@ class ReaderSuite {
 	specification() {
 		describe('w3c rdf specification', async() => {
 			await w3c_rdf_specification({
-				reader: this.reader,
-				package: this.package,
-				manifest: this.manifest,
+				reader: this._f_reader,
+				export: this._si_export,
+				manifest: this._p_manifest,
 			});
 		});
 	}
 }
-
-module.exports = function(...a_args) {
-	return new ReaderSuite(...a_args);
-};

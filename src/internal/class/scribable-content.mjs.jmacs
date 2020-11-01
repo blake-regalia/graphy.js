@@ -2,18 +2,21 @@
 @import '../../share/iris.jmacs'
 @import '../../share/writer.jmacs'
 
-const factory = require('@{channel('core.data.factory')}');
-const stream = require('@{channel('core.iso.stream')}');
-
-const {
+import {
+	c1,
+	cachePrefixes,
 	SI_PREFIX_BASE,
-} = factory;
+} from '@graphy/core';
+
+import {
+	Transform,
+} from '../iso/stream.mjs';
 
 // max string buffer size
 const N_DEFAULT_MAX_BUFFER = 1 << 15;  // 32 KiB
 
 
-class Scribable extends stream.Transform {
+export default class ScribableContent extends Transform {
 	// flush buffer
 	static _flush_buffer(k_self) {
 		// no buffer; exit
@@ -32,7 +35,7 @@ class Scribable extends stream.Transform {
 			readableObjectMode: false,
 		});
 
-		let {
+		const {
 			prefixes: h_prefixes={},
 			baseIRI: p_base=null,
 			_terse: b_terse,
@@ -48,7 +51,7 @@ class Scribable extends stream.Transform {
 		this._n_max_buffer = gc_scribable.max_buffer || gc_scribable.maxBuffer || N_DEFAULT_MAX_BUFFER;
 
 		// prefixes
-		this._h_prefixes = factory.cache_prefixes(h_prefixes || {}, b_terse, p_base);
+		this._h_prefixes = cachePrefixes(h_prefixes || {}, b_terse, p_base);
 
 		// on new source(s)
 		this.on('pipe', (ds_src) => {
@@ -83,7 +86,7 @@ class Scribable extends stream.Transform {
 				warning: {},
 			};
 
-			for(let [s_event, g_event] of Object.entries(H_WRITE_EVENTS)) {
+			for(const [s_event, g_event] of Object.entries(H_WRITE_EVENTS)) {
 				yield /* syntax: js */ `
 					if(gc_scribable.${s_event}) this.${g_event.once? 'once': 'on'}('${s_event}', gc_scribable.${s_event});
 					`.trim()+'\n';
@@ -111,12 +114,12 @@ class Scribable extends stream.Transform {
 	}
 
 	_serialize_c4r(hc4r_quads) {
-		let h_prefixes = this._h_prefixes;
-		let a_unions = [];
+		const h_prefixes = this._h_prefixes;
+		const a_unions = [];
 		let s_write = '';
 
 		// each graph in quads hash
-		for(let sc1_graph in hc4r_quads) {
+		for(const sc1_graph in hc4r_quads) {
 			// non-default graph; union from dataset
 			if('*' !== sc1_graph) a_unions.push(sc1_graph);
 			
@@ -127,7 +130,7 @@ class Scribable extends stream.Transform {
 		// a union was performed
 		if(a_unions.length) {
 			// warn about implicit union
-			let s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => factory.c1(sc1, h_prefixes).verbose()).join(', ')}`;
+			const s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => c1(sc1, h_prefixes).verbose()).join(', ')}`;
 
 			// emit warning, wasn't listened to; force thru warn/stderr channel
 			if(!this.emit('warning', s_warning)) {
@@ -144,7 +147,7 @@ class Scribable extends stream.Transform {
 			'c4',
 		];
 
-		for(let s_event_type of A_OVERRIDEABLE) {
+		for(const s_event_type of A_OVERRIDEABLE) {
 			yield /* syntax: js */ `
 				_serialize_${s_event_type}() {
 					throw new Error(\`Write event type '${s_event_type}' not supported by \${this.constructor.name}\`);
@@ -159,7 +162,7 @@ class Scribable extends stream.Transform {
 			'quad',
 		];
 
-		for(let s_event_type of A_REQUIRED) {
+		for(const s_event_type of A_REQUIRED) {
 			yield /* syntax: js */ `
 				_serialize_${s_event_type}() {
 					throw new Error(\`Write event type '${s_event_type}' should have been implemented by subclass \${this.constructor.name}\`);
@@ -174,13 +177,13 @@ class Scribable extends stream.Transform {
 	// update prefix mappings
 	_update_prefixes(h_prefixes_in, b_terse=false) {
 		// merge prefixes
-		let h_prefixes = {
+		const h_prefixes = {
 			...this._h_prefixes,
 			...h_prefixes_in,
 		};
 
 		// recache prefixes
-		this._h_prefixes = factory.cachePrefixes(h_prefixes || {}, b_terse);
+		this._h_prefixes = cachePrefixes(h_prefixes || {}, b_terse);
 	}
 
 	// implement stream.Transform
@@ -203,23 +206,23 @@ class Scribable extends stream.Transform {
 		// data to push
 		if(w_write) {
 			// flush internal buffer
-			Scribable._flush_buffer(this);
+			ScribableContent._flush_buffer(this);
 
 			// push data to stream
 			this.push(w_write);
 		}
 		// nothing returned from serialization
 		else {
-			let nl_push = this._s_push.length;
+			const nl_push = this._s_push.length;
 
 			// internal buffer high water mark
 			if(nl_push > this._n_max_buffer) {
-				Scribable._flush_buffer(this);
+				ScribableContent._flush_buffer(this);
 			}
 			// allow buffer to build
 			else if(nl_push) {
 				// do not worry about clearing timeouts
-				queueMicrotask(() => Scribable._flush_buffer(this));
+				queueMicrotask(() => ScribableContent._flush_buffer(this));
 			}
 		}
 
@@ -233,11 +236,11 @@ class Scribable extends stream.Transform {
 
 		// internal buffer high water mark
 		if(this._s_push.length > this._n_max_buffer) {
-			Scribable._flush_buffer(this);
+			ScribableContent._flush_buffer(this);
 		}
 		else {
 			// do not worry about clearing timeouts
-			queueMicrotask(() => Scribable._flush_buffer(this));
+			queueMicrotask(() => ScribableContent._flush_buffer(this));
 		}
 	}
 
@@ -260,9 +263,9 @@ class Scribable extends stream.Transform {
 				let s_write = '';
 
 				// each subevent
-				for(let g_sub of g_event.value) {
+				for(const g_sub of g_event.value) {
 					// build serialization string
-					let s_push = this.serialize(g_sub);
+					const s_push = this.serialize(g_sub);
 
 					// something to push
 					if(s_push) {
@@ -316,21 +319,20 @@ class Scribable extends stream.Transform {
 	// rinse off buffer to writable
 	rinse() {
 		this._reset();
-		Scribable._flush_buffer(this);
+		ScribableContent._flush_buffer(this);
 	}
 
 	_flush() {
 		// flush buffer
-		Scribable._flush_buffer(this);
+		ScribableContent._flush_buffer(this);
 
 		// eof
 		this.push(null);
 	}
 }
 
-Object.assign(Scribable.prototype, {
-	isGraphyWritable: true,
-	_serialize_prefixes: Scribable.prototype._update_prefixes,
-});
-
-module.exports = Scribable;
+{
+	const g_self = ScribableContent.prototype;
+	g_self.isGraphyWritable = true;
+	g_self._serialize_prefixes = g_self._update_prefixes;
+}

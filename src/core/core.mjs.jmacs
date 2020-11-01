@@ -3,17 +3,22 @@
 
 import crypto from 'crypto';
 
+// create sha256 hash digest of an input string
+const hash = s => crypto.createHash('sha256').update(s).digest('base64');
+
+
 const R_INVALID_IRIREF = /([\x00-\x20<>"{}|^`\\]|%(?![0-9A-F][0-9A-F]))/g;
 const F_REPLACE_INVALID_IRIREF = (s_, s_v) => {
 	let s_code = s_v.codePointAt(0).toString(16)+'';
 	return s_code.length > 4
 		? '\\U'+s_code.padStart(8, '0')
 		: '\\u'+s_code.padStart(4, '0');
-}
+};
 
-const hash = s => crypto.createHash('sha256').update(s).digest('base64');
-
-const clean_iri = p_iri_dirty => p_iri_dirty.replace(R_INVALID_IRIREF, F_REPLACE_INVALID_IRIREF);
+export const clean_iri = p_iri_dirty => p_iri_dirty.replace(R_INVALID_IRIREF, F_REPLACE_INVALID_IRIREF);
+export {
+	clean_iri as cleanIri,
+};
 
 @>> MK_RANGE_PN_HIGH(b_extend=false)
 	@// #x00B7
@@ -140,7 +145,7 @@ const RT_BOOLEAN_FALSE = /^([Ff](alse)?|FALSE)$/;
 const S_UUID_V4 = 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx';
 const R_UUID_V4 = /[xy]/g;
 
-const uuidv4 = () => {
+export const uuidv4 = () => {
 	let dt_now = Date.now();
 	if('undefined' !== typeof performance) dt_now += performance.now();
 	return S_UUID_V4.replace(R_UUID_V4, (s) => {
@@ -152,10 +157,10 @@ const uuidv4 = () => {
 
 
 // key to access cache on a prefix mapping
-const SI_PREFIX_CACHE = ' (cache)';
+export const SI_PREFIX_CACHE = ' (cache)';
 
 // key to access base
-const SI_PREFIX_BASE = ' (base)';
+export const SI_PREFIX_BASE = ' (base)';
 
 // escape characters for compiling regexes
 const R_REGEX_ESCAPE = /[$^*()+[\\{}|.?]/g;
@@ -165,7 +170,7 @@ const SR_PN_LOCAL = '(@{(PN_LOCAL(true)+'').replace(/['\\]/g, '\\$&')})$';
 
 
 // create a cache on a prefix mapping
-function cache_prefixes(h_prefixes, b_terse=false) {
+export function cache_prefixes(h_prefixes, b_terse=false) {
 	// regex cache string building
 	let a_cache = [];
 
@@ -201,6 +206,10 @@ function cache_prefixes(h_prefixes, b_terse=false) {
 	// freeze object
 	return Object.freeze(h_prefixes);
 }
+
+export {
+	cache_prefixes as cachePrefixes,
+};
 
 
 @$ B_OPTIMIZE_PREFIX_COMPRESSION = false;
@@ -238,7 +247,7 @@ function cache_prefixes(h_prefixes, b_terse=false) {
 @;
 
 // attempt to turn an iri into a terse prefixed name
-const terse = (p_iri, h_prefixes) => {
+export const terse = (p_iri, h_prefixes) => {
 	@{curi_prefix_cache()}
 	// cache does not exist
 	else {
@@ -286,7 +295,7 @@ const terse = (p_iri, h_prefixes) => {
 };
 
 // attempt to turn an iri into a concise prefixed name
-const concise = (p_iri, h_prefixes={}) => {
+export const concise = (p_iri, h_prefixes={}) => {
 	@{curi_prefix_cache()}
 	// cache does not exists
 	else {
@@ -322,7 +331,7 @@ const concise = (p_iri, h_prefixes={}) => {
 
 const R_C1N_DECONSTRUCT = /^([^:]*):(.*)$/;
 
-function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
+export function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 	switch(sc1_in[0]) {
 		// absolute iri
 		case '>': return '<'+sc1_in.slice(1)+'>';
@@ -359,7 +368,7 @@ function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 
 		// directive / node explicit
 		case '<':
-		case '`': return factory.c1(sc1_in).terse(h_prefixes);
+		case '`': return c1(sc1_in).terse(h_prefixes);
 
 		// otherwise
 		default: {
@@ -379,6 +388,10 @@ function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 		}
 	}
 }
+
+export {
+	c1_to_nt as c1ToNt,
+};
 
 @$ R_DECLARE = /^\s*class\s*([^\s]+)\s*(?:extends\s*([^\s]+)\s*)/;
 
@@ -1281,13 +1294,14 @@ class Literal_NaN extends Literal_Double {
 				value: '',
 			};
 		}
-
-		hash() {
-			return '@{require('crypto').createHash('sha256').update('*').digest('base64')}';
-		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
+		hash: /* syntax: js */ `
+			function DefaultGraph$hash() {
+				return '${require('crypto').createHash('sha256').update('*').digest('base64')}';
+			}
+		`,
 		value: /* syntax: js */ `''`,
 		termType: /* syntax: js */ `'DefaultGraph'`,
 		isDefaultGraph: /* syntax: js */ `true`,
@@ -1341,9 +1355,9 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 
 		concise(h_prefixes={}) {
 			return this.graph.concise(h_prefixes)
-				+'\9'+this.subject.concise(h_prefixes)
-				+'\8'+this.predicate.concise(h_prefixes)
-				+'\0'+this.object.concise(h_prefixes);
+				+'\n'+this.subject.concise(h_prefixes)
+				+'\r'+this.predicate.concise(h_prefixes)
+				+'\t'+this.object.concise(h_prefixes);
 		}
 
 		terse(h_prefixes={}) {
@@ -1554,7 +1568,7 @@ const A_RELATIONS = [
 	'overlap',
 ];
 
-function relate_maps(h_a, h_b) {
+export function relatePrefixMaps(h_a, h_b) {
 	const a_keys_a = Object.keys(h_a);
 	const a_keys_b = Object.keys(h_b);
 
@@ -1606,7 +1620,7 @@ function relate_maps(h_a, h_b) {
 }
 
 
-let g_raw = {
+const g_raw = {
 	namedNode(p_iri) {
 		return new NamedNode(p_iri);
 	},
@@ -1640,6 +1654,51 @@ let g_raw = {
 	}
 };
 
+export {
+	g_raw as raw,
+};
+
+export const g_unfiltered = {
+	...g_raw,
+
+	literal(s_value, z_datatype_or_lang) {
+		if(!z_datatype_or_lang || KT_XSD_STRING.equals(z_datatype_or_lang)) {
+			return new SimpleLiteral(s_value);
+		}
+		else if('string' === typeof z_datatype_or_lang) {
+			return new LanguagedLiteral(s_value, z_datatype_or_lang);
+		}
+		else if(KT_XSD_STRING.equals(z_datatype_or_lang)) {
+			return new SimpleLiteral(s_value);
+		}
+		else {
+			return new ExplicitlyDatatypedLiteral(s_value, z_datatype_or_lang);
+		}
+	},
+
+	simpleLiteral(s_value) {
+		return new SimpleLiteral(s_value);
+	},
+
+	languagedLiteral(s_value, s_language) {
+		return new LanguagedLiteral(s_value, s_language);
+	},
+
+	datatypedLiteral(s_value, kt_datatype) {
+		if(KT_XSD_STRING.equals(kt_datatype)) {
+			return new SimpleLiteral(s_value);
+		}
+		else {
+			return new ExplicitlyDatatypedLiteral(s_value, kt_datatype);
+		}
+	},
+};
+
+export {
+	g_unfiltered as unfiltered,
+};
+
+
 function C3Proxy$_toString() {
 	return '|'+JSON.stringify([...this()].map(w => w.concise()));
 }
@@ -1652,663 +1711,719 @@ function c1_expand_prefixed_named_node(sc1_term, h_prefixes) {
 	return '>'+h_prefixes[si_prefix]+s_suffix;
 }
 
-const factory = {
-	concise,
+export const $_GRAPHY_ID = Symbol('graphy id');
 
-	adopt(dc_factory) {
-		// already exact factory
-		if(factory === dc_factory || factory.unfiltered === dc_factory) return dc_factory;
+export function adopt(dc_factory) {
+	// already exact factory
+	if($_GRAPHY_ID in dc_factory) return dc_factory;
 
-		// prep to extend
-		const dc_extend = Object.create(dc_factory);
-		let b_use_extend = false;
-
-		@*{
-			const H_DATA_CONSTRUCTORS = {
-				xsd: {
-					boolean: /* syntax: js */ `b_value => dc_factory.literal(b_value, kt_xsd_boolean)`,
-					double: /* syntax: js */ `s_value => dc_factory.double(s_value, kt_xsd_double)`,
-					decimal: /* syntax: js */ `s_value => dc_factory.decimal(s_value, kt_xsd_decimal)`,
-					integer: /* syntax: js */ `s_value => dc_factory.integer(s_value, kt_xsd_integer)`,
-				},
-				literal: {
-					simpleLiteral: /* syntax: js */ `s_value => dc_factory.literal(s_value)`,
-					languagedLiteral: /* syntax: js */ `(s_value, s_lang) => dc_factory.literal(s_value, s_lang)`,
-					datatypedLiteral: /* syntax: js */ `(s_value, kt_datatype) => dc_factory.literal(s_value, kt_datatype)`,
-				},
-			};
-
-			for(const [s_type, h_values] of Object.entries(H_DATA_CONSTRUCTORS)) {
-				for(const [si_value, sj_constructor] of Object.entries(h_values)) {
-					yield /* syntax: js */ `
-						if('function' !== typeof dc_factory.${si_value}) {
-							${'xsd' === s_type
-								? /* syntax: js */ `const kt_xsd_${si_value} = dc_factory.namedNode('${P_IRI_XSD}${si_value}');`
-								: ''}
-							dc_extend.${si_value} = ${sj_constructor};
-							b_use_extend = true;
-						}
-					`;
-				}
-			}
-		}
-
-		// extended or not
-		return b_use_extend? dc_extend: dc_factory
-	},
-
-	raw: g_raw,
-	unfiltered: {
-		...g_raw,
-
-		literal(s_value, z_datatype_or_lang) {
-			if(!z_datatype_or_lang || KT_XSD_STRING.equals(z_datatype_or_lang)) {
-				return new SimpleLiteral(s_value);
-			}
-			else if('string' === typeof z_datatype_or_lang) {
-				return new LanguagedLiteral(s_value, z_datatype_or_lang);
-			}
-			else if(KT_XSD_STRING.equals(z_datatype_or_lang)) {
-				return new SimpleLiteral(s_value);
-			}
-			else {
-				return new ExplicitlyDatatypedLiteral(s_value, z_datatype_or_lang);
-			}
-		},
-
-		simpleLiteral(s_value) {
-			return new SimpleLiteral(s_value);
-		},
-
-		languagedLiteral(s_value, s_language) {
-			return new LanguagedLiteral(s_value, s_language);
-		},
-
-		datatypedLiteral(s_value, kt_datatype) {
-			if(KT_XSD_STRING.equals(kt_datatype)) {
-				return new SimpleLiteral(s_value);
-			}
-			else {
-				return new ExplicitlyDatatypedLiteral(s_value, kt_datatype);
-			}
-		},
-	},
-
-	number(x) {
-		// not finite or not a number
-		if('number' === typeof x && (!Number.isFinite(x) || Number.isNaN(x))) {
-			return factory.double(x);
-		}
-		// integer or bigint
-		else if(Number.isInteger(x) || 'bigint' === typeof x) {  // eslint-disable-line valid-typeof
-			return factory.integer(x);
-		}
-		// non-integer
-		else {
-			return factory.decimal(x);
-		}
-	},
-
-	date(dt) {
-		return factory.literal(dt.toISOString().replace(/T.+$/, 'Z'), KT_XSD_DATE);
-	},
-
-	dateTime(dt) {
-		return factory.literal(dt.toISOString(), KT_XSD_DATETIME);
-	},
-
-	namedNode(pr_iri) {
-		// clean iri
-		pr_iri = clean_iri(pr_iri);
-
-		// absolute iri
-		if(RT_IRI_ABSOLUTE.test(pr_iri)) {
-			return new NamedNode(pr_iri);
-		}
-		// relative iri
-		else {
-			return new RelativeNamedNode(pr_iri);
-		}
-	},
-
-	ephemeral() {
-		return new EphemeralBlankNode();
-	},
-
-	// @deprecated
-	anonymous() {
-		return new EphemeralBlankNode();
-	},
-
-	blankNode(z_label) {
-		// no label given, generate a UUID
-		if(!z_label) {
-			// eslint-disable-next-line no-undef
-			return new BlankNode('_'+uuidv4(), true);
-		}
-		// label given
-		else if('string' === typeof z_label) {
-			return new BlankNode(z_label);
-		}
-
-		throw new TypeError(`factory.blankNode(label) expects 'label' parameter to be falsy or a string; instead found: ${z_label}`);
-	},
-
-	literal(s_value, z_datatype_or_lang) {
-		if(!z_datatype_or_lang || KT_XSD_STRING.equals(z_datatype_or_lang)) {
-			return new SimpleLiteral(s_value);
-		}
-		else if('string' === typeof z_datatype_or_lang) {
-			return new LanguagedLiteral(s_value, z_datatype_or_lang);
-		}
-		else {
-			return new ExplicitlyDatatypedLiteral(s_value, z_datatype_or_lang);
-		}
-	},
+	// prep to extend
+	const dc_extend = Object.create(dc_factory);
+	let b_use_extend = false;
 
 	@*{
-		for(let s_type in h_literals) {
-			let g_config = h_literals[s_type];
-			yield /* syntax: js */ `${s_type}(w_value) {
-				${g_config.construct('w_value')}
-			},\n`;
+		const H_DATA_CONSTRUCTORS = {
+			xsd: {
+				boolean: /* syntax: js */ `b_value => dc_factory.literal(b_value, kt_xsd_boolean)`,
+				double: /* syntax: js */ `s_value => dc_factory.double(s_value, kt_xsd_double)`,
+				decimal: /* syntax: js */ `s_value => dc_factory.decimal(s_value, kt_xsd_decimal)`,
+				integer: /* syntax: js */ `s_value => dc_factory.integer(s_value, kt_xsd_integer)`,
+			},
+			literal: {
+				simpleLiteral: /* syntax: js */ `s_value => dc_factory.literal(s_value)`,
+				languagedLiteral: /* syntax: js */ `(s_value, s_lang) => dc_factory.literal(s_value, s_lang)`,
+				datatypedLiteral: /* syntax: js */ `(s_value, kt_datatype) => dc_factory.literal(s_value, kt_datatype)`,
+			},
+		};
+
+		for(const [s_type, h_values] of Object.entries(H_DATA_CONSTRUCTORS)) {
+			for(const [si_value, sj_constructor] of Object.entries(h_values)) {
+				yield /* syntax: js */ `
+					if('function' !== typeof dc_factory.${si_value}) {
+						${'xsd' === s_type
+							? /* syntax: js */ `const kt_xsd_${si_value} = dc_factory.namedNode('${P_IRI_XSD}${si_value}');`
+							: ''}
+						dc_extend.${si_value} = ${sj_constructor};
+						b_use_extend = true;
+					}
+				`;
+			}
 		}
 	}
 
-	defaultGraph() {
-		return new DefaultGraph();
-	},
+	// extended or not
+	return b_use_extend? dc_extend: dc_factory
+}
 
-	variable(s_label) {
-		return new Variable(s_label);
-	},
 
-	// warn
-	triple(h_subject, h_predicate, h_object) {
-		let e_stack = new Error('It is strongly encouraged to use .quad() instead of .triple()');
-		console.warn(e_stack.stack.replace(/^(\s*)Error:/, '$1Warning:'));
-		return new Quad(h_subject, h_predicate, h_object);
-	},
 
-	quad(h_subject, h_predicate, h_object, h_graph) {
-		return new Quad(h_subject, h_predicate, h_object, h_graph || KT_DEFAULT_GRAPH);
-	},
+export function number(x) {
+	// not finite or not a number
+	if('number' === typeof x && (!Number.isFinite(x) || Number.isNaN(x))) {
+		return double(x);
+	}
+	// integer or bigint
+	else if(Number.isInteger(x) || 'bigint' === typeof x) {  // eslint-disable-line valid-typeof
+		return integer(x);
+	}
+	// non-integer
+	else {
+		return decimal(x);
+	}
+}
 
-	term(z_term, w_prefixes) {
-		// concise term
-		if('string' === typeof z_term) {
-			return factory.c1(z_term, w_prefixes);
-		}
-		// rdfjs term
-		else {
-			return factory.fromRdfjsTerm(z_term);
-		}
-	},
+export function date(dt) {
+	return literal(dt.toISOString().replace(/T.+$/, 'Z'), KT_XSD_DATE);
+}
 
-	/**
-	 * construct a namedNode from a concise term string
-	 * @param  {c1_string} sp1_term - a representation of the predicate to create
-	 * @param  {Object} h_prefixes - mappings for prefixes
-	 * @return {Term} - an RDFJS-compatible term object
-	 */
-	p1(sp1_node, h_prefixes={}) {
-		// find prefix delimiter
-		let i_delim = sp1_node.indexOf('_');
+export function dateTime(dt) {
+	return literal(dt.toISOString(), KT_XSD_DATETIME);
+}
 
-		// no delimter; invalid concise-term string for node
-		if(-1 === i_delim) throw new Error(`A relative or prefixed node must include a ':' or '_' character. \nInvalid concise-term string for node: '${sp1_node}'`);
+export function namedNode(pr_iri) {
+	// clean iri
+	pr_iri = clean_iri(pr_iri);
 
-		// prefix id
-		let s_prefix_id = sp1_node.slice(0, i_delim);
+	// absolute iri
+	if(RT_IRI_ABSOLUTE.test(pr_iri)) {
+		return new NamedNode(pr_iri);
+	}
+	// relative iri
+	else {
+		return new RelativeNamedNode(pr_iri);
+	}
+}
 
-		// suffix
-		let s_suffix = sp1_node.slice(i_delim+1);
+export function ephemeral() {
+	return new EphemeralBlankNode();
+}
 
-		// find prefix in hash
-		if(s_prefix_id in h_prefixes) {
-			return g_raw.namedNode(h_prefixes[s_prefix_id]+s_suffix);
-		}
-		// prefix not exists
-		else {
-			throw new Error(`Prefix not defined: '${s_prefix_id}'`);
-		}
-	},
+// @deprecated
+export function anonymous() {
+	return new EphemeralBlankNode();
+}
 
-	/**
-	 * construct a term object from a concise term string
-	 * @param  {c1_string} sc1_term - a representation of the term object to create
-	 * @param  {Object} h_prefixes - mappings for prefixes
-	 * @return {Term} - an RDFJS-compatible term object
-	 */
-	c1(sc1_term, h_prefixes={}) {
-		// deduce term type
-		switch(sc1_term[0]) {
-			// datatyped literal
-			case '^': {
-				// find literal's contents delimiter
-				let i_contents = sc1_term.indexOf('"');
+export function blankNode(z_label) {
+	// no label given, generate a UUID
+	if(!z_label) {
+		// eslint-disable-next-line no-undef
+		return new BlankNode('_'+uuidv4(), true);
+	}
+	// label given
+	else if('string' === typeof z_label) {
+		return new BlankNode(z_label);
+	}
 
-				// no delimiter
-				if(-1 === i_contents) {
-					throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
-				}
+	throw new TypeError(`blankNode(label) expects 'label' parameter to be falsy or a string; instead found: ${z_label}`);
+}
 
-				// extract datatype
-				let s_datatype = sc1_term.slice(1, i_contents);
+export function literal(s_value, z_datatype_or_lang) {
+	if(!z_datatype_or_lang || KT_XSD_STRING.equals(z_datatype_or_lang)) {
+		return new SimpleLiteral(s_value);
+	}
+	else if('string' === typeof z_datatype_or_lang) {
+		return new LanguagedLiteral(s_value, z_datatype_or_lang);
+	}
+	else {
+		return new ExplicitlyDatatypedLiteral(s_value, z_datatype_or_lang);
+	}
+}
 
-				// make term
-				return factory.literal(sc1_term.slice(i_contents+1), factory.c1_node_explicit(s_datatype, h_prefixes));
+@*{
+	for(let s_type in h_literals) {
+		let g_config = h_literals[s_type];
+		yield /* syntax: js */ `export function ${s_type}(w_value) {
+			${g_config.construct('w_value')}
+		}\n`;
+	}
+}
+
+export function defaultGraph() {
+	return new DefaultGraph();
+}
+
+export function variable(s_label) {
+	return new Variable(s_label);
+}
+
+// warn
+export function triple(h_subject, h_predicate, h_object) {
+	let e_stack = new Error('It is strongly encouraged to use .quad() instead of .triple()');
+	console.warn(e_stack.stack.replace(/^(\s*)Error:/, '$1Warning:'));
+	return new Quad(h_subject, h_predicate, h_object);
+}
+
+export function quad(h_subject, h_predicate, h_object, h_graph) {
+	return new Quad(h_subject, h_predicate, h_object, h_graph || KT_DEFAULT_GRAPH);
+}
+
+export function term(z_term, w_prefixes) {
+	// concise term
+	if('string' === typeof z_term) {
+		return c1(z_term, w_prefixes);
+	}
+	// rdfjs term
+	else {
+		return fromRdfjsTerm(z_term);
+	}
+}
+
+/**
+ * construct a namedNode from a concise term string
+ * @param  {c1_string} sp1_term - a representation of the predicate to create
+ * @param  {Object} h_prefixes - mappings for prefixes
+ * @return {Term} - an RDFJS-compatible term object
+ */
+export function p1(sp1_node, h_prefixes={}) {
+	// find prefix delimiter
+	let i_delim = sp1_node.indexOf('_');
+
+	// no delimter; invalid concise-term string for node
+	if(-1 === i_delim) throw new Error(`A relative or prefixed node must include a ':' or '_' character. \nInvalid concise-term string for node: '${sp1_node}'`);
+
+	// prefix id
+	let s_prefix_id = sp1_node.slice(0, i_delim);
+
+	// suffix
+	let s_suffix = sp1_node.slice(i_delim+1);
+
+	// find prefix in hash
+	if(s_prefix_id in h_prefixes) {
+		return g_raw.namedNode(h_prefixes[s_prefix_id]+s_suffix);
+	}
+	// prefix not exists
+	else {
+		throw new Error(`Prefix not defined: '${s_prefix_id}'`);
+	}
+}
+
+/**
+ * construct a term object from a concise term string
+ * @param  {c1_string} sc1_term - a representation of the term object to create
+ * @param  {Object} h_prefixes - mappings for prefixes
+ * @return {Term} - an RDFJS-compatible term object
+ */
+export function c1(sc1_term, h_prefixes={}) {
+	// deduce term type
+	switch(sc1_term[0]) {
+		// datatyped literal
+		case '^': {
+			// find literal's contents delimiter
+			let i_contents = sc1_term.indexOf('"');
+
+			// no delimiter
+			if(-1 === i_contents) {
+				throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
 			}
 
-			// languaged literal
-			case '@': {
-				// find literal's contents delimiter
-				let i_contents = sc1_term.indexOf('"');
+			// extract datatype
+			let s_datatype = sc1_term.slice(1, i_contents);
 
-				// no delimiter
-				if(-1 === i_contents) {
-					throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
-				}
+			// make term
+			return literal(sc1_term.slice(i_contents+1), c1_node_explicit(s_datatype, h_prefixes));
+		}
 
-				// extract language
-				let s_language = sc1_term.slice(1, i_contents);
+		// languaged literal
+		case '@': {
+			// find literal's contents delimiter
+			let i_contents = sc1_term.indexOf('"');
 
-				// make term
-				return factory.literal(sc1_term.slice(i_contents+1), s_language);
+			// no delimiter
+			if(-1 === i_contents) {
+				throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
 			}
 
-			// simple literal
-			case '"': {
-				// make term
-				return factory.literal(sc1_term.slice(1));
-			}
+			// extract language
+			let s_language = sc1_term.slice(1, i_contents);
+
+			// make term
+			return literal(sc1_term.slice(i_contents+1), s_language);
+		}
+
+		// simple literal
+		case '"': {
+			// make term
+			return literal(sc1_term.slice(1));
+		}
+
+		// prefixed name
+		default: return c1_node(sc1_term, h_prefixes);
+	}
+}
+
+// construct a term object from a concise term string for nodes
+export function c1_node(sc1_node, h_prefixes={}) {
+	// rdf:type shortcut
+	if('a' === sc1_node) return KT_RDF_TYPE;
+
+	// default graph
+	if('*' === sc1_node) return defaultGraph();
+
+	// blank node?
+	if('_' === sc1_node[0]) {
+		// prefixed name
+		if(':' !== sc1_node[1]) return p1(sc1_node, h_prefixes);
+
+		// interpret ephemeral hint
+		if('#' === sc1_node[2] || 2 === sc1_node.length) return ephemeral();
+
+		// create blank node
+		return blankNode(sc1_node.slice(2));
+	}
+
+	// other
+	return c1_node_explicit(sc1_node, h_prefixes);
+}
+
+// construct a named node
+export function c1_named_node(sc1_node, h_prefixes={}) {
+	// rdf:type shortcut
+	if('a' === sc1_node) return KT_RDF_TYPE;
+
+	// other
+	return c1_node_explicit(sc1_node, h_prefixes);
+}
+
+// construct a term object from a concise term string for nodes (no shortcuts)
+export function c1_node_explicit(sc1_node, h_prefixes={}) {
+	// deduce term type
+	switch(sc1_node[0]) {
+		// iri
+		case '>': return g_raw.namedNode(sc1_node.slice(1));
+
+		// prefixed name
+		case '_': {
+			// blank nodes not allowed
+			if(':' === sc1_node[1]) throw new Error(`BlankNode is not allowed here: ${sc1_node}`);
 
 			// prefixed name
-			default: return factory.c1_node(sc1_term, h_prefixes);
-		}
-	},
-
-	// construct a term object from a concise term string for nodes
-	c1_node(sc1_node, h_prefixes={}) {
-		// rdf:type shortcut
-		if('a' === sc1_node) return KT_RDF_TYPE;
-
-		// default graph
-		if('*' === sc1_node) return factory.defaultGraph();
-
-		// blank node?
-		if('_' === sc1_node[0]) {
-			// prefixed name
-			if(':' !== sc1_node[1]) return factory.p1(sc1_node, h_prefixes);
-
-			// interpret ephemeral hint
-			if('#' === sc1_node[2] || 2 === sc1_node.length) return factory.ephemeral();
-
-			// create blank node
-			return factory.blankNode(sc1_node.slice(2));
+			return p1(sc1_node, h_prefixes);
 		}
 
-		// other
-		return factory.c1_node_explicit(sc1_node, h_prefixes);
-	},
+		// invalid concise-term string
+		case '<': throw new Error(`Whoops! It looks like this concise-term string starts with a '<' character. Remember to use '>' if you are trying to make an absolute IRI reference.\nInvalid concise-term string '${sc1_node}'`);
+		case '`': throw new Error(`The backtick character '\`' is reserved for concise-struct key directives and should not be used in the object position.\nInvalid concise-term string '${sc1_node}'`);
 
-	// construct a named node
-	c1_named_node(sc1_node, h_prefixes={}) {
-		// rdf:type shortcut
-		if('a' === sc1_node) return KT_RDF_TYPE;
+		// prefixed name
+		default: return this.c1_prefixed_node(sc1_node, h_prefixes);
+	}
+}
 
-		// other
-		return factory.c1_node_explicit(sc1_node, h_prefixes);
-	},
+// construct a term object from a concise term string for prefixed nodes
+export function c1_prefixed_node(sc1_node, h_prefixes={}) {
+	// find prefix delimiter
+	let i_colon = sc1_node.indexOf(':');
 
-	// construct a term object from a concise term string for nodes (no shortcuts)
-	c1_node_explicit(sc1_node, h_prefixes={}) {
-		// deduce term type
-		switch(sc1_node[0]) {
-			// iri
-			case '>': return g_raw.namedNode(sc1_node.slice(1));
+	// no delimter; try prefixed name
+	if(-1 === i_colon) return p1(sc1_node, h_prefixes);
 
-			// prefixed name
-			case '_': {
-				// blank nodes not allowed
-				if(':' === sc1_node[1]) throw new Error(`BlankNode is not allowed here: ${sc1_node}`);
+	// prefix id
+	let s_prefix_id = sc1_node.slice(0, i_colon);
 
-				// prefixed name
-				return factory.p1(sc1_node, h_prefixes);
+	// suffix
+	let s_suffix = sc1_node.slice(i_colon+1);
+
+	// find prefix in hash
+	if(s_prefix_id in h_prefixes) {
+		return g_raw.namedNode(h_prefixes[s_prefix_id]+s_suffix);
+	}
+	// prefix not exists
+	else {
+		throw new Error(`Prefix not defined: '${s_prefix_id}'`);
+	}
+}
+
+c1_to_nt,
+
+export function* quads(hc4_quads, h_prefixes={}) {
+	for(let sc1_graph in hc4_quads) {
+		yield* triples(hc4_quads[sc1_graph], h_prefixes, sc1_graph);
+	}
+}
+
+export function c4(hc4_quads, h_prefixes={}) {
+	return {
+		[Symbol.iterator]: function *() {
+			for(let sc1_graph in hc4_quads) {
+				yield* triples(hc4_quads[sc1_graph], h_prefixes, sc1_graph);
 			}
+		},
 
-			// invalid concise-term string
-			case '<': throw new Error(`Whoops! It looks like this concise-term string starts with a '<' character. Remember to use '>' if you are trying to make an absolute IRI reference.\nInvalid concise-term string '${sc1_node}'`);
-			case '`': throw new Error(`The backtick character '\`' is reserved for concise-struct key directives and should not be used in the object position.\nInvalid concise-term string '${sc1_node}'`);
+		toString: () => JSON.stringify({
+			type: 'c4',
+			value: hc4_quads,
+		}),
+	};
+}
 
-			// prefixed name
-			default: return this.c1_prefixed_node(sc1_node, h_prefixes);
-		}
-	},
+export function* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
+	let k_graph = c1(sc1_graph, h_prefixes);
+	for(let sc1_subject in hc3_triples) {
+		let k_subject = c1(sc1_subject, h_prefixes);
+		let hc2_pairs = hc3_triples[sc1_subject];
 
-	// construct a term object from a concise term string for prefixed nodes
-	c1_prefixed_node(sc1_node, h_prefixes={}) {
-		// find prefix delimiter
-		let i_colon = sc1_node.indexOf(':');
+		yield* pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
+	}
+}
 
-		// no delimter; try prefixed name
-		if(-1 === i_colon) return factory.p1(sc1_node, h_prefixes);
+export function c3(hc3_triples, h_prefixes={}, sc1_graph='*') {
+	return {
+		[Symbol.iterator]: function *() {
+			let k_graph = c1(sc1_graph, h_prefixes);
+			for(let sc1_subject in hc3_triples) {
+				let k_subject = c1(sc1_subject, h_prefixes);
+				let hc2_pairs = hc3_triples[sc1_subject];
 
-		// prefix id
-		let s_prefix_id = sc1_node.slice(0, i_colon);
-
-		// suffix
-		let s_suffix = sc1_node.slice(i_colon+1);
-
-		// find prefix in hash
-		if(s_prefix_id in h_prefixes) {
-			return g_raw.namedNode(h_prefixes[s_prefix_id]+s_suffix);
-		}
-		// prefix not exists
-		else {
-			throw new Error(`Prefix not defined: '${s_prefix_id}'`);
-		}
-	},
-
-	c1_to_nt,
-
-	* quads(hc4_quads, h_prefixes={}) {
-		for(let sc1_graph in hc4_quads) {
-			yield* factory.triples(hc4_quads[sc1_graph], h_prefixes, sc1_graph);
-		}
-	},
-
-	c4(hc4_quads, h_prefixes={}) {
-		return {
-			[Symbol.iterator]: function *() {
-				for(let sc1_graph in hc4_quads) {
-					yield* factory.triples(hc4_quads[sc1_graph], h_prefixes, sc1_graph);
-				}
-			},
-
-			toString: () => JSON.stringify({
-				type: 'c4',
-				value: hc4_quads,
-			}),
-		};
-	},
-
-	* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
-		let k_graph = factory.c1(sc1_graph, h_prefixes);
-		for(let sc1_subject in hc3_triples) {
-			let k_subject = factory.c1(sc1_subject, h_prefixes);
-			let hc2_pairs = hc3_triples[sc1_subject];
-
-			yield* factory.pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
-		}
-	},
-
-	c3(hc3_triples, h_prefixes={}, sc1_graph='*') {
-		return {
-			[Symbol.iterator]: function *() {
-				let k_graph = factory.c1(sc1_graph, h_prefixes);
-				for(let sc1_subject in hc3_triples) {
-					let k_subject = factory.c1(sc1_subject, h_prefixes);
-					let hc2_pairs = hc3_triples[sc1_subject];
-
-					yield* factory.pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
-				}
-			},
-
-			toString: () => JSON.stringify({
-				type: 'c3',
-				value: hc3_triples,
-			}),
-		};
-	},
-
-	* pairs(k_graph, k_subject, hc2_pairs, h_prefixes={}) {
-		for(let sc1_predicate in hc2_pairs) {
-			let k_predicate = factory.c1_named_node(sc1_predicate, h_prefixes);
-			let z_objects = hc2_pairs[sc1_predicate];
-
-			yield* factory.objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes);
-		}
-	},
-
-	* collection(k_graph, k_subject, a_objects, h_prefixes={}) {
-		// first item
-		yield* factory.objects(k_graph, k_subject, KT_RDF_FIRST, a_objects[0], h_prefixes);
-
-		// rest of items
-		let a_rest = a_objects.slice(1);
-
-		// no more
-		if(!a_rest.length) {
-			yield new Quad(k_subject, KT_RDF_REST, KT_RDF_NIL, k_graph);
-		}
-		// more remain
-		else {
-			// auto blank node
-			let k_hop = factory.blankNode();
-
-			// incoming triple
-			yield new Quad(k_subject, KT_RDF_REST, k_hop, k_graph);
-
-			// outgoing triples
-			yield* factory.collection(k_graph, k_hop, a_rest, h_prefixes);
-		}
-	},
-
-	* objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes, b_nested=false) {
-		// value type
-		let s_type = typeof z_objects;
-		switch(s_type) {
-			// c1-string
-			case 'string': {
-				yield new Quad(k_subject, k_predicate, factory.c1(z_objects, h_prefixes), k_graph);
-				break;
+				yield* pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
 			}
+		},
 
-			// number
-			case 'number': {
-				yield new Quad(k_subject, k_predicate, factory.number(z_objects), k_graph);
-				break;
-			}
+		toString: () => JSON.stringify({
+			type: 'c3',
+			value: hc3_triples,
+		}),
+	};
+}
 
-			// object
-			case 'object': {
-				// array
-				if(Array.isArray(z_objects)) {
-					// RDF collection
-					if(b_nested) {
-						// auto blank node
-						let k_hop = factory.blankNode();
+export function* pairs(k_graph, k_subject, hc2_pairs, h_prefixes={}) {
+	for(let sc1_predicate in hc2_pairs) {
+		let k_predicate = c1_named_node(sc1_predicate, h_prefixes);
+		let z_objects = hc2_pairs[sc1_predicate];
 
-						// incoming triple
-						yield new Quad(k_subject, k_predicate, k_hop, k_graph);
+		yield* objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes);
+	}
+}
 
-						// outgoing triple
-						yield* factory.collection(k_graph, k_hop, z_objects, h_prefixes);
-					}
-					// list of objects
-					else {
-						for(let z_item of z_objects) {
-							yield* factory.objects(k_graph, k_subject, k_predicate, z_item, h_prefixes, true);
-						}
-					}
-				}
-				// simple object
-				else {
+export function * collection(k_graph, k_subject, a_objects, h_prefixes={}) {
+	// first item
+	yield* objects(k_graph, k_subject, KT_RDF_FIRST, a_objects[0], h_prefixes);
+
+	// rest of items
+	let a_rest = a_objects.slice(1);
+
+	// no more
+	if(!a_rest.length) {
+		yield new Quad(k_subject, KT_RDF_REST, KT_RDF_NIL, k_graph);
+	}
+	// more remain
+	else {
+		// auto blank node
+		let k_hop = blankNode();
+
+		// incoming triple
+		yield new Quad(k_subject, KT_RDF_REST, k_hop, k_graph);
+
+		// outgoing triples
+		yield* collection(k_graph, k_hop, a_rest, h_prefixes);
+	}
+}
+
+export function * objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes, b_nested=false) {
+	// value type
+	let s_type = typeof z_objects;
+	switch(s_type) {
+		// c1-string
+		case 'string': {
+			yield new Quad(k_subject, k_predicate, c1(z_objects, h_prefixes), k_graph);
+			break;
+		}
+
+		// number
+		case 'number': {
+			yield new Quad(k_subject, k_predicate, number(z_objects), k_graph);
+			break;
+		}
+
+		// object
+		case 'object': {
+			// array
+			if(Array.isArray(z_objects)) {
+				// RDF collection
+				if(b_nested) {
 					// auto blank node
-					let k_hop = factory.blankNode();
+					let k_hop = blankNode();
 
 					// incoming triple
 					yield new Quad(k_subject, k_predicate, k_hop, k_graph);
 
-					// outgoing triples
-					yield* factory.pairs(k_graph, k_hop, z_objects, h_prefixes);
+					// outgoing triple
+					yield* collection(k_graph, k_hop, z_objects, h_prefixes);
 				}
-				break;
-			}
-
-			// other
-			default: {
-				throw new Error(`invalid object type: ${typeof z_objects}`);
-			}
-		}
-	},
-
-	fromTerm(z_term) {
-		if(z_term.isGraphyTerm) return z_term;
-
-		return factory.fromRdfjsTerm(z_term);
-	},
-
-	fromQuad(g_quad) {
-		if(g_quad.isGraphyQuad) return g_quad;
-
-		return new Quad(
-			factory.fromRdfjsTerm(g_quad.subject),
-			factory.fromRdfjsTerm(g_quad.predicate),
-			factory.fromRdfjsTerm(g_quad.object),
-			g_quad.graph? factory.fromRdfjsTerm(g_quad.graph): KT_DEFAULT_GRAPH,
-		);
-	},
-
-	fromRdfjsTerm(g_term) {
-		switch(g_term.termType) {
-			case 'NamedNode': return factory.namedNode(g_term.value);
-			case 'BlankNode': return new BlankNode(g_term.value);
-			case 'Literal': return factory.literal(g_term.value, g_term.language
-				? g_term.language
-				: (g_term.datatype
-					? factory.namedNode(g_term.datatype.value)
-					: null));
-			case 'DefaultGraph': return new DefaultGraph();
-			default: {
-				throw new TypeError(`invalid termType: ${g_term.termType}`);
-			}
-		}
-	},
-
-	fromSparqlResult(g_term) {
-		switch(g_term.type) {
-			case 'uri': {
-				return new NamedNode(g_term.value);
-			}
-
-			case 'literal':
-			case 'typed-literal': {
-				if('xml:lang' in g_term) {
-					return new LanguagedLiteral(g_term.value, g_term['xml:lang']);
-				}
-				else if('datatype' in g_term && '@{P_IRI_XSD}string' !== g_term.datatype) {
-					return new ExplicitlyDatatypedLiteral(g_term.value, new NamedNode(g_term.datatype));
-				}
+				// list of objects
 				else {
-					return new SimpleLiteral(g_term.value);
+					for(let z_item of z_objects) {
+						yield* objects(k_graph, k_subject, k_predicate, z_item, h_prefixes, true);
+					}
 				}
 			}
-
-			case 'bnode': {
-				return new BlankNode(g_term.value);
-			}
-
-			default: {
-				throw new Error(`unexpected SPARQL Result JSON Format Term type: ${g_term.type}`);
-			}
-		}
-	},
-
-	c1ExpandData(sc1_term, h_prefixes) {
-		switch(sc1_term[0]) {
-			case '"':
-			case '@':
-			case '>':
-			case '_':
-			case '*': {
-				return sc1_term;
-			}
-
-			case '^': {
-				const i_contents = sc1_term.indexOf('"');
-				const sc1_datatype = sc1_term.slice(1, i_contents);
-				return '^'+c1_expand_prefixed_named_node(sc1_datatype)+sc1_term.slice(i_contents);
-			}
-
-			default: {
-				return c1_expand_prefixed_named_node(sc1_term);
-			}
-		}
-	},
-
-	c1FromGraphRole() {
-
-	},
-
-	c1FromSubjectRole(yt_subject) {
-		return 'NamedNode' === yt_subject.termType
-			? concise(yt_subject.value, h_prefixes)
-			: '_:'+yt_subject.value;
-	},
-
-	toBoolean: s_boolean => Literal_Boolean.from(s_boolean),
-	toInteger: s_integer => Literal_Integer.from(s_integer),
-	toDecimal: s_decimal => Literal_Decimal.from(s_decimal),
-	toDouble: s_double => Literal_Double.from(s_double),
-
-
-	/**
-	 * @param  {Object} gc_comment - 
-	 * @return {string} a `concise-term string` directive to be used as a key in `concise-term structs`
-	 * 	in order to write a comment to the document (only works with supporting serializers)
-	 */
-	comment(gc_comment={}) {
-		return `\`[${uuidv4()}]${JSON.stringify({...gc_comment, type:'comment'})}`;
-	},
-
-	/**
-	 * @param  {integer} [line_count=1] - number of newlines to insert
-	 * @return {string} a `concise-term string` directive to be used as a key in `concise-term structs`
-	 * 	in order to write the given number of newlines to the document (only works with supporting serializers)
-	 */
-	newlines() {
-		// if(!Number.isInteger(n_line_count)) throw new TypeError('graphy/core.data.factory#newlines() expects `line_count` argument to be an integer');
-		return `\`[${uuidv4()}]{"type":"newlines"}`;
-	},
-
-	/**
-	 * @param {string} s_key - key that identifies which aspect to configure. e.g., 'lists'
-	 * @return {string} a `concise-term string` directive to be used as a key in `concise-term structs`
-	 * 	in order to write the given number of newlines to the document (only works with supporting serializers)
-	 */
-	config(s_key) {
-		if('string' !== typeof s_key) throw new TypeError(`Expected 'key' argument to be a string, instead found ${typeof s_key}`);
-		return `\`[${uuidv4()}]{"type":"config","value":${JSON.stringify(s_key)}}`;
-	},
-
-	relatePrefixMaps: relate_maps,
-
-	prefixMapsDiffer(h_a, h_b) {
-		// each key in 'a'
-		for(const si_a in h_a) {
-			// key is also in 'b'
-			if(si_a in h_b) {
-				// value is different in 'b'
-				if(h_a[si_a] !== h_b[si_a]) {
-					return true;
-				}
-			}
-			// key is not in 'b'
+			// simple object
 			else {
-				return true;
+				// auto blank node
+				let k_hop = blankNode();
+
+				// incoming triple
+				yield new Quad(k_subject, k_predicate, k_hop, k_graph);
+
+				// outgoing triples
+				yield* pairs(k_graph, k_hop, z_objects, h_prefixes);
+			}
+			break;
+		}
+
+		// other
+		default: {
+			throw new Error(`invalid object type: ${typeof z_objects}`);
+		}
+	}
+}
+
+export function fromTerm(z_term) {
+	if(z_term.isGraphyTerm) return z_term;
+
+	return fromRdfjsTerm(z_term);
+}
+
+export function fromQuad(g_quad) {
+	if(g_quad.isGraphyQuad) return g_quad;
+
+	return fromRdfjsQuad(g_quad);
+}
+
+export function fromRdfjsTerm(g_term) {
+	switch(g_term.termType) {
+		case 'NamedNode': return namedNode(g_term.value);
+		case 'Literal': return literal(g_term.value, g_term.language
+			? g_term.language
+			: (g_term.datatype
+				? namedNode(g_term.datatype.value)
+				: null));
+		case 'DefaultGraph': return new DefaultGraph();
+		case 'BlankNode': return new BlankNode(g_term.value);
+		case 'Variable': return new Variable(g_term.value);
+		case 'Quad': return fromRdfjsQuad(g_term);
+		default: {
+			throw new TypeError(`invalid termType: ${g_term.termType}`);
+		}
+	}
+}
+
+export function fromRdfjsQuad(g_quad) {
+	return new Quad(
+		fromRdfjsTerm(g_quad.subject),
+		fromRdfjsTerm(g_quad.predicate),
+		fromRdfjsTerm(g_quad.object),
+		g_quad.graph? fromRdfjsTerm(g_quad.graph): KT_DEFAULT_GRAPH,
+	);
+}
+
+export function fromSparqlResult(g_term) {
+	switch(g_term.type) {
+		case 'uri': {
+			return new NamedNode(g_term.value);
+		}
+
+		case 'literal':
+		case 'typed-literal': {
+			if('xml:lang' in g_term) {
+				return new LanguagedLiteral(g_term.value, g_term['xml:lang']);
+			}
+			else if('datatype' in g_term && '@{P_IRI_XSD}string' !== g_term.datatype) {
+				return new ExplicitlyDatatypedLiteral(g_term.value, new NamedNode(g_term.datatype));
+			}
+			else {
+				return new SimpleLiteral(g_term.value);
 			}
 		}
 
-		// each key in 'b'
-		for(const si_a in h_a) {
-			// key is not in 'a'
-			if(!(si_a in h_a)) {
+		case 'bnode': {
+			return new BlankNode(g_term.value);
+		}
+
+		default: {
+			throw new Error(`unexpected SPARQL Result JSON Format Term type: ${g_term.type}`);
+		}
+	}
+}
+
+export function c1ExpandData(sc1_term, h_prefixes) {
+	switch(sc1_term[0]) {
+		case '"':
+		case '@':
+		case '>':
+		case '_':
+		case '*': {
+			return sc1_term;
+		}
+
+		case '^': {
+			const i_contents = sc1_term.indexOf('"');
+			const sc1_datatype = sc1_term.slice(1, i_contents);
+			return '^'+c1_expand_prefixed_named_node(sc1_datatype)+sc1_term.slice(i_contents);
+		}
+
+		default: {
+			return c1_expand_prefixed_named_node(sc1_term);
+		}
+	}
+}
+
+export function c1FromGraphRole() {
+
+}
+
+export function c1FromSubjectRole(yt_subject, h_prefixes={}) {
+	return 'NamedNode' === yt_subject.termType
+		? concise(yt_subject.value, h_prefixes)
+		: '_:'+yt_subject.value;
+}
+
+export const toBoolean = s_boolean => Literal_Boolean.from(s_boolean);
+export const toInteger = s_integer => Literal_Integer.from(s_integer);
+export const toDecimal = s_decimal => Literal_Decimal.from(s_decimal);
+export const toDouble = s_double => Literal_Double.from(s_double);
+
+
+/**
+ * @param  {Object} gc_comment - 
+ * @return {string} a `concise-term string` directive to be used as a key in `concise-term structs`
+ * 	in order to write a comment to the document (only works with supporting serializers)
+ */
+export function comment(gc_comment={}) {
+	return `\`[${uuidv4()}]${JSON.stringify({...gc_comment, type:'comment'})}`;
+}
+
+/**
+ * @param  {integer} [line_count=1] - number of newlines to insert
+ * @return {string} a `concise-term string` directive to be used as a key in `concise-term structs`
+ * 	in order to write the given number of newlines to the document (only works with supporting serializers)
+ */
+export function newlines() {
+	// if(!Number.isInteger(n_line_count)) throw new TypeError('graphy/core.data.factory#newlines() expects `line_count` argument to be an integer');
+	return `\`[${uuidv4()}]{"type":"newlines"}`;
+}
+
+/**
+ * @param {string} s_key - key that identifies which aspect to configure. e.g., 'lists'
+ * @return {string} a `concise-term string` directive to be used as a key in `concise-term structs`
+ * 	in order to write the given number of newlines to the document (only works with supporting serializers)
+ */
+export function config(s_key) {
+	if('string' !== typeof s_key) throw new TypeError(`Expected 'key' argument to be a string, instead found ${typeof s_key}`);
+	return `\`[${uuidv4()}]{"type":"config","value":${JSON.stringify(s_key)}}`;
+}
+
+export function prefixMapsDiffer(h_a, h_b) {
+	// each key in 'a'
+	for(const si_a in h_a) {
+		// key is also in 'b'
+		if(si_a in h_b) {
+			// value is different in 'b'
+			if(h_a[si_a] !== h_b[si_a]) {
 				return true;
 			}
 		}
-	},
+		// key is not in 'b'
+		else {
+			return true;
+		}
+	}
+
+	// each key in 'b'
+	for(const si_a in h_a) {
+		// key is not in 'a'
+		if(!(si_a in h_a)) {
+			return true;
+		}
+	}
+}
+
+
+export const DataFactory = {
+
+	concise,
+
+	adopt,
+
+	raw,
+	unfiltered,
+
+	number,
+
+	date,
+
+	dateTime,
+
+	namedNode,
+
+	ephemeral,
+
+	blankNode,
+
+	literal,
+
+	@*{
+		for(let s_type in h_literals) {
+			let g_config = h_literals[s_type];
+			yield /* syntax: js */ `${s_type},\n`;
+		}
+	}
+
+	defaultGraph,
+
+	variable,
+
+	// warn
+	triple,
+
+	quad,
+
+	term,
+	p1,
+	c1,
+	c1_node,
+	c1_named_node,
+	c1_node_explicit,
+	c1_prefixed_node,
+	c1_to_nt,
+
+	quads,
+	c4,
+	triples,
+	c3,
+	pairs,
+
+	collection,
+
+	objects,
+
+	fromTerm,
+
+	fromQuad,
+
+	fromRdfjsTerm,
+
+	fromRdfjsQuad,
+
+	fromSparqlResult,
+
+	c1ExpandData,
+
+	c1FromGraphRole,
+
+	c1FromSubjectRole,
+
+	toBoolean,
+	toInteger,
+	toDecimal,
+	toDouble,
+
+	comment,
+	newlines,
+	config,
+
+	relatePrefixMaps,
+
+	prefixMapsDiffer,
 
 	uuidv4,
 
@@ -2323,6 +2438,6 @@ const factory = {
 	SI_PREFIX_BASE,
 };
 
-export {factory as DataFactory};
-export default factory;
+
+export default DataFactory;
 

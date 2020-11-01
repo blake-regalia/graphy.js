@@ -1,6 +1,6 @@
-const path = require('path');
-const wt = require('worker_threads');
-const v8 = require('v8');
+import path from 'path';
+import wt from 'worker_threads';
+import v8 from 'v8';
 
 class MasterWorkerPolyfill extends wt.Worker {
 	constructor(pr_worker, gc_worker) {
@@ -41,6 +41,6 @@ class MasterWorkerPolyfill extends wt.Worker {
 	}
 }
 
-module.exports = {
-	Worker: MasterWorkerPolyfill,
+export {
+	MasterWorkerPolyfill as Worker,
 };

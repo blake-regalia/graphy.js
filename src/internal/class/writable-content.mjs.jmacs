@@ -2,21 +2,28 @@
 @import '../../share/iris.jmacs'
 @import '../../share/writer.jmacs'
 
-const factory = require('@{channel('core.data.factory')}');
-const Scribable = require('@{channel('core.class.scribable')}');
+import {
+	c1,
+	number,
+	dateTime,
+} from '@graphy/core';
+
+import {
+	ScribableContent,
+} from './scribable-content';
 
 const R_DIRECTIVE_CONTENTS = /^`\[[^\]]+\](.*)$/;
 
 const HM_COERCIONS_DEFAULT = new Map([
-	[Date, dt => factory.dateTime(dt)],
-	[Number, x => factory.number(x)],
+	[Date, dt => dateTime(dt)],
+	[Number, x => number(x)],
 ]);
 
-class Writable extends Scribable {
+export default class WritableContent extends ScribableContent {
 	constructor(gc_writable={}) {
 		super(gc_writable);
 
-		let {
+		const {
 			lists: gc_lists=null,
 		} = gc_writable;
 
@@ -29,13 +36,13 @@ class Writable extends Scribable {
 			hm_coercions = new Map(hm_coercions);
 
 			// add each entry from user-defined map
-			for(let [dc_type, f_transform] of gc_writable.coercions) {
+			for(const [dc_type, f_transform] of gc_writable.coercions) {
 				hm_coercions.set(dc_type, f_transform);
 			}
 		}
 
 		// lists 
-		let g_lists = {
+		const g_lists = {
 			first: '>@{P_IRI_RDF}first',
 			rest: '>@{P_IRI_RDF}rest',
 			nil: '>@{P_IRI_RDF}nil',
@@ -43,7 +50,7 @@ class Writable extends Scribable {
 
 		// custom transcoder
 		if(gc_lists) {
-			let {
+			const {
 				first: sc1_first=null,
 				rest: sc1_rest=null,
 				nil: sc1_nil=null,
@@ -54,11 +61,9 @@ class Writable extends Scribable {
 			if(sc1_nil) g_lists.nil = sc1_nil;
 		}
 
-		Object.assign(this, {
-			_xc_state: @{XC_STATE_INITIAL},
-			_hm_coercions: hm_coercions,
-			_g_lists: g_lists,
-		});
+		this._xc_state = @{XC_STATE_INITIAL};
+		this._hm_coercions = hm_coercions;
+		this._g_lists = g_lists;
 	}
 
 	// serialize comment
@@ -76,17 +81,17 @@ class Writable extends Scribable {
 
 		// comment width
 		if(g_directive && g_directive.width) {
-			let n_width = g_directive.width;
+			const n_width = g_directive.width;
 
-			let a_lines = [];
+			const a_lines = [];
 
 			while(s_comment.length > n_width) {
-				let s_line = s_comment.slice(0, n_width+1);
+				const s_line = s_comment.slice(0, n_width+1);
 
-				let m_line = /^(.*[^\s])\s+/.exec(s_line);
+				const m_line = /^(.*[^\s])\s+/.exec(s_line);
 
 				if(m_line) {
-					let s_push = m_line[1];
+					const s_push = m_line[1];
 					a_lines.push(s_push);
 					s_comment = s_comment.slice(s_push.length).replace(/^\s+/, '');
 				}
@@ -111,12 +116,12 @@ class Writable extends Scribable {
 		}
 		// non-empty list
 		else {
-			let z_item = a_list[0];
-			let w_first = z_item;
+			const z_item_0 = a_list[0];
+			let w_first = z_item_0;
 
 			// item is nested list; transcode
-			if(Array.isArray(z_item)) {
-				w_first = this._transcode_list(z_item, g_lists);  // eslint-disable-line no-invalid-this
+			if(Array.isArray(z_item_0)) {
+				w_first = this._transcode_list(z_item_0, g_lists);  // eslint-disable-line no-invalid-this
 			}
 
 			return {
@@ -134,7 +139,7 @@ class Writable extends Scribable {
 	// serialize a writable data event directive
 	_apply_directive(sc1_directive, w_value) {
 		// directive contents
-		let m_directive = R_DIRECTIVE_CONTENTS.exec(sc1_directive);
+		const m_directive = R_DIRECTIVE_CONTENTS.exec(sc1_directive);
 		if(!m_directive) {
 			throw new Error(`Invalid writable data event directive string: "${sc1_directive}"`);
 		}
@@ -149,7 +154,7 @@ class Writable extends Scribable {
 		}
 
 		// directive type
-		let s_type = g_directive.type;
+		const s_type = g_directive.type;
 
 		// deduce directive type
 		switch(s_type) {
@@ -181,16 +186,16 @@ class Writable extends Scribable {
 					// list config
 					case 'lists': {
 						// ref stack of list serializers
-						let a_list_serializers = this._a_list_serializers;
+						const a_list_serializers = this._a_list_serializers;
 
 						// push current method to stack
 						a_list_serializers.push(this._serialize_list_object);
 
 						// inherit unspecified keys from parent
-						let g_list_default = this._g_lists;
+						const g_list_default = this._g_lists;
 
 						// build list config
-						let g_lists = {
+						const g_lists = {
 							first: w_value.first || g_list_default.first,
 							rest: w_value.rest || g_list_default.rest,
 							nil: w_value.nil || g_list_default.nil,
@@ -199,7 +204,7 @@ class Writable extends Scribable {
 						// redefine list object serialization
 						this._serialize_list_object = function(a_list, n_nest_level) {
 							// transcode list object
-							let hc2_transcoded = this._transcode_list(a_list, g_lists);
+							const hc2_transcoded = this._transcode_list(a_list, g_lists);
 
 							// serialize object
 							return this._encode_objects(hc2_transcoded, n_nest_level);
@@ -232,12 +237,12 @@ class Writable extends Scribable {
 
 	// if not overriden by subclass, serialize quads in default graph
 	_serialize_c4(hc4_quads) {
-		let h_prefixes = this._h_prefixes;
-		let a_unions = [];
+		const h_prefixes = this._h_prefixes;
+		const a_unions = [];
 		let s_write = '';
 
 		// each graph in quads hash
-		for(let sv1_graph in hc4_quads) {
+		for(const sv1_graph in hc4_quads) {
 			// non-default graph; union from dataset
 			if('*' !== sv1_graph) a_unions.push(sv1_graph);
 			
@@ -248,7 +253,7 @@ class Writable extends Scribable {
 		// a union was performed
 		if(a_unions.length) {
 			// warn about implicit union
-			let s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => factory.c1(sc1, h_prefixes).verbose()).join(', ')}`;
+			const s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => c1(sc1, h_prefixes).verbose()).join(', ')}`;
 
 			// emit warning, wasn't listened to; force thru warn/stderr channel
 			if(!this.emit('warning', s_warning)) {
@@ -260,4 +265,3 @@ class Writable extends Scribable {
 	}
 }
 
-module.exports = Writable;

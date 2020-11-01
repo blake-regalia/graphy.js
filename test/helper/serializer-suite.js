@@ -1,17 +1,19 @@
 /* eslint indent: 0, padded-blocks: 0 */
-const expect = require('chai').expect;
+import chai from 'chai';
+const expect = chai.expect;
 
-const stream = require('@graphy/core.iso.stream');
-const dataset_tree = require('@graphy-stable/memory.dataset.fast');
+import {stream} from '@graphy/internal';
 
-const util = require('./util.js');
+import {TreeDataset} from '@graphy-stable/memory';
 
-class SerializerSuite {
+import util from './util.mjs';
+
+export class SerializerSuite {
 	constructor(gc_suite, f_suite) {
 		let s_prefix_string = '';
 		if(gc_suite.prefixes) {
-			let h_prefixes = gc_suite.prefixes;
-			for(let [s_prefix_id, p_iri] of Object.entries(h_prefixes)) {
+			const h_prefixes = gc_suite.prefixes;
+			for(const [s_prefix_id, p_iri] of Object.entries(h_prefixes)) {
 				s_prefix_string += `@prefix ${s_prefix_id}: <${p_iri}> .\n`;
 			}
 		}
@@ -28,12 +30,12 @@ class SerializerSuite {
 	}
 
 	normalize(st_doc, b_interpret=false) {
-		return stream.source(st_doc)
+		return stream.Readable.from(st_doc)
 			// read document
 			.pipe(new ((b_interpret && this.interpreter) || this.validator)())
 
 			// canonicalize in dataset
-			.pipe(dataset_tree({
+			.pipe(new TreeDataset({
 				canonicalize: true,
 			}))
 
@@ -48,7 +50,7 @@ class SerializerSuite {
 
 	validates(h_tree) {
 		util.map_tree(h_tree, (s_label, f_leaf) => {
-			let {
+			const {
 				debug: b_debug=false,
 				write: hcn_write,
 				config: w_config={},
@@ -58,10 +60,10 @@ class SerializerSuite {
 
 			it(s_label, async() => {
 				// take concise-triples hash
-				let st_output = await stream.source({
+				const st_output = await stream.Readable.from([{
 					type: s_type || this.type,
 					value: hcn_write,
-				})
+				}])
 					// pipe it thru turtle writer
 					.pipe(this.serializer({
 						prefixes: this.prefixes,
@@ -81,7 +83,7 @@ class SerializerSuite {
 				}
 
 				// canonicalize expectation
-				let st_expect = await this.normalize(`
+				const st_expect = await this.normalize(`
 					${this.prefix_string}
 					${st_validate}
 				`);
@@ -109,10 +111,10 @@ class SerializerSuite {
 
 				it(s_label, async() => {
 					// take concise-triples hash
-					let st_output = await stream.source({
+					let st_output = await stream.Readable.from([{
 						type: s_type || this.type,
 						value: w_write,
-					})
+					}])
 						// pipe it thru turtle writer
 						.pipe(this.serializer({
 							prefixes: this.prefixes,
@@ -139,18 +141,18 @@ class SerializerSuite {
 	events(h_tree) {
 		describe('emits ordered events', () => {
 			util.map_tree(h_tree, (s_label, f_leaf) => {
-				let {
+				const {
 					writes: a_writes,
 					serializer: f_serializer=null,
 					events: a_events_expect,
 				} = f_leaf();
 
 				it(s_label, (fke_test) => {
-					let a_events_actual = [];
+					const a_events_actual = [];
 					let fk_validate = null;
 
 					// create serializer
-					let ds_serializer = this.serializer();
+					const ds_serializer = this.serializer();
 
 					// callback
 					if(f_serializer) {
@@ -160,7 +162,7 @@ class SerializerSuite {
 					}
 
 					// create interpreter
-					let ds_interpreter = new (this.interpreter || this.validator)();
+					const ds_interpreter = new (this.interpreter || this.validator)();
 
 					ds_interpreter.on('error', (e_read) => {
 						fke_test(e_read);
@@ -174,8 +176,8 @@ class SerializerSuite {
 						expect(a_events_actual).to.have.lengthOf(a_events_expect.length);
 
 						for(let i_event=0; i_event<a_events_actual.length; i_event++) {
-							let [s_event_actual, a_event_args] = a_events_actual[i_event];
-							let [s_event_expect, f_event_validate] = a_events_expect[i_event];
+							const [s_event_actual, a_event_args] = a_events_actual[i_event];
+							const [s_event_expect, f_event_validate] = a_events_expect[i_event];
 
 							// expect same event name
 							expect(s_event_actual).to.equal(s_event_expect);
@@ -189,8 +191,8 @@ class SerializerSuite {
 					});
 
 					// each expected event type
-					let as_events_bind = new Set(a_events_expect.map(a => a[0]));
-					for(let s_event of as_events_bind) {
+					const as_events_bind = new Set(a_events_expect.map(a => a[0]));
+					for(const s_event of as_events_bind) {
 						// bind listener
 						ds_interpreter.on(s_event, (...a_args) => {
 							// push to actual event list
@@ -202,7 +204,7 @@ class SerializerSuite {
 					ds_serializer.pipe(ds_interpreter);
 
 					// write each writable data event
-					for(let w_write of a_writes) {
+					for(const w_write of a_writes) {
 						ds_serializer.write(w_write);
 					}
 
@@ -216,7 +218,7 @@ class SerializerSuite {
 	throws(h_tree) {
 		describe('throws', () => {
 			util.map_tree(h_tree, (s_label, f_leaf) => {
-				let {
+				const {
 					write: w_write,
 					type: s_type=null,
 					config: w_config={},
@@ -225,7 +227,7 @@ class SerializerSuite {
 
 				it(s_label, (fke_test) => {
 					// create serializer
-					let ds_serializer = this.serializer({
+					const ds_serializer = this.serializer({
 						prefixes: this.prefixes,
 						...w_config,
 
@@ -262,7 +264,3 @@ class SerializerSuite {
 		});
 	}
 }
-
-module.exports = function(...a_args) {
-	return new SerializerSuite(...a_args);
-};

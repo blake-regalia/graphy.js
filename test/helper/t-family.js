@@ -1,14 +1,20 @@
 /* eslint quote-props: 0 */
-const factory = require('@graphy-stable/core.data.factory');
-const util = require('./util.js');
+import {
+	namedNode,
+	blankNode,
+	ephemeral,
+	literal,
+} from '@graphy-stable/core';
+
+import util from './util.js';
 
 let a_items = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-let kt_nonreusable_ephemeral = factory.ephemeral();
-let kt_reusable_blank_node_auto = factory.blankNode();
-let kt_reusable_blank_node_labeled = factory.blankNode('label');
+let kt_nonreusable_ephemeral = ephemeral();
+let kt_reusable_blank_node_auto = blankNode();
+let kt_reusable_blank_node_labeled = blankNode('label');
 
-module.exports = {
+export default {
 	prefixes: {
 		rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
 		rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
@@ -76,11 +82,11 @@ module.exports = {
 				write: {
 					':subject': {
 						':date': new Date('1990-03-12'),
-						':term-node': factory.namedNode('ex://test'),
-						':term-bn-labeled': factory.blankNode('test'),
-						':term-bn-auto': factory.blankNode(),
-						':term-bn-ephemeral': factory.ephemeral(),
-						':literal': factory.literal('test'),
+						':term-node': namedNode('ex://test'),
+						':term-bn-labeled': blankNode('test'),
+						':term-bn-auto': blankNode(),
+						':term-bn-ephemeral': ephemeral(),
+						':literal': literal('test'),
 					},
 				},
 				validate: `

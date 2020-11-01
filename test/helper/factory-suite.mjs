@@ -1,5 +1,7 @@
-const expect = require('chai').expect;
-const util = require('../helper/util.js');
+import chai from 'chai';
+const expect = chai.expect;
+
+import util from '../helper/util.mjs';
 
 const P_IRI_XSD = 'http://www.w3.org/2001/XMLSchema#';
 const P_IRI_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
@@ -153,25 +155,26 @@ const H_VALIDATORS = {
 	},
 };
 
-class factory_suite {
-	constructor(gc_factory) {
-		Object.assign(this, gc_factory);
+export default class FactorySuite {
+	constructor(gc_suite) {
+		this._si_module = gc_suite.module;
+		this._k_factory = gc_suite.factory;
 	}
 
 	validate_c1(g_actions) {
-		let factory = this.factory;
-		for(let s_action in g_actions) {
-			let z_action = g_actions[s_action];
+		const k_factory = this._k_factory;
+		for(const s_action in g_actions) {
+			const z_action = g_actions[s_action];
 
 			switch(s_action) {
 				case 'throws': {
-					let h_map = z_action;
-					for(let s_group in h_map) {
-						let a_tests = h_map[s_group];
+					const h_map = z_action;
+					for(const s_group in h_map) {
+						const a_tests = h_map[s_group];
 						describe(s_group+' throws', () => {
-							for(let s_title of a_tests) {
+							for(const s_title of a_tests) {
 								it(s_title, () => {
-									expect(() => factory.c1(s_title, H_PREFIXES)).to.throw(Error);
+									expect(() => k_factory.c1(s_title, H_PREFIXES)).to.throw(Error);
 								});
 							}
 						});
@@ -180,18 +183,18 @@ class factory_suite {
 				}
 
 				case 'returns': {
-					let h_types = z_action;
-					for(let s_type in h_types) {
+					const h_types = z_action;
+					for(const s_type in h_types) {
 						describe(s_type+' returns', () => {
-							let h_cases = h_types[s_type];
-							for(let s_title in h_cases) {
-								let z_descriptor = h_cases[s_title];
+							const h_cases = h_types[s_type];
+							for(const s_title in h_cases) {
+								const z_descriptor = h_cases[s_title];
 								it(s_title, () => {
 									if('function' === typeof z_descriptor) {
 										z_descriptor();
 									}
 									else {
-										H_VALIDATORS[s_type](factory.c1(s_title, H_PREFIXES), z_descriptor);
+										H_VALIDATORS[s_type](k_factory.c1(s_title, H_PREFIXES), z_descriptor);
 									}
 								});
 							}
@@ -208,20 +211,20 @@ class factory_suite {
 	}
 
 	validate_factory(h_methods) {
-		let factory = this.factory;
-		for(let s_method in h_methods) {
-			let g_actions = h_methods[s_method];
+		const k_factory = this._k_factory;
+		for(const s_method in h_methods) {
+			const g_actions = h_methods[s_method];
 
-			for(let s_action in g_actions) {
-				let h_cases = g_actions[s_action];
+			for(const s_action in g_actions) {
+				const h_cases = g_actions[s_action];
 				describe(`factory.${s_method} ${s_action}`, () => {
-					for(let s_title in h_cases) {
-						let z_case = h_cases[s_title];
+					for(const s_title in h_cases) {
+						const z_case = h_cases[s_title];
 
 						it(s_title, () => {
 							switch(s_action) {
 								case 'throws': {
-									expect(() => factory[s_method](z_case)).to.throw(Error);
+									expect(() => k_factory[s_method](z_case)).to.throw(Error);
 									break;
 								}
 
@@ -238,7 +241,7 @@ class factory_suite {
 										w_arg = z_value = z_case;
 									}
 
-									H_VALIDATORS[s_method](factory[s_method](w_arg), z_value, w_arg);
+									H_VALIDATORS[s_method](k_factory[s_method](w_arg), z_value, w_arg);
 									break;
 								}
 
@@ -254,44 +257,44 @@ class factory_suite {
 	}
 
 	run() {
-		let factory = this.factory;
+		const k_factory = this._k_factory;
 
 		describe(this.package, () => {
 			describe('factory.literal', () => {
 				it('w/o datatype', () => {
-					H_VALIDATORS.literal(factory.literal('test'), {value:'test'});
+					H_VALIDATORS.literal(k_factory.literal('test'), {value:'test'});
 				});
 
 				it('with datatype', () => {
-					let k_datatype = factory.namedNode('yes');
-					H_VALIDATORS.literal(factory.literal('test', k_datatype), {value:'test', datatype:'yes'});
+					const k_datatype = k_factory.namedNode('yes');
+					H_VALIDATORS.literal(k_factory.literal('test', k_datatype), {value:'test', datatype:'yes'});
 				});
 
 				it('language', () => {
-					H_VALIDATORS.literal(factory.literal('test', 'en'), {value:'test', language:'en'});
+					H_VALIDATORS.literal(k_factory.literal('test', 'en'), {value:'test', language:'en'});
 				});
 
 				it('language w/ optional @', () => {
-					H_VALIDATORS.literal(factory.literal('test', '@en'), {value:'test', language:'en'});
+					H_VALIDATORS.literal(k_factory.literal('test', '@en'), {value:'test', language:'en'});
 				});
 
 				it('valueOf casts to canonical form', () => {
-					expect(factory.literal('hello', 'en')+'').to.equal('@en"hello');
-					expect(factory.literal('hello', factory.namedNode('greeting'))+'').to.equal('^>greeting"hello');
+					expect(k_factory.literal('hello', 'en')+'').to.equal('@en"hello');
+					expect(k_factory.literal('hello', k_factory.namedNode('greeting'))+'').to.equal('^>greeting"hello');
 				});
 
 				it('.verbose', () => {
-					expect(factory.literal('hello', 'en').verbose()).to.equal('"hello"@en');
-					expect(factory.literal('hello', factory.namedNode('greeting')).verbose()).to.equal('"hello"^^<greeting>');
+					expect(k_factory.literal('hello', 'en').verbose()).to.equal('"hello"@en');
+					expect(k_factory.literal('hello', k_factory.namedNode('greeting')).verbose()).to.equal('"hello"^^<greeting>');
 				});
 
 				it('.termType', () => {
-					expect(factory.literal(''))
+					expect(k_factory.literal(''))
 						.to.have.property('termType', 'Literal');
 				});
 
 				it('.isLiteral', () => {
-					expect(factory.literal(''))
+					expect(k_factory.literal(''))
 						.to.have.property('isLiteral', true);
 				});
 			});
@@ -353,7 +356,7 @@ class factory_suite {
 							'numeric string: 0xff': ['0xff', 0xff],
 							'numeric string: 0b101': ['0b101', 0b101],
 							'+Infinity': () => {
-								let kt_actual = factory.double(Infinity);
+								const kt_actual = k_factory.double(Infinity);
 								H_VALIDATORS.literal(kt_actual, {value:'INF', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
 									number: Infinity,
@@ -363,7 +366,7 @@ class factory_suite {
 								});
 							},
 							'-Infinity': () => {
-								let kt_actual = factory.double(-Infinity);
+								const kt_actual = k_factory.double(-Infinity);
 								H_VALIDATORS.literal(kt_actual, {value:'-INF', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
 									number: -Infinity,
@@ -373,7 +376,7 @@ class factory_suite {
 								});
 							},
 							NaN: () => {
-								let kt_actual = factory.double(NaN);
+								const kt_actual = k_factory.double(NaN);
 								H_VALIDATORS.literal(kt_actual, {value:'NaN', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
 									isNumeric: true,
@@ -457,7 +460,7 @@ class factory_suite {
 							0.1: [0.1, 'decimal'],
 							'-0.1': [-0.1, 'decimal'],
 							'+Infinity': () => {
-								let kt_actual = factory.number(Infinity);
+								const kt_actual = k_factory.number(Infinity);
 								H_VALIDATORS.literal(kt_actual, {value:'INF', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
 									number: Infinity,
@@ -467,7 +470,7 @@ class factory_suite {
 								});
 							},
 							'-Infinity': () => {
-								let kt_actual = factory.number(-Infinity);
+								const kt_actual = k_factory.number(-Infinity);
 								H_VALIDATORS.literal(kt_actual, {value:'-INF', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
 									number: -Infinity,
@@ -477,7 +480,7 @@ class factory_suite {
 								});
 							},
 							NaN: () => {
-								let kt_actual = factory.number(NaN);
+								const kt_actual = k_factory.number(NaN);
 								H_VALIDATORS.literal(kt_actual, {value:'NaN', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
 									isNumeric: true,
@@ -565,12 +568,12 @@ class factory_suite {
 						},
 						blank_node: {
 							'_:': () => {
-								let kt_blank = factory.c1('_:');
+								const kt_blank = k_factory.c1('_:');
 								H_VALIDATORS.blank_node(kt_blank, null, true);
 								expect(kt_blank.value).to.have.length('_fee893ce_d36a_4413_a197_a9f47a3e5991'.length);
 							},
 							'_:#anonymous': () => {
-								let kt_blank = factory.c1('_:#anonymous');
+								const kt_blank = k_factory.c1('_:#anonymous');
 								H_VALIDATORS.blank_node(kt_blank, null, true);
 								expect(kt_blank.value).to.have.length('_fee893ce_d36a_4413_a197_a9f47a3e5991'.length);
 							},
@@ -586,7 +589,7 @@ class factory_suite {
 
 			describe('factory.c3', () => {
 				it('works', () => {
-					util.validate_quads(factory.c3({
+					util.validate_quads(k_factory.c3({
 						'>a': {
 							'>b': '>c',
 							'>d': ['>e', '^>y"f'],
@@ -617,7 +620,7 @@ class factory_suite {
 				});
 
 				it('works w/ prefix-mappings', () => {
-					util.validate_quads(factory.c3({
+					util.validate_quads(k_factory.c3({
 						':a': {
 							':b': ':c',
 							':d': [':e', '^:y"f'],
@@ -653,7 +656,7 @@ class factory_suite {
 
 			describe('factory.c4', () => {
 				it('works', () => {
-					util.validate_quads(factory.c4({
+					util.validate_quads(k_factory.c4({
 						'*': {
 							'>a': {
 								'>b': '>c',
@@ -688,7 +691,7 @@ class factory_suite {
 				});
 
 				it('works w/ prefix-mappings', () => {
-					util.validate_quads(factory.c4({
+					util.validate_quads(k_factory.c4({
 						'*': {
 							':a': {
 								':b': ':c',
@@ -728,18 +731,18 @@ class factory_suite {
 
 			describe('factory.comment()', () => {
 				it('returns a string', () => {
-					expect(factory.comment()).to.be.a('string');
+					expect(k_factory.comment()).to.be.a('string');
 				});
 			});
 
 			describe('factory.newlines()', () => {
 				it('returns a string', () => {
-					expect(factory.comment()).to.be.a('string');
+					expect(k_factory.comment()).to.be.a('string');
 				});
 			});
 
 			describe('DefaultGraph', () => {
-				let kt_graph = factory.defaultGraph();
+				const kt_graph = k_factory.defaultGraph();
 
 				it('#isDefaultGraph', () => {
 					expect(kt_graph).to.have.property('isDefaultGraph', true);
@@ -781,7 +784,7 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kt_graph.equals(factory.defaultGraph())).to.be.true;
+					expect(kt_graph.equals(k_factory.defaultGraph())).to.be.true;
 				});
 
 				it('#equals(isolate)', () => {
@@ -797,9 +800,9 @@ class factory_suite {
 			});
 
 			describe('NamedNode', () => {
-				let p_iri_tests = 'https://graphy.link/tests#';
-				let kt_node = factory.namedNode(p_iri_tests+'node');
-				let h_prefixes = {
+				const p_iri_tests = 'https://graphy.link/tests#';
+				const kt_node = k_factory.namedNode(p_iri_tests+'node');
+				const h_prefixes = {
 					tests: p_iri_tests,
 				};
 
@@ -843,7 +846,7 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kt_node.equals(factory.namedNode(p_iri_tests+'node'))).to.be.true;
+					expect(kt_node.equals(k_factory.namedNode(p_iri_tests+'node'))).to.be.true;
 				});
 
 				it('#equals(isolate)', () => {
@@ -859,7 +862,7 @@ class factory_suite {
 			});
 
 			describe('Labeled Blank Node', () => {
-				let kt_node = factory.blankNode('label');
+				const kt_node = k_factory.blankNode('label');
 
 				it('#isBlankNode', () => {
 					expect(kt_node).to.have.property('isBlankNode', true);
@@ -905,7 +908,7 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kt_node.equals(factory.blankNode('label'))).to.be.true;
+					expect(kt_node.equals(k_factory.blankNode('label'))).to.be.true;
 				});
 
 				it('#equals(isolate)', () => {
@@ -921,8 +924,8 @@ class factory_suite {
 			});
 
 			describe('Eephemeral Blank Node', () => {
-				let kt_node = factory.ephemeral();
-				let nl_uuidv4 = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz'.length;
+				const kt_node = k_factory.ephemeral();
+				const nl_uuidv4 = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz'.length;
 
 				it('#isBlankNode', () => {
 					expect(kt_node).to.have.property('isBlankNode', true);
@@ -971,7 +974,7 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kt_node.equals(factory.blankNode(kt_node.value))).to.be.false;
+					expect(kt_node.equals(k_factory.blankNode(kt_node.value))).to.be.false;
 				});
 
 				it('#equals(isolate)', () => {
@@ -991,8 +994,8 @@ class factory_suite {
 			});
 
 			describe('Auto Blank Node', () => {
-				let kt_node = factory.blankNode();
-				let nl_uuidv4 = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz'.length;
+				const kt_node = k_factory.blankNode();
+				const nl_uuidv4 = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz'.length;
 
 				it('#isBlankNode', () => {
 					expect(kt_node).to.have.property('isBlankNode', true);
@@ -1037,7 +1040,7 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kt_node.equals(factory.blankNode(kt_node.value))).to.be.true;
+					expect(kt_node.equals(k_factory.blankNode(kt_node.value))).to.be.true;
 				});
 
 				it('#equals(isolate)', () => {
@@ -1053,7 +1056,7 @@ class factory_suite {
 			});
 
 			describe('Plain Literal', () => {
-				let kt_literal = factory.literal('value');
+				const kt_literal = k_factory.literal('value');
 
 				it('#isLiteral', () => {
 					expect(kt_literal).to.have.property('isLiteral', true);
@@ -1100,7 +1103,7 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kt_literal.equals(factory.literal('value'))).to.be.true;
+					expect(kt_literal.equals(k_factory.literal('value'))).to.be.true;
 				});
 
 				it('#equals(isolate)', () => {
@@ -1121,7 +1124,7 @@ class factory_suite {
 			});
 
 			describe('Languaged Literal', () => {
-				let kt_literal = factory.literal('value', 'en');
+				const kt_literal = k_factory.literal('value', 'en');
 
 				it('#isLiteral', () => {
 					expect(kt_literal).to.have.property('isLiteral', true);
@@ -1168,7 +1171,7 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kt_literal.equals(factory.literal('value', 'en'))).to.be.true;
+					expect(kt_literal.equals(k_factory.literal('value', 'en'))).to.be.true;
 				});
 
 				it('#equals(isolate)', () => {
@@ -1189,12 +1192,12 @@ class factory_suite {
 			});
 
 			describe('Datatyped Literal', () => {
-				let p_iri_tests = 'https://graphy.link/tests#';
-				let kt_datatype = factory.namedNode(p_iri_tests+'datatype');
-				let h_prefixes = {
+				const p_iri_tests = 'https://graphy.link/tests#';
+				const kt_datatype = k_factory.namedNode(p_iri_tests+'datatype');
+				const h_prefixes = {
 					tests: p_iri_tests,
 				};
-				let kt_literal = factory.literal('value', kt_datatype);
+				const kt_literal = k_factory.literal('value', kt_datatype);
 
 				it('#isLiteral', () => {
 					expect(kt_literal).to.have.property('isLiteral', true);
@@ -1241,7 +1244,7 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kt_literal.equals(factory.literal('value', factory.namedNode(p_iri_tests+'datatype')))).to.be.true;
+					expect(kt_literal.equals(k_factory.literal('value', k_factory.namedNode(p_iri_tests+'datatype')))).to.be.true;
 				});
 
 				it('#equals(isolate)', () => {
@@ -1262,15 +1265,15 @@ class factory_suite {
 			});
 
 			describe('Quad w/o explicit graph', () => {
-				let p_iri_tests = 'https://graphy.link/tests#';
-				let kt_datatype = factory.namedNode(p_iri_tests+'datatype');
-				let h_prefixes = {
+				const p_iri_tests = 'https://graphy.link/tests#';
+				const kt_datatype = k_factory.namedNode(p_iri_tests+'datatype');
+				const h_prefixes = {
 					tests: p_iri_tests,
 				};
-				let kt_subject = factory.blankNode('subject');
-				let kt_predicate = factory.namedNode(p_iri_tests+'predicate');
-				let kt_object = factory.literal('value', kt_datatype);
-				let kq_quad = factory.quad(kt_subject, kt_predicate, kt_object);
+				const kt_subject = k_factory.blankNode('subject');
+				const kt_predicate = k_factory.namedNode(p_iri_tests+'predicate');
+				const kt_object = k_factory.literal('value', kt_datatype);
+				const kq_quad = k_factory.quad(kt_subject, kt_predicate, kt_object);
 
 				it('#isGraphyQuad', () => {
 					expect(kq_quad).to.have.property('isGraphyQuad', true);
@@ -1337,10 +1340,10 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kq_quad.equals(factory.quad(...[
-						factory.blankNode('subject'),
-						factory.namedNode(p_iri_tests+'predicate'),
-						factory.literal('value', kt_datatype),
+					expect(kq_quad.equals(k_factory.quad(...[
+						k_factory.blankNode('subject'),
+						k_factory.namedNode(p_iri_tests+'predicate'),
+						k_factory.literal('value', kt_datatype),
 					]))).to.be.true;
 				});
 
@@ -1376,16 +1379,16 @@ class factory_suite {
 			});
 
 			describe('Quad w/ graph', () => {
-				let p_iri_tests = 'https://graphy.link/tests#';
-				let kt_datatype = factory.namedNode(p_iri_tests+'datatype');
-				let h_prefixes = {
+				const p_iri_tests = 'https://graphy.link/tests#';
+				const kt_datatype = k_factory.namedNode(p_iri_tests+'datatype');
+				const h_prefixes = {
 					tests: p_iri_tests,
 				};
-				let kt_subject = factory.blankNode('subject');
-				let kt_predicate = factory.namedNode(p_iri_tests+'predicate');
-				let kt_object = factory.literal('value', kt_datatype);
-				let kt_graph = factory.namedNode(p_iri_tests+'graph');
-				let kq_quad = factory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
+				const kt_subject = k_factory.blankNode('subject');
+				const kt_predicate = k_factory.namedNode(p_iri_tests+'predicate');
+				const kt_object = k_factory.literal('value', kt_datatype);
+				const kt_graph = k_factory.namedNode(p_iri_tests+'graph');
+				const kq_quad = k_factory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
 
 				it('#isGraphyQuad', () => {
 					expect(kq_quad).to.have.property('isGraphyQuad', true);
@@ -1452,11 +1455,11 @@ class factory_suite {
 				});
 
 				it('#equals(other)', () => {
-					expect(kq_quad.equals(factory.quad(...[
-						factory.blankNode('subject'),
-						factory.namedNode(p_iri_tests+'predicate'),
-						factory.literal('value', kt_datatype),
-						factory.namedNode(p_iri_tests+'graph'),
+					expect(kq_quad.equals(k_factory.quad(...[
+						k_factory.blankNode('subject'),
+						k_factory.namedNode(p_iri_tests+'predicate'),
+						k_factory.literal('value', kt_datatype),
+						k_factory.namedNode(p_iri_tests+'graph'),
 					]))).to.be.true;
 				});
 
@@ -1493,7 +1496,7 @@ class factory_suite {
 		});
 
 		describe('RDFJS', () => {
-			let d_warn = console.warn;
+			const d_warn = console.warn;
 
 			// capture warn messages
 			console.warn = (s_warn) => {
@@ -1506,12 +1509,7 @@ class factory_suite {
 
 			// RDFJS Data Model test suite
 			// the data test suite is currently in disagreement over falsy Term values and the graph component of `Triple`
-			require('@rdfjs/data-model/test')(factory);
+			require('@rdfjs/data-model/test')(k_factory);
 		});
 	}
 }
-
-module.exports = (...a_args) => {
-	(new factory_suite(...a_args)).run();
-};
-

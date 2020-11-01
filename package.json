@@ -49,6 +49,9 @@
     "yargs": "^15.4.1"
   },
   "devDependencies": {
+    "@babel/cli": "^7.12.1",
+    "@babel/core": "^7.12.3",
+    "@babel/plugin-transform-modules-commonjs": "^7.12.1",
     "@graphy-stable/content.nq.read": "npm:@graphy/content.nq.read@^4.1.0",
     "@graphy-stable/content.nq.write": "npm:@graphy/content.nq.write@^4.1.0",
     "@graphy-stable/content.nt.read": "npm:@graphy/content.nt.read@^4.1.0",

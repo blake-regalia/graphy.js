@@ -30,6 +30,6 @@ class MasterWorkerPolyfill extends Worker {
 	}
 }
 
-module.exports = {
-	Worker: MasterWorkerPolyfill,
+export {
+	MasterWorkerPolyfill as Worker,
 };

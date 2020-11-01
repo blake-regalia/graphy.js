@@ -101,9 +101,31 @@ export namespace DataFactory {
 	function ephemeral(): Term.EphemeralBlankNode;
 
 
+	/**
+	 * Returns `term` if it is already a graphy Term (including Quads), otherwise calls `fromRdfjsTerm`.
+	 * @param term - the Term to convert
+	 */
 	function fromTerm(term: RDFJS.Term): Term.GenericTerm;
+
+	/**
+	 * Returns `quad` if it is already a graphy Quad, otherwise calls `fromRdfjsQuad`.
+	 * @param term - the Quad to convert
+	 */
 	function fromQuad(quad: RDFJS.Quad): Term.Quad;
 
+	/**
+	 * Convert an RDFJS compatible Term (including Quads) to a graphy Term.
+	 * @param term - the Term to convert
+	 */
+	function fromRdfjsTerm(term: RDFJS.Term): Term.GenericTerm;
+
+	/**
+	 * Convert an RDFJS compatible Quad to a graphy Quad.
+	 * @param quad - the Quad to convert
+	 */
+	function fromRdfjsQuad(quad: RDFJS.Quad): Term.Quad;
+
+	
 	function comment(): C1.Directive;
 	function newlines(): C1.Directive;
 
