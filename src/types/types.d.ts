@@ -59,10 +59,15 @@ export namespace Term {
 	export interface GenericTerm {
 		readonly isGraphyTerm: true;
 		readonly isGraphyQuad: boolean;
-		readonly isGraphable: boolean;
+		readonly isAbleGraph: boolean;
+		readonly isAbleSubject: boolean;
+		readonly isAblePredicate: boolean;
+		readonly isAbleObject: boolean;
 		readonly isDefaultGraph: boolean;
 		readonly isNode: boolean;
 		readonly isNamedNode: boolean;
+		readonly isRelativeNamedNode: boolean;
+		readonly isRdfTypeAlias: boolean;
 		readonly isBlankNode: boolean;
 		readonly isAnonymousBlankNode: boolean;
 		readonly isEphemeralBlankNode: boolean;
@@ -108,7 +113,7 @@ export namespace Term {
 
 	interface Graphable extends NonLiteralTerm implements Role.Graph, Role.Data {
 		readonly isGraphyQuad: false;
-		readonly isGraphable: true;
+		readonly isAbleGraph: true;
 
 		readonly termType: 'DefaultGraph' | 'NamedNode' | 'BlankNode';
 	}
@@ -116,13 +121,19 @@ export namespace Term {
 	export interface Node extends Graphable implements Role.Data, Role.Subject, Role.Object {
 		readonly isDefaultGraph: false;
 		readonly isNode: true;
+		readonly isAbleSubject: true;
+		readonly isAblePredicate: true;
+		readonly isAbleObject: true;
 
 		readonly termType: 'NamedNode' | 'BlankNode';
 	}
 
 	export interface GenericLiteral extends GenericTerm implements Role.Data, Role.Object {
 		readonly isGraphyQuad: false;
-		readonly isGraphable: false;
+		readonly isAbleGraph: false;
+		readonly isAbleSubject: false;
+		readonly isAblePredicate: false;
+		readonly isAbleObject: true;
 		readonly isDefaultGraph: false;
 		readonly isNode: false;
 		readonly isNamedNode: false;
@@ -311,6 +322,9 @@ export namespace Term {
 
 	export interface DefaultGraph extends Graphable implements RDFJS.DefaultGraph {
 		readonly isDefaultGraph: true;
+		readonly isAbleSubject: false;
+		readonly isAblePredicate: false;
+		readonly isAbleObject: false;
 		
 		readonly termType: 'DefaultGraph';
 		readonly value: '';
@@ -326,8 +340,9 @@ export namespace Term {
 	}
 
 	interface NonDataTerm extends NonLiteralTerm {
+		readonly isAbleGraph: false;
+		readonly isAblePredicate: false;
 		readonly isDefaultGraph: false;
-		readonly isGraphable: false;
 		readonly isNode: false;
 		readonly isNamedNode: false;
 		readonly isBlankNode: false;
@@ -337,6 +352,8 @@ export namespace Term {
 
 	export interface Variable extends NonDataTerm implements RDFJS.Variable {
 		readonly isGraphyQuad: false;
+		readonly isAbleSubject: false;
+		readonly isAbleObject: false;
 		readonly isVariable: true;
 
 		readonly termType: 'Variable';
@@ -359,6 +376,8 @@ export namespace Term {
 
 	export interface Quad extends NonDataTerm implements RDFJS.Quad {
 		readonly isGraphyQuad: true;
+		readonly isAbleSubject: true;
+		readonly isAbleObject: true;
 		readonly isVariable: false;
 
 		readonly termType: 'Quad';

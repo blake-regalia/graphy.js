@@ -49,7 +49,7 @@ export const helper = {
 						case ' ': {
 							return {
 								termType: 'BlankNode',
-								isAnonymous: true,
+								isAnonymousBlankNode: true,
 							};
 						}
 
@@ -57,7 +57,7 @@ export const helper = {
 						case '_': {
 							return {
 								termType: 'BlankNode',
-								isAnonymous: false,
+								isAnonymousBlankNode: false,
 								value: se1.slice(1),
 							};
 						}
@@ -131,10 +131,10 @@ export const helper = {
 						: {
 							number: ze1,
 							...(Number.isInteger(ze1)
-								? {isInteger:true}
+								? {isIntegerLiteral:true}
 								: (Number.isFinite(ze1)
-									? {isDecimal:true}
-									: {isDouble:true}
+									? {isDecimalLiteral:true}
+									: {isDoubleLiteral:true}
 								)
 							),
 						}),
@@ -154,7 +154,7 @@ export const helper = {
 					termType: 'Literal',
 					value: ze1+'',
 					boolean: ze1,
-					isBoolean: true,
+					isBooleanLiteral: true,
 				});
 
 				expect(kt).to.have.property('datatype')

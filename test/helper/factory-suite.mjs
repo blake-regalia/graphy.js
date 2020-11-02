@@ -1,6 +1,8 @@
 import chai from 'chai';
 const expect = chai.expect;
 
+import rdfjsDataModelTester from './rdfjs-data-model-test.js';
+
 import util from '../helper/util.mjs';
 
 const P_IRI_XSD = 'http://www.w3.org/2001/XMLSchema#';
@@ -16,26 +18,76 @@ const H_PREFIXES = {
 	rdfs: P_IRI_RDFS,
 };
 
+const G_PROPERTIES_GRAPHY_TERM_GENERAL = {
+	isAbleGraph: false,
+	isAbleSubject: false,
+	isAblePredicate: false,
+	isAbleObject: false,
+
+	isGraphyTerm: true,
+	isGraphyQuad: false,
+	isDefaultGraph: false,
+	isNode: false,
+	isBlankNode: false,
+	isLiteral: false,
+};
+
+const G_PROPERTIES_GRAPHY_TERM_NOT_NODE = {
+	isNamedNode: false,
+	isRelativeNamedNode: false,
+	isRdfTypeAlias: false,
+	isAnonymousBlankNode: false,
+	isEphemeralBlankNode: false,
+};
+
+const G_PROPERTIES_GRAPHY_TERM_NOT_LITERAL = {
+	isLanguagedLiteral: false,
+	isDatatypedLiteral: false,
+	isSimpleLiteral: false,
+	isNumericLiteral: false,
+	isIntegerLiteral: false,
+	isDoubleLiteral: false,
+	isDecimalLiteral: false,
+	isBooleanLiteral: false,
+	isInfiniteLiteral: false,
+	isNaNLiteral: false,
+};
+
+const G_PROPERTIES_GRAPHY_TERM_ALL = {
+	...G_PROPERTIES_GRAPHY_TERM_GENERAL,
+	...G_PROPERTIES_GRAPHY_TERM_NOT_NODE,
+	...G_PROPERTIES_GRAPHY_TERM_NOT_LITERAL,
+};
+
 
 const H_VALIDATORS = {
 	default_graph(kt_actual) {
 		expect(kt_actual).to.include({
-			termType: 'DefaultGraph',
+			...G_PROPERTIES_GRAPHY_TERM_ALL,
+			isAbleGraph: true,
 			isDefaultGraph: true,
+			termType: 'DefaultGraph',
 			value: '',
 		});
 	},
 
 	term(kt_actual) {
 		expect(kt_actual).to.include({
-			isGraphyTerm: true,
+			...G_PROPERTIES_GRAPHY_TERM_GENERAL,
 		});
 	},
 
-	blank_node(kt_actual, s_label=null, b_anonymous=null) {
+	blank_node(kt_actual, s_label=null, b_anonymous=false, b_ephemeral=false) {
 		expect(kt_actual).to.include({
-			termType: 'BlankNode',
+			...G_PROPERTIES_GRAPHY_TERM_ALL,
+			isAbleGraph: true,
+			isAbleSubject: true,
+			isAbleObject: true,
+			isNode: true,
 			isBlankNode: true,
+			isAnonymousBlankNode: b_anonymous,
+			isEphemeralBlankNode: b_ephemeral,
+			termType: 'BlankNode',
 		});
 
 		// validate value
@@ -43,16 +95,30 @@ const H_VALIDATORS = {
 			expect(kt_actual.value).to.equal(s_label);
 		}
 
-		// validate anonymous-ness
-		if(null !== b_anonymous) {
-			expect(kt_actual.isAnonymous).to.equal(b_anonymous);
-		}
+		// // validate anonymous-ness
+		// if(null !== b_anonymous) {
+		// 	expect(kt_actual.isAnonymous).to.equal(b_anonymous);
+		// }
 	},
 
-	named_node(kt_actual, p_value=null) {
+	named_node(kt_actual, w_desc=null) {
+		let p_value = w_desc;
+		let b_type_alias = false;
+		if('object' === typeof w_desc && null !== w_desc) {
+			p_value = w_desc.value;
+			b_type_alias = true;
+		}
+
 		expect(kt_actual).to.include({
-			termType: 'NamedNode',
+			...G_PROPERTIES_GRAPHY_TERM_ALL,
+			isAbleGraph: true,
+			isAbleSubject: true,
+			isAblePredicate: true,
+			isAbleObject: true,
+			isRdfTypeAlias: b_type_alias,
+			isNode: true,
 			isNamedNode: true,
+			termType: 'NamedNode',
 		});
 
 		// validate value
@@ -60,14 +126,17 @@ const H_VALIDATORS = {
 	},
 
 	literal(kt_actual, g_descriptor={}) {
-		// abides generic term
-		this.term(kt_actual);
-
-		// literal specifics
+		// abides general term and literal specifics
 		expect(kt_actual).to.include({
+			...G_PROPERTIES_GRAPHY_TERM_GENERAL,
+			...G_PROPERTIES_GRAPHY_TERM_NOT_NODE,
+			isAbleObject: true,
+			isLiteral: true,
+			isDatatypedLiteral: 'datatype' in g_descriptor,
+			isLanguagedLiteral: !!g_descriptor.language,
+			isSimpleLiteral: !('datatype' in g_descriptor || g_descriptor.language),
 			termType: 'Literal',
 			language: g_descriptor.language || '',
-			isLiteral: true,
 		}).and.have.property('datatype');
 
 		// validate value
@@ -89,8 +158,10 @@ const H_VALIDATORS = {
 
 		// literal integer specifics
 		expect(kt_actual).to.include({
-			isNumeric: true,
-			isInteger: true,
+			...G_PROPERTIES_GRAPHY_TERM_NOT_LITERAL,
+			isDatatypedLiteral: true,
+			isNumericLiteral: true,
+			isIntegerLiteral: true,
 			number: x_value,
 		});
 	},
@@ -101,8 +172,10 @@ const H_VALIDATORS = {
 
 		// literal double specifics
 		expect(kt_actual).to.include({
-			isNumeric: true,
-			isDouble: true,
+			...G_PROPERTIES_GRAPHY_TERM_NOT_LITERAL,
+			isDatatypedLiteral: true,
+			isNumericLiteral: true,
+			isDoubleLiteral: true,
 			number: x_value,
 		});
 	},
@@ -113,8 +186,10 @@ const H_VALIDATORS = {
 
 		// literal decimal specifics
 		expect(kt_actual).to.include({
-			isNumeric: true,
-			isDecimal: true,
+			...G_PROPERTIES_GRAPHY_TERM_NOT_LITERAL,
+			isDatatypedLiteral: true,
+			isNumericLiteral: true,
+			isDecimalLiteral: true,
 			number: x_value,
 		});
 	},
@@ -125,7 +200,9 @@ const H_VALIDATORS = {
 
 		// literal boolean specifics
 		expect(kt_actual).to.include({
-			isBoolean: true,
+			...G_PROPERTIES_GRAPHY_TERM_NOT_LITERAL,
+			isDatatypedLiteral: true,
+			isBooleanLiteral: true,
 			boolean: b_value,
 		});
 	},
@@ -157,7 +234,7 @@ const H_VALIDATORS = {
 
 export default class FactorySuite {
 	constructor(gc_suite) {
-		this._si_module = gc_suite.module;
+		this._si_export = gc_suite.export;
 		this._k_factory = gc_suite.factory;
 	}
 
@@ -259,7 +336,7 @@ export default class FactorySuite {
 	run() {
 		const k_factory = this._k_factory;
 
-		describe(this.package, () => {
+		describe(this._si_export, () => {
 			describe('factory.literal', () => {
 				it('w/o datatype', () => {
 					H_VALIDATORS.literal(k_factory.literal('test'), {value:'test'});
@@ -359,29 +436,41 @@ export default class FactorySuite {
 								const kt_actual = k_factory.double(Infinity);
 								H_VALIDATORS.literal(kt_actual, {value:'INF', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
+									...G_PROPERTIES_GRAPHY_TERM_GENERAL,
+									...G_PROPERTIES_GRAPHY_TERM_NOT_NODE,
+									isAbleObject: true,
+									isLiteral: true,
+									isNumericLiteral: true,
+									isDoubleLiteral: true,
+									isInfiniteLiteral: true,
 									number: Infinity,
-									isNumeric: true,
-									isDouble: true,
-									isInfinite: true,
 								});
 							},
 							'-Infinity': () => {
 								const kt_actual = k_factory.double(-Infinity);
 								H_VALIDATORS.literal(kt_actual, {value:'-INF', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
+									...G_PROPERTIES_GRAPHY_TERM_GENERAL,
+									...G_PROPERTIES_GRAPHY_TERM_NOT_NODE,
+									isAbleObject: true,
+									isLiteral: true,
+									isNumericLiteral: true,
+									isDoubleLiteral: true,
+									isInfiniteLiteral: true,
 									number: -Infinity,
-									isNumeric: true,
-									isDouble: true,
-									isInfinite: true,
 								});
 							},
 							NaN: () => {
 								const kt_actual = k_factory.double(NaN);
 								H_VALIDATORS.literal(kt_actual, {value:'NaN', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
-									isNumeric: true,
-									isDouble: true,
-									isNaN: true,
+									...G_PROPERTIES_GRAPHY_TERM_GENERAL,
+									...G_PROPERTIES_GRAPHY_TERM_NOT_NODE,
+									isAbleObject: true,
+									isLiteral: true,
+									isNumericLiteral: true,
+									isDoubleLiteral: true,
+									isNaNLiteral: true,
 								});
 								expect(kt_actual.number).to.be.NaN;
 							},
@@ -463,29 +552,41 @@ export default class FactorySuite {
 								const kt_actual = k_factory.number(Infinity);
 								H_VALIDATORS.literal(kt_actual, {value:'INF', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
+									...G_PROPERTIES_GRAPHY_TERM_GENERAL,
+									...G_PROPERTIES_GRAPHY_TERM_NOT_NODE,
+									isAbleObject: true,
+									isLiteral: true,
+									isNumericLiteral: true,
+									isDoubleLiteral: true,
+									isInfiniteLiteral: true,
 									number: Infinity,
-									isNumeric: true,
-									isDouble: true,
-									isInfinite: true,
 								});
 							},
 							'-Infinity': () => {
 								const kt_actual = k_factory.number(-Infinity);
 								H_VALIDATORS.literal(kt_actual, {value:'-INF', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
+									...G_PROPERTIES_GRAPHY_TERM_GENERAL,
+									...G_PROPERTIES_GRAPHY_TERM_NOT_NODE,
+									isAbleObject: true,
+									isLiteral: true,
+									isNumericLiteral: true,
+									isDoubleLiteral: true,
+									isInfiniteLiteral: true,
 									number: -Infinity,
-									isNumeric: true,
-									isDouble: true,
-									isInfinite: true,
 								});
 							},
 							NaN: () => {
 								const kt_actual = k_factory.number(NaN);
 								H_VALIDATORS.literal(kt_actual, {value:'NaN', datatype:P_IRI_XSD+'double'});
 								expect(kt_actual).to.include({
-									isNumeric: true,
-									isDouble: true,
-									isNaN: true,
+									...G_PROPERTIES_GRAPHY_TERM_GENERAL,
+									...G_PROPERTIES_GRAPHY_TERM_NOT_NODE,
+									isAbleObject: true,
+									isLiteral: true,
+									isNumericLiteral: true,
+									isDoubleLiteral: true,
+									isNaNLiteral: true,
 								});
 								expect(kt_actual.number).to.be.NaN;
 							},
@@ -532,8 +633,11 @@ export default class FactorySuite {
 							'@en',
 							'@en-US',
 						],
-						'prefix with leading underscore': [
-							'_test:abc',
+						// 'prefix with leading underscore': [
+						// 	'_test:abc',
+						// ],
+						'leading space': [
+							' :abc',
 						],
 					},
 					returns: {
@@ -564,7 +668,7 @@ export default class FactorySuite {
 							':abc': '#abc',
 							'test:abc': 'test#abc',
 							'test_:abc': 'test_#abc',
-							a: P_IRI_RDF+'type',
+							a: {value:P_IRI_RDF+'type', isRdfTypeAlias:true},
 						},
 						blank_node: {
 							'_:': () => {
@@ -574,7 +678,7 @@ export default class FactorySuite {
 							},
 							'_:#anonymous': () => {
 								const kt_blank = k_factory.c1('_:#anonymous');
-								H_VALIDATORS.blank_node(kt_blank, null, true);
+								H_VALIDATORS.blank_node(kt_blank, null, true, true);
 								expect(kt_blank.value).to.have.length('_fee893ce_d36a_4413_a197_a9f47a3e5991'.length);
 							},
 							'_:b': 'b',
@@ -806,12 +910,28 @@ export default class FactorySuite {
 					tests: p_iri_tests,
 				};
 
-				it('#isNamedNode', () => {
-					expect(kt_node).to.have.property('isNamedNode', true);
-				});
-
 				it('#isGraphyTerm', () => {
 					expect(kt_node).to.have.property('isGraphyTerm', true);
+				});
+
+				it('#isAbleGraph', () => {
+					expect(kt_node).to.have.property('isAbleGraph', true);
+				});
+
+				it('#isAbleSubject', () => {
+					expect(kt_node).to.have.property('isAbleSubject', true);
+				});
+
+				it('#isAblePredicate', () => {
+					expect(kt_node).to.have.property('isAblePredicate', true);
+				});
+
+				it('#isAbleObject', () => {
+					expect(kt_node).to.have.property('isAbleObject', true);
+				});
+
+				it('#isNamedNode', () => {
+					expect(kt_node).to.have.property('isNamedNode', true);
 				});
 
 				it('#concise()', () => {
@@ -864,16 +984,36 @@ export default class FactorySuite {
 			describe('Labeled Blank Node', () => {
 				const kt_node = k_factory.blankNode('label');
 
+				it('#isGraphyTerm', () => {
+					expect(kt_node).to.have.property('isGraphyTerm', true);
+				});
+
+				it('#isAbleGraph', () => {
+					expect(kt_node).to.have.property('isAbleGraph', true);
+				});
+
+				it('#isAbleSubject', () => {
+					expect(kt_node).to.have.property('isAbleSubject', true);
+				});
+
+				it('#isAblePredicate', () => {
+					expect(kt_node).to.have.property('isAblePredicate', false);
+				});
+
+				it('#isAbleObject', () => {
+					expect(kt_node).to.have.property('isAbleObject', true);
+				});
+
 				it('#isBlankNode', () => {
 					expect(kt_node).to.have.property('isBlankNode', true);
 				});
 
-				it('#isAnonymous', () => {
-					expect(kt_node).to.have.property('isAnonymous', false);
+				it('#isAnonymousBlankNode', () => {
+					expect(kt_node).to.have.property('isAnonymousBlankNode', false);
 				});
 
-				it('#isGraphyTerm', () => {
-					expect(kt_node).to.have.property('isGraphyTerm', true);
+				it('#isEphemeralBlankNode', () => {
+					expect(kt_node).to.have.property('isEphemeralBlankNode', false);
 				});
 
 				it('#concise()', () => {
@@ -927,20 +1067,36 @@ export default class FactorySuite {
 				const kt_node = k_factory.ephemeral();
 				const nl_uuidv4 = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz'.length;
 
+				it('#isGraphyTerm', () => {
+					expect(kt_node).to.have.property('isGraphyTerm', true);
+				});
+
+				it('#isAbleGraph', () => {
+					expect(kt_node).to.have.property('isAbleGraph', true);
+				});
+
+				it('#isAbleSubject', () => {
+					expect(kt_node).to.have.property('isAbleSubject', true);
+				});
+
+				it('#isAblePredicate', () => {
+					expect(kt_node).to.have.property('isAblePredicate', false);
+				});
+
+				it('#isAbleObject', () => {
+					expect(kt_node).to.have.property('isAbleObject', true);
+				});
+
 				it('#isBlankNode', () => {
 					expect(kt_node).to.have.property('isBlankNode', true);
 				});
 
-				it('#isAnonymous', () => {
-					expect(kt_node).to.have.property('isAnonymous', true);
+				it('#isAnonymousBlankNode', () => {
+					expect(kt_node).to.have.property('isAnonymousBlankNode', true);
 				});
 
-				it('#isEphemeral', () => {
-					expect(kt_node).to.have.property('isEphemeral', true);
-				});
-
-				it('#isGraphyTerm', () => {
-					expect(kt_node).to.have.property('isGraphyTerm', true);
+				it('#isEphemeralBlankNode', () => {
+					expect(kt_node).to.have.property('isEphemeralBlankNode', true);
 				});
 
 				it('#concise()', () => {
@@ -997,16 +1153,36 @@ export default class FactorySuite {
 				const kt_node = k_factory.blankNode();
 				const nl_uuidv4 = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz'.length;
 
+				it('#isGraphyTerm', () => {
+					expect(kt_node).to.have.property('isGraphyTerm', true);
+				});
+
+				it('#isAbleGraph', () => {
+					expect(kt_node).to.have.property('isAbleGraph', true);
+				});
+
+				it('#isAbleSubject', () => {
+					expect(kt_node).to.have.property('isAbleSubject', true);
+				});
+
+				it('#isAblePredicate', () => {
+					expect(kt_node).to.have.property('isAblePredicate', false);
+				});
+
+				it('#isAbleObject', () => {
+					expect(kt_node).to.have.property('isAbleObject', true);
+				});
+
 				it('#isBlankNode', () => {
 					expect(kt_node).to.have.property('isBlankNode', true);
 				});
 
-				it('#isAnonymous', () => {
-					expect(kt_node).to.have.property('isAnonymous', true);
+				it('#isAnonymousBlankNode', () => {
+					expect(kt_node).to.have.property('isAnonymousBlankNode', true);
 				});
 
-				it('#isGraphyTerm', () => {
-					expect(kt_node).to.have.property('isGraphyTerm', true);
+				it('#isEphemeralBlankNode', () => {
+					expect(kt_node).to.have.property('isEphemeralBlankNode', false);
 				});
 
 				it('#concise()', () => {
@@ -1058,12 +1234,28 @@ export default class FactorySuite {
 			describe('Plain Literal', () => {
 				const kt_literal = k_factory.literal('value');
 
-				it('#isLiteral', () => {
-					expect(kt_literal).to.have.property('isLiteral', true);
-				});
-
 				it('#isGraphyTerm', () => {
 					expect(kt_literal).to.have.property('isGraphyTerm', true);
+				});
+
+				it('#isAbleGraph', () => {
+					expect(kt_literal).to.have.property('isAbleGraph', false);
+				});
+
+				it('#isAbleSubject', () => {
+					expect(kt_literal).to.have.property('isAbleSubject', false);
+				});
+
+				it('#isAblePredicate', () => {
+					expect(kt_literal).to.have.property('isAblePredicate', false);
+				});
+
+				it('#isAbleObject', () => {
+					expect(kt_literal).to.have.property('isAbleObject', true);
+				});
+
+				it('#isLiteral', () => {
+					expect(kt_literal).to.have.property('isLiteral', true);
 				});
 
 				it('#concise()', () => {
@@ -1126,12 +1318,28 @@ export default class FactorySuite {
 			describe('Languaged Literal', () => {
 				const kt_literal = k_factory.literal('value', 'en');
 
-				it('#isLiteral', () => {
-					expect(kt_literal).to.have.property('isLiteral', true);
-				});
-
 				it('#isGraphyTerm', () => {
 					expect(kt_literal).to.have.property('isGraphyTerm', true);
+				});
+
+				it('#isAbleGraph', () => {
+					expect(kt_literal).to.have.property('isAbleGraph', false);
+				});
+
+				it('#isAbleSubject', () => {
+					expect(kt_literal).to.have.property('isAbleSubject', false);
+				});
+
+				it('#isAblePredicate', () => {
+					expect(kt_literal).to.have.property('isAblePredicate', false);
+				});
+
+				it('#isAbleObject', () => {
+					expect(kt_literal).to.have.property('isAbleObject', true);
+				});
+
+				it('#isLiteral', () => {
+					expect(kt_literal).to.have.property('isLiteral', true);
 				});
 
 				it('#concise()', () => {
@@ -1199,12 +1407,28 @@ export default class FactorySuite {
 				};
 				const kt_literal = k_factory.literal('value', kt_datatype);
 
-				it('#isLiteral', () => {
-					expect(kt_literal).to.have.property('isLiteral', true);
-				});
-
 				it('#isGraphyTerm', () => {
 					expect(kt_literal).to.have.property('isGraphyTerm', true);
+				});
+
+				it('#isAbleGraph', () => {
+					expect(kt_literal).to.have.property('isAbleGraph', false);
+				});
+
+				it('#isAbleSubject', () => {
+					expect(kt_literal).to.have.property('isAbleSubject', false);
+				});
+
+				it('#isAblePredicate', () => {
+					expect(kt_literal).to.have.property('isAblePredicate', false);
+				});
+
+				it('#isAbleObject', () => {
+					expect(kt_literal).to.have.property('isAbleObject', true);
+				});
+
+				it('#isLiteral', () => {
+					expect(kt_literal).to.have.property('isLiteral', true);
 				});
 
 				it('#concise()', () => {
@@ -1275,26 +1499,46 @@ export default class FactorySuite {
 				const kt_object = k_factory.literal('value', kt_datatype);
 				const kq_quad = k_factory.quad(kt_subject, kt_predicate, kt_object);
 
+				it('#isGraphyTerm', () => {
+					expect(kq_quad).to.have.property('isGraphyTerm', true);
+				});
+
 				it('#isGraphyQuad', () => {
 					expect(kq_quad).to.have.property('isGraphyQuad', true);
 				});
 
+				it('#isAbleGraph', () => {
+					expect(kq_quad).to.have.property('isAbleGraph', false);
+				});
+
+				it('#isAbleSubject', () => {
+					expect(kq_quad).to.have.property('isAbleSubject', true);
+				});
+
+				it('#isAblePredicate', () => {
+					expect(kq_quad).to.have.property('isAblePredicate', false);
+				});
+
+				it('#isAbleObject', () => {
+					expect(kq_quad).to.have.property('isAbleObject', true);
+				});
+
 				it('#concise()', () => {
-					expect(kq_quad.concise()).to.eql([
-						'_:subject',
-						'>'+p_iri_tests+'predicate',
-						`^>${p_iri_tests}datatype"value`,
-						'*',
-					]);
+					expect(kq_quad.concise()).to.eql(
+						'*'
+						+'\t_:subject'
+						+'\r>'+p_iri_tests+'predicate'
+						+`\n^>${p_iri_tests}datatype"value`
+					);
 				});
 
 				it('#concise(h_prefixes)', () => {
-					expect(kq_quad.concise(h_prefixes)).to.eql([
-						'_:subject',
-						'tests:predicate',
-						`^tests:datatype"value`,
-						'*',
-					]);
+					expect(kq_quad.concise(h_prefixes)).to.eql(
+						'*'
+						+'\t_:subject'
+						+'\rtests:predicate'
+						+`\n^tests:datatype"value`
+					);
 				});
 
 				it('#terse()', () => {
@@ -1311,6 +1555,8 @@ export default class FactorySuite {
 
 				it('#isolate()', () => {
 					expect(kq_quad.isolate()).to.eql({
+						termType: 'Quad',
+						value: '',
 						subject: {
 							termType: 'BlankNode',
 							value: 'subject',
@@ -1353,6 +1599,8 @@ export default class FactorySuite {
 
 				it('#equals(similar)', () => {
 					expect(kq_quad.equals({
+						termType: 'Quad',
+						value: '',
 						subject: {
 							termType: 'BlankNode',
 							value: 'subject',
@@ -1390,26 +1638,46 @@ export default class FactorySuite {
 				const kt_graph = k_factory.namedNode(p_iri_tests+'graph');
 				const kq_quad = k_factory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
 
+				it('#isGraphyTerm', () => {
+					expect(kq_quad).to.have.property('isGraphyTerm', true);
+				});
+
 				it('#isGraphyQuad', () => {
 					expect(kq_quad).to.have.property('isGraphyQuad', true);
 				});
 
+				it('#isAbleGraph', () => {
+					expect(kq_quad).to.have.property('isAbleGraph', false);
+				});
+
+				it('#isAbleSubject', () => {
+					expect(kq_quad).to.have.property('isAbleSubject', true);
+				});
+
+				it('#isAblePredicate', () => {
+					expect(kq_quad).to.have.property('isAblePredicate', false);
+				});
+
+				it('#isAbleObject', () => {
+					expect(kq_quad).to.have.property('isAbleObject', true);
+				});
+
 				it('#concise()', () => {
-					expect(kq_quad.concise()).to.eql([
-						'_:subject',
-						'>'+p_iri_tests+'predicate',
-						`^>${p_iri_tests}datatype"value`,
-						'>'+p_iri_tests+'graph',
-					]);
+					expect(kq_quad.concise()).to.eql(
+						'>'+p_iri_tests+'graph'
+						+'\t_:subject'
+						+'\r>'+p_iri_tests+'predicate'
+						+`\n^>${p_iri_tests}datatype"value`
+					);
 				});
 
 				it('#concise(h_prefixes)', () => {
-					expect(kq_quad.concise(h_prefixes)).to.eql([
-						'_:subject',
-						'tests:predicate',
-						`^tests:datatype"value`,
-						'tests:graph',
-					]);
+					expect(kq_quad.concise(h_prefixes)).to.eql(
+						'tests:graph'
+						+'\t_:subject'
+						+'\rtests:predicate'
+						+`\n^tests:datatype"value`
+					);
 				});
 
 				it('#terse()', () => {
@@ -1426,6 +1694,8 @@ export default class FactorySuite {
 
 				it('#isolate()', () => {
 					expect(kq_quad.isolate()).to.eql({
+						termType: 'Quad',
+						value: '',
 						subject: {
 							termType: 'BlankNode',
 							value: 'subject',
@@ -1509,7 +1779,7 @@ export default class FactorySuite {
 
 			// RDFJS Data Model test suite
 			// the data test suite is currently in disagreement over falsy Term values and the graph component of `Triple`
-			require('@rdfjs/data-model/test')(k_factory);
+			rdfjsDataModelTester(k_factory);
 		});
 	}
 }

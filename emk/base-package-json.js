@@ -11,5 +11,11 @@ module.exports = {
 	main: 'main.js',
 	module: 'main.mjs',
 	typings: 'main.d.ts',
+	exports: {
+		'.': {
+			require: './main.js',
+			default: './main.mjs',
+		},
+	},
 	dependencies: {},
 };

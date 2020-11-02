@@ -218,7 +218,7 @@ export {
 	const R_COMPRESS = /^(.*?)([^/#]*)$/;
 @;
 
-@> curi_prefix_cache()
+@> curie_prefix_cache()
 	// ref cache
 	let g_cache = h_prefixes[SI_PREFIX_CACHE];
 
@@ -248,7 +248,17 @@ export {
 
 // attempt to turn an iri into a terse prefixed name
 export const terse = (p_iri, h_prefixes) => {
-	@{curi_prefix_cache()}
+	@{curie_prefix_cache()}
+	// base IRI exists 
+	else if(SI_PREFIX_BASE in h_prefixes) {
+		// ref base IRI
+		const p_base = h_prefixes[SI_PREFIX_BASE];
+
+		// named node can be turned into relative IRI
+		if(p_iri.startsWith(p_base)) {
+			return '<'+p_iri.slice(p_base.length)+'>';
+		}
+	}
 	// cache does not exist
 	else {
 		// best prefix id
@@ -296,7 +306,7 @@ export const terse = (p_iri, h_prefixes) => {
 
 // attempt to turn an iri into a concise prefixed name
 export const concise = (p_iri, h_prefixes={}) => {
-	@{curi_prefix_cache()}
+	@{curie_prefix_cache()}
 	// cache does not exists
 	else {
 		// best prefix id
@@ -338,7 +348,7 @@ export function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 
 		// blank node
 		case '_': {
-			// ephemeral hint
+			// anonymous or ephemeral hint
 			if(sc1_in.length <= 2 || '#' === sc1_in[2]) {
 				return (new EphemeralBlankNode())[b_verbose? 'verbose': 'terse']();
 			}
@@ -395,6 +405,13 @@ export {
 
 @$ R_DECLARE = /^\s*class\s*([^\s]+)\s*(?:extends\s*([^\s]+)\s*)/;
 
+@$ declare_properties = function*(h_properties={}, sj_target='gp_self') {
+	for(const [si_property, sj_value] of Object.entries(h_properties || {})) {
+		yield /* syntax: js */ `
+			${sj_target}.${si_property} = ${sj_value};`;
+	}
+};
+
 @def declare(s_declare, g_def)
 	@.{
 		const [, s_class, s_extends] = R_DECLARE.exec(s_declare);
@@ -409,7 +426,7 @@ export {
 		const gp_self = @{s_class}.prototype = Object.create(@{s_extends}.prototype);
 		gp_self.constructor = @{s_class};
 		@*{
-			for(let [si_method, g_method] of Object.entries(g_methods)) {
+			for(const [si_method, g_method] of Object.entries(g_methods)) {
 				if('function' === typeof g_method.value) {
 					yield /* syntax: js */ `
 						gp_self.${si_method} = function ${s_class}$${g_method.value.toString()};
@@ -423,12 +440,7 @@ export {
 					`;
 				}
 			}
-		} @*{
-			for(let [si_property, sj_value] of Object.entries(g_def.properties || {})) {
-				yield /* syntax: js */ `
-					gp_self.${si_property} = ${sj_value};`;
-			}
-		}
+		} @*{yield* declare_properties(g_def.properties)}
 	}
 @;
 
@@ -457,8 +469,34 @@ class GenericTerm {
 	}
 } {
 	const gp_self = GenericTerm.prototype;
-	gp_self.isGraphyTerm = true;
-	gp_self.toString = gp_self.valueOf;
+	@*{yield* declare_properties({
+		isGraphyTerm: /* syntax: js */ `true`,
+		toString: /* syntax: js */ `gp_self.valueOf`,
+		isGraphyQuad:          /* syntax: js */ `false`,
+		isAbleGraph:           /* syntax: js */ `false`,
+		isAbleSubject:         /* syntax: js */ `false`,
+		isAblePredicate:       /* syntax: js */ `false`,
+		isAbleObject:          /* syntax: js */ `false`,
+		isDefaultGraph:        /* syntax: js */ `false`,
+		isNode:                /* syntax: js */ `false`,
+		isNamedNode:           /* syntax: js */ `false`,
+		isRelativeNamedNode:   /* syntax: js */ `false`,
+		isRdfTypeAlias:        /* syntax: js */ `false`,
+		isBlankNode:           /* syntax: js */ `false`,
+		isAnonymousBlankNode:  /* syntax: js */ `false`,
+		isEphemeralBlankNode:  /* syntax: js */ `false`,
+		isLiteral:             /* syntax: js */ `false`,
+		isLanguagedLiteral:    /* syntax: js */ `false`,
+		isDatatypedLiteral:    /* syntax: js */ `false`,
+		isSimpleLiteral:       /* syntax: js */ `false`,
+		isNumericLiteral:      /* syntax: js */ `false`,
+		isIntegerLiteral:      /* syntax: js */ `false`,
+		isDoubleLiteral:       /* syntax: js */ `false`,
+		isDecimalLiteral:      /* syntax: js */ `false`,
+		isBooleanLiteral:      /* syntax: js */ `false`,
+		isInfiniteLiteral:     /* syntax: js */ `false`,
+		isNaNLiteral:          /* syntax: js */ `false`,
+	})}
 }
 
 @{declare(/* syntax: js */ `class NamedNode extends GenericTerm`, {
@@ -492,12 +530,20 @@ class GenericTerm {
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		termType: /* syntax: js */ `'NamedNode'`,
-		isNamedNode: /* syntax: js */ `true`,
-		star: /* syntax: js */ `gp_self.terse`,
+		isAbleGraph:           /* syntax: js */ `true`,
+		isAbleSubject:         /* syntax: js */ `true`,
+		isAblePredicate:       /* syntax: js */ `true`,
+		isAbleObject:          /* syntax: js */ `true`,
+		isNode:                /* syntax: js */ `true`,
+		isNamedNode:           /* syntax: js */ `true`,
+		termType:              /* syntax: js */ `'NamedNode'`,
+		star:                  /* syntax: js */ `gp_self.terse`,
 	},
 })}
 
+/**
+ * A relative named node is a special kind of term takes on the base IRI of the prefix map given at the time it is
+ */
 @{declare(/* syntax: js */ `class RelativeNamedNode extends NamedNode`, {
 	/* eslint-disable no-undef */
 	methods: class {
@@ -518,22 +564,23 @@ class GenericTerm {
 				return '<'+this.value+'>';
 			}
 		}
-
-		verbose() {
-			throw new Error(`Cannot create verbose string (absolute IRI) out of relative IRI: <${this.value}>`);
-		}
-
-		isolate() {
-			throw new Error(`Cannot create isolated term out of relative IRI: <${this.value}>`);
-		}
-
-		hash() {
-			throw new Error(`Cannot create hash digest out of relative IRI: <${this.value}>`);
-		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		isRelative: /* syntax: js */ `true`,
+		...Object.entries({
+			verbose: 'create verbose string (absolute IRI)',
+			isolate: 'create isolated term',
+			hash: 'create hash digest',
+			equals: 'invoke comparison',
+		}).reduce((h_out, [si_method, s_info]) => ({
+			...h_out,
+			[si_method]: /* syntax: js */ `
+				function RelativeNamedNode$${si_method}() {
+					throw new Error(\`Cannot ${s_info} out of relative IRI: <\${this.value}>\`);
+				}
+			`,
+		}), {}),
+		isRelativeNamedNode: /* syntax: js */ `true`,
 		star: /* syntax: js */ `gp_self.terse`,
 	},
 })}
@@ -614,12 +661,13 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		datatype: /* syntax: js */ `KT_XSD_STRING`,
-		language: /* syntax: js */ `''`,
-		termType: /* syntax: js */ `'Literal'`,
-		isLiteral: /* syntax: js */ `true`,
-		isSimple: /* syntax: js */ `false`,
-		star: /* syntax: js */ `gp_self.terse`,
+		isAbleObject:          /* syntax: js */ `true`,
+		isLiteral:             /* syntax: js */ `true`,
+		isSimpleLiteral:       /* syntax: js */ `false`,
+		termType:              /* syntax: js */ `'Literal'`,
+		datatype:              /* syntax: js */ `KT_XSD_STRING`,
+		language:              /* syntax: js */ `''`,
+		star:                  /* syntax: js */ `gp_self.terse`,
 	},
 })}
 
@@ -664,9 +712,9 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		datatype: /* syntax: js */ `KT_RDF_LANG_STRING`,
-		isLanguaged: /* syntax: js */ `true`,
-		star: /* syntax: js */ `gp_self.terse`,
+		isLanguagedLiteral:    /* syntax: js */ `true`,
+		datatype:              /* syntax: js */ `KT_RDF_LANG_STRING`,
+		star:                  /* syntax: js */ `gp_self.terse`,
 	},
 })}
 
@@ -713,8 +761,8 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		isDatatyped: /* syntax: js */ `true`,
-		star: /* syntax: js */ `gp_self.terse`,
+		isDatatypedLiteral:    /* syntax: js */ `true`,
+		star:                  /* syntax: js */ `gp_self.terse`,
 	},
 })}
 
@@ -731,15 +779,15 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 	},
 	/* eslint-disable no-undef */
 	methods: class {
-		get isSimple() {
+		get isSimpleLiteral() {
 			return !this.language && !this.datatype.equals(KT_XSD_STRING);
 		}
 
-		get isLanguaged() {
+		get isLanguagedLiteral() {
 			return !!this.language;
 		}
 
-		get isDatatyped() {
+		get isDatatypedLiteral() {
 			return KT_XSD_STRING.equals(this.datatype);
 		}
 
@@ -798,11 +846,11 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		datatype: /* syntax: js */ `KT_XSD_STRING`,
-		language: /* syntax: js */ `''`,
-		termType: /* syntax: js */ `'Literal'`,
-		isLiteral: /* syntax: js */ `true`,
-		star: /* syntax: js */ `gp_self.terse`,
+		isLiteral:             /* syntax: js */ `true`,
+		termType:              /* syntax: js */ `'Literal'`,
+		datatype:              /* syntax: js */ `KT_XSD_STRING`,
+		language:              /* syntax: js */ `''`,
+		star:                  /* syntax: js */ `gp_self.terse`,
 	},
 })}
 
@@ -826,8 +874,8 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		isSimple: /* syntax: js */ `true`,
-		star: /* syntax: js */ `gp_self.terse`,
+		isSimpleLiteral:       /* syntax: js */ `true`,
+		star:                  /* syntax: js */ `gp_self.terse`,
 	},
 })}
 
@@ -871,10 +919,10 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 		const gp_self = Literal_@{s_type_proper}.prototype;
 		gp_self.datatype = KT_XSD_@{s_type_caps};
 		@- b_boolean
-			gp_self.isBoolean = true;
+			gp_self.isBooleanLiteral = true;
 		@:
-			gp_self.isNumeric = true;
-			gp_self.is@{s_type_proper} = true;
+			gp_self.isNumericLiteral = true;
+			gp_self.is@{s_type_proper}Literal = true;
 		@;
 		gp_self.star = gp_self.terse;
 	}
@@ -1139,7 +1187,7 @@ class Literal_PositiveInfinity extends Literal_Double {
 	}
 } {
 	const gp_self = Literal_PositiveInfinity.prototype;
-	gp_self.isInfinite = true;
+	gp_self.isInfiniteLiteral = true;
 	gp_self.star = gp_self.terse;
 }
 
@@ -1154,7 +1202,7 @@ class Literal_NegativeInfinity extends Literal_Double {
 	}
 } {
 	const gp_self = Literal_NegativeInfinity.prototype;
-	gp_self.isInfinite = true;
+	gp_self.isInfiniteLiteral = true;
 	gp_self.star = gp_self.terse;
 }
 
@@ -1169,7 +1217,7 @@ class Literal_NaN extends Literal_Double {
 	}
 } {
 	const gp_self = Literal_NaN.prototype;
-	gp_self.isNaN = true;
+	gp_self.isNaNLiteral = true;
 	gp_self.star = gp_self.terse;
 }
 
@@ -1177,7 +1225,7 @@ class Literal_NaN extends Literal_Double {
 @{declare(/* syntax: js */ `class BlankNode extends GenericTerm`, {
 	constructor(s_value, b_anonymous=false) {
 		this.value = s_value;
-		this.isAnonymous = b_anonymous;
+		this.isAnonymousBlankNode = b_anonymous;
 	},
 	/* eslint-disable no-undef */
 	methods: class {
@@ -1194,9 +1242,13 @@ class Literal_NaN extends Literal_Double {
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		termType: /* syntax: js */ `'BlankNode'`,
-		isBlankNode: /* syntax: js */ `true`,
-		concise: /* syntax: js */ `gp_self.terse = gp_self.star = gp_self.verbose`,
+		isAbleGraph:           /* syntax: js */ `true`,
+		isAbleSubject:         /* syntax: js */ `true`,
+		isAbleObject:          /* syntax: js */ `true`,
+		isNode:                /* syntax: js */ `true`,
+		isBlankNode:           /* syntax: js */ `true`,
+		termType:              /* syntax: js */ `'BlankNode'`,
+		concise:               /* syntax: js */ `gp_self.terse = gp_self.star = gp_self.verbose`,
 	},
 })}
 
@@ -1233,9 +1285,9 @@ class Literal_NaN extends Literal_Double {
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		isAnonymous: /* syntax: js */ `true`,
-		isEphemeral: /* syntax: js */ `true`,
-		star: /* syntax: js */ `gp_self.terse`,
+		isAnonymousBlankNode:  /* syntax: js */ `true`,
+		isEphemeralBlankNode:  /* syntax: js */ `true`,
+		star:                  /* syntax: js */ `gp_self.terse`,
 	},
 })}
 
@@ -1271,8 +1323,8 @@ class Literal_NaN extends Literal_Double {
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		termType: /* syntax: js */ `'Variable'`,
-		isVariable: /* syntax: js */ `true`,
+		isVariable:            /* syntax: js */ `true`,
+		termType:              /* syntax: js */ `'Variable'`,
 	},
 })}
 
@@ -1302,10 +1354,11 @@ class Literal_NaN extends Literal_Double {
 				return '${require('crypto').createHash('sha256').update('*').digest('base64')}';
 			}
 		`,
-		value: /* syntax: js */ `''`,
-		termType: /* syntax: js */ `'DefaultGraph'`,
-		isDefaultGraph: /* syntax: js */ `true`,
-		terse: /* syntax: js */ `gp_self.star = gp_self.verbose`,
+		isAbleGraph:           /* syntax: js */ `true`,
+		isDefaultGraph:        /* syntax: js */ `true`,
+		termType:              /* syntax: js */ `'DefaultGraph'`,
+		value:                 /* syntax: js */ `''`,
+		terse:                 /* syntax: js */ `gp_self.star = gp_self.verbose`,
 	},
 })}
 
@@ -1355,9 +1408,9 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 
 		concise(h_prefixes={}) {
 			return this.graph.concise(h_prefixes)
-				+'\n'+this.subject.concise(h_prefixes)
+				+'\t'+this.subject.concise(h_prefixes)
 				+'\r'+this.predicate.concise(h_prefixes)
-				+'\t'+this.object.concise(h_prefixes);
+				+'\n'+this.object.concise(h_prefixes);
 		}
 
 		terse(h_prefixes={}) {
@@ -1532,9 +1585,11 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		termType: /* syntax: js */ `'Quad'`,
-		value: /* syntax: js */ `''`,
-		isGraphyQuad: /* syntax: js */ `true`,
+		isGraphyQuad:          /* syntax: js */ `true`,
+		isAbleSubject:         /* syntax: js */ `true`,
+		isAbleObject:          /* syntax: js */ `true`,
+		termType:              /* syntax: js */ `'Quad'`,
+		value:                 /* syntax: js */ `''`,
 	},
 })}
 
@@ -1964,8 +2019,11 @@ export function c1_node(sc1_node, h_prefixes={}) {
 		// prefixed name
 		if(':' !== sc1_node[1]) return p1(sc1_node, h_prefixes);
 
-		// interpret ephemeral hint
-		if('#' === sc1_node[2] || 2 === sc1_node.length) return ephemeral();
+		// anonymous
+		if(2 === sc1_node.length) return blankNode();
+
+		// ephemeral hint
+		if('#' === sc1_node[2]) return ephemeral();
 
 		// create blank node
 		return blankNode(sc1_node.slice(2));
@@ -2005,7 +2063,7 @@ export function c1_node_explicit(sc1_node, h_prefixes={}) {
 		case '`': throw new Error(`The backtick character '\`' is reserved for concise-struct key directives and should not be used in the object position.\nInvalid concise-term string '${sc1_node}'`);
 
 		// prefixed name
-		default: return this.c1_prefixed_node(sc1_node, h_prefixes);
+		default: return c1_prefixed_node(sc1_node, h_prefixes);
 	}
 }
 
@@ -2032,8 +2090,6 @@ export function c1_prefixed_node(sc1_node, h_prefixes={}) {
 		throw new Error(`Prefix not defined: '${s_prefix_id}'`);
 	}
 }
-
-c1_to_nt,
 
 export function* quads(hc4_quads, h_prefixes={}) {
 	for(let sc1_graph in hc4_quads) {
@@ -2344,8 +2400,8 @@ export const DataFactory = {
 
 	adopt,
 
-	raw,
-	unfiltered,
+	raw: g_raw,
+	unfiltered: g_unfiltered,
 
 	number,
 
