@@ -233,6 +233,7 @@ export namespace Term {
 	export interface NumericLiteral extends DatatypedLiteral {
 		readonly isNumericLiteral: true;
 		readonly isBooleanLiteral: false;
+		readonly isNumberPrecise: boolean;
 
 		readonly number: number;
 	}
@@ -243,11 +244,12 @@ export namespace Term {
 		readonly isDecimalLiteral: false;
 		readonly isInfiniteLiteral: false;
 		readonly isNaNLiteral: false;
+		readonly isNumberPrecise: true;
 
 		constructor(value: number | string);
 	}
 
-	export interface DoubleLiteral extends NumericLiteral {
+	interface DoubleLiteral extends NumericLiteral {
 		readonly isIntegerLiteral: false;
 		readonly isDoubleLiteral: true;
 		readonly isDecimalLiteral: false;
@@ -255,9 +257,14 @@ export namespace Term {
 		constructor(value: number | string);
 	}
 
+	export interface NumericDoubleLiteral extends DoubleLiteral {
+		readonly isNumberPrecise: true;
+	}
+
 	export interface InfiniteLiteral extends DoubleLiteral {
 		readonly isInfiniteLiteral: true;
 		readonly isNaNLiteral: false;
+		readonly isNumberPrecise: false;
 
 		readonly boolean: boolean;
 	}
@@ -296,6 +303,7 @@ export namespace Term {
 		readonly isBooleanLiteral: true;
 		readonly isInfiniteLiteral: false;
 		readonly isNaNLiteral: false;
+		readonly isNumberPrecise: true;
 
 		readonly boolean: boolean;
 	}

@@ -2,23 +2,16 @@
 @import '../content/text.read.jmacs'
 
 import crypto from 'crypto';
+import perf_hooks from 'perf_hooks';
+const {performance} = perf_hooks;
 
 // create sha256 hash digest of an input string
 const hash = s => crypto.createHash('sha256').update(s).digest('base64');
 
-
-const R_INVALID_IRIREF = /([\x00-\x20<>"{}|^`\\]|%(?![0-9A-F][0-9A-F]))/g;
-const F_REPLACE_INVALID_IRIREF = (s_, s_v) => {
-	let s_code = s_v.codePointAt(0).toString(16)+'';
-	return s_code.length > 4
-		? '\\U'+s_code.padStart(8, '0')
-		: '\\u'+s_code.padStart(4, '0');
-};
-
-export const clean_iri = p_iri_dirty => p_iri_dirty.replace(R_INVALID_IRIREF, F_REPLACE_INVALID_IRIREF);
-export {
-	clean_iri as cleanIri,
-};
+// clean IRIs by simply replacing invalid IRI characters with unicode escape sequences
+const R_INVALID_IRIREF = /([\x00-\x20"<>\\^`{|}\x7f]|%(?![0-9A-F][0-9A-F]))/g;
+const F_REPLACE_INVALID_IRIREF = (s_, s_v) => '\\u'+s_v.charCodeAt(0).toString(16).padStart(4, 0);
+export const cleanIri = p_iri_dirty => p_iri_dirty.replace(R_INVALID_IRIREF, F_REPLACE_INVALID_IRIREF);
 
 @>> MK_RANGE_PN_HIGH(b_extend=false)
 	@// #x00B7
@@ -137,7 +130,7 @@ const RT_AVOID_PNAME_NS = /@{MK_RT_AVOID_PNAME_NS()}/;
 const RT_AVOID_PNAME_LOCAL = /@{MK_RT_AVOID_PNAME_LOCAL()}/;
 
 // absolute iri tester
-const RT_IRI_ABSOLUTE = /^[A-Za-z]/;
+const RT_IRI_ABSOLUTE = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 
 const RT_BOOLEAN_TRUE = /^([Tt](rue)?|TRUE)$/;
 const RT_BOOLEAN_FALSE = /^([Ff](alse)?|FALSE)$/;
@@ -146,21 +139,19 @@ const S_UUID_V4 = 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx';
 const R_UUID_V4 = /[xy]/g;
 
 export const uuidv4 = () => {
-	let dt_now = Date.now();
-	if('undefined' !== typeof performance) dt_now += performance.now();
+	let dt_now = Date.now()+performance.now();
 	return S_UUID_V4.replace(R_UUID_V4, (s) => {
-		let x_r = (dt_now + (Math.random()*16)) % 16 | 0;
+		const x_r = (dt_now + (Math.random()*16)) % 16 | 0;
 		dt_now = Math.floor(dt_now / 16);
 		return ('x' === s? x_r: ((x_r & 0x3) | 0x8)).toString(16);
 	});
 };
 
 
-// key to access cache on a prefix mapping
-export const SI_PREFIX_CACHE = ' (cache)';
-
-// key to access base
-export const SI_PREFIX_BASE = ' (base)';
+// keys to access special properties on a prefix mapping; these are strings instead
+//   of Symbols so that keys are reproducible
+export const SI_PREFIX_CACHE = '.cache';
+export const SI_PREFIX_BASE = '.base';
 
 // escape characters for compiling regexes
 const R_REGEX_ESCAPE = /[$^*()+[\\{}|.?]/g;
@@ -170,16 +161,16 @@ const SR_PN_LOCAL = '(@{(PN_LOCAL(true)+'').replace(/['\\]/g, '\\$&')})$';
 
 
 // create a cache on a prefix mapping
-export function cache_prefixes(h_prefixes, b_terse=false) {
+export function cachePrefixes(h_prefixes, b_terse=false) {
 	// regex cache string building
-	let a_cache = [];
+	const a_cache = [];
 
 	// inverse mappings
-	let h_inverse = {};
+	const h_inverse = {};
 
 	// each prefix/iri pair
-	for(let si_prefix in h_prefixes) {
-		let p_iri = h_prefixes[si_prefix];
+	for(const si_prefix in h_prefixes) {
+		const p_iri = h_prefixes[si_prefix];
 
 		// prefix would make an invalid namespace; skip
 		if(b_terse && RT_AVOID_PNAME_NS.test(si_prefix)) continue;
@@ -191,25 +182,38 @@ export function cache_prefixes(h_prefixes, b_terse=false) {
 		a_cache.push(p_iri.replace(R_REGEX_ESCAPE, '\\$&'));
 	}
 
-	// no prefixes; forgo cache
-	if(!a_cache.length) return h_prefixes;
+	// prefixes exist; create cache
+	if(a_cache.length) {
+		// reverse sort IRIs so that longest prefix gets chosen
+		a_cache.sort().reverse();
 
-	// save cache object
-	Object.defineProperty(h_prefixes, SI_PREFIX_CACHE, {
-		enumerable: false,
-		value: {
-			_r_iris: new RegExp(`^(${a_cache.join('|')})${SR_PN_LOCAL}`, 'u'),
-			_h_inverse: h_inverse,
-		},
-	});
+		// save cache object
+		Object.defineProperty(h_prefixes, SI_PREFIX_CACHE, {
+			enumerable: false,
+			value: {
+				_r_iris: new RegExp(`^(${a_cache.join('|')})${SR_PN_LOCAL}`, 'u'),
+				_h_inverse: h_inverse,
+			},
+		});
+	}
 
 	// freeze object
 	return Object.freeze(h_prefixes);
 }
 
-export {
-	cache_prefixes as cachePrefixes,
-};
+// set base IRI on a prefix mapping
+export function setBaseIri(h_prefixes, p_base) {
+	if(!RT_IRI_ABSOLUTE.test(p_base)) {
+		throw new Error(`Base IRI must be an absolute IRI; received <${p_base}>`);
+	}
+
+	Object.defineProperty(h_prefixes, SI_PREFIX_BASE, {
+		enumerable: false,
+		value: p_base,
+	});
+
+	return h_prefixes;
+}
 
 
 @$ B_OPTIMIZE_PREFIX_COMPRESSION = false;
@@ -220,16 +224,16 @@ export {
 
 @> curie_prefix_cache()
 	// ref cache
-	let g_cache = h_prefixes[SI_PREFIX_CACHE];
+	const g_cache = h_prefixes[SI_PREFIX_CACHE];
 
 	// cache exists
 	if(g_cache) {
 		@- B_OPTIMIZE_PREFIX_COMPRESSION
 			// iri compression
-			let m_compress = R_COMPRESS.exec(p_iri);
+			const m_compress = R_COMPRESS.exec(p_iri);
 			if(m_compress) {
-				let p_compress = m_compress[1];
-				let h_inverse = g_cache._h_inverse;
+				const p_compress = m_compress[1];
+				const h_inverse = g_cache._h_inverse;
 				if(p_compress in h_inverse) {
 					return h_inverse[p_compress]+':'+m_compress[2];
 				}
@@ -237,7 +241,7 @@ export {
 		@;
 
 		// iri matching
-		let m_iri = g_cache._r_iris.exec(p_iri);
+		const m_iri = g_cache._r_iris.exec(p_iri);
 
 		// prefix mapped; compress
 		if(m_iri) {
@@ -249,16 +253,6 @@ export {
 // attempt to turn an iri into a terse prefixed name
 export const terse = (p_iri, h_prefixes) => {
 	@{curie_prefix_cache()}
-	// base IRI exists 
-	else if(SI_PREFIX_BASE in h_prefixes) {
-		// ref base IRI
-		const p_base = h_prefixes[SI_PREFIX_BASE];
-
-		// named node can be turned into relative IRI
-		if(p_iri.startsWith(p_base)) {
-			return '<'+p_iri.slice(p_base.length)+'>';
-		}
-	}
 	// cache does not exist
 	else {
 		// best prefix id
@@ -269,8 +263,8 @@ export const terse = (p_iri, h_prefixes) => {
 		let nl_best_prefix_iri = -1;
 
 		// each prefix in hash
-		for(let si_prefix in h_prefixes) {
-			let p_prefix_iri = h_prefixes[si_prefix];
+		for(const si_prefix in h_prefixes) {
+			const p_prefix_iri = h_prefixes[si_prefix];
 
 			// target iri starts with prefix iri and its longer than the current best
 			if(0 === p_iri.indexOf(p_prefix_iri) && p_prefix_iri.length > nl_best_prefix_iri
@@ -278,7 +272,7 @@ export const terse = (p_iri, h_prefixes) => {
 				&& !RT_AVOID_PNAME_NS.test(si_prefix)
 			) {
 				// compute suffix
-				let s_suffix = p_iri.slice(p_prefix_iri.length);
+				const s_suffix = p_iri.slice(p_prefix_iri.length);
 
 				// suffix is okay to use
 				if(!RT_AVOID_PNAME_LOCAL.test(s_suffix)) {
@@ -300,6 +294,17 @@ export const terse = (p_iri, h_prefixes) => {
 		}
 	}
 
+	// base IRI exists 
+	if(SI_PREFIX_BASE in h_prefixes) {
+		// ref base IRI
+		const p_base = h_prefixes[SI_PREFIX_BASE];
+
+		// named node can be turned into relative IRI
+		if(p_iri.startsWith(p_base)) {
+			return '<'+p_iri.slice(p_base.length)+'>';
+		}
+	}
+
 	// fallback
 	return '<'+p_iri+'>';
 };
@@ -316,8 +321,8 @@ export const concise = (p_iri, h_prefixes={}) => {
 		let nl_best_prefix_iri = -1;
 
 		// each prefix in hash
-		for(let s_prefix_id in h_prefixes) {
-			let p_prefix_iri = h_prefixes[s_prefix_id];
+		for(const s_prefix_id in h_prefixes) {
+			const p_prefix_iri = h_prefixes[s_prefix_id];
 
 			// target iri starts with prefix iri and its longer than the current best
 			if(p_iri.startsWith(p_prefix_iri) && p_prefix_iri.length > nl_best_prefix_iri) {
@@ -363,13 +368,13 @@ export function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 
 		// languaged literal
 		case '@': {
-			let i_contents = sc1_in.indexOf('"');
+			const i_contents = sc1_in.indexOf('"');
 			return JSON.stringify(sc1_in.slice(i_contents+1))+sc1_in.slice(0, i_contents);
 		}
 
 		// datatyped literal
 		case '^': {
-			let i_contents = sc1_in.indexOf('"');
+			const i_contents = sc1_in.indexOf('"');
 			return JSON.stringify(sc1_in.slice(i_contents+1))+'^^'+c1_to_nt(sc1_in.slice(1, i_contents), h_prefixes, b_verbose);
 		}
 
@@ -386,7 +391,7 @@ export function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 			if('a' === sc1_in) return b_verbose? '<@{P_IRI_RDF}type>': 'a';
 
 			// deconstruct prefixed name
-			let [, si_prefix, s_suffix] = R_C1N_DECONSTRUCT.exec(sc1_in);
+			const [, si_prefix, s_suffix] = R_C1N_DECONSTRUCT.exec(sc1_in);
 
 			// avoid illegal prefixed name parts
 			if(b_verbose || RT_AVOID_PNAME_LOCAL.test(s_suffix) || RT_AVOID_PNAME_NS.test(si_prefix)) {
@@ -412,37 +417,73 @@ export {
 	}
 };
 
-@def declare(s_declare, g_def)
-	@.{
-		const [, s_class, s_extends] = R_DECLARE.exec(s_declare);
-		const sj_constructor = Object.hasOwnProperty.call(g_def, 'constructor')
-			? g_def.constructor.toString().replace(/^constructor/, '')
-			: /* syntax: js */ `() {}`;
+@$ declare = function*(s_declare, g_def) {
+	const [, s_class, s_extends] = R_DECLARE.exec(s_declare);
 
+	// defer defines
+	const h_defer_defines = g_def.descriptors || {};
+	let sj_spread = null;
+	if('@spread' in h_defer_defines) {
+		sj_spread = h_defer_defines['@spread'];
+		delete h_defer_defines['@spread'];
+	}
+
+	// has constructor, use function
+	let b_function = false;
+	if(Object.hasOwnProperty.call(g_def, 'constructor')) {
+		b_function = true;
+
+		const sj_constructor = g_def.constructor.toString().replace(/^constructor/, '');
+			// : /* syntax: js */ `() {}`;
+		
+		yield /* syntax: js */ `function ${s_class}${sj_constructor} {
+			const gp_self = ${s_class}.prototype = Object.create(${s_extends}.prototype);
+			gp_self.constructor = ${s_class};
+		`;
+
+		// method definitions
 		const g_methods = Object.getOwnPropertyDescriptors(g_def.methods? g_def.methods.prototype : {});
 		delete g_methods.constructor;
-	}
-	function @{s_class}@{sj_constructor} {
-		const gp_self = @{s_class}.prototype = Object.create(@{s_extends}.prototype);
-		gp_self.constructor = @{s_class};
-		@*{
-			for(const [si_method, g_method] of Object.entries(g_methods)) {
-				if('function' === typeof g_method.value) {
-					yield /* syntax: js */ `
-						gp_self.${si_method} = function ${s_class}$${g_method.value.toString()};
-					`;
-				}
-				else if('function' === typeof g_method.get) {
-					yield /* syntax: j */ `
-						Object.defineProperty(gp_self, '${si_method}', {
-							get${g_method.get.toString().replace(/^get [^\(]+/, '')},
-						})
-					`;
-				}
+
+		// methods
+		for(const [si_method, g_method] of Object.entries(g_methods)) {
+			if('function' === typeof g_method.value) {
+				yield /* syntax: js */ `
+					gp_self.${si_method} = function ${s_class}$${g_method.value.toString()};
+				`;
 			}
-		} @*{yield* declare_properties(g_def.properties)}
+			else if('function' === typeof g_method.get) {
+				h_defer_defines[si_method] = /* syntax: js */ `
+					get${g_method.get.toString().replace(/^get [^\(]+/, '')},
+				`;
+			}
+		}
 	}
-@;
+	// echo class
+	else {
+		yield /* syntax: js */ `${s_declare} ${(g_def.methods+'').replace(/^\s*class\s*/, '')} {
+			const gp_self = ${s_class}.prototype;
+		`;
+	}
+
+	const a_deferred = Object.keys(h_defer_defines);
+	if(a_deferred.length > 1 || sj_spread) {
+		yield /* syntax: js */ `Object.defineProperties(gp_self, {\n`;
+		if(sj_spread) yield sj_spread;
+		for(const [si_prop, sj_define] of Object.entries(h_defer_defines)) {
+			yield /* syntax: js */ `${si_prop}: {${sj_define}},\n`;
+		}
+		yield /* syntax: js.method */ `});\n`;
+	}
+	else if(1 === a_deferred.length) {
+		const si_prop = a_deferred[0];
+		yield /* syntax: j */ `Object.defineProperty(gp_self, '${si_prop}', {${h_defer_defines[si_prop]}});\n`;
+	}
+
+	yield* declare_properties(g_def.properties)
+
+	yield /* syntax: js.method */ `\n}`;
+};
 
 class GenericTerm {
 	valueOf() {
@@ -463,10 +504,6 @@ class GenericTerm {
 	replace(w_pattern, w_replace) {
 		return new this.constructor(this.value.replace(w_pattern, w_replace));
 	}
-
-	replaceAll(w_pattern, w_replace) {
-		return new this.constructor(this.value.replaceAll(w_pattern, w_replace));
-	}
 } {
 	const gp_self = GenericTerm.prototype;
 	@*{yield* declare_properties({
@@ -477,10 +514,12 @@ class GenericTerm {
 		isAbleSubject:         /* syntax: js */ `false`,
 		isAblePredicate:       /* syntax: js */ `false`,
 		isAbleObject:          /* syntax: js */ `false`,
+		isAbleDatatype:        /* syntax: js */ `false`,
 		isDefaultGraph:        /* syntax: js */ `false`,
 		isNode:                /* syntax: js */ `false`,
 		isNamedNode:           /* syntax: js */ `false`,
-		isRelativeNamedNode:   /* syntax: js */ `false`,
+		isAbsoluteIri:         /* syntax: js */ `false`,
+		isRelativeIri:         /* syntax: js */ `false`,
 		isRdfTypeAlias:        /* syntax: js */ `false`,
 		isBlankNode:           /* syntax: js */ `false`,
 		isAnonymousBlankNode:  /* syntax: js */ `false`,
@@ -499,7 +538,7 @@ class GenericTerm {
 	})}
 }
 
-@{declare(/* syntax: js */ `class NamedNode extends GenericTerm`, {
+@*{yield* declare(/* syntax: js */ `class NamedNode extends GenericTerm`, {
 	constructor(s_iri) {
 		this.value = s_iri;
 	},
@@ -534,8 +573,10 @@ class GenericTerm {
 		isAbleSubject:         /* syntax: js */ `true`,
 		isAblePredicate:       /* syntax: js */ `true`,
 		isAbleObject:          /* syntax: js */ `true`,
+		isAbleDatatype:        /* syntax: js */ `true`,
 		isNode:                /* syntax: js */ `true`,
 		isNamedNode:           /* syntax: js */ `true`,
+		isAbsoluteIri:         /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'NamedNode'`,
 		star:                  /* syntax: js */ `gp_self.terse`,
 	},
@@ -544,7 +585,7 @@ class GenericTerm {
 /**
  * A relative named node is a special kind of term takes on the base IRI of the prefix map given at the time it is
  */
-@{declare(/* syntax: js */ `class RelativeNamedNode extends NamedNode`, {
+@*{yield* declare(/* syntax: js */ `class RelativeIri extends NamedNode`, {
 	/* eslint-disable no-undef */
 	methods: class {
 		concise(h_prefixes={}) {
@@ -552,7 +593,7 @@ class GenericTerm {
 				return (new NamedNode(h_prefixes[SI_PREFIX_BASE]+this.value)).concise(h_prefixes);
 			}
 			else {
-				throw new Error(`Cannot create concise string out of relative IRI: '${this.value}'`);
+				throw new Error(`Cannot create concise string out of relative IRI: '${this.value}' since prefix map argument has no base IRI`);
 			}
 		}
 
@@ -564,24 +605,22 @@ class GenericTerm {
 				return '<'+this.value+'>';
 			}
 		}
-	},
-	/* eslint-enable no-undef */
+	}, /* eslint-enable no-undef */
 	properties: {
 		...Object.entries({
 			verbose: 'create verbose string (absolute IRI)',
-			isolate: 'create isolated term',
 			hash: 'create hash digest',
-			equals: 'invoke comparison',
 		}).reduce((h_out, [si_method, s_info]) => ({
 			...h_out,
 			[si_method]: /* syntax: js */ `
-				function RelativeNamedNode$${si_method}() {
+				function RelativeIri$${si_method}() {
 					throw new Error(\`Cannot ${s_info} out of relative IRI: <\${this.value}>\`);
 				}
-			`,
+			`.trim(),
 		}), {}),
-		isRelativeNamedNode: /* syntax: js */ `true`,
-		star: /* syntax: js */ `gp_self.terse`,
+		isAbsoluteIri:         /* syntax: js */ `false`,
+		isRelativeIri:         /* syntax: js */ `true`,
+		star:                  /* syntax: js */ `gp_self.terse`,
 	},
 })}
 
@@ -602,8 +641,9 @@ const KT_RDF_NIL = new NamedNode('@{P_IRI_RDF}nil');
 const KT_XSD_DATE = new NamedNode('@{P_IRI_XSD}date');
 const KT_XSD_DATETIME = new NamedNode('@{P_IRI_XSD}dateTime');
 const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
+const G_ISOLATE_XSD_STRING = KT_XSD_STRING.isolate();
 
-@{declare(/* syntax: js */ `class GenericLiteral extends GenericTerm`, {
+@*{yield* declare(/* syntax: js */ `class GenericLiteral extends GenericTerm`, {
 	/* eslint-disable no-undef */
 	methods: class {
 		equals(z_other) {
@@ -632,7 +672,7 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 
 		terse(h_prefixes={}) {
 			// turn into terse
-			let st_datatype = this.datatype.terse(h_prefixes);
+			const st_datatype = this.datatype.terse(h_prefixes);
 
 			// stringify literal
 			return JSON.stringify(this.value)
@@ -663,15 +703,17 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 	properties: {
 		isAbleObject:          /* syntax: js */ `true`,
 		isLiteral:             /* syntax: js */ `true`,
-		isSimpleLiteral:       /* syntax: js */ `false`,
 		termType:              /* syntax: js */ `'Literal'`,
 		datatype:              /* syntax: js */ `KT_XSD_STRING`,
 		language:              /* syntax: js */ `''`,
 		star:                  /* syntax: js */ `gp_self.terse`,
+		boolean:               /* syntax: js */ `NaN`,
+		number:                /* syntax: js */ `NaN`,
+		bigint:                /* syntax: js */ `NaN`,
 	},
 })}
 
-@{declare(/* syntax: js */ `class LanguagedLiteral extends GenericLiteral`, {
+@*{yield* declare(/* syntax: js */ `class LanguagedLiteral extends GenericLiteral`, {
 	constructor(s_value, s_lang) {
 		this.value = s_value;
 
@@ -702,12 +744,12 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 			};
 		}
 
-		replace(w_pattern, w_replace) {
-			return new LanguagedLiteral(this.value.replace(w_pattern, w_replace), this.language);
+		hash() {
+			return hash('@'+this.language+'"'+this.value);
 		}
 
-		replaceAll(w_pattern, w_replace) {
-			return new LanguagedLiteral(this.value.replaceAll(w_pattern, w_replace), this.language);
+		replace(w_pattern, w_replace) {
+			return new LanguagedLiteral(this.value.replace(w_pattern, w_replace), this.language);
 		}
 	},
 	/* eslint-enable no-undef */
@@ -719,68 +761,189 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 })}
 
 
-@{declare(/* syntax: js */ `class DatatypedLiteral extends GenericLiteral`, {
-	/* eslint-disable no-undef */
-	methods: class {
-		verbose() {
-			return JSON.stringify(this.value)+'^^'+this.datatype.verbose();
-		}
+class DatatypedLiteral extends GenericLiteral {
+	verbose() {
+		return JSON.stringify(this.value)+'^^'+this.datatype.verbose();
+	}
 
-		concise(h_prefixes={}) {
-			return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
-		}
+	concise(h_prefixes={}) {
+		return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
+	}
 
-		terse(h_prefixes={}) {
-			// turn into terse
-			let st_datatype = this.datatype.terse(h_prefixes);
+	terse(h_prefixes={}) {
+		// turn into terse
+		const st_datatype = this.datatype.terse(h_prefixes);
 
-			// stringify literal
-			return JSON.stringify(this.value)+'^^'+st_datatype;
-		}
+		// stringify literal
+		return JSON.stringify(this.value)+'^^'+st_datatype;
+	}
 
-		isolate() {
-			return {
-				termType: 'Literal',
-				value: this.value,
-				language: this.language,
-				datatype: this.datatype.isolate(),
-			};
-		}
+	isolate() {
+		return {
+			termType: 'Literal',
+			value: this.value,
+			language: this.language,
+			datatype: this.datatype.isolate(),
+		};
+	}
 
-		hash() {
-			return hash('^>'+this.datatype.value+'"'+this.value);
-		}
+	hash() {
+		return hash('^>'+this.datatype.value+'"'+this.value);
+	}
 
-		replace(w_pattern, w_replace) {
-			return new ExplicitlyDatatypedLiteral(this.value.replace(w_pattern, w_replace), this.datatype);
-		}
-
-		replaceAll(w_pattern, w_replace) {
-			return new ExplicitlyDatatypedLiteral(this.value.replaceAll(w_pattern, w_replace), this.datatype);
-		}
-	},
-	/* eslint-enable no-undef */
-	properties: {
+	replace(w_pattern, w_replace) {
+		return new ExplicitlyDatatypedLiteral(this.value.replace(w_pattern, w_replace), this.datatype);
+	}
+} {
+	const gp_self = DatatypedLiteral.prototype;
+	@*{yield* declare_properties({
 		isDatatypedLiteral:    /* syntax: js */ `true`,
 		star:                  /* syntax: js */ `gp_self.terse`,
-	},
-})}
+	})}
+}
 
-@{declare(/* syntax: js */ `class ExplicitlyDatatypedLiteral extends DatatypedLiteral`, {
+
+const RT_ANY_INTEGER = /^[-+]?[0-9]+$/;
+const RT_SAFE_INTEGER = /^[-+]?[0-9]{1,15}$/;
+const RT_RISKY_INTEGER = /^[-+]?[0-9]{16}$/;
+const RT_DOUBLE = /[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:\.?[eE][+-]?[0-9]+)?/;
+const RT_DECIMAL = /[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)/;
+const XG_MAX_SAFE_INTEGER = BigInt(Number.MAX_SAFE_INTEGER);
+const XG_MIN_SAFE_INTEGER = BigInt(Number.MIN_SAFE_INTEGER);
+
+const H_VAGUE_LITERAL_DESCRIPTORS = {
+	isBooleanLiteral: {
+		get() {
+			return KT_XSD_BOOLEAN.equals(this.datatype);
+		},
+	},
+
+	isIntegerLiteral: {
+		get() {
+			return KT_XSD_INTEGER.equals(this.datatype);
+		},
+	},
+	
+	isDoubleLiteral: {
+		get() {
+			return KT_XSD_DOUBLE.equals(this.datatype);
+		},
+	},
+	
+	isDecimalLiteral: {
+		get() {
+			return KT_XSD_DECIMAL.equals(this.datatype);
+		},
+	},
+
+	boolean: {
+		get() {
+			if(!this.isBooleanLiteral) return NaN;
+			const s_value = this.value;
+			if('false' === s_value || '0' === s_value) return false;
+			if('true' === s_value || '1' === s_value) return true;
+			return NaN;
+		},
+	},
+
+	isNumericLiteral: {
+		get() {
+			return this.isIntegerLiteral || this.isDoubleLiteral || this.isDecimalLiteral;
+		},
+	},
+
+	isInfiniteLiteral: {
+		get() {
+			return this.isDoubleLiteral && ('INF' === this.value || '-INF' === this.value);
+		},
+	},
+
+	isNaNLiteral: {
+		get() {
+			return this.isDoubleLiteral && ('NaN' === this.value);
+		},
+	},
+
+	number: {
+		get() {
+			const s_value = this.value;
+
+			// integer
+			if(this.isIntegerLiteral) {
+				// totally safe
+				if(RT_SAFE_INTEGER.test(s_value)) return +s_value;
+
+				// risky...
+				if(RT_RISKY_INTEGER.test(s_value)) {
+					const xg_value = BigInt(s_value);
+
+					// ...but safe
+					if(xg_value <= XG_MAX_SAFE_INTEGER && xg_value >= XG_MIN_SAFE_INTEGER) {
+						return +s_value;
+					}
+				}
+			}
+			// double
+			else if(this.isDoubleLiteral) {
+				if(RT_DOUBLE.test(s_value)) return +s_value;
+				if('INF' === s_value) return Infinity;
+				if('-INF' === s_value) return -Infinity;
+			}
+			// decimal
+			else if(this.isDecimalLiteral) {
+				if(RT_DECIMAL.test(s_value)) return +s_value;
+			}
+			// boolean
+			else if(this.isBooleanLiteral) {
+				if('false' === s_value || '0' === s_value) return 0;
+				if('true' === s_value || '1' === s_value) return 1;
+			}
+
+			return NaN;
+		},
+	},
+
+	bigint: {
+		get() {
+			const s_value = this.value;
+
+			// integer
+			if(this.isIntegerLiteral) {
+				if(RT_ANY_INTEGER.test(s_value)) return BigInt(s_value);
+			}
+			// boolean
+			else if(this.isBooleanLiteral) {
+				if('false' === s_value || '0' === s_value) return BigInt(0);
+				if('true' === s_value || '1' === s_value) return BigInt(1);
+			}
+
+			return NaN;
+		},
+	},
+};
+
+
+@*{yield* declare(/* syntax: js */ `class ExplicitlyDatatypedLiteral extends DatatypedLiteral`, {
 	constructor(s_value, kt_datatype) {
 		this.value = s_value;
 		this.datatype = kt_datatype;
 	},
+	descriptors: {
+		'@spread': /* syntax: js.object-literal */ `...H_VAGUE_LITERAL_DESCRIPTORS,\n`,
+	},
 })}
 
-@{declare(/* syntax: js */ `class RawLiteral extends GenericTerm`, {
+@*{yield* declare(/* syntax: js */ `class RawLiteral extends GenericTerm`, {
 	constructor(s_value) {
 		this.value = s_value;
+	},
+	descriptors: {
+		'@spread': /* syntax: js.object-literal */ `...H_VAGUE_LITERAL_DESCRIPTORS,\n`,
 	},
 	/* eslint-disable no-undef */
 	methods: class {
 		get isSimpleLiteral() {
-			return !this.language && !this.datatype.equals(KT_XSD_STRING);
+			return !this.language && KT_XSD_STRING.equals(this.datatype);
 		}
 
 		get isLanguagedLiteral() {
@@ -788,7 +951,7 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 		}
 
 		get isDatatypedLiteral() {
-			return KT_XSD_STRING.equals(this.datatype);
+			return !this.language && !KT_XSD_STRING.equals(this.datatype);
 		}
 
 		equals(z_other) {
@@ -817,7 +980,7 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 
 		terse(h_prefixes={}) {
 			// turn into terse
-			let st_datatype = this.datatype.terse(h_prefixes);
+			const st_datatype = this.datatype.terse(h_prefixes);
 
 			// stringify literal
 			return JSON.stringify(this.value)
@@ -854,7 +1017,7 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 	},
 })}
 
-@{declare(/* syntax: js */ `class SimpleLiteral extends GenericLiteral`, {
+@*{yield* declare(/* syntax: js */ `class SimpleLiteral extends GenericLiteral`, {
 	constructor(s_value) {
 		this.value = s_value;
 	},
@@ -871,6 +1034,19 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 		terse() {
 			return JSON.stringify(this.value);
 		}
+
+		hash() {
+			return hash('"'+this.value);
+		}
+
+		isolate() {
+			return {
+				termType: 'Literal',
+				value: this.value,
+				language: '',
+				datatype: G_ISOLATE_XSD_STRING,
+			};
+		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -881,28 +1057,121 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 
 
 @> literal(s_type, g_config)
-	@.let b_boolean = 'boolean' === s_type;
-	@.let s_arg = (b_boolean? 'b': 'x')+'_value';
-	@.let s_type_caps = s_type.toUpperCase();
-	@.let s_type_proper = s_type_caps.slice(0, 1)+s_type.slice(1);
-	const KT_XSD_@{s_type_caps} = new NamedNode('@{P_IRI_XSD}@{s_type}');
-	class Literal_@{s_type_proper} extends DatatypedLiteral {
-		@//@class
-		static from(s_literal) {
-			let kt = new Literal_@{s_type_proper}(+s_literal);
-			kt.value = s_literal;
-			return kt;
+	@.{
+		const b_boolean = 'boolean' === s_type;
+		const b_integer = 'integer' === s_type;
+		const b_decimal = 'decimal' === s_type;
+		let sj_arg;
+		switch(s_type) {
+			case 'boolean': sj_arg = 'b_value'; break;
+			case 'integer': sj_arg = 'xg_value'; break;
+			case 'double': sj_arg = 'x_value'; break;
+			case 'decimal': sj_arg = 's_value'; break;
 		}
+		const s_type_caps = s_type.toUpperCase();
+		const s_type_proper = s_type_caps.slice(0, 1)+s_type.slice(1);
+	}
+	const KT_XSD_@{s_type_caps} = new NamedNode('@{P_IRI_XSD}@{s_type}');
+	class @{s_type_proper}Literal extends DatatypedLiteral {
+		@//@class
+		static fromString(s_literal) {
+			// empty string
+			if('' === s_literal) {
+				throw new Error('Refusing to serialize empty string as xsd:@{s_type}');
+			}
 
-		constructor(@{s_arg}) {
-			super();
-			this.value = @{s_arg}+'';
 			@- b_boolean
-				this.boolean = @{s_arg};
+				// truthy value
+				if(RT_BOOLEAN_TRUE.test(s_literal)) {
+					return new BooleanLiteral(true);
+				}
+				// falsy value
+				else if(RT_BOOLEAN_FALSE.test(s_literal)) {
+					return new BooleanLiteral(false);
+				}
+
+				// failed to parse
+				throw new Error('Invalid boolean string: '+s_literal);
+			@+ b_integer
+				// parse to number
+				let xg_set;
+				try {
+					xg_set = BigInt(s_literal);
+				}
+				// failed to parse or not an integer
+				catch(e_parse) {
+					throw new Error('Invalid integer string: '+s_literal);
+				}
+
+				return new IntegerLiteral(xg_set);
+			@+ 'decimal' === s_type
+				return new DecimalLiteral(s_literal);
 			@:
-				this.number = @{s_arg};
+				const kt = new @{s_type_proper}Literal(+s_literal);
+				kt.value = s_literal;
+				return kt;
 			@;
 		}
+
+		constructor(@{sj_arg}) {
+			super();
+			this.value = @{sj_arg}+'';
+			@- b_boolean
+				this.boolean = @{sj_arg};
+				this.number = @{sj_arg}? 1: 0;
+				this.bigint = @{sj_arg}? 1n: 0n;
+			@+ b_integer
+				const xg_set = @{sj_arg};
+
+				// within safe integer range
+				if(xg_set <= XG_MAX_SAFE_INTEGER && xg_set >= XG_MIN_SAFE_INTEGER) {
+					this.number = Number(xg_set);
+				}
+				// outside safe range
+				else {
+					this.number = NaN;
+				}
+
+				this.bigint = @{sj_arg};
+			@+ b_decimal
+				// attempt to parse double
+				let x_value = parseFloat(@{sj_arg});
+
+				// parsing worked, but not a decimal
+				if(!Number.isNaN(x_value) && !Number.isFinite(x_value)) {
+					x_value = NaN;
+				}
+
+				// either NaN or double
+				this.number = x_value;
+			@:
+				this.number = @{sj_arg};
+			@;
+		}
+
+		@- b_decimal
+			get isNumberPrecise() {
+				// ref number value
+				const x_value = this.number;
+
+				// nope
+				if(Number.isNaN(x_value)) return false;
+
+				// normalize leading zeroes
+				let s_valid = this.value.replace(/^0+/, '');
+
+				// normalize leading decimal point
+				if('.' === s_valid[0]) s_valid = '0'+s_valid;
+
+				// precision kept
+				if((x_value+'').length === s_valid.length) {
+					return true;
+				}
+
+				// precision lost
+				return false;
+			}
+		@;
 
 		concise(h_prefixes={}) {
 			return '^'+KT_XSD_@{s_type_caps}.concise(h_prefixes)+'"'+this.value;
@@ -916,7 +1185,7 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 			return hash('^>@{P_IRI_XSD}@{s_type}"'+this.value);
 		}
 	} {
-		const gp_self = Literal_@{s_type_proper}.prototype;
+		const gp_self = @{s_type_proper}Literal.prototype;
 		gp_self.datatype = KT_XSD_@{s_type_caps};
 		@- b_boolean
 			gp_self.isBooleanLiteral = true;
@@ -924,16 +1193,19 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 			gp_self.isNumericLiteral = true;
 			gp_self.is@{s_type_proper}Literal = true;
 		@;
+		@- !b_decimal
+			gp_self.isNumberPrecise = true;
+		@;
 		gp_self.star = gp_self.terse;
 	}
 @;
 
 
 @.{
-	let h_literals = {
+	const h_literals = {
 		integer: {
 			construct: s_arg => /* syntax: js */ `
-				let s_type = typeof ${s_arg};
+				const s_type = typeof ${s_arg};
 
 				// a number was given
 				if('number' === s_type) {
@@ -951,24 +1223,15 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 						throw new Error('Number is not an integer: '+${s_arg});
 					}
 
-					return new Literal_Integer(${s_arg});
+					return new IntegerLiteral(BigInt(${s_arg}));
 				}
 				// string
 				else if('string' === s_type) {
-					// empty string
-					if('' === ${s_arg}) {
-						throw new Error('Refusing to serialize empty string as xsd:integer');
-					}
-
-					// parse to number
-					let x_value = +${s_arg};
-
-					// failed to parse or not an integer
-					if(Number.isNaN(x_value) || !Number.isInteger(x_value)) {
-						throw new Error('Invalid integer string: '+${s_arg});
-					}
-
-					return new Literal_Integer(x_value);
+					return IntegerLiteral.fromString(${s_arg});
+				}
+				// bigint
+				else if('bigint' === s_type) {
+					return new IntegerLiteral(${s_arg});
 				}
 				// undefined
 				else if('undefined' === s_type) {
@@ -986,15 +1249,13 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 				}
 			`,
 			terse: /* syntax: js */ `
-				return this.value.includes('e')
-					? \`"\${this.value}"^^<${P_IRI_XSD}integer>\`
-					: this.value;
+				return this.value;
 			`,
 		},
 
 		double: {
 			construct: s_arg => /* syntax: js */ `
-				let s_type = typeof ${s_arg};
+				const s_type = typeof ${s_arg};
 
 				// a number was given
 				if('number' === s_type) {
@@ -1002,15 +1263,15 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 					if(!Number.isFinite(${s_arg})) {
 						// NaN
 						if(Number.isNaN(${s_arg})) {
-							return new Literal_NaN();
+							return new NaNLiteral();
 						}
 
 						return ${s_arg} > 0
-							? new Literal_PositiveInfinity()
-							: new Literal_NegativeInfinity();
+							? new PositiveInfinityLiteral()
+							: new NegativeInfinityLiteral();
 					}
 
-					return new Literal_Double(${s_arg});
+					return new DoubleLiteral(${s_arg});
 				}
 				// string
 				else if('string' === s_type) {
@@ -1020,14 +1281,14 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 					}
 
 					// parse to number
-					let x_value = +${s_arg};
+					const x_value = +${s_arg};
 
 					// failed to parse
 					if(Number.isNaN(x_value)) {
 						throw new Error('Invalid decimal string: '+${s_arg});
 					}
 
-					return new Literal_Double(x_value);
+					return new DoubleLiteral(x_value);
 				}
 				// undefined
 				else if('undefined' === s_type) {
@@ -1051,7 +1312,7 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 
 		decimal: {
 			construct: s_arg => /* syntax: js */ `
-				let s_type = typeof ${s_arg};
+				const s_type = typeof ${s_arg};
 
 				// a number was given
 				if('number' === s_type) {
@@ -1065,7 +1326,7 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 						throw new Error('XSD decimal cannot encode +/-infinity. Try using double');
 					}
 
-					return new Literal_Decimal(${s_arg});
+					return new DecimalLiteral(${s_arg});
 				}
 				// string
 				else if('string' === s_type) {
@@ -1075,14 +1336,14 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 					}
 
 					// parse to number
-					let x_value = +${s_arg};
+					const x_value = +${s_arg};
 
 					// failed to parse
 					if(Number.isNaN(x_value)) {
 						throw new Error('Invalid decimal string: '+${s_arg});
 					}
 
-					return new Literal_Decimal(x_value);
+					return new DecimalLiteral(x_value);
 				}
 				// undefined
 				else if('undefined' === s_type) {
@@ -1108,21 +1369,21 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 
 		boolean: {
 			construct: s_arg => /* syntax: js */ `
-				let s_type = typeof ${s_arg};
+				const s_type = typeof ${s_arg};
 
 				// boolean
 				if('boolean' === s_type) {
-					return new Literal_Boolean(${s_arg});
+					return new BooleanLiteral(${s_arg});
 				}
 				// number
 				else if('number' === s_type) {
 					// 1
 					if(1 === ${s_arg}) {
-						return new Literal_Boolean(true);
+						return new BooleanLiteral(true);
 					}
 					// 0
 					else if(0 === ${s_arg}) {
-						return new Literal_Boolean(false);
+						return new BooleanLiteral(false);
 					}
 
 					// invalid
@@ -1130,22 +1391,7 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 				}
 				// string
 				else if('string' === s_type) {
-					// truthy value
-					if(RT_BOOLEAN_TRUE.test(${s_arg})) {
-						return new Literal_Boolean(true);
-					}
-					// falsy value
-					else if(RT_BOOLEAN_FALSE.test(${s_arg})) {
-						return new Literal_Boolean(false);
-					}
-
-					// empty string
-					if('' === ${s_arg}) {
-						throw new Error('Refusing to serialize empty string as xsd:boolean');
-					}
-
-					// failed to parse
-					throw new Error('Invalid boolean string: '+${s_arg});
+					return BooleanLiteral.fromString(${s_arg});
 				}
 				// undefined
 				else if('undefined' === s_type) {
@@ -1170,13 +1416,13 @@ const KT_XSD_STRING = new NamedNode('@{P_IRI_XSD}string');
 }
 
 @*{
-	for(let s_type in h_literals) {
+	for(const s_type in h_literals) {
 		yield literal(s_type, h_literals[s_type])+'\n';
 	}
 }
 
 
-class Literal_PositiveInfinity extends Literal_Double {
+class PositiveInfinityLiteral extends DoubleLiteral {
 	constructor() {
 		super(Infinity);
 		this.value = 'INF';
@@ -1186,12 +1432,13 @@ class Literal_PositiveInfinity extends Literal_Double {
 		return '"INF"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
 } {
-	const gp_self = Literal_PositiveInfinity.prototype;
+	const gp_self = PositiveInfinityLiteral.prototype;
 	gp_self.isInfiniteLiteral = true;
+	gp_self.isNumberPrecise = false;
 	gp_self.star = gp_self.terse;
 }
 
-class Literal_NegativeInfinity extends Literal_Double {
+class NegativeInfinityLiteral extends DoubleLiteral {
 	constructor() {
 		super(-Infinity);
 		this.value = '-INF';
@@ -1201,12 +1448,13 @@ class Literal_NegativeInfinity extends Literal_Double {
 		return '"-INF"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
 } {
-	const gp_self = Literal_NegativeInfinity.prototype;
+	const gp_self = NegativeInfinityLiteral.prototype;
 	gp_self.isInfiniteLiteral = true;
+	gp_self.isNumberPrecise = false;
 	gp_self.star = gp_self.terse;
 }
 
-class Literal_NaN extends Literal_Double {
+class NaNLiteral extends DoubleLiteral {
 	constructor() {
 		super(NaN);
 		this.value = 'NaN';
@@ -1216,13 +1464,14 @@ class Literal_NaN extends Literal_Double {
 		return '"NaN"^^'+KT_XSD_DOUBLE.terse(h_prefixes);
 	}
 } {
-	const gp_self = Literal_NaN.prototype;
+	const gp_self = NaNLiteral.prototype;
 	gp_self.isNaNLiteral = true;
+	gp_self.isNumberPrecise = false;
 	gp_self.star = gp_self.terse;
 }
 
 
-@{declare(/* syntax: js */ `class BlankNode extends GenericTerm`, {
+@*{yield* declare(/* syntax: js */ `class BlankNode extends GenericTerm`, {
 	constructor(s_value, b_anonymous=false) {
 		this.value = s_value;
 		this.isAnonymousBlankNode = b_anonymous;
@@ -1239,6 +1488,12 @@ class Literal_NaN extends Literal_Double {
 				value: this.value,
 			};
 		}
+
+		replace(w_pattern, w_replace) {
+			return this.isAnonymousBlankNode
+				? blankNode()
+				: new BlankNode(this.value.replace(w_pattern, w_replace));
+		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -1253,7 +1508,8 @@ class Literal_NaN extends Literal_Double {
 })}
 
 
-@{declare(/* syntax: js */ `class EphemeralBlankNode extends BlankNode`, {
+@*{yield* declare(/* syntax: js */ `class EphemeralBlankNode extends BlankNode`, {
+	constructor() {},
 	/* eslint-disable no-undef */
 	methods: class {
 		get value() {
@@ -1282,6 +1538,10 @@ class Literal_NaN extends Literal_Double {
 		equals() {
 			return false;
 		}
+
+		replace() {
+			return new EphemeralBlankNode();
+		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -1292,7 +1552,7 @@ class Literal_NaN extends Literal_Double {
 })}
 
 
-@{declare(/* syntax: js */ `class Variable extends GenericTerm`, {
+@*{yield* declare(/* syntax: js */ `class Variable extends GenericTerm`, {
 	constructor(s_label) {
 		this.value = s_label;
 	},
@@ -1329,7 +1589,7 @@ class Literal_NaN extends Literal_Double {
 })}
 
 
-@{declare(/* syntax: js */ `class DefaultGraph extends GenericTerm`, {
+@*{yield* declare(/* syntax: js */ `class DefaultGraph extends GenericTerm`, {
 	/* eslint-disable no-undef */
 	methods: class {
 		concise() {
@@ -1346,6 +1606,10 @@ class Literal_NaN extends Literal_Double {
 				value: '',
 			};
 		}
+
+		replace() {
+			return new DefaultGraph();
+		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -1353,7 +1617,7 @@ class Literal_NaN extends Literal_Double {
 			function DefaultGraph$hash() {
 				return '${require('crypto').createHash('sha256').update('*').digest('base64')}';
 			}
-		`,
+		`.trim(),
 		isAbleGraph:           /* syntax: js */ `true`,
 		isDefaultGraph:        /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'DefaultGraph'`,
@@ -1365,7 +1629,7 @@ class Literal_NaN extends Literal_Double {
 
 const KT_DEFAULT_GRAPH = new DefaultGraph();
 
-@{declare(/* syntax: js */ `class Quad extends GenericTerm`, {
+@*{yield* declare(/* syntax: js */ `class Quad extends GenericTerm`, {
 	/* eslint-disable no-undef */
 	constructor(h_subject, h_predicate, h_object, h_graph=KT_DEFAULT_GRAPH) {
 		this.subject = h_subject;
@@ -1573,15 +1837,6 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 				this.graph.replace(w_pattern, w_replace)
 			);
 		}
-
-		replaceAll(w_pattern, w_replace) {
-			return new Quad(
-				this.subject.replaceAll(w_pattern, w_replace),
-				this.predicate.replaceAll(w_pattern, w_replace),
-				this.object.replaceAll(w_pattern, w_replace),
-				this.graph.replaceAll(w_pattern, w_replace)
-			);
-		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -1596,7 +1851,7 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 
 class NakedQuad extends Quad {
 	terse(h_prefixes={}) {
-		let b_default_graph = this.graph.isDefaultGraph;
+		const b_default_graph = this.graph.isDefaultGraph;
 		return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
 			+' '+this.subject.terse(h_prefixes)
 			+' '+this.predicate.terse(h_prefixes)
@@ -1697,12 +1952,12 @@ const g_raw = {
 	},
 	@*{
 		for(let s_type in h_literals) {
-			let s_class = /* syntax: js */ `Literal_${s_type[0].toUpperCase()+s_type.slice(1)}`;
+			let s_class = /* syntax: js */ `${s_type[0].toUpperCase()+s_type.slice(1)}Literal`;
 			yield /* syntax: js */ `
 				${s_type}(w) {
-					${'boolean' === s_type
+					${'boolean' === s_type || 'integer' === s_type
 						? /* syntax: js */ `return new ${s_class}(w)`
-						: /* syntax: js */ `return ${s_class}.from(w);`}
+						: /* syntax: js */ `return ${s_class}.fromTrustedString(w);`}
 				},
 			`;
 		}
@@ -1722,9 +1977,6 @@ export const g_unfiltered = {
 		}
 		else if('string' === typeof z_datatype_or_lang) {
 			return new LanguagedLiteral(s_value, z_datatype_or_lang);
-		}
-		else if(KT_XSD_STRING.equals(z_datatype_or_lang)) {
-			return new SimpleLiteral(s_value);
 		}
 		else {
 			return new ExplicitlyDatatypedLiteral(s_value, z_datatype_or_lang);
@@ -1812,18 +2064,38 @@ export function adopt(dc_factory) {
 
 
 
-export function number(x) {
-	// not finite or not a number
-	if('number' === typeof x && (!Number.isFinite(x) || Number.isNaN(x))) {
-		return double(x);
+export function number(z) {
+	const s_type = typeof z;
+
+	// number
+	if('number' === s_type) {
+		// integer
+		if(Number.isInteger(z)) {
+			return new IntegerLiteral(BigInt(z));
+		}
+		// double
+		else {
+			return double(z);
+		}
 	}
-	// integer or bigint
-	else if(Number.isInteger(x) || 'bigint' === typeof x) {  // eslint-disable-line valid-typeof
-		return integer(x);
+	// bigint
+	else if('bigint' === s_type) {
+		return new IntegerLiteral(z);
 	}
-	// non-integer
+	// string
+	else if('string' === s_type) {
+		// try integer
+		try {
+			return IntegerLiteral.fromString(z);
+		}
+		catch(e_bigint) {}
+
+		// use decimal
+		return DecimalLiteral.fromString(z);
+	}
+	// bad
 	else {
-		return decimal(x);
+		throw new TypeError(`Invalid argument type to number(): ${z}`);
 	}
 }
 
@@ -1837,7 +2109,7 @@ export function dateTime(dt) {
 
 export function namedNode(pr_iri) {
 	// clean iri
-	pr_iri = clean_iri(pr_iri);
+	pr_iri = cleanIri(pr_iri);
 
 	// absolute iri
 	if(RT_IRI_ABSOLUTE.test(pr_iri)) {
@@ -1845,7 +2117,7 @@ export function namedNode(pr_iri) {
 	}
 	// relative iri
 	else {
-		return new RelativeNamedNode(pr_iri);
+		return new RelativeIri(pr_iri);
 	}
 }
 
@@ -1885,8 +2157,8 @@ export function literal(s_value, z_datatype_or_lang) {
 }
 
 @*{
-	for(let s_type in h_literals) {
-		let g_config = h_literals[s_type];
+	for(const s_type in h_literals) {
+		const g_config = h_literals[s_type];
 		yield /* syntax: js */ `export function ${s_type}(w_value) {
 			${g_config.construct('w_value')}
 		}\n`;
@@ -1903,7 +2175,7 @@ export function variable(s_label) {
 
 // warn
 export function triple(h_subject, h_predicate, h_object) {
-	let e_stack = new Error('It is strongly encouraged to use .quad() instead of .triple()');
+	const e_stack = new Error('It is strongly encouraged to use .quad() instead of .triple()');
 	console.warn(e_stack.stack.replace(/^(\s*)Error:/, '$1Warning:'));
 	return new Quad(h_subject, h_predicate, h_object);
 }
@@ -1931,16 +2203,16 @@ export function term(z_term, w_prefixes) {
  */
 export function p1(sp1_node, h_prefixes={}) {
 	// find prefix delimiter
-	let i_delim = sp1_node.indexOf('_');
+	const i_delim = sp1_node.indexOf('_');
 
 	// no delimter; invalid concise-term string for node
 	if(-1 === i_delim) throw new Error(`A relative or prefixed node must include a ':' or '_' character. \nInvalid concise-term string for node: '${sp1_node}'`);
 
 	// prefix id
-	let s_prefix_id = sp1_node.slice(0, i_delim);
+	const s_prefix_id = sp1_node.slice(0, i_delim);
 
 	// suffix
-	let s_suffix = sp1_node.slice(i_delim+1);
+	const s_suffix = sp1_node.slice(i_delim+1);
 
 	// find prefix in hash
 	if(s_prefix_id in h_prefixes) {
@@ -1964,7 +2236,7 @@ export function c1(sc1_term, h_prefixes={}) {
 		// datatyped literal
 		case '^': {
 			// find literal's contents delimiter
-			let i_contents = sc1_term.indexOf('"');
+			const i_contents = sc1_term.indexOf('"');
 
 			// no delimiter
 			if(-1 === i_contents) {
@@ -1972,7 +2244,7 @@ export function c1(sc1_term, h_prefixes={}) {
 			}
 
 			// extract datatype
-			let s_datatype = sc1_term.slice(1, i_contents);
+			const s_datatype = sc1_term.slice(1, i_contents);
 
 			// make term
 			return literal(sc1_term.slice(i_contents+1), c1_node_explicit(s_datatype, h_prefixes));
@@ -1981,7 +2253,7 @@ export function c1(sc1_term, h_prefixes={}) {
 		// languaged literal
 		case '@': {
 			// find literal's contents delimiter
-			let i_contents = sc1_term.indexOf('"');
+			const i_contents = sc1_term.indexOf('"');
 
 			// no delimiter
 			if(-1 === i_contents) {
@@ -1989,7 +2261,7 @@ export function c1(sc1_term, h_prefixes={}) {
 			}
 
 			// extract language
-			let s_language = sc1_term.slice(1, i_contents);
+			const s_language = sc1_term.slice(1, i_contents);
 
 			// make term
 			return literal(sc1_term.slice(i_contents+1), s_language);
@@ -1999,6 +2271,11 @@ export function c1(sc1_term, h_prefixes={}) {
 		case '"': {
 			// make term
 			return literal(sc1_term.slice(1));
+		}
+
+		// variable
+		case '?': {
+			return variable(sc1_term.slice(1));
 		}
 
 		// prefixed name
@@ -2070,16 +2347,16 @@ export function c1_node_explicit(sc1_node, h_prefixes={}) {
 // construct a term object from a concise term string for prefixed nodes
 export function c1_prefixed_node(sc1_node, h_prefixes={}) {
 	// find prefix delimiter
-	let i_colon = sc1_node.indexOf(':');
+	const i_colon = sc1_node.indexOf(':');
 
 	// no delimter; try prefixed name
 	if(-1 === i_colon) return p1(sc1_node, h_prefixes);
 
 	// prefix id
-	let s_prefix_id = sc1_node.slice(0, i_colon);
+	const s_prefix_id = sc1_node.slice(0, i_colon);
 
 	// suffix
-	let s_suffix = sc1_node.slice(i_colon+1);
+	const s_suffix = sc1_node.slice(i_colon+1);
 
 	// find prefix in hash
 	if(s_prefix_id in h_prefixes) {
@@ -2092,7 +2369,7 @@ export function c1_prefixed_node(sc1_node, h_prefixes={}) {
 }
 
 export function* quads(hc4_quads, h_prefixes={}) {
-	for(let sc1_graph in hc4_quads) {
+	for(const sc1_graph in hc4_quads) {
 		yield* triples(hc4_quads[sc1_graph], h_prefixes, sc1_graph);
 	}
 }
@@ -2100,7 +2377,7 @@ export function* quads(hc4_quads, h_prefixes={}) {
 export function c4(hc4_quads, h_prefixes={}) {
 	return {
 		[Symbol.iterator]: function *() {
-			for(let sc1_graph in hc4_quads) {
+			for(const sc1_graph in hc4_quads) {
 				yield* triples(hc4_quads[sc1_graph], h_prefixes, sc1_graph);
 			}
 		},
@@ -2113,10 +2390,10 @@ export function c4(hc4_quads, h_prefixes={}) {
 }
 
 export function* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
-	let k_graph = c1(sc1_graph, h_prefixes);
-	for(let sc1_subject in hc3_triples) {
-		let k_subject = c1(sc1_subject, h_prefixes);
-		let hc2_pairs = hc3_triples[sc1_subject];
+	const k_graph = c1(sc1_graph, h_prefixes);
+	for(const sc1_subject in hc3_triples) {
+		const k_subject = c1(sc1_subject, h_prefixes);
+		const hc2_pairs = hc3_triples[sc1_subject];
 
 		yield* pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
 	}
@@ -2125,10 +2402,10 @@ export function* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
 export function c3(hc3_triples, h_prefixes={}, sc1_graph='*') {
 	return {
 		[Symbol.iterator]: function *() {
-			let k_graph = c1(sc1_graph, h_prefixes);
-			for(let sc1_subject in hc3_triples) {
-				let k_subject = c1(sc1_subject, h_prefixes);
-				let hc2_pairs = hc3_triples[sc1_subject];
+			const k_graph = c1(sc1_graph, h_prefixes);
+			for(const sc1_subject in hc3_triples) {
+				const k_subject = c1(sc1_subject, h_prefixes);
+				const hc2_pairs = hc3_triples[sc1_subject];
 
 				yield* pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
 			}
@@ -2142,9 +2419,9 @@ export function c3(hc3_triples, h_prefixes={}, sc1_graph='*') {
 }
 
 export function* pairs(k_graph, k_subject, hc2_pairs, h_prefixes={}) {
-	for(let sc1_predicate in hc2_pairs) {
-		let k_predicate = c1_named_node(sc1_predicate, h_prefixes);
-		let z_objects = hc2_pairs[sc1_predicate];
+	for(const sc1_predicate in hc2_pairs) {
+		const k_predicate = c1_named_node(sc1_predicate, h_prefixes);
+		const z_objects = hc2_pairs[sc1_predicate];
 
 		yield* objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes);
 	}
@@ -2155,7 +2432,7 @@ export function * collection(k_graph, k_subject, a_objects, h_prefixes={}) {
 	yield* objects(k_graph, k_subject, KT_RDF_FIRST, a_objects[0], h_prefixes);
 
 	// rest of items
-	let a_rest = a_objects.slice(1);
+	const a_rest = a_objects.slice(1);
 
 	// no more
 	if(!a_rest.length) {
@@ -2164,7 +2441,7 @@ export function * collection(k_graph, k_subject, a_objects, h_prefixes={}) {
 	// more remain
 	else {
 		// auto blank node
-		let k_hop = blankNode();
+		const k_hop = blankNode();
 
 		// incoming triple
 		yield new Quad(k_subject, KT_RDF_REST, k_hop, k_graph);
@@ -2176,7 +2453,7 @@ export function * collection(k_graph, k_subject, a_objects, h_prefixes={}) {
 
 export function * objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes, b_nested=false) {
 	// value type
-	let s_type = typeof z_objects;
+	const s_type = typeof z_objects;
 	switch(s_type) {
 		// c1-string
 		case 'string': {
@@ -2197,7 +2474,7 @@ export function * objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes
 				// RDF collection
 				if(b_nested) {
 					// auto blank node
-					let k_hop = blankNode();
+					const k_hop = blankNode();
 
 					// incoming triple
 					yield new Quad(k_subject, k_predicate, k_hop, k_graph);
@@ -2207,7 +2484,7 @@ export function * objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes
 				}
 				// list of objects
 				else {
-					for(let z_item of z_objects) {
+					for(const z_item of z_objects) {
 						yield* objects(k_graph, k_subject, k_predicate, z_item, h_prefixes, true);
 					}
 				}
@@ -2215,7 +2492,7 @@ export function * objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes
 			// simple object
 			else {
 				// auto blank node
-				let k_hop = blankNode();
+				const k_hop = blankNode();
 
 				// incoming triple
 				yield new Quad(k_subject, k_predicate, k_hop, k_graph);
@@ -2333,10 +2610,10 @@ export function c1FromSubjectRole(yt_subject, h_prefixes={}) {
 		: '_:'+yt_subject.value;
 }
 
-export const toBoolean = s_boolean => Literal_Boolean.from(s_boolean);
-export const toInteger = s_integer => Literal_Integer.from(s_integer);
-export const toDecimal = s_decimal => Literal_Decimal.from(s_decimal);
-export const toDouble = s_double => Literal_Double.from(s_double);
+// export const toBoolean = s_boolean => BooleanLiteral.from(s_boolean);
+// export const toInteger = s_integer => IntegerLiteral.from(s_integer);
+// export const toDecimal = s_decimal => DecimalLiteral.from(s_decimal);
+// export const toDouble = s_double => DoubleLiteral.from(s_double);
 
 
 /**
@@ -2418,8 +2695,8 @@ export const DataFactory = {
 	literal,
 
 	@*{
-		for(let s_type in h_literals) {
-			let g_config = h_literals[s_type];
+		for(const s_type in h_literals) {
+			const g_config = h_literals[s_type];
 			yield /* syntax: js */ `${s_type},\n`;
 		}
 	}
@@ -2468,10 +2745,10 @@ export const DataFactory = {
 
 	c1FromSubjectRole,
 
-	toBoolean,
-	toInteger,
-	toDecimal,
-	toDouble,
+	// toBoolean,
+	// toInteger,
+	// toDecimal,
+	// toDouble,
 
 	comment,
 	newlines,
@@ -2483,12 +2760,11 @@ export const DataFactory = {
 
 	uuidv4,
 
-	cache_prefixes,
-	cachePrefixes: cache_prefixes,
+	cachePrefixes,
+	setBaseIri,
 	terse,
 
-	clean_iri,
-	cleanIri: clean_iri,
+	cleanIri,
 
 	SI_PREFIX_CACHE,
 	SI_PREFIX_BASE,
