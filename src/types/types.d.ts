@@ -8,43 +8,17 @@ export {
  * Namespace for cross-library Term role interfaces
  */
 export namespace Role {
-	export interface Data {
-		readonly termType: 'DefaultGraph' | 'NamedNode' | 'BlankNode' | 'Literal';
-		readonly value: string;
-		equals(other: RDFJS.Term): boolean;
-	}
+	export type Data = RDFJS.NamedNode | RDFJS.BlankNode | RDFJS.Literal | RDFJS.DefaultGraph;
 	
-	export interface Graph extends Data implements RDFJS.Quad_Graph {
-		readonly termType: 'DefaultGraph' | 'NamedNode' | 'BlankNode';
-		readonly value: string;
-		equals(other: RDFJS.Term): boolean;
-	}
+	export type Graph = RDFJS.DefaultGraph | RDFJS.NamedNode | RDFJS.BlankNode;
 	
-	export interface Subject extends Data implements RDFJS.Quad_Subject {
-		readonly termType: 'NamedNode' | 'BlankNode';
-		readonly value: string;
-		equals(other: RDFJS.Term): boolean;
-	}
+	export type Subject = RDFJS.NamedNode | RDFJS.BlankNode;
 	
-	export interface Predicate extends Data implements RDFJS.Quad_Predicate {
-		readonly termType: 'NamedNode';
-		readonly value: string;
-		equals(other: RDFJS.Term): boolean;
-	}
+	export type Predicate = RDFJS.NamedNode;
 	
-	export interface Object extends Data implements RDFJS.Quad_Object {
-		readonly termType: 'NamedNode' | 'BlankNode' | 'Literal';
-		readonly value: string;
-		readonly language?: string;
-		readonly datatype?: RDFJS.NamedNode;
-		equals(other: RDFJS.Term): boolean;
-	}
+	export type Object =  RDFJS.NamedNode | RDFJS.BlankNode | RDFJS.Literal;
 
-	export interface Datatype extends Data {
-		readonly termType: 'NamedNode';
-		readonly value: string;
-		equals(other: RDFJS.Term): boolean;
-	}
+	export type Datatype = RDFJS.NamedNode;
 }
 
 /**
@@ -56,7 +30,7 @@ export namespace Term {
 	export type Predicate = NamedNode;
 	export type Object = Node | GenericLiteral;
 
-	export interface GenericTerm {
+	export interface GenericTerm<Self=GenericTerm> {
 		readonly isGraphyTerm: true;
 		readonly isGraphyQuad: boolean;
 		readonly isAbleGraph: boolean;
@@ -66,7 +40,8 @@ export namespace Term {
 		readonly isDefaultGraph: boolean;
 		readonly isNode: boolean;
 		readonly isNamedNode: boolean;
-		readonly isRelativeNamedNode: boolean;
+		readonly isAbsoluteIri: boolean;
+		readonly isRelativeIri: boolean;
 		readonly isRdfTypeAlias: boolean;
 		readonly isBlankNode: boolean;
 		readonly isAnonymousBlankNode: boolean;
@@ -93,8 +68,9 @@ export namespace Term {
 		verbose(): Verbose.Term;
 		isolate(): Isolated.AnyTerm;
 		hash(): string;
-		replace(searchValue: any, replaceValue: any): GenericTerm;
-		replaceAll(searchValue: any, replaceValue: any): GenericTerm;
+		replaceIri(searchValue: any, replaceValue: any): Self;
+		replaceText(searchValue: any, replaceValue: any): Self;
+		replaceValue(searchValue: any, replaceValue: any): Self;
 	}
 
 	interface NonLiteralTerm extends GenericTerm {
@@ -128,7 +104,7 @@ export namespace Term {
 		readonly termType: 'NamedNode' | 'BlankNode';
 	}
 
-	export interface GenericLiteral extends GenericTerm implements Role.Data, Role.Object {
+	export interface GenericLiteral<Self> extends GenericTerm<Self> implements Role.Data, Role.Object {
 		readonly isGraphyQuad: false;
 		readonly isAbleGraph: false;
 		readonly isAbleSubject: false;
@@ -137,6 +113,8 @@ export namespace Term {
 		readonly isDefaultGraph: false;
 		readonly isNode: false;
 		readonly isNamedNode: false;
+		readonly isAbsoluteIri: false;
+		readonly isRelativeIri: false;
 		readonly isBlankNode: false;
 		readonly isAnonymousBlankNode: false;
 		readonly isEphemeralBlankNode: false;
@@ -164,19 +142,41 @@ export namespace Term {
 		readonly termType: 'NamedNode';
 		readonly value: Iri;
 
-		constructor(iri: Iri);
+		readonly isAbsoluteIri: true;
+
 		concise(prefixes?: PrefixMap): C1.NamedNode;
 		terse(prefix?: PrefixMap): Terse.NamedNode;
 		star(prefixes?: PrefixMap): Star.NamedNode;
 		verbose(): Verbose.NamedNode;
 		isolate(): Isolated.NamedNode;
-		replace(searchValue: any, replaceValue: any): NamedNode;
-		replaceAll(searchValue: any, replaceValue: any): NamedNode;
+		replaceIri(searchValue: any, replaceValue: any): NamedNode;
+	}
+
+	export interface RelativeIri extends Node implements RDFJS.NamedNode implements Role.Predicate {
+		readonly isDefaultGraph: false;
+		readonly isNamedNode: true;
+		readonly isBlankNode: false;
+		readonly isAnonymousBlankNode: false;
+		readonly isEphemeralBlankNode: false;
+
+		readonly termType: 'NamedNode';
+		readonly value: string;
+
+		readonly isRelativeIri: true;
+
+		concise(prefixes?: PrefixMap): C1.NamedNode;
+		terse(prefix?: PrefixMap): Terse.NamedNode;
+		star(prefixes?: PrefixMap): Star.NamedNode;
+		verbose(): Verbose.NamedNode;
+		isolate(): Isolated.NamedNode;
+		replaceIri(searchValue: any, replaceValue: any): NamedNode;
 	}
 
 	export interface BlankNode extends Node implements RDFJS.BlankNode {
 		readonly isDefaultGraph: false;
 		readonly isNamedNode: false;
+		readonly isAbsoluteIri: false;
+		readonly isRelativeIri: false;
 		readonly isBlankNode: true;
 
 		readonly termType: 'BlankNode';
@@ -188,8 +188,7 @@ export namespace Term {
 		star(prefixes?: PrefixMap): Star.BlankNode;
 		verbose(): Verbose.BlankNode;
 		isolate(): Isolated.BlankNode;
-		replace(searchValue: any, replaceValue: any): BlankNode;
-		replaceAll(searchValue: any, replaceValue: any): BlankNode;
+		replaceIri(searchValue: any, replaceValue: any): BlankNode;
 	}
 
 	export interface AnonymousBlankNode extends BlankNode implements RDFJS.BlankNode {
@@ -213,8 +212,7 @@ export namespace Term {
 		readonly isNaNLiteral: false;
 
 		constructor(value: string, language: string);
-		replace(searchValue: any, replaceValue: any): LanguagedLiteral;
-		replaceAll(searchValue: any, replaceValue: any): LanguagedLiteral;
+		replaceIri(searchValue: any, replaceValue: any): LanguagedLiteral;
 	}
 
 	export interface DatatypedLiteral extends GenericLiteral implements RDFJS.Literal {
@@ -226,8 +224,7 @@ export namespace Term {
 		readonly isSimpleLiteral: false;
 
 		constructor(value: string, datatype: NamedNode);
-		replace(searchValue: any, replaceValue: any): DatatypedLiteral;
-		replaceAll(searchValue: any, replaceValue: any): DatatypedLiteral;
+		replaceIri(searchValue: any, replaceValue: any): DatatypedLiteral;
 	}
 
 	export interface NumericLiteral extends DatatypedLiteral {
@@ -308,7 +305,7 @@ export namespace Term {
 		readonly boolean: boolean;
 	}
 
-	export interface SimpleLiteral extends GenericLiteral implements RDFJS.Literal {
+	export interface SimpleLiteral extends GenericLiteral<SimpleLiteral> implements RDFJS.Literal {
 		readonly isNamedNode: false;
 		readonly isBlankNode: false;
 		// --
@@ -324,8 +321,6 @@ export namespace Term {
 		readonly isNaNLiteral: false;
 
 		constructor(value: string, datatype: NamedNode);
-		replace(searchValue: any, replaceValue: any): SimpleLiteral;
-		replaceAll(searchValue: any, replaceValue: any): SimpleLiteral;
 	}
 
 	export interface DefaultGraph extends Graphable implements RDFJS.DefaultGraph {
@@ -333,6 +328,13 @@ export namespace Term {
 		readonly isAbleSubject: false;
 		readonly isAblePredicate: false;
 		readonly isAbleObject: false;
+		readonly isNode: false;
+		readonly isNamedNode: false;
+		readonly isAbsoluteIri: false;
+		readonly isRelativeIri: false;
+		readonly isBlankNode: false;
+		readonly isAnonymousBlankNode: false;
+		readonly isEphemeralBlankNode: false;
 		
 		readonly termType: 'DefaultGraph';
 		readonly value: '';
@@ -343,8 +345,9 @@ export namespace Term {
 		star(prefixes?: PrefixMap): Star.DefaultGraph;
 		verbose(): Verbose.DefaultGraph;
 		isolate(): Isolated.DefaultGraph;
-		replace(searchValue: any, replaceValue: any): DefaultGraph;
-		replaceAll(searchValue: any, replaceValue: any): DefaultGraph;
+		replaceIri(searchValue: any, replaceValue: any): DefaultGraph;
+		replaceText(searchValue: any, replaceValue: any): DefaultGraph;
+		replaceValue(searchValue: any, replaceValue: any): DefaultGraph;
 	}
 
 	interface NonDataTerm extends NonLiteralTerm {
@@ -353,6 +356,8 @@ export namespace Term {
 		readonly isDefaultGraph: false;
 		readonly isNode: false;
 		readonly isNamedNode: false;
+		readonly isAbsoluteIri: false;
+		readonly isRelativeIri: false;
 		readonly isBlankNode: false;
 		readonly isAnonymousBlankNode: false;
 		readonly isEphemeralBlankNode: false;
@@ -373,8 +378,8 @@ export namespace Term {
 		star(prefixes?: PrefixMap): Star.Variable;
 		verbose(): Verbose.Variable;
 		isolate(): Isolated.Variable;
-		replace(searchValue: any, replaceValue: any): Variable;
-		replaceAll(searchValue: any, replaceValue: any): Variable;
+		replaceIri(searchValue: any, replaceValue: any): Variable;
+		replaceValue(searchValue: any, replaceValue: any): Variable;
 	}
 
 	export interface Reification {
@@ -403,8 +408,9 @@ export namespace Term {
 		star(prefixes?: PrefixMap): Star.QuadTerm;
 		verbose(): Verbose.Quad;
 		isolate(): Isolated.Quad;
-		replace(searchValue: any, replaceValue: any): Quad;
-		replaceAll(searchValue: any, replaceValue: any): Quad;
+		replaceIri(searchValue: any, replaceValue: any): Quad;
+		replaceText(searchValue: any, replaceValue: any): Quad;
+		replaceValue(searchValue: any, replaceValue: any): Quad;
 	}
 
 }
