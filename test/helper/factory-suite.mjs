@@ -19,13 +19,15 @@ function expect_original_replaced_equals(kt_original, kt_replaced, b_equals) {
 	expect(kt_original.equals(kt_replaced)).to.equal(b_equals);
 }
 
+const F_REPLACER_NOOP = () => [];
+
 function test_replacements(g_reps) {
 	const {
 		input: kt_test,
 		validate: f_validator,
 		identity: f_identity,
-		replace: h_replacers,
-		maps: h_map,
+		replace: h_replacers={},
+		map: h_map,
 	} = g_reps;
 
 	for(const s_which in h_map) {
@@ -34,14 +36,16 @@ function test_replacements(g_reps) {
 		const s_method = `replace${s_which[0].toUpperCase()+s_which.slice(1)}`;
 
 		for(const s_action in g_actions) {
-			const a_args = g_actions[s_action];
+			const a_tests = g_actions[s_action];
 			const b_clone = 'clones' === s_action;
 
-			it(`#${s_method}(${a_args.map(z => 'string' === typeof z? '"'+z+'"': z+'').join(', ')})`, () => {
-				const kt_replaced = kt_test[s_method](...a_args);
-				f_validator(kt_replaced, ...(b_clone? f_identity(): h_replacers[s_which](...a_args)));
-				expect_original_replaced_equals(kt_test, kt_replaced, b_clone);
-			});
+			for(const a_args of a_tests) {
+				it(`#${s_method}(${a_args.map(z => 'string' === typeof z? '"'+z+'"': z+'').join(', ')})`, () => {
+					const kt_replaced = kt_test[s_method](...a_args);
+					f_validator(kt_replaced, ...(b_clone? f_identity(): (h_replacers[s_which] || F_REPLACER_NOOP)(...a_args)));
+					expect_original_replaced_equals(kt_test, kt_replaced, b_clone);
+				});
+			}
 		}
 	}
 }
@@ -180,7 +184,7 @@ const H_VALIDATORS = {
 	},
 
 	literal(kt_actual, g_descriptor={}, s_eval=null) {
-		if(s_eval) return this[s_eval](kt_actual, g_descriptor);
+		if(s_eval) return H_VALIDATORS[s_eval](kt_actual, g_descriptor);
 
 		// abides general term and literal specifics
 		expect(kt_actual).to.include({
@@ -188,9 +192,9 @@ const H_VALIDATORS = {
 			...G_PROPERTIES_GRAPHY_TERM_NOT_NODE,
 			isAbleObject: true,
 			isLiteral: true,
-			isDatatypedLiteral: 'datatype' in g_descriptor,
+			isDatatypedLiteral: 'datatype' in g_descriptor && (P_IRI_XSD+'string') !== g_descriptor.datatype,
 			isLanguagedLiteral: !!g_descriptor.language,
-			isSimpleLiteral: !('datatype' in g_descriptor || g_descriptor.language),
+			isSimpleLiteral: !g_descriptor.language && (!('datatype' in g_descriptor) || (P_IRI_XSD+'string') === g_descriptor.datatype),
 			termType: 'Literal',
 			language: g_descriptor.language || '',
 		}).and.have.property('datatype');
@@ -205,7 +209,7 @@ const H_VALIDATORS = {
 		}
 
 		// check datatype
-		this.named_node(kt_actual.datatype, g_descriptor.language
+		H_VALIDATORS.named_node(kt_actual.datatype, g_descriptor.language
 			? P_IRI_RDF+'langString'
 			: ('string' === typeof g_descriptor.datatype
 				? g_descriptor.datatype
@@ -248,7 +252,7 @@ const H_VALIDATORS = {
 		});
 
 		// datatype
-		this.named_node(kt_actual.datatype, P_IRI_XSD+'integer');
+		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'integer');
 
 		// boolean value
 		expect(kt_actual.boolean, '.boolean').to.be.NaN;
@@ -304,7 +308,7 @@ const H_VALIDATORS = {
 		});
 
 		// datatype
-		this.named_node(kt_actual.datatype, P_IRI_XSD+'double');
+		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'double');
 
 		expect(kt_actual.boolean, '.boolean').to.be.NaN;
 		expect(kt_actual.bigint, '.bigint').to.be.NaN;
@@ -330,7 +334,7 @@ const H_VALIDATORS = {
 		expect(kt_actual.isNumberPrecise).to.be.a('boolean');
 
 		// datatype
-		this.named_node(kt_actual.datatype, P_IRI_XSD+'decimal');
+		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'decimal');
 
 		expect(kt_actual.boolean, '.boolean').to.be.NaN;
 		expect(kt_actual.bigint, '.bigint').to.be.NaN;
@@ -372,7 +376,7 @@ const H_VALIDATORS = {
 		});
 
 		// datatype
-		this.named_node(kt_actual.datatype, P_IRI_XSD+'boolean');
+		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'boolean');
 	},
 
 	number(kt_actual, z_value, w_arg) {
@@ -388,7 +392,7 @@ const H_VALIDATORS = {
 			throw new Error('invalid test case');
 		}
 
-		this[s_type](kt_actual, w_value);
+		H_VALIDATORS[s_type](kt_actual, w_value);
 	},
 
 	date(kt_actual, dt_value) {
@@ -411,7 +415,7 @@ const H_VALIDATORS = {
 		expect(kt_actual.date.getTime()).to.equal(dt_value.getTime());
 
 		// datatype
-		this.named_node(kt_actual.datatype, P_IRI_XSD+'date');
+		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'date');
 	},
 
 	dateTime(kt_actual, dt_value) {
@@ -434,7 +438,7 @@ const H_VALIDATORS = {
 		expect(kt_actual.date.getTime()).to.equal(dt_value.getTime());
 
 		// datatype
-		this.named_node(kt_actual.datatype, P_IRI_XSD+'dateTime');
+		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'dateTime');
 	},
 
 	variable(kt_actual, s_name) {
@@ -1081,11 +1085,9 @@ export default class FactorySuite {
 
 				test_replacements({
 					input: kt_graph,
-					validate: H_VALIDATORS.named_node,
+					validate: H_VALIDATORS.default_graph,
 					identity: () => [],
-					replace: {
-						iri: () => [],
-					},
+					replace: {},
 					map: {
 						iri: {
 							clones: [
@@ -1097,34 +1099,6 @@ export default class FactorySuite {
 						},
 					},
 				});
-
-				// it('#replaceIri("*", "")', () => {
-				// 	const kt_replaced = kt_graph.replaceIri('*', '');
-				// 	expect(kt_replaced.value).to.equal('');
-				// 	H_VALIDATORS.default_graph(kt_replaced);
-				// 	expect_original_replaced_equals(kt_graph, kt_replaced, true);
-				// });
-
-				// it('#replaceIri("", "X")', () => {
-				// 	const kt_replaced = kt_graph.replaceIri('', 'X');
-				// 	expect(kt_replaced.value).to.equal('');
-				// 	H_VALIDATORS.default_graph(kt_replaced);
-				// 	expect_original_replaced_equals(kt_graph, kt_replaced, true);
-				// });
-
-				// it('#replace("*", "")', () => {
-				// 	const kt_replaced = kt_graph.replace('*', '');
-				// 	expect(kt_replaced.value).to.equal('');
-				// 	H_VALIDATORS.default_graph(kt_replaced);
-				// 	expect_original_replaced_equals(kt_graph, kt_replaced, true);
-				// });
-
-				// it('#replace("", "X")', () => {
-				// 	const kt_replaced = kt_graph.replace('', 'X');
-				// 	expect(kt_replaced.value).to.equal('');
-				// 	H_VALIDATORS.default_graph(kt_replaced);
-				// 	expect_original_replaced_equals(kt_graph, kt_replaced, true);
-				// });
 			});
 
 			describe('NamedNode', () => {
@@ -1209,60 +1183,42 @@ export default class FactorySuite {
 					expect(kt_node.hash()).to.equal(hash(`>${p_iri_node}`));
 				});
 
+				const f_replacer_iri = (w_search, w_replace) => [p_iri_node.replace(w_search, w_replace)];
+				const g_replace_iri = {
+					clones: [
+						['absent', 'never'],
+						[/absent/, 'never'],
+					],
+					replaces: [
+						['tests', 'replaced'],
+						[/tests/, 'replaced'],
+						[/s/g, 'x'],
+					],
+				};
+
 				test_replacements({
 					input: kt_node,
 					validate: H_VALIDATORS.named_node,
 					identity: () => [p_iri_node],
 					replace: {
-						iri: (w_search, w_replace) => [p_iri_node.replace(w_search, w_replace)],
+						iri: f_replacer_iri,
+						value: f_replacer_iri,
 					},
 					map: {
-						iri: {
+						iri: g_replace_iri,
+						value: g_replace_iri,
+						text: {
 							clones: [
-								['absent', 'never'],
-								[/absent/, 'never'],
-							],
-							replaces: [
-								['tests', 'replaced'],
-								[/tests/, 'replaced'],
+								['tests', 'never'],
+								[/tests/, 'never'],
 								[/s/g, 'x'],
 							],
 						},
 					},
 				});
-
-				// it('#replaceIri("absent", "never")', () => {
-				// 	const kt_replaced = kt_node.replaceIri('absent', 'never');
-				// 	H_VALIDATORS.named_node(kt_replaced, p_iri_node);
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, true);
-				// });
-
-				// it('#replaceIri(/absent/, "never")', () => {
-				// 	const kt_replaced = kt_node.replaceIri(/absent/, 'never');
-				// 	H_VALIDATORS.named_node(kt_replaced, p_iri_node);
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, true);
-				// });
-
-				// it('#replaceIri("tests", "replaced")', () => {
-				// 	const kt_replaced = kt_node.replaceIri('tests', 'replaced');
-				// 	H_VALIDATORS.named_node(kt_replaced, p_iri_node.replace('tests', 'replaced'));
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
-
-				// it('#replaceIri(/tests/, "replaced")', () => {
-				// 	const kt_replaced = kt_node.replaceIri(/tests/, 'replaced');
-				// 	H_VALIDATORS.named_node(kt_replaced, p_iri_node.replace(/tests/, 'replaced'));
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
-
-				// it('#replaceIri(/s/g, "x")', () => {
-				// 	const kt_replaced = kt_node.replaceIri(/s/g, 'x');
-				// 	H_VALIDATORS.named_node(kt_replaced, p_iri_node.replace(/s/g, 'x'));
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
 			});
 
-			describe('RelativeIri', () => {
+			describe('Relative Iri', () => {
 				const s_relative = '#banana';
 				const kt_node = k_factory.namedNode(s_relative);
 				const p_iri_base = 'https://graphy.link/base';
@@ -1362,15 +1318,25 @@ export default class FactorySuite {
 					expect(() => kt_node.hash()).to.throw();
 				});
 
+				const g_replace_never = {
+					clones: [
+						['banana', 'never'],
+						[/banana/, 'never'],
+						[/n/g, 'x'],
+					],
+				};
+
 				test_replacements({
 					input: kt_node,
 					validate: H_VALIDATORS.named_node,
 					identity: () => [{value:s_relative, relative:true}],
 					replace: {
-						iri: (w_search, w_replace) => [{value:s_relative.replace(w_search, w_replace), relative:true}],
+						value: (w_search, w_replace) => [{value:s_relative.replace(w_search, w_replace), relative:true}],
 					},
 					map: {
-						iri: {
+						iri: g_replace_never,
+						text: g_replace_never,
+						value: {
 							clones: [
 								['absent', 'never'],
 								[/absent/, 'never'],
@@ -1383,36 +1349,6 @@ export default class FactorySuite {
 						},
 					},
 				});
-
-				// it('#replace("absent", "never")', () => {
-				// 	const kt_replaced = kt_node.replace('absent', 'never');
-				// 	H_VALIDATORS.named_node(kt_replaced, {value:s_relative, relative:true});
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, true);
-				// });
-
-				// it('#replace(/absent/, "never")', () => {
-				// 	const kt_replaced = kt_node.replace(/absent/, 'never');
-				// 	H_VALIDATORS.named_node(kt_replaced, {value:s_relative, relative:true});
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, true);
-				// });
-
-				// it('#replace("tests", "replaced")', () => {
-				// 	const kt_replaced = kt_node.replace('banana', 'replaced');
-				// 	H_VALIDATORS.named_node(kt_replaced, {value:s_relative.replace('banana', 'replaced'), relative:true});
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
-
-				// it('#replace(/tests/, "replaced")', () => {
-				// 	const kt_replaced = kt_node.replace(/banana/, 'replaced');
-				// 	H_VALIDATORS.named_node(kt_replaced, {value:s_relative.replace(/banana/, 'replaced'), relative:true});
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
-
-				// it('#replace(/s/g, "x")', () => {
-				// 	const kt_replaced = kt_node.replace(/n/g, 'x');
-				// 	H_VALIDATORS.named_node(kt_replaced, {value:s_relative.replace(/n/g, 'x'), relative:true});
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
 
 				it('#resolve()', () => {
 					expect(() => kt_node.resolve()).to.throw();
@@ -1492,15 +1428,25 @@ export default class FactorySuite {
 					expect(kt_node.hash()).to.equal(hash('_:label'));
 				});
 
+				const g_replace_never = {
+					clones: [
+						['label', 'never'],
+						[/label/, 'never'],
+						[/l/g, 'x'],
+					],
+				};
+
 				test_replacements({
 					input: kt_node,
 					validate: H_VALIDATORS.blank_node,
 					identity: () => ['label'],
 					replace: {
-						iri: (w_search, w_replace) => ['label'.replace(w_search, w_replace)],
+						value: (w_search, w_replace) => ['label'.replace(w_search, w_replace)],
 					},
 					map: {
-						iri: {
+						iri: g_replace_never,
+						text: g_replace_never,
+						value: {
 							clones: [
 								['absent', 'never'],
 								[/absent/, 'never'],
@@ -1513,36 +1459,6 @@ export default class FactorySuite {
 						},
 					},
 				});
-
-				// it('#replace("absent", "never")', () => {
-				// 	const kt_replaced = kt_node.replace('absent', 'never');
-				// 	H_VALIDATORS.blank_node(kt_replaced, 'label');
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, true);
-				// });
-
-				// it('#replace(/absent/, "never")', () => {
-				// 	const kt_replaced = kt_node.replace(/absent/, 'never');
-				// 	H_VALIDATORS.blank_node(kt_replaced, 'label');
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, true);
-				// });
-
-				// it('#replace("label", "replaced")', () => {
-				// 	const kt_replaced = kt_node.replace('label', 'replaced');
-				// 	H_VALIDATORS.blank_node(kt_replaced, 'replaced');
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
-
-				// it('#replace(/label/, "replaced")', () => {
-				// 	const kt_replaced = kt_node.replace(/label/, 'replaced');
-				// 	H_VALIDATORS.blank_node(kt_replaced, 'replaced');
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
-
-				// it('#replace(/l/g, "x")', () => {
-				// 	const kt_replaced = kt_node.replace(/l/g, 'x');
-				// 	H_VALIDATORS.blank_node(kt_replaced, 'label'.replace(/l/g, 'x'));
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
 			});
 
 			describe('Ephemeral Blank Node', () => {
@@ -1603,38 +1519,21 @@ export default class FactorySuite {
 						.that.does.not.equal(hash('_:'+kt_node.value));
 				});
 
-				test_replacements({
-					input: kt_node,
-					validate: H_VALIDATORS.blank_node,
-					identity: () => [null, true, true],
-					replace: {
-						// iri: (w_search, w_replace) => [null],
-					},
-					map: {
-						iri: {
-							clones: [
-								['absent', 'never'],
-								[/absent/, 'never'],
-							],
-							// replaces: [
-							// 	['tests', 'replaced'],
-							// 	[/tests/, 'replaced'],
-							// 	[/s/g, 'x'],
-							// ],
-						},
-					},
-				});
-
-				// it('#replace("absent", "never")', () => {
-				// 	const kt_replaced = kt_node.replace('absent', 'never');
-				// 	H_VALIDATORS.blank_node(kt_replaced, null, true, true);
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
-				// });
-
-				// it('#replace(/absent/, "never")', () => {
-				// 	const kt_replaced = kt_node.replace(/absent/, 'never');
-				// 	H_VALIDATORS.blank_node(kt_replaced, null, true, true);
-				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
+				// test_replacements({
+				// 	input: kt_node,
+				// 	validate: H_VALIDATORS.blank_node,
+				// 	identity: () => [null, true, true],
+				// 	replace: {
+				// 		// value: (w_search, w_replace) => [''],
+				// 	},
+				// 	map: {
+				// 		iri: {
+				// 			different: [
+				// 				['absent', 'never'],
+				// 				[/absent/, 'never'],
+				// 			],
+				// 		},
+				// 	},
 				// });
 			});
 
@@ -1700,25 +1599,25 @@ export default class FactorySuite {
 					expect(kt_node.hash()).to.equal(hash('_:'+kt_node.value));
 				});
 
-				test_replacements({
-					input: kt_node,
-					validate: H_VALIDATORS.blank_node,
-					identity: () => [null, true],
-					// replace: (w_search, w_replace) => ['label'.replace(w_search, w_replace)],
-					map: {
-						iri: {
-							clones: [
-								['absent', 'never'],
-								[/absent/, 'never'],
-							],
-							// replaces: [
-							// 	['label', 'replaced'],
-							// 	[/label/, 'replaced'],
-							// 	[/l/g, 'x'],
-							// ],
-						},
-					},
-				});
+				// test_replacements({
+				// 	input: kt_node,
+				// 	validate: H_VALIDATORS.blank_node,
+				// 	identity: () => [null, true],
+				// 	// replace: (w_search, w_replace) => ['label'.replace(w_search, w_replace)],
+				// 	map: {
+				// 		iri: {
+				// 			clones: [
+				// 				['absent', 'never'],
+				// 				[/absent/, 'never'],
+				// 			],
+				// 			// replaces: [
+				// 			// 	['label', 'replaced'],
+				// 			// 	[/label/, 'replaced'],
+				// 			// 	[/l/g, 'x'],
+				// 			// ],
+				// 		},
+				// 	},
+				// });
 
 				// it('#replace("absent", "never")', () => {
 				// 	const kt_replaced = kt_node.replace('absent', 'never');
@@ -1809,10 +1708,12 @@ export default class FactorySuite {
 					validate: H_VALIDATORS.literal,
 					identity: () => [{value:'value'}],
 					replace: {
-						iri: (w_search, w_replace) => [{value:'label'.replace(w_search, w_replace)}],
+						text: (w_search, w_replace) => [{value:kt_literal.value.replace(w_search, w_replace)}],
+						value: (w_search, w_replace) => [{value:kt_literal.value.replace(w_search, w_replace), datatype:kt_literal.datatype.value.replace(w_search, w_replace)}],
+						iri: (w_search, w_replace) => [{value:kt_literal.value, datatype:kt_literal.datatype.value.replace(w_search, w_replace)}],
 					},
 					map: {
-						iri: {
+						text: {
 							clones: [
 								['absent', 'never'],
 								[/absent/, 'never'],
@@ -1823,38 +1724,30 @@ export default class FactorySuite {
 								[/a/g, 'x'],
 							],
 						},
+						value: {
+							clones: [
+								['absent', 'never'],
+								[/absent/, 'never'],
+							],
+							replaces: [
+								['value', 'replaced'],
+								[/value/, 'replaced'],
+								[/a/g, 'x'],
+							],
+						},
+						iri: {
+							clones: [
+								['absent', 'never'],
+								[/absent/, 'never'],
+							],
+							replaces: [
+								['string', 'replace'],
+								[/string/, 'replace'],
+								[/s/g, 'x'],
+							],
+						},
 					},
 				});
-
-				// it('#replace("absent", "never")', () => {
-				// 	const kt_replaced = kt_literal.replace('absent', 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace(/absent/, "never")', () => {
-				// 	const kt_replaced = kt_literal.replace(/absent/, 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace("value", "replaced")', () => {
-				// 	const kt_replaced = kt_literal.replace('value', 'replaced');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'replaced'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, false);
-				// });
-
-				// it('#replace(/value/, "replaced")', () => {
-				// 	const kt_replaced = kt_literal.replace(/value/, 'replaced');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'replaced'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, false);
-				// });
-
-				// it('#replace(/a/g, "x")', () => {
-				// 	const kt_replaced = kt_literal.replace(/a/g, 'x');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value'.replace(/a/g, 'x')});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, false);
-				// });
 			});
 
 			describe('Languaged Literal', () => {
@@ -1928,71 +1821,41 @@ export default class FactorySuite {
 					expect(kt_literal.hash()).to.equal(hash('@en"value'));
 				});
 
+				const f_replace_text = (w_search, w_replace) => [{value:'value'.replace(w_search, w_replace), language:'en'}];
+				const g_replace_text = {
+					clones: [
+						['absent', 'never'],
+						[/absent/, 'never'],
+						['en', 'never'],
+						[/end/, 'never'],
+					],
+					replaces: [
+						['value', 'replaced'],
+						[/value/, 'replaced'],
+						[/l/g, 'x'],
+					],
+				};
+
 				test_replacements({
 					input: kt_literal,
 					validate: H_VALIDATORS.literal,
 					identity: () => [{value:'value', language:'en'}],
 					replace: {
-						iri: (w_search, w_replace) => [{value:'value'.replace(w_search, w_replace), language:'en'}],
+						text: f_replace_text,
+						value: f_replace_text,
 					},
 					map: {
+						text: g_replace_text,
+						value: g_replace_text,
 						iri: {
 							clones: [
-								['absent', 'never'],
-								[/absent/, 'never'],
-								['en', 'never'],
-								[/end/, 'never'],
-							],
-							replaces: [
-								['value', 'replaced'],
-								[/value/, 'replaced'],
+								['value', 'never'],
+								[/value/, 'never'],
 								[/l/g, 'x'],
 							],
 						},
 					},
 				});
-
-				// it('#replace("absent", "never")', () => {
-				// 	const kt_replaced = kt_literal.replace('absent', 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value', language:'en'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace(/absent/, "never")', () => {
-				// 	const kt_replaced = kt_literal.replace(/absent/, 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value', language:'en'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace("en", "never")', () => {
-				// 	const kt_replaced = kt_literal.replace('en', 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value', language:'en'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace(/en/, "never")', () => {
-				// 	const kt_replaced = kt_literal.replace(/en/, 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value', language:'en'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace("value", "replaced")', () => {
-				// 	const kt_replaced = kt_literal.replace('value', 'replaced');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'replaced', language:'en'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, false);
-				// });
-
-				// it('#replace(/value/, "replaced")', () => {
-				// 	const kt_replaced = kt_literal.replace(/value/, 'replaced');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'replaced', language:'en'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, false);
-				// });
-
-				// it('#replace(/l/g, "x")', () => {
-				// 	const kt_replaced = kt_literal.replace(/a/g, 'x');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value'.replace(/a/g, 'x'), language:'en'});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, false);
-				// });
 			});
 
 			describe('Datatyped Literal', () => {
@@ -2123,49 +1986,6 @@ export default class FactorySuite {
 						},
 					},
 				});
-
-
-				// it('#replace("absent", "never")', () => {
-				// 	const kt_replaced = kt_literal.replace('absent', 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value', datatype:p_iri_datatype});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace(/absent/, "never")', () => {
-				// 	const kt_replaced = kt_literal.replace(/absent/, 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value', datatype:p_iri_datatype});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace("datatype", "never")', () => {
-				// 	const kt_replaced = kt_literal.replace('datatype', 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value', datatype:p_iri_datatype});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace(/datatype/, "never")', () => {
-				// 	const kt_replaced = kt_literal.replace(/datatype/, 'never');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value', datatype:p_iri_datatype});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
-				// });
-
-				// it('#replace("value", "replaced")', () => {
-				// 	const kt_replaced = kt_literal.replace('value', 'replaced');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'replaced', datatype:p_iri_datatype});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, false);
-				// });
-
-				// it('#replace(/value/, "replaced")', () => {
-				// 	const kt_replaced = kt_literal.replace(/value/, 'replaced');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'replaced', datatype:p_iri_datatype});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, false);
-				// });
-
-				// it('#replace(/l/g, "x")', () => {
-				// 	const kt_replaced = kt_literal.replace(/a/g, 'x');
-				// 	H_VALIDATORS.literal(kt_replaced, {value:'value'.replace(/a/g, 'x'), datatype:p_iri_datatype});
-				// 	expect_original_replaced_equals(kt_literal, kt_replaced, false);
-				// });
 			});
 
 			describe('Integer Literal', () => {

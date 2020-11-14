@@ -730,6 +730,9 @@ const G_ISOLATE_XSD_STRING = KT_XSD_STRING.isolate();
 			if(this.language) {
 				return new LanguagedLiteral(this.value, this.language);
 			}
+			else if(KT_XSD_STRING.equals(this.datatype)) {
+				return new SimpleLiteral(this.value);
+			}
 			else {
 				return new ExplicitlyDatatypedLiteral(this.value, this.datatype.clone());
 			}
@@ -740,31 +743,57 @@ const G_ISOLATE_XSD_STRING = KT_XSD_STRING.isolate();
 			if(this.language) {
 				return new LanguagedLiteral(this.value, this.language);
 			}
-			// replace datatype IRI
+			// has changeable datatype
 			else {
-				return new ExplicitlyDatatypedLiteral(this.value, this.datatype.replaceIri(w_search, w_replace));
+				const kt_datatype = this.datatype.replaceIri(w_search, w_replace);
+
+				// simple literal
+				if(KT_XSD_STRING.equals(kt_datatype)) {
+					return new SimpleLiteral(this.value);
+				}
+				// explicitly datatyped
+				else {
+					return new ExplicitlyDatatypedLiteral(this.value, kt_datatype);
+				}
 			}
 		}
 
 		replaceText(w_search, w_replace) {
+			const s_value = this.value.replace(w_search, w_replace);
+
 			// languaged
 			if(this.language) {
-				return new LanguagedLiteral(this.value.replace(w_search, w_replace), this.language);
+				return new LanguagedLiteral(s_value, this.language);
+			}
+			// simple literal
+			else if(KT_XSD_STRING.equals(this.datatype)) {
+				return new SimpleLiteral(s_value);
 			}
 			// datatyped
 			else {
-				return new ExplicitlyDatatypedLiteral(this.value.replace(w_search, w_replace), this.datatype);
+				return new ExplicitlyDatatypedLiteral(s_value, this.datatype);
 			}
 		}
 
 		replaceValue(w_search, w_replace) {
+			const s_value = this.value.replace(w_search, w_replace);
+
 			// languaged
 			if(this.language) {
-				return new LanguagedLiteral(this.value.replace(w_search, w_replace), this.language);
+				return new LanguagedLiteral(s_value, this.language);
 			}
-			// datatyped
+			// changeable datatype
 			else {
-				return new ExplicitlyDatatypedLiteral(this.value.replace(w_search, w_replace), this.datatype.replaceValue(w_search, w_replace));
+				const kt_datatype = this.datatype.replaceValue(w_search, w_replace);
+
+				// simple literal
+				if(KT_XSD_STRING.equals(kt_datatype)) {
+					return new SimpleLiteral(s_value);
+				}
+				// datatyped
+				else {
+					return new ExplicitlyDatatypedLiteral(s_value, kt_datatype);
+				}
 			}
 		}
 	},
@@ -867,7 +896,16 @@ class DatatypedLiteral extends GenericLiteral {
 	}
 
 	replaceIri(w_search, w_replace) {
-		return new ExplicitlyDatatypedLiteral(this.value, this.datatype.replaceIri(w_search, w_replace));
+		const kt_datatype = this.datatype.replaceIri(w_search, w_replace);
+
+		// changed to simple literal
+		if(KT_XSD_STRING.equals(kt_datatype.value)) {
+			return new SimpleLiteral(this.value);
+		}
+		// still explicitly datatyped
+		else {
+			return new ExplicitlyDatatypedLiteral(this.value, kt_datatype);
+		}
 	}
 
 	replaceText(w_search, w_replace) {
@@ -875,7 +913,17 @@ class DatatypedLiteral extends GenericLiteral {
 	}
 
 	replaceValue(w_search, w_replace) {
-		return new ExplicitlyDatatypedLiteral(this.value.replace(w_search, w_replace), this.datatype.replaceValue(w_search, w_replace));
+		const s_value = this.value.replace(w_search, w_replace);
+		const kt_datatype = this.datatype.replaceValue(w_search, w_replace);
+
+		// changed to simple literal
+		if(KT_XSD_STRING.equals(kt_datatype.value)) {
+			return new SimpleLiteral(s_value);
+		}
+		// still explicitly datatyped
+		else {
+			return new ExplicitlyDatatypedLiteral(s_value, kt_datatype);
+		}
 	}
 } {
 	const gp_self = DatatypedLiteral.prototype;
@@ -1099,7 +1147,7 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 	}
 })}
 
-@*{yield* declare(/* syntax: js */ `class RawLiteral extends GenericTerm`, {
+@*{yield* declare(/* syntax: js */ `class RawLiteral extends GenericLiteral`, {
 	constructor(s_value) {
 		this.value = s_value;
 	},
@@ -1172,48 +1220,6 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 				return hash('^>'+this.datatype.value+'"'+this.value);
 			}
 		}
-
-		clone() {
-			if(this.language) {
-				return new LanguagedLiteral(this.value, this.language);
-			}
-			else {
-				return new ExplicitlyDatatypedLiteral(this.value, this.datatype.clone());
-			}
-		}
-
-		replaceIri(w_search, w_replace) {
-			// refuse to change IRI if it has a language
-			if(this.language) {
-				return new LanguagedLiteral(this.value, this.language);
-			}
-			// replace datatype IRI
-			else {
-				return new ExplicitlyDatatypedLiteral(this.value, this.datatype.replaceIri(w_search, w_replace));
-			}
-		}
-
-		replaceText(w_search, w_replace) {
-			// languaged
-			if(this.language) {
-				return new LanguagedLiteral(this.value.replace(w_search, w_replace), this.language);
-			}
-			// datatyped
-			else {
-				return new ExplicitlyDatatypedLiteral(this.value.replace(w_search, w_replace), this.datatype);
-			}
-		}
-
-		replaceValue(w_search, w_replace) {
-			// languaged
-			if(this.language) {
-				return new LanguagedLiteral(this.value.replace(w_search, w_replace), this.language);
-			}
-			// datatyped
-			else {
-				return new ExplicitlyDatatypedLiteral(this.value.replace(w_search, w_replace), this.datatype.replaceValue(w_search, w_replace));
-			}
-		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -1276,6 +1282,9 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 			case 'integer': sj_arg = 'xg_value'; break;
 			case 'double': sj_arg = 'x_value'; break;
 			case 'decimal': sj_arg = 's_value'; break;
+			default: {
+				throw new Error(`unhandled literal type: '${s_type}'`);
+			}
 		}
 		const s_type_caps = s_type.toUpperCase();
 		const s_type_proper = s_type_caps.slice(0, 1)+s_type.slice(1);
