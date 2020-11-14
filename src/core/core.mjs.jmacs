@@ -147,10 +147,21 @@ export const uuidv4 = () => {
 	});
 };
 
-const normalize_decimal = s => s.replace(/^\+/, '')
-	.replace(/^(-?)0+/, '$1')
-	.replace(/^(-?)\./, '$10.')
-	.replace(/0+$/, '');
+
+// normalize a decimal string
+const normalize_decimal = (s) => {
+	// flag if negative sign used
+	const b_neg = '-' === s[0];
+
+	// replacements
+	s = s.replace(/^[-+]?0*/, '')  // sign and leading zeroes
+		.replace(/(\.(?:\d*[1-9])?)0+$/g, '$1')  // trailing zeroes
+		.replace(/^(\.|$)/, '0$1')  // decimal-preceeding zero
+		.replace(/\.$/, '');  // trailing decimal
+
+	// re-introduce negative sign for non-zero numbers
+	return b_neg && '0' !== s? '-'+s: s;
+};
 
 
 // keys to access special properties on a prefix mapping; these are strings instead
@@ -1387,6 +1398,7 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 				if((x_value+'') === s_valid) {
 					return true;
 				}
+debugger;
 
 				// precision lost
 				return false;

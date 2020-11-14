@@ -314,8 +314,13 @@ const H_VALIDATORS = {
 		expect(kt_actual.bigint, '.bigint').to.be.NaN;
 	},
 
-	decimal(kt_actual, x_value) {
-		x_value = +x_value;
+	decimal(kt_actual, z_value) {
+		let x_value = +z_value;
+		let b_precise = true;
+		if('object' === typeof z_value) {
+			x_value = z_value.value;
+			b_precise = z_value.precise;
+		}
 
 		// literal decimal specifics
 		expect(kt_actual).to.include({
@@ -325,13 +330,12 @@ const H_VALIDATORS = {
 			isDatatypedLiteral: true,
 			isNumericLiteral: true,
 			isDecimalLiteral: true,
+			isNumberPrecise: b_precise,
 			termType: 'Literal',
 			language: '',
-			value: x_value+'',
+			value: z_value+'',
 			number: x_value,
 		});
-
-		expect(kt_actual.isNumberPrecise).to.be.a('boolean');
 
 		// datatype
 		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'decimal');
@@ -2448,6 +2452,37 @@ export default class FactorySuite {
 					H_VALIDATORS.decimal(k_factory.decimal(-1.1), -1.1);
 				});
 
+				for(const s_sign of ['-', '+']) {
+					['0', '1', '10', '0.', '1.', '0.1', '.0', '.1']
+						.flatMap(s => [s, s_sign+s, '0'+s, s+'0', s_sign+'0'+s, s_sign+s+'0'])
+						.forEach((s_mut) => {
+							it(`decimal("${s_mut}")`, () => {
+								H_VALIDATORS.decimal(k_factory.decimal(s_mut), s_mut);
+							});
+						});
+				}
+
+				// const h_forms = {/* eslint-disable quote-props */
+				// 	'0': ['0', '0'],
+				// 	'1': ['-1', '1'],
+				// 	'10': ['-10', '10'],
+				// 	'0.': ['0', '0'],
+				// 	'1.': ['-1', '1'],
+				// 	'0.1': ['-0.1', '0.1'],
+				// 	'.0': ['0', '0'],
+				// 	'.1': ['-0.1', '0.1'],
+				// };/* eslint-enable quote-props */
+
+				// 	for(const s_sign of ['-', '+']) {
+				// 		const s_value = '-' === s_sign? s_value_neg: s_value_pos;
+				// 		const a_muts = [s_input].flatMap(s => [s, s_sign+s, '0'+s, s+'0', s_sign+'0'+s, s_sign+s+'0']);
+				// 		for(const s_mut of a_muts) {
+				// 			it(`decimal("${s_mut}")`, () => {
+				// 				H_VALIDATORS.decimal(k_factory.decimal(s_mut), s_value);
+				// 			});
+				// 		}
+				// 	}
+				// });
 
 				it('decimal("0")', () => {
 					H_VALIDATORS.decimal(k_factory.decimal('0'), '0');
