@@ -315,10 +315,12 @@ const H_VALIDATORS = {
 	},
 
 	decimal(kt_actual, z_value) {
+		let s_value = z_value+'';
 		let x_value = +z_value;
 		let b_precise = true;
 		if('object' === typeof z_value) {
-			x_value = z_value.value;
+			s_value = z_value.value;
+			x_value = +s_value;
 			b_precise = z_value.precise;
 		}
 
@@ -333,7 +335,7 @@ const H_VALIDATORS = {
 			isNumberPrecise: b_precise,
 			termType: 'Literal',
 			language: '',
-			value: z_value+'',
+			value: s_value,
 			number: x_value,
 		});
 
@@ -345,11 +347,12 @@ const H_VALIDATORS = {
 	},
 
 	boolean(kt_actual, z_value) {
-		const s_value = z_value+'';
+		let s_value = z_value+'';
 		let b_value = z_value;
 
-		if('number' === typeof z_value) {
+		if('number' === typeof z_value || 'bigint' === typeof z_value) {
 			b_value = !!z_value;
+			s_value = b_value? 'true': 'false';
 		}
 		else if('string' === typeof z_value) {
 			if('true' === z_value) {
@@ -399,7 +402,7 @@ const H_VALIDATORS = {
 		H_VALIDATORS[s_type](kt_actual, w_value);
 	},
 
-	date(kt_actual, dt_value) {
+	date(kt_actual, z_value) {
 		// literal integer specifics
 		expect(kt_actual).to.include({
 			...G_PROPERTIES_GRAPHY_TERM_ALL,
@@ -410,19 +413,42 @@ const H_VALIDATORS = {
 			isNumberPrecise: true,
 			termType: 'Literal',
 			language: '',
-			value: dt_value.toISOString().replace(/T.+$/, 'Z'),
-			number: dt_value.getTime(),
-			bigint: BigInt(dt_value.getTime()),
 		});
 
 		expect(kt_actual.date).to.be.an.instanceof(Date);
-		expect(kt_actual.date.getTime()).to.equal(dt_value.getTime());
+
+		if(z_value) {
+			let s_value;
+			let dt_value = z_value;
+
+			if('string' === typeof z_value) {
+				s_value = z_value;
+				dt_value = new Date(s_value);
+			}
+			else {
+				s_value = dt_value.toISOString().replace(/T.+$/, 'Z');
+			}
+
+			expect(kt_actual).to.include({
+				value: s_value,
+				number: dt_value.getTime(),
+				bigint: BigInt(dt_value.getTime()),
+			});
+
+			expect(kt_actual.date.getTime()).to.equal(dt_value.getTime());
+		}
+		else {
+			expect(kt_actual.value).to.be.a('string');
+			expect(kt_actual.number).to.be.a('number');
+			expect(kt_actual.bigint).to.be.a('bigint');
+			expect(kt_actual.date.getTime()).to.be.a('number').that.is.not.NaN;
+		}
 
 		// datatype
 		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'date');
 	},
 
-	dateTime(kt_actual, dt_value) {
+	dateTime(kt_actual, z_value) {
 		// literal integer specifics
 		expect(kt_actual).to.include({
 			...G_PROPERTIES_GRAPHY_TERM_ALL,
@@ -433,13 +459,36 @@ const H_VALIDATORS = {
 			isNumberPrecise: true,
 			termType: 'Literal',
 			language: '',
-			value: dt_value.toISOString(),
-			number: dt_value.getTime(),
-			bigint: BigInt(dt_value.getTime()),
 		});
 
 		expect(kt_actual.date).to.be.an.instanceof(Date);
-		expect(kt_actual.date.getTime()).to.equal(dt_value.getTime());
+
+		if(z_value) {
+			let s_value;
+			let dt_value = z_value;
+
+			if('string' === typeof z_value) {
+				s_value = z_value;
+				dt_value = new Date(s_value);
+			}
+			else {
+				s_value = dt_value.toISOString();
+			}
+
+			expect(kt_actual).to.include({
+				value: s_value,
+				number: dt_value.getTime(),
+				bigint: BigInt(dt_value.getTime()),
+			});
+
+			expect(kt_actual.date.getTime()).to.equal(dt_value.getTime());
+		}
+		else {
+			expect(kt_actual.value).to.be.a('string');
+			expect(kt_actual.number).to.be.a('number');
+			expect(kt_actual.bigint).to.be.a('bigint');
+			expect(kt_actual.date.getTime()).to.be.a('number').that.is.not.NaN;
+		}
 
 		// datatype
 		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'dateTime');
@@ -716,14 +765,18 @@ export default class FactorySuite {
 							'boolean string: False': 'False',
 							'boolean string: TRUE': 'TRUE',
 							'boolean string: FALSE': 'FALSE',
+							2: 2,
+							'2n': 2n,
 						},
 						returns: {
 							true: true,
 							false: false,
 							0: [0, false],
 							1: [1, true],
+							'0n': [0n, false],
+							'1n': [1n, true],
 							'boolean string: true': 'true',
-							'boolean string: false':'false',
+							'boolean string: false': 'false',
 							'numeric string: 1': '1',
 							'numeric string: 0': '0',
 						},
@@ -1028,6 +1081,12 @@ export default class FactorySuite {
 					H_VALIDATORS.default_graph(kt_graph);
 				});
 
+				it('#clone()', () => {
+					const kt_clone = kt_graph.clone();
+					expect_original_replaced_equals(kt_graph, kt_clone, true);
+					H_VALIDATORS.default_graph(kt_clone);
+				});
+
 				it('#equals(this)', () => {
 					expect(kt_graph.equals(kt_graph)).to.be.true;
 				});
@@ -1115,6 +1174,12 @@ export default class FactorySuite {
 
 				it('valid', () => {
 					H_VALIDATORS.named_node(kt_node, p_iri_node);
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_node.clone();
+					expect_original_replaced_equals(kt_node, kt_clone, true);
+					H_VALIDATORS.named_node(kt_clone, p_iri_node);
 				});
 
 				it('replaced invalid \\u0009', () => {
@@ -1238,6 +1303,12 @@ export default class FactorySuite {
 
 				it('valid', () => {
 					H_VALIDATORS.named_node(kt_node, {value:s_relative, relative:true});
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_node.clone();
+					expect_original_replaced_equals(kt_node, kt_clone, true);
+					H_VALIDATORS.named_node(kt_clone, {value:s_relative, relative:true});
 				});
 
 				it('#equals(this)', () => {
@@ -1374,6 +1445,16 @@ export default class FactorySuite {
 			describe('Labeled Blank Node', () => {
 				const kt_node = k_factory.blankNode('label');
 
+				it('valid', () => {
+					H_VALIDATORS.blank_node(kt_node, 'label');
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_node.clone();
+					expect_original_replaced_equals(kt_node, kt_clone, true);
+					H_VALIDATORS.blank_node(kt_clone, 'label');
+				});
+
 				it('#equals(this)', () => {
 					expect(kt_node.equals(kt_node)).to.be.true;
 				});
@@ -1469,6 +1550,16 @@ export default class FactorySuite {
 				const kt_node = k_factory.ephemeral();
 				const nl_uuidv4 = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz'.length;
 
+				it('valid', () => {
+					H_VALIDATORS.blank_node(kt_node, null, true, true);
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_node.clone();
+					expect_original_replaced_equals(kt_node, kt_clone, false);
+					H_VALIDATORS.blank_node(kt_clone, null, true, true);
+				});
+
 				it('.value !== .value', () => {
 					expect(kt_node.value).to.not.equal(kt_node.value);
 				});
@@ -1545,6 +1636,16 @@ export default class FactorySuite {
 				const kt_node = k_factory.blankNode();
 				const s_hash_eg = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz';
 				const nl_uuidv4 = s_hash_eg.length;
+
+				it('valid', () => {
+					H_VALIDATORS.blank_node(kt_node, null, true);
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_node.clone();
+					expect_original_replaced_equals(kt_node, kt_clone, true);
+					H_VALIDATORS.blank_node(kt_clone, null, true);
+				});
 
 				it('#equals(this)', () => {
 					expect(kt_node.equals(kt_node)).to.be.true;
@@ -1636,8 +1737,18 @@ export default class FactorySuite {
 				// });
 			});
 
-			describe('Plain Literal', () => {
+			describe('Simple Literal', () => {
 				const kt_literal = k_factory.literal('value');
+
+				it('valid', () => {
+					H_VALIDATORS.literal(kt_literal, {value:'value'});
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.literal(kt_clone, {value:'value'});
+				});
 
 				it('#equals(this)', () => {
 					expect(kt_literal.equals(kt_literal)).to.be.true;
@@ -1757,6 +1868,16 @@ export default class FactorySuite {
 			describe('Languaged Literal', () => {
 				const kt_literal = k_factory.literal('value', 'en');
 
+				it('valid', () => {
+					H_VALIDATORS.literal(kt_literal, {value:'value', language:'en'});
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.literal(kt_clone, {value:'value', language:'en'});
+				});
+
 				it('#equals(this)', () => {
 					expect(kt_literal.equals(kt_literal)).to.be.true;
 				});
@@ -1871,6 +1992,16 @@ export default class FactorySuite {
 				};
 				const kt_literal = k_factory.literal('value', kt_datatype);
 
+				it('valid', () => {
+					H_VALIDATORS.literal(kt_literal, {value:'value', datatype:p_iri_datatype});
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.literal(kt_clone, {value:'value', datatype:p_iri_datatype});
+				});
+
 				it('#equals(this)', () => {
 					expect(kt_literal.equals(kt_literal)).to.be.true;
 				});
@@ -1960,6 +2091,7 @@ export default class FactorySuite {
 								['datatype', 'replaced'],
 								[/datatype/, 'replaced'],
 								[/a/g, 'x'],
+								[p_iri_datatype, P_IRI_XSD+'string'],
 							],
 						},
 						text: {
@@ -1986,6 +2118,156 @@ export default class FactorySuite {
 								['datatype', 'never'],
 								[/datatype/, 'never'],
 								[/a/g, 'x'],
+							],
+						},
+					},
+				});
+			});
+
+			describe('Boolean Literal', () => {
+				it('boolean()', () => {
+					expect(() => k_factory.boolean()).to.throw();
+				});
+
+				const kt_literal = k_factory.boolean(true);
+				const p_iri_datatype = P_IRI_XSD+'boolean';
+				const h_prefixes = {
+					xsd: P_IRI_XSD,
+				};
+
+				it('#equals(this)', () => {
+					expect(kt_literal.equals(kt_literal)).to.be.true;
+				});
+
+				it('#equals(other)', () => {
+					expect(kt_literal.equals(k_factory.literal('true', k_factory.namedNode(p_iri_datatype)))).to.be.true;
+				});
+
+				it('#equals(isolate)', () => {
+					expect(kt_literal.equals(kt_literal.isolate())).to.be.true;
+				});
+
+				it('#equals(similar)', () => {
+					expect(kt_literal.equals({
+						termType: 'Literal',
+						value: 'true',
+						language: '',
+						datatype: {
+							termType: 'NamedNode',
+							value: p_iri_datatype,
+						},
+					})).to.be.true;
+				});
+
+				it('#concise()', () => {
+					expect(kt_literal.concise()).to.equal(`^>${p_iri_datatype}"true`);
+				});
+
+				it('#concise(h_prefixes)', () => {
+					expect(kt_literal.concise(h_prefixes)).to.equal(`^xsd:boolean"true`);
+				});
+
+				it('#terse()', () => {
+					expect(kt_literal.terse()).to.equal('true');
+				});
+
+				it('#terse(h_prefixes)', () => {
+					expect(kt_literal.terse(h_prefixes)).to.equal('true');
+				});
+
+				it('#star()', () => {
+					expect(kt_literal.star()).to.equal('true');
+				});
+
+				it('#star(h_prefixes)', () => {
+					expect(kt_literal.star(h_prefixes)).to.equal('true');
+				});
+
+				it('#verbose()', () => {
+					expect(kt_literal.verbose()).to.equal(`"true"^^<${p_iri_datatype}>`);
+				});
+
+				it('#isolate()', () => {
+					expect(kt_literal.isolate()).to.eql({
+						termType: 'Literal',
+						value: 'true',
+						language: '',
+						datatype: {
+							termType: 'NamedNode',
+							value: p_iri_datatype,
+						},
+					});
+				});
+
+				it('#hash()', () => {
+					expect(kt_literal.hash()).to.equal(hash(`^>${p_iri_datatype}"true`));
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.boolean(kt_clone, true);
+				});
+
+				test_replacements({
+					input: kt_literal,
+					validate: H_VALIDATORS.boolean,
+					identity: () => [true],
+					map: {
+						iri: {
+							clones: [
+								['absent', 'never'],
+								[/absent/, 'never'],
+								['value', 'never'],
+								[/value/, 'never'],
+							],
+						},
+						text: {
+							clones: [
+								['absent', 'never'],
+								[/absent/, 'never'],
+								['boolean', 'never'],
+								[/boolean/, 'never'],
+							],
+						},
+						value: {
+							clones: [
+								['absent', 'never'],
+								[/absent/, 'never'],
+							],
+						},
+					},
+				});
+
+				test_replacements({
+					input: kt_literal,
+					validate: H_VALIDATORS.literal,
+					replace: {
+						iri: (w_search, w_replace) => [{value:'true', datatype:p_iri_datatype.replace(w_search, w_replace)}],
+						text: (w_search, w_replace) => [{value:'true'.replace(w_search, w_replace), datatype:p_iri_datatype}],
+						value: (w_search, w_replace) => [{value:'true'.replace(w_search, w_replace), datatype:p_iri_datatype.replace(w_search, w_replace)}],
+					},
+					map: {
+						iri: {
+							replaces: [
+								['boolean', 'replaced'],
+								[/boolean/, 'replaced'],
+								[/t/g, 'x'],
+								[p_iri_datatype, P_IRI_XSD+'string'],
+							],
+						},
+						text: {
+							replaces: [
+								['true', 'replaced'],
+								[/true/, 'replaced'],
+								[/t/g, 'x'],
+							],
+						},
+						value: {
+							replaces: [
+								['true', 'replaced'],
+								[/true/, 'replaced'],
+								[/t/g, 'x'],
 							],
 						},
 					},
@@ -2125,6 +2407,12 @@ export default class FactorySuite {
 					expect(() => k_factory.integer({})).to.throw();
 				});
 
+
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.integer(kt_clone, 5);
+				});
 
 				it('#equals(this)', () => {
 					expect(kt_literal.equals(kt_literal)).to.be.true;
@@ -2326,6 +2614,12 @@ export default class FactorySuite {
 					xsd: P_IRI_XSD,
 				};
 
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.double(kt_clone, 5.1);
+				});
+
 				it('#concise()', () => {
 					expect(kt_literal.concise()).to.equal(`^>${p_iri_datatype}"5.1`);
 				});
@@ -2383,29 +2677,191 @@ export default class FactorySuite {
 				});
 			});
 
-			describe('Infinite Literal', () => {
+			describe('Positive Infinity Literal', () => {
 				it('double(Infinity)', () => {
 					H_VALIDATORS.double(k_factory.double(Infinity), Infinity);
-				});
-
-				it('double(-Infinity)', () => {
-					H_VALIDATORS.double(k_factory.double(-Infinity), -Infinity);
 				});
 
 				it('double("Infinity")', () => {
 					expect(() => k_factory.double('Infinity')).to.throw();
 				});
 
-				it('double("-Infinity")', () => {
-					expect(() => k_factory.double('-Infinity')).to.throw();
-				});
-
 				it('double("INF")', () => {
 					H_VALIDATORS.double(k_factory.double('INF'), 'INF');
 				});
 
+				const kt_literal = k_factory.double('INF');
+				const p_iri_datatype = P_IRI_XSD+'double';
+				const h_prefixes = {
+					xsd: P_IRI_XSD,
+				};
+
+				it('#equals(this)', () => {
+					expect(kt_literal.equals(kt_literal)).to.be.true;
+				});
+
+				it('#equals(other)', () => {
+					expect(kt_literal.equals(k_factory.literal('INF', k_factory.namedNode(p_iri_datatype)))).to.be.true;
+				});
+
+				it('#equals(isolate)', () => {
+					expect(kt_literal.equals(kt_literal.isolate())).to.be.true;
+				});
+
+				it('#equals(similar)', () => {
+					expect(kt_literal.equals({
+						termType: 'Literal',
+						value: 'INF',
+						language: '',
+						datatype: {
+							termType: 'NamedNode',
+							value: p_iri_datatype,
+						},
+					})).to.be.true;
+				});
+
+				it('#concise()', () => {
+					expect(kt_literal.concise()).to.equal(`^>${p_iri_datatype}"INF`);
+				});
+
+				it('#concise(h_prefixes)', () => {
+					expect(kt_literal.concise(h_prefixes)).to.equal(`^xsd:double"INF`);
+				});
+
+				it('#terse()', () => {
+					expect(kt_literal.terse()).to.equal(`"INF"^^<${p_iri_datatype}>`);
+				});
+
+				it('#terse(h_prefixes)', () => {
+					expect(kt_literal.terse(h_prefixes)).to.equal('"INF"^^xsd:double');
+				});
+
+				it('#star()', () => {
+					expect(kt_literal.star()).to.equal(`"INF"^^<${p_iri_datatype}>`);
+				});
+
+				it('#star(h_prefixes)', () => {
+					expect(kt_literal.star(h_prefixes)).to.equal('"INF"^^xsd:double');
+				});
+
+				it('#verbose()', () => {
+					expect(kt_literal.verbose()).to.equal(`"INF"^^<${p_iri_datatype}>`);
+				});
+
+				it('#isolate()', () => {
+					expect(kt_literal.isolate()).to.eql({
+						termType: 'Literal',
+						value: 'INF',
+						language: '',
+						datatype: {
+							termType: 'NamedNode',
+							value: p_iri_datatype,
+						},
+					});
+				});
+
+				it('#hash()', () => {
+					expect(kt_literal.hash()).to.equal(hash(`^>${p_iri_datatype}"INF`));
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.double(kt_clone, Infinity);
+				});
+			});
+
+			describe('Negative Infinity Literal', () => {
+				it('double(-Infinity)', () => {
+					H_VALIDATORS.double(k_factory.double(-Infinity), -Infinity);
+				});
+
+				it('double("-Infinity")', () => {
+					expect(() => k_factory.double('-Infinity')).to.throw();
+				});
+
 				it('double("-INF")', () => {
 					H_VALIDATORS.double(k_factory.double('-INF'), '-INF');
+				});
+
+				const kt_literal = k_factory.double('-INF');
+				const p_iri_datatype = P_IRI_XSD+'double';
+				const h_prefixes = {
+					xsd: P_IRI_XSD,
+				};
+
+				it('#equals(this)', () => {
+					expect(kt_literal.equals(kt_literal)).to.be.true;
+				});
+
+				it('#equals(other)', () => {
+					expect(kt_literal.equals(k_factory.literal('-INF', k_factory.namedNode(p_iri_datatype)))).to.be.true;
+				});
+
+				it('#equals(isolate)', () => {
+					expect(kt_literal.equals(kt_literal.isolate())).to.be.true;
+				});
+
+				it('#equals(similar)', () => {
+					expect(kt_literal.equals({
+						termType: 'Literal',
+						value: '-INF',
+						language: '',
+						datatype: {
+							termType: 'NamedNode',
+							value: p_iri_datatype,
+						},
+					})).to.be.true;
+				});
+
+				it('#concise()', () => {
+					expect(kt_literal.concise()).to.equal(`^>${p_iri_datatype}"-INF`);
+				});
+
+				it('#concise(h_prefixes)', () => {
+					expect(kt_literal.concise(h_prefixes)).to.equal(`^xsd:double"-INF`);
+				});
+
+				it('#terse()', () => {
+					expect(kt_literal.terse()).to.equal(`"-INF"^^<${p_iri_datatype}>`);
+				});
+
+				it('#terse(h_prefixes)', () => {
+					expect(kt_literal.terse(h_prefixes)).to.equal('"-INF"^^xsd:double');
+				});
+
+				it('#star()', () => {
+					expect(kt_literal.star()).to.equal(`"-INF"^^<${p_iri_datatype}>`);
+				});
+
+				it('#star(h_prefixes)', () => {
+					expect(kt_literal.star(h_prefixes)).to.equal('"-INF"^^xsd:double');
+				});
+
+				it('#verbose()', () => {
+					expect(kt_literal.verbose()).to.equal(`"-INF"^^<${p_iri_datatype}>`);
+				});
+
+				it('#isolate()', () => {
+					expect(kt_literal.isolate()).to.eql({
+						termType: 'Literal',
+						value: '-INF',
+						language: '',
+						datatype: {
+							termType: 'NamedNode',
+							value: p_iri_datatype,
+						},
+					});
+				});
+
+				it('#hash()', () => {
+					expect(kt_literal.hash()).to.equal(hash(`^>${p_iri_datatype}"-INF`));
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.double(kt_clone, -Infinity);
 				});
 			});
 
@@ -2416,6 +2872,87 @@ export default class FactorySuite {
 
 				it('double(""+NaN)', () => {
 					H_VALIDATORS.double(k_factory.double(NaN+''), NaN+'');
+				});
+
+
+				const kt_literal = k_factory.double('NaN');
+				const p_iri_datatype = P_IRI_XSD+'double';
+				const h_prefixes = {
+					xsd: P_IRI_XSD,
+				};
+
+				it('#equals(this)', () => {
+					expect(kt_literal.equals(kt_literal)).to.be.true;
+				});
+
+				it('#equals(other)', () => {
+					expect(kt_literal.equals(k_factory.literal('NaN', k_factory.namedNode(p_iri_datatype)))).to.be.true;
+				});
+
+				it('#equals(isolate)', () => {
+					expect(kt_literal.equals(kt_literal.isolate())).to.be.true;
+				});
+
+				it('#equals(similar)', () => {
+					expect(kt_literal.equals({
+						termType: 'Literal',
+						value: 'NaN',
+						language: '',
+						datatype: {
+							termType: 'NamedNode',
+							value: p_iri_datatype,
+						},
+					})).to.be.true;
+				});
+
+				it('#concise()', () => {
+					expect(kt_literal.concise()).to.equal(`^>${p_iri_datatype}"NaN`);
+				});
+
+				it('#concise(h_prefixes)', () => {
+					expect(kt_literal.concise(h_prefixes)).to.equal(`^xsd:double"NaN`);
+				});
+
+				it('#terse()', () => {
+					expect(kt_literal.terse()).to.equal(`"NaN"^^<${p_iri_datatype}>`);
+				});
+
+				it('#terse(h_prefixes)', () => {
+					expect(kt_literal.terse(h_prefixes)).to.equal('"NaN"^^xsd:double');
+				});
+
+				it('#star()', () => {
+					expect(kt_literal.star()).to.equal(`"NaN"^^<${p_iri_datatype}>`);
+				});
+
+				it('#star(h_prefixes)', () => {
+					expect(kt_literal.star(h_prefixes)).to.equal('"NaN"^^xsd:double');
+				});
+
+				it('#verbose()', () => {
+					expect(kt_literal.verbose()).to.equal(`"NaN"^^<${p_iri_datatype}>`);
+				});
+
+				it('#isolate()', () => {
+					expect(kt_literal.isolate()).to.eql({
+						termType: 'Literal',
+						value: 'NaN',
+						language: '',
+						datatype: {
+							termType: 'NamedNode',
+							value: p_iri_datatype,
+						},
+					});
+				});
+
+				it('#hash()', () => {
+					expect(kt_literal.hash()).to.equal(hash(`^>${p_iri_datatype}"NaN`));
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.double(kt_clone, NaN);
 				});
 			});
 
@@ -2453,7 +2990,7 @@ export default class FactorySuite {
 				});
 
 				for(const s_sign of ['-', '+']) {
-					['0', '1', '10', '0.', '1.', '0.1', '.0', '.1']
+					['0', '1', '10', '0.', '1.', '0.1', '.0', '.1', '5.1']
 						.flatMap(s => [s, s_sign+s, '0'+s, s+'0', s_sign+'0'+s, s_sign+s+'0'])
 						.forEach((s_mut) => {
 							it(`decimal("${s_mut}")`, () => {
@@ -2461,48 +2998,6 @@ export default class FactorySuite {
 							});
 						});
 				}
-
-				// const h_forms = {/* eslint-disable quote-props */
-				// 	'0': ['0', '0'],
-				// 	'1': ['-1', '1'],
-				// 	'10': ['-10', '10'],
-				// 	'0.': ['0', '0'],
-				// 	'1.': ['-1', '1'],
-				// 	'0.1': ['-0.1', '0.1'],
-				// 	'.0': ['0', '0'],
-				// 	'.1': ['-0.1', '0.1'],
-				// };/* eslint-enable quote-props */
-
-				// 	for(const s_sign of ['-', '+']) {
-				// 		const s_value = '-' === s_sign? s_value_neg: s_value_pos;
-				// 		const a_muts = [s_input].flatMap(s => [s, s_sign+s, '0'+s, s+'0', s_sign+'0'+s, s_sign+s+'0']);
-				// 		for(const s_mut of a_muts) {
-				// 			it(`decimal("${s_mut}")`, () => {
-				// 				H_VALIDATORS.decimal(k_factory.decimal(s_mut), s_value);
-				// 			});
-				// 		}
-				// 	}
-				// });
-
-				it('decimal("0")', () => {
-					H_VALIDATORS.decimal(k_factory.decimal('0'), '0');
-				});
-
-				it('decimal("1")', () => {
-					H_VALIDATORS.decimal(k_factory.decimal('1'), '1');
-				});
-
-				it('decimal("-1")', () => {
-					H_VALIDATORS.decimal(k_factory.decimal('-1'), '-1');
-				});
-
-				it('decimal("5.1")', () => {
-					H_VALIDATORS.decimal(k_factory.decimal('5.1'), '5.1');
-				});
-
-				it('decimal("-5.1")', () => {
-					H_VALIDATORS.decimal(k_factory.decimal('-5.1'), '-5.1');
-				});
 
 				it('decimal(""+Number.MAX_VALUE)', () => {
 					expect(() => k_factory.decimal(''+Number.MAX_VALUE)).to.throw();
@@ -2555,6 +3050,12 @@ export default class FactorySuite {
 					xsd: P_IRI_XSD,
 				};
 
+				it('#clone()', () => {
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.decimal(kt_clone, '5.1');
+				});
+
 				it('#concise()', () => {
 					expect(kt_literal.concise()).to.equal(`^>${p_iri_datatype}"5.1`);
 				});
@@ -2569,6 +3070,10 @@ export default class FactorySuite {
 
 				it('#terse()', () => {
 					expect(kt_literal.terse()).to.equal(`5.1`);
+				});
+
+				it('5#terse()', () => {
+					expect(k_factory.decimal(5).terse()).to.equal(`5.0`);
 				});
 
 				it('#terse({})', () => {
@@ -2611,8 +3116,26 @@ export default class FactorySuite {
 					expect(kt_literal.hash()).to.equal(hash(`^>${p_iri_datatype}"5.1`));
 				});
 
-				it('keeps precision', () => {
-					expect(kt_literal).to.include({
+				it('keeps precision ("5.0")', () => {
+					expect(k_factory.decimal('5.0')).to.include({
+						isNumberPrecise: true,
+					});
+				});
+
+				it('keeps precision ("5")', () => {
+					expect(k_factory.decimal('5')).to.include({
+						isNumberPrecise: true,
+					});
+				});
+
+				it('keeps precision (5)', () => {
+					expect(k_factory.decimal(5)).to.include({
+						isNumberPrecise: true,
+					});
+				});
+
+				it('keeps precision (5.1)', () => {
+					expect(k_factory.decimal(5.1)).to.include({
 						isNumberPrecise: true,
 					});
 				});
@@ -2693,6 +3216,110 @@ export default class FactorySuite {
 					expect(k_factory.decimal('-'+s_decimal)).to.include({
 						isNumberPrecise: true,
 					});
+				});
+			});
+
+			describe('Date Literal', () => {
+				it('date()', () => {
+					H_VALIDATORS.date(k_factory.date());
+				});
+
+				const dt_now = new Date();
+
+				it('date(dt_now)', () => {
+					H_VALIDATORS.date(k_factory.date(dt_now), dt_now);
+				});
+
+				it('date(""+dt_now)', () => {
+					expect(() => k_factory.date(''+dt_now)).to.throw();
+				});
+
+				it('date()', () => {
+					expect(() => H_VALIDATORS.date()).to.throw();
+				});
+
+				it('date(1)', () => {
+					expect(() => H_VALIDATORS.date(1)).to.throw();
+				});
+
+				it('date("")', () => {
+					expect(() => H_VALIDATORS.date('')).to.throw();
+				});
+
+				it('date("2020-02-02")', () => {
+					H_VALIDATORS.date(k_factory.date('2020-02-02'), '2020-02-02');
+				});
+
+				it('date("0000-13-01")', () => {
+					expect(() => k_factory.date('0000-13-00')).to.throw();
+				});
+
+				it('date("0000-01-32")', () => {
+					expect(() => k_factory.date('0000-01-32')).to.throw();
+				});
+
+				it('#clone()', () => {
+					const kt_literal = k_factory.date('2020-02-02');
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.date(kt_clone, '2020-02-02');
+				});
+			});
+
+			describe('DateTime Literal', () => {
+				it('dateTime()', () => {
+					H_VALIDATORS.dateTime(k_factory.dateTime());
+				});
+
+				const dt_now = new Date();
+
+				it('dateTime(dt_now)', () => {
+					H_VALIDATORS.dateTime(k_factory.dateTime(dt_now), dt_now);
+				});
+
+				it('dateTime(""+dt_now)', () => {
+					expect(() => k_factory.dateTime(''+dt_now)).to.throw();
+				});
+
+				it('dateTime()', () => {
+					expect(() => H_VALIDATORS.dateTime()).to.throw();
+				});
+
+				it('dateTime(1)', () => {
+					expect(() => H_VALIDATORS.dateTime(1)).to.throw();
+				});
+
+				it('dateTime("")', () => {
+					expect(() => H_VALIDATORS.dateTime('')).to.throw();
+				});
+
+				it('dateTime("2020-02-02T02:02:02")', () => {
+					H_VALIDATORS.dateTime(k_factory.dateTime('2020-02-02T02:02:02'), '2020-02-02T02:02:02');
+				});
+
+				it('dateTime("0101-01-01T25:00:00Z")', () => {
+					expect(() => k_factory.dateTime('0101-01-01T25:00:00Z')).to.throw();
+				});
+
+				it('dateTime("0101-01-01T00:61:00Z")', () => {
+					expect(() => k_factory.dateTime('0101-01-01T00:61:00Z')).to.throw();
+				});
+
+				it('#clone()', () => {
+					const kt_literal = k_factory.dateTime(dt_now);
+					const kt_clone = kt_literal.clone();
+					expect_original_replaced_equals(kt_literal, kt_clone, true);
+					H_VALIDATORS.dateTime(kt_clone, dt_now);
+				});
+			});
+
+			describe('Transmuted Literals', () => {
+
+				it('loses precision: normalized leading and trailing zeroes', () => {
+					const s_decimal = '5.'+'1'.repeat(20);
+					const k_literal = k_factory.literal(s_decimal);
+					const k_trans = k_literal.replaceIri(/string$/, 'decimal');
+					H_VALIDATORS.decimal(k_trans, {value:s_decimal, precise:false});
 				});
 			});
 

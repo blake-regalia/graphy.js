@@ -692,51 +692,6 @@ const G_ISOLATE_XSD_STRING = KT_XSD_STRING.isolate();
 				: false;
 		}
 
-		verbose() {
-			return JSON.stringify(this.value)
-				+ (this.language
-					? '@'+this.language
-					: '^^'+this.datatype.verbose());
-		}
-
-		concise(h_prefixes={}) {
-			if(this.language) {
-				return '@'+this.language+'"'+this.value;
-			}
-			else {
-				return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
-			}
-		}
-
-		terse(h_prefixes={}) {
-			// turn into terse
-			const st_datatype = this.datatype.terse(h_prefixes);
-
-			// stringify literal
-			return JSON.stringify(this.value)
-				+ (this.language
-					? '@'+this.language
-					: '^^'+st_datatype);
-		}
-
-		isolate() {
-			return {
-				termType: 'Literal',
-				value: this.value,
-				language: this.language,
-				datatype: this.datatype.isolate(),
-			};
-		}
-
-		hash() {
-			if(this.language) {
-				return hash('@'+this.language+'"'+this.value);
-			}
-			else {
-				return hash('^>'+this.datatype.value+'"'+this.value);
-			}
-		}
-
 		clone() {
 			if(this.language) {
 				return new LanguagedLiteral(this.value, this.language);
@@ -910,7 +865,7 @@ class DatatypedLiteral extends GenericLiteral {
 		const kt_datatype = this.datatype.replaceIri(w_search, w_replace);
 
 		// changed to simple literal
-		if(KT_XSD_STRING.equals(kt_datatype.value)) {
+		if(KT_XSD_STRING.equals(kt_datatype)) {
 			return new SimpleLiteral(this.value);
 		}
 		// still explicitly datatyped
@@ -928,7 +883,7 @@ class DatatypedLiteral extends GenericLiteral {
 		const kt_datatype = this.datatype.replaceValue(w_search, w_replace);
 
 		// changed to simple literal
-		if(KT_XSD_STRING.equals(kt_datatype.value)) {
+		if(KT_XSD_STRING.equals(kt_datatype)) {
 			return new SimpleLiteral(s_value);
 		}
 		// still explicitly datatyped
@@ -1155,90 +1110,12 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 		clone() {
 			return new ExplicitlyDatatypedLiteral(this.value, this.datatype.clone());
 		}
-	}
-})}
-
-@*{yield* declare(/* syntax: js */ `class RawLiteral extends GenericLiteral`, {
-	constructor(s_value) {
-		this.value = s_value;
-	},
-	descriptors: {
-		'@spread': /* syntax: js.object-literal */ `...H_VAGUE_LITERAL_DESCRIPTORS,\n`,
-	},
-	/* eslint-disable no-undef */
-	methods: class {
-		get isSimpleLiteral() {
-			return !this.language && KT_XSD_STRING.equals(this.datatype);
-		}
-
-		get isLanguagedLiteral() {
-			return !!this.language;
-		}
-
-		get isDatatypedLiteral() {
-			return !this.language && !KT_XSD_STRING.equals(this.datatype);
-		}
-
-		equals(z_other) {
-			return z_other
-				? this === z_other
-					|| ('Literal' === z_other.termType && z_other.value === this.value
-						&& this.datatype.equals(z_other.datatype) && z_other.language === this.language)
-				: false;
-		}
-
-		verbose() {
-			return JSON.stringify(this.value)
-				+ (this.language
-					? '@'+this.language
-					: '^^'+this.datatype.verbose());
-		}
-
-		concise(h_prefixes={}) {
-			if(this.language) {
-				return '@'+this.language+'"'+this.value;
-			}
-			else {
-				return '^'+concise(this.datatype.value, h_prefixes)+'"'+this.value;
-			}
-		}
-
-		terse(h_prefixes={}) {
-			// turn into terse
-			const st_datatype = this.datatype.terse(h_prefixes);
-
-			// stringify literal
-			return JSON.stringify(this.value)
-				+ (this.language
-					? '@'+this.language
-					: '^^'+st_datatype);
-		}
-
-		isolate() {
-			return {
-				termType: 'Literal',
-				value: this.value,
-				language: this.language,
-				datatype: this.datatype.isolate(),
-			};
-		}
-
-		hash() {
-			if(this.language) {
-				return hash('@'+this.language+'"'+this.value);
-			}
-			else {
-				return hash('^>'+this.datatype.value+'"'+this.value);
-			}
-		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		isLiteral:             /* syntax: js */ `true`,
-		termType:              /* syntax: js */ `'Literal'`,
-		datatype:              /* syntax: js */ `KT_XSD_STRING`,
-		language:              /* syntax: js */ `''`,
-		star:                  /* syntax: js */ `gp_self.terse`,
+		isSimpleLiteral:       /* syntax: js */ `false`,
+		isLanguagedLiteral:    /* syntax: js */ `false`,
+		isDatatypedLiteral:    /* syntax: js */ `true`,
 	},
 })}
 
@@ -1260,10 +1137,6 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 			return JSON.stringify(this.value);
 		}
 
-		hash() {
-			return hash('"'+this.value);
-		}
-
 		isolate() {
 			return {
 				termType: 'Literal',
@@ -1271,6 +1144,10 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 				language: '',
 				datatype: G_ISOLATE_XSD_STRING,
 			};
+		}
+
+		hash() {
+			return hash('"'+this.value);
 		}
 	},
 	/* eslint-enable no-undef */
@@ -1358,8 +1235,6 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 			this.value = @{sj_arg}+'';
 			@- b_boolean
 				this.boolean = @{sj_arg};
-				this.number = @{sj_arg}? 1: 0;
-				this.bigint = @{sj_arg}? 1n: 0n;
 			@+ b_integer
 				const xg_set = @{sj_arg};
 
@@ -1386,6 +1261,16 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 			@;
 		}
 
+		@- b_boolean
+			get number() {
+				return this.boolean? 1: 0;
+			}
+
+			get bigint() {
+				return this.boolean? 1n: 0n;
+			}
+		@;
+
 		@- b_decimal
 			get isNumberPrecise() {
 				// ref number value
@@ -1398,7 +1283,6 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 				if((x_value+'') === s_valid) {
 					return true;
 				}
-debugger;
 
 				// precision lost
 				return false;
@@ -1578,9 +1462,7 @@ const RT_DOUBLE_E = /e-?\d+$/;
 				}
 			`,
 			terse: /* syntax: js */ `
-				return this.value.includes('e')
-					? \`"\${this.value}"^^<${P_IRI_XSD}decimal>\`
-					: this.value+(this.value.includes('.')? '': '.0');
+				return this.value+(this.value.includes('.')? '': '.0');
 			`,
 		},
 
@@ -1609,6 +1491,20 @@ const RT_DOUBLE_E = /e-?\d+$/;
 				// string
 				else if('string' === s_type) {
 					return BooleanLiteral.fromString(${s_arg});
+				}
+				// bigint
+				else if('bigint' === s_type) {
+					// 1
+					if(1n === ${s_arg}) {
+						return new BooleanLiteral(true);
+					}
+					// 0
+					else if(0n === ${s_arg}) {
+						return new BooleanLiteral(false);
+					}
+
+					// invalid
+					throw new Error(\`Boolean value '${s_arg}' must be either a '1n' or '0n' if using bigint\`);
 				}
 				// undefined
 				else if('undefined' === s_type) {
@@ -1752,10 +1648,12 @@ class NaNLiteral extends DoubleLiteral {
 			};
 		}
 
-		replace(w_search, w_replace) {
-			return this.isAnonymousBlankNode
-				? blankNode()
-				: new BlankNode(this.value.replace(w_search, w_replace));
+		clone() {
+			return new BlankNode(this.value, this.isAnonymousBlankNode);
+		}
+
+		replaceValue(w_search, w_replace) {
+			return new BlankNode(this.value.replace(w_search, w_replace), this.isAnonymousBlankNode);
 		}
 	},
 	/* eslint-enable no-undef */
@@ -1767,6 +1665,7 @@ class NaNLiteral extends DoubleLiteral {
 		isBlankNode:           /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'BlankNode'`,
 		concise:               /* syntax: js */ `gp_self.terse = gp_self.star = gp_self.verbose`,
+		replaceIri:            /* syntax: js */ `gp_self.replaceText = gp_self.clone`,
 	},
 })}
 
@@ -1802,7 +1701,7 @@ class NaNLiteral extends DoubleLiteral {
 			return false;
 		}
 
-		replace() {
+		clone() {
 			return new EphemeralBlankNode();
 		}
 	},
@@ -1811,6 +1710,7 @@ class NaNLiteral extends DoubleLiteral {
 		isAnonymousBlankNode:  /* syntax: js */ `true`,
 		isEphemeralBlankNode:  /* syntax: js */ `true`,
 		star:                  /* syntax: js */ `gp_self.terse`,
+		replaceValue:          /* syntax: js */ `gp_self.replaceIri = gp_self.replaceText = gp_self.clone`,
 	},
 })}
 
@@ -2230,10 +2130,6 @@ const g_raw = {
 		return new BlankNode(s_label, b_anonymous);
 	},
 
-	literal(s_value) {
-		return new RawLiteral(s_value);
-	},
-
 	defaultGraph() {
 		return new DefaultGraph();
 	},
@@ -2390,15 +2286,20 @@ export function number(z) {
 	}
 }
 
+const RT_DATE = /^([0-9]{4})-([0-1][0-9])-[0-3][0-9]Z?$/;
 export function date(z_date=new Date()) {
 	let s_date = '';
 	let dt_date;
 
 	if('string' === typeof z_date) {
+		if(!RT_DATE.exec(z_date)) {
+			throw new Error(`Invalid date string: ${z_date}`);
+		}
+
 		s_date = z_date;
 		dt_date = new Date(z_date);
 		if(Number.isNaN(dt_date.getTime())) {
-			throw new TypeError(`Invalid date string: ${z_date}`);
+			throw new Error(`Impossible date: ${s_date}`);
 		}
 	}
 	else if(z_date instanceof Date || '[object Date]' === Object.prototype.toString.call(z_date)) {
@@ -2415,15 +2316,20 @@ export function date(z_date=new Date()) {
 	return new DateLiteral(s_date, dt_date);
 }
 
+const RT_DATETIME = /^([0-9]{4})-([0-1][0-9])-([0-3][0-9]T[0-2][0-9]:[0-6][0-9]:[0-6][0-9](Z)?)$/;
 export function dateTime(z_date=new Date()) {
 	let s_date = '';
 	let dt_date;
 
 	if('string' === typeof z_date) {
+		if(!RT_DATETIME.exec(z_date)) {
+			throw new Error(`Invalid dateTime string: ${z_date}`);
+		}
+
 		s_date = z_date;
 		dt_date = new Date(z_date);
 		if(Number.isNaN(dt_date.getTime())) {
-			throw new TypeError(`Invalid dateTime string: ${z_date}`);
+			throw new Error(`Impossible dateTime: ${s_date}`);
 		}
 	}
 	else if(z_date instanceof Date || '[object Date]' === Object.prototype.toString.call(z_date)) {
