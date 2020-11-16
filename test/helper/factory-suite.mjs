@@ -216,7 +216,7 @@ const H_VALIDATORS = {
 				: null));
 	},
 
-	integer(kt_actual, w_desc) {
+	integerLiteral(kt_actual, w_desc) {
 		let xg_value;
 
 		if('number' === typeof w_desc) {
@@ -258,7 +258,7 @@ const H_VALIDATORS = {
 		expect(kt_actual.boolean, '.boolean').to.be.NaN;
 	},
 
-	double(kt_actual, z_value) {
+	doubleLiteral(kt_actual, z_value) {
 		let x_value = z_value;
 		let s_value = z_value+'';
 
@@ -314,7 +314,7 @@ const H_VALIDATORS = {
 		expect(kt_actual.bigint, '.bigint').to.be.NaN;
 	},
 
-	decimal(kt_actual, z_value) {
+	decimalLiteral(kt_actual, z_value) {
 		let s_value = z_value+'';
 		let x_value = +z_value;
 		let b_precise = true;
@@ -346,7 +346,7 @@ const H_VALIDATORS = {
 		expect(kt_actual.bigint, '.bigint').to.be.NaN;
 	},
 
-	boolean(kt_actual, z_value) {
+	booleanLiteral(kt_actual, z_value) {
 		let s_value = z_value+'';
 		let b_value = z_value;
 
@@ -386,7 +386,7 @@ const H_VALIDATORS = {
 		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'boolean');
 	},
 
-	number(kt_actual, z_value, w_arg) {
+	numberLiteral(kt_actual, z_value, w_arg) {
 		let s_type, w_value;
 		if(Array.isArray(z_value)) {
 			[s_type, w_value] = z_value;
@@ -402,7 +402,7 @@ const H_VALIDATORS = {
 		H_VALIDATORS[s_type](kt_actual, w_value);
 	},
 
-	date(kt_actual, z_value) {
+	dateLiteral(kt_actual, z_value) {
 		// literal integer specifics
 		expect(kt_actual).to.include({
 			...G_PROPERTIES_GRAPHY_TERM_ALL,
@@ -448,7 +448,7 @@ const H_VALIDATORS = {
 		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'date');
 	},
 
-	dateTime(kt_actual, z_value) {
+	dateTimeLiteral(kt_actual, z_value) {
 		// literal integer specifics
 		expect(kt_actual).to.include({
 			...G_PROPERTIES_GRAPHY_TERM_ALL,
@@ -651,7 +651,7 @@ export default class FactorySuite {
 
 			describe('datatyped literal constructors', () => {
 				this.validate_factory({
-					integer: {
+					integerLiteral: {
 						throws: {
 							'+Infinity': Infinity,
 							'-Infinity': -Infinity,
@@ -685,7 +685,7 @@ export default class FactorySuite {
 							'bigint: Number.MIN_SAFE_INTEGER*2n': BigInt(Number.MIN_SAFE_INTEGER) * 2n,
 						},
 					},
-					double: {
+					doubleLiteral: {
 						throws: {
 							true: true,
 							false: false,
@@ -717,7 +717,7 @@ export default class FactorySuite {
 							NaN: NaN,
 						},
 					},
-					decimal: {
+					decimalLiteral: {
 						throws: {
 							'+Infinity': Infinity,
 							'-Infinity': -Infinity,
@@ -749,7 +749,7 @@ export default class FactorySuite {
 							'numeric string: -0.1': ['-0.1', -0.1],
 						},
 					},
-					boolean: {
+					booleanLiteral: {
 						throws: {
 							'+Infinity': Infinity,
 							'-Infinity': -Infinity,
@@ -781,7 +781,7 @@ export default class FactorySuite {
 							'numeric string: 0': '0',
 						},
 					},
-					number: {
+					numberLiteral: {
 						throws: {
 							null: null,
 							undefined: undefined,  // eslint-disable-line no-undefined
@@ -792,31 +792,41 @@ export default class FactorySuite {
 							'numeric string: 0b101': '0b101',
 						},
 						returns: {
-							0: [0, 'integer'],
-							1: [1, 'integer'],
-							'-1': [-1, 'integer'],
-							0.1: [0.1, 'double'],
-							'-0.1': [-0.1, 'double'],
-							'+Infinity': [Infinity, 'double'],
-							'-Infinity': [-Infinity, 'double'],
-							NaN: [NaN, 'double'],
-							'Number.MAX_SAFE_INTEGER': [Number.MAX_SAFE_INTEGER, 'integer'],
-							'Number.MIN_SAFE_INTEGER': [Number.MIN_SAFE_INTEGER, 'integer'],
-							'Number.MAX_VALUE': [Number.MAX_VALUE, 'integer'],
-							'Number.MIN_VALUE': [Number.MIN_VALUE, 'double'],
-							'numeric string: 0': ['0', ['integer', 0]],
-							'numeric string: 1': ['1', ['integer', 1]],
-							'numeric string: -1': ['-1', ['integer', -1]],
-							'numeric string: 0.1': ['0.1', ['decimal', 0.1]],
-							'numeric string: -0.1': ['-0.1', ['decimal', -0.1]],
+							0: [0, 'integerLiteral'],
+							1: [1, 'integerLiteral'],
+							'-1': [-1, 'integerLiteral'],
+							0.1: [0.1, 'doubleLiteral'],
+							'-0.1': [-0.1, 'doubleLiteral'],
+							'+Infinity': [Infinity, 'doubleLiteral'],
+							'-Infinity': [-Infinity, 'doubleLiteral'],
+							NaN: [NaN, 'doubleLiteral'],
+							'Number.MAX_SAFE_INTEGER': [Number.MAX_SAFE_INTEGER, 'integerLiteral'],
+							'Number.MIN_SAFE_INTEGER': [Number.MIN_SAFE_INTEGER, 'integerLiteral'],
+							'Number.MAX_VALUE': [Number.MAX_VALUE, 'integerLiteral'],
+							'Number.MIN_VALUE': [Number.MIN_VALUE, 'doubleLiteral'],
+							'numeric string: 0': ['0', ['integerLiteral', 0]],
+							'numeric string: 1': ['1', ['integerLiteral', 1]],
+							'numeric string: -1': ['-1', ['integerLiteral', -1]],
+							'numeric string: 0.1': ['0.1', ['decimalLiteral', 0.1]],
+							'numeric string: -0.1': ['-0.1', ['decimalLiteral', -0.1]],
 						},
 					},
-					date: {
+					dateLiteral: {
+						throws: {
+							'': '',
+							'{}': {},
+							'bad date': new Date('bad'),
+						},
 						returns: {
 							now: new Date(),
 						},
 					},
-					dateTime: {
+					dateTimeLiteral: {
+						throws: {
+							'': '',
+							'{}': {},
+							'bad date': new Date('bad'),
+						},
 						returns: {
 							now: new Date(),
 						},
@@ -867,21 +877,21 @@ export default class FactorySuite {
 							'^xsd:integer"': {value:'', datatype:P_IRI_XSD+'integer'},
 							'^xsd:boolean"never': {value:'never', datatype:P_IRI_XSD+'boolean'},
 						},
-						number: {
-							'^xsd:integer"10': ['integer', 10],
-							'^xsd:integer"-10': ['integer', -10],
-							[`^xsd:integer"${Number.MAX_SAFE_INTEGER}`]: ['integer', Number.MAX_SAFE_INTEGER],
-							[`^xsd:integer"${Number.MIN_SAFE_INTEGER}`]: ['integer', Number.MIN_SAFE_INTEGER],
-							[`^xsd:integer"${BigInt(Number.MAX_SAFE_INTEGER)*2n}`]: ['integer', BigInt(Number.MAX_SAFE_INTEGER)*2n],
-							[`^xsd:integer"${BigInt(Number.MIN_SAFE_INTEGER)*2n}`]: ['integer', BigInt(Number.MIN_SAFE_INTEGER)*2n],
-							'^xsd:double"5': ['double', 5],
-							'^xsd:double"5.1': ['double', 5.1],
-							'^xsd:double"INF': ['double', Infinity],
-							'^xsd:double"-INF': ['double', -Infinity],
-							'^xsd:double"NaN': ['double', NaN],
-							'^xsd:decimal"5.1': ['decimal', 5.1],
-							'^xsd:boolean"true': ['boolean', true],
-							'^xsd:boolean"false': ['boolean', false],
+						numberLiteral: {
+							'^xsd:integer"10': ['integerLiteral', 10],
+							'^xsd:integer"-10': ['integerLiteral', -10],
+							[`^xsd:integer"${Number.MAX_SAFE_INTEGER}`]: ['integerLiteral', Number.MAX_SAFE_INTEGER],
+							[`^xsd:integer"${Number.MIN_SAFE_INTEGER}`]: ['integerLiteral', Number.MIN_SAFE_INTEGER],
+							[`^xsd:integer"${BigInt(Number.MAX_SAFE_INTEGER)*2n}`]: ['integerLiteral', BigInt(Number.MAX_SAFE_INTEGER)*2n],
+							[`^xsd:integer"${BigInt(Number.MIN_SAFE_INTEGER)*2n}`]: ['integerLiteral', BigInt(Number.MIN_SAFE_INTEGER)*2n],
+							'^xsd:double"5': ['doubleLiteral', 5],
+							'^xsd:double"5.1': ['doubleLiteral', 5.1],
+							'^xsd:double"INF': ['doubleLiteral', Infinity],
+							'^xsd:double"-INF': ['doubleLiteral', -Infinity],
+							'^xsd:double"NaN': ['doubleLiteral', NaN],
+							'^xsd:decimal"5.1': ['decimalLiteral', 5.1],
+							'^xsd:boolean"true': ['booleanLiteral', true],
+							'^xsd:boolean"false': ['booleanLiteral', false],
 						},
 						named_node: {
 							'>': '',
@@ -1547,7 +1557,7 @@ export default class FactorySuite {
 			});
 
 			describe('Ephemeral Blank Node', () => {
-				const kt_node = k_factory.ephemeral();
+				const kt_node = k_factory.ephemeralBlankNode();
 				const nl_uuidv4 = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz'.length;
 
 				it('valid', () => {
@@ -2125,11 +2135,11 @@ export default class FactorySuite {
 			});
 
 			describe('Boolean Literal', () => {
-				it('boolean()', () => {
-					expect(() => k_factory.boolean()).to.throw();
+				it('booleanLiteral()', () => {
+					expect(() => k_factory.booleanLiteral()).to.throw();
 				});
 
-				const kt_literal = k_factory.boolean(true);
+				const kt_literal = k_factory.booleanLiteral(true);
 				const p_iri_datatype = P_IRI_XSD+'boolean';
 				const h_prefixes = {
 					xsd: P_IRI_XSD,
@@ -2206,12 +2216,12 @@ export default class FactorySuite {
 				it('#clone()', () => {
 					const kt_clone = kt_literal.clone();
 					expect_original_replaced_equals(kt_literal, kt_clone, true);
-					H_VALIDATORS.boolean(kt_clone, true);
+					H_VALIDATORS.booleanLiteral(kt_clone, true);
 				});
 
 				test_replacements({
 					input: kt_literal,
-					validate: H_VALIDATORS.boolean,
+					validate: H_VALIDATORS.booleanLiteral,
 					identity: () => [true],
 					map: {
 						iri: {
@@ -2276,142 +2286,142 @@ export default class FactorySuite {
 
 			describe('Integer Literal', () => {
 				const p_iri_datatype = P_IRI_XSD+'integer';
-				const kt_literal = k_factory.integer(5);
+				const kt_literal = k_factory.integerLiteral(5);
 				const h_prefixes = {
 					xsd: P_IRI_XSD,
 				};
 
 				it('integer(0)', () => {
-					H_VALIDATORS.integer(k_factory.integer(0), 0);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(0), 0);
 				});
 
 				it('integer(1)', () => {
-					H_VALIDATORS.integer(k_factory.integer(1), 1);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(1), 1);
 				});
 
 				it('integer(-1)', () => {
-					H_VALIDATORS.integer(k_factory.integer(-1), -1);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(-1), -1);
 				});
 
 				it('integer(Number.MAX_SAFE_INTEGER)', () => {
-					H_VALIDATORS.integer(k_factory.integer(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER);
 				});
 
 				it('integer(Number.MIN_SAFE_INTEGER)', () => {
-					H_VALIDATORS.integer(k_factory.integer(Number.MIN_SAFE_INTEGER), Number.MIN_SAFE_INTEGER);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(Number.MIN_SAFE_INTEGER), Number.MIN_SAFE_INTEGER);
 				});
 
 				it('integer(Number.MAX_SAFE_INTEGER*2)', () => {
-					H_VALIDATORS.integer(k_factory.integer(Number.MAX_SAFE_INTEGER*2), Number.MAX_SAFE_INTEGER*2);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(Number.MAX_SAFE_INTEGER*2), Number.MAX_SAFE_INTEGER*2);
 				});
 
 				it('integer(Number.MIN_SAFE_INTEGER*2)', () => {
-					H_VALIDATORS.integer(k_factory.integer(Number.MIN_SAFE_INTEGER*2), Number.MIN_SAFE_INTEGER*2);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(Number.MIN_SAFE_INTEGER*2), Number.MIN_SAFE_INTEGER*2);
 				});
 
 
 				it('integer(0n)', () => {
-					H_VALIDATORS.integer(k_factory.integer(0n), 0n);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(0n), 0n);
 				});
 
 				it('integer(1n)', () => {
-					H_VALIDATORS.integer(k_factory.integer(1n), 1n);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(1n), 1n);
 				});
 
 				it('integer(-1n)', () => {
-					H_VALIDATORS.integer(k_factory.integer(-1n), -1n);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(-1n), -1n);
 				});
 
 				const xg_max_safe_int = BigInt(Number.MAX_SAFE_INTEGER);
 				const xg_min_safe_int = BigInt(Number.MIN_SAFE_INTEGER);
 
 				it('integer(Number.MAX_SAFE_INTEGER+1n)', () => {
-					H_VALIDATORS.integer(k_factory.integer(xg_max_safe_int+1n), xg_max_safe_int+1n);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(xg_max_safe_int+1n), xg_max_safe_int+1n);
 				});
 
 				it('integer(Number.MIN_SAFE_INTEGER-1n)', () => {
-					H_VALIDATORS.integer(k_factory.integer(xg_min_safe_int-1n), xg_min_safe_int-1n);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(xg_min_safe_int-1n), xg_min_safe_int-1n);
 				});
 
 
 				it('integer("0")', () => {
-					H_VALIDATORS.integer(k_factory.integer('0'), '0');
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral('0'), '0');
 				});
 
 				it('integer("1")', () => {
-					H_VALIDATORS.integer(k_factory.integer('1'), '1');
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral('1'), '1');
 				});
 
 				it('integer("-1")', () => {
-					H_VALIDATORS.integer(k_factory.integer('-1'), '-1');
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral('-1'), '-1');
 				});
 
 				it('integer("10")', () => {
-					H_VALIDATORS.integer(k_factory.integer('10'), '10');
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral('10'), '10');
 				});
 
 				it('integer("-10")', () => {
-					H_VALIDATORS.integer(k_factory.integer('-10'), '-10');
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral('-10'), '-10');
 				});
 
 				it('integer(""+Number.MAX_SAFE_INTEGER)', () => {
-					H_VALIDATORS.integer(k_factory.integer(''+Number.MAX_SAFE_INTEGER), ''+Number.MAX_SAFE_INTEGER);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(''+Number.MAX_SAFE_INTEGER), ''+Number.MAX_SAFE_INTEGER);
 				});
 
 				it('integer(""+Number.MIN_SAFE_INTEGER)', () => {
-					H_VALIDATORS.integer(k_factory.integer(''+Number.MIN_SAFE_INTEGER), ''+Number.MIN_SAFE_INTEGER);
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(''+Number.MIN_SAFE_INTEGER), ''+Number.MIN_SAFE_INTEGER);
 				});
 
 				it('integer(""+Number.MAX_SAFE_INTEGER*2n)', () => {
-					H_VALIDATORS.integer(k_factory.integer(''+(BigInt(Number.MAX_SAFE_INTEGER)*2n)), ''+(BigInt(Number.MAX_SAFE_INTEGER)*2n));
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(''+(BigInt(Number.MAX_SAFE_INTEGER)*2n)), ''+(BigInt(Number.MAX_SAFE_INTEGER)*2n));
 				});
 
 				it('integer(""+Number.MIN_SAFE_INTEGER*2n)', () => {
-					H_VALIDATORS.integer(k_factory.integer(''+(BigInt(Number.MIN_SAFE_INTEGER)*2n)), ''+(BigInt(Number.MIN_SAFE_INTEGER)*2n));
+					H_VALIDATORS.integerLiteral(k_factory.integerLiteral(''+(BigInt(Number.MIN_SAFE_INTEGER)*2n)), ''+(BigInt(Number.MIN_SAFE_INTEGER)*2n));
 				});
 
 
 				it('integer(Infinity)', () => {
-					expect(() => k_factory.integer(Infinity)).to.throw();
+					expect(() => k_factory.integerLiteral(Infinity)).to.throw();
 				});
 
 				it('integer(NaN)', () => {
-					expect(() => k_factory.integer(NaN)).to.throw();
+					expect(() => k_factory.integerLiteral(NaN)).to.throw();
 				});
 
 				it('integer(5.1)', () => {
-					expect(() => k_factory.integer(5.1)).to.throw();
+					expect(() => k_factory.integerLiteral(5.1)).to.throw();
 				});
 
 				it('integer("")', () => {
-					expect(() => k_factory.integer()).to.throw();
+					expect(() => k_factory.integerLiteral()).to.throw();
 				});
 
 				it('integer("never")', () => {
-					expect(() => k_factory.integer('never')).to.throw();
+					expect(() => k_factory.integerLiteral('never')).to.throw();
 				});
 
 				it('integer("5.1")', () => {
-					expect(() => k_factory.integer('5.1')).to.throw();
+					expect(() => k_factory.integerLiteral('5.1')).to.throw();
 				});
 
 				it('integer()', () => {
-					expect(() => k_factory.integer()).to.throw();
+					expect(() => k_factory.integerLiteral()).to.throw();
 				});
 
 				it('integer(null)', () => {
-					expect(() => k_factory.integer(null)).to.throw();
+					expect(() => k_factory.integerLiteral(null)).to.throw();
 				});
 
 				it('integer({})', () => {
-					expect(() => k_factory.integer({})).to.throw();
+					expect(() => k_factory.integerLiteral({})).to.throw();
 				});
 
 
 				it('#clone()', () => {
 					const kt_clone = kt_literal.clone();
 					expect_original_replaced_equals(kt_literal, kt_clone, true);
-					H_VALIDATORS.integer(kt_clone, 5);
+					H_VALIDATORS.integerLiteral(kt_clone, 5);
 				});
 
 				it('#equals(this)', () => {
@@ -2484,25 +2494,25 @@ export default class FactorySuite {
 
 				// it('#replace("absent", "never")', () => {
 				// 	const kt_replaced = kt_literal.replace('absent', 'never');
-				// 	H_VALIDATORS.integer(kt_replaced, 5);
+				// 	H_VALIDATORS.integerLiteral(kt_replaced, 5);
 				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
 				// });
 
 				// it('#replace(/absent/, "never")', () => {
 				// 	const kt_replaced = kt_literal.replace(/absent/, 'never');
-				// 	H_VALIDATORS.integer(kt_replaced, 5);
+				// 	H_VALIDATORS.integerLiteral(kt_replaced, 5);
 				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
 				// });
 
 				// it('#replace("integer", "never")', () => {
 				// 	const kt_replaced = kt_literal.replace('integer', 'never');
-				// 	H_VALIDATORS.integer(kt_replaced, 5);
+				// 	H_VALIDATORS.integerLiteral(kt_replaced, 5);
 				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
 				// });
 
 				// it('#replace(/integer/, "never")', () => {
 				// 	const kt_replaced = kt_literal.replace(/integer/, 'never');
-				// 	H_VALIDATORS.integer(kt_replaced, 5);
+				// 	H_VALIDATORS.integerLiteral(kt_replaced, 5);
 				// 	expect_original_replaced_equals(kt_literal, kt_replaced, true);
 				// });
 
@@ -2527,88 +2537,88 @@ export default class FactorySuite {
 
 			describe('Double Literal', () => {
 				it('double(0)', () => {
-					H_VALIDATORS.double(k_factory.double(0), 0);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(0), 0);
 				});
 
 				it('double(1)', () => {
-					H_VALIDATORS.double(k_factory.double(1), 1);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(1), 1);
 				});
 
 				it('double(-1)', () => {
-					H_VALIDATORS.double(k_factory.double(-1), -1);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(-1), -1);
 				});
 
 				it('double(Number.MAX_VALUE)', () => {
-					H_VALIDATORS.double(k_factory.double(Number.MAX_VALUE), Number.MAX_VALUE);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(Number.MAX_VALUE), Number.MAX_VALUE);
 				});
 
 				it('double(Number.MIN_VALUE)', () => {
-					H_VALIDATORS.double(k_factory.double(Number.MIN_VALUE), Number.MIN_VALUE);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(Number.MIN_VALUE), Number.MIN_VALUE);
 				});
 
 				it('double(0.1)', () => {
-					H_VALIDATORS.double(k_factory.double(0.1), 0.1);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(0.1), 0.1);
 				});
 
 				it('double(1.1)', () => {
-					H_VALIDATORS.double(k_factory.double(1.1), 1.1);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(1.1), 1.1);
 				});
 
 				it('double(-1.1)', () => {
-					H_VALIDATORS.double(k_factory.double(-1.1), -1.1);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(-1.1), -1.1);
 				});
 
 
 				it('double("0")', () => {
-					H_VALIDATORS.double(k_factory.double('0'), '0');
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral('0'), '0');
 				});
 
 				it('double("1")', () => {
-					H_VALIDATORS.double(k_factory.double('1'), '1');
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral('1'), '1');
 				});
 
 				it('double("-1")', () => {
-					H_VALIDATORS.double(k_factory.double('-1'), '-1');
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral('-1'), '-1');
 				});
 
 				it('double("5.1")', () => {
-					H_VALIDATORS.double(k_factory.double('5.1'), '5.1');
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral('5.1'), '5.1');
 				});
 
 				it('double("-5.1")', () => {
-					H_VALIDATORS.double(k_factory.double('-5.1'), '-5.1');
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral('-5.1'), '-5.1');
 				});
 
 				it('double(""+Number.MAX_VALUE)', () => {
-					H_VALIDATORS.double(k_factory.double(''+Number.MAX_VALUE), ''+Number.MAX_VALUE);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(''+Number.MAX_VALUE), ''+Number.MAX_VALUE);
 				});
 
 				it('double(""+Number.MIN_VALUE)', () => {
-					H_VALIDATORS.double(k_factory.double(''+Number.MIN_VALUE), ''+Number.MIN_VALUE);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(''+Number.MIN_VALUE), ''+Number.MIN_VALUE);
 				});
 
 
 				it('double("")', () => {
-					expect(() => k_factory.double()).to.throw();
+					expect(() => k_factory.doubleLiteral()).to.throw();
 				});
 
 				it('double("never")', () => {
-					expect(() => k_factory.double('never')).to.throw();
+					expect(() => k_factory.doubleLiteral('never')).to.throw();
 				});
 
 				it('double()', () => {
-					expect(() => k_factory.double()).to.throw();
+					expect(() => k_factory.doubleLiteral()).to.throw();
 				});
 
 				it('double(null)', () => {
-					expect(() => k_factory.double(null)).to.throw();
+					expect(() => k_factory.doubleLiteral(null)).to.throw();
 				});
 
 				it('double({})', () => {
-					expect(() => k_factory.double({})).to.throw();
+					expect(() => k_factory.doubleLiteral({})).to.throw();
 				});
 
-				const kt_literal = k_factory.double(5.1);
+				const kt_literal = k_factory.doubleLiteral(5.1);
 				const p_iri_datatype = `${P_IRI_XSD}double`;
 				const h_prefixes = {
 					xsd: P_IRI_XSD,
@@ -2617,7 +2627,7 @@ export default class FactorySuite {
 				it('#clone()', () => {
 					const kt_clone = kt_literal.clone();
 					expect_original_replaced_equals(kt_literal, kt_clone, true);
-					H_VALIDATORS.double(kt_clone, 5.1);
+					H_VALIDATORS.doubleLiteral(kt_clone, 5.1);
 				});
 
 				it('#concise()', () => {
@@ -2679,18 +2689,18 @@ export default class FactorySuite {
 
 			describe('Positive Infinity Literal', () => {
 				it('double(Infinity)', () => {
-					H_VALIDATORS.double(k_factory.double(Infinity), Infinity);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(Infinity), Infinity);
 				});
 
 				it('double("Infinity")', () => {
-					expect(() => k_factory.double('Infinity')).to.throw();
+					expect(() => k_factory.doubleLiteral('Infinity')).to.throw();
 				});
 
 				it('double("INF")', () => {
-					H_VALIDATORS.double(k_factory.double('INF'), 'INF');
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral('INF'), 'INF');
 				});
 
-				const kt_literal = k_factory.double('INF');
+				const kt_literal = k_factory.doubleLiteral('INF');
 				const p_iri_datatype = P_IRI_XSD+'double';
 				const h_prefixes = {
 					xsd: P_IRI_XSD,
@@ -2767,24 +2777,24 @@ export default class FactorySuite {
 				it('#clone()', () => {
 					const kt_clone = kt_literal.clone();
 					expect_original_replaced_equals(kt_literal, kt_clone, true);
-					H_VALIDATORS.double(kt_clone, Infinity);
+					H_VALIDATORS.doubleLiteral(kt_clone, Infinity);
 				});
 			});
 
 			describe('Negative Infinity Literal', () => {
 				it('double(-Infinity)', () => {
-					H_VALIDATORS.double(k_factory.double(-Infinity), -Infinity);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(-Infinity), -Infinity);
 				});
 
 				it('double("-Infinity")', () => {
-					expect(() => k_factory.double('-Infinity')).to.throw();
+					expect(() => k_factory.doubleLiteral('-Infinity')).to.throw();
 				});
 
 				it('double("-INF")', () => {
-					H_VALIDATORS.double(k_factory.double('-INF'), '-INF');
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral('-INF'), '-INF');
 				});
 
-				const kt_literal = k_factory.double('-INF');
+				const kt_literal = k_factory.doubleLiteral('-INF');
 				const p_iri_datatype = P_IRI_XSD+'double';
 				const h_prefixes = {
 					xsd: P_IRI_XSD,
@@ -2861,21 +2871,21 @@ export default class FactorySuite {
 				it('#clone()', () => {
 					const kt_clone = kt_literal.clone();
 					expect_original_replaced_equals(kt_literal, kt_clone, true);
-					H_VALIDATORS.double(kt_clone, -Infinity);
+					H_VALIDATORS.doubleLiteral(kt_clone, -Infinity);
 				});
 			});
 
 			describe('NaN Literal', () => {
 				it('double(NaN)', () => {
-					H_VALIDATORS.double(k_factory.double(NaN+''), NaN);
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(NaN+''), NaN);
 				});
 
 				it('double(""+NaN)', () => {
-					H_VALIDATORS.double(k_factory.double(NaN+''), NaN+'');
+					H_VALIDATORS.doubleLiteral(k_factory.doubleLiteral(NaN+''), NaN+'');
 				});
 
 
-				const kt_literal = k_factory.double('NaN');
+				const kt_literal = k_factory.doubleLiteral('NaN');
 				const p_iri_datatype = P_IRI_XSD+'double';
 				const h_prefixes = {
 					xsd: P_IRI_XSD,
@@ -2952,41 +2962,41 @@ export default class FactorySuite {
 				it('#clone()', () => {
 					const kt_clone = kt_literal.clone();
 					expect_original_replaced_equals(kt_literal, kt_clone, true);
-					H_VALIDATORS.double(kt_clone, NaN);
+					H_VALIDATORS.doubleLiteral(kt_clone, NaN);
 				});
 			});
 
 			describe('Decimal Literal', () => {
 				it('decimal(0)', () => {
-					H_VALIDATORS.decimal(k_factory.decimal(0), 0);
+					H_VALIDATORS.decimalLiteral(k_factory.decimalLiteral(0), 0);
 				});
 
 				it('decimal(1)', () => {
-					H_VALIDATORS.decimal(k_factory.decimal(1), 1);
+					H_VALIDATORS.decimalLiteral(k_factory.decimalLiteral(1), 1);
 				});
 
 				it('decimal(-1)', () => {
-					H_VALIDATORS.decimal(k_factory.decimal(-1), -1);
+					H_VALIDATORS.decimalLiteral(k_factory.decimalLiteral(-1), -1);
 				});
 
 				it('decimal(Number.MAX_VALUE)', () => {
-					expect(() => k_factory.decimal(Number.MAX_VALUE)).to.throw();
+					expect(() => k_factory.decimalLiteral(Number.MAX_VALUE)).to.throw();
 				});
 
 				it('decimal(Number.MIN_VALUE)', () => {
-					expect(() => k_factory.decimal(Number.MIN_VALUE)).to.throw();
+					expect(() => k_factory.decimalLiteral(Number.MIN_VALUE)).to.throw();
 				});
 
 				it('decimal(0.1)', () => {
-					H_VALIDATORS.decimal(k_factory.decimal(0.1), 0.1);
+					H_VALIDATORS.decimalLiteral(k_factory.decimalLiteral(0.1), 0.1);
 				});
 
 				it('decimal(1.1)', () => {
-					H_VALIDATORS.decimal(k_factory.decimal(1.1), 1.1);
+					H_VALIDATORS.decimalLiteral(k_factory.decimalLiteral(1.1), 1.1);
 				});
 
 				it('decimal(-1.1)', () => {
-					H_VALIDATORS.decimal(k_factory.decimal(-1.1), -1.1);
+					H_VALIDATORS.decimalLiteral(k_factory.decimalLiteral(-1.1), -1.1);
 				});
 
 				for(const s_sign of ['-', '+']) {
@@ -2994,57 +3004,57 @@ export default class FactorySuite {
 						.flatMap(s => [s, s_sign+s, '0'+s, s+'0', s_sign+'0'+s, s_sign+s+'0'])
 						.forEach((s_mut) => {
 							it(`decimal("${s_mut}")`, () => {
-								H_VALIDATORS.decimal(k_factory.decimal(s_mut), s_mut);
+								H_VALIDATORS.decimalLiteral(k_factory.decimalLiteral(s_mut), s_mut);
 							});
 						});
 				}
 
 				it('decimal(""+Number.MAX_VALUE)', () => {
-					expect(() => k_factory.decimal(''+Number.MAX_VALUE)).to.throw();
+					expect(() => k_factory.decimalLiteral(''+Number.MAX_VALUE)).to.throw();
 				});
 
 				it('decimal(""+Number.MIN_VALUE)', () => {
-					expect(() => k_factory.decimal(''+Number.MIN_VALUE)).to.throw();
+					expect(() => k_factory.decimalLiteral(''+Number.MIN_VALUE)).to.throw();
 				});
 
 
 				it('decimal("")', () => {
-					expect(() => k_factory.decimal()).to.throw();
+					expect(() => k_factory.decimalLiteral()).to.throw();
 				});
 
 				it('decimal("never")', () => {
-					expect(() => k_factory.decimal('never')).to.throw();
+					expect(() => k_factory.decimalLiteral('never')).to.throw();
 				});
 
 				it('decimal()', () => {
-					expect(() => k_factory.decimal()).to.throw();
+					expect(() => k_factory.decimalLiteral()).to.throw();
 				});
 
 				it('decimal(null)', () => {
-					expect(() => k_factory.decimal(null)).to.throw();
+					expect(() => k_factory.decimalLiteral(null)).to.throw();
 				});
 
 				it('decimal({})', () => {
-					expect(() => k_factory.decimal({})).to.throw();
+					expect(() => k_factory.decimalLiteral({})).to.throw();
 				});
 
 				it('decimal("Infinity")', () => {
-					expect(() => k_factory.decimal('Infinity')).to.throw();
+					expect(() => k_factory.decimalLiteral('Infinity')).to.throw();
 				});
 
 				it('decimal("INF")', () => {
-					expect(() => k_factory.decimal('INF')).to.throw();
+					expect(() => k_factory.decimalLiteral('INF')).to.throw();
 				});
 
 				it('decimal("-INF")', () => {
-					expect(() => k_factory.decimal('-INF')).to.throw();
+					expect(() => k_factory.decimalLiteral('-INF')).to.throw();
 				});
 
 				it('decimal("NaN")', () => {
-					expect(() => k_factory.decimal('NaN')).to.throw();
+					expect(() => k_factory.decimalLiteral('NaN')).to.throw();
 				});
 
-				const kt_literal = k_factory.decimal(5.1);
+				const kt_literal = k_factory.decimalLiteral(5.1);
 				const p_iri_datatype = `${P_IRI_XSD}decimal`;
 				const h_prefixes = {
 					xsd: P_IRI_XSD,
@@ -3053,7 +3063,7 @@ export default class FactorySuite {
 				it('#clone()', () => {
 					const kt_clone = kt_literal.clone();
 					expect_original_replaced_equals(kt_literal, kt_clone, true);
-					H_VALIDATORS.decimal(kt_clone, '5.1');
+					H_VALIDATORS.decimalLiteral(kt_clone, '5.1');
 				});
 
 				it('#concise()', () => {
@@ -3073,7 +3083,7 @@ export default class FactorySuite {
 				});
 
 				it('5#terse()', () => {
-					expect(k_factory.decimal(5).terse()).to.equal(`5.0`);
+					expect(k_factory.decimalLiteral(5).terse()).to.equal(`5.0`);
 				});
 
 				it('#terse({})', () => {
@@ -3117,103 +3127,103 @@ export default class FactorySuite {
 				});
 
 				it('keeps precision ("5.0")', () => {
-					expect(k_factory.decimal('5.0')).to.include({
+					expect(k_factory.decimalLiteral('5.0')).to.include({
 						isNumberPrecise: true,
 					});
 				});
 
 				it('keeps precision ("5")', () => {
-					expect(k_factory.decimal('5')).to.include({
+					expect(k_factory.decimalLiteral('5')).to.include({
 						isNumberPrecise: true,
 					});
 				});
 
 				it('keeps precision (5)', () => {
-					expect(k_factory.decimal(5)).to.include({
+					expect(k_factory.decimalLiteral(5)).to.include({
 						isNumberPrecise: true,
 					});
 				});
 
 				it('keeps precision (5.1)', () => {
-					expect(k_factory.decimal(5.1)).to.include({
+					expect(k_factory.decimalLiteral(5.1)).to.include({
 						isNumberPrecise: true,
 					});
 				});
 
 				it('keeps precision: normalized leading zeroes', () => {
-					expect(k_factory.decimal('000.1')).to.include({
+					expect(k_factory.decimalLiteral('000.1')).to.include({
 						isNumberPrecise: true,
 					});
-					expect(k_factory.decimal('-000.1')).to.include({
+					expect(k_factory.decimalLiteral('-000.1')).to.include({
 						isNumberPrecise: true,
 					});
 				});
 
 				it('keeps precision: normalized leading decimal', () => {
-					expect(k_factory.decimal('.1')).to.include({
+					expect(k_factory.decimalLiteral('.1')).to.include({
 						isNumberPrecise: true,
 					});
-					expect(k_factory.decimal('-.1')).to.include({
+					expect(k_factory.decimalLiteral('-.1')).to.include({
 						isNumberPrecise: true,
 					});
 				});
 
 				it('keeps precision: normalized leading and trailing zeroes', () => {
 					const s_decimal = '0'.repeat(50)+'0.1'+'0'.repeat(50);
-					expect(k_factory.decimal(s_decimal)).to.include({
+					expect(k_factory.decimalLiteral(s_decimal)).to.include({
 						isNumberPrecise: true,
 					});
-					expect(k_factory.decimal('-'+s_decimal)).to.include({
+					expect(k_factory.decimalLiteral('-'+s_decimal)).to.include({
 						isNumberPrecise: true,
 					});
 				});
 
 				it('loses precision: normalized', () => {
 					const s_decimal = '0.'+'1'.repeat(18);
-					expect(k_factory.decimal(s_decimal)).to.include({
+					expect(k_factory.decimalLiteral(s_decimal)).to.include({
 						isNumberPrecise: false,
 					});
-					expect(k_factory.decimal('-'+s_decimal)).to.include({
+					expect(k_factory.decimalLiteral('-'+s_decimal)).to.include({
 						isNumberPrecise: false,
 					});
 				});
 
 				it('loses precision: non-normalized leading zeroes', () => {
 					const s_decimal = '000.'+'1'.repeat(18);
-					expect(k_factory.decimal(s_decimal)).to.include({
+					expect(k_factory.decimalLiteral(s_decimal)).to.include({
 						isNumberPrecise: false,
 					});
-					expect(k_factory.decimal('-'+s_decimal)).to.include({
+					expect(k_factory.decimalLiteral('-'+s_decimal)).to.include({
 						isNumberPrecise: false,
 					});
 				});
 
 				it('loses precision: non-normalized leading and trailing zeroes', () => {
 					const s_decimal = '0'.repeat(50)+'.'+'1'.repeat(18)+'0'.repeat(50);
-					expect(k_factory.decimal(s_decimal)).to.include({
+					expect(k_factory.decimalLiteral(s_decimal)).to.include({
 						isNumberPrecise: false,
 					});
-					expect(k_factory.decimal('-'+s_decimal)).to.include({
+					expect(k_factory.decimalLiteral('-'+s_decimal)).to.include({
 						isNumberPrecise: false,
 					});
 				});
 
 				it('loses precision: non-normalized leading decimal', () => {
 					const s_decimal = '.'+'1'.repeat(18);
-					expect(k_factory.decimal(s_decimal)).to.include({
+					expect(k_factory.decimalLiteral(s_decimal)).to.include({
 						isNumberPrecise: false,
 					});
-					expect(k_factory.decimal('-'+s_decimal)).to.include({
+					expect(k_factory.decimalLiteral('-'+s_decimal)).to.include({
 						isNumberPrecise: false,
 					});
 				});
 
 				it('keeps precision: normalized leading and trailing zeroes', () => {
 					const s_decimal = '0'.repeat(50)+'0.1'+'0'.repeat(50);
-					expect(k_factory.decimal(s_decimal)).to.include({
+					expect(k_factory.decimalLiteral(s_decimal)).to.include({
 						isNumberPrecise: true,
 					});
-					expect(k_factory.decimal('-'+s_decimal)).to.include({
+					expect(k_factory.decimalLiteral('-'+s_decimal)).to.include({
 						isNumberPrecise: true,
 					});
 				});
@@ -3221,95 +3231,95 @@ export default class FactorySuite {
 
 			describe('Date Literal', () => {
 				it('date()', () => {
-					H_VALIDATORS.date(k_factory.date());
+					H_VALIDATORS.dateLiteral(k_factory.dateLiteral());
 				});
 
 				const dt_now = new Date();
 
 				it('date(dt_now)', () => {
-					H_VALIDATORS.date(k_factory.date(dt_now), dt_now);
+					H_VALIDATORS.dateLiteral(k_factory.dateLiteral(dt_now), dt_now);
 				});
 
 				it('date(""+dt_now)', () => {
-					expect(() => k_factory.date(''+dt_now)).to.throw();
+					expect(() => k_factory.dateLiteral(''+dt_now)).to.throw();
 				});
 
 				it('date()', () => {
-					expect(() => H_VALIDATORS.date()).to.throw();
+					expect(() => H_VALIDATORS.dateLiteral()).to.throw();
 				});
 
 				it('date(1)', () => {
-					expect(() => H_VALIDATORS.date(1)).to.throw();
+					expect(() => H_VALIDATORS.dateLiteral(1)).to.throw();
 				});
 
 				it('date("")', () => {
-					expect(() => H_VALIDATORS.date('')).to.throw();
+					expect(() => H_VALIDATORS.dateLiteral('')).to.throw();
 				});
 
 				it('date("2020-02-02")', () => {
-					H_VALIDATORS.date(k_factory.date('2020-02-02'), '2020-02-02');
+					H_VALIDATORS.dateLiteral(k_factory.dateLiteral('2020-02-02'), '2020-02-02');
 				});
 
 				it('date("0000-13-01")', () => {
-					expect(() => k_factory.date('0000-13-00')).to.throw();
+					expect(() => k_factory.dateLiteral('0000-13-00')).to.throw();
 				});
 
 				it('date("0000-01-32")', () => {
-					expect(() => k_factory.date('0000-01-32')).to.throw();
+					expect(() => k_factory.dateLiteral('0000-01-32')).to.throw();
 				});
 
 				it('#clone()', () => {
-					const kt_literal = k_factory.date('2020-02-02');
+					const kt_literal = k_factory.dateLiteral('2020-02-02');
 					const kt_clone = kt_literal.clone();
 					expect_original_replaced_equals(kt_literal, kt_clone, true);
-					H_VALIDATORS.date(kt_clone, '2020-02-02');
+					H_VALIDATORS.dateLiteral(kt_clone, '2020-02-02');
 				});
 			});
 
 			describe('DateTime Literal', () => {
 				it('dateTime()', () => {
-					H_VALIDATORS.dateTime(k_factory.dateTime());
+					H_VALIDATORS.dateTimeLiteral(k_factory.dateTimeLiteral());
 				});
 
 				const dt_now = new Date();
 
 				it('dateTime(dt_now)', () => {
-					H_VALIDATORS.dateTime(k_factory.dateTime(dt_now), dt_now);
+					H_VALIDATORS.dateTimeLiteral(k_factory.dateTimeLiteral(dt_now), dt_now);
 				});
 
 				it('dateTime(""+dt_now)', () => {
-					expect(() => k_factory.dateTime(''+dt_now)).to.throw();
+					expect(() => k_factory.dateTimeLiteral(''+dt_now)).to.throw();
 				});
 
 				it('dateTime()', () => {
-					expect(() => H_VALIDATORS.dateTime()).to.throw();
+					expect(() => H_VALIDATORS.dateTimeLiteral()).to.throw();
 				});
 
 				it('dateTime(1)', () => {
-					expect(() => H_VALIDATORS.dateTime(1)).to.throw();
+					expect(() => H_VALIDATORS.dateTimeLiteral(1)).to.throw();
 				});
 
 				it('dateTime("")', () => {
-					expect(() => H_VALIDATORS.dateTime('')).to.throw();
+					expect(() => H_VALIDATORS.dateTimeLiteral('')).to.throw();
 				});
 
 				it('dateTime("2020-02-02T02:02:02")', () => {
-					H_VALIDATORS.dateTime(k_factory.dateTime('2020-02-02T02:02:02'), '2020-02-02T02:02:02');
+					H_VALIDATORS.dateTimeLiteral(k_factory.dateTimeLiteral('2020-02-02T02:02:02'), '2020-02-02T02:02:02');
 				});
 
 				it('dateTime("0101-01-01T25:00:00Z")', () => {
-					expect(() => k_factory.dateTime('0101-01-01T25:00:00Z')).to.throw();
+					expect(() => k_factory.dateTimeLiteral('0101-01-01T25:00:00Z')).to.throw();
 				});
 
 				it('dateTime("0101-01-01T00:61:00Z")', () => {
-					expect(() => k_factory.dateTime('0101-01-01T00:61:00Z')).to.throw();
+					expect(() => k_factory.dateTimeLiteral('0101-01-01T00:61:00Z')).to.throw();
 				});
 
 				it('#clone()', () => {
-					const kt_literal = k_factory.dateTime(dt_now);
+					const kt_literal = k_factory.dateTimeLiteral(dt_now);
 					const kt_clone = kt_literal.clone();
 					expect_original_replaced_equals(kt_literal, kt_clone, true);
-					H_VALIDATORS.dateTime(kt_clone, dt_now);
+					H_VALIDATORS.dateTimeLiteral(kt_clone, dt_now);
 				});
 			});
 
@@ -3319,7 +3329,7 @@ export default class FactorySuite {
 					const s_decimal = '5.'+'1'.repeat(20);
 					const k_literal = k_factory.literal(s_decimal);
 					const k_trans = k_literal.replaceIri(/string$/, 'decimal');
-					H_VALIDATORS.decimal(k_trans, {value:s_decimal, precise:false});
+					H_VALIDATORS.decimalLiteral(k_trans, {value:s_decimal, precise:false});
 				});
 			});
 

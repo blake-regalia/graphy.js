@@ -2219,9 +2219,9 @@ export function adopt(dc_factory) {
 		const H_DATA_CONSTRUCTORS = {
 			xsd: {
 				boolean: /* syntax: js */ `b_value => dc_factory.literal(b_value, kt_xsd_boolean)`,
-				double: /* syntax: js */ `s_value => dc_factory.double(s_value, kt_xsd_double)`,
-				decimal: /* syntax: js */ `s_value => dc_factory.decimal(s_value, kt_xsd_decimal)`,
-				integer: /* syntax: js */ `s_value => dc_factory.integer(s_value, kt_xsd_integer)`,
+				double: /* syntax: js */ `s_value => dc_factory.doubleLiteral(s_value, kt_xsd_double)`,
+				decimal: /* syntax: js */ `s_value => dc_factory.decimalLiteral(s_value, kt_xsd_decimal)`,
+				integer: /* syntax: js */ `s_value => dc_factory.integerLiteral(s_value, kt_xsd_integer)`,
 			},
 			literal: {
 				simpleLiteral: /* syntax: js */ `s_value => dc_factory.literal(s_value)`,
@@ -2251,7 +2251,7 @@ export function adopt(dc_factory) {
 
 
 
-export function number(z) {
+export function numberLiteral(z) {
 	const s_type = typeof z;
 
 	// number
@@ -2262,7 +2262,7 @@ export function number(z) {
 		}
 		// double
 		else {
-			return double(z);
+			return doubleLiteral(z);
 		}
 	}
 	// bigint
@@ -2287,7 +2287,7 @@ export function number(z) {
 }
 
 const RT_DATE = /^([0-9]{4})-([0-1][0-9])-[0-3][0-9]Z?$/;
-export function date(z_date=new Date()) {
+export function dateLiteral(z_date=new Date()) {
 	let s_date = '';
 	let dt_date;
 
@@ -2302,7 +2302,7 @@ export function date(z_date=new Date()) {
 			throw new Error(`Impossible date: ${s_date}`);
 		}
 	}
-	else if(z_date instanceof Date || '[object Date]' === Object.prototype.toString.call(z_date)) {
+	else if(z_date instanceof Date) {
 		dt_date = z_date;
 		if(Number.isNaN(z_date.getTime())) {
 			throw new TypeError(`Invalid date argument: ${z_date}`);
@@ -2317,7 +2317,7 @@ export function date(z_date=new Date()) {
 }
 
 const RT_DATETIME = /^([0-9]{4})-([0-1][0-9])-([0-3][0-9]T[0-2][0-9]:[0-6][0-9]:[0-6][0-9](Z)?)$/;
-export function dateTime(z_date=new Date()) {
+export function dateTimeLiteral(z_date=new Date()) {
 	let s_date = '';
 	let dt_date;
 
@@ -2332,7 +2332,7 @@ export function dateTime(z_date=new Date()) {
 			throw new Error(`Impossible dateTime: ${s_date}`);
 		}
 	}
-	else if(z_date instanceof Date || '[object Date]' === Object.prototype.toString.call(z_date)) {
+	else if(z_date instanceof Date) {
 		dt_date = z_date;
 		if(Number.isNaN(dt_date.getTime())) {
 			throw new TypeError(`Invalid dateTime argument: ${z_date}`);
@@ -2360,12 +2360,12 @@ export function namedNode(pr_iri) {
 	}
 }
 
-export function ephemeral() {
+export function ephemeralBlankNode() {
 	return new EphemeralBlankNode();
 }
 
 // @deprecated
-export function anonymous() {
+export function anonymousBlankNode() {
 	return new EphemeralBlankNode();
 }
 
@@ -2398,7 +2398,7 @@ export function literal(s_value, z_datatype_or_lang) {
 @*{
 	for(const s_type in h_literals) {
 		const g_config = h_literals[s_type];
-		yield /* syntax: js */ `export function ${s_type}(w_value) {
+		yield /* syntax: js */ `export function ${s_type}Literal(w_value) {
 			${g_config.construct('w_value')}
 		}\n`;
 	}
@@ -2539,7 +2539,7 @@ export function c1_node(sc1_node, h_prefixes={}) {
 		if(2 === sc1_node.length) return blankNode();
 
 		// ephemeral hint
-		if('#' === sc1_node[2]) return ephemeral();
+		if('#' === sc1_node[2]) return ephemeralBlankNode();
 
 		// create blank node
 		return blankNode(sc1_node.slice(2));
@@ -2702,7 +2702,7 @@ export function * objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes
 
 		// number
 		case 'number': {
-			yield new Quad(k_subject, k_predicate, number(z_objects), k_graph);
+			yield new Quad(k_subject, k_predicate, numberLiteral(z_objects), k_graph);
 			break;
 		}
 
@@ -2919,15 +2919,15 @@ export const DataFactory = {
 	raw: g_raw,
 	unfiltered: g_unfiltered,
 
-	number,
+	numberLiteral,
 
-	date,
+	dateLiteral,
 
-	dateTime,
+	dateTimeLiteral,
 
 	namedNode,
 
-	ephemeral,
+	ephemeralBlankNode,
 
 	blankNode,
 
@@ -2936,7 +2936,7 @@ export const DataFactory = {
 	@*{
 		for(const s_type in h_literals) {
 			const g_config = h_literals[s_type];
-			yield /* syntax: js */ `${s_type},\n`;
+			yield /* syntax: js */ `${s_type}Literal,\n`;
 		}
 	}
 
