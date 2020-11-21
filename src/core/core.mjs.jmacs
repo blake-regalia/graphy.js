@@ -1182,12 +1182,17 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 		@//@class
 		static fromString(s_literal) {
 			@- b_decimal
+				// invalid
+				if(!RT_DECIMAL.test(s_literal)) {
+					throw new Error('Invalid XSD decimal string: '+s_literal);
+				}
+
 				return new DecimalLiteral(s_literal);
 			@:
-				// prep return value
-				let kt_literal;
-
 				@- b_boolean
+					// prep return value
+					let kt_literal;
+
 					// truthy value
 					if(RT_BOOLEAN_TRUE.test(s_literal)) {
 						kt_literal = new BooleanLiteral(true);
@@ -1207,7 +1212,7 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 					}
 
 					// good
-					kt_literal = new IntegerLiteral(BigInt(s_literal));
+					const kt_literal = new IntegerLiteral(BigInt(s_literal));
 				@+ b_double
 					// not a numeric double
 					if(!RT_DOUBLE.test(s_literal)) {
@@ -1217,14 +1222,80 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 						if('-INF' === s_literal) return new NegativeInfinityLiteral();
 
 						// error
-						throw new Error('Invalid XSD decimal string: '+s_literal);
+						throw new Error('Invalid XSD double string: '+s_literal);
 					}
 
 					// good
-					kt_literal = new DoubleLiteral(+s_literal);
+					const kt_literal = new DoubleLiteral(+s_literal);
 				@;
 
 				// use exact string
+				kt_literal.value = s_literal;
+				return kt_literal;
+			@;
+		}
+
+		static fromNumber(x_value) {
+			@- b_double
+				// not a finite number
+				if(!Number.isFinite(x_value)) {
+					// NaN
+					if(Number.isNaN(x_value)) {
+						return new NaNLiteral();
+					}
+
+					return x_value > 0
+						? new PositiveInfinityLiteral()
+						: new NegativeInfinityLiteral();
+				}
+
+				// good
+				return new DoubleLiteral(x_value);
+			@+ b_decimal
+				// not a finite number
+				if(!Number.isFinite(x_value)) {
+					// NaN
+					if(Number.isNaN(x_value)) {
+						throw new Error('XSD decimal cannot encode NaN. Try using double');
+					}
+
+					throw new Error('XSD decimal cannot encode +/-infinity. Try using double');
+				}
+
+				const s_value = x_value+'';
+				if(RT_DOUBLE_E.test(s_value)) {
+					throw new Error(`Cannot serialize number to XSD decimal without loss of precision: ${s_value}`);
+				}
+
+				return new DecimalLiteral(s_value);
+			@;
+		}
+
+		static fromTrustedString(s_literal) {
+			@- b_boolean
+				// truthy value
+				if('true' === s_literal) {
+					return new BooleanLiteral(true);
+				}
+				// falsy value
+				else {
+					return new BooleanLiteral(false);
+				}
+			@+ b_decimal
+				return new DecimalLiteral(s_literal);
+			@:
+				let kt_literal;
+				@- b_integer
+					kt_literal = new IntegerLiteral(BigInt(s_literal));
+				@+ b_double
+					// recognized string
+					if('NaN' === s_literal) return new NaNLiteral();
+					if('INF' === s_literal) return new PositiveInfinityLiteral();
+					if('-INF' === s_literal) return new NegativeInfinityLiteral();
+
+					kt_literal = new DoubleLiteral(+s_literal);
+				@;
+
 				kt_literal.value = s_literal;
 				return kt_literal;
 			@;
@@ -1249,10 +1320,6 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 
 				this.bigint = @{sj_arg};
 			@+ b_decimal
-				// invalid
-				if(!RT_DECIMAL.test(@{sj_arg})) {
-					throw new Error('Invalid XSD decimal string: '+@{sj_arg});
-				}
 
 				// store as double
 				this.number = +@{sj_arg};
@@ -1320,7 +1387,7 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 	}
 @;
 
-const RT_DOUBLE_E = /e-?\d+$/;
+const RT_DOUBLE_E = /e[-+]?\d+$/;
 
 @.{
 	const h_literals = {
@@ -1380,20 +1447,7 @@ const RT_DOUBLE_E = /e-?\d+$/;
 
 				// a number was given
 				if('number' === s_type) {
-					// not a finite number
-					if(!Number.isFinite(${s_arg})) {
-						// NaN
-						if(Number.isNaN(${s_arg})) {
-							return new NaNLiteral();
-						}
-
-						return ${s_arg} > 0
-							? new PositiveInfinityLiteral()
-							: new NegativeInfinityLiteral();
-					}
-
-					// good
-					return new DoubleLiteral(${s_arg});
+					return DoubleLiteral.fromNumber(${s_arg});
 				}
 				// string
 				else if('string' === s_type) {
@@ -1425,26 +1479,11 @@ const RT_DOUBLE_E = /e-?\d+$/;
 
 				// a number was given
 				if('number' === s_type) {
-					// not a finite number
-					if(!Number.isFinite(${s_arg})) {
-						// NaN
-						if(Number.isNaN(${s_arg})) {
-							throw new Error('XSD decimal cannot encode NaN. Try using double');
-						}
-
-						throw new Error('XSD decimal cannot encode +/-infinity. Try using double');
-					}
-
-					const s_value = ${s_arg}+'';
-					if(RT_DOUBLE_E.test(s_value)) {
-						throw new Error(\`Cannot serialize number to XSD decimal without loss of precision: \${s_value}\`);
-					}
-
-					return new DecimalLiteral(s_value);
+					return DecimalLiteral.fromNumber(${s_arg});
 				}
 				// string
 				else if('string' === s_type) {
-					return new DecimalLiteral(${s_arg});
+					return DecimalLiteral.fromString(${s_arg});
 				}
 				// undefined
 				else if('undefined' === s_type) {
@@ -1725,14 +1764,6 @@ class NaNLiteral extends DoubleLiteral {
 			return '?'+this.value;
 		}
 
-		terse() {
-			throw new Error(`Cannot call .terse() on 'Variable' term type`);
-		}
-
-		star() {
-			throw new Error(`Cannot call .star() on 'Variable' term type`);
-		}
-
 		verbose() {
 			throw new Error(`Cannot call .verbose() on 'Variable' term type`);
 		}
@@ -1748,6 +1779,7 @@ class NaNLiteral extends DoubleLiteral {
 	properties: {
 		isVariable:            /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'Variable'`,
+		terse:                 /* syntax: js */ `gp_self.star = gp_self.concise`,
 	},
 })}
 
@@ -2137,19 +2169,22 @@ const g_raw = {
 	quad(kt_subject, kt_predicate, kt_object, kt_graph) {
 		return new Quad(kt_subject, kt_predicate, kt_object, kt_graph || KT_DEFAULT_GRAPH);
 	},
-	@*{
-		for(let s_type in h_literals) {
-			let s_class = /* syntax: js */ `${s_type[0].toUpperCase()+s_type.slice(1)}Literal`;
-			yield /* syntax: js */ `
-				${s_type}(w) {
-					${'boolean' === s_type || 'integer' === s_type
-						? /* syntax: js */ `return new ${s_class}(w)`
-						: /* syntax: js */ `return ${s_class}.fromTrustedString(w);`}
-				},
-			`;
-		}
-	}
 };
+
+@*{
+	for(let s_type in h_literals) {
+		const s_class = /* syntax: js */ `${s_type[0].toUpperCase()+s_type.slice(1)}Literal`;
+		yield /* syntax: js */ `
+			g_raw.${s_type}Literal = ${s_class}.fromTrustedString;
+		`;
+		//  {
+		// 		${'boolean' === s_type || 'integer' === s_type
+		// 			? /* syntax: js */ `return new ${s_class}(w)`
+		// 			: /* syntax: js */ `return ${s_class}.fromTrustedString(w);`}
+		// 	},
+		// `;
+	}
+}
 
 export {
 	g_raw as raw,
@@ -2911,42 +2946,39 @@ export function prefixMapsDiffer(h_a, h_b) {
 
 
 export const DataFactory = {
+	SI_PREFIX_CACHE,
+	SI_PREFIX_BASE,
+	cachePrefixes,
+	setBaseIri,
 
+	uuidv4,
+	cleanIri,
+
+	terse,
 	concise,
 
 	adopt,
-
 	raw: g_raw,
 	unfiltered: g_unfiltered,
 
-	numberLiteral,
-
-	dateLiteral,
-
-	dateTimeLiteral,
-
+	defaultGraph,
 	namedNode,
-
-	ephemeralBlankNode,
-
 	blankNode,
-
+	ephemeralBlankNode,
 	literal,
-
+	numberLiteral,
 	@*{
 		for(const s_type in h_literals) {
 			const g_config = h_literals[s_type];
 			yield /* syntax: js */ `${s_type}Literal,\n`;
 		}
 	}
-
-	defaultGraph,
-
+	dateLiteral,
+	dateTimeLiteral,
 	variable,
 
 	// warn
 	triple,
-
 	quad,
 
 	term,
@@ -2969,44 +3001,21 @@ export const DataFactory = {
 	objects,
 
 	fromTerm,
-
 	fromQuad,
-
 	fromRdfjsTerm,
-
 	fromRdfjsQuad,
-
 	fromSparqlResult,
 
 	c1ExpandData,
-
 	c1FromGraphRole,
-
 	c1FromSubjectRole,
-
-	// toBoolean,
-	// toInteger,
-	// toDecimal,
-	// toDouble,
 
 	comment,
 	newlines,
 	config,
 
 	relatePrefixMaps,
-
 	prefixMapsDiffer,
-
-	uuidv4,
-
-	cachePrefixes,
-	setBaseIri,
-	terse,
-
-	cleanIri,
-
-	SI_PREFIX_CACHE,
-	SI_PREFIX_BASE,
 };
 
 

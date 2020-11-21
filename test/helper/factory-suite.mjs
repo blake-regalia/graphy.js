@@ -104,7 +104,7 @@ const G_PROPERTIES_GRAPHY_TERM_ALL = {
 
 
 const H_VALIDATORS = {
-	default_graph(kt_actual) {
+	defaultGraph(kt_actual) {
 		expect(kt_actual).to.include({
 			...G_PROPERTIES_GRAPHY_TERM_ALL,
 			isAbleGraph: true,
@@ -130,7 +130,7 @@ const H_VALIDATORS = {
 		expect(kt_actual.replaceValue).to.be.a('function');
 	},
 
-	blank_node(kt_actual, s_label=null, b_anonymous=false, b_ephemeral=false) {
+	blankNode(kt_actual, s_label=null, b_anonymous=false, b_ephemeral=false) {
 		expect(kt_actual).to.include({
 			...G_PROPERTIES_GRAPHY_TERM_ALL,
 			isAbleGraph: true,
@@ -154,7 +154,7 @@ const H_VALIDATORS = {
 		// }
 	},
 
-	named_node(kt_actual, w_desc=null) {
+	namedNode(kt_actual, w_desc=null) {
 		let p_value = w_desc;
 		let b_type_alias = false;
 		let b_relative = false;
@@ -209,7 +209,7 @@ const H_VALIDATORS = {
 		}
 
 		// check datatype
-		H_VALIDATORS.named_node(kt_actual.datatype, g_descriptor.language
+		H_VALIDATORS.namedNode(kt_actual.datatype, g_descriptor.language
 			? P_IRI_RDF+'langString'
 			: ('string' === typeof g_descriptor.datatype
 				? g_descriptor.datatype
@@ -252,7 +252,7 @@ const H_VALIDATORS = {
 		});
 
 		// datatype
-		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'integer');
+		H_VALIDATORS.namedNode(kt_actual.datatype, P_IRI_XSD+'integer');
 
 		// boolean value
 		expect(kt_actual.boolean, '.boolean').to.be.NaN;
@@ -308,7 +308,7 @@ const H_VALIDATORS = {
 		});
 
 		// datatype
-		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'double');
+		H_VALIDATORS.namedNode(kt_actual.datatype, P_IRI_XSD+'double');
 
 		expect(kt_actual.boolean, '.boolean').to.be.NaN;
 		expect(kt_actual.bigint, '.bigint').to.be.NaN;
@@ -340,7 +340,7 @@ const H_VALIDATORS = {
 		});
 
 		// datatype
-		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'decimal');
+		H_VALIDATORS.namedNode(kt_actual.datatype, P_IRI_XSD+'decimal');
 
 		expect(kt_actual.boolean, '.boolean').to.be.NaN;
 		expect(kt_actual.bigint, '.bigint').to.be.NaN;
@@ -383,7 +383,7 @@ const H_VALIDATORS = {
 		});
 
 		// datatype
-		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'boolean');
+		H_VALIDATORS.namedNode(kt_actual.datatype, P_IRI_XSD+'boolean');
 	},
 
 	numberLiteral(kt_actual, z_value, w_arg) {
@@ -445,7 +445,7 @@ const H_VALIDATORS = {
 		}
 
 		// datatype
-		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'date');
+		H_VALIDATORS.namedNode(kt_actual.datatype, P_IRI_XSD+'date');
 	},
 
 	dateTimeLiteral(kt_actual, z_value) {
@@ -491,7 +491,7 @@ const H_VALIDATORS = {
 		}
 
 		// datatype
-		H_VALIDATORS.named_node(kt_actual.datatype, P_IRI_XSD+'dateTime');
+		H_VALIDATORS.namedNode(kt_actual.datatype, P_IRI_XSD+'dateTime');
 	},
 
 	variable(kt_actual, s_name) {
@@ -501,6 +501,25 @@ const H_VALIDATORS = {
 			isVariable: true,
 			termType: 'Variable',
 			value: s_name,
+		});
+	},
+
+	quad(kq_actual, kq_validate) {
+		expect(kq_actual.subject.equals(kq_validate.subject)).to.be.true;
+		expect(kq_actual.predicate.equals(kq_validate.predicate)).to.be.true;
+		expect(kq_actual.object.equals(kq_validate.object)).to.be.true;
+		expect(kq_actual.graph.equals(kq_validate.graph)).to.be.true;
+
+		expect(kq_actual).to.include({
+			...G_PROPERTIES_GRAPHY_TERM_ALL,
+			isGraphyTerm: true,
+			isGraphyQuad: true,
+			isAbleSubject: true,
+			isAblePredicate: false,
+			isAbleObject: true,
+			isAbleGraph: false,
+			termType: 'Quad',
+			value: '',
 		});
 	},
 };
@@ -831,6 +850,11 @@ export default class FactorySuite {
 							now: new Date(),
 						},
 					},
+					variable: {
+						returns: {
+							label: 'label',
+						},
+					},
 				});
 			});
 
@@ -893,7 +917,7 @@ export default class FactorySuite {
 							'^xsd:boolean"true': ['booleanLiteral', true],
 							'^xsd:boolean"false': ['booleanLiteral', false],
 						},
-						named_node: {
+						namedNode: {
 							'>': '',
 							':': '#',
 							'>#': '#',
@@ -906,21 +930,21 @@ export default class FactorySuite {
 							'test_:abc': 'test_#abc',
 							a: {value:P_IRI_RDF+'type', type_alias:true},
 						},
-						blank_node: {
+						blankNode: {
 							'_:': () => {
 								const kt_blank = k_factory.c1('_:');
-								H_VALIDATORS.blank_node(kt_blank, null, true);
+								H_VALIDATORS.blankNode(kt_blank, null, true);
 								expect(kt_blank.value).to.have.length('_fee893ce_d36a_4413_a197_a9f47a3e5991'.length);
 							},
 							'_:#anonymous': () => {
 								const kt_blank = k_factory.c1('_:#anonymous');
-								H_VALIDATORS.blank_node(kt_blank, null, true, true);
+								H_VALIDATORS.blankNode(kt_blank, null, true, true);
 								expect(kt_blank.value).to.have.length('_fee893ce_d36a_4413_a197_a9f47a3e5991'.length);
 							},
 							'_:b': 'b',
 							'_:b1': 'b1',
 						},
-						default_graph: {
+						defaultGraph: {
 							'*': '',
 						},
 						variable: {
@@ -1088,13 +1112,13 @@ export default class FactorySuite {
 				const kt_graph = k_factory.defaultGraph();
 
 				it('valid', () => {
-					H_VALIDATORS.default_graph(kt_graph);
+					H_VALIDATORS.defaultGraph(kt_graph);
 				});
 
 				it('#clone()', () => {
 					const kt_clone = kt_graph.clone();
 					expect_original_replaced_equals(kt_graph, kt_clone, true);
-					H_VALIDATORS.default_graph(kt_clone);
+					H_VALIDATORS.defaultGraph(kt_clone);
 				});
 
 				it('#equals(this)', () => {
@@ -1158,7 +1182,7 @@ export default class FactorySuite {
 
 				test_replacements({
 					input: kt_graph,
-					validate: H_VALIDATORS.default_graph,
+					validate: H_VALIDATORS.defaultGraph,
 					identity: () => [],
 					replace: {},
 					map: {
@@ -1183,25 +1207,25 @@ export default class FactorySuite {
 				};
 
 				it('valid', () => {
-					H_VALIDATORS.named_node(kt_node, p_iri_node);
+					H_VALIDATORS.namedNode(kt_node, p_iri_node);
 				});
 
 				it('#clone()', () => {
 					const kt_clone = kt_node.clone();
 					expect_original_replaced_equals(kt_node, kt_clone, true);
-					H_VALIDATORS.named_node(kt_clone, p_iri_node);
+					H_VALIDATORS.namedNode(kt_clone, p_iri_node);
 				});
 
 				it('replaced invalid \\u0009', () => {
-					H_VALIDATORS.named_node(k_factory.namedNode('z://y/\t'), 'z://y/\\u0009');
+					H_VALIDATORS.namedNode(k_factory.namedNode('z://y/\t'), 'z://y/\\u0009');
 				});
 
 				it('replaced invalid %hi', () => {
-					H_VALIDATORS.named_node(k_factory.namedNode('z://y/%hi'), 'z://y/\\u0025hi');
+					H_VALIDATORS.namedNode(k_factory.namedNode('z://y/%hi'), 'z://y/\\u0025hi');
 				});
 
 				// it('replaced invalid \\UXXXXXXXX', () => {
-				// 	H_VALIDATORS.named_node(k_factory.namedNode('z://y/\u{00010420}'), 'z://y//\\U00010420');
+				// 	H_VALIDATORS.namedNode(k_factory.namedNode('z://y/\u{00010420}'), 'z://y//\\U00010420');
 				// });
 
 				it('#equals(this)', () => {
@@ -1277,7 +1301,7 @@ export default class FactorySuite {
 
 				test_replacements({
 					input: kt_node,
-					validate: H_VALIDATORS.named_node,
+					validate: H_VALIDATORS.namedNode,
 					identity: () => [p_iri_node],
 					replace: {
 						iri: f_replacer_iri,
@@ -1312,13 +1336,13 @@ export default class FactorySuite {
 				}, p_iri_base+'#');
 
 				it('valid', () => {
-					H_VALIDATORS.named_node(kt_node, {value:s_relative, relative:true});
+					H_VALIDATORS.namedNode(kt_node, {value:s_relative, relative:true});
 				});
 
 				it('#clone()', () => {
 					const kt_clone = kt_node.clone();
 					expect_original_replaced_equals(kt_node, kt_clone, true);
-					H_VALIDATORS.named_node(kt_clone, {value:s_relative, relative:true});
+					H_VALIDATORS.namedNode(kt_clone, {value:s_relative, relative:true});
 				});
 
 				it('#equals(this)', () => {
@@ -1413,7 +1437,7 @@ export default class FactorySuite {
 
 				test_replacements({
 					input: kt_node,
-					validate: H_VALIDATORS.named_node,
+					validate: H_VALIDATORS.namedNode,
 					identity: () => [{value:s_relative, relative:true}],
 					replace: {
 						value: (w_search, w_replace) => [{value:s_relative.replace(w_search, w_replace), relative:true}],
@@ -1444,11 +1468,11 @@ export default class FactorySuite {
 				});
 
 				it('#resolve(p_iri_base)', () => {
-					H_VALIDATORS.named_node(kt_node.resolve(p_iri_base), p_iri_base+s_relative);
+					H_VALIDATORS.namedNode(kt_node.resolve(p_iri_base), p_iri_base+s_relative);
 				});
 
 				it('#resolve(h_prefixes_base)', () => {
-					H_VALIDATORS.named_node(k_factory.namedNode('banana').resolve(h_prefixes_base), p_iri_base+s_relative);
+					H_VALIDATORS.namedNode(k_factory.namedNode('banana').resolve(h_prefixes_base), p_iri_base+s_relative);
 				});
 			});
 
@@ -1456,13 +1480,13 @@ export default class FactorySuite {
 				const kt_node = k_factory.blankNode('label');
 
 				it('valid', () => {
-					H_VALIDATORS.blank_node(kt_node, 'label');
+					H_VALIDATORS.blankNode(kt_node, 'label');
 				});
 
 				it('#clone()', () => {
 					const kt_clone = kt_node.clone();
 					expect_original_replaced_equals(kt_node, kt_clone, true);
-					H_VALIDATORS.blank_node(kt_clone, 'label');
+					H_VALIDATORS.blankNode(kt_clone, 'label');
 				});
 
 				it('#equals(this)', () => {
@@ -1533,7 +1557,7 @@ export default class FactorySuite {
 
 				test_replacements({
 					input: kt_node,
-					validate: H_VALIDATORS.blank_node,
+					validate: H_VALIDATORS.blankNode,
 					identity: () => ['label'],
 					replace: {
 						value: (w_search, w_replace) => ['label'.replace(w_search, w_replace)],
@@ -1561,13 +1585,13 @@ export default class FactorySuite {
 				const nl_uuidv4 = 'xxxxyyyy-xxxx-yyyy-zzzz-xxxxyyyyzzzz'.length;
 
 				it('valid', () => {
-					H_VALIDATORS.blank_node(kt_node, null, true, true);
+					H_VALIDATORS.blankNode(kt_node, null, true, true);
 				});
 
 				it('#clone()', () => {
 					const kt_clone = kt_node.clone();
 					expect_original_replaced_equals(kt_node, kt_clone, false);
-					H_VALIDATORS.blank_node(kt_clone, null, true, true);
+					H_VALIDATORS.blankNode(kt_clone, null, true, true);
 				});
 
 				it('.value !== .value', () => {
@@ -1626,7 +1650,7 @@ export default class FactorySuite {
 
 				// test_replacements({
 				// 	input: kt_node,
-				// 	validate: H_VALIDATORS.blank_node,
+				// 	validate: H_VALIDATORS.blankNode,
 				// 	identity: () => [null, true, true],
 				// 	replace: {
 				// 		// value: (w_search, w_replace) => [''],
@@ -1648,13 +1672,13 @@ export default class FactorySuite {
 				const nl_uuidv4 = s_hash_eg.length;
 
 				it('valid', () => {
-					H_VALIDATORS.blank_node(kt_node, null, true);
+					H_VALIDATORS.blankNode(kt_node, null, true);
 				});
 
 				it('#clone()', () => {
 					const kt_clone = kt_node.clone();
 					expect_original_replaced_equals(kt_node, kt_clone, true);
-					H_VALIDATORS.blank_node(kt_clone, null, true);
+					H_VALIDATORS.blankNode(kt_clone, null, true);
 				});
 
 				it('#equals(this)', () => {
@@ -1716,7 +1740,7 @@ export default class FactorySuite {
 
 				// test_replacements({
 				// 	input: kt_node,
-				// 	validate: H_VALIDATORS.blank_node,
+				// 	validate: H_VALIDATORS.blankNode,
 				// 	identity: () => [null, true],
 				// 	// replace: (w_search, w_replace) => ['label'.replace(w_search, w_replace)],
 				// 	map: {
@@ -1736,13 +1760,13 @@ export default class FactorySuite {
 
 				// it('#replace("absent", "never")', () => {
 				// 	const kt_replaced = kt_node.replace('absent', 'never');
-				// 	H_VALIDATORS.blank_node(kt_replaced, null, true);
+				// 	H_VALIDATORS.blankNode(kt_replaced, null, true);
 				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
 				// });
 
 				// it('#replace(/absent/, "never")', () => {
 				// 	const kt_replaced = kt_node.replace(/absent/, 'never');
-				// 	H_VALIDATORS.blank_node(kt_replaced, null, true);
+				// 	H_VALIDATORS.blankNode(kt_replaced, null, true);
 				// 	expect_original_replaced_equals(kt_node, kt_replaced, false);
 				// });
 			});
@@ -2125,9 +2149,10 @@ export default class FactorySuite {
 							replaces: [
 								['value', 'replaced'],
 								[/value/, 'replaced'],
-								['datatype', 'never'],
-								[/datatype/, 'never'],
+								['datatype', 'replaced'],
+								[/datatype/, 'replaced'],
 								[/a/g, 'x'],
+								[p_iri_datatype, P_IRI_XSD+'string'],
 							],
 						},
 					},
@@ -3575,6 +3600,165 @@ export default class FactorySuite {
 						},
 					});
 				});
+
+				const kt_s = k_factory.namedNode(p_iri_tests+'subject');
+				const kt_p = k_factory.namedNode(p_iri_tests+'predicate');
+				const kt_o = k_factory.literal('value', k_factory.namedNode(p_iri_tests+'object'));
+				const kt_g = k_factory.namedNode(p_iri_tests+'graph');
+
+				const kq_test = k_factory.quad(kt_s, kt_p, kt_o, kt_g);
+
+				test_replacements({
+					input: kq_test,
+					validate: H_VALIDATORS.quad,
+					identity: () => [kq_test],
+					replace: {
+						iri: (w_s, w_r) => [k_factory.quad(kt_s.replaceIri(w_s, w_r), kt_p.replaceIri(w_s, w_r), kt_o.replaceIri(w_s, w_r), kt_g.replaceIri(w_s, w_r))],
+						text: (w_s, w_r) => [k_factory.quad(kt_s, kt_p, kt_o.replaceText(w_s, w_r), kt_g)],
+						value: (w_s, w_r) => [k_factory.quad(kt_s.replaceValue(w_s, w_r), kt_p.replaceValue(w_s, w_r), kt_o.replaceValue(w_s, w_r), kt_g.replaceValue(w_s, w_r))],
+					},
+					map: {
+						iri: {
+							clones: [
+								['absent', 'never'],
+								[/absent/, 'never'],
+							],
+							replaces: [
+								['tests', 'replaced'],
+								[/tests/, 'replaced'],
+								[/t/g, 'x'],
+							],
+						},
+						text: {
+							clones: [
+								['absent', 'never'],
+								[/absent/, 'never'],
+							],
+							replaces: [
+								['value', 'replaced'],
+								[/value/, 'replaced'],
+								[/v/g, 'x'],
+							],
+						},
+						value: {
+							clones: [
+								['absent', 'never'],
+								[/absent/, 'never'],
+							],
+							replaces: [
+								['tests', 'replaced'],
+								[/tests/, 'replaced'],
+								[/t/g, 'x'],
+							],
+						},
+					},
+				});
+			});
+
+
+			describe('Variable', () => {
+				const kt_variable = k_factory.variable('label');
+
+				it('variable("label")', () => {
+					H_VALIDATORS.variable(kt_variable, 'label');
+				});
+
+				it('#concise()', () => {
+					expect(kt_variable.concise()).to.equal('?label');
+				});
+
+				it('#concise({})', () => {
+					expect(kt_variable.concise({})).to.equal('?label');
+				});
+
+				it('#terse()', () => {
+					expect(kt_variable.terse()).to.equal('?label');
+				});
+
+				it('#terse({})', () => {
+					expect(kt_variable.terse({})).to.equal('?label');
+				});
+
+				it('#star()', () => {
+					expect(kt_variable.star()).to.equal('?label');
+				});
+
+				it('#star({})', () => {
+					expect(kt_variable.star({})).to.equal('?label');
+				});
+
+				it('#terse()', () => {
+					expect(kt_variable.terse()).to.equal('?label');
+				});
+
+				it('#terse({})', () => {
+					expect(kt_variable.terse({})).to.equal('?label');
+				});
+
+				it('verbose()', () => {
+					expect(() => kt_variable.verbose()).to.throw();
+				});
+
+				it('#isolate()', () => {
+					expect(kt_variable.isolate()).to.include({
+						termType: 'Variable',
+						value: 'label',
+					});
+				});
+
+				it('#hash()', () => {
+					expect(kt_variable.hash()).to.equal(hash('?label'));
+				});
+
+				it('#clone()', () => {
+					const kt_clone = kt_variable.clone();
+					expect_original_replaced_equals(kt_variable, kt_clone, true);
+					H_VALIDATORS.variable(kt_clone, 'label');
+				});
+			});
+
+		});
+
+
+		describe('unfiltered', () => {
+			it('namedNode', () => {
+				H_VALIDATORS.namedNode(k_factory.unfiltered.namedNode('value'), 'value');
+			});
+
+			it('blankNode', () => {
+				H_VALIDATORS.blankNode(k_factory.unfiltered.blankNode('label'), 'label');
+			});
+
+			it('defaultGraph', () => {
+				H_VALIDATORS.defaultGraph(k_factory.unfiltered.defaultGraph());
+			});
+
+			it('integer', () => {
+				H_VALIDATORS.integerLiteral(k_factory.unfiltered.integerLiteral('5'), '5');
+			});
+
+			it('double', () => {
+				H_VALIDATORS.doubleLiteral(k_factory.unfiltered.doubleLiteral('5.1'), '5.1');
+			});
+
+			it('decimal', () => {
+				H_VALIDATORS.decimalLiteral(k_factory.unfiltered.decimalLiteral('5.11'), '5.11');
+			});
+
+			it('boolean', () => {
+				H_VALIDATORS.booleanLiteral(k_factory.unfiltered.booleanLiteral('true'), 'true');
+			});
+
+			it('literal("test")', () => {
+				H_VALIDATORS.literal(k_factory.unfiltered.literal('test'), {value:'test'});
+			});
+
+			it('literal("test", "en")', () => {
+				H_VALIDATORS.literal(k_factory.unfiltered.literal('test', 'en'), {value:'test', language:'en'});
+			});
+
+			it('literal("test", xsd:integer)', () => {
+				H_VALIDATORS.literal(k_factory.unfiltered.literal('test', k_factory.namedNode('z://y/')), {value:'test', datatype:'z://y/'});
 			});
 		});
 
