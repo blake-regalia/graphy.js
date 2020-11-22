@@ -2072,25 +2072,6 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 })}
 
 
-class NakedQuad extends Quad {
-	terse(h_prefixes={}) {
-		const b_default_graph = this.graph.isDefaultGraph;
-		return (b_default_graph? '': this.graph.terse(h_prefixes)+' { ')
-			+' '+this.subject.terse(h_prefixes)
-			+' '+this.predicate.terse(h_prefixes)
-			+' '+this.object.terse(h_prefixes)+' .'
-			+(b_default_graph? '': ' }');
-	}
-
-	verbose() {
-		return this.subject.verbose()
-			+' '+this.predicate.verbose()
-			+' '+this.object.verbose()
-			+' '+(this.graph.isDefaultGraph? '': this.graph.verbose()+' ')+'.';
-	}
-}
-
-
 const XC_EXTRA_A  = 0b01;
 const XC_EXTRA_B  = 0b10;
 
@@ -2139,17 +2120,58 @@ export function relatePrefixMaps(h_a, h_b) {
 	}
 
 	// each key in 'b'
-	for(const si_a in h_a) {
+	for(const si_a in h_b) {
 		// key is not in 'a'
 		if(!(si_a in h_a)) {
 			xm_relation |= xc_extra_b;
 		}
 	}
 
+	let s_relation = 'disjoint';
+	if(b_overlap) {
+		if(!xm_relation) {
+			s_relation = a_conflicts.length? 'overlap': 'equal';
+		}
+		else {
+			s_relation = A_RELATIONS[xm_relation];
+		}
+	}
+	else if(!xm_relation) {
+		s_relation = 'equal';
+	}
+
 	return {
-		relation: b_overlap? A_RELATIONS[xm_relation]: 'disjoint',
+		relation: s_relation,
 		conflicts: a_conflicts,
 	};
+}
+
+
+export function prefixMapsDiffer(h_a, h_b) {
+	// each key in 'a'
+	for(const si_a in h_a) {
+		// key is also in 'b'
+		if(si_a in h_b) {
+			// value is different in 'b'
+			if(h_a[si_a] !== h_b[si_a]) {
+				return true;
+			}
+		}
+		// key is not in 'b'
+		else {
+			return true;
+		}
+	}
+
+	// each key in 'b'
+	for(const si_a in h_b) {
+		// key is not in 'a'
+		if(!(si_a in h_a)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 
@@ -2642,12 +2664,6 @@ export function c1_prefixed_node(sc1_node, h_prefixes={}) {
 	}
 }
 
-export function* quads(hc4_quads, h_prefixes={}) {
-	for(const sc1_graph in hc4_quads) {
-		yield* triples(hc4_quads[sc1_graph], h_prefixes, sc1_graph);
-	}
-}
-
 export function c4(hc4_quads, h_prefixes={}) {
 	return {
 		[Symbol.iterator]: function *() {
@@ -2663,7 +2679,7 @@ export function c4(hc4_quads, h_prefixes={}) {
 	};
 }
 
-export function* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
+function* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
 	const k_graph = c1(sc1_graph, h_prefixes);
 	for(const sc1_subject in hc3_triples) {
 		const k_subject = c1(sc1_subject, h_prefixes);
@@ -2692,7 +2708,7 @@ export function c3(hc3_triples, h_prefixes={}, sc1_graph='*') {
 	};
 }
 
-export function* pairs(k_graph, k_subject, hc2_pairs, h_prefixes={}) {
+function* pairs(k_graph, k_subject, hc2_pairs, h_prefixes={}) {
 	for(const sc1_predicate in hc2_pairs) {
 		const k_predicate = c1_named_node(sc1_predicate, h_prefixes);
 		const z_objects = hc2_pairs[sc1_predicate];
@@ -2701,7 +2717,7 @@ export function* pairs(k_graph, k_subject, hc2_pairs, h_prefixes={}) {
 	}
 }
 
-export function * collection(k_graph, k_subject, a_objects, h_prefixes={}) {
+function* collection(k_graph, k_subject, a_objects, h_prefixes={}) {
 	// first item
 	yield* objects(k_graph, k_subject, KT_RDF_FIRST, a_objects[0], h_prefixes);
 
@@ -2725,7 +2741,7 @@ export function * collection(k_graph, k_subject, a_objects, h_prefixes={}) {
 	}
 }
 
-export function * objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes, b_nested=false) {
+function* objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes, b_nested=false) {
 	// value type
 	const s_type = typeof z_objects;
 	switch(s_type) {
@@ -2919,32 +2935,6 @@ export function config(s_key) {
 	return `\`[${uuidv4()}]{"type":"config","value":${JSON.stringify(s_key)}}`;
 }
 
-export function prefixMapsDiffer(h_a, h_b) {
-	// each key in 'a'
-	for(const si_a in h_a) {
-		// key is also in 'b'
-		if(si_a in h_b) {
-			// value is different in 'b'
-			if(h_a[si_a] !== h_b[si_a]) {
-				return true;
-			}
-		}
-		// key is not in 'b'
-		else {
-			return true;
-		}
-	}
-
-	// each key in 'b'
-	for(const si_a in h_a) {
-		// key is not in 'a'
-		if(!(si_a in h_a)) {
-			return true;
-		}
-	}
-}
-
-
 export const DataFactory = {
 	SI_PREFIX_CACHE,
 	SI_PREFIX_BASE,
@@ -2990,11 +2980,8 @@ export const DataFactory = {
 	c1_prefixed_node,
 	c1_to_nt,
 
-	quads,
 	c4,
-	triples,
 	c3,
-	pairs,
 
 	collection,
 

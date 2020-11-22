@@ -156,22 +156,29 @@ const H_VALIDATORS = {
 
 	namedNode(kt_actual, w_desc=null) {
 		let p_value = w_desc;
-		let b_type_alias = false;
 		let b_relative = false;
 		if('object' === typeof w_desc && null !== w_desc) {
 			p_value = w_desc.value;
-			b_type_alias = w_desc.type_alias || false;
+			if('type_alias' in w_desc) expect(kt_actual.isRdfTypeAlias).to.equal(w_desc.type_alias);
 			b_relative = w_desc.relative || false;
 		}
+		else if(P_IRI_RDF+'type' !== kt_actual.value) {
+			expect(kt_actual.isRdfTypeAlias).to.be.false;
+		}
+
+		const g_include = {
+			...G_PROPERTIES_GRAPHY_TERM_ALL,
+		};
+
+		delete g_include.isRdfTypeAlias;
 
 		expect(kt_actual).to.include({
-			...G_PROPERTIES_GRAPHY_TERM_ALL,
+			...g_include,
 			isAbleGraph: true,
 			isAbleSubject: true,
 			isAblePredicate: true,
 			isAbleObject: true,
 			isAbleDatatype: true,
-			isRdfTypeAlias: b_type_alias,
 			isNode: true,
 			isNamedNode: true,
 			isAbsoluteIri: !b_relative,
@@ -504,11 +511,11 @@ const H_VALIDATORS = {
 		});
 	},
 
-	quad(kq_actual, kq_validate) {
-		expect(kq_actual.subject.equals(kq_validate.subject)).to.be.true;
-		expect(kq_actual.predicate.equals(kq_validate.predicate)).to.be.true;
-		expect(kq_actual.object.equals(kq_validate.object)).to.be.true;
-		expect(kq_actual.graph.equals(kq_validate.graph)).to.be.true;
+	quad(kq_actual, g_validate) {
+		expect(kq_actual.subject.equals(g_validate.subject)).to.be.true;
+		expect(kq_actual.predicate.equals(g_validate.predicate)).to.be.true;
+		expect(kq_actual.object.equals(g_validate.object)).to.be.true;
+		expect(kq_actual.graph.equals(g_validate.graph)).to.be.true;
 
 		expect(kq_actual).to.include({
 			...G_PROPERTIES_GRAPHY_TERM_ALL,
@@ -668,6 +675,16 @@ export default class FactorySuite {
 				});
 			});
 
+			describe('non-literal consturctors', () => {
+				this.validate_factory({
+					blankNode: {
+						throws: {
+							true: true,
+						},
+					},
+				});
+			});
+
 			describe('datatyped literal constructors', () => {
 				this.validate_factory({
 					integerLiteral: {
@@ -786,6 +803,7 @@ export default class FactorySuite {
 							'boolean string: FALSE': 'FALSE',
 							2: 2,
 							'2n': 2n,
+							'{}': {},
 						},
 						returns: {
 							true: true,
@@ -828,6 +846,7 @@ export default class FactorySuite {
 							'numeric string: -1': ['-1', ['integerLiteral', -1]],
 							'numeric string: 0.1': ['0.1', ['decimalLiteral', 0.1]],
 							'numeric string: -0.1': ['-0.1', ['decimalLiteral', -0.1]],
+							'9007199254740993n': [9007199254740993n, 'integerLiteral'],
 						},
 					},
 					dateLiteral: {
@@ -3348,8 +3367,7 @@ export default class FactorySuite {
 				});
 			});
 
-			describe('Transmuted Literals', () => {
-
+			describe('Replaced Literals', () => {
 				it('loses precision: normalized leading and trailing zeroes', () => {
 					const s_decimal = '5.'+'1'.repeat(20);
 					const k_literal = k_factory.literal(s_decimal);
@@ -3357,6 +3375,53 @@ export default class FactorySuite {
 					H_VALIDATORS.decimalLiteral(k_trans, {value:s_decimal, precise:false});
 				});
 			});
+
+			// describe('Mutable Literals', () => {
+			// 	describe('simple => languaged', () => {
+			// 		const k_literal = k_factory.literal('value');
+			// 		k_literal.language = 'en';
+			// 		const g_languaged = {value:'value', language:'en'};
+
+			// 		it('#clone()', () => {
+			// 			H_VALIDATORS.literal(k_literal.clone(), g_languaged);
+			// 		});
+
+			// 		it('#replaceIri("absent", "never")', () => {
+			// 			H_VALIDATORS.literal(k_literal.replaceIri('absent', 'never'), g_languaged);
+			// 		});
+
+			// 		it('#replaceText("absent", "never")', () => {
+			// 			H_VALIDATORS.literal(k_literal.replaceText('absent', 'never'), g_languaged);
+			// 		});
+
+			// 		it('#replaceText("value", "replaced")', () => {
+			// 			H_VALIDATORS.literal(k_literal.replaceText('value', 'replaced'), {value:'replaced', language:'en'});
+			// 		});
+
+			// 		it('#replaceValue("absent", "never")', () => {
+			// 			H_VALIDATORS.literal(k_literal.replaceValue('absent', 'never'), g_languaged);
+			// 		});
+
+			// 		it('#replaceValue("value", "replaced")', () => {
+			// 			H_VALIDATORS.literal(k_literal.replaceValue('value', 'replaced'), {value:'replaced', language:'en'});
+			// 		});
+			// 	});
+
+			// 	describe('simple => datatyped', () => {
+			// 		const k_literal = k_factory.literal('value');
+			// 		const p_iri_datatype = 'https://graphy.link/tests#datatype';
+			// 		k_literal.dataype = p_iri_datatype;
+			// 		const g_languaged = {value:'value', datatype:p_iri_datatype};
+
+			// 		it('#clone()', () => {
+			// 			H_VALIDATORS.literal(k_literal.clone(), g_languaged);
+			// 		});
+
+			// 		it('#replaceText("value", "replaced")', () => {
+			// 			H_VALIDATORS.literal(k_literal.replaceText('value', 'replaced'), {value:'replaced', datatype:p_iri_datatype});
+			// 		});
+			// 	});
+			// });
 
 			describe('Quad w/o explicit graph', () => {
 				const p_iri_tests = 'https://graphy.link/tests#';
@@ -3536,7 +3601,7 @@ export default class FactorySuite {
 				});
 
 				it('#concise()', () => {
-					expect(kq_quad.concise()).to.eql(
+					expect(kq_quad.concise()).to.equal(
 						'>'+p_iri_tests+'graph'
 						+'\t_:subject'
 						+'\r>'+p_iri_tests+'predicate'
@@ -3545,7 +3610,7 @@ export default class FactorySuite {
 				});
 
 				it('#concise(h_prefixes)', () => {
-					expect(kq_quad.concise(h_prefixes)).to.eql(
+					expect(kq_quad.concise(h_prefixes)).to.equal(
 						'tests:graph'
 						+'\t_:subject'
 						+'\rtests:predicate'
@@ -3599,6 +3664,109 @@ export default class FactorySuite {
 							value: p_iri_tests+'graph',
 						},
 					});
+				});
+
+				it('#valueOf()', () => {
+					expect(kq_quad.valueOf()).to.equal(`_:subject <${p_iri_tests}predicate> "value"^^<${p_iri_tests}datatype> <${p_iri_tests}graph> .`);
+				});
+
+				it('#toString()', () => {
+					expect(kq_quad+'').to.equal(`_:subject <${p_iri_tests}predicate> "value"^^<${p_iri_tests}datatype> <${p_iri_tests}graph> .`);
+				});
+
+				it('#gspo()', () => {
+					expect(kq_quad.gspo()).to.eql([kt_graph, kt_subject, kt_predicate, kt_object]);
+				});
+
+				it('#spog()', () => {
+					expect(kq_quad.spog()).to.eql([kt_subject, kt_predicate, kt_object, kt_graph]);
+				});
+
+				it('#hash()', () => {
+					expect(kq_quad.hash()).to.equal(hash(
+						'>'+p_iri_tests+'graph'
+						+'\t_:subject'
+						+'\r>'+p_iri_tests+'predicate'
+						+`\n^>${p_iri_tests}datatype"value`
+					));
+				});
+
+				it('#reify()', () => {
+					const {
+						node: kt_bnode,
+						quads: [
+							kq_type,
+							kq_subject,
+							kq_predicate,
+							kq_object,
+						],
+					} = kq_quad.reify();
+
+					H_VALIDATORS.blankNode(kq_type.subject, null);
+					expect(kq_type.subject).to.equal(kt_bnode);
+					H_VALIDATORS.namedNode(kq_type.predicate, P_IRI_RDF+'type');
+					H_VALIDATORS.namedNode(kq_type.object, P_IRI_RDF+'Statement');
+					H_VALIDATORS.defaultGraph(kq_type.graph);
+
+					H_VALIDATORS.blankNode(kq_subject.subject, null);
+					expect(kq_subject.subject).to.equal(kt_bnode);
+					H_VALIDATORS.namedNode(kq_subject.predicate, P_IRI_RDF+'subject');
+					expect(kq_subject.object).to.equal(kt_subject);
+					H_VALIDATORS.defaultGraph(kq_subject.graph);
+
+					H_VALIDATORS.blankNode(kq_predicate.subject, null);
+					expect(kq_predicate.subject).to.equal(kt_bnode);
+					H_VALIDATORS.namedNode(kq_predicate.predicate, P_IRI_RDF+'predicate');
+					expect(kq_predicate.object).to.equal(kt_predicate);
+					H_VALIDATORS.defaultGraph(kq_predicate.graph);
+
+					H_VALIDATORS.blankNode(kq_object.subject, null);
+					expect(kq_object.subject).to.equal(kt_bnode);
+					H_VALIDATORS.namedNode(kq_object.predicate, P_IRI_RDF+'object');
+					expect(kq_object.object).to.equal(kt_object);
+					H_VALIDATORS.defaultGraph(kq_object.graph);
+				});
+
+				it('#reify("label")', () => {
+					const {
+						node: kt_bnode,
+						quads: [
+							kq_type,
+							kq_subject,
+							kq_predicate,
+							kq_object,
+						],
+					} = kq_quad.reify('label');
+
+					H_VALIDATORS.blankNode(kq_type.subject, 'label');
+					expect(kq_type.subject).to.equal(kt_bnode);
+					H_VALIDATORS.namedNode(kq_type.predicate, P_IRI_RDF+'type');
+					H_VALIDATORS.namedNode(kq_type.object, P_IRI_RDF+'Statement');
+					H_VALIDATORS.defaultGraph(kq_type.graph);
+
+					H_VALIDATORS.blankNode(kq_subject.subject, 'label');
+					expect(kq_subject.subject).to.equal(kt_bnode);
+					H_VALIDATORS.namedNode(kq_subject.predicate, P_IRI_RDF+'subject');
+					expect(kq_subject.object).to.equal(kt_subject);
+					H_VALIDATORS.defaultGraph(kq_subject.graph);
+
+					H_VALIDATORS.blankNode(kq_predicate.subject, 'label');
+					expect(kq_predicate.subject).to.equal(kt_bnode);
+					H_VALIDATORS.namedNode(kq_predicate.predicate, P_IRI_RDF+'predicate');
+					expect(kq_predicate.object).to.equal(kt_predicate);
+					H_VALIDATORS.defaultGraph(kq_predicate.graph);
+
+					H_VALIDATORS.blankNode(kq_object.subject, 'label');
+					expect(kq_object.subject).to.equal(kt_bnode);
+					H_VALIDATORS.namedNode(kq_object.predicate, P_IRI_RDF+'object');
+					expect(kq_object.object).to.equal(kt_object);
+					H_VALIDATORS.defaultGraph(kq_object.graph);
+				});
+
+				it('#clone()', () => {
+					const kq_clone = kq_quad.clone();
+					expect_original_replaced_equals(kq_quad, kq_clone, true);
+					H_VALIDATORS.quad(kq_clone, kq_quad);
 				});
 
 				const kt_s = k_factory.namedNode(p_iri_tests+'subject');
@@ -3655,6 +3823,245 @@ export default class FactorySuite {
 				});
 			});
 
+
+			describe('Quad w/ RDF* terms', () => {
+				const p_iri_tests = 'https://graphy.link/tests#';
+				const kt_datatype = k_factory.namedNode(p_iri_tests+'datatype');
+				const h_prefixes = {
+					tests: p_iri_tests,
+				};
+				const kt_subject = k_factory.quad(...[
+					k_factory.namedNode(p_iri_tests+'nested-s-subject'),
+					k_factory.namedNode(p_iri_tests+'nested-s-predicate'),
+					k_factory.namedNode(p_iri_tests+'nested-s-object'),
+				]);
+				const kt_predicate = k_factory.namedNode(p_iri_tests+'predicate');
+				const kt_object = k_factory.quad(...[
+					k_factory.namedNode(p_iri_tests+'nested-o-subject'),
+					k_factory.namedNode(p_iri_tests+'nested-o-predicate'),
+					k_factory.literal('nested-o-object', kt_datatype),
+				]);
+				const kt_graph = k_factory.namedNode(p_iri_tests+'graph');
+				const kq_quad = k_factory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
+
+				const h_quad_isolate = {
+					termType: 'Quad',
+					value: '',
+					subject: {
+						termType: 'Quad',
+						value: '',
+						subject: {
+							termType: 'NamedNode',
+							value: p_iri_tests+'nested-s-subject',
+						},
+						predicate: {
+							termType: 'NamedNode',
+							value: p_iri_tests+'nested-s-predicate',
+						},
+						object: {
+							termType: 'NamedNode',
+							value: p_iri_tests+'nested-s-object',
+						},
+						graph: {
+							termType: 'DefaultGraph',
+							value: '',
+						},
+					},
+					predicate: {
+						termType: 'NamedNode',
+						value: p_iri_tests+'predicate',
+					},
+					object: {
+						termType: 'Quad',
+						value: '',
+						subject: {
+							termType: 'NamedNode',
+							value: p_iri_tests+'nested-o-subject',
+						},
+						predicate: {
+							termType: 'NamedNode',
+							value: p_iri_tests+'nested-o-predicate',
+						},
+						object: {
+							termType: 'Literal',
+							value: 'nested-o-object',
+							language: '',
+							datatype: {
+								termType: 'NamedNode',
+								value: `${p_iri_tests}datatype`,
+							},
+						},
+						graph: {
+							termType: 'DefaultGraph',
+							value: '',
+						},
+					},
+					graph: {
+						termType: 'NamedNode',
+						value: p_iri_tests+'graph',
+					},
+				};
+
+				it('#equals(this)', () => {
+					expect(kq_quad.equals(kq_quad)).to.be.true;
+				});
+
+				it('#equals(other)', () => {
+					expect(kq_quad.equals(k_factory.quad(...[
+						k_factory.quad(...[
+							k_factory.namedNode(p_iri_tests+'nested-s-subject'),
+							k_factory.namedNode(p_iri_tests+'nested-s-predicate'),
+							k_factory.namedNode(p_iri_tests+'nested-s-object'),
+						]),
+						k_factory.namedNode(p_iri_tests+'predicate'),
+						k_factory.quad(...[
+							k_factory.namedNode(p_iri_tests+'nested-o-subject'),
+							k_factory.namedNode(p_iri_tests+'nested-o-predicate'),
+							k_factory.literal('nested-o-object', kt_datatype),
+						]),
+						k_factory.namedNode(p_iri_tests+'graph'),
+					]))).to.be.true;
+				});
+
+				it('#equals(isolate)', () => {
+					expect(kq_quad.equals(kq_quad.isolate())).to.be.true;
+				});
+
+				it('#equals(diff)', () => {
+					const kq_diff = k_factory.quad(...[
+						k_factory.quad(...[
+							k_factory.namedNode(p_iri_tests+'nested-s-subject'),
+							k_factory.namedNode(p_iri_tests+'nested-s-predicate'),
+							k_factory.namedNode(p_iri_tests+'nested-s-object'),
+						]),
+						k_factory.namedNode(p_iri_tests+'predicate'),
+						k_factory.quad(...[
+							k_factory.namedNode(p_iri_tests+'nested-o-subject'),
+							k_factory.namedNode(p_iri_tests+'nested-o-predicate'),
+							k_factory.literal('nested-o-diff', kt_datatype),
+						]),
+					]);
+
+					expect(kq_quad.equals(kq_diff)).to.be.false;
+				});
+
+				it('#equals(similar)', () => {
+					expect(kq_quad.equals(h_quad_isolate)).to.be.true;
+				});
+
+				// it('#concise()', () => {
+				// 	expect(kq_quad.concise()).to.eql(
+				// 		'>'+p_iri_tests+'graph'
+				// 		+'\t_:subject'
+				// 		+'\r>'+p_iri_tests+'predicate'
+				// 		+`\n^>${p_iri_tests}datatype"value`
+				// 	);
+				// });
+
+				// it('#concise(h_prefixes)', () => {
+				// 	expect(kq_quad.concise(h_prefixes)).to.eql(
+				// 		'tests:graph'
+				// 		+'\t_:subject'
+				// 		+'\rtests:predicate'
+				// 		+`\n^tests:datatype"value`
+				// 	);
+				// });
+
+				// it('#terse()', () => {
+				// 	expect(kq_quad.terse()).to.equal(`<${p_iri_tests}graph> { _:subject <${p_iri_tests}predicate> "value"^^<${p_iri_tests}datatype> . }`);
+				// });
+
+				// it('#terse(h_prefixes)', () => {
+				// 	expect(kq_quad.terse(h_prefixes)).to.equal(`tests:graph { _:subject tests:predicate "value"^^tests:datatype . }`);
+				// });
+
+				it('#star()', () => {
+					expect(kq_quad.star()).to.equal('<< '
+						+`<< <${p_iri_tests}nested-s-subject> <${p_iri_tests}nested-s-predicate> <${p_iri_tests}nested-s-object> >> `
+						+`<${p_iri_tests}predicate> `
+						+`<< <${p_iri_tests}nested-o-subject> <${p_iri_tests}nested-o-predicate> "nested-o-object"^^<${p_iri_tests}datatype> >> `
+						+`<${p_iri_tests}graph> `
+						+'>>');
+				});
+
+				it('#star(h_prefixes)', () => {
+					expect(kq_quad.star(h_prefixes)).to.equal('<< '
+						+`<< tests:nested-s-subject tests:nested-s-predicate tests:nested-s-object >> `
+						+`tests:predicate `
+						+`<< tests:nested-o-subject tests:nested-o-predicate "nested-o-object"^^tests:datatype >> `
+						+`tests:graph `
+						+'>>');
+				});
+
+				it('#verbose()', () => {
+					expect(kq_quad.verbose()).to.be.a('string');
+					// equal(''
+					// 	+`_:subject <${p_iri_tests}predicate> "value"^^<${p_iri_tests}datatype> <${p_iri_tests}graph> .`
+					// 	+`<< tests:nested-s-subject tests:nested-s-predicate tests:nested-s-object >> `
+					// 	+`tests:predicate `
+					// 	+`<< tests:nested-s-subject tests:nested-o-predicate "nested-o-object"^^tests:datatype >> `
+					// 	+`tests:graph `
+					// 	+'>>');
+					// expect(kq_quad.verbose()).to.equal(`_:subject <${p_iri_tests}predicate> "value"^^<${p_iri_tests}datatype> <${p_iri_tests}graph> .`);
+				});
+
+				it('#isolate()', () => {
+					expect(kq_quad.isolate()).to.eql(h_quad_isolate);
+				});
+
+				// const kt_s = k_factory.namedNode(p_iri_tests+'subject');
+				// const kt_p = k_factory.namedNode(p_iri_tests+'predicate');
+				// const kt_o = k_factory.literal('value', k_factory.namedNode(p_iri_tests+'object'));
+				// const kt_g = k_factory.namedNode(p_iri_tests+'graph');
+
+				// const kq_test = k_factory.quad(kt_s, kt_p, kt_o, kt_g);
+
+				// test_replacements({
+				// 	input: kq_test,
+				// 	validate: H_VALIDATORS.quad,
+				// 	identity: () => [kq_test],
+				// 	replace: {
+				// 		iri: (w_s, w_r) => [k_factory.quad(kt_s.replaceIri(w_s, w_r), kt_p.replaceIri(w_s, w_r), kt_o.replaceIri(w_s, w_r), kt_g.replaceIri(w_s, w_r))],
+				// 		text: (w_s, w_r) => [k_factory.quad(kt_s, kt_p, kt_o.replaceText(w_s, w_r), kt_g)],
+				// 		value: (w_s, w_r) => [k_factory.quad(kt_s.replaceValue(w_s, w_r), kt_p.replaceValue(w_s, w_r), kt_o.replaceValue(w_s, w_r), kt_g.replaceValue(w_s, w_r))],
+				// 	},
+				// 	map: {
+				// 		iri: {
+				// 			clones: [
+				// 				['absent', 'never'],
+				// 				[/absent/, 'never'],
+				// 			],
+				// 			replaces: [
+				// 				['tests', 'replaced'],
+				// 				[/tests/, 'replaced'],
+				// 				[/t/g, 'x'],
+				// 			],
+				// 		},
+				// 		text: {
+				// 			clones: [
+				// 				['absent', 'never'],
+				// 				[/absent/, 'never'],
+				// 			],
+				// 			replaces: [
+				// 				['value', 'replaced'],
+				// 				[/value/, 'replaced'],
+				// 				[/v/g, 'x'],
+				// 			],
+				// 		},
+				// 		value: {
+				// 			clones: [
+				// 				['absent', 'never'],
+				// 				[/absent/, 'never'],
+				// 			],
+				// 			replaces: [
+				// 				['tests', 'replaced'],
+				// 				[/tests/, 'replaced'],
+				// 				[/t/g, 'x'],
+				// 			],
+				// 		},
+				// 	},
+				// });
+			});
 
 			describe('Variable', () => {
 				const kt_variable = k_factory.variable('label');
@@ -3760,6 +4167,64 @@ export default class FactorySuite {
 			it('literal("test", xsd:integer)', () => {
 				H_VALIDATORS.literal(k_factory.unfiltered.literal('test', k_factory.namedNode('z://y/')), {value:'test', datatype:'z://y/'});
 			});
+
+			it('simpleLiteral("test")', () => {
+				H_VALIDATORS.literal(k_factory.unfiltered.simpleLiteral('test'), {value:'test'});
+			});
+
+			it('languagedLiteral("test", "en")', () => {
+				H_VALIDATORS.literal(k_factory.unfiltered.languagedLiteral('test', 'en'), {value:'test', language:'en'});
+			});
+
+			it('datatypedLiteral("test", xsd:integer)', () => {
+				H_VALIDATORS.literal(k_factory.unfiltered.datatypedLiteral('test', k_factory.namedNode('z://y/')), {value:'test', datatype:'z://y/'});
+			});
+
+			it('datatypedLiteral("test", xsd:string)', () => {
+				H_VALIDATORS.literal(k_factory.unfiltered.datatypedLiteral('test', k_factory.namedNode(P_IRI_XSD+'string')), {value:'test'});
+			});
+
+
+			const g_validate_quad = {
+				subject: {
+					termType: 'BlankNode',
+					value: 'subject',
+				},
+				predicate: {
+					termType: 'NamedNode',
+					value: 'https://graphy.link/predicate',
+				},
+				object: {
+					termType: 'Literal',
+					value: 'object',
+					language: '',
+					datatype: {
+						termType: 'NamedNode',
+						value: 'https://graphy.link/datatype',
+					},
+				},
+				graph: {
+					termType: 'DefaultGraph',
+					value: '',
+				},
+			};
+
+			it('quad', () => {
+				H_VALIDATORS.quad(k_factory.unfiltered.quad(...[
+					k_factory.blankNode('subject'),
+					k_factory.namedNode('https://graphy.link/predicate'),
+					k_factory.literal('object', k_factory.namedNode('https://graphy.link/datatype')),
+					k_factory.defaultGraph(),
+				]), g_validate_quad);
+			});
+
+			it('quad', () => {
+				H_VALIDATORS.quad(k_factory.unfiltered.quad(...[
+					k_factory.blankNode('subject'),
+					k_factory.namedNode('https://graphy.link/predicate'),
+					k_factory.literal('object', k_factory.namedNode('https://graphy.link/datatype')),
+				]), g_validate_quad);
+			});
 		});
 
 		describe('setBaseIri', () => {
@@ -3820,6 +4285,119 @@ export default class FactorySuite {
 			});
 		});
 
+		describe('relatePrefixMaps/prefixMapsDiffer', () => {
+			it('({}, {})', () => {
+				expect(k_factory.relatePrefixMaps({}, {})).to.eql({
+					relation: 'equal',
+					conflicts: [],
+				});
+			});
+
+			const h_a = {
+				graphy: 'https://graphy.link/',
+			};
+
+			const h_b = {
+				graphy: 'https://graphy.link/',
+			};
+
+			const h_c = {
+				graphy: 'https://graphy.link/',
+				other: 'https://other.org/',
+			};
+
+			const h_d = {
+				other: 'https://other.org/',
+			};
+
+			const h_e = {
+				graphy: 'https://graphy.link/',
+				other: 'https://another.diff/',
+			};
+
+			const h_f = {
+				graphy: 'https://graphy.link/',
+				alter: 'https://alter.me/',
+			};
+
+			it('(a, a)', () => {
+				expect(k_factory.relatePrefixMaps(h_a, h_a)).to.eql({
+					relation: 'equal',
+					conflicts: [],
+				});
+			});
+
+			it('(a, b)', () => {
+				expect(k_factory.relatePrefixMaps(h_a, h_b)).to.eql({
+					relation: 'equal',
+					conflicts: [],
+				});
+			});
+
+			it('(a, c)', () => {
+				expect(k_factory.relatePrefixMaps(h_a, h_c)).to.eql({
+					relation: 'subset',
+					conflicts: [],
+				});
+			});
+
+			it('(a, d)', () => {
+				expect(k_factory.relatePrefixMaps(h_a, h_d)).to.eql({
+					relation: 'disjoint',
+					conflicts: [],
+				});
+			});
+
+			it('(c, a)', () => {
+				expect(k_factory.relatePrefixMaps(h_c, h_a)).to.eql({
+					relation: 'superset',
+					conflicts: [],
+				});
+			});
+
+			it('(c, e)', () => {
+				expect(k_factory.relatePrefixMaps(h_c, h_e)).to.eql({
+					relation: 'overlap',
+					conflicts: ['other'],
+				});
+			});
+
+			it('(c, f)', () => {
+				expect(k_factory.relatePrefixMaps(h_c, h_f)).to.eql({
+					relation: 'overlap',
+					conflicts: [],
+				});
+			});
+
+			it('differ(a, a)', () => {
+				expect(k_factory.prefixMapsDiffer(h_a, h_a)).to.be.false;
+			});
+
+			it('differ(a, b)', () => {
+				expect(k_factory.prefixMapsDiffer(h_a, h_b)).to.be.false;
+			});
+
+			it('differ(b, a)', () => {
+				expect(k_factory.prefixMapsDiffer(h_b, h_a)).to.be.false;
+			});
+
+			it('differ(a, c)', () => {
+				expect(k_factory.prefixMapsDiffer(h_a, h_c)).to.be.true;
+			});
+
+			it('differ(c, a)', () => {
+				expect(k_factory.prefixMapsDiffer(h_c, h_a)).to.be.true;
+			});
+
+			it('differ(c, e)', () => {
+				expect(k_factory.prefixMapsDiffer(h_c, h_e)).to.be.true;
+			});
+
+			it('differ(e, c)', () => {
+				expect(k_factory.prefixMapsDiffer(h_e, h_c)).to.be.true;
+			});
+		});
+
 		describe('terse', () => {
 
 		});
@@ -3831,6 +4409,60 @@ export default class FactorySuite {
 				});
 				const sc1_test = k_factory.concise('z://y/test', h_cache);
 				expect(sc1_test).to.equal('good:test');
+			});
+		});
+
+		describe('c4', () => {
+			const sv1_iri_base = '>https://graphy.link/';
+			const sv1_iri_graph = `${sv1_iri_base}graph`;
+			const sv1_iri_subject = `${sv1_iri_base}subject`;
+			const sv1_iri_predicate = `${sv1_iri_base}predicate`;
+			const sv1_iri_object = `${sv1_iri_base}object`;
+			const sc1_lit_object = '@en"object';
+
+			const hc4_quads = {
+				[sv1_iri_graph]: {
+					[sv1_iri_subject]: {
+						[sv1_iri_predicate]: [
+							sv1_iri_object,
+							sc1_lit_object,
+						],
+					},
+				},
+			};
+
+			const dg_quads = k_factory.c4(hc4_quads);
+
+			it('is iterable', () => {
+				expect(dg_quads).to.be.iterable;
+			});
+
+			it('[...]', () => {
+				const [
+					kq_0,
+					kq_1,
+				] = [...dg_quads];
+
+				H_VALIDATORS.quad(kq_0, {
+					graph: k_factory.namedNode(sv1_iri_graph.slice(1)),
+					subject: k_factory.namedNode(sv1_iri_subject.slice(1)),
+					predicate: k_factory.namedNode(sv1_iri_predicate.slice(1)),
+					object: k_factory.namedNode(sv1_iri_object.slice(1)),
+				});
+
+				H_VALIDATORS.quad(kq_1, {
+					graph: k_factory.namedNode(sv1_iri_graph.slice(1)),
+					subject: k_factory.namedNode(sv1_iri_subject.slice(1)),
+					predicate: k_factory.namedNode(sv1_iri_predicate.slice(1)),
+					object: k_factory.literal('object', 'en'),
+				});
+			});
+
+			it('#toString()', () => {
+				expect(dg_quads+'').to.equal(JSON.stringify({
+					type: 'c4',
+					value: hc4_quads,
+				}));
 			});
 		});
 
