@@ -361,17 +361,59 @@ export const concise = (p_iri, h_prefixes={}) => {
 };
 
 const R_C1N_DECONSTRUCT = /^([^:]*):(.*)$/;
+const R_C1U_DECONSTRUCT = /^([^_]*)_(.*)$/;
 
-export function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
+function c1NodeToN3(sc1_node, h_prefixes, b_verbose) {
+	// match prefixed name
+	let m_pname = R_C1N_DECONSTRUCT.exec(sc1_node);
+
+	// colon used
+	let b_underscore = false;
+
+	// no colon, try underscore
+	if(!m_pname) {
+		m_pname = R_C1U_DECONSTRUCT.exec(sc1_node);
+		b_underscore = true;
+	}
+
+	// still no match
+	if(!m_pname) throw new Error(`Invalid C1 string: '${sc1_node}'`);
+
+	// deconstruct prefixed name
+	const [, si_prefix, s_suffix] = m_pname;
+
+	// avoid illegal prefixed name parts
+	if(b_verbose || b_underscore || RT_AVOID_PNAME_LOCAL.test(s_suffix) || RT_AVOID_PNAME_NS.test(si_prefix)) {
+		return '<'+h_prefixes[si_prefix]+s_suffix+'>';
+	}
+
+	// good as-is
+	return sc1_node;
+}
+
+export function c1ToN3(sc1_in, h_prefixes=null, b_verbose=false) {
+	const b_terse = h_prefixes && !b_verbose;
+
 	switch(sc1_in[0]) {
 		// absolute iri
-		case '>': return '<'+sc1_in.slice(1)+'>';
+		case '>': {
+			if(b_terse) {
+				return terse(sc1_in.slice(1), h_prefixes);
+			}
+			else {
+				return '<'+sc1_in.slice(1)+'>';
+			}
+		}
 
-		// blank node
+		// blank node?
 		case '_': {
 			// anonymous or ephemeral hint
 			if(sc1_in.length <= 2 || '#' === sc1_in[2]) {
-				return (new EphemeralBlankNode())[b_verbose? 'verbose': 'terse']();
+				return (new EphemeralBlankNode())[b_terse? 'terse': 'verbose']();
+			}
+			// actually prefixed named
+			else if(':' !== sc1_in[1]) {
+				return c1NodeToN3(sc1_in, h_prefixes, !b_terse);
 			}
 			// labeled
 			else {
@@ -391,7 +433,7 @@ export function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 		// datatyped literal
 		case '^': {
 			const i_contents = sc1_in.indexOf('"');
-			return JSON.stringify(sc1_in.slice(i_contents+1))+'^^'+c1_to_nt(sc1_in.slice(1, i_contents), h_prefixes, b_verbose);
+			return JSON.stringify(sc1_in.slice(i_contents+1))+'^^'+c1ToN3(sc1_in.slice(1, i_contents), h_prefixes, b_verbose);
 		}
 
 		// default graph
@@ -404,25 +446,13 @@ export function c1_to_nt(sc1_in, h_prefixes={}, b_verbose=false) {
 		// otherwise
 		default: {
 			// rdf:type alis
-			if('a' === sc1_in) return b_verbose? '<@{P_IRI_RDF}type>': 'a';
+			if('a' === sc1_in) return b_terse? 'a': '<@{P_IRI_RDF}type>';
 
-			// deconstruct prefixed name
-			const [, si_prefix, s_suffix] = R_C1N_DECONSTRUCT.exec(sc1_in);
-
-			// avoid illegal prefixed name parts
-			if(b_verbose || RT_AVOID_PNAME_LOCAL.test(s_suffix) || RT_AVOID_PNAME_NS.test(si_prefix)) {
-				return '<'+h_prefixes[si_prefix]+s_suffix+'>';
-			}
-
-			// good as-is
-			return sc1_in;
+			// all other nodes
+			return c1NodeToN3(sc1_in, h_prefixes, !b_terse);
 		}
 	}
 }
-
-export {
-	c1_to_nt as c1ToNt,
-};
 
 @$ R_DECLARE = /^\s*class\s*([^\s]+)\s*(?:extends\s*([^\s]+)\s*)/;
 
@@ -1236,7 +1266,23 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 		}
 
 		static fromNumber(x_value) {
-			@- b_double
+			@- b_integer
+				// not a finite number
+				if(!Number.isFinite(x_value)) {
+					// NaN
+					if(Number.isNaN(x_value)) {
+						throw new Error('XSD integer cannot encode NaN. Try using double');
+					}
+
+					throw new Error('XSD integer cannot encode +/-infinity. Try using double');
+				}
+				// not an integer
+				else if(!Number.isInteger(x_value)) {
+					throw new Error('Number is not an integer: '+x_value);
+				}
+
+				return new IntegerLiteral(BigInt(x_value));
+			@+ b_double
 				// not a finite number
 				if(!Number.isFinite(x_value)) {
 					// NaN
@@ -1268,6 +1314,18 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 				}
 
 				return new DecimalLiteral(s_value);
+			@+ b_boolean
+				// 1
+				if(1 === x_value) {
+					return new BooleanLiteral(true);
+				}
+				// 0
+				else if(0 === x_value) {
+					return new BooleanLiteral(false);
+				}
+
+				// invalid
+				throw new Error(`Boolean value '${x_value}' must be either a '1' or '0' if using numbers`);
 			@;
 		}
 
@@ -1397,21 +1455,7 @@ const RT_DOUBLE_E = /e[-+]?\d+$/;
 
 				// a number was given
 				if('number' === s_type) {
-					// not a finite number
-					if(!Number.isFinite(${s_arg})) {
-						// NaN
-						if(Number.isNaN(${s_arg})) {
-							throw new Error('XSD integer cannot encode NaN. Try using double');
-						}
-
-						throw new Error('XSD integer cannot encode +/-infinity. Try using double');
-					}
-					// not an integer
-					else if(!Number.isInteger(${s_arg})) {
-						throw new Error('Number is not an integer: '+${s_arg});
-					}
-
-					return new IntegerLiteral(BigInt(${s_arg}));
+					return IntegerLiteral.fromNumber(${s_arg});
 				}
 				// string
 				else if('string' === s_type) {
@@ -1515,17 +1559,7 @@ const RT_DOUBLE_E = /e[-+]?\d+$/;
 				}
 				// number
 				else if('number' === s_type) {
-					// 1
-					if(1 === ${s_arg}) {
-						return new BooleanLiteral(true);
-					}
-					// 0
-					else if(0 === ${s_arg}) {
-						return new BooleanLiteral(false);
-					}
-
-					// invalid
-					throw new Error(\`Boolean value '${s_arg}' must be either a '1' or '0' if using numbers\`);
+					return BooleanLiteral.fromNumber(${s_arg});
 				}
 				// string
 				else if('string' === s_type) {
@@ -1887,14 +1921,11 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 
 			// subject is a quad; reify
 			if(kt_subject.isGraphyQuad) {
-				const {
-					node: kt_reified,
-					quads: [kq_0, kq_1, kq_2, kq_3],
-				} = kt_subject.reify();
-
-				s_out += kq_0.terse(h_prefixes)+'\n'+kq_1.verbose(h_prefixes)+'\n'+kq_2.verbose(h_prefixes)+'\n'+kq_3.verbose(h_prefixes)+'\n';
-
-				st1_subject = kt_reified.terse(h_prefixes);
+				st1_subject += `[ a ${KT_RDF_STATEMENT.terse(h_prefixes)} ;`
+					+`\n\t${KT_RDF_SUBJECT.terse(h_prefixes)} ${kt_subject.subject.terse(h_prefixes)} ;`
+					+`\n\t${KT_RDF_PREDICATE.terse(h_prefixes)} ${kt_subject.predicate.terse(h_prefixes)} ;`
+					+`\n\t${KT_RDF_OBJECT.terse(h_prefixes)} ${kt_subject.object.terse(h_prefixes)} ;`
+					+'\n\t]';
 			}
 			// subejct is a term
 			else {
@@ -1909,14 +1940,11 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 
 			// object is a quad; reify
 			if(kt_object.isGraphyQuad) {
-				const {
-					node: kt_reified,
-					quads: [kq_0, kq_1, kq_2, kq_3],
-				} = kt_object.reify();
-
-				s_out += kq_0.terse(h_prefixes)+'\n'+kq_1.terse(h_prefixes)+'\n'+kq_2.terse(h_prefixes)+'\n'+kq_3.terse(h_prefixes)+'\n';
-
-				st1_object = kt_reified.terse(h_prefixes);
+				st1_object += `[ a ${KT_RDF_STATEMENT.terse(h_prefixes)} ;`
+					+`\n\t${KT_RDF_SUBJECT.terse(h_prefixes)} ${kt_object.subject.terse(h_prefixes)} ;`
+					+`\n\t${KT_RDF_PREDICATE.terse(h_prefixes)} ${kt_object.predicate.terse(h_prefixes)} ;`
+					+`\n\t${KT_RDF_OBJECT.terse(h_prefixes)} ${kt_object.object.terse(h_prefixes)} ;`
+					+'\n\t]';
 			}
 			// object is a term
 			else {
@@ -2213,6 +2241,8 @@ export {
 };
 
 export const g_unfiltered = {
+	isGraphyDataFactoryCertified: true,
+
 	...g_raw,
 
 	literal(s_value, z_datatype_or_lang) {
@@ -2254,48 +2284,55 @@ function C3Proxy$_toString() {
 	return '|'+JSON.stringify([...this()].map(w => w.concise()));
 }
 
-function c1_expand_prefixed_named_node(sc1_term, h_prefixes) {
+function c1ExpandPrefixedNamedNode(sc1_term, h_prefixes) {
 	// deconstruct prefixed name
-	let [, si_prefix, s_suffix] = R_C1N_DECONSTRUCT.exec(sc1_term);
+	let m_pname = R_C1N_DECONSTRUCT.exec(sc1_term);
+
+	// no colon, try underscore
+	if(!m_pname) m_pname = R_C1U_DECONSTRUCT.exec(sc1_term);
+
+	// still no match
+	if(!m_pname) throw new Error(`Invalid C1 string: '${sc1_term}'`);
+
+	// deconstruct
+	const [, si_prefix, s_suffix] = m_pname;
 
 	// return expanded form
 	return '>'+h_prefixes[si_prefix]+s_suffix;
 }
 
-export const $_GRAPHY_ID = Symbol('graphy id');
 
 export function adopt(dc_factory) {
 	// already exact factory
-	if($_GRAPHY_ID in dc_factory) return dc_factory;
+	if(dc_factory.isGraphyDataFactoryCertified) return dc_factory;
 
 	// prep to extend
 	const dc_extend = Object.create(dc_factory);
-	let b_use_extend = false;
+	dc_extend.isGraphyDataFactoryCertified = true;
 
 	@*{
 		const H_DATA_CONSTRUCTORS = {
 			xsd: {
-				boolean: /* syntax: js */ `b_value => dc_factory.literal(b_value, kt_xsd_boolean)`,
-				double: /* syntax: js */ `s_value => dc_factory.doubleLiteral(s_value, kt_xsd_double)`,
-				decimal: /* syntax: js */ `s_value => dc_factory.decimalLiteral(s_value, kt_xsd_decimal)`,
-				integer: /* syntax: js */ `s_value => dc_factory.integerLiteral(s_value, kt_xsd_integer)`,
+				boolean: /* syntax: js */ `w => dc_factory.literal(w+'', kt_xsd_boolean)`,
+				double: /* syntax: js */ `w => dc_factory.literal(w+'', kt_xsd_double)`,
+				decimal: /* syntax: js */ `w => dc_factory.literal(w+'', kt_xsd_decimal)`,
+				integer: /* syntax: js */ `w => dc_factory.literal(w+'', kt_xsd_integer)`,
 			},
 			literal: {
-				simpleLiteral: /* syntax: js */ `s_value => dc_factory.literal(s_value)`,
-				languagedLiteral: /* syntax: js */ `(s_value, s_lang) => dc_factory.literal(s_value, s_lang)`,
-				datatypedLiteral: /* syntax: js */ `(s_value, kt_datatype) => dc_factory.literal(s_value, kt_datatype)`,
+				simple: /* syntax: js */ `s_value => dc_factory.literal(s_value)`,
+				languaged: /* syntax: js */ `(s_value, s_lang) => dc_factory.literal(s_value, s_lang)`,
+				datatyped: /* syntax: js */ `(s_value, kt_datatype) => dc_factory.literal(s_value, kt_datatype)`,
 			},
 		};
 
 		for(const [s_type, h_values] of Object.entries(H_DATA_CONSTRUCTORS)) {
 			for(const [si_value, sj_constructor] of Object.entries(h_values)) {
 				yield /* syntax: js */ `
-					if('function' !== typeof dc_factory.${si_value}) {
+					if('function' !== typeof dc_factory.${si_value}Literal) {
 						${'xsd' === s_type
 							? /* syntax: js */ `const kt_xsd_${si_value} = dc_factory.namedNode('${P_IRI_XSD}${si_value}');`
 							: ''}
-						dc_extend.${si_value} = ${sj_constructor};
-						b_use_extend = true;
+						dc_extend.${si_value}Literal = ${sj_constructor};
 					}
 				`;
 			}
@@ -2303,7 +2340,7 @@ export function adopt(dc_factory) {
 	}
 
 	// extended or not
-	return b_use_extend? dc_extend: dc_factory
+	return dc_extend;
 }
 
 
@@ -2543,7 +2580,7 @@ export function c1(sc1_term, h_prefixes={}) {
 			const s_datatype = sc1_term.slice(1, i_contents);
 
 			// make term
-			return literal(sc1_term.slice(i_contents+1), c1_node_explicit(s_datatype, h_prefixes));
+			return literal(sc1_term.slice(i_contents+1), c1NodeExplicit(s_datatype, h_prefixes));
 		}
 
 		// languaged literal
@@ -2575,12 +2612,12 @@ export function c1(sc1_term, h_prefixes={}) {
 		}
 
 		// prefixed name
-		default: return c1_node(sc1_term, h_prefixes);
+		default: return c1Node(sc1_term, h_prefixes);
 	}
 }
 
 // construct a term object from a concise term string for nodes
-export function c1_node(sc1_node, h_prefixes={}) {
+export function c1Node(sc1_node, h_prefixes={}) {
 	// rdf:type shortcut
 	if('a' === sc1_node) return KT_RDF_TYPE;
 
@@ -2603,20 +2640,20 @@ export function c1_node(sc1_node, h_prefixes={}) {
 	}
 
 	// other
-	return c1_node_explicit(sc1_node, h_prefixes);
+	return c1NodeExplicit(sc1_node, h_prefixes);
 }
 
 // construct a named node
-export function c1_named_node(sc1_node, h_prefixes={}) {
+export function c1NamedNode(sc1_node, h_prefixes={}) {
 	// rdf:type shortcut
 	if('a' === sc1_node) return KT_RDF_TYPE;
 
 	// other
-	return c1_node_explicit(sc1_node, h_prefixes);
+	return c1NodeExplicit(sc1_node, h_prefixes);
 }
 
 // construct a term object from a concise term string for nodes (no shortcuts)
-export function c1_node_explicit(sc1_node, h_prefixes={}) {
+export function c1NodeExplicit(sc1_node, h_prefixes={}) {
 	// deduce term type
 	switch(sc1_node[0]) {
 		// iri
@@ -2632,16 +2669,19 @@ export function c1_node_explicit(sc1_node, h_prefixes={}) {
 		}
 
 		// invalid concise-term string
-		case '<': throw new Error(`Whoops! It looks like this concise-term string starts with a '<' character. Remember to use '>' if you are trying to make an absolute IRI reference.\nInvalid concise-term string '${sc1_node}'`);
-		case '`': throw new Error(`The backtick character '\`' is reserved for concise-struct key directives and should not be used in the object position.\nInvalid concise-term string '${sc1_node}'`);
+		case '<': throw new Error(`Whoops! It looks like this C1 string starts with a '<' character. Remember to use '>' if you are trying to make an absolute IRI reference.\nInvalid C1 string '${sc1_node}'`);
+		case '`': throw new Error(`The backtick character '\`' is reserved for concise-struct key directives and should not be used in the object position.\nInvalid C1 string '${sc1_node}'`);
 
 		// prefixed name
-		default: return c1_prefixed_node(sc1_node, h_prefixes);
+		default: return c1PrefixedNode(sc1_node, h_prefixes);
 	}
 }
 
+// looks like an absolute IRI
+const RT_IRI_ABSOLUTE_LOOK = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//;
+
 // construct a term object from a concise term string for prefixed nodes
-export function c1_prefixed_node(sc1_node, h_prefixes={}) {
+export function c1PrefixedNode(sc1_node, h_prefixes={}) {
 	// find prefix delimiter
 	const i_colon = sc1_node.indexOf(':');
 
@@ -2660,6 +2700,12 @@ export function c1_prefixed_node(sc1_node, h_prefixes={}) {
 	}
 	// prefix not exists
 	else {
+		// looks like an absolute IRI
+		if(RT_IRI_ABSOLUTE_LOOK.test(sc1_node)) {
+			throw new Error(`It looks like this C1 string is an absolute IRI, did you forget to prepend the '>' character\nInvalid C1 string '${sc1_node}'`);
+		}
+
+		// probably not an IRI
 		throw new Error(`Prefix not defined: '${s_prefix_id}'`);
 	}
 }
@@ -2710,7 +2756,7 @@ export function c3(hc3_triples, h_prefixes={}, sc1_graph='*') {
 
 function* pairs(k_graph, k_subject, hc2_pairs, h_prefixes={}) {
 	for(const sc1_predicate in hc2_pairs) {
-		const k_predicate = c1_named_node(sc1_predicate, h_prefixes);
+		const k_predicate = c1NamedNode(sc1_predicate, h_prefixes);
 		const z_objects = hc2_pairs[sc1_predicate];
 
 		yield* objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes);
@@ -2795,7 +2841,7 @@ function* objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes, b_nest
 
 		// other
 		default: {
-			throw new Error(`invalid object type: ${typeof z_objects}`);
+			throw new Error(`Invalid object type: ${typeof z_objects}`);
 		}
 	}
 }
@@ -2817,7 +2863,7 @@ export function fromRdfjsTerm(g_term) {
 		case 'NamedNode': return namedNode(g_term.value);
 		case 'Literal': return literal(g_term.value, g_term.language
 			? g_term.language
-			: (g_term.datatype
+			: (g_term.datatype?.value && '@{P_IRI_XSD}string' !== g_term.datatype.value
 				? namedNode(g_term.datatype.value)
 				: null));
 		case 'DefaultGraph': return new DefaultGraph();
@@ -2881,11 +2927,11 @@ export function c1ExpandData(sc1_term, h_prefixes) {
 		case '^': {
 			const i_contents = sc1_term.indexOf('"');
 			const sc1_datatype = sc1_term.slice(1, i_contents);
-			return '^'+c1_expand_prefixed_named_node(sc1_datatype)+sc1_term.slice(i_contents);
+			return '^'+c1ExpandPrefixedNamedNode(sc1_datatype)+sc1_term.slice(i_contents);
 		}
 
 		default: {
-			return c1_expand_prefixed_named_node(sc1_term);
+			return c1ExpandPrefixedNamedNode(sc1_term);
 		}
 	}
 }
@@ -2974,11 +3020,11 @@ export const DataFactory = {
 	term,
 	p1,
 	c1,
-	c1_node,
-	c1_named_node,
-	c1_node_explicit,
-	c1_prefixed_node,
-	c1_to_nt,
+	c1ToN3,
+	c1Node,
+	c1NamedNode,
+	c1NodeExplicit,
+	c1PrefixedNode,
 
 	c4,
 	c3,
@@ -3003,6 +3049,10 @@ export const DataFactory = {
 
 	relatePrefixMaps,
 	prefixMapsDiffer,
+
+	isGraphyDataFactory: true,
+	isGraphyDataFactoryCertified: true,
+	graphyVersion: '@{require('../../package.json').version}',
 };
 
 
