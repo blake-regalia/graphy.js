@@ -2284,23 +2284,6 @@ function C3Proxy$_toString() {
 	return '|'+JSON.stringify([...this()].map(w => w.concise()));
 }
 
-function c1ExpandPrefixedNamedNode(sc1_term, h_prefixes) {
-	// deconstruct prefixed name
-	let m_pname = R_C1N_DECONSTRUCT.exec(sc1_term);
-
-	// no colon, try underscore
-	if(!m_pname) m_pname = R_C1U_DECONSTRUCT.exec(sc1_term);
-
-	// still no match
-	if(!m_pname) throw new Error(`Invalid C1 string: '${sc1_term}'`);
-
-	// deconstruct
-	const [, si_prefix, s_suffix] = m_pname;
-
-	// return expanded form
-	return '>'+h_prefixes[si_prefix]+s_suffix;
-}
-
 
 export function adopt(dc_factory) {
 	// already exact factory
@@ -2914,43 +2897,99 @@ export function fromSparqlResult(g_term) {
 	}
 }
 
+function c1ExpandPrefixedNamedNode(sc1_term, h_prefixes) {
+	// deconstruct prefixed name
+	let m_pname = R_C1N_DECONSTRUCT.exec(sc1_term);
+
+	// no colon, try underscore
+	if(!m_pname) m_pname = R_C1U_DECONSTRUCT.exec(sc1_term);
+
+	// still no match
+	if(!m_pname) throw new Error(`Invalid C1 string: '${sc1_term}'`);
+
+	// deconstruct
+	const [, si_prefix, s_suffix] = m_pname;
+
+	// return expanded form
+	return '>'+h_prefixes[si_prefix]+s_suffix;
+}
+
 export function c1ExpandData(sc1_term, h_prefixes) {
 	switch(sc1_term[0]) {
 		case '"':
 		case '@':
 		case '>':
-		case '_':
 		case '*': {
 			return sc1_term;
+		}
+
+		case '_': {
+			if(':' === sc1_term[1]) return sc1_term;
+			return c1ExpandPrefixedNamedNode(sc1_term, h_prefixes);
 		}
 
 		case '^': {
 			const i_contents = sc1_term.indexOf('"');
 			const sc1_datatype = sc1_term.slice(1, i_contents);
-			return '^'+c1ExpandPrefixedNamedNode(sc1_datatype)+sc1_term.slice(i_contents);
+
+			// already expanded
+			if('>' === sc1_datatype[0]) return sc1_term;
+
+			// expand prefixed named node
+			return '^'+c1ExpandPrefixedNamedNode(sc1_datatype, h_prefixes)+sc1_term.slice(i_contents);
 		}
 
 		default: {
-			return c1ExpandPrefixedNamedNode(sc1_term);
+			return c1ExpandPrefixedNamedNode(sc1_term, h_prefixes);
 		}
 	}
 }
 
-export function c1FromGraphRole() {
-
+export function c1FromGraphRole(yt_graph, h_prefixes={}) {
+	switch(yt_graph.termType) {
+		case 'NamedNode': return concise(yt_graph.value, h_prefixes);
+		case 'DefaultGraph': return '*';
+		case 'BlankNode': return '_:'+yt_graph.value;
+		default: throw new Error(`Invalid termType for graph role term: '${yt_graph.termType}'`);
+	}
 }
 
 export function c1FromSubjectRole(yt_subject, h_prefixes={}) {
-	return 'NamedNode' === yt_subject.termType
-		? concise(yt_subject.value, h_prefixes)
-		: '_:'+yt_subject.value;
+	switch(yt_subject.termType) {
+		case 'NamedNode': return concise(yt_subject.value, h_prefixes);
+		case 'BlankNode': return '_:'+yt_subject.value;
+		default: throw new Error(`Invalid termType for subject role term: '${yt_subject.termType}'`);
+	}
 }
 
-// export const toBoolean = s_boolean => BooleanLiteral.from(s_boolean);
-// export const toInteger = s_integer => IntegerLiteral.from(s_integer);
-// export const toDecimal = s_decimal => DecimalLiteral.from(s_decimal);
-// export const toDouble = s_double => DoubleLiteral.from(s_double);
+function c1FromNamedNode(yt_node, h_prefixes={}) {
+	if('NamedNode' !== yt_node.termType) {
+		throw new Error(`Invalid termType for role, expected NamedNode but found: '${yt_node.termType}'`);
+	}
+	return concise(yt_node.value, h_prefixes);
+}
 
+export const c1FromPredicateRole = c1FromNamedNode;
+export const c1FromDatatypeRole = c1FromNamedNode;
+
+export function c1FromObjectRole(yt_object, h_prefixes={}) {
+	switch(yt_object.termType) {
+		case 'NamedNode': return concise(yt_object.value, h_prefixes);
+		case 'BlankNode': return '_:'+yt_object.value;
+		case 'Literal': {
+			if(yt_object.language) {
+				return '@'+yt_object.language+'"'+yt_object.value;
+			}
+			else if('@{P_IRI_XSD}string' !== yt_object.datatype.value) {
+				return '^'+concise(yt_object.datatype.value, h_prefixes)+'"'+yt_object.value;
+			}
+			else {
+				return '"'+yt_object.value;
+			}
+		}
+		default: throw new Error(`Invalid termType for graph role term: '${yt_object.termType}'`);
+	}
+}
 
 /**
  * @param  {Object} gc_comment - 
@@ -2962,12 +3001,11 @@ export function comment(gc_comment={}) {
 }
 
 /**
- * @param  {integer} [line_count=1] - number of newlines to insert
+ * @param  {integer} [n_lines=1] - number of newlines to insert
  * @return {string} a `concise-term string` directive to be used as a key in `concise-term structs`
  * 	in order to write the given number of newlines to the document (only works with supporting serializers)
  */
 export function newlines() {
-	// if(!Number.isInteger(n_line_count)) throw new TypeError('graphy/core.data.factory#newlines() expects `line_count` argument to be an integer');
 	return `\`[${uuidv4()}]{"type":"newlines"}`;
 }
 
@@ -3042,6 +3080,9 @@ export const DataFactory = {
 	c1ExpandData,
 	c1FromGraphRole,
 	c1FromSubjectRole,
+	c1FromPredicateRole,
+	c1FromObjectRole,
+	c1FromDatatypeRole,
 
 	comment,
 	newlines,

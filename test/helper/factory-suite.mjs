@@ -1116,14 +1116,27 @@ export default class FactorySuite {
 			});
 
 			describe('factory.comment()', () => {
-				it('returns a string', () => {
-					expect(k_factory.comment()).to.be.a('string');
+				it('string matches pattern', () => {
+					expect(k_factory.comment()).to.be.a('string')
+						.that.matches(/^`\[[a-z0-9_]{36}\]\{"type":"comment"\}$/);
 				});
 			});
 
 			describe('factory.newlines()', () => {
-				it('returns a string', () => {
-					expect(k_factory.comment()).to.be.a('string');
+				it('string matches pattern', () => {
+					expect(k_factory.newlines()).to.be.a('string')
+						.that.matches(/^`\[[a-z0-9_]{36}\]\{"type":"newlines"\}$/);
+				});
+			});
+
+			describe('factory.config()', () => {
+				it('string matches pattern', () => {
+					expect(k_factory.config('key')).to.be.a('string')
+						.that.matches(/^`\[[a-z0-9_]{36}\]\{"type":"config"[":\w\s,{}[\]]*\}$/);
+				});
+
+				it('throws on invalid param', () => {
+					expect(() => k_factory.config(0)).to.throw('string');
 				});
 			});
 
@@ -4144,7 +4157,6 @@ export default class FactorySuite {
 					H_VALIDATORS.variable(kt_clone, 'label');
 				});
 			});
-
 		});
 
 
@@ -4165,16 +4177,25 @@ export default class FactorySuite {
 				H_VALIDATORS.integerLiteral(k_factory.unfiltered.integerLiteral('5'), '5');
 			});
 
-			it('double', () => {
-				H_VALIDATORS.doubleLiteral(k_factory.unfiltered.doubleLiteral('5.1'), '5.1');
-			});
+			// double
+			{
+				for(const s_input of ['5.1', 'NaN', 'INF', '-INF']) {
+					it('double: '+s_input, () => {  // eslint-disable-line no-loop-func
+						H_VALIDATORS.doubleLiteral(k_factory.unfiltered.doubleLiteral(s_input), s_input);
+					});
+				}
+			}
 
 			it('decimal', () => {
 				H_VALIDATORS.decimalLiteral(k_factory.unfiltered.decimalLiteral('5.11'), '5.11');
 			});
 
-			it('boolean', () => {
+			it('boolean: true', () => {
 				H_VALIDATORS.booleanLiteral(k_factory.unfiltered.booleanLiteral('true'), 'true');
+			});
+
+			it('boolean: false', () => {
+				H_VALIDATORS.booleanLiteral(k_factory.unfiltered.booleanLiteral('false'), 'false');
 			});
 
 			it('literal("test")', () => {
@@ -4618,6 +4639,64 @@ export default class FactorySuite {
 					});
 				});
 			});
+
+			describe('fromSparqlResult', () => {
+				it('uri', () => {
+					H_VALIDATORS.namedNode(k_factory.fromSparqlResult({
+						type: 'uri',
+						value: 'z://y/test',
+					}), 'z://y/test');
+				});
+
+				it('literal', () => {
+					H_VALIDATORS.literal(k_factory.fromSparqlResult({
+						type: 'literal',
+						value: 'value',
+					}), {value:'value'});
+				});
+
+				it('typed-literal simple', () => {
+					H_VALIDATORS.literal(k_factory.fromSparqlResult({
+						type: 'typed-literal',
+						value: 'value',
+					}), {value:'value'});
+				});
+
+				it('typed-literal languaged', () => {
+					H_VALIDATORS.literal(k_factory.fromSparqlResult({
+						type: 'typed-literal',
+						value: 'value',
+						'xml:lang': 'en',
+					}), {value:'value', language:'en'});
+				});
+
+				it('typed-literal datatyped', () => {
+					H_VALIDATORS.literal(k_factory.fromSparqlResult({
+						type: 'typed-literal',
+						value: 'value',
+						datatype: 'z://y/datatype',
+					}), {value:'value', datatype:'z://y/datatype'});
+				});
+
+				it('typed-literal datatyped xsd:string', () => {
+					H_VALIDATORS.literal(k_factory.fromSparqlResult({
+						type: 'typed-literal',
+						value: 'value',
+						datatype: P_IRI_XSD+'string',
+					}), {value:'value'});
+				});
+
+				it('bnode', () => {
+					H_VALIDATORS.blankNode(k_factory.fromSparqlResult({
+						type: 'bnode',
+						value: 'label',
+					}), 'label');
+				});
+
+				it('other', () => {
+					expect(() => k_factory.fromSparqlResult({})).to.throw();
+				});
+			});
 		});
 
 		describe('c1', () => {
@@ -4724,6 +4803,178 @@ export default class FactorySuite {
 					expect(() => k_factory.c1ToN3('`'+JSON.stringify({type:'comment', value:'comment'}))).to.throw();
 				});
 			});
+
+			describe('c1ExpandData', () => {
+				const h_prefixes = {
+					'': 'z://y/',
+					prefix: 'z://prefix/',
+				};
+
+				it('simple literal', () => {
+					expect(k_factory.c1ExpandData('"value')).to.equal('"value');
+				});
+
+				it('languaged literal', () => {
+					expect(k_factory.c1ExpandData('@en"value')).to.equal('@en"value');
+				});
+
+				it('absolute iri', () => {
+					expect(k_factory.c1ExpandData('>z://y/iri')).to.equal('>z://y/iri');
+				});
+
+				it('blank node', () => {
+					expect(k_factory.c1ExpandData('_:label')).to.equal('_:label');
+				});
+
+				it('default graph', () => {
+					expect(k_factory.c1ExpandData('*')).to.equal('*');
+				});
+
+				it('prefixed name underscore', () => {
+					expect(k_factory.c1ExpandData('_term', h_prefixes)).to.equal('>z://y/term');
+				});
+
+				it('prefixed name colon', () => {
+					expect(k_factory.c1ExpandData(':term', h_prefixes)).to.equal('>z://y/term');
+				});
+
+				it('prefixed name word', () => {
+					expect(k_factory.c1ExpandData('prefix:term', h_prefixes)).to.equal('>z://prefix/term');
+				});
+
+				it('datatyped literal absolute', () => {
+					expect(k_factory.c1ExpandData('^>z://y/datatype"value', h_prefixes)).to.equal('^>z://y/datatype"value');
+				});
+
+				it('datatyped literal prefixed underscore', () => {
+					expect(k_factory.c1ExpandData('^_datatype"value', h_prefixes)).to.equal('^>z://y/datatype"value');
+				});
+
+				it('datatyped literal prefixed colon', () => {
+					expect(k_factory.c1ExpandData('^:datatype"value', h_prefixes)).to.equal('^>z://y/datatype"value');
+				});
+
+				it('variable', () => {
+					expect(() => k_factory.c1FromSubjectRole(k_factory.variable('name'))).to.throw();
+				});
+
+				it('invalid', () => {
+					expect(() => k_factory.c1ExpandData('invalid')).to.throw();
+				});
+			});
+
+			{
+				const h_prefixes = {
+					'': 'z://y/',
+				};
+
+				const h_terms = {
+					'named node absolute': [[k_factory.namedNode('z://y/iri')], '>z://y/iri'],
+					'named node prefixed': [[k_factory.namedNode('z://y/iri'), h_prefixes], ':iri'],
+					'blank node': [[k_factory.blankNode('label')], '_:label'],
+					'default graph': [[k_factory.defaultGraph()], '*'],
+					literal: [[k_factory.literal('value')], '"value'],
+					'languaged literal': [[k_factory.literal('value', 'en')], '@en"value'],
+					'datatyped literal absolute': [[k_factory.literal('value', k_factory.namedNode('z://y/datatype'))], '^>z://y/datatype"value'],
+					'datatyped literal prefixed': [[k_factory.literal('value', k_factory.namedNode('z://y/datatype')), h_prefixes], '^:datatype"value'],
+					variable: [[k_factory.variable('name')], '?name'],
+					invalid: [[{}]],
+				};
+
+				const g_form_named_node = {
+					accept: [
+						'named node absolute',
+						'named node prefixed',
+					],
+					reject: [
+						'blank node',
+						'default graph',
+						'literal',
+						'languaged literal',
+						'datatyped literal absolute',
+						'datatyped literal prefixed',
+						'variable',
+						'invalid',
+					],
+				};
+
+				const h_froms = {
+					graph: {
+						accept: [
+							'named node absolute',
+							'named node prefixed',
+							'blank node',
+							'default graph',
+						],
+						reject: [
+							'literal',
+							'languaged literal',
+							'datatyped literal absolute',
+							'datatyped literal prefixed',
+							'variable',
+							'invalid',
+						],
+					},
+
+					subject: {
+						accept: [
+							'named node absolute',
+							'named node prefixed',
+							'blank node',
+						],
+						reject: [
+							'default graph',
+							'literal',
+							'languaged literal',
+							'datatyped literal absolute',
+							'datatyped literal prefixed',
+							'variable',
+							'invalid',
+						],
+					},
+
+					predicate: g_form_named_node,
+					datatype: g_form_named_node,
+
+					object: {
+						accept: [
+							'named node absolute',
+							'named node prefixed',
+							'blank node',
+							'literal',
+							'languaged literal',
+							'datatyped literal absolute',
+							'datatyped literal prefixed',
+						],
+						reject: [
+							'default graph',
+							'variable',
+							'invalid',
+						],
+					},
+				};
+
+				for(const [s_from, g_from] of Object.entries(h_froms)) {
+					const s_from_proper = s_from[0].toUpperCase()+s_from.slice(1);
+					const s_method = `c1From${s_from_proper}Role`;
+
+					describe(s_method, () => {  // eslint-disable-line no-loop-func
+						for(const s_test of g_from.accept) {
+							const a_test = h_terms[s_test];
+
+							it(s_test, () => {
+								expect(k_factory[s_method](...a_test[0])).to.equal(a_test[1]);
+							});
+						}
+
+						for(const s_test of g_from.reject) {
+							it(s_test, () => {  // eslint-disable-line no-loop-func
+								expect(() => k_factory[s_method](...h_terms[s_test][0])).to.throw();
+							});
+						}
+					});
+				}
+			}
 		});
 
 		{
