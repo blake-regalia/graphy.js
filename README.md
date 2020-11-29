@@ -1,4 +1,4 @@
-[![NPM version][npm-image]][npm-url] [![Dependency Status][daviddm-image]][daviddm-url] 
+[![NPM version][npm-image]][npm-url] [![Dependency Status][daviddm-image]][daviddm-url] [![Gitter chat][gitter-image]][gitter-url]
 
 # graphy.js 🍌
 `graphy` is a collection of *high-performance* RDF libraries for JavaScript developers with a focus on usability. API works in both the browser and Node.js. Expressive CLI tool also available for Node.js.
@@ -7,11 +7,11 @@
 
 
 ## Performance Benchmarks
-🚀 [See how well `graphy` outperforms all others](https://github.com/blake-regalia/graphy.js/blob/master/perf/README.md).
+🚀&nbsp;&nbsp;[See how well `graphy` outperforms all others](https://github.com/blake-regalia/graphy.js/blob/master/perf/README.md).
 
 
 ## Command Line Interface
-📑 [See documentation for CLI here](https://graphy.link/cli).
+📑&nbsp;&nbsp;[See documentation for CLI here](https://graphy.link/cli).
 
 ### Install the `graphy` bin CLI
  - npm:
@@ -38,7 +38,7 @@
 
 
 ## [See API Documentation](https://graphy.link/api)
-🔎 Find the package you need _or_ install the super-package `npm install --save graphy` .
+🔎&nbsp;&nbsp;Find the package you need _or_ install the super-package `npm install --save graphy` .
 
 ### Core
  - [DataFactory](https://graphy.link/core.data.factory)
@@ -54,10 +54,10 @@
  - **RDF/XML**: [RdfXmlScriber](https://graphy.link/content.textual#verb_scribe)
 
 ## Changelog
-🍭⚡︎🔧  [See history of changes here](https://github.com/blake-regalia/graphy.js/blob/master/CHANGELOG.md).
+🍭⚡︎🔧&nbsp;&nbsp;[See history of changes here](https://github.com/blake-regalia/graphy.js/blob/master/CHANGELOG.md).
 
 ## Roadmap
-🚧  [See the list of planned features](https://github.com/blake-regalia/graphy.js/blob/master/ROADMAP.md).
+🚧&nbsp;&nbsp;[See the list of planned features](https://github.com/blake-regalia/graphy.js/blob/master/ROADMAP.md).
 
 ## License
 
@@ -70,3 +70,5 @@ ISC © [Blake Regalia]()
 <!-- [travis-url]: https://travis-ci.org/blake-regalia/graphy.js -->
 [daviddm-image]: https://david-dm.org/blake-regalia/graphy.js.svg?theme=shields.io
 [daviddm-url]: https://david-dm.org/blake-regalia/graphy.js
+[gitter-image]: https://badges.gitter.im/graphy-js/community.png
+[gitter-url]: https://gitter.im/graphy-js/community
