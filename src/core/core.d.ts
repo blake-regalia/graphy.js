@@ -43,13 +43,13 @@ export namespace DataFactory {
 	 * Creates a new `BooleanLiteral`, which will serialize as a syntactic boolean and has special getters.
 	 * @param value - the value of this BooleanLiteral, one of: `true`, `false`, `1`, `0`, or any `string` that matches `/^([Tt](rue)?|TRUE)$/` or `/^([Ff](alse)?|FALSE)$/`
 	 */
-	function booleanLiteral(value: boolean | number | string): Term.BooleanLiteral;
+	function booleanLiteral(value: boolean | number | bigint | string): Term.BooleanLiteral;
 
 	/**
 	 * Creates a new `IntegerLiteral`, which will serialize as a syntactic integer and has special getters.
 	 * @param value - the value of this IntegerLiteral, either as `number` or `string`
 	 */
-	function integerLiteral(value: number | string): Term.IntegerLiteral;
+	function integerLiteral(value: number | bigint | string): Term.IntegerLiteral;
 
 	/**
 	 * Creates a new `DoubleLiteral`, which will serialize as a syntactic double and has special getters.
@@ -61,7 +61,7 @@ export namespace DataFactory {
 	 * Creates a new `DecimalLiteral`, which will serialize as a syntactic decimal and has special getters.
 	 * @param value - the value of this DecimalLiteral, either as `number`, `bigint` or `string`
 	 */
-	function decimalLiteral(value: number | string | bigint): Term.DecimalLiteral;
+	function decimalLiteral(value: number | bigint | string): Term.DecimalLiteral;
 	
 	/**
 	 * Creates a new `NumericLiteral`, manifesting as one of: `IntegerLiteral`, `DoubleLiteral`, `DecimalLiteral`, `PositiveInfinityLiteral`, `NegativeInfinityLiteral`, or `NaNLiteral`, which will serialize as a syntactic numeric literal and has special getters.
@@ -73,13 +73,13 @@ export namespace DataFactory {
 	 * Creates a new `DatatypedLiteral` from a `Date` object, with date-level precision, using `xsd:date` for the datatype.
 	 * @param date - the date object to create this DatatypedLiteral from
 	 */
-	function dateLiteral(date: Date): Term.DatatypedLiteral;
+	function dateLiteral(date: Date): Term.DateLiteral;
 
 	/**
 	 * Creates a new `DatatypedLiteral` from a `Date` object, with millisecond precision, using `xsd:dateTime` for the datatype.
 	 * @param date - the date object to create this DatatypedLiteral from
 	 */
-	function dateTimeLiteral(dateTime: Date): Term.DatatypedLiteral;
+	function dateTimeLiteral(dateTime: Date): Term.DateTimeLiteral;
 
 	/**
 	 * Creates a new `Quad`.
@@ -100,6 +100,14 @@ export namespace DataFactory {
 	 * @param name - the name of this Variable
 	 */
 	function variable(name: string): Term.Variable;
+
+
+	/**
+	 * Returns `term` if it is already a graphy Term (including Quads), otherwise calls `fromRdfjsTerm` or `fromC1` depending on the argument's type.
+	 * @param term - the Term to convert
+	 * @param prefixes - prefix map to use for prefixed names / relative IRIs in c1 string
+	 */
+	function fromTermLike(term: RDFJS.Term | C1.Any, prefixes: PrefixMap): Term.Any;
 
 	/**
 	 * Returns `term` if it is already a graphy Term (including Quads), otherwise calls `fromRdfjsTerm`.
@@ -125,6 +133,21 @@ export namespace DataFactory {
 	 */
 	function fromRdfjsQuad(quad: RDFJS.Quad): Term.Quad;
 
+	/**
+	 * Construct a graphy Term from a c1 string
+	 * @param {C1.Any} term - the c1 string of a Term
+	 * @param  {PrefixMap} prefixes - prefix map to use for prefixed names / relative IRIs
+	 * @return {Term.NamedNode} - an RDFJS-compatible graphy Term object
+	 */
+	function fromC1(term: C1.Any, prefixes?: PrefixMap): Term.Any;
+
+	/**
+	 * Construct a graphy NamedNode from a c1 string
+	 * @param {C1.Any} term - the c1 string of a NamedNode
+	 * @param  {PrefixMap} prefixes - prefix map to use for prefixed names / relative IRIs
+	 * @return {Term.NamedNode} - an RDFJS-compatible graphy NamedNode object
+	 */
+	function fromP1(term: C1.Any, prefixes?: PrefixMap): Term.NamedNode;
 	
 	function comment(): C1.Directive;
 	function newlines(): C1.Directive;
@@ -132,8 +155,6 @@ export namespace DataFactory {
 	function concise(iri: Iri, prefixes?: PrefixMap): C1.NamedNode;
 	function terse(iri: Iri, prefixes?: PrefixMap): Terse.NamedNode;
 
-	// should be `fromC1` ?
-	function c1(term: C1.Any, prefixes?: PrefixMap): Term.Any;
 	
 	function c1ExpandData(term: C1.Data, prefixes: PrefixMap): C1.Data;
 

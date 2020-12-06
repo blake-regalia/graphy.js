@@ -1,3 +1,5 @@
+@import '../share/iris.jmacs';
+
 @*{
 	const ode = Object.entries;
 
@@ -187,6 +189,8 @@
 			properties: {
 				...H_TERM_LITERAL.properties,
 				isNumericLiteral:  true,
+
+				datatype:           /* syntax: ts */ `DatatypeXsdInteger | DatatypeXsdDouble | DatatypeXsdDecimal`,
 			},
 		};
 
@@ -200,6 +204,7 @@
 				boolean:            /* syntax: ts */ `boolean`,
 				number:             /* syntax: ts */ `number`,
 				bigint:             /* syntax: ts */ `number`,
+				datatype:           /* syntax: ts */ `DatatypeXsdBoolean`,
 			},
 		};
 
@@ -212,6 +217,7 @@
 
 				number:             /* syntax: ts */ `number`,
 				bigint:             /* syntax: ts */ `number`,
+				datatype:           /* syntax: ts */ `DatatypeXsdInteger`,
 			},
 		};
 
@@ -223,6 +229,7 @@
 				isNumberPrecise:    true,
 
 				number:             /* syntax: ts */ `number`,
+				datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
 			},
 		};
 
@@ -235,7 +242,7 @@
 
 				// number:             /* syntax: ts */ `9e999 /* Infinity */`,
 				value:              /* syntax: ts */ `'INF'`,
-				// datatype:           /* syntax: ts */ ``,
+				datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
 			},
 		};
 
@@ -246,7 +253,7 @@
 
 				// number:             /* syntax: ts */ `-9e999 /* -Infinity */`,
 				value:              /* syntax: ts */ `'-INF'`,
-				// datatype:           /* syntax: ts */ ``,
+				datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
 			},
 		};
 
@@ -259,7 +266,7 @@
 
 				number:             /* syntax: ts */ `typeof NaN`,
 				value:              /* syntax: ts */ `typeof NaN`,
-				// datatype:           /* syntax: ts */ ``,
+				datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
 			},
 		};
 
@@ -271,6 +278,31 @@
 				isDecimalLiteral:   true,
 				isNumberPrecise:    /* syntax: ts */ `boolean`,
 
+				datatype:           /* syntax: ts */ `DatatypeXsdDecimal`,
+				number:             /* syntax: ts */ `number`,
+			},
+		};
+
+		const H_TERM_DATE_LITERAL = {
+			class: 'Literal',
+			properties: {
+				...H_TERM_DATATYPED_LITERAL.properties,
+				isDateLiteral:   true,
+				isNumberPrecise:    /* syntax: ts */ `true`,
+
+				datatype:           /* syntax: ts */ `DatatypeXsdDate`,
+				number:             /* syntax: ts */ `number`,
+			},
+		};
+
+		const H_TERM_DATETIME_LITERAL = {
+			class: 'Literal',
+			properties: {
+				...H_TERM_DATATYPED_LITERAL.properties,
+				isDateTimeLiteral:   true,
+				isNumberPrecise:    /* syntax: ts */ `true`,
+
+				datatype:           /* syntax: ts */ `DatatypeXsdDateTime`,
 				number:             /* syntax: ts */ `number`,
 			},
 		};
@@ -318,6 +350,8 @@
 			NegativeInfinityLiteral: H_TERM_NEGATIVE_INFINITY_LITERAL,
 			NaNLiteral: H_TERM_NAN_LITERAL,
 			DecimalLiteral: H_TERM_DECIMAL_LITERAL,
+			DateLiteral: H_TERM_DATE_LITERAL,
+			DateTimeLiteral: H_TERM_DATETIME_LITERAL,
 			Variable: H_TERM_VARIABLE,
 			Quad: H_TERM_QUAD,
 		};
@@ -383,9 +417,33 @@
 			export type Object = Node | Literal;
 			export type Datatype = NamedNode;
 
+			interface DatatypeXsdBoolean extends Datatype {
+				value: '${P_IRI_XSD}boolean';
+			}
+
+			interface DatatypeXsdInteger extends Datatype {
+				value: '${P_IRI_XSD}integer';
+			}
+
+			interface DatatypeXsdDouble extends Datatype {
+				value: '${P_IRI_XSD}double';
+			}
+
+			interface DatatypeXsdDecimal extends Datatype {
+				value: '${P_IRI_XSD}decimal';
+			}
+
+			interface DatatypeXsdDate extends Datatype {
+				value: '${P_IRI_XSD}date';
+			}
+
+			interface DatatypeXsdDateTime extends Datatype {
+				value: '${P_IRI_XSD}dateTime';
+			}
+
 			export type Data = Graph | Subject | Predicate | Object;
 			export type Any = Data | Variable | Quad | RelativeIri;
-		`.trim().replace(/\n\s*/g, '\n\t');
+		`.replace(/\n/g, '\n\t')+'\n';
 
 		yield /* syntax: ts */ `}\n\n`;
 	}

@@ -23,10 +23,36 @@ export namespace Role {
 	export type Datatype = RDFJS.NamedNode;
 }
 
+
 /**
  * Namespace for graphy-specific Term interfaces
  */
 @import './forms.jmacs'
+
+
+export namespace C4 {
+	export type ObjectsTarget = boolean | number | C1.Data | Role.Object;
+	export type ObjectsList = Array<ObjectsTarget> | Set<ObjectsTarget>;
+	export type ObjectsCollection = Array<ObjectsList> | Set<ObjectsList>;
+	export type Objects = ObjectsTarget | ObjectsList | ObjectsCollection;
+
+	export type StrictObjects = Array<Role.Object>;
+
+	export interface Pairs {
+		// [predicate: ConciseNamedNode]: ConciseObjects;
+		[predicate: string]: Objects;
+	}
+
+	export interface Triples {
+		// [subject: ConciseNode]: ConcisePairs;
+		[subject: string]: Pairs;
+	}
+
+	export interface Quads {
+		// [graph: ConciseGraphable]: ConciseTriples;
+		[graph: string]: Triples;
+	}
+}
 
 
 export interface PrefixMap {

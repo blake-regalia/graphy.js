@@ -441,7 +441,7 @@ export function c1ToN3(sc1_in, h_prefixes=null, b_verbose=false) {
 
 		// directive / node explicit
 		case '<':
-		case '`': return c1(sc1_in).terse(h_prefixes);
+		case '`': return fromC1(sc1_in).terse(h_prefixes);
 
 		// otherwise
 		default: {
@@ -2500,10 +2500,10 @@ export function quad(h_subject, h_predicate, h_object, h_graph) {
 	return new Quad(h_subject, h_predicate, h_object, h_graph || KT_DEFAULT_GRAPH);
 }
 
-export function term(z_term, w_prefixes) {
+export function fromTermLike(z_term, w_prefixes) {
 	// concise term
 	if('string' === typeof z_term) {
-		return c1(z_term, w_prefixes);
+		return fromC1(z_term, w_prefixes);
 	}
 	// rdfjs term
 	else {
@@ -2511,13 +2511,7 @@ export function term(z_term, w_prefixes) {
 	}
 }
 
-/**
- * construct a namedNode from a concise term string
- * @param  {c1_string} sp1_term - a representation of the predicate to create
- * @param  {Object} h_prefixes - mappings for prefixes
- * @return {Term} - an RDFJS-compatible term object
- */
-export function p1(sp1_node, h_prefixes={}) {
+export function fromP1(sp1_node, h_prefixes={}) {
 	// find prefix delimiter
 	const i_delim = sp1_node.indexOf('_');
 
@@ -2540,13 +2534,7 @@ export function p1(sp1_node, h_prefixes={}) {
 	}
 }
 
-/**
- * construct a term object from a concise term string
- * @param  {c1_string} sc1_term - a representation of the term object to create
- * @param  {Object} h_prefixes - mappings for prefixes
- * @return {Term} - an RDFJS-compatible term object
- */
-export function c1(sc1_term, h_prefixes={}) {
+export function fromC1(sc1_term, h_prefixes={}) {
 	// deduce term type
 	switch(sc1_term[0]) {
 		// datatyped literal
@@ -2610,7 +2598,7 @@ export function c1Node(sc1_node, h_prefixes={}) {
 	// blank node?
 	if('_' === sc1_node[0]) {
 		// prefixed name
-		if(':' !== sc1_node[1]) return p1(sc1_node, h_prefixes);
+		if(':' !== sc1_node[1]) return fromP1(sc1_node, h_prefixes);
 
 		// anonymous
 		if(2 === sc1_node.length) return blankNode();
@@ -2648,7 +2636,7 @@ export function c1NodeExplicit(sc1_node, h_prefixes={}) {
 			if(':' === sc1_node[1]) throw new Error(`BlankNode is not allowed here: ${sc1_node}`);
 
 			// prefixed name
-			return p1(sc1_node, h_prefixes);
+			return fromP1(sc1_node, h_prefixes);
 		}
 
 		// invalid concise-term string
@@ -2669,7 +2657,7 @@ export function c1PrefixedNode(sc1_node, h_prefixes={}) {
 	const i_colon = sc1_node.indexOf(':');
 
 	// no delimter; try prefixed name
-	if(-1 === i_colon) return p1(sc1_node, h_prefixes);
+	if(-1 === i_colon) return fromP1(sc1_node, h_prefixes);
 
 	// prefix id
 	const s_prefix_id = sc1_node.slice(0, i_colon);
@@ -2709,9 +2697,9 @@ export function c4(hc4_quads, h_prefixes={}) {
 }
 
 function* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
-	const k_graph = c1(sc1_graph, h_prefixes);
+	const k_graph = fromC1(sc1_graph, h_prefixes);
 	for(const sc1_subject in hc3_triples) {
-		const k_subject = c1(sc1_subject, h_prefixes);
+		const k_subject = fromC1(sc1_subject, h_prefixes);
 		const hc2_pairs = hc3_triples[sc1_subject];
 
 		yield* pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
@@ -2721,9 +2709,9 @@ function* triples(hc3_triples, h_prefixes={}, sc1_graph='*') {
 export function c3(hc3_triples, h_prefixes={}, sc1_graph='*') {
 	return {
 		[Symbol.iterator]: function *() {
-			const k_graph = c1(sc1_graph, h_prefixes);
+			const k_graph = fromC1(sc1_graph, h_prefixes);
 			for(const sc1_subject in hc3_triples) {
-				const k_subject = c1(sc1_subject, h_prefixes);
+				const k_subject = fromC1(sc1_subject, h_prefixes);
 				const hc2_pairs = hc3_triples[sc1_subject];
 
 				yield* pairs(k_graph, k_subject, hc2_pairs, h_prefixes);
@@ -2776,7 +2764,7 @@ function* objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes, b_nest
 	switch(s_type) {
 		// c1-string
 		case 'string': {
-			yield new Quad(k_subject, k_predicate, c1(z_objects, h_prefixes), k_graph);
+			yield new Quad(k_subject, k_predicate, fromC1(z_objects, h_prefixes), k_graph);
 			break;
 		}
 
@@ -3055,9 +3043,10 @@ export const DataFactory = {
 	triple,
 	quad,
 
-	term,
-	p1,
-	c1,
+	fromTermLike,
+	fromP1,
+	fromC1,
+
 	c1ToN3,
 	c1Node,
 	c1NamedNode,
