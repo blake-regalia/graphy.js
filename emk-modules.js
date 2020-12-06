@@ -231,7 +231,7 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 			let p_exp = path.join(pd_src, s_file_exp);
 
 			// expand jmacs files
-			if(s_file_src.endsWith('.jmacs')) {
+			if(/\.(\w+)\.jmacs$/.test(s_file_src)) {
 				s_file_exp = s_file_exp.replace(/\.jmacs$/, '');
 				p_exp = path.join(pd_dst, s_file_exp);
 				h_recipe[s_file_exp] = H_GEN_LEAF.jmacs_lint([p_src]);

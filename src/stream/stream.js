@@ -1,8 +1,8 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.QuadFilter = void 0;
-class QuadFilter {
-    constructor(gc_filter) {
+exports.__esModule = true;
+var QuadFilter = /** @class */ (function () {
+    function QuadFilter(gc_filter) {
     }
-}
+    return QuadFilter;
+}());
 exports.QuadFilter = QuadFilter;

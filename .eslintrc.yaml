@@ -31,6 +31,10 @@
         - 'plugin:@typescript-eslint/recommended'
       rules:
         no-use-before-define: off
+        '@typescript-eslint/ban-types': off
+        '@typescript-eslint/no-namespace':
+          - warn
+          - allowDefinitionFiles: true
 
   rules:
 

@@ -2,6 +2,7 @@ import {
 	RDFJS,
 	Role,
 	Iri,
+	Terse,
 	C1,
 	Term,
 	PrefixMap,
@@ -9,6 +10,11 @@ import {
 } from '@graphy/types';
 
 export namespace DataFactory {
+	/**
+	 * Creates a new `DefaultGraph`.
+	 */
+	function defaultGraph(): Term.DefaultGraph;
+
 	/**
 	 * Creates a new `NamedNode`.
 	 * @param iri - the IRI of this NamedNode
@@ -22,6 +28,11 @@ export namespace DataFactory {
 	function blankNode(value?: string): Term.BlankNode;
 
 	/**
+	 * Creates a new ephemeral instance of an anonymous `BlankNode`, which will serialize as a syntactic anonymous blank node.
+	 */
+	function ephemeralBlankNode(): Term.EphemeralBlankNode;
+
+	/**
 	 * Creates a new `Literal`.
 	 * @param contents - the string contents of this Literal.
 	 * @param languageOrDatatype - if passed a string, sets the language tag of this literal; otherwise, sets the datatype
@@ -29,15 +40,46 @@ export namespace DataFactory {
 	function literal(contents: string, languageOrDatatype?: string | Role.Datatype): Term.Literal;
 
 	/**
-	 * Creates a new `DefaultGraph`.
+	 * Creates a new `BooleanLiteral`, which will serialize as a syntactic boolean and has special getters.
+	 * @param value - the value of this BooleanLiteral, one of: `true`, `false`, `1`, `0`, or any `string` that matches `/^([Tt](rue)?|TRUE)$/` or `/^([Ff](alse)?|FALSE)$/`
 	 */
-	function defaultGraph(): Term.DefaultGraph;
+	function booleanLiteral(value: boolean | number | string): Term.BooleanLiteral;
 
 	/**
-	 * Creates a new `Variable`.
-	 * @param name - the name of this Variable
+	 * Creates a new `IntegerLiteral`, which will serialize as a syntactic integer and has special getters.
+	 * @param value - the value of this IntegerLiteral, either as `number` or `string`
 	 */
-	function variable(name: string): Term.Variable;
+	function integerLiteral(value: number | string): Term.IntegerLiteral;
+
+	/**
+	 * Creates a new `DoubleLiteral`, which will serialize as a syntactic double and has special getters.
+	 * @param value - the value of this DoubleLiteral, either as `number` or `string`
+	 */
+	function doubleLiteral(value: number | string): Term.DoubleLiteral;
+	
+	/**
+	 * Creates a new `DecimalLiteral`, which will serialize as a syntactic decimal and has special getters.
+	 * @param value - the value of this DecimalLiteral, either as `number`, `bigint` or `string`
+	 */
+	function decimalLiteral(value: number | string | bigint): Term.DecimalLiteral;
+	
+	/**
+	 * Creates a new `NumericLiteral`, manifesting as one of: `IntegerLiteral`, `DoubleLiteral`, `DecimalLiteral`, `PositiveInfinityLiteral`, `NegativeInfinityLiteral`, or `NaNLiteral`, which will serialize as a syntactic numeric literal and has special getters.
+	 * @param value - the value of this IntegerLiteral, either as `number`, `bigint` or `string`
+	 */
+	function numericLiteral(value: number | bigint | string): Term.NumericLiteral;
+
+	/**
+	 * Creates a new `DatatypedLiteral` from a `Date` object, with date-level precision, using `xsd:date` for the datatype.
+	 * @param date - the date object to create this DatatypedLiteral from
+	 */
+	function dateLiteral(date: Date): Term.DatatypedLiteral;
+
+	/**
+	 * Creates a new `DatatypedLiteral` from a `Date` object, with millisecond precision, using `xsd:dateTime` for the datatype.
+	 * @param date - the date object to create this DatatypedLiteral from
+	 */
+	function dateTimeLiteral(dateTime: Date): Term.DatatypedLiteral;
 
 	/**
 	 * Creates a new `Quad`.
@@ -54,58 +96,16 @@ export namespace DataFactory {
 	function triple(): Term.Quad;
 
 	/**
-	 * Creates a new `IntegerLiteral`, which will serialize as a syntactic integer and has special getters.
-	 * @param value - the value of this IntegerLiteral, either as `number` or `string`
+	 * Creates a new `Variable`.
+	 * @param name - the name of this Variable
 	 */
-	function integer(value: number | string): Term.IntegerLiteral;
-
-	/**
-	 * Creates a new `DoubleLiteral`, which will serialize as a syntactic double and has special getters.
-	 * @param value - the value of this DoubleLiteral, either as `number` or `string`
-	 */
-	function double(value: number | string): Term.DoubleLiteral;
-	
-	/**
-	 * Creates a new `DecimalLiteral`, which will serialize as a syntactic decimal and has special getters.
-	 * @param value - the value of this DecimalLiteral, either as `number`, `bigint` or `string`
-	 */
-	function decimal(value: number | string | bigint): Term.DecimalLiteral;
-	
-	/**
-	 * Creates a new `BooleanLiteral`, which will serialize as a syntactic boolean and has special getters.
-	 * @param value - the value of this BooleanLiteral, one of: `true`, `false`, `1`, `0`, or any `string` that matches `/^([Tt](rue)?|TRUE)$/` or `/^([Ff](alse)?|FALSE)$/`
-	 */
-	function boolean(value: boolean | number | string): Term.BooleanLiteral;
-
-	/**
-	 * Creates a new `NumericLiteral`, manifesting as one of: `IntegerLiteral`, `DoubleLiteral`, `DecimalLiteral`, `PositiveInfinityLiteral`, `NegativeInfinityLiteral`, or `NaNLiteral`, which will serialize as a syntactic numeric literal and has special getters.
-	 * @param value - the value of this IntegerLiteral, either as `number`, `bigint` or `string`
-	 */
-	function number(value: number | bigint | string): Term.NumericLiteral;
-
-	/**
-	 * Creates a new `DatatypedLiteral` from a `Date` object, with date-level precision, using `xsd:date` for the datatype.
-	 * @param date - the date object to create this DatatypedLiteral from
-	 */
-	function date(date: Date): Term.DatatypedLiteral;
-
-	/**
-	 * Creates a new `DatatypedLiteral` from a `Date` object, with millisecond precision, using `xsd:dateTime` for the datatype.
-	 * @param date - the date object to create this DatatypedLiteral from
-	 */
-	function dateTime(dateTime: Date): Term.DatatypedLiteral;
-
-	/**
-	 * Creates a new ephemeral instance of an anonymous `BlankNode`, which will serialize as a syntactic anonymous blank node.
-	 */
-	function ephemeral(): Term.EphemeralBlankNode;
-
+	function variable(name: string): Term.Variable;
 
 	/**
 	 * Returns `term` if it is already a graphy Term (including Quads), otherwise calls `fromRdfjsTerm`.
 	 * @param term - the Term to convert
 	 */
-	function fromTerm(term: RDFJS.Term): Term.GenericTerm;
+	function fromTerm(term: RDFJS.Term): Term.Any;
 
 	/**
 	 * Returns `quad` if it is already a graphy Quad, otherwise calls `fromRdfjsQuad`.
@@ -117,7 +117,7 @@ export namespace DataFactory {
 	 * Convert an RDFJS compatible Term (including Quads) to a graphy Term.
 	 * @param term - the Term to convert
 	 */
-	function fromRdfjsTerm(term: RDFJS.Term): Term.GenericTerm;
+	function fromRdfjsTerm(term: RDFJS.Term): Term.Any;
 
 	/**
 	 * Convert an RDFJS compatible Quad to a graphy Quad.
@@ -133,9 +133,9 @@ export namespace DataFactory {
 	function terse(iri: Iri, prefixes?: PrefixMap): Terse.NamedNode;
 
 	// should be `fromC1` ?
-	function c1(term: C1.GenericTerm, prefixes?: PrefixMap): Term.GenericTerm;
+	function c1(term: C1.Any, prefixes?: PrefixMap): Term.Any;
 	
-	function c1ExpandData(term: C1.DataTerm, prefixes: PrefixMap): C1.DataTerm;
+	function c1ExpandData(term: C1.Data, prefixes: PrefixMap): C1.Data;
 
 	function c1Graph(graph: C1.Graph, prefixes: PrefixMap): Term.Graph;
 	function c1Subject(subject: C1.Subject, prefixes: PrefixMap): Term.Subject;

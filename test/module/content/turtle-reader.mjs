@@ -5,9 +5,9 @@ const expect = chai.expect;
 import {
 	namedNode,
 	quad,
-	toInteger,
-	toDouble,
-	toDecimal,
+	integerLiteral,
+	doubleLiteral,
+	decimalLiteral,
 } from '@graphy-stable/core';
 
 import {TreeDataset} from '@graphy-stable/memory';
@@ -774,24 +774,24 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 			`, [
 				['#a', '#b', 0],
 				['#a', '#b', -2],
-				['#a', '#b', toInteger('+20')],
+				['#a', '#b', integerLiteral('+20')],
 			]],
 
 			'decimals': () => [`
 				:a :b .0, 0.0, -0.2, +20.0 .
 			`, [
-				['#a', '#b', toDecimal('.0')],
-				['#a', '#b', toDecimal('0.0')],
-				['#a', '#b', toDecimal('-0.2')],
-				['#a', '#b', toDecimal('+20.0')],
+				['#a', '#b', decimalLiteral('.0')],
+				['#a', '#b', decimalLiteral('0.0')],
+				['#a', '#b', decimalLiteral('-0.2')],
+				['#a', '#b', decimalLiteral('+20.0')],
 			]],
 
 			'doubles': () => [`
 				:a :b 0.e1, -2.0e-1, +0.02e+3 .
 			`, [
-				['#a', '#b', toDouble('0.e1')],
-				['#a', '#b', toDouble('-2.0e-1')],
-				['#a', '#b', toDouble('+0.02e+3')],
+				['#a', '#b', doubleLiteral('0.e1')],
+				['#a', '#b', doubleLiteral('-2.0e-1')],
+				['#a', '#b', doubleLiteral('+0.02e+3')],
 			]],
 		},
 
@@ -829,7 +829,7 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 			]],
 
 			'numeric literals': () => [':a :b 25.12e-1 .', [
-				['#a', '#b', toDouble('25.12e-1')],
+				['#a', '#b', doubleLiteral('25.12e-1')],
 			]],
 
 			'prefixed names with dots': () => [':a :b :c.d. :a :b "c"^^:d.e.', [

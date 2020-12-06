@@ -7,6 +7,11 @@ const H_MODULES = {
 	types: {
 		links: [],
 		description: 'Typings for all graphy public classes and methods',
+		json: {
+			main: '',
+			module: '',
+			exports: {},
+		},
 	},
 	internal: {
 		links: ['types'],
