@@ -31,13 +31,13 @@ const H_MODULES = {
 	// 	links: ['types', 'core'],
 	// 	description: 'Data structures and algorithms for RDF graphs',
 	// },
-	// content: {
-	// 	links: ['types', 'core', 'memory'],
-	// 	description: 'RDF content manipulators; read, write, scan, scribe, load',
-	// 	dependencies: [
-	// 		'uri-js',
-	// 	],
-	// },
+	content: {
+		links: ['types', 'core', 'memory'],
+		description: 'RDF content manipulators; read, write, scan, scribe, load',
+		dependencies: [
+			'uri-js',
+		],
+	},
 };
 
 // normalize module desciptors

@@ -1,3 +1,4 @@
+@import '../share/util.jmacs'
 @import '../share/iris.jmacs'
 @import '../content/text.read.jmacs'
 
@@ -456,12 +457,6 @@ export function c1ToN3(sc1_in, h_prefixes=null, b_verbose=false) {
 
 @$ R_DECLARE = /^\s*class\s*([^\s]+)\s*(?:extends\s*([^\s]+)\s*)/;
 
-@$ declare_properties = function*(h_properties={}, sj_target='gp_self') {
-	for(const [si_property, sj_value] of Object.entries(h_properties || {})) {
-		yield /* syntax: js */ `
-			${sj_target}.${si_property} = ${sj_value};`;
-	}
-};
 
 @$ declare = function*(s_declare, g_def) {
 	const [, s_class, s_extends] = R_DECLARE.exec(s_declare);

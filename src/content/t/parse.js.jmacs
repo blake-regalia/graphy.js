@@ -1,10 +1,9 @@
 'use strict';
 
 @import '../../share/iris.jmacs'
-@import '../../share/channel.jmacs'
 
 @./* global FORMAT S_MODE */
-@//@
+@//
 
 @$ TTL = 'ttl' === FORMAT;
 @$ TRIG = 'trig' === FORMAT;
@@ -66,20 +65,22 @@
 @// import parser macros
 @import '../text.read.jmacs'
 
+@import '../error.mjs'
+
 import uri from 'uri-js';
 import string_decoder from 'string_decoder';
 
-import * as stream from '@{channel('core.iso.stream')}';
+import {stream} from '@@graphy/internal';
 import {DataFactory} from '@graphy/core';
-const quad = k => factory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
+const quad = k => DataFactory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
 
 @- B_LOAD
 	@- B_LOAD_GSPO_BUILDER
-		import {PartiallyIndexedTrigDataset} from '@graphy/memory';
-	@:
+		import {PartiallyIndexedTrigDataset} from '@@graphy/memory';
+	@;
 	const {
 		concise,
-	} = factory;
+	} = DataFactory;
 
 	const $_KEYS = Symbol(' keys');
 	const $_QUADS = Symbol(' quads');
@@ -266,8 +267,23 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	}
 @;
 
+
+@> error_args()
+	@//@object-literal
+	content: this,
+	source: this.s,
+	position: this.i,
+	...this._b_line_tracking? {
+		location: {
+			line: this._c_lines+count_lines(this.s, this.i),
+			col: this.i - this.s.lastIndexOf('\n', this.i),
+		},
+	}: {},
+@;
+
+
 @> update_prefixes()
-	let b_prevalid = this._b_prevalid;
+	let b_tolerant = this._b_tolerant;
 
 	// existing mapping
 	@- B_OPTIMIZE_PREFIX_IDS
@@ -296,7 +312,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	// first mapping
 	else {
 		// check namespace, invalid
-		if(!b_prevalid && !RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
+		if(!b_tolerant && !RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
 			throw new TurtleSyntaxError({
 				message: `Invalid namespace for prefixed name: '${s_prefix_id}:'`,
 				@{error_args()}
@@ -321,7 +337,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	}
 
 	// check iri, invalid
-	if(!b_prevalid && !RT_NAMED_NODE_VALID.test(p_prefix_iri)) {
+	if(!b_tolerant && !RT_NAMED_NODE_VALID.test(p_prefix_iri)) {
 		throw new TurtleSyntaxError({
 			message: `Invalid IRI found in prefix delcaration: "${p_prefix_iri}"`,
 			@{error_args()}
@@ -330,7 +346,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 	@- B_LOAD
 		// re-cache prefixes
-		this._h_prefixes = factory.cachePrefixes(h_prefixes);
+		this._h_prefixes = DataFactory.cachePrefixes(h_prefixes);
 
 		// update xsd scp string
 		this._scp_xsd_decimal = '^'+concise('@{P_IRI_XSD}decimal', h_prefixes)+'"';
@@ -1228,7 +1244,7 @@ const match_prefixed_name = (s, i) => {
 		if(0 === i) {
 			// we've exceeded the maximum token length
 			if(this.n > this.@{s_max_token || 'max_token_length'}) {
-				throw new EMTLError({
+				throw new ExceededMaximumTokenLengthError({
 					state: '@{s_state}',
 					mtl: this.@{s_max_token || 'max_token_length'},
 					constraint: '',
@@ -1448,7 +1464,7 @@ function count_lines(s_chunk, i_until=Infinity) {
 			});
 
 			// instantiate consumer
-			new Consumer(this, gc_consumer);
+			new Consumer(this, gc_consumer);  // eslint-disable-line no-new
 		}
 	}
 @+ 'read' === S_MODE
@@ -1466,7 +1482,7 @@ function count_lines(s_chunk, i_until=Infinity) {
 			});
 
 			// instantiate consumer
-			new Consumer(this, gc_consumer);
+			new Consumer(this, gc_consumer);  // eslint-disable-line no-new
 		}
 
 		// intercept pipe
@@ -1504,7 +1520,8 @@ export default @{S_EXPORT};
 
 class Consumer {
 	constructor(ds_stream, gc_consumer) {
-		gc_consumer = normalize_reader_config(gc_consumer);
+		// TODO: normalize reader config
+		// gc_consumer = normalize_reader_config(gc_consumer);
 
 		// impl-specific configs
 		let {
@@ -1529,13 +1546,13 @@ class Consumer {
 
 
 		// in case user provides a factory, adopt it so reader can still create special literals
-		const dc_factory = factory.adopt(gc_consumer.dataFactory || gc_consumer.data_factory || factory.unfiltered);
+		const dc_factory = DataFactory.adopt(gc_consumer.dataFactory || gc_consumer.data_factory || DataFactory.unfiltered);
 
 		// default graph
 		let kt_default_graph = dc_factory.defaultGraph();
 
 		// if data factory is not graphy, it might be returning the same object on each call to .defaultGraph()
-		if(dc_factory !== factory.unfiltered) {
+		if(dc_factory !== DataFactory.unfiltered) {
 			// do not trust it, create a new object
 			kt_default_graph = Object.create(kt_default_graph);
 		}
@@ -1552,7 +1569,7 @@ class Consumer {
 				ds_stream.emit('load', k_builder.deliver());
 			};
 		@:
-			this.emit_data = factory.unfiltered === dc_factory
+			this.emit_data = DataFactory.unfiltered === dc_factory
 				? function() {
 					ds_stream.push(quad(this));
 				}
@@ -1563,125 +1580,134 @@ class Consumer {
 		@;
 
 		// fields
-		Object.assign(this, {
+		@.{
+			const SX_NUM_ZERO = /* syntax: js */ `0`;
+			const SX_STR_EMPTY = /* syntax: js */ `''`;
+			const SX_NULL = /* syntax: js */ `null`;
+			const SX_TRUE = /* syntax: js */ `true`;
+			const SX_FALSE = /* syntax: js */ `false`;
+			const SX_ARR_EMPTY = /* syntax: js */ `[]`;
+		}
+		@*{/* eslint-disable multiline-ternary */ yield* declare_properties({
 			// read index
-			i: 0,
+			i: SX_NUM_ZERO,
 
 			// string buffer
-			s: '',
+			s: SX_STR_EMPTY,
 
 			// string buffer length
-			n: 0,
+			n: SX_NUM_ZERO,
 
 			// left-over string from previous data chunk
-			pre: gc_consumer.prepend || '',
+			pre: /* syntax: js */ `gc_consumer.prepend || ''`,
 
 			// debug state
-			_b_debug: !!gc_consumer.debug,
+			_b_debug: /* syntax: js */ `!!gc_consumer.debug`,
 
-			// prevalid
-			_b_prevalid: !!gc_consumer.prevalidated || !!gc_consumer.prevalid || !!gc_consumer.relax,
+			// tolerant
+			_b_tolerant: /* syntax: js */ `!!gc_consumer.tolerant || !!gc_consumer.relax`,
 
 			// factory
-			_dc_factory: dc_factory,
+			_dc_factory: /* syntax: js */ `dc_factory`,
 
 			// current reader state
-			_f_state: this.@{S_STATE_PRIMARY},
+			_f_state: /* syntax: js */ `this.${S_STATE_PRIMARY}`,
 
 			// map of current prefix ids => iris
-			_h_prefixes: h_prefixes,
+			_h_prefixes: /* syntax: js */ `h_prefixes`,
 
-			@- B_OPTIMIZE_PREFIX_IDS
+			...(B_OPTIMIZE_PREFIX_IDS && {
 				// set of current prefix ids
-				_as_prefix_ids: new Set(Object.keys(h_prefixes)),
-			@;
+				_as_prefix_ids: /* syntax: js */ `new Set(Object.keys(h_prefixes))`,
+			}),
 
 			// reader was destroyed by an error
-			_b_destroyed: false,
+			_b_destroyed: SX_FALSE,
 
 			// rdf-star
-			_b_rdf_star: !!gc_consumer.star,
+			_b_rdf_star: /* syntax: js */ `!!gc_consumer.star`,
 
 			// current @base url
-			_s_base_url: '',
-			_s_base_url_scheme: '',
-			_s_base_url_root: '',
-			_s_base_url_path: '',
+			_s_base_url: SX_STR_EMPTY,
+			_s_base_url_scheme: SX_STR_EMPTY,
+			_s_base_url_root: SX_STR_EMPTY,
+			_s_base_url_path: SX_STR_EMPTY,
 
 			// current data
-			@- B_LOAD
-				_sc1_subject: '',
-				_sc1_predicate: '',
-				_sc1_object: '',
-				_sc1_graph: '*',
-				@- B_LOAD_GSPO_BUILDER
-					_k_builder: k_builder,
-					_kh_graph: k_builder.openC1Graph('*'),
-					_kh_grub: null,
-					_kh_greed: null,
-				@:
-					@- B_QUADS
-						_hc4_quads: {
+			...(B_LOAD? {
+				_sc1_subject: SX_STR_EMPTY,
+				_sc1_predicate: SX_STR_EMPTY,
+				_sc1_object: SX_STR_EMPTY,
+				_sc1_graph: /* syntax: js */ `'*'`,
+				...(B_LOAD_GSPO_BUILDER? {
+					_k_builder: /* syntax: js */ `k_builder`,
+					_kh_graph: /* syntax: js */ `k_builder.openC1Graph('*')`,
+					_kh_grub: SX_NULL,
+					_kh_greed: SX_NULL,
+				}: {
+					...(B_QUADS? {
+						_hc4_quads: `{
 							[$_KEYS]: 0,
 							[$_QUADS]: 0,
-						},
-						_hc3_triples: null,
-					@:
-						_hc3_triples: {
+						}`,
+						_hc3_triples: SX_NULL,
+					}: {
+						_hc3_triples: `{
 							[$_KEYS]: 0,
 							[$_QUADS]: 0,
-						},
-					@;
-					_hc2_pairs: null,
-					_a_objects: null,
-				@;
-			@:
-				_kt_subject: null,
-				_kt_predicate: kt_rdf_first,
-				_kt_object: null,
-				_kt_graph: kt_default_graph,
-				_kq_star: null,
-			@;
-				_s_literal: '',
+						}`,
+					}),
+					_hc2_pairs: SX_NULL,
+					_a_objects: SX_NULL,
+				}),
+			}: {
+				_kt_subject: SX_NULL,
+				_kt_predicate: /* syntax: js */ `kt_rdf_first`,
+				_kt_object: SX_NULL,
+				_kt_graph: /* syntax: js */ `kt_default_graph`,
+				_kq_star: SX_NULL,
+			}),
 
-			@- B_LOAD
+			_s_literal: SX_STR_EMPTY,
+
+			...(B_LOAD? {
 				// cached concise-term strings
-				_scp_xsd_decimal: null,
-				_sc1_rdf_type: null,
-			@:
+				_scp_xsd_decimal: SX_NULL,
+				_sc1_rdf_type: SX_NULL,
+			}: {
 				// static terms
-				_kt_rdf_type: dc_factory.namedNode('@{P_IRI_RDF}type'),
-				_kt_rdf_first: kt_rdf_first,
-				_kt_rdf_rest: dc_factory.namedNode('@{P_IRI_RDF}rest'),
-				_kt_rdf_nil: dc_factory.namedNode('@{P_IRI_RDF}nil'),
-				_kt_default_graph: kt_default_graph,
-			@;
+				_kt_rdf_type: /* syntax: js */ `dc_factory.namedNode('${P_IRI_RDF}type')`,
+				_kt_rdf_first: /* syntax: js */ `kt_rdf_first`,
+				_kt_rdf_rest: /* syntax: js */ `dc_factory.namedNode('${P_IRI_RDF}rest')`,
+				_kt_rdf_nil: /* syntax: js */ `dc_factory.namedNode('${P_IRI_RDF}nil')`,
+				_kt_default_graph: /* syntax: js */ `kt_default_graph`,
+			}),
 
 			// queue of nested subject, predicate, state for blanknodes and collections
-			_a_nested: [],
+			_a_nested: SX_ARR_EMPTY,
 
 			// hash to keep track of all blank node labels in use
-			_h_labels: h_labels,
+			_h_labels: /* syntax: js */ `h_labels`,
 
 			// event routing
-			event: this.emit,
-			data: this.emit_data,
+			event: /* syntax: js */ `this.emit`,
+			data: /* syntax: js */ `this.emit_data`,
 
 			// for restoring the original event callback when resuming paused stream
-			restore_data: this.emit_data,
+			restore_data: /* syntax: js */ `this.emit_data`,
 
 			// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
-			_a_queue_event: [],
+			_a_queue_event: SX_ARR_EMPTY,
 
 			// helper states
-			_b_expecting_full_stop: false,
-			_s_temp_prefix_id: null,
-			_b_trim_start: true,
+			_b_expecting_full_stop: SX_FALSE,
+			_s_temp_prefix_id: SX_NULL,
+			_b_trim_start: SX_TRUE,
 
-			anonymous_blank_node: s_label => blankNode(s_label, true),
+			anonymous_blank_node: /* syntax: js */ `s_label => blankNode(s_label, true)`,
 
 			// finds the next non-conflicting blank node label
-			next_label() {
+			next_label: /* syntax: js */ `function next_label() {
 				let s_label = '';
 				do {
 					s_label = 'g'+(i_anon++);
@@ -1692,37 +1718,38 @@ class Consumer {
 
 				// return the label
 				return s_label;
-			},
+			}`,
 
 			// what to do when reach eos
-			eos: null,
+			eos: SX_NULL,
 
 			// which state to go to after end of statement
-			after_eot: this.post_object,
-			restore_after_eot: null,
+			after_eot: /* syntax: js */ `this.post_object`,
+			restore_after_eot: SX_NULL,
 
 			// maximum length of a token: defaults to 2048 => http://stackoverflow.com/a/417184/1641160
-			_n_max_token_length: gc_consumer.max_token_length || gc_consumer.maxTokenLength || 2048,
+			_n_max_token_length: /* syntax: js */ `gc_consumer.max_token_length || gc_consumer.maxTokenLength || 2048`,
 
 			// maximum length of a string (overrides max_token_length): defaults to Infinity
-			_n_max_string_length: gc_consumer.max_string_length || gc_consumer.maxStringLength || Infinity,
+			_n_max_string_length: /* syntax: js */ `gc_consumer.max_string_length || gc_consumer.maxStringLength || Infinity`,
 
 			// byte tracking
-			_b_byte_tracking: gc_consumer.byte_tracking || gc_consumer.byteTracking || false,
-			_nb_seen: 0,
-			_nb_last: 0,
-			_nb_curr: 0,
+			_b_byte_tracking: /* syntax: js */ `gc_consumer.byte_tracking || gc_consumer.byteTracking || false`,
+			_nb_seen: SX_NUM_ZERO,
+			_nb_last: SX_NUM_ZERO,
+			_nb_curr: SX_NUM_ZERO,
 
 			// line tracking
-			_b_line_tracking: gc_consumer.line_tracking || gc_consumer.lineTracking || false,
-			_c_lines: 0,
-		});
+			_b_line_tracking: /* syntax: js */ `gc_consumer.line_tracking || gc_consumer.lineTracking || false`,
+			_c_lines: SX_NUM_ZERO,
+		}, /* syntax: js */ `this`);
+	/* eslint-enable multiline-ternary */ }
 
 	if(gc_consumer.relaxed) {
-		console.warn((new Error(`no such option 'relaxed'; did you mean 'relax' ?`)).stack.replace(/^Error:/, 'Warning:'));
+		console.warn((new Error(`no such option 'relaxed'; did you mean 'relax' ? Suggestion: use 'tolerant' instead`)).stack.replace(/^Error:/, 'Warning:'));
 	}
 	if('validate' in gc_consumer) {
-		console.warn((new Error(`option 'validate' has been deprecated. Validation is now enabled by default. Use the 'prevalidated' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+		console.warn((new Error(`option 'validate' has been deprecated. Validation is now enabled by default. Use the 'tolerant' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
 	}
 
 
@@ -1758,7 +1785,7 @@ class Consumer {
 					// test valid blank node label
 					if(!RT_BLANK_NODE_VALID.test(s_label)) {
 						throw new TurtleSyntaxError({
-							message: `Invalid blank node label: '${s_label}'`
+							message: `Invalid blank node label: '${s_label}'`,
 							@{error_args()}
 						});
 					}
@@ -1875,63 +1902,60 @@ class Consumer {
 			throw new Error(`invalid option: .base${gc_consumer.base_url? '_url': gc_consumer.baseUrl? 'Url': gc_consumer.baseURL? 'URL': ''}; use the '.base_uri' key instead`);
 		}
 
-		// transform stream
-		let ds_stream = this.transform = new @{S_LABEL}Transform({
-			// on data event
-			transform: (s_chunk, s_encoding, fke_chunk) => {
-				// concatenate current chunk to previous chunk
-				let s = this.s = this.pre + s_chunk;
+		// on data event
+		ds_stream._transform = (s_chunk, s_encoding, fke_chunk) => {
+			// concatenate current chunk to previous chunk
+			let s = this.s = this.pre + s_chunk;
 
-				// cache chunk length
-				this.n = s.length;
+			// cache chunk length
+			this.n = s.length;
 
-				// eat whitespace before token and reset index
-				if(this._b_trim_start) {
-					@{whitespace()}
-				}
-				// do not eat whitespace; start at beginning
-				else {
-					this.i = 0;
-				}
+			// eat whitespace before token and reset index
+			if(this._b_trim_start) {
+				@{whitespace()}
+			}
+			// do not eat whitespace; start at beginning
+			else {
+				this.i = 0;
+			}
 
-				// resume parsing; no errors
-				if(this.safe_parse(true)) {
-					@- B_LOAD
-						// debugger;
-						// this.data();
-					@;
-					// emit progress event updates
-					ds_stream.emit('progress', s_chunk.length);
+			// resume parsing; no errors
+			if(this.safe_parse(true)) {
+				@- B_LOAD
+					// debugger;
+					// this.data();
+				@;
+				// emit progress event updates
+				ds_stream.emit('progress', s_chunk.length);
 
-					// count lines
-					if(this._b_line_tracking) {
-						this._c_lines += count_lines(s_chunk, -1);
-					}
-
-					// done transforming this chunk
-					fke_chunk();
-				}
-			},
-
-			// once there's no more data to consume, invoke eof
-			flush: (fke_flush) => {
-				// now that input stream has ended, clean up remainder
-				try {
-					this.eof(1);
-				}
-				// read error occurred
-				catch(e_eof) {
-					// destroy self and stream
-					this.destroy(e_eof);
-
-					// exit gracefully
-					return;
+				// count lines
+				if(this._b_line_tracking) {
+					this._c_lines += count_lines(s_chunk, -1);
 				}
 
-				// no errors. done flushing, close read stream
-				fke_flush();
-			},
-		});
+				// done transforming this chunk
+				fke_chunk();
+			}
+		};
+
+		// once there's no more data to consume, invoke eof
+		ds_stream._flush = (fke_flush) => {
+			// now that input stream has ended, clean up remainder
+			try {
+				this.eof(1);
+			}
+			// read error occurred
+			catch(e_eof) {
+				// destroy self and stream
+				this.destroy(e_eof);
+
+				// exit gracefully
+				return;
+			}
+
+			// no errors. done flushing, close read stream
+			fke_flush();
+		};
 
 		// when the writable side is piped into
 		ds_stream.on('pipe', (ds_input) => {
@@ -2081,19 +2105,6 @@ class Consumer {
 			args: a_args,
 		});
 	}
-
-@> error_args()
-	@//@object-literal
-	content: this,
-	source: s,
-	position: i,
-	...this._b_line_tracking? {
-		location: {
-			line: this._c_lines+count_lines(s, i),
-			col: i - s.lastIndexOf('\n', i),
-		},
-	}: {},
-@;
 
 
 	@- B_LOAD
@@ -3643,8 +3654,9 @@ class Consumer {
 		this.data = this.emit_data;
 		this.after_eot = this.restore_after_eot;
 
+@// TODO: this used to be @{emit_data}; check nothing lost w/ statement
 		// emit data
-		@{emit_data()}
+		@{emit_statement()}
 
 		// resume
 		@{goto('post_object')}

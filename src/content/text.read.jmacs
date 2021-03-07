@@ -1,3 +1,5 @@
+@import '../share/util.jmacs'
+
 @// for counting if/else braces in regex matching
 @$ c_braces = 0;
 

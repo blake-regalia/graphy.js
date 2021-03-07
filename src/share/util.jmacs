@@ -1,0 +1,15 @@
+
+@$ declare_properties = function*(h_properties={}, sj_target='gp_self') {
+	for(const [si_property, z_value] of Object.entries(h_properties || {})) {
+		let sj_value = z_value+'';
+		if('function' === typeof z_value) {
+			if(/^[\w$_]+\(/.test(sj_value)) {
+				sj_value = `function ${sj_value}`;
+			}
+		}
+
+		yield /* syntax: js */ `
+			${sj_target}.${si_property} = ${sj_value};`;
+	}
+};
+

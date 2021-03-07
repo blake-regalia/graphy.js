@@ -341,6 +341,54 @@ module.exports = {
 				}),
 			},
 		},
+
+		// prepublish
+		prepublish: {
+			':module': h => ({
+				deps: [`link.module.${h.module}`],
+				run: /* syntax: bash */ `
+					cd build/module/${h.module}
+
+					# defer README to GitHub
+					rm -rf README.md
+					cat <(echo "# @graphy/${h.module}") ../../../emk/aux/README-defer.md > README.md
+				`,
+			}),
+
+			// [s_super]: () => ({
+			// 	deps: [`local.${s_super}`],
+			// 	run: /* syntax: bash */ `
+			// 		cd build/package/${s_super}
+
+			// 		# defer README to GitHub
+			// 		rm -rf README.md
+			// 		cat <(echo "#${s_super}") ../../../emk/aux/README-defer.md > README.md
+			// 	`,
+			// }),
+		},
+
+		// publish
+		publish: {
+			':module': h => ({
+				deps: [`prepublish.${h.module}`],
+				run: /* syntax: bash */ `
+					cd build/module/${h.module}
+
+					# publish to npm
+					npm publish --access=public --tag=alpha
+				`,
+			}),
+
+			// [s_super]: () => ({
+			// 	deps: [`prepublish.${s_super}`],
+			// 	run: /* syntax: bash */ `
+			// 		cd build/package/${s_super}
+
+			// 		# publish to npm
+			// 		npm publish --access=public
+			// 	`,
+			// }),
+		},
 	},
 
 	outputs: {

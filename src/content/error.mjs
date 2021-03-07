@@ -56,13 +56,13 @@ export class NoSuchPrefixError extends ContentError {
 }
 NoSuchPrefixError.description = 'Missing prefix.';
 
-export class EMTLError extends ContentError {
+export class ExceededMaximumTokenLengthError extends ContentError {
 	constructor(gc_error) {
 		super(gc_error);
 		this._s_message = `The maximum token length is currently set to ${gc_error.mtl}. You can adjust this value in the parameters.`;
 	}
 }
-EMTLError.prototype.description = 'Exceeded maximum token length while reading input.';
+ExceededMaximumTokenLengthError.prototype.description = 'Exceeded maximum token length while reading input.';
 
 /*
 
