@@ -10,7 +10,7 @@ import {
 } from '@graphy/types';
 
 import {
-	PartiallyIndexedTrigDataset,
+	QuadTree,
 } from './trig-partial';
 
 import SyncDataset = Dataset.SyncDataset;
@@ -38,7 +38,7 @@ const {
 } = DataFactory;
 
 
-export class SemiIndexedTrigDataset extends PartiallyIndexedTrigDataset {
+export class LinkedQuadTree extends QuadTree {
 	_h_objects: SemiIndexed.ObjectStore;
 
 	constructor(h_objects: SemiIndexed.ObjectStore, hc4_quads: SemiIndexed.QuadsTree, h_prefixes: PrefixMap) {
@@ -133,7 +133,7 @@ export class SemiIndexedTrigDataset extends PartiallyIndexedTrigDataset {
 
 
 
-SemiIndexedTrigDataset.prototype.datasetStorageType = `
+LinkedQuadTree.prototype.datasetStorageType = `
 	descriptor {
 		value: c1;
 		refs: {

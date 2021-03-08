@@ -1,4 +1,4 @@
-@./* global FORMAT */
+@./* global S_FORMAT */
 @//
 
 @import '../../text.read.jmacs'
@@ -6,8 +6,8 @@
 @import '../../../share/iris.jmacs'
 @import '../../../share/writer.jmacs'
 
-@$ B_TTL = 'ttl' === FORMAT;
-@$ B_TRIG = 'trig' === FORMAT;
+@$ B_TTL = 'ttl' === S_FORMAT;
+@$ B_TRIG = 'trig' === S_FORMAT;
 @$ B_QUADS = B_TRIG;
 
 @$ S_LABEL = B_TTL? 'Turtle': 'Trig';

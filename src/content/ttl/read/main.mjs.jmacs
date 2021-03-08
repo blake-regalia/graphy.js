@@ -1,0 +1,4 @@
+@$ S_FORMAT = 'ttl';
+@$ S_MODE = 'read';
+
+@import '../../_t/parse.js.jmacs';

@@ -1,11 +1,11 @@
-@./* global FORMAT */
+@./* global S_FORMAT */
 
 @//@
 @import '../../../share/channel.jmacs'
 @import '../../../share/writer.jmacs'
 
-@$ B_TTL = 'ttl' === FORMAT;
-@$ B_TRIG = 'trig' === FORMAT;
+@$ B_TTL = 'ttl' === S_FORMAT;
+@$ B_TRIG = 'trig' === S_FORMAT;
 
 @$ B_QUADS = B_TRIG;
 

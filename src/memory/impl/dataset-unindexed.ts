@@ -1,7 +1,7 @@
 import * as RDFJS from 'rdf-js';
 
 import {
-	IGreedHandle,
+	IGraspHandle,
 	IGrubHandle,
 	IGraphHandle,
 	IConciseGspoBuilder,
@@ -27,11 +27,11 @@ const {
 	fromTerm,
 } = DataFactory;
 
-class UnindexedGreedHandle implements IGreedHandle {
+class UnindexedGraspHandle implements IGraspHandle {
 	_as_quads: Set<string>; 
 	_scp_greed: string;
 
-	constructor(k_dataset: UnindexedTrigDataset, scp_greed: string) {
+	constructor(k_dataset: QuadSet, scp_greed: string) {
 		this._as_quads = k_dataset._as_quads;
 		this._scp_greed = scp_greed;
 	}
@@ -72,25 +72,25 @@ class UnindexedGreedHandle implements IGreedHandle {
 }
 
 class GrubHandle implements IGrubHandle {
-	_k_dataset: UnindexedTrigDataset;
+	_k_dataset: QuadSet;
 	_scp_grub: string;
 
-	constructor(k_dataset: UnindexedTrigDataset, scp_grub: string) {
+	constructor(k_dataset: QuadSet, scp_grub: string) {
 		this._k_dataset = k_dataset;
 		this._scp_grub = scp_grub;
 	}
 
-	openC1Predicate(sc1_predicate: ConciseNamedNode): UnindexedGreedHandle {
+	openC1Predicate(sc1_predicate: ConciseNamedNode): UnindexedGraspHandle {
 		// return greed handle
-		return new UnindexedGreedHandle(this._k_dataset, this._scp_grub+sc1_predicate+'\0');
+		return new UnindexedGraspHandle(this._k_dataset, this._scp_grub+sc1_predicate+'\0');
 	}
 }
 
 class GraphHandle implements IGraphHandle {
-	_k_dataset: UnindexedTrigDataset;
+	_k_dataset: QuadSet;
 	_scp_graph: string;
 	 
-	constructor(k_dataset: UnindexedTrigDataset, sc1_graph: ConciseNode) {
+	constructor(k_dataset: QuadSet, sc1_graph: ConciseNode) {
 		this._k_dataset = k_dataset;
 		this._scp_graph = sc1_graph+'\9';
 	}
@@ -132,7 +132,7 @@ const XM_OBJECT    = 0b1000;
  * Stores an unindexed set of quads in (graph, subject, predicate, object) order.
  * Fast insertion, slow at everything else.
  */
-export class UnindexedTrigDataset implements IConciseGspoBuilder<IDataset>, IDataset {
+export class QuadSet implements IConciseGspoBuilder<IDataset>, IDataset {
 	_h_prefixes: PrefixMap;
 	_as_quads: Set<string>;
 
@@ -350,6 +350,6 @@ export class UnindexedTrigDataset implements IConciseGspoBuilder<IDataset>, IDat
 			}
 		}
 
-		return new UnindexedTrigDataset(this._h_prefixes, as_quads);
+		return new QuadSet(this._h_prefixes, as_quads);
 	}
 }

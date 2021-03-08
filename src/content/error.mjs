@@ -33,11 +33,11 @@ export class ContentError extends Error {
 	}
 }
 
-export class TurtleSyntaxError extends ContentError {}
-TurtleSyntaxError.prototype.name = 'SyntaxError';
-TurtleSyntaxError.prototype.description = 'Turtle syntax error while reading input.';
+export class ContentSyntaxError extends ContentError {}
+ContentSyntaxError.prototype.name = 'ContentSyntaxError';
+ContentSyntaxError.prototype.description = 'A syntax error was found while reading input.';
 
-export class TurtleUnexpectedTokenError extends TurtleSyntaxError {
+export class UnexpectedTokenError extends ContentSyntaxError {
 	constructor(gc_error) {
 		super(gc_error);
 		const s_char = this._s_source[this._i_pos];
@@ -54,7 +54,7 @@ export class NoSuchPrefixError extends ContentError {
 		this._s_message = `No such prefix '${gc_error.prefix}' was declared.`;
 	}
 }
-NoSuchPrefixError.description = 'Missing prefix.';
+NoSuchPrefixError.description = 'Missing prefix declaration.';
 
 export class ExceededMaximumTokenLengthError extends ContentError {
 	constructor(gc_error) {

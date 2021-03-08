@@ -78,8 +78,8 @@ module.exports = {
 			export_suffix: 'Reader',
 			description: s => `Single-threaded ${s} content reader`,
 			links: [
-				'core.data.factory',
-				'core.iso.stream',
+				'core',
+				'internal',
 			],
 			files: {
 				'main.js': ['../text.read.jmacs'],
@@ -90,8 +90,8 @@ module.exports = {
 			export_suffix: 'Loader',
 			description: s => `Single-threaded ${s} content loader`,
 			links: [
-				'core.data.factory',
-				'core.iso.stream',
+				'core',
+				'internal',
 			],
 			files: {
 				'main.js': [
@@ -105,7 +105,7 @@ module.exports = {
 			export_suffix: 'Scanner',
 			description: s => `Multi-threaded ${s} content reader`,
 			links: [
-				'core.data.factory',
+				'core',
 			],
 			files: {
 				'main.js': [],
@@ -119,8 +119,8 @@ module.exports = {
 			export_suffix: 'Writer',
 			description: s => `${s} content writer for dynamic and stylized output`,
 			links: [
-				'core.data.factory',
-				'core.class.writable',
+				'core',
+				'internal',
 			],
 			files: {
 				'main.js': [],
@@ -131,8 +131,8 @@ module.exports = {
 			export_suffix: 'Scriber',
 			description: s => `${s} content scriber for fast and simple output`,
 			links: [
-				'core.data.factory',
-				'core.class.writable',
+				'core',
+				'internal',
 			],
 			files: {
 				'main.js': [],

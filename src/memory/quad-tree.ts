@@ -24,13 +24,13 @@ import {
 	Generic,
 } from './common';
 
-import ProbsTree = .ProbsTree;
-import TriplesTree = .TriplesTree;
-import QuadsTree = .QuadsTree;
-import GraphHandle = .GraphHandle;
-import GrubHandle = .GrubHandle;
-import GraspHandle = .GraspHandle;
-import ObjectSet = .ObjectSet;
+import ProbsTree = Generic.ProbsTree;
+import TriplesTree = Generic.TriplesTree;
+import QuadsTree = Generic.QuadsTree;
+import GraphHandle = Generic.GraphHandle;
+import GrubHandle = Generic.GrubHandle;
+import GraspHandle = Generic.GraspHandle;
+import ObjectSet = Generic.ObjectSet;
 
 import overlayTree = Generic.overlayTree;
 import overlay = Generic.overlay;
@@ -56,20 +56,20 @@ const {
 @import './embed/union-same.ts.jmacs';
 
 type StaticSelf = Function & {
-	builder: {new(): TreeDatasetBuilder};
-	empty(h_prefixes: PrefixMap): TreeDataset;
-	new(hc4_quads: Generic.QuadsTree, h_prefixes: PrefixMap): TreeDataset;
+	builder: {new(): QuadTreeBuilder};
+	empty(h_prefixes: PrefixMap): QuadTree;
+	new(hc4_quads: Generic.QuadsTree, h_prefixes: PrefixMap): QuadTree;
 };
 
-export interface TreeDataset extends SyncC1Dataset {
+export interface QuadTree extends SyncC1Dataset {
 
-	expand(): TreeDataset;
+	expand(): QuadTree;
 }
 
-interface Constructor extends Generic.Constructor<TreeDataset, TreeDatasetBuilder, Generic.QuadsTree> {}
+interface Constructor extends Generic.Constructor<QuadTree, QuadTreeBuilder, Generic.QuadsTree> {}
 
 
-export const TreeDataset: Constructor = class TreeDataset implements TreeDataset {
+export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	/**
 	 * Authoritative and immutable prefix map to use for c1 creation and resolution
 	 */
@@ -88,7 +88,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 	/**
 	 * Internal self builder for creating match results or appending
 	 */
-	_k_builder: TreeDatasetBuilder;
+	_k_builder: QuadTreeBuilder;
 
 	/**
 	 * If true, c1 strings are prefixed. Otherwise, c1 strings are expanded
@@ -99,8 +99,8 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 	 * Create new empty dataset
 	 * @param h_prefixes 
 	 */
-	static empty(h_prefixes: PrefixMap): TreeDataset {
-		return new TreeDataset({
+	static empty(h_prefixes: PrefixMap): QuadTree {
+		return new QuadTree({
 			[$_KEYS]: 1,
 			[$_QUADS]: 0,
 			// [$_OVERLAY]: 0,
@@ -124,7 +124,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 		this._hc3_trips = hc4_quads['*'];
 		this._h_prefixes = h_prefixes;
 		this._b_prefixed = b_prefixed;
-		this._k_builder = new TreeDatasetBuilder(h_prefixes, this);
+		this._k_builder = new QuadTreeBuilder(h_prefixes, this);
 	}
 
 	/**
@@ -399,7 +399,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 	addC1Quad(sc1_subject: C1.Subject, sc1_predicate: C1.Predicate, sc1_object: C1.Object, sc1_graph?:  C1.Graph): boolean {
 		const kh_handle: Dataset.GraphHandle = sc1_graph
 			? this._k_builder.openC1Graph(sc1_graph)
-			: this._k_builder as TreeDatasetBuilder;
+			: this._k_builder as QuadTreeBuilder;
 
 		// use builder to efficiently add quad
 		return kh_handle.openC1Subject(sc1_subject).openC1Predicate(sc1_predicate).addC1Object(sc1_object);
@@ -464,8 +464,8 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 	}
 
 
-	_offspring(hc4_out: QuadsTree): TreeDataset {
-		return new TreeDataset(hc4_out, this._h_prefixes);
+	_offspring(hc4_out: QuadsTree): QuadTree {
+		return new QuadTree(hc4_out, this._h_prefixes);
 	}
 
 
@@ -479,7 +479,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 			const sc1_graph = c1FromGraphRole(yt_graph, h_prefixes);
 
 			// no such graph; return new empty tree
-			if(!(sc1_graph in hc4_src)) return TreeDataset.empty(h_prefixes);
+			if(!(sc1_graph in hc4_src)) return QuadTree.empty(h_prefixes);
 
 			// ref triples tree
 			const hc3_src = hc4_src[sc1_graph];
@@ -490,7 +490,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 				let sc1_subject = c1FromSubjectRole(yt_subject, h_prefixes);
 
 				// no such subject; return new empty tree
-				if(!(sc1_subject in hc3_src)) return TreeDataset.empty(h_prefixes);
+				if(!(sc1_subject in hc3_src)) return QuadTree.empty(h_prefixes);
 
 				// ref probs tree
 				const hc2_src = hc3_src[sc1_subject];
@@ -501,7 +501,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 					const sc1_predicate = c1FromPredicateRole(yt_predicate, h_prefixes);
 
 					// no such predicate; return new empty tree
-					if(!(sc1_predicate in hc2_src)) return TreeDataset.empty(h_prefixes);
+					if(!(sc1_predicate in hc2_src)) return QuadTree.empty(h_prefixes);
 
 					// ref objects set
 					const as_objects_src = hc2_src[sc1_predicate];
@@ -516,7 +516,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 						const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
 
 						// no such object; return new empty tree
-						if(!as_objects_src.has(sc1_object)) return TreeDataset.empty(h_prefixes);
+						if(!as_objects_src.has(sc1_object)) return QuadTree.empty(h_prefixes);
 						
 						// create set
 						as_objects_dst = new Set([sc1_object]);
@@ -581,7 +581,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 					}
 
 					// no quads; empty tree
-					if(!c_probs) return TreeDataset.empty(h_prefixes);
+					if(!c_probs) return QuadTree.empty(h_prefixes);
 
 					// save keys and quads count
 					hc2_dst[$_KEYS] = c_probs;
@@ -690,7 +690,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 				}
 
 				// no quads; empty tree
-				if(!c_subjects) return TreeDataset.empty(h_prefixes);
+				if(!c_subjects) return QuadTree.empty(h_prefixes);
 
 				// save quads and subject-keys counts to dst triples tree
 				hc3_dst[$_KEYS] = c_subjects;
@@ -762,7 +762,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 				}
 
 				// no quads; empty tree
-				if(!c_subjects) return TreeDataset.empty(h_prefixes);
+				if(!c_subjects) return QuadTree.empty(h_prefixes);
 
 				// save quads and subject-keys count
 				hc3_dst[$_KEYS] = c_subjects;
@@ -893,7 +893,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 					}
 
 					// no quads; empty tree
-					if(!c_graphs) return TreeDataset.empty(h_prefixes);
+					if(!c_graphs) return QuadTree.empty(h_prefixes);
 
 					// save quads and graph-keys counts
 					hc4_dst[$_KEYS] = c_graphs;
@@ -997,7 +997,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 					}
 
 					// no quads; empty tree
-					if(!c_graphs) return TreeDataset.empty(h_prefixes);
+					if(!c_graphs) return QuadTree.empty(h_prefixes);
 
 					// save graph-keys and quads count
 					hc4_dst[$_KEYS] = c_graphs;
@@ -1078,7 +1078,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return TreeDataset.empty(h_prefixes);
+						if(!c_graphs) return QuadTree.empty(h_prefixes);
 
 						// save graph-keys and quads count
 						hc4_dst[$_KEYS] = c_graphs;
@@ -1143,7 +1143,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return TreeDataset.empty(h_prefixes);
+						if(!c_graphs) return QuadTree.empty(h_prefixes);
 
 						// save graph-keys and quads counts
 						hc4_dst[$_KEYS] = c_graphs;
@@ -1236,7 +1236,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return TreeDataset.empty(h_prefixes);
+						if(!c_graphs) return QuadTree.empty(h_prefixes);
 
 						// save subject-keys and quads count
 						hc4_dst[$_KEYS] = c_graphs;
@@ -1248,7 +1248,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 					// -graph, -subject, -predicate, -object
 					else {
 						// same quad tree (clone)
-						return TreeDataset.empty(h_prefixes);
+						return QuadTree.empty(h_prefixes);
 					}
 				}
 			}
@@ -1279,7 +1279,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 			: this._h_prefixes;
 
 		// return new dataset
-		return new TreeDataset(hc4_out, h_prefixes);
+		return new QuadTree(hc4_out, h_prefixes);
 	}
 
 
@@ -1287,7 +1287,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 	/**
 	 * Create a new dataset by prefixing all c1 strings
 	 */
-	prefixed(): TreeDataset {
+	prefixed(): QuadTree {
 		// already prefixed, just clone it
 		if(this._b_prefixed) return this.clone();
 
@@ -1298,7 +1298,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 	/**
 	 * Create a new dataset by expanding all c1 strings
 	 */
-	expanded(): TreeDataset {
+	expanded(): QuadTree {
 		// already expanded, just clone it
 		if(!this._b_prefixed) return this.clone();
 
@@ -1344,7 +1344,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 		}
 
 		// return new dataset
-		return new TreeDataset(hc4_out, h_prefixes);
+		return new QuadTree(hc4_out, h_prefixes);
 	}
 
 
@@ -1352,7 +1352,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 	 * Perform the union of two datasets
 	 * @param k_other 
 	 */
-	union(z_other: RDFJS.Dataset): TreeDataset {
+	union(z_other: RDFJS.Dataset): QuadTree {
 		// other is graphy dataset
 		if(z_other.isGraphyDataset) {
 			// deduce dataset type
@@ -1401,7 +1401,7 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 		@{union_same()}
 
 		// return new dataset
-		return new TreeDataset(hc4_quads_u, {
+		return new QuadTree(hc4_quads_u, {
 			// copy prefixes
 			...this._h_prefixes,
 		});
@@ -1419,10 +1419,10 @@ export const TreeDataset: Constructor = class TreeDataset implements TreeDataset
 	}
 }
 
-TreeDataset.Builder = TreeDatasetBuilder;
+QuadTree.Builder = QuadTreeBuilder;
 
 
-export interface TreeDataset {
+export interface QuadTree {
 	/**
 	 * Indicates at runtime without that this class is compatible as a graphy dataset
 	 */
@@ -1434,9 +1434,9 @@ export interface TreeDataset {
 	datasetStorageType: string;
 }
 
-TreeDataset.prototype.isGraphyDataset = true;
+QuadTree.prototype.isGraphyDataset = true;
 
-TreeDataset.prototype.datasetStorageType = `
+QuadTree.prototype.datasetStorageType = '@{`
 	quads {
 		[g: c1]: trips {
 			[s: c1]: probs {
@@ -1444,6 +1444,6 @@ TreeDataset.prototype.datasetStorageType = `
 			};
 		};
 	};
-`.replace(/\s+/g, '');
+`.replace(/\s+/g, '')}';
 
 

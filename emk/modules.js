@@ -27,10 +27,10 @@ const H_MODULES = {
 			'uri-js',
 		],
 	},
-	// memory: {
-	// 	links: ['types', 'core'],
-	// 	description: 'Data structures and algorithms for RDF graphs',
-	// },
+	memory: {
+		links: ['types', 'core'],
+		description: 'Data structures and algorithms for RDF graphs',
+	},
 	content: {
 		links: ['types', 'core', 'memory'],
 		description: 'RDF content manipulators; read, write, scan, scribe, load',

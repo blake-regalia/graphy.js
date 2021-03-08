@@ -31,6 +31,7 @@ const run_eslint = (sx_more='', b_ignore_errors=false) => /* syntax: bash */ `
 	exit $eslint_exit
 `;
 
+// reusable leaf recipes
 const H_GEN_LEAF = {
 	// make .npmrc file
 	npmrc: () => () => ({
@@ -156,12 +157,20 @@ const H_GEN_LEAF = {
 		],
 		run: /* syntax: bash */ `
 			npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \
-				--strict --esModuleInterop --skipLibCheck --forceConsistentCasingInFileNames \
+				--strict --skipLibCheck --forceConsistentCasingInFileNames \
 				--outDir $(dirname $@) -d \
 				&& ${run_eslint(/* syntax: bash */ `
 					node emk/pretty-print.js $@/$(basename $1)
 				`)}
 		`,
+		//run: /* syntax: bash */ `
+		//	npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \
+		//		--strict --esModuleInterop --skipLibCheck --forceConsistentCasingInFileNames \
+		//		--outDir $(dirname $@) -d \
+		//		&& ${run_eslint(/* syntax: bash */ `
+		//			node emk/pretty-print.js $@/$(basename $1)
+		//		`)}
+		//`,
 	}),
 
 	// transpile module to commonjs
@@ -179,7 +188,7 @@ const H_GEN_LEAF = {
 };
 
 
-
+// spreadable dir listing
 const scoped_package = si_package => ({
 	...(process.env.GRAPHY_USE_NVM? {}: {  // eslint-disable-line multiline-ternary
 		'.npmrc': H_GEN_LEAF.npmrc(),
@@ -191,6 +200,7 @@ const scoped_package = si_package => ({
 });
 
 
+// turn a source file name into a main module file
 const mainify = (s_file, si_module) => s_file.replace(new RegExp('^'+si_module.replace(/([.$+])/g, '\\$1'), 'g'), 'main');
 
 // carry files from a main source file's subdirectory
@@ -204,16 +214,19 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 
 	// each file
 	for(const s_file_src of a_files) {
-		const p_src = `${pd_src}/${s_file_src}`;
-		const pd_dst = `build/module/${si_module}`;
+		const p_src = path.join(pd_src, s_file_src);
+		const pd_dst = path.join('build', 'module', si_module);
 
 		// subdirectory
 		if(fs.statSync(p_src).isDirectory()) {
+			// internal (not for graphy module) directory
+			if(p_src.startsWith('_')) continue;
+
 			// recurse
 			const {
 				deps: a_subdeps,
 				recipe: h_subrecipe,
-			} = expand_macros(p_src, `${si_module}/${s_file_src}`);
+			} = expand_macros(p_src, path.join(si_module, s_file_src));
 
 			// make subrecipe; put in this recipe
 			h_recipe[s_file_src] = h_subrecipe;
@@ -222,7 +235,7 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 			a_deps.push(...a_subdeps);
 
 			// simple deps
-			a_direct.push(`${pd_dst}/${s_file_src}/**`);
+			a_direct.push(path.join(pd_dst, s_file_src, '**'));
 		}
 		// file
 		else {
@@ -239,6 +252,7 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 			// copy js, mjs, and ts files
 			else if(s_file_src.endsWith('.js') || s_file_src.endsWith('.mjs') || s_file_src.endsWith('.ts')) {
 				h_recipe[s_file_exp] = () => ({copy:p_src});
+				p_exp = path.join(pd_dst, s_file_exp);
 			}
 
 			// leave .d.ts files as is
@@ -247,11 +261,16 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 			}
 			// compile typescript files
 			else if(s_file_exp.endsWith('.ts')) {
+				// .ts => .mjs
+				const s_file_mjs = s_file_exp.replace(/\.ts$/, '.mjs');
+				h_recipe[s_file_mjs] = H_GEN_LEAF.ts_lint([p_exp]);
+
+				// .mjs => .js
 				const s_file_js = s_file_exp.replace(/\.ts$/, '.js');
-				h_recipe[s_file_js] = H_GEN_LEAF.ts_lint([p_exp]);
+				h_recipe[s_file_js] = H_GEN_LEAF.module_commonjs_lint([path.join(pd_dst, s_file_mjs)]);
 
 				// target the final build file
-				a_deps.push(`${pd_dst}/${s_file_js}`);
+				a_deps.push(path.join(pd_dst, s_file_js));
 			}
 			// transpile mjs to js
 			else if(s_file_exp.endsWith('.mjs')) {
@@ -259,7 +278,7 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 				h_recipe[s_file_js] = H_GEN_LEAF.module_commonjs_lint([p_exp]);
 
 				// target the final build file
-				a_deps.push(`${pd_dst}/${s_file_js}`);
+				a_deps.push(path.join(pd_dst, s_file_js));
 			}
 			// target js file
 			else if(s_file_exp.endsWith('.js')) {
@@ -281,6 +300,7 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 
 const A_MODULES = Object.keys(H_MODULES);
 
+// expand module macros into dict
 const H_EXPANDED_MODULE_MACROS = A_MODULES.reduce((h_out, si_module) => ({
 	...h_out,
 	[si_module]: expand_macros(`src/${si_module}`, si_module, {
@@ -391,15 +411,18 @@ module.exports = {
 		},
 	},
 
+	// outputs
 	outputs: {
+		// primary output build dir
 		build: {
+			// modules
 			module: {
+				// an individual module dir
 				':module': [si_module => ({
 					[si_module]: H_EXPANDED_MODULE_MACROS[si_module].recipe,
 				})],
 			},
 		},
-
 
 		// package linking
 		[P_PACKAGE_PREFIX]: {
@@ -488,3 +511,5 @@ module.exports = {
 		},
 	},
 };
+
+debugger;

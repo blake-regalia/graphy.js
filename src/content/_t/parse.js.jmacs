@@ -2,11 +2,11 @@
 
 @import '../../share/iris.jmacs'
 
-@./* global FORMAT S_MODE */
+@./* global S_FORMAT S_MODE */
 @//
 
-@$ TTL = 'ttl' === FORMAT;
-@$ TRIG = 'trig' === FORMAT;
+@$ TTL = 'ttl' === S_FORMAT;
+@$ TRIG = 'trig' === S_FORMAT;
 @$ B_QUADS = TRIG;
 
 @$ B_TURTLE = TTL
@@ -65,13 +65,11 @@
 @// import parser macros
 @import '../text.read.jmacs'
 
-@import '../error.mjs'
-
 import uri from 'uri-js';
 import string_decoder from 'string_decoder';
 
 import {stream} from '@@graphy/internal';
-import {DataFactory} from '@graphy/core';
+import {DataFactory} from '@@graphy/core';
 const quad = k => DataFactory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
 
 @- B_LOAD
@@ -85,6 +83,14 @@ const quad = k => DataFactory.quad(k._kt_subject, k._kt_predicate, k._kt_object,
 	const $_KEYS = Symbol(' keys');
 	const $_QUADS = Symbol(' quads');
 @;
+
+import {
+	ContentSyntaxError,
+	UnexpectedTokenError,
+	InvalidStateChangeError,
+	NoSuchPrefixError,
+	ExceededMaximumTokenLengthError,
+} from '../../error.mjs';
 
 // eslint-disable-next-line no-misleading-character-class
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
@@ -273,12 +279,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	content: this,
 	source: this.s,
 	position: this.i,
-	...this._b_line_tracking? {
-		location: {
-			line: this._c_lines+count_lines(this.s, this.i),
-			col: this.i - this.s.lastIndexOf('\n', this.i),
-		},
-	}: {},
+	...this._b_line_tracking
+		? {
+			location: {
+				line: this._c_lines+count_lines(this.s, this.i),
+				col: this.i - this.s.lastIndexOf('\n', this.i),
+			},
+		}
+		: {},
 @;
 
 
@@ -313,7 +321,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	else {
 		// check namespace, invalid
 		if(!b_tolerant && !RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
-			throw new TurtleSyntaxError({
+			throw new ContentSyntaxError({
 				message: `Invalid namespace for prefixed name: '${s_prefix_id}:'`,
 				@{error_args()}
 			});
@@ -338,7 +346,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 	// check iri, invalid
 	if(!b_tolerant && !RT_NAMED_NODE_VALID.test(p_prefix_iri)) {
-		throw new TurtleSyntaxError({
+		throw new ContentSyntaxError({
 			message: `Invalid IRI found in prefix delcaration: "${p_prefix_iri}"`,
 			@{error_args()}
 		});
@@ -616,6 +624,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		comment: () => ({
 			type: 'match',
 			test: /* syntax: js */ `R_COMMENT`,
+			args: {
+				local_i: true,
+			},
 			action: ({sj_matched}) => /* syntax: js */ `
 				if(this.emit_comments) this.emit_comments(${sj_matched}[0]);
 				continue;
@@ -853,23 +864,32 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				if(g_spec.goto || (null !== g_spec.goto && h_args.goto)) s_body += goto(g_spec.goto || h_args.goto);
 			}
 
-			// final else branch
-			s_body += /* syntax: js.if */ `} else {`;
+			if('bypass' !== g_state.loop) {
+				// final else branch
+				s_body += /* syntax: js.if */ `} else {`;
 
-			// else body is defined
-			if(g_state.else) {
-				s_body += g_state.else;
-			}
-			// default to retry
-			else {
-				s_body += (g_state.cleanup || '')+/* syntax: js */ `
-					// break loop to retry on next chunk if eos
-					break;
-				`;
+				// else body is defined
+				if(g_state.else) {
+					s_body += g_state.else;
+				}
+				// default to retry
+				else {
+					s_body += (g_state.cleanup || '')+/* syntax: js */ `
+						// break loop to retry on next chunk if eos
+						break;
+					`;
+				}
 			}
 
 			// close branches
 			s_body += '}\n'.repeat(c_branches);
+
+			// loop control type
+			let sx_loop = ({
+				bypass: '',
+				for: /* syntax: js */ `for(;;) {`,
+				'': /* syntax: js */ `${si_state.toUpperCase()}: while(i < n) {  // !eslint-disable-line no-unmodified-loop-condition`,
+			})[g_state.loop || ''];
 
 			yield /* syntax: js.method */ `
 				// parse state for ${si_state}
@@ -882,10 +902,10 @@ const OPHOP = Object.prototype.hasOwnProperty;
 					${g_state.preamble || ''}
 
 					// start labeled loop, run while there are characters
-					${si_state.toUpperCase()}: while(i < n) {  // eslint-disable-line no-unmodified-loop-condition
+					${sx_loop}
 						${s_body}
 						${g_state.fallthrough || ''}
-					}
+					${sx_loop? '}': ''}
 
 					${g_state.postscript || ''}
 
@@ -1186,7 +1206,7 @@ const match_prefixed_name = (s, i) => {
 @> pop_state(s_err)
 	// invalid place to pop
 	if(!this._a_nested.length) {
-		throw new TurtleSyntaxError({
+		throw new ContentSyntaxError({
 			message: `Unexpected @{s_err}`,
 			@{error_args()}
 		});
@@ -1203,35 +1223,6 @@ const match_prefixed_name = (s, i) => {
 
 @$ a_methods = [];
 
-@// declare a parse state
-@> method(s_name, b_extern)
-	@.{
-		a_methods.push(s_name);
-	}
-
-	// parse state for @{s_name}
-	@- b_extern
-		@{s_name}: () => {
-	@:
-		@{s_name}() {
-	@;
-		// destruct chunk, length, and index
-		let {s, n, i} = this;
-
-		// start labeled loop, run while there are characters
-		@{s_name}: while(i < n) {  // eslint-disable-line no-unmodified-loop-condition
-@;
-
-@// end parse state method
-@> end_method(s_name, max_token)
-		}
-
-		@- s_name
-			// ran out of characters
-			@{resume_state(s_name, false, max_token)}
-		@;
-	}
-@;
 
 @// set resume state & stop parsing in this stack
 @> resume_state(s_state, b_use_field_chunk=false, s_max_token=null)
@@ -1270,24 +1261,6 @@ const match_prefixed_name = (s, i) => {
 	this.data();
 @;
 
-@// extract name from suffix
-@> suffix(term)
-	// escape local escapes
-	let s_suffix = @{term}[2]
-		.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)
-		.replace(R_PN_LOCAL_ESCAPES, '$1');
-@;
-
-
-@// set the object value of a string literal
-@> set_string_literal(match, version)
-	this._s_literal =
-	@- 'no-escape' === version
-		@{match}[1];
-	@:
-		this.unescape_literal_@{'long'===version? 'long': 'short'}(@{match}[1]);
-	@;
-@;
 
 @> full_stop()
 	if(this._b_expecting_full_stop) {
@@ -1450,7 +1423,7 @@ function count_lines(s_chunk, i_until=Infinity) {
 	}
 }
 
-@$ S_EXPORT = S_LABEL+S_MODE[0]+S_MODE.substr(1)+'er';
+@$ S_EXPORT = S_LABEL+S_MODE[0].toUpperCase()+S_MODE.substr(1)+'er';
 
 @- 'load' === S_MODE
 	export class @{S_EXPORT} extends stream.Writable {
@@ -1707,7 +1680,7 @@ class Consumer {
 			anonymous_blank_node: /* syntax: js */ `s_label => blankNode(s_label, true)`,
 
 			// finds the next non-conflicting blank node label
-			next_label: /* syntax: js */ `function next_label() {
+			next_label: /* syntax: js */ `function() {
 				let s_label = '';
 				do {
 					s_label = 'g'+(i_anon++);
@@ -1746,10 +1719,10 @@ class Consumer {
 	/* eslint-enable multiline-ternary */ }
 
 	if(gc_consumer.relaxed) {
-		console.warn((new Error(`no such option 'relaxed'; did you mean 'relax' ? Suggestion: use 'tolerant' instead`)).stack.replace(/^Error:/, 'Warning:'));
+		console.warn((new TypeError(`No such option 'relaxed'; did you mean 'relax' ? Suggestion: use 'tolerant' instead`)).stack.replace(/^Error:/, 'Warning:'));
 	}
 	if('validate' in gc_consumer) {
-		console.warn((new Error(`option 'validate' has been deprecated. Validation is now enabled by default. Use the 'tolerant' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+		console.warn((new TypeError(`Option 'validate' has been deprecated. Validation is now enabled by default. Use the 'tolerant' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
 	}
 
 
@@ -1779,100 +1752,101 @@ class Consumer {
 @;
 
 		// term constructors
-		Object.assign(this, !gc_consumer.relax
-			? {
-				blank_node(s_label) {
+		if(this.tolerant) {
+			@*{yield* declare_properties({
+				// term constructors
+				blank_node: /* syntax: js */ `function(s_label) {
+					// check for conflicts
+					${no_label_conflict()}
+
+					// make term
+					${B_LOAD
+						? /* syntax: js */ `return '_:'+s_label;`
+						: /* syntax: js */ `return blankNode(s_label);`}
+				}`,
+
+				check_named_node: /* syntax: js */ `namedNode`,
+				check_named_node_escapeless: /* syntax: js */ `namedNode`,
+				match_prefixed_name_escapeless: /* syntax: js */ `match_prefixed_name_escapeless`,
+				match_prefixed_name: /* syntax: js */ `match_prefixed_name`,
+			}, /* syntax: js */ `this`)}
+		}
+		else {
+			@*{yield* declare_properties({
+				blank_node: /* syntax: js */ `function(s_label) {
 					// test valid blank node label
 					if(!RT_BLANK_NODE_VALID.test(s_label)) {
-						throw new TurtleSyntaxError({
-							message: `Invalid blank node label: '${s_label}'`,
-							@{error_args()}
+						throw new ContentSyntaxError({
+							message: \`Invalid blank node label: '\${s_label}'\`,
+							${error_args()}
 						});
 					}
 
-					@// check for conflicts
-					@{no_label_conflict()}
+					// check for conflicts
+					${no_label_conflict()}
 
 					// make term
 					return blankNode(s_label);
-				},
+				}`,
 
-				check_named_node(p_iri) {
+				check_named_node: /* syntax: js */ `function(p_iri) {
 					if(!RT_NAMED_NODE_VALID.test(p_iri)) {
-						throw new TurtleSyntaxError({
-							message: `Invalid IRI: <${p_iri}>`,
-							@{error_args()}
+						throw new ContentSyntaxError({
+							message: \`Invalid IRI: <\${p_iri}>\`,
+							${error_args()}
 						});
 					}
 					return namedNode(p_iri);
-				},
+				}`,
 
-				check_named_node_escapeless(p_iri) {
+				check_named_node_escapeless: /* syntax: js */ `function(p_iri) {
 					if(!RT_NAMED_NODE_ESCAPELESS_VALID.test(p_iri)) {
-						throw new TurtleSyntaxError({
-							message: `invalid IRI: <${p_iri}>`,
-							@{error_args()}
+						throw new ContentSyntaxError({
+							message: \`invalid IRI: <\${p_iri}>\`,
+							${error_args()}
 						});
 					}
 					return namedNode(p_iri);
-				},
+				}`,
 
-				match_prefixed_name_quick(s, i) {
+				match_prefixed_name_quick: /* syntax: js */ `function(s, i) {
 					R_PREFIXED_NAME_QUICK.lastIndex = i;
 					return [R_PREFIXED_NAME_QUICK.exec(s), R_PREFIXED_NAME_QUICK.lastIndex];
-				},
+				}`,
 
-				match_prefixed_name_escapeless(s, i) {
+				match_prefixed_name_escapeless: /* syntax: js */ `function(s, i) {
 					let [m_prefixed_name_e, im_prefixed_name_e] = match_prefixed_name_escapeless(s, i);
 					if(m_prefixed_name_e) {
-						@// no need to check namespace since it was validated during declaration
+						// no need to check namespace since it was validated during declaration
 						// invalid local name
 						if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name_e[2]) && m_prefixed_name_e[2]) {
-							throw new TurtleSyntaxError({
-								message: `Invalid prefixed name local name: '${m_prefixed_name_e[2]}:'`,
-								@{error_args()}
+							throw new ContentSyntaxError({
+								message: \`Invalid prefixed name local name: '\${m_prefixed_name_e[2]}:'\`,
+								${error_args()}
 							});
 						}
 					}
 
 					return [m_prefixed_name_e, im_prefixed_name_e];
-				},
+				}`,
 
-				match_prefixed_name(s, i) {
+				match_prefixed_name: /* syntax: js */ `function(s, i) {
 					let [m_prefixed_name, im_prefixed_name] = match_prefixed_name(s, i);
 					if(m_prefixed_name) {
-						@// no need to check namespace since it was validated during declaration
+						// no need to check namespace since it was validated during declaration
 						// invalid local name
 						if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name[2])) {
-							throw new TurtleSyntaxError({
-								message: `Invalid prefixed name local name: '${m_prefixed_name[2]}:'`,
-								@{error_args()}
+							throw new ContentSyntaxError({
+								message: \`Invalid prefixed name local name: '\${m_prefixed_name[2]}:'\`,
+								${error_args()}
 							});
 						}
 					}
 
 					return [m_prefixed_name, im_prefixed_name];
-				},
-			}
-			: {
-				// term constructors
-				blank_node(s_label) {
-					@// check for conflicts
-					@{no_label_conflict()}
-
-					// make term
-					@- B_LOAD
-						return '_:'+s_label;
-					@:
-						return blankNode(s_label);
-					@;
-				},
-
-				check_named_node: namedNode,
-				check_named_node_escapeless: namedNode,
-				match_prefixed_name_escapeless,
-				match_prefixed_name,
-			});
+				}`,
+			}, /* syntax: js */ `this`)}
+		}
 
 
 		this.named_node = namedNode;
@@ -1884,8 +1858,8 @@ class Consumer {
 
 		// oops -- user passed string into `base`
 		if('string' === typeof gc_consumer.base) {
-			throw new TypeError(`invalid type 'string' was given for 'base' event listener: '${gc_consumer.base}'\n`
-				+`did you mean to use the 'base_uri' key instead?`)
+			throw new TypeError(`Invalid type \`string\` was given for 'base' option event listener: '${gc_consumer.base}'\n`
+				+`did you mean to specify the 'base_uri' option instead?`)
 		}
 
 		// base uri
@@ -1899,7 +1873,7 @@ class Consumer {
 		}
 		// not set; 'url' variant is
 		else if(gc_consumer.base_url || gc_consumer.baseUrl || gc_consumer.baseURL) {
-			throw new Error(`invalid option: .base${gc_consumer.base_url? '_url': gc_consumer.baseUrl? 'Url': gc_consumer.baseURL? 'URL': ''}; use the '.base_uri' key instead`);
+			throw new TypeError(`Invalid option: 'base${gc_consumer.base_url? '_url': gc_consumer.baseUrl? 'Url': gc_consumer.baseURL? 'URL': ''}'; use the 'base_uri' option instead`);
 		}
 
 		// on data event
@@ -2156,7 +2130,7 @@ class Consumer {
 
 				// still invalid parsing state
 				if(this.@{S_STATE_PRIMARY} !== this._f_state) {
-					throw new TurtleUnexpectedTokenError({
+					throw new UnexpectedTokenError({
 						state: this._f_state.name,
 						found: '<<EOF>>',
 						@{error_args()}
@@ -2185,7 +2159,7 @@ class Consumer {
 				// not EOF
 				if(!(i === this.n - 1 && '\0' === s[i])) {
 					// bad input; parse error
-					throw new TurtleUnexpectedTokenError({
+					throw new UnexpectedTokenError({
 						state: this._f_state.name,
 						@{error_args()}
 					});
@@ -2591,7 +2565,7 @@ class Consumer {
 								? /* syntax: js.switch */ `
 									// invalid '\\n'
 									case '\\n': {
-										throw new TurtleSyntaxError({
+										throw new ContentSyntaxError({
 											message: \`Expected string_literal_${s_type}_${s_which} but found an invalid line feed character '\\\\n' (newline) within contents.\`,
 											${error_args()}
 										});
@@ -2599,7 +2573,7 @@ class Consumer {
 
 									// invalid '\\r'
 									case '\\r': {
-										throw new TurtleSyntaxError({
+										throw new ContentSyntaxError({
 											message: \`Expected string_literal_${s_type}_${s_which} but found an invalid form feed character '\\\\r' (carriage return) within contents.\`,
 											${error_args()}
 										});
@@ -2790,6 +2764,7 @@ class Consumer {
 		object_x: gen_state_object({b_star:true}),
 
 		triple_x_close: {
+			loop: 'bypass',
 			rules: {
 				rdf_star_terminator: () => ({
 					type: 'chars',
@@ -2797,7 +2772,7 @@ class Consumer {
 					args: {
 						uncached_char: true,
 					},
-					action: pop_state(`end of "triple x" Turtle* '>>'`),
+					action: pop_state(`end of "triple x" ${S_LABEL}* '>>'`),
 				}),
 			},
 		},
@@ -2806,6 +2781,7 @@ class Consumer {
 		string_literal: {
 			max: 'max_string_length',
 			preamble: SJ_REF_X_CHAR,
+			loop: 'for',
 			rules: {
 				string_literal_double: {},
 				string_literal_single: {},
@@ -2830,6 +2806,7 @@ class Consumer {
 					let sc1_datatype = '';
 				`,
 			}),
+			loop: 'for',
 			rules: {
 				prefixed_name_quick: {},
 				iriref_escapeless: {},
@@ -2967,7 +2944,7 @@ class Consumer {
 								this.i = i;
 
 								// emit parse error
-								throw new TurtleUnexpectedTokenError({
+								throw new UnexpectedTokenError({
 									state: 'end_of_property_list',
 									${error_args()}
 								});
@@ -2995,7 +2972,7 @@ class Consumer {
 					test: ')',
 					action: /* syntax: js */ `
 						// should not be here
-						throw new TurtleUnexpectedTokenError({
+						throw new UnexpectedTokenError({
 							state: 'post_object',
 							found: 'end of collection',
 							${error_args()}
@@ -3254,7 +3231,7 @@ class Consumer {
 					type: 'chars',
 					test: '(',
 					args: {
-						b_local_i: true,
+						local_i: true,
 					},
 					action: ((sj_term) => /* syntax: js */ `
 						// empty collection

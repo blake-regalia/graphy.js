@@ -8,7 +8,7 @@ import {
 /**
  * A handle on a specific (graph, subject, predicate) within an `ConciseGspoTreeBuilder`
  */
-export interface GreedHandle {
+export interface GraspHandle {
 	/**
 	 * Attempt to add a quad given by (graph, subject, predicate, `object`) to the dataset.
 	 * @param object
@@ -33,7 +33,7 @@ export interface GrubHandle {
 	 * Open a new handle to obtain (graph, subject, `predicate`).
 	 * @param predicate
 	 */
-	openC1Predicate(predicate: C1.Predicate): GreedHandle;
+	openC1Predicate(predicate: C1.Predicate): GraspHandle;
 }
 
 

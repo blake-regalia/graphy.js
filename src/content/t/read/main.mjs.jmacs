@@ -1,3 +1,0 @@
-@$ S_MODE = 'read';
-
-@import '../parse.js.jmacs';

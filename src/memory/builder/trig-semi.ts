@@ -84,8 +84,8 @@ type QuadsTree = CountableQuads & {
 }
 
 
-class SemiIndexedGreedHandle implements Dataset.GraspHandle {
-	_k_dataset: SemiIndexedTrigDataset;
+class SemiIndexedGraspHandle implements Dataset.GraspHandle {
+	_k_dataset: LinkedQuadTree;
 	_kh_grub: SemiIndexedGrubHandle;
 	_sc1_predicate: C1.Predicate;
 	_sc1_subject: C1.Subject;
@@ -317,12 +317,12 @@ class SemiIndexedGreedHandle implements Dataset.GraspHandle {
 
 
 class SemiIndexedGrubHandle implements Dataset.GrubHandle {
-	_k_dataset: SemiIndexedTrigDataset;
+	_k_dataset: LinkedQuadTree;
 	_kh_graph: InternalGraphHandle;
 	_sc1_subject: string;
 	_hc2_probs: ProbsTree;
 
-	constructor(k_dataset: SemiIndexedTrigDataset, kh_graph: InternalGraphHandle, sc1_subject: C1.Subject, hc2_probs: ProbsTree) {
+	constructor(k_dataset: LinkedQuadTree, kh_graph: InternalGraphHandle, sc1_subject: C1.Subject, hc2_probs: ProbsTree) {
 		this._k_dataset = k_dataset;
 		this._kh_graph = kh_graph;
 		this._sc1_subject = sc1_subject;
@@ -335,7 +335,7 @@ class SemiIndexedGrubHandle implements Dataset.GrubHandle {
 
 		// predicate exists; return tuple handle
 		if(sc1_predicate in hc2_probs) {
-			return new SemiIndexedGreedHandle(this, sc1_predicate, hc2_probs[sc1_predicate]);
+			return new SemiIndexedGraspHandle(this, sc1_predicate, hc2_probs[sc1_predicate]);
 		}
 		else {
 			// increment keys counter
@@ -345,7 +345,7 @@ class SemiIndexedGrubHandle implements Dataset.GrubHandle {
 			const as_objects = hc2_probs[sc1_predicate] = new Set<ObjectDescriptor>();
 
 			// return tuple handle
-			return new SemiIndexedGreedHandle(this, sc1_predicate, as_objects);
+			return new SemiIndexedGraspHandle(this, sc1_predicate, as_objects);
 		}
 	}
 }
@@ -356,11 +356,11 @@ interface InternalGraphHandle {
 }
 
 class SemiIndexedGraphHandle implements InternalGraphHandle, Dataset.GraphHandle {
-	_k_dataset: SemiIndexedTrigDataset;
+	_k_dataset: LinkedQuadTree;
 	_sc1_graph: string;
 	_hc3_triples: TriplesTree;
 
-	constructor(k_dataset: SemiIndexedTrigDataset, sc1_graph: C1.Graph, hc3_triples: TriplesTree) {
+	constructor(k_dataset: LinkedQuadTree, sc1_graph: C1.Graph, hc3_triples: TriplesTree) {
 		this._k_dataset = k_dataset;
 		this._sc1_graph = sc1_graph;
 		this._hc3_triples = hc3_triples;
@@ -417,7 +417,7 @@ function graph_to_c1(yt_graph: Role.Graph, h_prefixes: PrefixMap) {
  * SOME: gs?o
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
-export class SemiIndexedTrigDataset implements InternalGraphHandle, SyncGspoBuilder<SyncC1Dataset>, Dataset.SyncDataset {
+export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<SyncC1Dataset>, Dataset.SyncDataset {
 	_h_objects: ObjectStore;
 	_sc1_graph = '*';
 	_hc3_triples: TriplesTree;
@@ -450,7 +450,7 @@ export class SemiIndexedTrigDataset implements InternalGraphHandle, SyncGspoBuil
 	}
 
 	deliver(): Dataset.SyncC1Dataset {
-		return new SemiIndexedTrigDataset();
+		return new LinkedQuadTree();
 	}
 
 	* [Symbol.iterator](): Iterator<Quad> {
@@ -664,7 +664,7 @@ export class SemiIndexedTrigDataset implements InternalGraphHandle, SyncGspoBuil
 	}
 
 	match(yt_subject?: RDFJS.Term, yt_predicate?: RDFJS.Term, yt_object?: RDFJS.Term, yt_graph?: RDFJS.Term): SyncDataset {
-		return new SemiIndexedTrigDataset();
+		return new LinkedQuadTree();
 	}
 }
 
