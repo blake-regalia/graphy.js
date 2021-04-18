@@ -20,6 +20,7 @@
 @$ B_STAR = true;
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
+@$ B_CALLBACKS = false;
 
 @$ B_LOAD_GSPO_BUILDER = true;
 
@@ -361,8 +362,13 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		this._sc1_rdf_type = concise('@{P_IRI_RDF}type', h_prefixes);
 	@;
 
-	// emit prefix event
-	this.event('prefix', s_prefix_id, p_prefix_iri);
+	@- B_CALLBACKS
+		// emit prefix event
+		this._fk_prefix(s_prefix_id, p_prefix_iri);
+	@:
+		// emit prefix event
+		this.event('prefix', s_prefix_id, p_prefix_iri);
+	@;
 @;
 
 
@@ -443,10 +449,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		action: ({sj_matched}) => [
 			iriref({s_role:'base_iri', sj_matched, b_escapeless}),
 			modal({
-				read: /* syntax: js */ `
-					// emit base event
-					this.emit('base', this._s_base_url);
-				`,
+				read: B_CALLBACKS
+					? /* syntax: js */ `
+						this._fk_base(this._s_base_url);
+					`
+					: /* syntax: js */ `
+						// emit base event
+						this.emit('base', this._s_base_url);
+					`,
 				load: '',
 			}),
 			// handle full stop
@@ -1148,12 +1158,20 @@ const match_prefixed_name = (s, i) => {
 
 @// will only be used by TriG
 @> emit_graph_open()
-	this.emit('enter', this._kt_graph);
+	@- B_CALLBACKS
+		this._fk_enter(this._kt_graph);
+	@:
+		this.emit('enter', this._kt_graph);
+	@;
 @;
 
 @// will only be used by TriG
 @> emit_graph_close()
-	this.emit('exit', this._kt_graph);
+	@- B_CALLBACKS
+		this._fk_exit(this._kt_graph);
+	@:
+		this.emit('exit', this._kt_graph);
+	@;
 @;
 
 
@@ -1425,6 +1443,27 @@ function count_lines(s_chunk, i_until=Infinity) {
 
 @$ S_EXPORT = S_LABEL+S_MODE[0].toUpperCase()+S_MODE.substr(1)+'er';
 
+
+@$ H_PARSE_EVENTS = {
+	base: {},
+	prefix: {},
+	...(B_QUADS
+		? {
+			enter: {},
+			exit: {},
+		}
+		: {}),
+	comment: {},
+	error: {},
+	read: {once:true},
+	progress: {},
+	eof: {once:true},
+	end: {once:true},
+	finish: {once:true},
+	data: {},  // attach data listener last
+};
+
+
 @- 'load' === S_MODE
 	export class @{S_EXPORT} extends stream.Writable {
 		constructor(gc_consumer={}) {
@@ -1442,6 +1481,20 @@ function count_lines(s_chunk, i_until=Infinity) {
 	}
 @+ 'read' === S_MODE
 	export class @{S_EXPORT} extends stream.Transform {
+		static async run(z_input, gc_run) {
+			// instantiate consumer
+			const k_consumer = new Consumer(null, gc_run);
+
+			// string
+			if('string' === typeof z_input) {
+				k_consumer.consume_string(z_input);
+			}
+			// stream
+			else {
+				await k_consumer.consume_stream(z_input);
+			}
+		}
+
 		constructor(gc_consumer={}) {
 			super({
 				// do not decode strings into buffers
@@ -1455,7 +1508,10 @@ function count_lines(s_chunk, i_until=Infinity) {
 			});
 
 			// instantiate consumer
-			new Consumer(this, gc_consumer);  // eslint-disable-line no-new
+			const k_consumer = new Consumer(this, gc_consumer);  // eslint-disable-line no-new
+
+			// proxy stream
+			k_consumer.proxy_stream(this);
 		}
 
 		// intercept pipe
@@ -1491,6 +1547,10 @@ function count_lines(s_chunk, i_until=Infinity) {
 
 export default @{S_EXPORT};
 
+
+const F_NOOP = () => {};
+const F_THROW = (e_what) => {throw e_what};
+
 class Consumer {
 	constructor(ds_stream, gc_consumer) {
 		// TODO: normalize reader config
@@ -1503,7 +1563,23 @@ class Consumer {
 
 			// a state to inherit
 			state: g_state={},
-		} = gc_consumer;
+		} = this._gc_consumer = gc_consumer;
+
+		@- B_CALLBACKS
+			// assign event callbacks
+			@*{
+				for(const [si_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
+					if('error' === si_event) {
+						yield /* syntax: js */ `this._fk_error = gc_consumer.error || F_THROW;`;
+					}
+					else {
+						yield /* syntax: js */ `this._fk_${si_event} = gc_consumer.${si_event} || F_NOOP;`;
+					}
+				}
+			}
+		@:
+			this.transform = ds_stream;
+		@;
 
 		// inherit state from creator
 		let {
@@ -1542,14 +1618,25 @@ class Consumer {
 				ds_stream.emit('load', k_builder.deliver());
 			};
 		@:
-			this.emit_data = DataFactory.unfiltered === dc_factory
-				? function() {
-					ds_stream.push(quad(this));
-				}
-				: function() {
-					let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-					ds_stream.push(g_quad);
-				};
+			@- B_CALLBACKS
+				this.emit_data = DataFactory.unfiltered === dc_factory
+					? function() {
+						this._fk_data(quad(this));
+					}
+					: function() {
+						let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
+						this._fk_data(g_quad);
+					};
+			@:
+				this.emit_data = DataFactory.unfiltered === dc_factory
+					? function() {
+						ds_stream.push(quad(this));
+					}
+					: function() {
+						let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
+						ds_stream.push(g_quad);
+					};
+			@;
 		@;
 
 		// fields
@@ -1876,6 +1963,117 @@ class Consumer {
 			throw new TypeError(`Invalid option: 'base${gc_consumer.base_url? '_url': gc_consumer.baseUrl? 'Url': gc_consumer.baseURL? 'URL': ''}'; use the 'base_uri' option instead`);
 		}
 
+		// input given
+		if(g_input) {
+			// input is stream
+			if(g_input.stream) {
+				let ds_input = g_input.stream;
+
+				// go async so caller has chance to bind event listeners
+				queueMicrotask(() => {
+					ds_input.pipe(ds_stream);
+				});
+			}
+			// string
+			else if('string' === typeof g_input.string) {
+				let s_input = g_input.string;
+
+				// go async so caller has chance to bind event listeners
+				queueMicrotask(() => {
+					ds_stream.end(s_input, 'utf8');
+				});
+			}
+			// invalid arg
+			else {
+				throw new TypeError(`Invalid argument for input parameter: ${'object' === typeof g_input? JSON.stringify(g_input): g_input}`);
+			}
+		}
+	}
+
+	consume_string(s_input) {
+		// concatenate current chunk to previous chunk
+		let s = this.s = s_input;
+
+		// cache chunk length
+		this.n = s.length;
+
+		// eat whitespace before token and reset index
+		if(this._b_trim_start) {
+			@{whitespace()}
+		}
+		// do not eat whitespace; start at beginning
+		else {
+			this.i = 0;
+		}
+
+		// resume parsing; no errors
+		if(this.safe_parse(true)) {
+			@- B_LOAD
+				// debugger;
+				// this.data();
+			@;
+
+			// // count lines
+			// if(this._b_line_tracking) {
+			// 	this._c_lines = count_lines(s_input, -1);
+			// }
+		}
+
+		// eof
+		this.eof(1);
+	}
+
+	consume_stream(ds_input) {
+		return new Promise((fk_consumed) => {
+			ds_input.on('data', (s_chunk) => {
+				// concatenate current chunk to previous chunk
+				let s = this.s = this.pre + s_chunk;
+
+				// cache chunk length
+				this.n = s.length;
+
+				// eat whitespace before token and reset index
+				if(this._b_trim_start) {
+					@{whitespace()}
+				}
+				// do not eat whitespace; start at beginning
+				else {
+					this.i = 0;
+				}
+
+				// resume parsing; no errors
+				if(this.safe_parse(true)) {
+					@- B_LOAD
+						// debugger;
+						// this.data();
+					@;
+
+					// emit progress event updates
+					@- B_CALLBACKS
+						this._fk_progress(s_chunk.length);
+					@:
+						ds_input.emit('progress', s_chunk.length);
+					@;
+
+					// count lines
+					if(this._b_line_tracking) {
+						this._c_lines += count_lines(s_chunk, -1);
+					}
+				}
+			});
+
+			ds_input.on('error', this._fk_error);
+			ds_input.on('end', () => {
+				this.eof(1);
+
+				// TODO: this._fk_end()
+
+				fk_consumed();
+			});
+		});
+	}
+
+	proxy_stream(ds_stream) {
 		// on data event
 		ds_stream._transform = (s_chunk, s_encoding, fke_chunk) => {
 			// concatenate current chunk to previous chunk
@@ -1899,8 +2097,13 @@ class Consumer {
 					// debugger;
 					// this.data();
 				@;
+
 				// emit progress event updates
-				ds_stream.emit('progress', s_chunk.length);
+				@- B_CALLBACKS
+					this._fk_progress(s_chunk.length);
+				@:
+					ds_stream.emit('progress', s_chunk.length);
+				@;
 
 				// count lines
 				if(this._b_line_tracking) {
@@ -2007,7 +2210,11 @@ class Consumer {
 					let a_comments = s_captured.slice(1).replace(/\n\s+$/, '').split(/\n+\s*#/g);
 
 					for(let s_comment of a_comments) {
-						ds_stream.emit('comment', s_comment);
+						@- B_CALLBACKS
+							this._fk_comment(s_comment);
+						@:
+							ds_stream.emit('comment', s_comment);
+						@;
 					}
 				};
 			}
@@ -2019,33 +2226,7 @@ class Consumer {
 		};
 
 		// bind events to transform stream
-		this.bind(gc_consumer);
-
-		// input given
-		if(g_input) {
-			// input is stream
-			if(g_input.stream) {
-				let ds_input = g_input.stream;
-
-				// go async so caller has chance to bind event listeners
-				queueMicrotask(() => {
-					ds_input.pipe(ds_stream);
-				});
-			}
-			// string
-			else if('string' === typeof g_input.string) {
-				let s_input = g_input.string;
-
-				// go async so caller has chance to bind event listeners
-				queueMicrotask(() => {
-					ds_stream.end(s_input, 'utf8');
-				});
-			}
-			// invalid arg
-			else {
-				throw new TypeError(`Invalid argument for input parameter: ${'object' === typeof g_input? JSON.stringify(g_input): g_input}`);
-			}
-		}
+		this.bind(this._gc_consumer);
 	}
 
 	// begin parsing, keep applying until no more stack bail-outs
@@ -2170,14 +2351,22 @@ class Consumer {
 		// make buffer's alloc eligible for gc
 		this.s = null;
 
-		// transform stream
-		let ds_stream = this.transform;
+		@- B_CALLBACKS
+			// final progress update: no additional bytes were read
+			this._fk_progress(0);
 
-		// final progress update: no additional bytes were read
-		ds_stream.emit('progress', 0);
+			// call end event listener
+			this._fk_eof(this._h_prefixes);
+		@:
+			// transform stream
+			let ds_stream = this.transform;
 
-		// call end event listener
-		ds_stream.emit('eof', this._h_prefixes);
+			// final progress update: no additional bytes were read
+			ds_stream.emit('progress', 0);
+
+			// call end event listener
+			ds_stream.emit('eof', this._h_prefixes);
+		@;
 
 		@- B_LOAD
 			@- B_LOAD_GSPO_BUILDER
@@ -2200,8 +2389,10 @@ class Consumer {
 			@;
 		@;
 
-		// close write stream (EOF-signaling)
-		ds_stream.push(null);
+		@- !B_CALLBACKS
+			// close write stream (EOF-signaling)
+			ds_stream.push(null);
+		@;
 	};
 
 	@- B_STAR
@@ -2211,25 +2402,6 @@ class Consumer {
 		}
 	@;
 
-
-@$ H_PARSE_EVENTS = {
-	base: {},
-	prefix: {},
-	...(B_QUADS
-		? {
-			enter: {},
-			exit: {},
-		}
-		: {}),
-	comment: {},
-	error: {},
-	read: {once:true},
-	progress: {},
-	eof: {once:true},
-	end: {once:true},
-	finish: {once:true},
-	data: {},  // attach data listener last
-};
 
 	// bind event listeners to transform stream
 	bind(gc_consumer) {
@@ -3644,26 +3816,34 @@ class Consumer {
 	@//@object-literal
 
 	destroy(e_destroy) {
-		@*{
-			for(let s_method of a_methods) {
-				yield /* syntax: js */ `
-					this.${s_method} = () => {};
-				`;
+		@- B_CALLBACKS
+			this.eof = () => {
+				this.s = null;
+			};
+
+			this._b_destroyed = true;
+		@:
+			@*{
+				for(let s_method of a_methods) {
+					yield /* syntax: js */ `
+						this.${s_method} = () => {};
+					`;
+				}
 			}
-		}
 
-		this.eof = () => {
-			this.s = null;
-		};
+			this.eof = () => {
+				this.s = null;
+			};
 
-		this._b_destroyed = true;
+			this._b_destroyed = true;
 
-		// propagate input destroy
-		if(!e_destroy && this._ds_input) {
-			this._ds_input.destroy(e_destroy);
-		}
+			// propagate input destroy
+			if(!e_destroy && this._ds_input) {
+				this._ds_input.destroy(e_destroy);
+			}
 
-		this.transform.demolish(e_destroy);
+			this.transform.demolish(e_destroy);
+		@;
 	}
 }
 
