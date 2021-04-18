@@ -4,7 +4,7 @@ const expect = chai.expect;
 
 import stream from 'readable-stream';
 
-import w3c_rdf_specification from '../interface/w3c-rdf-specification.mjs';
+import w3c_rdf_specification from '../interface/w3c-rdf-specification.js';
 import graphy_reader_interface from '../interface/content-reader.mjs';
 
 import util from './util.mjs';
@@ -172,3 +172,5 @@ export class ReaderSuite {
 		});
 	}
 }
+
+export default ReaderSuite;

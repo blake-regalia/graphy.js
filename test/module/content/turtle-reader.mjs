@@ -8,11 +8,12 @@ import {
 	integerLiteral,
 	doubleLiteral,
 	decimalLiteral,
-} from '@graphy-stable/core';
+} from '@graphy/core';
 
-import {TreeDataset} from '@graphy-stable/memory';
+// import {QuadTree} from '@graphy/memory';
+import QuadTree from '@graphy/memory/quad-tree';
 
-import {TurtleReader} from '@graphy/content';
+import TurtleReader from '@graphy/content/ttl-read';
 
 import ReaderSuite from '../../helper/reader-suite.mjs';
 
@@ -1116,7 +1117,7 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 	});
 
 	reader.interfaces((f_interface) => {
-		const kd_expect = new TreeDataset();
+		const kd_expect = new QuadTree();
 
 		kd_expect.add(quad(...[
 			namedNode('test://a'),
@@ -1155,7 +1156,7 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 				},
 
 				data(a_events) {
-					const kd_actual = new TreeDataset();
+					const kd_actual = new QuadTree();
 					for(const [g_quad] of a_events) {
 						kd_actual.add(g_quad);
 					}

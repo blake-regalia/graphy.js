@@ -7,6 +7,10 @@ const [B_BROWSER, B_BROWSERIFY] = (() => 'undefined' === typeof process
 			? [true, false]
 			: [false, false])))();
 
+// import fs from 'fs';
+// import path from 'path';
+// import url from 'url';
+// import {expect} from 'chai';
 const fs = require('fs');
 const path = require('path');
 const url = require('url');

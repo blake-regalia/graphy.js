@@ -3,7 +3,7 @@
 @import '../../share/writer.jmacs'
 
 import {
-	c1,
+	fromC1,
 	cachePrefixes,
 	SI_PREFIX_BASE,
 } from '@graphy/core';
@@ -16,7 +16,7 @@ import {
 const N_DEFAULT_MAX_BUFFER = 1 << 15;  // 32 KiB
 
 
-export default class ScribableContent extends Transform {
+export class ScribableContent extends Transform {
 	// flush buffer
 	static _flush_buffer(k_self) {
 		// no buffer; exit
@@ -130,7 +130,7 @@ export default class ScribableContent extends Transform {
 		// a union was performed
 		if(a_unions.length) {
 			// warn about implicit union
-			const s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => c1(sc1, h_prefixes).verbose()).join(', ')}`;
+			const s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => fromC1(sc1, h_prefixes).verbose()).join(', ')}`;
 
 			// emit warning, wasn't listened to; force thru warn/stderr channel
 			if(!this.emit('warning', s_warning)) {
@@ -336,3 +336,5 @@ export default class ScribableContent extends Transform {
 	g_self.isGraphyWritable = true;
 	g_self._serialize_prefixes = g_self._update_prefixes;
 }
+
+export default ScribableContent;

@@ -323,3 +323,5 @@ export const graphy_reader_interface = ({
 		});
 	}
 };
+
+export default graphy_reader_interface;

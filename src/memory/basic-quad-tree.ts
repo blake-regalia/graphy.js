@@ -8,33 +8,32 @@ import {
 	Role,
 	Term,
 	C1,
-	Quad,
-	Memory,
+	Dataset,
 	PrefixMap,
 } from '@graphy/types';
 
-import SyncC1Dataset = Memory.SyncC1Dataset;
-import SyncGspoBuilder = Memory.SyncGspoBuilder;
+import SyncC1Dataset = Dataset.SyncC1Dataset;
+import SyncQuadTreeBuilder = Dataset.SyncQuadTreeBuilder;
 
-import {
-	$_KEYS,
-	$_QUADS,
-	$_OVERLAY,
-	$_BURIED,
-	Generic,
-} from './common';
+// import {
+// 	$_KEYS,
+// 	$_QUADS,
+// 	$_OVERLAY,
+// 	$_BURIED,
+// 	// GenericQuadTreeQuadTree,
+// } from './common';
 
-import ProbsTree = Generic.ProbsTree;
-import TriplesTree = Generic.TriplesTree;
-import QuadsTree = Generic.QuadsTree;
-import GraphHandle = Generic.GraphHandle;
-import GrubHandle = Generic.GrubHandle;
-import GraspHandle = Generic.GraspHandle;
-import ObjectSet = Generic.ObjectSet;
+// import ProbsHash = GenericQuadTree.ProbsHash;
+// import TriplesHash = GenericQuadTree.TriplesHash;
+// import QuadsHash = GenericQuadTree.QuadsHash;
+// import GraphHandle = GenericQuadTree.GraphHandle;
+// import GrubHandle = GenericQuadTree.GrubHandle;
+// import GraspHandle = GenericQuadTree.GraspHandle;
+// import ObjectSet = GenericQuadTree.ObjectSet;
 
-import overlayTree = Generic.overlayTree;
-import overlay = Generic.overlay;
-import trace = Generic.trace;
+// import overlayTree = GenericQuadTree.overlayTree;
+// import overlay = GenericQuadTree.overlay;
+// import trace = GenericQuadTree.trace;
 
 const {
 	concise,
@@ -48,28 +47,395 @@ const {
 	c1FromPredicateRole,
 	c1FromObjectRole,
 	c1ExpandData,
-	mapsDiffer,
+	prefixMapsDiffer,
 } = DataFactory;
 
-@import './embed/builder.ts.jmacs';
+export interface Deliverable {
+	new(...args: any[]): Dataset.SyncC1Dataset;
+}
+
+export interface BasicQuadTreeConstructor {
+	new(...args: any[]): BasicQuadTree;
+}
+
+
+/**
+ * Caches the number of 'keys' stored in the tree.
+ */
+export const $_KEYS = Symbol('key-count');
+
+/**
+ * Tracks the total count of quads stored at all descendent levels of the tree.
+ */
+export const $_QUADS = Symbol('quad-count');
+
+/**
+ * When present, indicates that the tree is overlaying another object via prototype.
+ *   This allows for super quick set operations, such as `union` and `difference`, on
+ *   the average case and significantly reduces memory consumption and GC time.
+ */
+export const $_OVERLAY = Symbol('overlay-status');
+
+/**
+ * When present, indicates that the tree was used to create an overlay for another tree.
+ *   The implication is that if `add` or `delete` is called on a buried tree, the method
+ *   will have to create a new tree since the original object may still be referenced.
+ */
+export const $_BURIED = Symbol('buried-status');
+
+
+export interface CountableKeys {
+	[$_KEYS]: number;
+}
+
+export type CountableQuads = CountableKeys & {
+	[$_QUADS]: number;
+}
+
+export type OverlayableCountableQuads = CountableQuads & {
+	[$_OVERLAY]?: number;
+	[$_BURIED]?: number;
+}
+
+export type QuadsHash = OverlayableCountableQuads & {
+	[sc1_graph: string]: TriplesHash;
+}
+
+export type TriplesHash = OverlayableCountableQuads & {
+	[sc1_subject: string]: ProbsHash;
+}
+
+export type ProbsHash = OverlayableCountableQuads & {
+	[sc1_predicate: string]: Set<C1.Object>;
+}
+
+export interface InternalGraphHandle extends Dataset.GraphHandle {
+	_sc1_graph: C1.Graph;
+	_hc3_trips: TriplesHash;
+}
+
+export interface InternalGrubHandle extends Dataset.GrubHandle {
+	_kh_graph: InternalGraphHandle;
+	_sc1_subject: C1.Subject;
+	_hc2_probs: ProbsHash;
+}
+
+export interface InternalGraspHandle extends Dataset.GraspHandle {
+	_as_objects: InternalObjectSet;
+}
+
+export type InternalObjectSet = Set<C1.Object>;
+
+
+export type Tree = QuadsHash | TriplesHash | ProbsHash;
+
+
+export const overlayTree = (n_keys=0, n_quads=0) => ({
+	[$_KEYS]: n_keys,
+	[$_QUADS]: n_quads,
+	// [$_OVERLAY]: 0,
+	// [$_SUPPORTING]: [],
+}) as QuadsHash | TriplesHash | ProbsHash;
+
+export const overlay = (hcw_src: any): Tree => {
+	// create new tree
+	const hcw_dst = Object.create(hcw_src);
+
+	// src is now buried
+	hcw_src[$_BURIED] = 1;
+
+	// dst is an overlay
+	hcw_dst[$_OVERLAY] = 1;
+
+	return hcw_dst;
+};
+
+export const trace = (hcw_overlay: any): Tree => {
+	// create dst tree
+	const hcw_dst = {} as Tree;
+
+	// check each key
+	for(let sv1_key in hcw_overlay) {
+		hcw_dst[sv1_key] = hcw_overlay[sv1_key];
+	}
+
+	// copy key count and quad count
+	hcw_dst[$_KEYS] = hcw_overlay[$_KEYS];
+	hcw_dst[$_QUADS] = hcw_overlay[$_QUADS];
+
+	return hcw_dst;
+};
+
+
+
+/**
+ * @fileoverview
+ * The following table indicates the names for various groupings of RDF term roles:
+ * 
+ *  ┌─────────┬───────────┬─────────────┬──────────┐
+ *  │ <graph> ┊ <subject> ┊ <predicate> ┊ <object> │
+ *  ├─────────┴───────────┼─────────────┴──────────┤
+ *  │        grub         │           prob         │
+ *  ├─────────────────────┴─────────────┬──────────┤
+ *  │               grasp               │░░░░░░░░░░│
+ *  ├─────────┬─────────────────────────┴──────────┤
+ *  │░░░░░░░░░│         spred           │░░░░░░░░░░│
+ *  ├─────────┼─────────────────────────┴──────────┤
+ *  │░░░░░░░░░│               triple               │
+ *  ├─────────┴────────────────────────────────────┤
+ *  │                      quad                    │
+ *  └──────────────────────────────────────────────┘
+ * 
+ */
+
+
+class GraspHandle implements InternalGraspHandle {
+	_k_builder: BasicQuadTreeBuilder;
+	_kh_grub: GrubHandle;
+	_sc1_predicate: C1.Predicate;
+	_sc1_subject: C1.Subject;
+	_as_objects: Set<C1.Object>; 
+
+	constructor(kh_grub: GrubHandle, sc1_predicate: C1.Predicate, as_objects: Set<C1.Object>) {
+		this._k_builder = kh_grub._k_builder;
+		this._kh_grub = kh_grub;
+		this._sc1_subject = kh_grub._sc1_subject;
+		this._sc1_predicate = sc1_predicate;
+		this._as_objects = as_objects;
+	}
+
+	addC1Object(sc1_object: C1.Object): boolean {
+		// ref object store
+		const as_objects = this._as_objects;
+
+		// triple already exists
+		if(as_objects.has(sc1_object)) return false;
+
+		// insert into object set
+		as_objects.add(sc1_object);
+
+		// ref quads tree
+		const hc4_quads = this._k_builder._hc4_quads;
+
+		// update quads counter on quads tree
+		hc4_quads[$_QUADS] += 1;
+
+		// ref triples tree
+		const hc3_trips = hc4_quads[this._kh_grub._kh_graph._sc1_graph];
+
+		// update quads counter on triples tree
+		hc3_trips[$_QUADS] += 1;
+
+		// update quads counter on probs tree
+		hc3_trips[this._sc1_subject][$_QUADS] += 1;
+
+		// new triple added
+		return true;
+	}
+}
+
+
+class GrubHandle implements InternalGrubHandle {
+	_k_builder: BasicQuadTreeBuilder;
+	_kh_graph: InternalGraphHandle;
+	_sc1_subject: C1.Subject;
+	_hc2_probs: ProbsHash;
+
+	constructor(k_dataset: BasicQuadTreeBuilder, kh_graph: InternalGraphHandle, sc1_subject: C1.Subject, hc2_probs: ProbsHash) {
+		this._k_builder = k_dataset;
+		this._kh_graph = kh_graph;
+		this._sc1_subject = sc1_subject;
+		this._hc2_probs = hc2_probs;
+	}
+
+	openC1Predicate(sc1_predicate: C1.Predicate): Dataset.GraspHandle {
+		// increment keys counter
+		const hc2_probs = this._hc2_probs;
+
+		// predicate exists; return tuple handle
+		if(sc1_predicate in hc2_probs) {
+			return new GraspHandle(this, sc1_predicate, hc2_probs[sc1_predicate]);
+		}
+		else {
+			// increment keys counter
+			hc2_probs[$_KEYS] += 1;
+
+			// create predicate w/ empty objects set
+			const as_objects = hc2_probs[sc1_predicate] = new Set();
+
+			// return tuple handle
+			return new GraspHandle(this, sc1_predicate, as_objects);
+		}
+	}
+}
+
+class StandaloneGraphHandle implements InternalGraphHandle {
+	_k_builder: BasicQuadTreeBuilder;
+	_sc1_graph: string;
+	_hc3_trips: TriplesHash;
+	 
+	constructor(k_dataset: BasicQuadTreeBuilder, sc1_graph: C1.Graph, hc3_trips: TriplesHash) {
+		this._k_builder = k_dataset;
+		this._sc1_graph = sc1_graph;
+		this._hc3_trips = hc3_trips;
+	}
+
+	openC1Subject(sc1_subject: C1.Subject): Dataset.GrubHandle {
+		// ref triples tree
+		const hc3_trips = this._hc3_trips;
+
+		// subject exists; return subject handle
+		if(sc1_subject in hc3_trips) {
+			return new GrubHandle(this._k_builder, this, sc1_subject, hc3_trips[sc1_subject]);
+		}
+		else {
+			// increment keys counter
+			hc3_trips[$_KEYS] += 1;
+
+			// create subject w/ empty probs tree
+			const hc2_probs = hc3_trips[sc1_subject] = overlayTree() as ProbsHash;
+
+			// return subject handle
+			return new GrubHandle(this._k_builder, this, sc1_subject, hc2_probs);
+		}
+	}
+}
+
+function graph_to_c1(yt_graph: Role.Graph, h_prefixes: PrefixMap): C1.Graph {
+	// depending on graph term type
+	switch(yt_graph.termType) {
+		// default graph
+		case 'DefaultGraph': {
+			return '*';
+		}
+
+		// named node
+		case 'NamedNode': {
+			return concise(yt_graph.value, h_prefixes);
+		}
+
+		// blank node
+		case 'BlankNode': {
+			return '_:'+yt_graph.value;
+		}
+
+		// other
+		default: {
+			return '';
+		}
+	}
+}
+
+function dataset_already_delivered(): never {
+	throw new Error(`Cannot use builder after dataset has been delivered`);;
+}
+
+/**
+ * Trig-Optimized, Semi-Indexed Dataset in Memory
+ * YES: ????, g???, g??o, g?po, gs??, gsp?, gspo
+ * SOME: gs?o
+ * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
+ */
+export class BasicQuadTreeBuilder implements Dataset.GraphHandle, Dataset.SyncQuadTreeBuilder<SyncC1Dataset> {
+	_sc1_graph = '*';
+	_hc3_trips: TriplesHash;
+	_hc4_quads: QuadsHash;
+	_h_prefixes: PrefixMap;
+
+	static supportsStar = false;
+
+	constructor(h_prefixes={} as PrefixMap, kd_init=BasicQuadTree.empty(h_prefixes)) {
+		this._h_prefixes = h_prefixes;
+
+		this._hc4_quads = kd_init._hc4_quads as QuadsHash;
+		this._hc3_trips = kd_init._hc3_trips as TriplesHash;
+	}
+
+	openC1Graph(sc1_graph: C1.Graph): Dataset.GraphHandle {
+		// ref quads tree
+		const hc4_quads = this._hc4_quads;
+
+		// graph exists; return subject handle
+		if(sc1_graph in hc4_quads) {
+			return new StandaloneGraphHandle(this, sc1_graph, hc4_quads[sc1_graph]);
+		}
+		else {
+			// increment keys counter
+			hc4_quads[$_KEYS] += 1;
+
+			// create graph w/ empty triples tree
+			const hc3_trips = hc4_quads[sc1_graph] = overlayTree() as TriplesHash;
+
+			// return subject handle
+			return new StandaloneGraphHandle(this, sc1_graph, hc3_trips);
+		}
+	}
+
+	openC1Subject(sc1_subject: C1.Node): Dataset.GrubHandle {
+		// ref default graph triples tree
+		const hc3_trips = this._hc3_trips;
+
+		// subject exists; return subject handle
+		if(sc1_subject in hc3_trips) {
+			return new GrubHandle(this, this, sc1_subject, hc3_trips[sc1_subject]);
+		}
+		// subject not yet exists
+		else {
+			// increment keys counter
+			hc3_trips[$_KEYS] += 1;
+
+			// create subject w/ empty probs tree
+			const hc2_probs = hc3_trips[sc1_subject] = overlayTree() as ProbsHash;
+
+			// return subject handle
+			return new GrubHandle(this, this, sc1_subject, hc2_probs);
+		}
+	}
+
+	openGraph(yt_graph: Role.Graph): Dataset.GraphHandle {
+		return this.openC1Graph(graph_to_c1(yt_graph, this._h_prefixes));
+	}
+
+	openSubject(yt_subject: Role.Subject): Dataset.GrubHandle {
+		return this.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, this._h_prefixes): '_:'+yt_subject.value);
+	}
+
+	deliver(dc_dataset: Deliverable=BasicQuadTree): SyncC1Dataset {  // eslint-disable-line require-await
+		// simplify garbage collection and prevent future modifications to dataset
+		const hc4_quads = this._hc4_quads;
+		this._hc4_quads = null as unknown as QuadsHash;
+		this._hc3_trips = null as unknown as TriplesHash;
+		this.openC1Subject = dataset_already_delivered;
+		this.openC1Graph = dataset_already_delivered;
+
+
+		// create dataset
+		return new dc_dataset(hc4_quads, this._h_prefixes);
+	}
+}
+
 @import './embed/normalizer.ts.jmacs';
 @import './embed/union-same.ts.jmacs';
 
+
 type StaticSelf = Function & {
-	builder: {new(): QuadTreeBuilder};
-	empty(h_prefixes: PrefixMap): QuadTree;
-	new(hc4_quads: Generic.QuadsTree, h_prefixes: PrefixMap): QuadTree;
+	builder: {new(): Dataset.QuadTreeBuilder};
+	empty(h_prefixes: PrefixMap): BasicQuadTree;
+	new(hc4_quads: QuadsHash, h_prefixes: PrefixMap): BasicQuadTree;
 };
 
-export interface QuadTree extends SyncC1Dataset {
+// export interface QuadTree extends SyncC1Dataset {
 
-	expand(): QuadTree;
-}
+// 	expand(): QuadTree;
+// }
 
-interface Constructor extends Generic.Constructor<QuadTree, QuadTreeBuilder, Generic.QuadsTree> {}
+// interface Constructor extends GenericQuadTree.Constructor<QuadTree, QuadTreeBuilder, GenericQuadTree.QuadsHash> {}
 
 
-export const QuadTree: Constructor = class QuadTree implements QuadTree {
+// export const BasicQuadTree: Constructor = class BasicQuadTree implements QuadTree {
+export class BasicQuadTree implements SyncC1Dataset {
+	static Builder = BasicQuadTreeBuilder;
+
 	/**
 	 * Authoritative and immutable prefix map to use for c1 creation and resolution
 	 */
@@ -78,17 +444,17 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	/**
 	 * Primary tree data structure for storing quads
 	 */
-	_hc4_quads: Generic.QuadsTree;
+	_hc4_quads: QuadsHash;
 
 	/**
 	 * Shortcut to the default graph
 	 */
-	_hc3_trips: Generic.TriplesTree;
+	_hc3_trips: TriplesHash;
 
 	/**
 	 * Internal self builder for creating match results or appending
 	 */
-	_k_builder: QuadTreeBuilder;
+	_k_builder: BasicQuadTreeBuilder;
 
 	/**
 	 * If true, c1 strings are prefixed. Otherwise, c1 strings are expanded
@@ -99,8 +465,8 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	 * Create new empty dataset
 	 * @param h_prefixes 
 	 */
-	static empty(h_prefixes: PrefixMap): QuadTree {
-		return new QuadTree({
+	static empty(h_prefixes: PrefixMap): BasicQuadTree {
+		return new BasicQuadTree({
 			[$_KEYS]: 1,
 			[$_QUADS]: 0,
 			// [$_OVERLAY]: 0,
@@ -111,7 +477,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 				// [$_OVERLAY]: 0,
 				// [$_BURIED]: [],
 			},
-		} as Generic.QuadsTree, h_prefixes);
+		} as QuadsHash, h_prefixes);
 	}
 
 	/**
@@ -119,12 +485,12 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	 * @param hc4_quads 
 	 * @param h_prefixes 
 	 */
-	constructor(hc4_quads: Generic.QuadsTree, h_prefixes: PrefixMap, b_prefixed=false) {
+	constructor(hc4_quads: QuadsHash, h_prefixes: PrefixMap, b_prefixed=false) {
 		this._hc4_quads = hc4_quads;
 		this._hc3_trips = hc4_quads['*'];
 		this._h_prefixes = h_prefixes;
 		this._b_prefixed = b_prefixed;
-		this._k_builder = new QuadTreeBuilder(h_prefixes, this);
+		this._k_builder = new BasicQuadTreeBuilder(h_prefixes, this);
 	}
 
 	/**
@@ -152,7 +518,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	/**
 	 * For iterating through the dataset one quad at a time
 	 */
-	* [Symbol.iterator](): Generator<Quad> {
+	* [Symbol.iterator](): Generator<Term.Quad> {
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
@@ -173,7 +539,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 				const kt_subject = c1Subject(sc1_subject, h_prefixes);
 
 				// ref probs tree
-				const hc2_probs = hc3_trips[sc1_subject] as ProbsTree;
+				const hc2_probs = hc3_trips[sc1_subject] as ProbsHash;
 
 				// each predicate
 				for(const sc1_predicate in hc2_probs) {
@@ -275,7 +641,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 			// each subject
 			for(const sc1_subject in hc3_trips) {
 				// ref probs tree
-				const hc2_probs = hc3_trips[sc1_subject] as ProbsTree;
+				const hc2_probs = hc3_trips[sc1_subject] as ProbsHash;
 
 				// each predicate
 				for(const sc1_predicate in hc2_probs) {
@@ -338,7 +704,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 		return this._total_distinct_graphs();
 	}
 
-	distinctC1Subjects(): Set<C1.Graph> {
+	distinctC1Subjects(): Set<C1.Subject> {
 		return this._total_distinct_subjects();
 	}
 
@@ -371,7 +737,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 		}
 	}
 
-	* distinctPredicates(): Generator<Term.Subject> {
+	* distinctPredicates(): Generator<Term.Predicate> {
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
@@ -399,7 +765,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	addC1Quad(sc1_subject: C1.Subject, sc1_predicate: C1.Predicate, sc1_object: C1.Object, sc1_graph?:  C1.Graph): boolean {
 		const kh_handle: Dataset.GraphHandle = sc1_graph
 			? this._k_builder.openC1Graph(sc1_graph)
-			: this._k_builder as QuadTreeBuilder;
+			: this._k_builder as BasicQuadTreeBuilder;
 
 		// use builder to efficiently add quad
 		return kh_handle.openC1Subject(sc1_subject).openC1Predicate(sc1_predicate).addC1Object(sc1_object);
@@ -434,7 +800,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 		const sc1_subject = c1FromSubjectRole(g_quad.subject, h_prefixes);
 
 		// fetch probs tree
-		const hc2_probs = hc3_trips[concise(sc1_subject, h_prefixes)] as ProbsTree;
+		const hc2_probs = hc3_trips[concise(sc1_subject, h_prefixes)] as ProbsHash;
 
 		// none
 		if(!hc2_probs) return false;
@@ -457,21 +823,21 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 
 		this._k_builder.openC1Graph(c1FromGraphRole(g_quad.graph, h_prefixes))
 			.openC1Subject(c1FromSubjectRole(g_quad.subject, h_prefixes))
-			.openC1Predicate(c1FromPredicateRole(g_quad.predicate.value, h_prefixes))
+			.openC1Predicate(c1FromPredicateRole(g_quad.predicate, h_prefixes))
 			.deleteC1Object(c1FromObjectRole(g_quad.object, h_prefixes));
 
 		return this;
 	}
 
 
-	_offspring(hc4_out: QuadsTree): QuadTree {
-		return new QuadTree(hc4_out, this._h_prefixes);
+	_offspring(hc4_out: QuadsHash): BasicQuadTree {
+		return new BasicQuadTree(hc4_out, this._h_prefixes);
 	}
 
 
 	match(yt_subject?: Role.Subject | null, yt_predicate?: Role.Predicate | null, yt_object?: Role.Object | null, yt_graph?: Role.Graph| null): SyncC1Dataset {
 		const h_prefixes = this._h_prefixes;
-		const hc4_src = this._hc4_quads as QuadsTree;
+		const hc4_src = this._hc4_quads as QuadsHash;
 
 		// +graph
 		if(yt_graph) {
@@ -479,7 +845,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 			const sc1_graph = c1FromGraphRole(yt_graph, h_prefixes);
 
 			// no such graph; return new empty tree
-			if(!(sc1_graph in hc4_src)) return QuadTree.empty(h_prefixes);
+			if(!(sc1_graph in hc4_src)) return BasicQuadTree.empty(h_prefixes);
 
 			// ref triples tree
 			const hc3_src = hc4_src[sc1_graph];
@@ -490,7 +856,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 				let sc1_subject = c1FromSubjectRole(yt_subject, h_prefixes);
 
 				// no such subject; return new empty tree
-				if(!(sc1_subject in hc3_src)) return QuadTree.empty(h_prefixes);
+				if(!(sc1_subject in hc3_src)) return BasicQuadTree.empty(h_prefixes);
 
 				// ref probs tree
 				const hc2_src = hc3_src[sc1_subject];
@@ -501,7 +867,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					const sc1_predicate = c1FromPredicateRole(yt_predicate, h_prefixes);
 
 					// no such predicate; return new empty tree
-					if(!(sc1_predicate in hc2_src)) return QuadTree.empty(h_prefixes);
+					if(!(sc1_predicate in hc2_src)) return BasicQuadTree.empty(h_prefixes);
 
 					// ref objects set
 					const as_objects_src = hc2_src[sc1_predicate];
@@ -516,7 +882,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 						const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
 
 						// no such object; return new empty tree
-						if(!as_objects_src.has(sc1_object)) return QuadTree.empty(h_prefixes);
+						if(!as_objects_src.has(sc1_object)) return BasicQuadTree.empty(h_prefixes);
 						
 						// create set
 						as_objects_dst = new Set([sc1_object]);
@@ -552,7 +918,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 								[sc1_predicate]: as_objects_dst,
 							},
 						},
-					} as QuadsTree);
+					} as QuadsHash);
 				}
 				// +graph, +subject, -predicate, +object
 				else if(yt_object) {
@@ -566,7 +932,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					let c_probs = 0;
 
 					// dst probs tree
-					const hc2_dst = overlayTree() as ProbsTree;
+					const hc2_dst = overlayTree() as ProbsHash;
 
 					// each probs
 					for(const sc1_predicate in hc2_src) {
@@ -581,7 +947,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					}
 
 					// no quads; empty tree
-					if(!c_probs) return QuadTree.empty(h_prefixes);
+					if(!c_probs) return BasicQuadTree.empty(h_prefixes);
 
 					// save keys and quads count
 					hc2_dst[$_KEYS] = c_probs;
@@ -596,7 +962,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 							[$_QUADS]: c_probs,
 							[sc1_subject]: hc2_dst,
 						},
-					} as QuadsTree);
+					} as QuadsHash);
 				}
 				// +graph, +subject -predicate, -object
 				else {
@@ -612,7 +978,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 							[$_QUADS]: n_quads_probs,
 							[sc1_subject]: overlay(hc2_src),
 						},
-					} as QuadsTree);
+					} as QuadsHash);
 				}
 			}
 			// +graph, -subject, +predicate
@@ -625,7 +991,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 				let c_quads = 0;
 
 				// init dst triples tree
-				const hc3_dst = overlayTree() as TriplesTree;
+				const hc3_dst = overlayTree() as TriplesHash;
 
 				// +graph, -subject, +predicate, +object
 				if(yt_object) {
@@ -654,7 +1020,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 							[$_KEYS]: 1,
 							[$_QUADS]: 1,
 							[sc1_predicate]: new Set(a_object_load),
-						} as ProbsTree;
+						} as ProbsHash;
 
 						// increment quads count
 						c_quads += 1;
@@ -681,7 +1047,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 							[$_KEYS]: 1,
 							[$_QUADS]: as_objects_dst.size,
 							[sc1_predicate]: as_objects_dst,
-						} as ProbsTree;
+						} as ProbsHash;
 						
 						// increment quads & subject-keys count
 						c_quads += as_objects_dst.size;
@@ -690,7 +1056,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 				}
 
 				// no quads; empty tree
-				if(!c_subjects) return QuadTree.empty(h_prefixes);
+				if(!c_subjects) return BasicQuadTree.empty(h_prefixes);
 
 				// save quads and subject-keys counts to dst triples tree
 				hc3_dst[$_KEYS] = c_subjects;
@@ -701,7 +1067,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					[$_KEYS]: 1,
 					[$_QUADS]: c_quads,
 					[sc1_graph]: hc3_dst,
-				} as QuadsTree);
+				} as QuadsHash);
 			}
 			// +graph, -subject, -predicate, +object
 			else if(yt_object) {
@@ -716,7 +1082,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 				let c_quads = 0;
 
 				// init dst triples tree
-				const hc3_dst = overlayTree() as TriplesTree;
+				const hc3_dst = overlayTree() as TriplesHash;
 
 				// each triples
 				for(const sc1_subject in hc3_src) {
@@ -727,7 +1093,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					let c_probs = 0;
 
 					// dst probs tree
-					const hc2_dst = overlayTree() as ProbsTree;
+					const hc2_dst = overlayTree() as ProbsHash;
 
 					// each probs
 					for(const sc1_predicate in hc2_src) {
@@ -762,7 +1128,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 				}
 
 				// no quads; empty tree
-				if(!c_subjects) return QuadTree.empty(h_prefixes);
+				if(!c_subjects) return BasicQuadTree.empty(h_prefixes);
 
 				// save quads and subject-keys count
 				hc3_dst[$_KEYS] = c_subjects;
@@ -773,7 +1139,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					[$_KEYS]: 1,
 					[$_QUADS]: c_quads,
 					[sc1_graph]: hc3_dst,
-				} as QuadsTree);
+				} as QuadsHash);
 			}
 			// +graph, -subject, -predicate, -object
 			else {
@@ -782,13 +1148,13 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					[$_KEYS]: 1,
 					[$_QUADS]: hc3_src[$_QUADS],
 					[sc1_graph]: overlay(hc3_src),
-				} as QuadsTree);
+				} as QuadsHash);
 			}
 		}
 		// -graph
 		else {
 			// init dst quads hash
-			const hc4_dst = overlayTree() as QuadsTree;
+			const hc4_dst = overlayTree() as QuadsHash;
 
 			// -graph, +subject
 			if(yt_subject) {
@@ -844,7 +1210,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 									[$_QUADS]: 1,
 									[sc1_predicate]: as_objects_dst,
 								},
-							} as TriplesTree;
+							} as TriplesHash;
 
 							// increment graph-keys & quads count
 							c_quads += 1;
@@ -884,7 +1250,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 									[$_QUADS]: n_objects,
 									[sc1_predicate]: as_objects_dst,
 								},
-							} as TriplesTree;
+							} as TriplesHash;
 
 							// increment graph-keys & quads count
 							c_graphs += 1;
@@ -893,7 +1259,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					}
 
 					// no quads; empty tree
-					if(!c_graphs) return QuadTree.empty(h_prefixes);
+					if(!c_graphs) return BasicQuadTree.empty(h_prefixes);
 
 					// save quads and graph-keys counts
 					hc4_dst[$_KEYS] = c_graphs;
@@ -931,7 +1297,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 							let c_probs = 0;
 
 							// init dst probs tree
-							const hc2_dst =  overlayTree() as ProbsTree;
+							const hc2_dst =  overlayTree() as ProbsHash;
 
 							// each predicate
 							for(const sc1_predicate in hc2_src) {
@@ -960,7 +1326,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 								[$_KEYS]: 1,
 								[$_QUADS]: c_probs,
 								[sc1_subject]: hc2_dst,
-							} as TriplesTree;
+							} as TriplesHash;
 
 							// increment graph-keys and quads count
 							c_graphs += 1;
@@ -988,7 +1354,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 								[$_KEYS]: 1,
 								[$_QUADS]: n_quads,
 								[sc1_subject]: overlay(hc2_src),
-							} as TriplesTree;
+							} as TriplesHash;
 
 							// increment graph-keys and quads count
 							c_graphs += 1;
@@ -997,7 +1363,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					}
 
 					// no quads; empty tree
-					if(!c_graphs) return QuadTree.empty(h_prefixes);
+					if(!c_graphs) return BasicQuadTree.empty(h_prefixes);
 
 					// save graph-keys and quads count
 					hc4_dst[$_KEYS] = c_graphs;
@@ -1035,7 +1401,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 							let c_subjects = 0;
 
 							// init dst triples tree
-							const hc3_dst = overlayTree() as TriplesTree;
+							const hc3_dst = overlayTree() as TriplesHash;
 
 							// each subject
 							for(const sc1_subject in hc3_src) {
@@ -1056,7 +1422,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 									[$_KEYS]: 1,
 									[$_QUADS]: 1,
 									[sc1_predicate]: new Set(a_object_load),
-								} as ProbsTree;
+								} as ProbsHash;
 
 								// increment subject-keys and quads count
 								c_subjects += 1;
@@ -1078,7 +1444,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return QuadTree.empty(h_prefixes);
+						if(!c_graphs) return BasicQuadTree.empty(h_prefixes);
 
 						// save graph-keys and quads count
 						hc4_dst[$_KEYS] = c_graphs;
@@ -1099,7 +1465,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 							let c_triples = 0;
 
 							// init dst triples tree
-							const hc3_dst = overlayTree() as TriplesTree;
+							const hc3_dst = overlayTree() as TriplesHash;
 
 							// each subject
 							for(const sc1_subject in hc3_src) {
@@ -1120,7 +1486,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 									[$_KEYS]: 1,
 									[$_QUADS]: n_objects,
 									[sc1_predicate]: as_objects_dst,
-								} as ProbsTree;
+								} as ProbsHash;
 
 								// increment subject-keys and quads count
 								c_subjects += 1;
@@ -1143,7 +1509,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return QuadTree.empty(h_prefixes);
+						if(!c_graphs) return BasicQuadTree.empty(h_prefixes);
 
 						// save graph-keys and quads counts
 						hc4_dst[$_KEYS] = c_graphs;
@@ -1177,7 +1543,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 							let c_triples = 0;
 
 							// init dst triples tree
-							const hc3_dst = overlayTree() as TriplesTree;
+							const hc3_dst = overlayTree() as TriplesHash;
 
 							// each subject
 							for(const sc1_subject in hc3_src) {
@@ -1188,7 +1554,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 								let c_predicates = 0;
 
 								// init dst probs tree
-								const hc2_dst = overlayTree() as ProbsTree;
+								const hc2_dst = overlayTree() as ProbsHash;
 
 								// each predicate
 								for(const sc1_predicate in hc2_src) {
@@ -1236,7 +1602,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 						}
 
 						// no quads; empty tree
-						if(!c_graphs) return QuadTree.empty(h_prefixes);
+						if(!c_graphs) return BasicQuadTree.empty(h_prefixes);
 
 						// save subject-keys and quads count
 						hc4_dst[$_KEYS] = c_graphs;
@@ -1248,7 +1614,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 					// -graph, -subject, -predicate, -object
 					else {
 						// same quad tree (clone)
-						return QuadTree.empty(h_prefixes);
+						return BasicQuadTree.empty(h_prefixes);
 					}
 				}
 			}
@@ -1279,7 +1645,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 			: this._h_prefixes;
 
 		// return new dataset
-		return new QuadTree(hc4_out, h_prefixes);
+		return new BasicQuadTree(hc4_out, h_prefixes);
 	}
 
 
@@ -1287,7 +1653,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	/**
 	 * Create a new dataset by prefixing all c1 strings
 	 */
-	prefixed(): QuadTree {
+	prefixed(): BasicQuadTree {
 		// already prefixed, just clone it
 		if(this._b_prefixed) return this.clone();
 
@@ -1298,7 +1664,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	/**
 	 * Create a new dataset by expanding all c1 strings
 	 */
-	expanded(): QuadTree {
+	expanded(): BasicQuadTree {
 		// already expanded, just clone it
 		if(!this._b_prefixed) return this.clone();
 
@@ -1306,10 +1672,10 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 		const h_prefixes = this._h_prefixes;
 
 		// ref quads
-		const hc4_quads = this._hc4_quads as QuadsTree;
+		const hc4_quads = this._hc4_quads as QuadsHash;
 
 		// prep quads out
-		const hc4_out = overlayTree() as QuadsTree;
+		const hc4_out = overlayTree() as QuadsHash;
 
 		// each graph
 		for(const sc1_graph in hc4_quads) {
@@ -1344,7 +1710,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 		}
 
 		// return new dataset
-		return new QuadTree(hc4_out, h_prefixes);
+		return new BasicQuadTree(hc4_out, h_prefixes);
 	}
 
 
@@ -1352,15 +1718,15 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	 * Perform the union of two datasets
 	 * @param k_other 
 	 */
-	union(z_other: RDFJS.Dataset): QuadTree {
+	union(z_other: RDFJS.Dataset): BasicQuadTree {
 		// other is graphy dataset
-		if(z_other.isGraphyDataset) {
+		if((z_other as any).isGraphyDataset) {
 			// deduce dataset type
-			switch(z_other.datasetType) {
+			switch((z_other as any).datasetType) {
 				// same dataset type
-				case this.datasetStorageType: {
+				case (this as any).datasetStorageType: {
 					// prefix maps differ; perform expanded union
-					if(mapsDiffer(this._h_prefixes, z_other._h_prefixes)) {
+					if(prefixMapsDiffer(this._h_prefixes, z_other._h_prefixes)) {
 						return this.toNQuadsDataset().union(z_other.toNQuadsDataset());
 					}
 					// prefix maps are identical
@@ -1376,7 +1742,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 		// resort to iterative merge
 		{
 			// clone this dataset
-			const k_clone = this.clone(z_other._h_prefixes || {});
+			const k_clone = this.clone((z_other as any)._h_prefixes || {});
 
 			// each quad in other; add to clone
 			for(const g_quad of z_other) {
@@ -1389,7 +1755,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	}
 
 
-	_union_same(k_other) {
+	_union_same(k_other: BasicQuadTree) {
 		// ref quads
 		let hc4_quads_a = this._hc4_quads;
 		let hc4_quads_b = k_other._hc4_quads;
@@ -1401,7 +1767,7 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 		@{union_same()}
 
 		// return new dataset
-		return new QuadTree(hc4_quads_u, {
+		return new BasicQuadTree(hc4_quads_u, {
 			// copy prefixes
 			...this._h_prefixes,
 		});
@@ -1419,10 +1785,9 @@ export const QuadTree: Constructor = class QuadTree implements QuadTree {
 	}
 }
 
-QuadTree.Builder = QuadTreeBuilder;
 
-
-export interface QuadTree {
+// typings for fixed prototype properties
+export interface BasicQuadTree {
 	/**
 	 * Indicates at runtime without that this class is compatible as a graphy dataset
 	 */
@@ -1434,9 +1799,9 @@ export interface QuadTree {
 	datasetStorageType: string;
 }
 
-QuadTree.prototype.isGraphyDataset = true;
+BasicQuadTree.prototype.isGraphyDataset = true;
 
-QuadTree.prototype.datasetStorageType = '@{`
+BasicQuadTree.prototype.datasetStorageType = '@{`
 	quads {
 		[g: c1]: trips {
 			[s: c1]: probs {

@@ -4,7 +4,7 @@ import {
 	IGraspHandle,
 	IGrubHandle,
 	IGraphHandle,
-	IConciseGspoBuilder,
+	IConciseQuadTreeBuilder,
 	IDataset,
 } from './dataset-interface';
 
@@ -132,7 +132,7 @@ const XM_OBJECT    = 0b1000;
  * Stores an unindexed set of quads in (graph, subject, predicate, object) order.
  * Fast insertion, slow at everything else.
  */
-export class QuadSet implements IConciseGspoBuilder<IDataset>, IDataset {
+export class QuadSet implements IConciseQuadTreeBuilder<IDataset>, IDataset {
 	_h_prefixes: PrefixMap;
 	_as_quads: Set<string>;
 

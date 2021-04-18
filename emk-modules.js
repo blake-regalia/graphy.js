@@ -58,7 +58,16 @@ const H_GEN_LEAF = {
 						const g_package_json = ${JSON.stringify(H_MODULES[si_package].json)};
 
 						// update package.json
-						return {...G_PACKAGE_JSON_BASE, ...g_package_json};
+						return {
+							...G_PACKAGE_JSON_BASE,
+							...g_package_json,
+
+							// merge exports
+							exports: {
+								...G_PACKAGE_JSON_BASE.exports,
+								...(g_package_json.exports || {}),
+							},
+						};
 					}
 				`)} > $@
 

@@ -20,14 +20,14 @@
  */
 
 
-class GraspHandle implements PartiallyIndexed.GraspHandle {
-	_k_builder: TreeDatasetBuilder;
-	_kh_grub: GrubHandle;
+class GraspHandle implements InternalGraspHandle {
+	_k_builder: QuadTreeBuilder;
+	_kh_grub: InternalGrubHandle;
 	_sc1_predicate: C1.Predicate;
 	_sc1_subject: C1.Subject;
-	_as_objects: Set<C1.Term>; 
+	_as_objects: Set<C1.Object>; 
 
-	constructor(kh_grub: GrubHandle, sc1_predicate: C1.Predicate, as_objects: Set<C1.NamedNode>) {
+	constructor(kh_grub: InternalGrubHandle, sc1_predicate: C1.Predicate, as_objects: Set<C1.Object>) {
 		this._k_builder = kh_grub._k_builder;
 		this._kh_grub = kh_grub;
 		this._sc1_subject = kh_grub._sc1_subject;
@@ -66,13 +66,13 @@ class GraspHandle implements PartiallyIndexed.GraspHandle {
 }
 
 
-class GrubHandle implements PartiallyIndexed.GrubHandle {
-	_k_builder: TrigDatasetBuilder;
-	_kh_graph: PartiallyIndexed.GraphHandle;
+class GrubHandle implements InternalGrubHandle {
+	_k_builder: QuadTreeBuilder;
+	_kh_graph: InternalGraphHandle;
 	_sc1_subject: C1.Subject;
-	_hc2_probs: PartiallyIndexed.ProbsTree;
+	_hc2_probs: ProbsHash;
 
-	constructor(k_dataset: TrigDatasetBuilder, kh_graph: PartiallyIndexed.GraphHandle, sc1_subject: C1.Subject, hc2_probs: PartiallyIndexed.ProbsTree) {
+	constructor(k_dataset: QuadTreeBuilder, kh_graph: InternalGraphHandle, sc1_subject: C1.Subject, hc2_probs: ProbsHash) {
 		this._k_builder = k_dataset;
 		this._kh_graph = kh_graph;
 		this._sc1_subject = sc1_subject;
@@ -100,12 +100,12 @@ class GrubHandle implements PartiallyIndexed.GrubHandle {
 	}
 }
 
-class StandaloneGraphHandle implements PartiallyIndexed.GraphHandle {
-	_k_builder: TrigDatasetBuilder;
+class StandaloneGraphHandle implements GraphHandle {
+	_k_builder: QuadTreeBuilder;
 	_sc1_graph: string;
-	_hc3_trips: PartiallyIndexed.TriplesTree;
+	_hc3_trips: TriplesHash;
 	 
-	constructor(k_dataset: TrigDatasetBuilder, sc1_graph: C1.Graph, hc3_trips: PartiallyIndexed.TriplesTree) {
+	constructor(k_dataset: QuadTreeBuilder, sc1_graph: C1.Graph, hc3_trips: TriplesHash) {
 		this._k_builder = k_dataset;
 		this._sc1_graph = sc1_graph;
 		this._hc3_trips = hc3_trips;
@@ -124,7 +124,7 @@ class StandaloneGraphHandle implements PartiallyIndexed.GraphHandle {
 			hc3_trips[$_KEYS] += 1;
 
 			// create subject w/ empty probs tree
-			const hc2_probs = hc3_trips[sc1_subject] = overlayTree() as PartiallyIndexed.ProbsTree;
+			const hc2_probs = hc3_trips[sc1_subject] = overlayTree() as ProbsHash;
 
 			// return subject handle
 			return new GrubHandle(this._k_builder, this, sc1_subject, hc2_probs);
@@ -167,22 +167,22 @@ function dataset_delivered(): never {
  * SOME: gs?o
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
-export class TreeDatasetBuilder implements PartiallyIndexed.GraphHandle, Dataset.SyncGspoBuilder<SyncC1Dataset> {
+export class QuadTreeBuilder implements GraphHandle, Dataset.SyncQuadTreeBuilder<SyncC1Dataset> {
 	_sc1_graph = '*';
-	_hc3_trips: PartiallyIndexed.TriplesTree;
-	_hc4_quads: PartiallyIndexed.QuadsTree;
+	_hc3_trips: TriplesHash;
+	_hc4_quads: QuadsHash;
 	_h_prefixes: PrefixMap;
 
 	static supportsStar = false;
 
-	constructor(h_prefixes={} as PrefixMap, kd_init=TreeDataset.empty(h_prefixes)) {
+	constructor(h_prefixes={} as PrefixMap, kd_init=BasicQuadTree.empty(h_prefixes)) {
 		this._h_prefixes = h_prefixes;
 
-		this._hc4_quads = kd_init._hc4_quads as PartiallyIndexed.QuadsTree;
-		this._hc3_trips = kd_init._hc3_trips as PartiallyIndexed.TriplesTree;
+		this._hc4_quads = kd_init._hc4_quads as QuadsHash;
+		this._hc3_trips = kd_init._hc3_trips as TriplesHash;
 	}
 
-	openC1Graph(sc1_graph: C1.Graphable): Dataset.GraphHandle {
+	openC1Graph(sc1_graph: C1.Graph): Dataset.GraphHandle {
 		// ref quads tree
 		const hc4_quads = this._hc4_quads;
 
@@ -195,7 +195,7 @@ export class TreeDatasetBuilder implements PartiallyIndexed.GraphHandle, Dataset
 			hc4_quads[$_KEYS] += 1;
 
 			// create graph w/ empty triples tree
-			const hc3_trips = hc4_quads[sc1_graph] = overlayTree() as PartiallyIndexed.TriplesTree;
+			const hc3_trips = hc4_quads[sc1_graph] = overlayTree() as TriplesHash;
 
 			// return subject handle
 			return new StandaloneGraphHandle(this, sc1_graph, hc3_trips);
@@ -216,7 +216,7 @@ export class TreeDatasetBuilder implements PartiallyIndexed.GraphHandle, Dataset
 			hc3_trips[$_KEYS] += 1;
 
 			// create subject w/ empty probs tree
-			const hc2_probs = hc3_trips[sc1_subject] = overlayTree() as PartiallyIndexed.ProbsTree;
+			const hc2_probs = hc3_trips[sc1_subject] = overlayTree() as ProbsHash;
 
 			// return subject handle
 			return new GrubHandle(this, this, sc1_subject, hc2_probs);
@@ -231,11 +231,11 @@ export class TreeDatasetBuilder implements PartiallyIndexed.GraphHandle, Dataset
 		return this.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, this._h_prefixes): '_:'+yt_subject.value);
 	}
 
-	deliver(dc_dataset: Deliverable=PartiallyIndexedTrigDataset): SyncC1Dataset {  // eslint-disable-line require-await
+	deliver(dc_dataset: Deliverable=QuadTree): SyncC1Dataset {  // eslint-disable-line require-await
 		// simplify garbage collection and prevent future modifications to dataset
 		const hc4_quads = this._hc4_quads;
-		this._hc4_quads = null as unknown as PartiallyIndexed.QuadsTree;
-		this._hc3_trips = null as unknown as PartiallyIndexed.TriplesTree;
+		this._hc4_quads = null as unknown as QuadsHash;
+		this._hc3_trips = null as unknown as TriplesHash;
 		this.openC1Subject = dataset_delivered;
 		this.openC1Graph = dataset_delivered;
 

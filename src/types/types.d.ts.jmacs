@@ -1,4 +1,5 @@
-import * as RDFJS from 'rdf-js';
+// import * as RDFJS from 'rdf-js';
+import * as RDFJS from '@rdfjs/types';
 
 export {
 	RDFJS as RDFJS,
@@ -66,7 +67,7 @@ export interface PrefixMapRelation {
 
 export namespace Dataset {
 	/**
-	 * A handle on a specific (graph, subject, predicate) within an `GspoBuilder`
+	 * A handle on a specific (graph, subject, predicate) within an `QuadTreeBuilder`
 	 */
 	export interface GraspHandle {
 		/**
@@ -74,43 +75,52 @@ export namespace Dataset {
 		 * @param object
 		 * @returns `true` if the quad was inserted (indicates it did not previously exist), `false` otherwise
 		 */
-		addC1Object(object: C1.Any): boolean;
+		addC1Object(object: C1.Object): boolean;
+
+		/**
+		 * Attempt to delete a quad given by (graph, subject, predicate, `object`) from the dataset.
+		 * @param object
+		 * @returns `true` if the quad was deleted (indicates it previously existed), `false` otherwise
+		 */
+		deleteC1Object(object: C1.Object): boolean;
 	}
 
 	/**
-	 * A handle on a specific (graph, subject) within a `GspoBuilder`.
+	 * A handle on a specific (graph, subject) within a `ConciseGspoTreeBuilder`.
 	 */
 	export interface GrubHandle {
 		/**
 		 * Open a new handle to obtain (graph, subject, `predicate`).
 		 * @param predicate
 		 */
-		openC1Predicate(predicate: C1.NamedNode): GraspHandle;
+		openC1Predicate(predicate: C1.Predicate): GraspHandle;
 	}
 
+
 	/**
-	 * A handle on a specific graph within a `GspoBuilder`.
+	 * A handle on a specific graph within a `ConciseGspoTreeBuilder`.
 	 */
 	export interface GraphHandle {
 		/**
 		 * Open a new handle to obtain (graph, `subject`).
 		 * @param subject 
 		 */
-		openC1Subject(subject: C1.Node): GrubHandle;
+		openC1Subject(subject: C1.Subject): GrubHandle;
 	}
+
 
 
 	/**
 	 * An interface for building a dataset in (graph, subject, predicate, object) order using concise terms.
 	 */
-	export interface GspoBuilder extends GraphHandle {
-		openC1Graph(graph: C1.Graph): GraphHandle;
-		openC1Subject(subject: C1.Node): GrubHandle;
-		openGraph(graph: Role.Graph): GraphHandle;
-		openSubject(subject: Role.Subject): GrubHandle;
+	export interface ConciseQuadTreeBuilder<dc_dataset extends Dataset> extends GraphHandle {
+		attachPrefixes(h_prefixes: PrefixMap): void;
+		openC1Graph(sc1_graph: C1.Graph): GraphHandle;
+		openC1Subject(subject: C1.Subject): GrubHandle;
+		deliver(): Promise<dc_dataset>;
 	}
 
-	export interface SyncGspoBuilder<Deliverable extends SyncDataset> extends GspoBuilder {
+	export interface SyncQuadTreeBuilder<Deliverable extends SyncDataset> extends QuadTreeBuilder {
 		deliver(datasetClass?: { new(...args: any[]): SyncDataset }): Deliverable;
 	}
 
@@ -125,7 +135,7 @@ export namespace Dataset {
 	/**
 	 * 
 	 */
-	export interface SyncDataset {
+	export interface SyncDataset extends RDFJS.Dataset<Term.Quad, RDFJS.Quad> {
 		readonly isGraphyDataset: true;
 		readonly datasetStorageType: string;
 		readonly size: number;
@@ -147,14 +157,14 @@ export namespace Dataset {
 		distinctPredicates(): Iterator<Term.Predicate>;
 		distinctObjects(): Iterator<Term.Object>;
 
-		equals(other: SyncDataset): boolean;
-		contains(other: SyncDataset): boolean;
-		disjoint(other: SyncDataset): boolean;
+		// equals(other: RDFJS.Dataset): boolean;
+		contains(other: RDFJS.Dataset): boolean;
+		disjoint(other: RDFJS.Dataset): boolean;
 
-		union(other: SyncDataset): SyncDataset;
-		intersection(other: SyncDataset): SyncDataset;
+		// union(other: RDFJS.Dataset): SyncDataset;
+		// intersection(other: SyncDataset): SyncDataset;
 		minus(other: SyncDataset): SyncDataset;
-		difference(other: SyncDataset): SyncDataset;
+		// difference(other: SyncDataset): SyncDataset;
 
 		canonicalize(): SyncDataset;
 		//delta(other: SyncDataset): Delta

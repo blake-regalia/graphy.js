@@ -3,23 +3,21 @@
 import {
 	RDFJS,
 	C1,
+	Term,
 	PrefixMap,
-	Quad,
 	Dataset,
 	Role,
 } from '@graphy/types';
 
 import {
-	QuadTree,
-} from './trig-partial';
+	BasicQuadTree,
+} from './basic-quad-tree';
 
 import SyncDataset = Dataset.SyncDataset;
 
 import {
 	$_KEYS,
 	$_QUADS,
-	PartiallyIndexed,
-	SemiIndexed,
 	Generic,
 } from '../common';
 
@@ -38,15 +36,15 @@ const {
 } = DataFactory;
 
 
-export class LinkedQuadTree extends QuadTree {
-	_h_objects: SemiIndexed.ObjectStore;
+export class LinkedQuadTree extends BasicQuadTree {
+	_h_objects: ObjectStore;
 
-	constructor(h_objects: SemiIndexed.ObjectStore, hc4_quads: SemiIndexed.QuadsTree, h_prefixes: PrefixMap) {
+	constructor(h_objects: ObjectStore, hc4_quads: QuadsHash, h_prefixes: PrefixMap) {
 		super(hc4_quads, h_prefixes);
 		this._h_objects = h_objects;
 	}
 
-	* [Symbol.iterator](): Iterator<Quad> {
+	* [Symbol.iterator](): Iterator<Term.Quad> {
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
@@ -75,7 +73,7 @@ export class LinkedQuadTree extends QuadTree {
 					const kt_predicate = c1PredicateRole(sc1_predicate, h_prefixes);
 
 					// ref objects
-					const as_objects = (hc2_probs as SemiIndexed.ProbsTree)[sc1_predicate];
+					const as_objects = (hc2_probs as ProbsHash)[sc1_predicate];
 
 					// each object
 					for(const g_object of as_objects) {

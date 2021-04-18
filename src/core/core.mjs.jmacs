@@ -1,4 +1,4 @@
-@import '../share/util.jmacs'
+@// @import '../share/util.jmacs'
 @import '../share/iris.jmacs'
 @import '../content/text.read.jmacs'
 
@@ -2323,7 +2323,7 @@ export function adopt(dc_factory) {
 
 
 
-export function numberLiteral(z) {
+export function numericLiteral(z) {
 	const s_type = typeof z;
 
 	// number
@@ -2765,7 +2765,7 @@ function* objects(k_graph, k_subject, k_predicate, z_objects, h_prefixes, b_nest
 
 		// number
 		case 'number': {
-			yield new Quad(k_subject, k_predicate, numberLiteral(z_objects), k_graph);
+			yield new Quad(k_subject, k_predicate, numericLiteral(z_objects), k_graph);
 			break;
 		}
 
@@ -3023,7 +3023,7 @@ export const DataFactory = {
 	blankNode,
 	ephemeralBlankNode,
 	literal,
-	numberLiteral,
+	numericLiteral,
 	@*{
 		for(const s_type in h_literals) {
 			const g_config = h_literals[s_type];

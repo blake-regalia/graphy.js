@@ -43,28 +43,28 @@ export type OverlayableCountableQuads = CountableQuads & {
 }
 
 
-export namespace PartiallyIndexed {
-	export type QuadsTree = OverlayableCountableQuads & {
-		[sc1_graph: string]: TriplesTree;
+export namespace BasicQuadTree {
+	export type QuadsHash = OverlayableCountableQuads & {
+		[sc1_graph: string]: TriplesHash;
 	}
 
-	export type TriplesTree = OverlayableCountableQuads & {
-		[sc1_subject: string]: ProbsTree;
+	export type TriplesHash = OverlayableCountableQuads & {
+		[sc1_subject: string]: ProbsHash;
 	}
 
-	export type ProbsTree = OverlayableCountableQuads & {
+	export type ProbsHash = OverlayableCountableQuads & {
 		[sc1_predicate: string]: Set<C1.Object>;
 	}
 
 	export interface GraphHandle extends Dataset.GraphHandle {
 		_sc1_graph: C1.Graph;
-		_hc3_trips: PartiallyIndexed.TriplesTree;
+		_hc3_trips: TriplesHash;
 	}
 
 	export interface GrubHandle extends Dataset.GrubHandle {
-		_kh_graph: PartiallyIndexed.GraphHandle;
+		_kh_graph: GraphHandle;
 		_sc1_subject: C1.Subject;
-		_hc2_probs: PartiallyIndexed.ProbsTree;
+		_hc2_probs: ProbsHash;
 	}
 
 	export interface GraspHandle extends Dataset.GraspHandle {
@@ -74,16 +74,16 @@ export namespace PartiallyIndexed {
 	export type ObjectSet = Set<C1.Object>;
 }
 
-export namespace SemiIndexed {
-	export type QuadsTree = OverlayableCountableQuads & {
-		[sc1_graph: string]: TriplesTree;
+export namespace LinkedQuadTree {
+	export type QuadsHash = OverlayableCountableQuads & {
+		[sc1_graph: string]: TriplesHash;
 	}
 
-	export type TriplesTree = OverlayableCountableQuads & {
-		[sc1_subject: string]: ProbsTree;
+	export type TriplesHash = OverlayableCountableQuads & {
+		[sc1_subject: string]: ProbsHash;
 	}
 
-	export type ProbsTree = OverlayableCountableQuads & {
+	export type ProbsHash = OverlayableCountableQuads & {
 		[sc1_predicate: string]: Set<ObjectDescriptor>;
 	}
 
@@ -103,23 +103,23 @@ export namespace SemiIndexed {
 	export type ObjectSet = Set<ObjectDescriptor>;
 }
 
-export namespace Generic {
-	export type QuadsTree = PartiallyIndexed.QuadsTree | SemiIndexed.QuadsTree;
-	export type TriplesTree = PartiallyIndexed.TriplesTree | SemiIndexed.TriplesTree;
-	export type ProbsTree = CountableQuads & {
+export namespace GenericQuadTree	 {
+	export type QuadsHash = BasicQuadTree.QuadsHash | LinkedQuadTree.QuadsHash;
+	export type TriplesHash = BasicQuadTree.TriplesHash | LinkedQuadTree.TriplesHash;
+	export type ProbsHash = CountableQuads & {
 		[sc1_predicate: string]: ObjectSet;
 	};
-	export type ObjectSet = Set<C1.Object | SemiIndexed.ObjectDescriptor>;
-	export type ObjectIdentifier = C1.Object & SemiIndexed.ObjectDescriptor;
+	export type ObjectSet = Set<C1.Object | LinkedQuadTree.ObjectDescriptor>;
+	export type ObjectIdentifier = C1.Object & LinkedQuadTree.ObjectDescriptor;
 
-	export type Tree = QuadsTree | TriplesTree | ProbsTree;
+	export type Tree = QuadsHash | TriplesHash | ProbsHash;
 
 	export const overlayTree = (n_keys=0, n_quads=0) => ({
 		[$_KEYS]: n_keys,
 		[$_QUADS]: n_quads,
 		// [$_OVERLAY]: 0,
 		// [$_SUPPORTING]: [],
-	}) as QuadsTree | TriplesTree | ProbsTree;
+	}) as QuadsHash | TriplesHash | ProbsHash;
 
 	export const overlay = (hcw_src: any): Tree => {
 		// create new tree
@@ -150,7 +150,7 @@ export namespace Generic {
 		return hcw_dst;
 	};
 
-	export interface Constructor<DatasetType, BuilderType extends Dataset.GspoBuilder, TransferType extends QuadsTree> extends Dataset.Constructor<DatasetType, BuilderType, TransferType> {
+	export interface Constructor<DatasetType, BuilderType extends Dataset.QuadTreeBuilder, TransferType extends QuadsHash> extends Dataset.Constructor<DatasetType, BuilderType, TransferType> {
 		empty(prefixes: PrefixMap): DatasetType;
 		builder(prefixes: PrefixMap): BuilderType;
 

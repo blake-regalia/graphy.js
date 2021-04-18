@@ -10,7 +10,7 @@ import {
 } from '@graphy/types';
 
 import SyncC1Dataset = Dataset.SyncC1Dataset;
-import SyncGspoBuilder = Dataset.SyncGspoBuilder;
+import SyncQuadTreeBuilder = Dataset.SyncQuadTreeBuilder;
 
 import {
 	$_KEYS,

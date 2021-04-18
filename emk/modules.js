@@ -2,6 +2,13 @@ const G_PACKAGE_JSON_SUPER = require('../package.json');
 
 const S_SEMVER = `^${G_PACKAGE_JSON_SUPER.version}`;
 
+const G_CONTENT = require('./aux/content.js');
+
+const package_exports = s => ({
+	require: `${s}.js`,
+	default: `${s}.mjs`,
+});
+
 // package tree
 const H_MODULES = {
 	types: {
@@ -30,6 +37,11 @@ const H_MODULES = {
 	memory: {
 		links: ['types', 'core'],
 		description: 'Data structures and algorithms for RDF graphs',
+		json: {
+			exports: {
+				'./quad-tree': package_exports(`./quad-tree`),
+			},
+		},
 	},
 	content: {
 		links: ['types', 'core', 'memory'],
@@ -37,6 +49,15 @@ const H_MODULES = {
 		dependencies: [
 			'uri-js',
 		],
+		json: {
+			exports: Object.entries(G_CONTENT.packages).reduce((h_out, [si_content, g_content]) => ({
+				...h_out,
+				...Object.entries(g_content.modes).reduce((h_out2, [si_mode, g_mode]) => ({
+					...h_out2,
+					[`./${si_content}-${si_mode}`]: package_exports(`./${si_content}/${si_mode}/main`),
+				}), {}),
+			}), {}),
+		},
 	},
 };
 

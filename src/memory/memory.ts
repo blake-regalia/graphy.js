@@ -1,7 +1,13 @@
 
+export {
+	QuadSet,
+} from './quad-set';
 
 export {
-	QuadTree,
-} from './quad-tree';
+	BasicQuadTree,
+	BasicQuadTree as QuadTree,
+} from './basic-quad-tree';
 
-export PartiallyIndexedTreeDataset as TreeDataset;
+export {
+	LinkedQuadTree,
+} from './linked-quad-tree';

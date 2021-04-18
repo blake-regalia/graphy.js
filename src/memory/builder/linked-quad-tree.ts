@@ -3,27 +3,28 @@ import {
 	RDFJS,
 	C1,
 	Role,
-	Quad,
+	Term,
 	PrefixMap,
 	Dataset,
 } from '@graphy/types';
 
 import SyncC1Dataset = Dataset.SyncC1Dataset;
-import SyncGspoBuilder = Dataset.SyncGspoBuilder;
+import SyncQuadTreeBuilder = Dataset.SyncQuadTreeBuilder;
 
 import {
 	DataFactory,
 } from '@graphy/core';
 
 const {
-	c1GraphRole,
-	c1SubjectRole,
-	c1PredicateRole,
-	c1ObjectRole,
+	c1Graph,
+	c1Subject,
+	c1Predicate,
+	c1Object,
+	c1FromGraphRole,
+	c1FromSubjectRole,
 	concise,
 	fromTerm,
 } = DataFactory;
-
 
 
 /**
@@ -71,27 +72,27 @@ type ObjectStore = CountableKeys & {
 	[sc1_object: string]: ObjectDescriptor;
 }
 
-type ProbsTree = CountableQuads & {
+type ProbsHash = CountableQuads & {
 	[sc1_predicate: string]: Set<ObjectDescriptor>;
 }
 
-type TriplesTree = CountableQuads & {
-	[sc1_subject: string]: ProbsTree;
+type TriplesHash = CountableQuads & {
+	[sc1_subject: string]: ProbsHash;
 }
 
-type QuadsTree = CountableQuads & {
-	[sc1_graph: string]: TriplesTree;
+type QuadsHash = CountableQuads & {
+	[sc1_graph: string]: TriplesHash;
 }
 
 
-class SemiIndexedGraspHandle implements Dataset.GraspHandle {
-	_k_dataset: LinkedQuadTree;
-	_kh_grub: SemiIndexedGrubHandle;
+class LinkedQuadTreeGraspHandle implements Dataset.GraspHandle {
+	_k_dataset: LinkedQuadTreeBuilder;
+	_kh_grub: LinkedQuadTreeGrubHandle;
 	_sc1_predicate: C1.Predicate;
 	_sc1_subject: C1.Subject;
 	_as_objects: Set<ObjectDescriptor>;
 
-	constructor(kh_grub: SemiIndexedGrubHandle, sc1_predicate: C1.Predicate, as_objects: Set<ObjectDescriptor>) {
+	constructor(kh_grub: LinkedQuadTreeGrubHandle, sc1_predicate: C1.Predicate, as_objects: Set<ObjectDescriptor>) {
 		this._k_dataset = kh_grub._k_dataset;
 		this._kh_grub = kh_grub;
 		this._sc1_subject = kh_grub._sc1_subject;
@@ -316,13 +317,13 @@ class SemiIndexedGraspHandle implements Dataset.GraspHandle {
 }
 
 
-class SemiIndexedGrubHandle implements Dataset.GrubHandle {
-	_k_dataset: LinkedQuadTree;
+class LinkedQuadTreeGrubHandle implements Dataset.GrubHandle {
+	_k_dataset: LinkedQuadTreeBuilder;
 	_kh_graph: InternalGraphHandle;
 	_sc1_subject: string;
-	_hc2_probs: ProbsTree;
+	_hc2_probs: ProbsHash;
 
-	constructor(k_dataset: LinkedQuadTree, kh_graph: InternalGraphHandle, sc1_subject: C1.Subject, hc2_probs: ProbsTree) {
+	constructor(k_dataset: LinkedQuadTreeBuilder, kh_graph: InternalGraphHandle, sc1_subject: C1.Subject, hc2_probs: ProbsHash) {
 		this._k_dataset = k_dataset;
 		this._kh_graph = kh_graph;
 		this._sc1_subject = sc1_subject;
@@ -335,7 +336,7 @@ class SemiIndexedGrubHandle implements Dataset.GrubHandle {
 
 		// predicate exists; return tuple handle
 		if(sc1_predicate in hc2_probs) {
-			return new SemiIndexedGraspHandle(this, sc1_predicate, hc2_probs[sc1_predicate]);
+			return new LinkedQuadTreeGraspHandle(this, sc1_predicate, hc2_probs[sc1_predicate]);
 		}
 		else {
 			// increment keys counter
@@ -345,22 +346,22 @@ class SemiIndexedGrubHandle implements Dataset.GrubHandle {
 			const as_objects = hc2_probs[sc1_predicate] = new Set<ObjectDescriptor>();
 
 			// return tuple handle
-			return new SemiIndexedGraspHandle(this, sc1_predicate, as_objects);
+			return new LinkedQuadTreeGraspHandle(this, sc1_predicate, as_objects);
 		}
 	}
 }
 
 interface InternalGraphHandle {
 	_sc1_graph: string;
-	_hc3_triples: TriplesTree;
+	_hc3_triples: TriplesHash;
 }
 
-class SemiIndexedGraphHandle implements InternalGraphHandle, Dataset.GraphHandle {
-	_k_dataset: LinkedQuadTree;
+class LinkedQuadTreeGraphHandle implements InternalGraphHandle, Dataset.GraphHandle {
+	_k_dataset: LinkedQuadTreeBuilder;
 	_sc1_graph: string;
-	_hc3_triples: TriplesTree;
+	_hc3_triples: TriplesHash;
 
-	constructor(k_dataset: LinkedQuadTree, sc1_graph: C1.Graph, hc3_triples: TriplesTree) {
+	constructor(k_dataset: LinkedQuadTreeBuilder, sc1_graph: C1.Graph, hc3_triples: TriplesHash) {
 		this._k_dataset = k_dataset;
 		this._sc1_graph = sc1_graph;
 		this._hc3_triples = hc3_triples;
@@ -372,7 +373,7 @@ class SemiIndexedGraphHandle implements InternalGraphHandle, Dataset.GraphHandle
 
 		// subject exists; return subject handle
 		if(sc1_subject in hc3_triples) {
-			return new SemiIndexedGrubHandle(this._k_dataset, this, sc1_subject, hc3_triples[sc1_subject]);
+			return new LinkedQuadTreeGrubHandle(this._k_dataset, this, sc1_subject, hc3_triples[sc1_subject]);
 		}
 		else {
 			// increment keys counter
@@ -382,34 +383,13 @@ class SemiIndexedGraphHandle implements InternalGraphHandle, Dataset.GraphHandle
 			const hc2_probs = hc3_triples[sc1_subject] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
-			} as ProbsTree;
+			} as ProbsHash;
 
 			// return subject handle
-			return new SemiIndexedGrubHandle(this._k_dataset, this, sc1_subject, hc2_probs);
+			return new LinkedQuadTreeGrubHandle(this._k_dataset, this, sc1_subject, hc2_probs);
 		}
 	}
 }
-
-function graph_to_c1(yt_graph: Role.Graph, h_prefixes: PrefixMap) {
-	// depending on graph term type
-	switch(yt_graph.termType) {
-		// default graph
-		case 'DefaultGraph': {
-			return '*';
-		}
-
-		// named node
-		case 'NamedNode': {
-			return concise(yt_graph.value, h_prefixes);
-		}
-
-		// blank node
-		default: {
-			return '_:'+yt_graph.value;
-		}
-	}
-}
-
 
 /**
  * Trig-Optimized, Semi-Indexed Dataset in Memory
@@ -417,11 +397,11 @@ function graph_to_c1(yt_graph: Role.Graph, h_prefixes: PrefixMap) {
  * SOME: gs?o
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
-export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<SyncC1Dataset>, Dataset.SyncDataset {
+export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeBuilder<SyncC1Dataset>, Dataset.SyncC1Dataset {
 	_h_objects: ObjectStore;
 	_sc1_graph = '*';
-	_hc3_triples: TriplesTree;
-	_hc4_quads: QuadsTree;
+	_hc3_triples: TriplesHash;
+	_hc4_quads: QuadsHash;
 	_h_prefixes: PrefixMap;
 
 	static supportsStar = false;
@@ -436,13 +416,13 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 		const hc3_triples = this._hc3_triples = {
 			[$_KEYS]: 0,
 			[$_QUADS]: 0,
-		} as TriplesTree;
+		} as TriplesHash;
 
 		this._hc4_quads = {
 			[$_KEYS]: 1,
 			[$_QUADS]: 0,
 			'*': hc3_triples,
-		} as QuadsTree;
+		} as QuadsHash;
 	}
 
 	get size(): number {
@@ -450,10 +430,10 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 	}
 
 	deliver(): Dataset.SyncC1Dataset {
-		return new LinkedQuadTree();
+		return new LinkedQuadTree(this._h_objects, this._hc4_quads, this._h_prefixes);
 	}
 
-	* [Symbol.iterator](): Iterator<Quad> {
+	* [Symbol.iterator](): Iterator<Term.Quad> {
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
@@ -463,7 +443,7 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 		// each graph
 		for(const sc1_graph in hc4_quads) {
 			// make graph node
-			const kt_graph = c1GraphRole(sc1_graph, h_prefixes);
+			const kt_graph = c1Graph(sc1_graph, h_prefixes);
 
 			// ref triples tree
 			const hc3_triples = hc4_quads[sc1_graph];
@@ -471,7 +451,7 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 			// each subject
 			for(const sc1_subject in hc3_triples) {
 				// make subject node
-				const kt_subject = c1SubjectRole(sc1_subject, h_prefixes);
+				const kt_subject = c1Subject(sc1_subject, h_prefixes);
 
 				// ref probs tree
 				const hc2_probs = hc3_triples[sc1_subject];
@@ -479,7 +459,7 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 				// each predicate
 				for(const sc1_predicate in hc2_probs) {
 					// make predicate node
-					const kt_predicate = c1PredicateRole(sc1_predicate, h_prefixes);
+					const kt_predicate = c1Predicate(sc1_predicate, h_prefixes);
 
 					// ref objects
 					const as_objects = hc2_probs[sc1_predicate];
@@ -487,7 +467,7 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 					// each object
 					for(const g_object of as_objects) {
 						// make object node
-						const kt_object = c1ObjectRole(g_object.value, h_prefixes);
+						const kt_object = c1Object(g_object.value, h_prefixes);
 
 						// yield quad
 						yield DataFactory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
@@ -547,13 +527,17 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 		this._h_prefixes = h_prefixes;
 	}
 
-	openC1Graph(sc1_graph: ConciseNode): GraphHandle {
+	openGraph(y_graph: Role.Graph): LinkedQuadTreeGraphHandle {
+		return this.openC1Graph(c1FromGraphRole(y_graph, this._h_prefixes));
+	}
+
+	openC1Graph(sc1_graph: C1.Graph): LinkedQuadTreeGraphHandle {
 		// ref quads tree
 		const hc4_quads = this._hc4_quads;
 
 		// graph exists; return subject handle
 		if(sc1_graph in hc4_quads) {
-			return new SemiIndexedGraphHandle(this, sc1_graph, hc4_quads[sc1_graph]);
+			return new LinkedQuadTreeGraphHandle(this, sc1_graph, hc4_quads[sc1_graph]);
 		}
 		else {
 			// increment keys counter
@@ -563,20 +547,24 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 			const hc3_triples = hc4_quads[sc1_graph] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
-			} as TriplesTree;
+			} as TriplesHash;
 
 			// return subject handle
-			return new SemiIndexedGraphHandle(this, sc1_graph, hc3_triples);
+			return new LinkedQuadTreeGraphHandle(this, sc1_graph, hc3_triples);
 		}
 	}
 
-	openC1Subject(sc1_subject: ConciseNode): GrubHandle {
+	openSubject(y_subject: Role.Subject): LinkedQuadTreeGrubHandle {
+		return this.openC1Subject(c1FromSubjectRole(y_subject, this._h_prefixes));
+	}
+
+	openC1Subject(sc1_subject: C1.Subject): LinkedQuadTreeGrubHandle {
 		// ref default graph triples tree
 		const hc3_triples = this._hc3_triples;
 
 		// subject exists; return subject handle
 		if(sc1_subject in hc3_triples) {
-			return new SemiIndexedGrubHandle(this, this, sc1_subject, hc3_triples[sc1_subject]);
+			return new LinkedQuadTreeGrubHandle(this, this, sc1_subject, hc3_triples[sc1_subject]);
 		}
 		// subject not yet exists
 		else {
@@ -587,14 +575,14 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 			const hc2_probs = hc3_triples[sc1_subject] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
-			} as ProbsTree;
+			} as ProbsHash;
 
 			// return subject handle
-			return new SemiIndexedGrubHandle(this, this, sc1_subject, hc2_probs);
+			return new LinkedQuadTreeGrubHandle(this, this, sc1_subject, hc2_probs);
 		}
 	}
 
-	addTriple(sc1_subject: ConciseNode, sc1_predicate: ConciseNamedNode, sc1_object: ConciseTerm): boolean {
+	addTriple(sc1_subject: C1.Subject, sc1_predicate: C1.Predicate, sc1_object: C1.Object): boolean {
 		return this.openC1Subject(sc1_subject).openC1Predicate(sc1_predicate).addC1Object(sc1_object);
 	}
 
@@ -602,7 +590,7 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 		const h_prefixes = this._h_prefixes;
 		const yt_subject = g_quad.subject;
 
-		this.openC1Graph(graph_to_c1(g_quad.graph as GraphRole, h_prefixes))
+		this.openC1Graph(c1FromGraphRole(g_quad.graph as Role.Graph, h_prefixes))
 			.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, h_prefixes): '_:'+yt_subject.value)
 			.openC1Predicate(concise(g_quad.predicate.value, h_prefixes))
 			.addC1Object(fromTerm(g_quad.object).concise(h_prefixes));
@@ -615,7 +603,7 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 		const h_prefixes = this._h_prefixes;
 
 		// fetch triples tree
-		const hc3_triples = this._hc4_quads[graph_to_c1(g_quad.graph as GraphRole, h_prefixes)];
+		const hc3_triples = this._hc4_quads[c1FromGraphRole(g_quad.graph as Role.Graph, h_prefixes)];
 
 		// none
 		if(!hc3_triples) return false;
@@ -655,7 +643,7 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 		const h_prefixes = this._h_prefixes;
 		const yt_subject = g_quad.subject;
 
-		this.openC1Graph(graph_to_c1(g_quad.graph as GraphRole, h_prefixes))
+		this.openC1Graph(c1FromGraphRole(g_quad.graph as Role.Graph, h_prefixes))
 			.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, h_prefixes): '_:'+yt_subject.value)
 			.openC1Predicate(concise(g_quad.predicate.value, h_prefixes))
 			.deleteC1Object(fromTerm(g_quad.object).concise(h_prefixes));
@@ -664,7 +652,7 @@ export class LinkedQuadTree implements InternalGraphHandle, SyncGspoBuilder<Sync
 	}
 
 	match(yt_subject?: RDFJS.Term, yt_predicate?: RDFJS.Term, yt_object?: RDFJS.Term, yt_graph?: RDFJS.Term): SyncDataset {
-		return new LinkedQuadTree();
+		return new LinkedQuadTreeBuilder();
 	}
 }
 

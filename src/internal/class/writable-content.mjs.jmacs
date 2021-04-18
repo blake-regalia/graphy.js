@@ -3,23 +3,23 @@
 @import '../../share/writer.jmacs'
 
 import {
-	c1,
-	number,
-	dateTime,
+	fromC1,
+	numericLiteral,
+	dateTimeLiteral,
 } from '@graphy/core';
 
 import {
 	ScribableContent,
-} from './scribable-content';
+} from './scribable-content.mjs';
 
 const R_DIRECTIVE_CONTENTS = /^`\[[^\]]+\](.*)$/;
 
 const HM_COERCIONS_DEFAULT = new Map([
-	[Date, dt => dateTime(dt)],
-	[Number, x => number(x)],
+	[Date, dt => dateTimeLiteral(dt)],
+	[Number, x => numericLiteral(x)],
 ]);
 
-export default class WritableContent extends ScribableContent {
+export class WritableContent extends ScribableContent {
 	constructor(gc_writable={}) {
 		super(gc_writable);
 
@@ -253,7 +253,7 @@ export default class WritableContent extends ScribableContent {
 		// a union was performed
 		if(a_unions.length) {
 			// warn about implicit union
-			const s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => c1(sc1, h_prefixes).verbose()).join(', ')}`;
+			const s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => fromC1(sc1, h_prefixes).verbose()).join(', ')}`;
 
 			// emit warning, wasn't listened to; force thru warn/stderr channel
 			if(!this.emit('warning', s_warning)) {
@@ -265,3 +265,5 @@ export default class WritableContent extends ScribableContent {
 	}
 }
 
+
+export default WritableContent;

@@ -1,9 +1,10 @@
-import stream from './iso/stream.mjs';
-import {
+export * as stream from './iso/stream.mjs';
+
+export {
 	WritableContent,
-	ScribableContent,
 } from './class/writable-content.mjs';
 
 export {
-	stream,
-};
+	ScribableContent,
+} from './class/scribable-content.mjs';
+
