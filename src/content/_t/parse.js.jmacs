@@ -17,10 +17,11 @@
 @$ S_STATE_PRIMARY = B_TURTLE? 'statement': 'block';
 
 @$ B_LOAD = 'load' === S_MODE;
+@$ B_READ = 'read' === S_MODE;
 @$ B_STAR = true;
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
-@$ B_CALLBACKS = false;
+@$ B_CALLBACKS = true;
 
 @$ B_LOAD_GSPO_BUILDER = true;
 
@@ -73,8 +74,8 @@ import {stream} from '@@graphy/internal';
 import {DataFactory} from '@@graphy/core';
 const quad = k => DataFactory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
 
-@- B_LOAD
-	@- B_LOAD_GSPO_BUILDER
+@if B_LOAD
+	@if B_LOAD_GSPO_BUILDER
 		import {PartiallyIndexedTrigDataset} from '@@graphy/memory';
 	@;
 	const {
@@ -88,7 +89,9 @@ const quad = k => DataFactory.quad(k._kt_subject, k._kt_predicate, k._kt_object,
 import {
 	ContentSyntaxError,
 	UnexpectedTokenError,
-	InvalidStateChangeError,
+	@if B_LOAD
+		InvalidStateChangeError,
+	@;
 	NoSuchPrefixError,
 	ExceededMaximumTokenLengthError,
 } from '../../error.mjs';
@@ -161,14 +164,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	},
 };
 
-@> save_term(s_role, sj_expr)
+@def save_term(s_role, sj_expr)
 	// save @{s_role} term to field
 	@{'datatype' === s_role? '': 'this._'}kt_@{s_role} = @{sj_expr};
 @;
 
 
 @// extract uri from absolute / relative iri refs
-@> iriref({s_role, sj_matched, b_escapeless=false})
+@def iriref({s_role, sj_matched, b_escapeless=false})
 	@.{
 		let f_load;
 		let b_not_this = false;
@@ -230,7 +233,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	}
 
 	@// update the base iri
-	@- 'base_url' === s_role
+	@if 'base_url' === s_role
 		let m_base_iri = R_BASE_IRI.exec(this._p_@{s_role});
 		this._s_@{s_role} = m_base_iri[1];
 		this._s_@{s_role}_root = m_base_iri[2] || '';
@@ -239,7 +242,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	@;
 @;
 
-@> deduce_strlit_path(s_mode)
+@def deduce_strlit_path(s_mode)
 	@. let sj_char = 'single' === s_mode? `"'"`: `'"'`;
 	// enough chars to deduce type
 	if((i+2) < n) {
@@ -275,7 +278,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 @;
 
 
-@> error_args()
+@def error_args()
 	@//@object-literal
 	content: this,
 	source: this.s,
@@ -291,23 +294,23 @@ const OPHOP = Object.prototype.hasOwnProperty;
 @;
 
 
-@> update_prefixes()
+@def update_prefixes()
 	let b_tolerant = this._b_tolerant;
 
 	// existing mapping
-	@- B_OPTIMIZE_PREFIX_IDS
+	@if B_OPTIMIZE_PREFIX_IDS
 		if(as_prefix_ids.has(s_prefix_id)) {
-	@:
+	@else
 		if(s_prefix_id in h_prefixes) {
 	@;
 		// doesn't match existing
 		if(p_prefix_iri !== h_prefixes[s_prefix_id]) {
-			@- B_LOAD
+			@if B_LOAD
 				throw new InvalidStateChangeError({
-					message :`Loader requires all prefix mappings declared before data statements. Detected IRI change of prefix namespace '${s_prefix_id}' from <${h_prefixes[s_prefix_id]}> to <${p_prefix_iri}>`,
+					message: `Loader requires all prefix mappings declared before data statements. Detected IRI change of prefix namespace '${s_prefix_id}' from <${h_prefixes[s_prefix_id]}> to <${p_prefix_iri}>`,
 					@{error_args()}
 				});
-			@:
+			@+ B_READ
 				// emit change event
 				if(this.prefix_change) {
 					this.prefix_change(s_prefix_id, h_prefixes[s_prefix_id], p_prefix_iri);
@@ -329,17 +332,17 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		}
 
 		// set prefix
-		@- B_LOAD
+		@if B_LOAD
 			// prefixes are cached and frozen, clone them while assigning new preifx
 			h_prefixes = {
 				...h_prefixes,
 				[s_prefix_id]: p_prefix_iri,
 			};
-		@:
+		@+ B_READ
 			h_prefixes[s_prefix_id] = p_prefix_iri;
 		@;
 
-		@- B_OPTIMIZE_PREFIX_IDS
+		@if B_OPTIMIZE_PREFIX_IDS
 			as_prefix_ids.add(s_prefix_id);
 			// this._as_prefix_ids = new Set(Object.keys(h_prefixes).sort());
 		@;
@@ -353,7 +356,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		});
 	}
 
-	@- B_LOAD
+	@if B_LOAD
 		// re-cache prefixes
 		this._h_prefixes = DataFactory.cachePrefixes(h_prefixes);
 
@@ -362,13 +365,8 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		this._sc1_rdf_type = concise('@{P_IRI_RDF}type', h_prefixes);
 	@;
 
-	@- B_CALLBACKS
-		// emit prefix event
-		this._fk_prefix(s_prefix_id, p_prefix_iri);
-	@:
-		// emit prefix event
-		this.event('prefix', s_prefix_id, p_prefix_iri);
-	@;
+	// emit prefix event
+	this._fk_prefix(s_prefix_id, p_prefix_iri);
 @;
 
 
@@ -449,13 +447,8 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		action: ({sj_matched}) => [
 			iriref({s_role:'base_iri', sj_matched, b_escapeless}),
 			modal({
-				read: B_CALLBACKS
-					? /* syntax: js */ `
+				read: /* syntax: js */ `
 						this._fk_base(this._s_base_url);
-					`
-					: /* syntax: js */ `
-						// emit base event
-						this.emit('base', this._s_base_url);
 					`,
 				load: '',
 			}),
@@ -621,7 +614,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				${b_star
 					? push_state('subject' === s_role? 'star_predicate_x': 'star_post_object_x')
 					: /* syntax: js */ `
-						this.data = this.exit_star;
+						this.emit_data = this.exit_star;
 						this.restore_after_eot = this.after_eot;
 						this.after_eot = this.triple_x_close;
 
@@ -1008,7 +1001,7 @@ const R_PREFIXED_NAME_QUICK = /@{R_PREFIXED_NAME_QUICK()}/y;
 
 const R_PREFIXED_NAME_ESCAPELESS = /@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 
-@- B_OPTIMIZE_PAIRS
+@if B_OPTIMIZE_PAIRS
 	const R_OPTIMIZED_PAIRS = /@{R_PREFIXED_NAME_ESCAPELESS()}@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 @;
 
@@ -1035,7 +1028,7 @@ const R_PREFIXED_NAME_ESCAPELESS = /@{R_PREFIXED_NAME_ESCAPELESS()}/y;
 			)?
 		)?
 	)
-	@- b_lookahead
+	@if b_lookahead
 		(?:											@// consume trailing whitespace
 			\s+
 			| @{R_CONTENT_LOOKAHEAD()}
@@ -1071,7 +1064,7 @@ const R_PREFIX_KEYWORD = /(?:(@prefix)|[pP][rR][eE][fF][iI][xX])\s*/y;
 const R_PREFIX_ID = /([^#:]*):\s*/iy;
 const R_BASE_KEYWORD = /(?:(@base)|[bB][aA][sS][eE])\s*/y;
 
-@- TRIG
+@if TRIG
 	const R_GRAPH_IRI_ESCAPELESS = /(?:graph)?\s*<([^\\>]*)>\s*\{\s*/iy;
 	const R_GRAPH_PREFIXED_NAME = /(?:graph)?\s*@{R_PREFIXED_NAME()}\s*\{\s*/iy;
 	const R_GRAPH_LABELED_BLANK_NODE = /(?:graph)?\s*@{R_LABELED_BLANK_NODE()}\s*\{\s*/iy;
@@ -1108,7 +1101,7 @@ const R_CHAR_COLLECTION = /\(\s*/y;
 
 const R_CHAR_KET = /\]\s*/y
 
-@- TRIG
+@if TRIG
 	const R_CHAR_OPEN = /\{\s*/y;
 	const R_CHAR_CLOSE = /\}\s*/y;
 @;
@@ -1157,26 +1150,18 @@ const match_prefixed_name = (s, i) => {
 };
 
 @// will only be used by TriG
-@> emit_graph_open()
-	@- B_CALLBACKS
-		this._fk_enter(this._kt_graph);
-	@:
-		this.emit('enter', this._kt_graph);
-	@;
+@def emit_graph_open()
+	this._fk_enter(this._kt_graph);
 @;
 
 @// will only be used by TriG
-@> emit_graph_close()
-	@- B_CALLBACKS
-		this._fk_exit(this._kt_graph);
-	@:
-		this.emit('exit', this._kt_graph);
-	@;
+@def emit_graph_close()
+	this._fk_exit(this._kt_graph);
 @;
 
 
 @// consume whitespace
-@> whitespace(z_offset='0', b_local=false)
+@def whitespace(z_offset='0', b_local=false)
 	@. let s_offset = 'number' === typeof z_offset? `i+${z_offset}`: z_offset
 	// consume whitespace (and incidentally reset index)
 	R_WS.lastIndex = @{s_offset};
@@ -1186,21 +1171,21 @@ const match_prefixed_name = (s, i) => {
 
 
 @// assert the prefix found in prefixed name is valid
-@> valid_prefix(match, n_group)
-	@- !B_LOAD
+@def valid_prefix(match, n_group)
+	@if B_READ
 		@. let sj_var = `s_prefix_id${n_group? '_'+n_group: ''}`;
 
 		// check valid prefix
 		let @{sj_var} = @{match}[@{n_group || 1}] || '';
 
-		@- B_OPTIMIZE_PREFIX_IDS
+		@if B_OPTIMIZE_PREFIX_IDS
 			// invalid prefix
 			if(!(this._as_prefix_ids.has(@{sj_var}))) {
 				return new NoSuchPrefixError({
 					prefix: @{sj_var},
 					@{error_args()}
 				});
-		@:
+		@else
 			// invalid prefix
 			if(!OPHOP.call(this._h_prefixes, @{sj_var})) {
 				return new NoSuchPrefixError({
@@ -1215,13 +1200,13 @@ const match_prefixed_name = (s, i) => {
 
 
 @// save current state to stack
-@> push_state(state)
+@def push_state(state)
 	this._a_nested.push([this._kt_subject, this._kt_predicate, '@{state}']);
 @;
 
 
 @// restore previous state from stack
-@> pop_state(s_err)
+@def pop_state(s_err)
 	// invalid place to pop
 	if(!this._a_nested.length) {
 		throw new ContentSyntaxError({
@@ -1235,7 +1220,7 @@ const match_prefixed_name = (s, i) => {
 @;
 
 @// change state
-@> goto(s_method)
+@def goto(s_method)
 	return this.@{s_method}();
 @;
 
@@ -1243,7 +1228,7 @@ const match_prefixed_name = (s, i) => {
 
 
 @// set resume state & stop parsing in this stack
-@> resume_state(s_state, b_use_field_chunk=false, s_max_token=null)
+@def resume_state(s_state, b_use_field_chunk=false, s_max_token=null)
 	// update index value
 	this.i = i;
 
@@ -1275,12 +1260,12 @@ const match_prefixed_name = (s, i) => {
 @;
 
 @// emit a statement event to listener using current subject/predicate/object
-@> emit_statement()
-	this.data();
+@>> emit_statement()
+	this.emit_data();
 @;
 
 
-@> full_stop()
+@def full_stop()
 	if(this._b_expecting_full_stop) {
 		// change state
 		@{goto('full_stop')}
@@ -1288,10 +1273,10 @@ const match_prefixed_name = (s, i) => {
 @;
 
 
-@> load_default_graph()
-	@- B_LOAD_GSPO_BUILDER
+@def load_default_graph()
+	@if B_LOAD_GSPO_BUILDER
 		this._kh_graph = this._k_builder.openC1Graph('*');
-	@:
+	@else
 		this._sc1_graph = '*';
 		let hc4_quads = this._hc4_quads;
 
@@ -1310,10 +1295,10 @@ const match_prefixed_name = (s, i) => {
 	@;
 @;
 
-@> load_graph(sj_expr)
-	@- B_LOAD_GSPO_BUILDER
+@def load_graph(sj_expr)
+	@if B_LOAD_GSPO_BUILDER
 		this._kh_graph = this._k_builder.openC1Graph(@{sj_expr});
-	@:
+	@else
 		let sc1_graph = this._sc1_graph = @{sj_expr};
 		let hc4_quads = this._hc4_quads;
 
@@ -1332,10 +1317,10 @@ const match_prefixed_name = (s, i) => {
 	@;
 @;
 
-@> load_subject(sj_expr)
-	@- B_LOAD_GSPO_BUILDER
+@def load_subject(sj_expr)
+	@if B_LOAD_GSPO_BUILDER
 		this._kh_grub = this._kh_graph.openC1Subject(@{sj_expr});
-	@:
+	@else
 		@.{
 			const s_rand = Math.round(Math.random()*10e8);
 			const sj_subject = /* syntax: js */ `sc1_subject_${s_rand}`;
@@ -1360,10 +1345,10 @@ const match_prefixed_name = (s, i) => {
 	@;
 @;
 
-@> load_predicate(sj_expr)
-	@- B_LOAD_GSPO_BUILDER
+@def load_predicate(sj_expr)
+	@if B_LOAD_GSPO_BUILDER
 		this._kh_greed = this._kh_grub.openC1Predicate(@{sj_expr});
-	@:
+	@else
 		@.{
 			const s_rand = Math.round(Math.random()*10e8);
 			const sj_predicate = /* syntax: js */ `sc1_predicate_${s_rand}`;
@@ -1384,10 +1369,10 @@ const match_prefixed_name = (s, i) => {
 	@;
 @;
 
-@> load_object(sj_expr)
-	@- B_LOAD_GSPO_BUILDER
+@def load_object(sj_expr)
+	@if B_LOAD_GSPO_BUILDER
 		this._kh_greed.addC1Object(@{sj_expr});
-	@:
+	@else
 		this.load_object(@{sj_expr});
 	@;
 @;
@@ -1411,8 +1396,8 @@ const match_prefixed_name = (s, i) => {
 }
 
 @// emit statement and return control to whatever function asked for it
-@> eot()
-	@- !B_LOAD
+@def eot()
+	@if B_READ
 		// at this point, a new statement has been parsed
 		@{emit_statement()}
 	@;
@@ -1447,12 +1432,10 @@ function count_lines(s_chunk, i_until=Infinity) {
 @$ H_PARSE_EVENTS = {
 	base: {},
 	prefix: {},
-	...(B_QUADS
-		? {
-			enter: {},
-			exit: {},
-		}
-		: {}),
+	...(B_QUADS && {
+		enter: {},
+		exit: {},
+	}),
 	comment: {},
 	error: {},
 	read: {once:true},
@@ -1460,60 +1443,112 @@ function count_lines(s_chunk, i_until=Infinity) {
 	eof: {once:true},
 	end: {once:true},
 	finish: {once:true},
+	...(B_LOAD && {
+		load: {once:true},
+	}),
 	data: {},  // attach data listener last
 };
 
 
-@- 'load' === S_MODE
-	export class @{S_EXPORT} extends stream.Writable {
-		constructor(gc_consumer={}) {
-			super({
-				// do not decode strings into buffers
-				decodeStrings: false,
+export class @{S_EXPORT} extends stream.@{B_LOAD? /* syntax: js */ `Writable`: /* syntax: js */ `Transform`} {
+	static async run(z_input, gc_run) {
+		// instantiate consumer
+		const k_consumer = new Consumer(gc_run);
 
-				// accept strings as input on writable side
-				writableObjectMode: false,
-			});
-
-			// instantiate consumer
-			new Consumer(this, gc_consumer);  // eslint-disable-line no-new
+		// string
+		if('string' === typeof z_input) {
+			k_consumer.consume_string(z_input);
+		}
+		// stream
+		else {
+			await k_consumer.consume_stream(z_input);
 		}
 	}
-@+ 'read' === S_MODE
-	export class @{S_EXPORT} extends stream.Transform {
-		static async run(z_input, gc_run) {
-			// instantiate consumer
-			const k_consumer = new Consumer(null, gc_run);
 
-			// string
-			if('string' === typeof z_input) {
-				k_consumer.consume_string(z_input);
-			}
-			// stream
-			else {
-				await k_consumer.consume_stream(z_input);
-			}
-		}
+	constructor(gc_consumer={}) {
+		super({
+			// do not decode strings into buffers
+			decodeStrings: false,
 
-		constructor(gc_consumer={}) {
-			super({
-				// do not decode strings into buffers
-				decodeStrings: false,
+			// accept strings as input on writable side
+			writableObjectMode: false,
 
-				// accept strings as input on writable side
-				writableObjectMode: false,
-
+			@if !B_LOAD
 				// output quad objects on readable side
 				readableObjectMode: true,
-			});
+			@;
+		});
 
-			// instantiate consumer
-			const k_consumer = new Consumer(this, gc_consumer);  // eslint-disable-line no-new
+		// hash of rewired event handlers
+		this._h_rewired = {};
 
-			// proxy stream
-			k_consumer.proxy_stream(this);
+		// instantiate consumer
+		const k_consumer = this._k_consumer = new Consumer(this, gc_consumer);  // eslint-disable-line no-new
+
+		// proxy stream
+		k_consumer.proxy_transform(this);
+	}
+
+	_harden_event(si_event) {
+		// event not yet rewired
+		if(!(si_event in this._h_rewired)) {
+			let si_handler = `_fk_${si_event}`;
+
+			// ref handler
+			const fk_handler = this._k_consumer[si_handler]
+
+			// legitimate event
+			if(fk_handler){
+				// reassign current handler
+				if(F_NOOP !== fk_handler) {
+					super.on(si_event, fk_handler);
+				}
+
+				// rewire handler
+				this._k_consumer[si_handler] = (...a_args) => {
+					this.emit(si_event, ...a_args);
+				};
+
+				// save to hash
+				this._h_rewired[si_event] = 1;
+			}
+			// error event
+			else if('error' === si_event) {
+				// reassign current handler
+				if(F_THROW !== fk_handler) {
+					super.on(si_event, fk_handler);
+				}
+
+				// rewire handler
+				this._k_consumer[si_handler] = (...a_args) => {
+					this.emit(si_event, ...a_args);
+				};
+
+				// save to hash
+				this._h_rewired.error = 1;
+			}
 		}
+	}
 
+	// intercept on
+	on(si_event, fk_event, gc_event) {
+		// harden callback event
+		this._harden_event(si_event);
+
+		// forward to proxy
+		super.on(si_event, fk_event, gc_event);
+	}
+
+	// intercept once
+	once(si_event, fk_event, gc_event) {
+		// harden callback event
+		this._harden_event(si_event);
+
+		// forward to proxy
+		super.once(si_event, fk_event, gc_event);
+	}
+
+	@if !B_LOAD
 		// intercept pipe
 		pipe(ds_out) {
 			let ds_dst = ds_out;
@@ -1542,8 +1577,8 @@ function count_lines(s_chunk, i_until=Infinity) {
 				return super.pipe(ds_dst);
 			}
 		}
-	}
-@;
+	@;
+}
 
 export default @{S_EXPORT};
 
@@ -1552,34 +1587,29 @@ const F_NOOP = () => {};
 const F_THROW = (e_what) => {throw e_what};
 
 class Consumer {
-	constructor(ds_stream, gc_consumer) {
-		// TODO: normalize reader config
-		// gc_consumer = normalize_reader_config(gc_consumer);
-
+	constructor(gc_consumer) {
 		// impl-specific configs
 		let {
-			// input medium
-			input: g_input=null,
-
 			// a state to inherit
 			state: g_state={},
 		} = this._gc_consumer = gc_consumer;
 
-		@- B_CALLBACKS
-			// assign event callbacks
-			@*{
-				for(const [si_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
-					if('error' === si_event) {
-						yield /* syntax: js */ `this._fk_error = gc_consumer.error || F_THROW;`;
-					}
-					else {
-						yield /* syntax: js */ `this._fk_${si_event} = gc_consumer.${si_event} || F_NOOP;`;
-					}
+		// assign event callbacks
+		@*{
+			for(const [si_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
+				if('error' === si_event) {
+					yield /* syntax: js */ `this._fk_error = gc_consumer.error || F_THROW;`;
+				}
+				else {
+					yield /* syntax: js */ `this._fk_${si_event} = gc_consumer.${si_event} || F_NOOP;`;
 				}
 			}
-		@:
-			this.transform = ds_stream;
-		@;
+		}
+
+		// enable comments
+		if(F_NOOP !== this._fk_comment) {
+			this.enable_comments();
+		}
 
 		// inherit state from creator
 		let {
@@ -1611,32 +1641,22 @@ class Consumer {
 		const blankNode = dc_factory.blankNode;
 		const namedNode = dc_factory.namedNode;
 
-		@- B_LOAD
+		@if B_LOAD
 			const k_builder = gc_consumer.into || new PartiallyIndexedTrigDataset();
 
-			this.emit_data = function() {
-				ds_stream.emit('load', k_builder.deliver());
+			this.restore_data = function() {
+				// call 'load' handler
+				this._fk_load(k_builder.deliver());
 			};
-		@:
-			@- B_CALLBACKS
-				this.emit_data = DataFactory.unfiltered === dc_factory
-					? function() {
-						this._fk_data(quad(this));
-					}
-					: function() {
-						let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-						this._fk_data(g_quad);
-					};
-			@:
-				this.emit_data = DataFactory.unfiltered === dc_factory
-					? function() {
-						ds_stream.push(quad(this));
-					}
-					: function() {
-						let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-						ds_stream.push(g_quad);
-					};
-			@;
+		@+ B_READ
+			this.restore_data = DataFactory.unfiltered === dc_factory
+				? function() {
+					this._fk_data(quad(this));
+				}
+				: function() {
+					let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
+					this._fk_data(g_quad);
+				};
 		@;
 
 		// fields
@@ -1750,11 +1770,7 @@ class Consumer {
 			_h_labels: /* syntax: js */ `h_labels`,
 
 			// event routing
-			event: /* syntax: js */ `this.emit`,
-			data: /* syntax: js */ `this.emit_data`,
-
-			// for restoring the original event callback when resuming paused stream
-			restore_data: /* syntax: js */ `this.emit_data`,
+			data: /* syntax: js */ `this.restore_data`,
 
 			// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
 			_a_queue_event: SX_ARR_EMPTY,
@@ -1808,13 +1824,22 @@ class Consumer {
 	if(gc_consumer.relaxed) {
 		console.warn((new TypeError(`No such option 'relaxed'; did you mean 'relax' ? Suggestion: use 'tolerant' instead`)).stack.replace(/^Error:/, 'Warning:'));
 	}
+
+	if('relax' in gc_consumer) {
+		console.warn((new TypeError(`Option 'relax' will be deprecated in future release. Use the 'tolerant' option if you wish to disable validation for faster parsing.`)));
+	}
+
+	if('input' in gc_consumer) {
+		console.warn((new TypeError(`Option 'input' has been deprecated. You can either use this parser as a Transform or use the static 'run' method.`)));
+	}
+
 	if('validate' in gc_consumer) {
 		console.warn((new TypeError(`Option 'validate' has been deprecated. Validation is now enabled by default. Use the 'tolerant' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
 	}
 
 
 @// ensure there are no conflicting blank node labels
-@> no_label_conflict()
+@def no_label_conflict()
 	// not first time use of label
 	let z_label_state = this._h_labels[s_label];
 	if(z_label_state) {
@@ -1962,271 +1987,248 @@ class Consumer {
 		else if(gc_consumer.base_url || gc_consumer.baseUrl || gc_consumer.baseURL) {
 			throw new TypeError(`Invalid option: 'base${gc_consumer.base_url? '_url': gc_consumer.baseUrl? 'Url': gc_consumer.baseURL? 'URL': ''}'; use the 'base_uri' option instead`);
 		}
-
-		// input given
-		if(g_input) {
-			// input is stream
-			if(g_input.stream) {
-				let ds_input = g_input.stream;
-
-				// go async so caller has chance to bind event listeners
-				queueMicrotask(() => {
-					ds_input.pipe(ds_stream);
-				});
-			}
-			// string
-			else if('string' === typeof g_input.string) {
-				let s_input = g_input.string;
-
-				// go async so caller has chance to bind event listeners
-				queueMicrotask(() => {
-					ds_stream.end(s_input, 'utf8');
-				});
-			}
-			// invalid arg
-			else {
-				throw new TypeError(`Invalid argument for input parameter: ${'object' === typeof g_input? JSON.stringify(g_input): g_input}`);
-			}
-		}
 	}
 
-	consume_string(s_input) {
-		// concatenate current chunk to previous chunk
-		let s = this.s = s_input;
+@def write_chunk(b_fke_chunk)
+	@//@
+	// concatenate current chunk to previous chunk
+	const s = this.s = this.pre + s_chunk;
 
-		// cache chunk length
-		this.n = s.length;
+	// cache chunk length
+	this.n = s.length;
 
-		// eat whitespace before token and reset index
-		if(this._b_trim_start) {
-			@{whitespace()}
+	// eat whitespace before token and reset index
+	if(this._b_trim_start) {
+		@{whitespace()}
+	}
+	// do not eat whitespace; start at beginning
+	else {
+		this.i = 0;
+	}
+
+	// resume parsing; no errors
+	if(this.safe_parse(true)) {
+		@if B_LOAD
+			// debugger;
+			// this.emit_data();
+		@;
+
+		// emit progress event updates
+		this._fk_progress(s_chunk.length);
+
+		// count lines
+		if(this._b_line_tracking) {
+			this._c_lines += count_lines(s_chunk, -1);
 		}
-		// do not eat whitespace; start at beginning
-		else {
-			this.i = 0;
-		}
 
-		// resume parsing; no errors
-		if(this.safe_parse(true)) {
-			@- B_LOAD
-				// debugger;
-				// this.data();
-			@;
+		@if b_fke_chunk
+			// done transforming this chunk
+			fke_chunk();
+		@;
+	}
+@;
 
-			// // count lines
-			// if(this._b_line_tracking) {
-			// 	this._c_lines = count_lines(s_input, -1);
-			// }
-		}
+	// consume a string
+	consume_string(s_chunk) {
+		@{write_chunk()}
 
 		// eof
 		this.eof(1);
 	}
 
+	// consume a stream
 	consume_stream(ds_input) {
+		// go async
 		return new Promise((fk_consumed) => {
+			// bind data listener
 			ds_input.on('data', (s_chunk) => {
-				// concatenate current chunk to previous chunk
-				let s = this.s = this.pre + s_chunk;
-
-				// cache chunk length
-				this.n = s.length;
-
-				// eat whitespace before token and reset index
-				if(this._b_trim_start) {
-					@{whitespace()}
-				}
-				// do not eat whitespace; start at beginning
-				else {
-					this.i = 0;
-				}
-
-				// resume parsing; no errors
-				if(this.safe_parse(true)) {
-					@- B_LOAD
-						// debugger;
-						// this.data();
-					@;
-
-					// emit progress event updates
-					@- B_CALLBACKS
-						this._fk_progress(s_chunk.length);
-					@:
-						ds_input.emit('progress', s_chunk.length);
-					@;
-
-					// count lines
-					if(this._b_line_tracking) {
-						this._c_lines += count_lines(s_chunk, -1);
-					}
-				}
+				@{write_chunk()}
 			});
 
+			// forward errors
 			ds_input.on('error', this._fk_error);
+
+			// all data has been read
 			ds_input.on('end', () => {
+				// signal eof
 				this.eof(1);
 
-				// TODO: this._fk_end()
+				// call 'end' handler
+				this._fk_end();
 
+				// resolve promise
 				fk_consumed();
 			});
 		});
 	}
 
-	proxy_stream(ds_stream) {
-		// on data event
-		ds_stream._transform = (s_chunk, s_encoding, fke_chunk) => {
-			// concatenate current chunk to previous chunk
-			let s = this.s = this.pre + s_chunk;
+	// proxy a stream wrapper
+	@if B_LOAD
+		proxy_writable(ds_writable) {
+			this._ds_proxy = ds_writable;
 
-			// cache chunk length
-			this.n = s.length;
+			// upon a chunk being written
+			ds_writable._write = (s_chunk, s_encoding, fke_chunk) => {
+				@{write_chunk('stream')}
+			};
 
-			// eat whitespace before token and reset index
-			if(this._b_trim_start) {
-				@{whitespace()}
-			}
-			// do not eat whitespace; start at beginning
-			else {
-				this.i = 0;
-			}
+			// once there's no more data to consume, invoke eof
+			ds_writable._final = (fke_final) => {
+				// now that input stream has ended, clean up remainder
+				try {
+					this.eof(1);
+				}
+				// read error occurred
+				catch(e_eof) {
+					// allow stream to handle error
+					return fke_final(e_eof);
 
-			// resume parsing; no errors
-			if(this.safe_parse(true)) {
-				@- B_LOAD
-					// debugger;
-					// this.data();
-				@;
+					// // destroy self and stream
+					// this.destroy(e_eof);
 
-				// emit progress event updates
-				@- B_CALLBACKS
-					this._fk_progress(s_chunk.length);
-				@:
-					ds_stream.emit('progress', s_chunk.length);
-				@;
-
-				// count lines
-				if(this._b_line_tracking) {
-					this._c_lines += count_lines(s_chunk, -1);
+					// // exit gracefully
+					// return;
 				}
 
-				// done transforming this chunk
-				fke_chunk();
-			}
-		};
+				// no errors. done flushing, close read stream
+				fke_flush();
+			};
+		}
+	@+ B_READ
+		proxy_transform(ds_transform) {
+			this._ds_proxy = ds_transform;
 
-		// once there's no more data to consume, invoke eof
-		ds_stream._flush = (fke_flush) => {
-			// now that input stream has ended, clean up remainder
-			try {
-				this.eof(1);
-			}
-			// read error occurred
-			catch(e_eof) {
-				// destroy self and stream
-				this.destroy(e_eof);
+			// on data event
+			ds_transform._transform = (s_chunk, s_encoding, fke_chunk) => {
+				@{write_chunk('stream')}
+			};
 
-				// exit gracefully
-				return;
-			}
+			// once there's no more data to consume, invoke eof
+			ds_transform._flush = (fke_flush) => {
+				// now that input stream has ended, clean up remainder
+				try {
+					this.eof(1);
 
-			// no errors. done flushing, close read stream
-			fke_flush();
-		};
+					// close write stream (EOF-signaling)
+					ds_transform.push(null);
+				}
+				// read error occurred
+				catch(e_eof) {
+					// allow stream to handle error
+					return fke_flush(e_eof);
 
-		// when the writable side is piped into
-		ds_stream.on('pipe', (ds_input) => {
-			this._ds_input = ds_input;
+					// // destroy self and stream
+					// this.destroy(e_eof);
 
-			let b_byte_tracking = this._b_byte_tracking;
+					// // exit gracefully
+					// return;
+				}
 
-			// byte-tracking is disable & input stream has encoding option; ensure stream encoding is utf8
-			if(!b_byte_tracking && 'function' === typeof ds_input.setEncoding) {
-				ds_input.setEncoding('utf8');
-			}
-			// set decoding on write
-			else {
-				let f_write = ds_stream.write;
-				let d_decoder = new string_decoder.StringDecoder('utf8');
+				// no errors. done flushing, close read stream
+				fke_flush();
+			};
 
-				let f_write_track = (s_chunk, s_encoding, fk_write) => {
-					// TODO: optimize by testing for multibyte chars and using string length instead?
-					let nb_chunk = Buffer.from(s_chunk, 'utf8').length;
-					this._nb_seen += nb_chunk;
-					this._nb_last = nb_chunk;
-					return f_write.call(ds_stream, s_chunk, s_encoding, fk_write);
-				};
+			// when the writable side is piped into
+			ds_transform.on('pipe', (ds_input) => {
+				this._ds_input = ds_input;
 
-				let f_decode_write_track = (ab_chunk, s_encoding, fk_write) => {
-					let nb_chunk = this._nb_last = ab_chunk.length;
-					this._nb_seen += nb_chunk;
-					return f_write.call(ds_stream, d_decoder.write(ab_chunk), s_encoding, fk_write);
-				};
+				let b_byte_tracking = this._b_byte_tracking;
 
-				let f_decode_write = (ab_chunk, s_encoding, fk_write) => {
-					return f_write.call(ds_stream, d_decoder.write(ab_chunk), s_encoding, fk_write);
-				};
+				// byte-tracking is disable & input stream has encoding option; ensure stream encoding is utf8
+				if(!b_byte_tracking && 'function' === typeof ds_input.setEncoding) {
+					ds_input.setEncoding('utf8');
+				}
+				// set decoding on write
+				else {
+					let f_write = ds_transform.write;
+					let d_decoder = new string_decoder.StringDecoder('utf8');
 
-				ds_stream.write = function(z_chunk, s_encoding, fk_write) {
-					// not null
-					if(null !== z_chunk) {
-						// chunk is string; adapt by resetting method to original
-						if('string' === typeof z_chunk) {
-							ds_stream.write = b_byte_tracking? f_write_track: f_write;
-						}
-						// chunk is buffer; adapt by setting decoder write method
-						else {
-							ds_stream.write = b_byte_tracking? f_decode_write_track: f_decode_write;
-						}
-
-						// use set method
-						return ds_stream.write(z_chunk, s_encoding, fk_write);
-					}
-
-					// null, use parent
-					return f_write.call(ds_stream, z_chunk, s_encoding, fk_write);
-				};
-
-				// byte tracking is enabled
-				if(b_byte_tracking) {
-					// overwrite emit_data method
-					this.emit_data = this.data = this.restore_data = function() {
-						let g_quad = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-						let nb_post = Buffer.from(this.s.slice(this.i)).length;
-						let ib_post = this._nb_seen - nb_post;
-						g_quad.byteRange = [this._nb_curr, ib_post];
-						this._nb_curr = ib_post;
-						this.transform.push(g_quad);
+					let f_write_track = (s_chunk, s_encoding, fk_write) => {
+						// TODO: optimize by testing for multibyte chars and using string length instead?
+						let nb_chunk = Buffer.from(s_chunk, 'utf8').length;
+						this._nb_seen += nb_chunk;
+						this._nb_last = nb_chunk;
+						return f_write.call(ds_transform, s_chunk, s_encoding, fk_write);
 					};
+
+					let f_decode_write_track = (ab_chunk, s_encoding, fk_write) => {
+						let nb_chunk = this._nb_last = ab_chunk.length;
+						this._nb_seen += nb_chunk;
+						return f_write.call(ds_transform, d_decoder.write(ab_chunk), s_encoding, fk_write);
+					};
+
+					let f_decode_write = (ab_chunk, s_encoding, fk_write) => {
+						return f_write.call(ds_transform, d_decoder.write(ab_chunk), s_encoding, fk_write);
+					};
+
+					ds_transform.write = function(z_chunk, s_encoding, fk_write) {
+						// not null
+						if(null !== z_chunk) {
+							// chunk is string; adapt by resetting method to original
+							if('string' === typeof z_chunk) {
+								ds_transform.write = b_byte_tracking? f_write_track: f_write;
+							}
+							// chunk is buffer; adapt by setting decoder write method
+							else {
+								ds_transform.write = b_byte_tracking? f_decode_write_track: f_decode_write;
+							}
+
+							// use set method
+							return ds_transform.write(z_chunk, s_encoding, fk_write);
+						}
+
+						// null, use parent
+						return f_write.call(ds_transform, z_chunk, s_encoding, fk_write);
+					};
+
+					// byte tracking is enabled
+					if(b_byte_tracking) {
+						// overwrite emit_data method
+						this.emit_data = this.restore_data = function() {
+							let g_quad = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
+							let nb_post = Buffer.from(this.s.slice(this.i)).length;
+							let ib_post = this._nb_seen - nb_post;
+							g_quad.byteRange = [this._nb_curr, ib_post];
+							this._nb_curr = ib_post;
+							ds_transform.push(g_quad);
+						};
+					}
+				}
+			});
+
+			// new listener added
+			ds_transform.on('newListener', (s_event) => {
+				// comment
+				if('comment' === s_event && !this.emit_comments) {
+					this.enable_comments();
+				}
+			});
+
+			// destroy
+			ds_transform._destroy = (...a_args) => {
+				this.destroy(...a_args);
+			};
+
+			// bind event listeners to transform stream
+			const gc_consumer = this._gc_consumer;
+			@*{
+				for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
+					yield /* syntax: js */ `
+						if(gc_consumer.${s_event}) ds_transform.${g_event.once? 'once': 'on'}('${s_event}', gc_consumer.${s_event});
+						`.trim()+'\n';
 				}
 			}
-		});
+		}
+	@;
 
-		// new listener added
-		ds_stream.on('newListener', (s_event) => {
-			// comment
-			if('comment' === s_event) {
-				this.emit_comments = (s_captured) => {
-					let a_comments = s_captured.slice(1).replace(/\n\s+$/, '').split(/\n+\s*#/g);
+	enable_comments() {
+		this.emit_comments = (s_captured) => {
+			let a_comments = s_captured.slice(1).replace(/\n\s+$/, '').split(/\n+\s*#/g);
 
-					for(let s_comment of a_comments) {
-						@- B_CALLBACKS
-							this._fk_comment(s_comment);
-						@:
-							ds_stream.emit('comment', s_comment);
-						@;
-					}
-				};
+			for(let s_comment of a_comments) {
+				this._fk_comment(s_comment);
 			}
-		});
-
-		// destroy
-		ds_stream._destroy = (...a_args) => {
-			this.destroy(...a_args);
 		};
-
-		// bind events to transform stream
-		this.bind(this._gc_consumer);
 	}
 
 	// begin parsing, keep applying until no more stack bail-outs
@@ -2250,10 +2252,6 @@ class Consumer {
 		return true;
 	}
 
-	emit(s_event, ...a_args) {
-		this.transform.emit(s_event, ...a_args);
-	}
-
 	queue(s_event, ...a_args) {
 		this._a_queue_event.push({
 			event: s_event,
@@ -2262,12 +2260,12 @@ class Consumer {
 	}
 
 
-	@- B_LOAD
-		@- B_LOAD_GSPO_BUILDER
+	@if B_LOAD
+		@if B_LOAD_GSPO_BUILDER
 			load_object(sc1_object) {
 				this._kh_greed.addC1Object(sc1_object);
 			}
-		@:
+		@else
 			load_object(sc1_object) {
 				// first encounter w/ object
 				let as_objects = this._as_objects;
@@ -2289,10 +2287,10 @@ class Consumer {
 			// drain event queue
 			while(a_queue.length) {
 				// remove event from front of queue
-				let h_event = a_queue.shift();
+				const g_event = a_queue.shift();
 
 				// make event callback
-				this[h_event.event](h_event.data);
+				this[g_event.event](g_event.data);
 			}
 		}
 
@@ -2351,33 +2349,24 @@ class Consumer {
 		// make buffer's alloc eligible for gc
 		this.s = null;
 
-		@- B_CALLBACKS
-			// final progress update: no additional bytes were read
-			this._fk_progress(0);
+		// final progress update: no additional bytes were read
+		this._fk_progress(0);
 
-			// call end event listener
-			this._fk_eof(this._h_prefixes);
-		@:
-			// transform stream
-			let ds_stream = this.transform;
+		// call end event listener
+		this._fk_eof(this._h_prefixes);
 
-			// final progress update: no additional bytes were read
-			ds_stream.emit('progress', 0);
-
-			// call end event listener
-			ds_stream.emit('eof', this._h_prefixes);
-		@;
-
-		@- B_LOAD
-			@- B_LOAD_GSPO_BUILDER
-				(async() => {
-					const k_dataset = await this._k_builder.deliver();
-
-					ds_stream.emit('load', k_dataset);
-				})();
-			@:
+		@if B_LOAD
+			@if B_LOAD_GSPO_BUILDER
+				// deliver dataset; call 'load' handler
+				this._k_builder.deliver().then((k_dataset) => {
+					this._fk_load(k_dataset);
+				});
+			@else
+				// ref self
 				const k_self = this;
-				ds_stream.emit('load-trad', {
+
+				// call 'load-trad' handler
+				this._fk_load_trad({
 					get size() {
 						return k_self._hc3_triples[$_QUADS];
 					},
@@ -2388,14 +2377,9 @@ class Consumer {
 				});
 			@;
 		@;
-
-		@- !B_CALLBACKS
-			// close write stream (EOF-signaling)
-			ds_stream.push(null);
-		@;
 	};
 
-	@- B_STAR
+	@if B_STAR
 		exit_star() {
 			// create quad
 			this._kq_star = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object);
@@ -2403,25 +2387,13 @@ class Consumer {
 	@;
 
 
-	// bind event listeners to transform stream
-	bind(gc_consumer) {
-		let ds_stream = this.transform;
-		@*{
-			for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
-				yield /* syntax: js */ `
-					if(gc_consumer.${s_event}) ds_stream.${g_event.once? 'once': 'on'}('${s_event}', gc_consumer.${s_event});
-					`.trim()+'\n';
-			}
-		}
-	}
-
 	// after a blank node subject (either property-list or colleciton)
 	post_blank_subject_DELETE_THIS() {
 		let {s, i} = this;
 		if('.' === s[i]) {
 			@{whitespace(+1)}
 
-			@-B_QUADS
+			@ifB_QUADS
 				// not inside block
 				if(@{SJ_DEFAULT_GRAPH} === this._kt_graph) {
 					@{goto('block')}
@@ -2430,10 +2402,10 @@ class Consumer {
 				else {
 					@{goto('statement')}
 				}
-			@:
+			@else
 				@{goto('statement')}
 			@;
-		@- B_QUADS
+		@if B_QUADS
 			@{else_if_match('R_CHAR_CLOSE')}
 				// empty collection
 				if(@{terms_equal(SJ_RDF_NIL, 'this._kt_subject')}) {
@@ -2444,16 +2416,16 @@ class Consumer {
 				@{emit_graph_close()}
 
 				// reset graph
-				@- B_LOAD
+				@if B_LOAD
 					@{load_default_graph()}
-				@:
+				@else
 					this._kt_graph = @{SJ_DEFAULT_GRAPH};
 				@;
 
 				// goto block state
 				@{goto('block')}
 			@{end_else()}
-		@:
+		@else
 			}
 		@;
 		@{goto('pairs')}
@@ -2651,7 +2623,7 @@ class Consumer {
 
 							${b_star? push_state('star_predicate_x'): ''}
 
-							this.data = this.exit_star;
+							this.emit_data = this.exit_star;
 							this.after_eot = this.triple_x_close;
 							${push_state('star_pairs')}
 						`,
@@ -3780,7 +3752,7 @@ class Consumer {
 		this._kt_subject = this._kq_star;
 
 		// restore data and after_eot
-		this.data = this.emit_data;
+		this.emit_data = this.restore_data;
 		this.after_eot = this.restore_after_eot
 
 		// resume
@@ -3800,10 +3772,9 @@ class Consumer {
 		this._kt_object = this._kq_star;
 
 		// restore data and after_eot
-		this.data = this.emit_data;
+		this.emit_data = this.restore_data;
 		this.after_eot = this.restore_after_eot;
 
-@// TODO: this used to be @{emit_data}; check nothing lost w/ statement
 		// emit data
 		@{emit_statement()}
 
@@ -3816,13 +3787,13 @@ class Consumer {
 	@//@object-literal
 
 	destroy(e_destroy) {
-		@- B_CALLBACKS
+		@if B_CALLBACKS
 			this.eof = () => {
 				this.s = null;
 			};
 
 			this._b_destroyed = true;
-		@:
+		@else
 			@*{
 				for(let s_method of a_methods) {
 					yield /* syntax: js */ `
@@ -3842,7 +3813,9 @@ class Consumer {
 				this._ds_input.destroy(e_destroy);
 			}
 
-			this.transform.demolish(e_destroy);
+			if(this._ds_proxy && this._ds_proxy.demolish) {
+				this._ds_proxy.demolish(e_destroy);
+			}
 		@;
 	}
 }
