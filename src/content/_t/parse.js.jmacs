@@ -29,6 +29,8 @@
 @$ B_OPTIMIZE_PN = true;
 
 @.{
+	const ode = Object.entries;
+
 	let SJ_RDF_TYPE;
 	let SJ_RDF_FIRST;
 	let SJ_RDF_REST;
@@ -72,7 +74,6 @@ import string_decoder from 'string_decoder';
 
 import {stream} from '@@graphy/internal';
 import {DataFactory} from '@@graphy/core';
-const quad = k => DataFactory.quad(k._kt_subject, k._kt_predicate, k._kt_object, k._kt_graph);
 
 @if B_LOAD
 	@if B_LOAD_GSPO_BUILDER
@@ -734,7 +735,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	};
 
 	function* states(h_states) {
-		for(let [si_state, g_state] of Object.entries(h_states)) {
+		for(let [si_state, g_state] of ode(h_states)) {
 			// prep body string
 			let s_body = '';
 
@@ -745,7 +746,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			let c_branches = 1;
 
 			// each rule
-			for(let [si_rule, z_rule] of Object.entries(g_state.rules)) {
+			for(let [si_rule, z_rule] of ode(g_state.rules)) {
 				// create args
 				let h_args = {
 					...(g_state.apply || {}),
@@ -1441,8 +1442,6 @@ function count_lines(s_chunk, i_until=Infinity) {
 	read: {once:true},
 	progress: {},
 	eof: {once:true},
-	end: {once:true},
-	finish: {once:true},
 	...(B_LOAD && {
 		load: {once:true},
 	}),
@@ -1483,15 +1482,15 @@ export class @{S_EXPORT} extends stream.@{B_LOAD? /* syntax: js */ `Writable`: /
 		this._h_rewired = {};
 
 		// instantiate consumer
-		const k_consumer = this._k_consumer = new Consumer(this, gc_consumer);  // eslint-disable-line no-new
+		const k_consumer = this._k_consumer = new Consumer(gc_consumer);  // eslint-disable-line no-new
 
 		// proxy stream
 		k_consumer.proxy_transform(this);
 	}
 
-	_harden_event(si_event) {
+	_rewire_event(si_event) {
 		// event not yet rewired
-		if(!(si_event in this._h_rewired)) {
+		if(this._h_rewired && !(si_event in this._h_rewired)) {
 			let si_handler = `_fk_${si_event}`;
 
 			// ref handler
@@ -1514,14 +1513,16 @@ export class @{S_EXPORT} extends stream.@{B_LOAD? /* syntax: js */ `Writable`: /
 			}
 			// error event
 			else if('error' === si_event) {
+				const fe_handler = this._k_consumer._fe_error;
+
 				// reassign current handler
-				if(F_THROW !== fk_handler) {
-					super.on(si_event, fk_handler);
+				if(fe_handler && F_THROW !== fe_handler) {
+					super.on('error', fe_handler);
 				}
 
 				// rewire handler
-				this._k_consumer[si_handler] = (...a_args) => {
-					this.emit(si_event, ...a_args);
+				this._k_consumer._fe_error = (...a_args) => {
+					this.emit('error', ...a_args);
 				};
 
 				// save to hash
@@ -1533,7 +1534,7 @@ export class @{S_EXPORT} extends stream.@{B_LOAD? /* syntax: js */ `Writable`: /
 	// intercept on
 	on(si_event, fk_event, gc_event) {
 		// harden callback event
-		this._harden_event(si_event);
+		this._rewire_event(si_event);
 
 		// forward to proxy
 		super.on(si_event, fk_event, gc_event);
@@ -1542,7 +1543,7 @@ export class @{S_EXPORT} extends stream.@{B_LOAD? /* syntax: js */ `Writable`: /
 	// intercept once
 	once(si_event, fk_event, gc_event) {
 		// harden callback event
-		this._harden_event(si_event);
+		this._rewire_event(si_event);
 
 		// forward to proxy
 		super.once(si_event, fk_event, gc_event);
@@ -1596,12 +1597,15 @@ class Consumer {
 
 		// assign event callbacks
 		@*{
-			for(const [si_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
+			for(const [si_event, g_event] of ode(H_PARSE_EVENTS)) {
+				// do not create handlers for proxy events
+				if(g_event.proxy) continue;
+
 				if('error' === si_event) {
-					yield /* syntax: js */ `this._fk_error = gc_consumer.error || F_THROW;`;
+					yield /* syntax: js */ `this._fe_error = gc_consumer.error || F_THROW;\n`;
 				}
 				else {
-					yield /* syntax: js */ `this._fk_${si_event} = gc_consumer.${si_event} || F_NOOP;`;
+					yield /* syntax: js */ `this._fk_${si_event} = gc_consumer.${si_event} || F_NOOP;\n`;
 				}
 			}
 		}
@@ -1649,14 +1653,9 @@ class Consumer {
 				this._fk_load(k_builder.deliver());
 			};
 		@+ B_READ
-			this.restore_data = DataFactory.unfiltered === dc_factory
-				? function() {
-					this._fk_data(quad(this));
-				}
-				: function() {
-					let g_quad = dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-					this._fk_data(g_quad);
-				};
+			this.restore_data = function() {
+				this._fk_data(this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph));
+			};
 		@;
 
 		// fields
@@ -1769,9 +1768,6 @@ class Consumer {
 			// hash to keep track of all blank node labels in use
 			_h_labels: /* syntax: js */ `h_labels`,
 
-			// event routing
-			data: /* syntax: js */ `this.restore_data`,
-
 			// keep a queue of data events to hold onto until stream resumes (only happens in rare conditions)
 			_a_queue_event: SX_ARR_EMPTY,
 
@@ -1779,6 +1775,9 @@ class Consumer {
 			_b_expecting_full_stop: SX_FALSE,
 			_s_temp_prefix_id: SX_NULL,
 			_b_trim_start: SX_TRUE,
+
+			// event routing
+			emit_data: /* syntax: js */ `this.restore_data`,
 
 			anonymous_blank_node: /* syntax: js */ `s_label => blankNode(s_label, true)`,
 
@@ -2006,8 +2005,21 @@ class Consumer {
 		this.i = 0;
 	}
 
-	// resume parsing; no errors
-	if(this.safe_parse(true)) {
+	// resume parsing
+	const e_parse = this.safe_parse(true);
+
+	// parse error
+	if(e_parse) {
+		@if b_fke_chunk
+			// handle thru stream callback
+			return fke_chunk(e_parse);
+		@else
+			// handle using callback
+			return this._fe_error(e_parse);
+		@;
+	}
+	// no errors
+	else {
 		@if B_LOAD
 			// debugger;
 			// this.emit_data();
@@ -2046,15 +2058,12 @@ class Consumer {
 			});
 
 			// forward errors
-			ds_input.on('error', this._fk_error);
+			ds_input.on('error', this._fe_error);
 
 			// all data has been read
 			ds_input.on('end', () => {
 				// signal eof
 				this.eof(1);
-
-				// call 'end' handler
-				this._fk_end();
 
 				// resolve promise
 				fk_consumed();
@@ -2062,162 +2071,129 @@ class Consumer {
 		});
 	}
 
+@def gen_steam_proxy(gc_stream)
+	// on data event
+	ds_@{gc_stream.kind}._@{gc_stream.data} = (s_chunk, s_encoding, fke_chunk) => {
+		@{write_chunk('stream')}
+	};
+
+	// once there's no more data to consume, invoke eof
+	ds_@{gc_stream.kind}._@{gc_stream.terminal} = (fke_@{gc_stream.terminal}) => {
+		// now that input stream has ended, clean up remainder
+		try {
+			this.eof(1);
+		}
+		// read error occurred; allow stream to handle error
+		catch(e_eof) {
+			return fke_@{gc_stream.terminal}(e_eof);
+		}
+
+		// no errors. done with @{gc_stream.terminal}, close stream
+		fke_@{gc_stream.terminal}();
+	};
+
+	// new listener added
+	ds_@{gc_stream.kind}.on('newListener', (s_event) => {
+		// comment
+		if('comment' === s_event && !this.emit_comments) {
+			this.enable_comments();
+		}
+	});
+
+	// destroy
+	ds_@{gc_stream.kind}._destroy = (...a_args) => {
+		this.destroy(...a_args);
+	};
+
+	// when the writable side is piped into
+	ds_@{gc_stream.kind}.on('pipe', (ds_input) => {
+		this._ds_input = ds_input;
+
+		let b_byte_tracking = this._b_byte_tracking;
+
+		// byte-tracking is disable & input stream has encoding option; ensure stream encoding is utf8
+		if(!b_byte_tracking && 'function' === typeof ds_input.setEncoding) {
+			ds_input.setEncoding('utf8');
+		}
+		// set decoding on write
+		else {
+			let f_write = ds_@{gc_stream.kind}.write;
+			let d_decoder = new string_decoder.StringDecoder('utf8');
+
+			let f_write_track = (s_chunk, s_encoding, fk_write) => {
+				// TODO: optimize by testing for multibyte chars and using string length instead?
+				let nb_chunk = Buffer.from(s_chunk, 'utf8').length;
+				this._nb_seen += nb_chunk;
+				this._nb_last = nb_chunk;
+				return f_write.call(ds_@{gc_stream.kind}, s_chunk, s_encoding, fk_write);
+			};
+
+			let f_decode_write_track = (ab_chunk, s_encoding, fk_write) => {
+				let nb_chunk = this._nb_last = ab_chunk.length;
+				this._nb_seen += nb_chunk;
+				return f_write.call(ds_@{gc_stream.kind}, d_decoder.write(ab_chunk), s_encoding, fk_write);
+			};
+
+			let f_decode_write = (ab_chunk, s_encoding, fk_write) => {
+				return f_write.call(ds_@{gc_stream.kind}, d_decoder.write(ab_chunk), s_encoding, fk_write);
+			};
+
+			ds_@{gc_stream.kind}.write = function(z_chunk, s_encoding, fk_write) {
+				// not null
+				if(null !== z_chunk) {
+					// chunk is string; adapt by resetting method to original
+					if('string' === typeof z_chunk) {
+						ds_@{gc_stream.kind}.write = b_byte_tracking? f_write_track: f_write;
+					}
+					// chunk is buffer; adapt by setting decoder write method
+					else {
+						ds_@{gc_stream.kind}.write = b_byte_tracking? f_decode_write_track: f_decode_write;
+					}
+
+					// use set method
+					return ds_@{gc_stream.kind}.write(z_chunk, s_encoding, fk_write);
+				}
+
+				// null, use parent
+				return f_write.call(ds_@{gc_stream.kind}, z_chunk, s_encoding, fk_write);
+			};
+
+			// byte tracking is enabled
+			if(b_byte_tracking) {
+				// overwrite emit_data method
+				this.emit_data = this.restore_data = function() {
+					let g_quad = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
+					let nb_post = Buffer.from(this.s.slice(this.i)).length;
+					let ib_post = this._nb_seen - nb_post;
+					g_quad.byteRange = [this._nb_curr, ib_post];
+					this._nb_curr = ib_post;
+					ds_@{gc_stream.kind}.push(g_quad);
+				};
+			}
+		}
+	});
+@;
+
 	// proxy a stream wrapper
 	@if B_LOAD
 		proxy_writable(ds_writable) {
 			this._ds_proxy = ds_writable;
 
-			// upon a chunk being written
-			ds_writable._write = (s_chunk, s_encoding, fke_chunk) => {
-				@{write_chunk('stream')}
-			};
-
-			// once there's no more data to consume, invoke eof
-			ds_writable._final = (fke_final) => {
-				// now that input stream has ended, clean up remainder
-				try {
-					this.eof(1);
-				}
-				// read error occurred
-				catch(e_eof) {
-					// allow stream to handle error
-					return fke_final(e_eof);
-
-					// // destroy self and stream
-					// this.destroy(e_eof);
-
-					// // exit gracefully
-					// return;
-				}
-
-				// no errors. done flushing, close read stream
-				fke_flush();
-			};
+			@{gen_steam_proxy({
+				kind: 'writable',
+				data: 'write',
+				terminal: 'final',
+			})}
 		}
 	@+ B_READ
 		proxy_transform(ds_transform) {
 			this._ds_proxy = ds_transform;
 
-			// on data event
-			ds_transform._transform = (s_chunk, s_encoding, fke_chunk) => {
-				@{write_chunk('stream')}
-			};
-
-			// once there's no more data to consume, invoke eof
-			ds_transform._flush = (fke_flush) => {
-				// now that input stream has ended, clean up remainder
-				try {
-					this.eof(1);
-
-					// close write stream (EOF-signaling)
-					ds_transform.push(null);
-				}
-				// read error occurred
-				catch(e_eof) {
-					// allow stream to handle error
-					return fke_flush(e_eof);
-
-					// // destroy self and stream
-					// this.destroy(e_eof);
-
-					// // exit gracefully
-					// return;
-				}
-
-				// no errors. done flushing, close read stream
-				fke_flush();
-			};
-
-			// when the writable side is piped into
-			ds_transform.on('pipe', (ds_input) => {
-				this._ds_input = ds_input;
-
-				let b_byte_tracking = this._b_byte_tracking;
-
-				// byte-tracking is disable & input stream has encoding option; ensure stream encoding is utf8
-				if(!b_byte_tracking && 'function' === typeof ds_input.setEncoding) {
-					ds_input.setEncoding('utf8');
-				}
-				// set decoding on write
-				else {
-					let f_write = ds_transform.write;
-					let d_decoder = new string_decoder.StringDecoder('utf8');
-
-					let f_write_track = (s_chunk, s_encoding, fk_write) => {
-						// TODO: optimize by testing for multibyte chars and using string length instead?
-						let nb_chunk = Buffer.from(s_chunk, 'utf8').length;
-						this._nb_seen += nb_chunk;
-						this._nb_last = nb_chunk;
-						return f_write.call(ds_transform, s_chunk, s_encoding, fk_write);
-					};
-
-					let f_decode_write_track = (ab_chunk, s_encoding, fk_write) => {
-						let nb_chunk = this._nb_last = ab_chunk.length;
-						this._nb_seen += nb_chunk;
-						return f_write.call(ds_transform, d_decoder.write(ab_chunk), s_encoding, fk_write);
-					};
-
-					let f_decode_write = (ab_chunk, s_encoding, fk_write) => {
-						return f_write.call(ds_transform, d_decoder.write(ab_chunk), s_encoding, fk_write);
-					};
-
-					ds_transform.write = function(z_chunk, s_encoding, fk_write) {
-						// not null
-						if(null !== z_chunk) {
-							// chunk is string; adapt by resetting method to original
-							if('string' === typeof z_chunk) {
-								ds_transform.write = b_byte_tracking? f_write_track: f_write;
-							}
-							// chunk is buffer; adapt by setting decoder write method
-							else {
-								ds_transform.write = b_byte_tracking? f_decode_write_track: f_decode_write;
-							}
-
-							// use set method
-							return ds_transform.write(z_chunk, s_encoding, fk_write);
-						}
-
-						// null, use parent
-						return f_write.call(ds_transform, z_chunk, s_encoding, fk_write);
-					};
-
-					// byte tracking is enabled
-					if(b_byte_tracking) {
-						// overwrite emit_data method
-						this.emit_data = this.restore_data = function() {
-							let g_quad = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph);
-							let nb_post = Buffer.from(this.s.slice(this.i)).length;
-							let ib_post = this._nb_seen - nb_post;
-							g_quad.byteRange = [this._nb_curr, ib_post];
-							this._nb_curr = ib_post;
-							ds_transform.push(g_quad);
-						};
-					}
-				}
-			});
-
-			// new listener added
-			ds_transform.on('newListener', (s_event) => {
-				// comment
-				if('comment' === s_event && !this.emit_comments) {
-					this.enable_comments();
-				}
-			});
-
-			// destroy
-			ds_transform._destroy = (...a_args) => {
-				this.destroy(...a_args);
-			};
-
-			// bind event listeners to transform stream
-			const gc_consumer = this._gc_consumer;
-			@*{
-				for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
-					yield /* syntax: js */ `
-						if(gc_consumer.${s_event}) ds_transform.${g_event.once? 'once': 'on'}('${s_event}', gc_consumer.${s_event});
-						`.trim()+'\n';
-				}
-			}
+			@{gen_steam_proxy({
+				kind: 'transform',
+				data: 'transform',
+				terminal: 'flush',
+			})}
 		}
 	@;
 
@@ -2239,17 +2215,10 @@ class Consumer {
 				f_sync = f_sync.apply(this);
 			}
 		}
-		// read error occurred
+		// read error occurred; return it
 		catch(e_read) {
-			// destroy self and stream
-			this.destroy(e_read);
-
-			// failure
-			return false;
+			return e_read
 		}
-		
-		// okay
-		return true;
 	}
 
 	queue(s_event, ...a_args) {
@@ -2302,8 +2271,16 @@ class Consumer {
 			// exit "flowing" mode
 			this.n = this.s.length;
 
-			// resume parsing; no errors
-			if(this.safe_parse()) {
+			// resume parsing final chunk
+			const e_parse_final = this.safe_parse();
+
+			// error
+			if(e_parse_final) {
+				// handle gracefully
+				return this._fe_error(e_parse_final);
+			}
+			// no errors
+			else {
 				// eof has occurred under safe parse
 				if(null === this.s) return;
 
@@ -2435,7 +2412,7 @@ class Consumer {
 
 	@.{
 		function subassign(h_source, h_add) {
-			for(let [, h_sub] of Object.entries(h_source)) {
+			for(let [, h_sub] of ode(h_source)) {
 				Object.assign(h_sub, h_add);
 			}
 		}
@@ -3787,36 +3764,28 @@ class Consumer {
 	@//@object-literal
 
 	destroy(e_destroy) {
-		@if B_CALLBACKS
-			this.eof = () => {
-				this.s = null;
-			};
-
-			this._b_destroyed = true;
-		@else
-			@*{
-				for(let s_method of a_methods) {
-					yield /* syntax: js */ `
-						this.${s_method} = () => {};
-					`;
-				}
+		@*{
+			for(const s_method of a_methods) {
+				yield /* syntax: js */ `
+					this.${s_method} = () => {};
+				`;
 			}
+		}
 
-			this.eof = () => {
-				this.s = null;
-			};
+		this.eof = () => {
+			this.s = null;
+		};
 
-			this._b_destroyed = true;
+		this._b_destroyed = true;
 
-			// propagate input destroy
-			if(!e_destroy && this._ds_input) {
-				this._ds_input.destroy(e_destroy);
-			}
+		// propagate input destroy
+		if(!e_destroy && this._ds_input) {
+			this._ds_input.destroy(e_destroy);
+		}
 
-			if(this._ds_proxy && this._ds_proxy.demolish) {
-				this._ds_proxy.demolish(e_destroy);
-			}
-		@;
+		if(this._ds_proxy && this._ds_proxy.demolish) {
+			this._ds_proxy.demolish(e_destroy);
+		}
 	}
 }
 
