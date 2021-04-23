@@ -7,6 +7,8 @@ export class ContentError extends Error {
 		this._s_source = gc_error.source;
 		this._i_position = gc_error.position;
 		this._g_location = gc_error.location;
+
+		this.name = `@graphy/content.${this.name}`;
 	}
 
 	get title() {
@@ -18,18 +20,27 @@ export class ContentError extends Error {
 	}
 
 	get message() {
-		return this._s_message;
+		return this.toString();
 	}
+
+	// get stack() {
+	// 	return this.title+'::'+this._s_message+'\n'+this.toString();
+	// }
 
 	toString() {
 		const i_pos = this._i_position;
-		const i_off = Math.min(i_pos, Math.abs(i_pos-15));
 
-		return `@graphy/content.${this.name}\n`
-			+(this._g_location? `  at { line: ${this._g_location.line}, col: ${this._g_location.col} }\n`: '')
-			+`\n  ${this._s_source.substr(i_off, i_off+90).replace(/[\n\t]/g, ' ')}\n`
+		// 55 sets the relative bias to the front of the message
+		const i_off = Math.min(i_pos, Math.abs(i_pos-55));
+
+		// 90 sets the max width of the preview
+		const s_preview = this._s_source.substr(i_off, 90).replace(/[\n\t]/g, ' ');
+
+		return this.description+'\n'
+			+(this._g_location? `  at { line: ${this._g_location.line}, col: ${this._g_location.col} }\n`: ' to see the line/col offset, remove or disable the `swift: true` option')
+			+`\n  ${s_preview}\n`
 			+`  ${' '.repeat(i_pos-i_off)}^\n`
-			+`  ${this._s_message.replace()}`;
+			+`  ${this._s_message}`;
 	}
 }
 
@@ -40,8 +51,8 @@ ContentSyntaxError.prototype.description = 'A syntax error was found while readi
 export class UnexpectedTokenError extends ContentSyntaxError {
 	constructor(gc_error) {
 		super(gc_error);
-		const s_char = this._s_source[this._i_pos];
-		this._s_message = `Expected ${this.state} ${gc_error.eofed? 'but encountered <<EOF>>': ''}. Failed to parse a valid token starting at ${s_char? '"'+s_char+'"': '<<EOF>>'}`;
+		const s_char = this._s_source[this._i_position];
+		this._s_message = `Expected ${this._s_state} ${gc_error.eofed? 'but encountered <<EOF>>': ''}. Failed to parse a valid token starting at ${s_char? '"'+s_char+'"': '<<EOF>>'}`;
 	}
 }
 

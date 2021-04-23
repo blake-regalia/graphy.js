@@ -289,7 +289,7 @@
       - warn
       - before: false
         after: true
-    semi-style: error
+    semi-style: warn
     space-before-blocks:
       - warn
       - always

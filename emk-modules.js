@@ -366,6 +366,9 @@ module.exports = {
 
 						# pop dir from stack
 						popd
+
+						# link to
+						npm link @graphy/${si_module}
 					`,
 				}),
 			},

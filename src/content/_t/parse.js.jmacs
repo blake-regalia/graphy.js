@@ -21,7 +21,6 @@
 @$ B_STAR = true;
 @$ B_OPTIMIZE_PAIRS = false;
 @$ B_OPTIMIZE_PREFIX_IDS = false;
-@$ B_CALLBACKS = true;
 
 @$ B_LOAD_GSPO_BUILDER = true;
 
@@ -77,7 +76,7 @@ import {DataFactory} from '@@graphy/core';
 
 @if B_LOAD
 	@if B_LOAD_GSPO_BUILDER
-		import {PartiallyIndexedTrigDataset} from '@@graphy/memory';
+		import {BasicQuadTree} from '@@graphy/memory';
 	@;
 	const {
 		concise,
@@ -568,21 +567,21 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				// it has exponent term, xsd:double
 				if(${sj_matched}[4]) {
 					${modal({
-						read: save_term(s_role, /* syntax: js */ `this._dc_factory.double(${sj_matched}[1])`),
+						read: save_term(s_role, /* syntax: js */ `this._dc_factory.doubleLiteral(${sj_matched}[1])`),
 						load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'double"'+${sj_matched}[1]`),
 					})}
 				}
 				// contains decimal point, xsd:decimal
 				else if(${sj_matched}[2] || ${sj_matched}[3]) {
 					${modal({
-						read: save_term(s_role, /* syntax: js */ `this._dc_factory.decimal(${sj_matched}[1])`),
+						read: save_term(s_role, /* syntax: js */ `this._dc_factory.decimalLiteral(${sj_matched}[1])`),
 						load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'decimal"'+${sj_matched}[1]`),
 					})}
 				}
 				// otherwise, it is an integer
 				else {
 					${modal({
-						read: save_term(s_role, /* syntax: js */ `this._dc_factory.integer(BigInt(${sj_matched}[1]))`),
+						read: save_term(s_role, /* syntax: js */ `this._dc_factory.integerLiteral(BigInt(${sj_matched}[1]))`),
 						load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'integer"'+${sj_matched}[1]`),
 					})}
 				}
@@ -593,7 +592,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			type: 'match',
 			test: /* syntax: js */ `R_BOOLEAN_LITERAL`,
 			action: ({sj_matched}) => modal({
-				read: save_term(s_role, /* syntax: js */ `this._dc_factory.boolean(${sj_matched}[1]? true: false)`),
+				read: save_term(s_role, /* syntax: js */ `this._dc_factory.booleanLiteral(${sj_matched}[1]? true: false)`),
 				load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'boolean"'+(${sj_matched}[1]? 'true': 'false')`),
 			}),
 		}),
@@ -1151,13 +1150,18 @@ const match_prefixed_name = (s, i) => {
 };
 
 @// will only be used by TriG
-@def emit_graph_open()
+@>> emit_graph_open()
 	this._fk_enter(this._kt_graph);
 @;
 
 @// will only be used by TriG
-@def emit_graph_close()
+@>> emit_graph_close()
 	this._fk_exit(this._kt_graph);
+@;
+
+@// emit a statement event to listener using current subject/predicate/object
+@>> emit_statement()
+	this.emit_data();
 @;
 
 
@@ -1258,11 +1262,6 @@ const match_prefixed_name = (s, i) => {
 	// if we're not parsing a stream, then this is an error
 	if(this.eos) this.eos();
 	return;
-@;
-
-@// emit a statement event to listener using current subject/predicate/object
-@>> emit_statement()
-	this.emit_data();
 @;
 
 
@@ -1416,7 +1415,7 @@ function count_lines(s_chunk, i_until=Infinity) {
 			let i_next = s_chunk.indexOf('\n', i_scan);
 			if(i_next < 0 || i_next >= i_until) return c_lines;
 			c_lines += 1;
-			i_scan = i_next;
+			i_scan = i_next + 1;
 		}
 	}
 	else {
@@ -1646,12 +1645,7 @@ class Consumer {
 		const namedNode = dc_factory.namedNode;
 
 		@if B_LOAD
-			const k_builder = gc_consumer.into || new PartiallyIndexedTrigDataset();
-
-			this.restore_data = function() {
-				// call 'load' handler
-				this._fk_load(k_builder.deliver());
-			};
+			const k_builder = gc_consumer.into || new BasicQuadTree.Builder();
 		@+ B_READ
 			this.restore_data = function() {
 				this._fk_data(this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph));
@@ -1805,8 +1799,8 @@ class Consumer {
 			// maximum length of a token: defaults to 2048 => http://stackoverflow.com/a/417184/1641160
 			_n_max_token_length: /* syntax: js */ `gc_consumer.max_token_length || gc_consumer.maxTokenLength || 2048`,
 
-			// maximum length of a string (overrides max_token_length): defaults to Infinity
-			_n_max_string_length: /* syntax: js */ `gc_consumer.max_string_length || gc_consumer.maxStringLength || Infinity`,
+			// maximum length of a string (overrides max_token_length): defaults to 524288 (~1-2 MiB in UTF-16)
+			_n_max_string_length: /* syntax: js */ `gc_consumer.max_string_length || gc_consumer.maxStringLength || 524288`,
 
 			// byte tracking
 			_b_byte_tracking: /* syntax: js */ `gc_consumer.byte_tracking || gc_consumer.byteTracking || false`,
@@ -1815,7 +1809,7 @@ class Consumer {
 			_nb_curr: SX_NUM_ZERO,
 
 			// line tracking
-			_b_line_tracking: /* syntax: js */ `gc_consumer.line_tracking || gc_consumer.lineTracking || false`,
+			_b_line_tracking: /* syntax: js */ `!gc_consumer.swift`,
 			_c_lines: SX_NUM_ZERO,
 		}, /* syntax: js */ `this`);
 	/* eslint-enable multiline-ternary */ }
@@ -1913,7 +1907,7 @@ class Consumer {
 				check_named_node_escapeless: /* syntax: js */ `function(p_iri) {
 					if(!RT_NAMED_NODE_ESCAPELESS_VALID.test(p_iri)) {
 						throw new ContentSyntaxError({
-							message: \`invalid IRI: <\${p_iri}>\`,
+							message: \`Invalid IRI: <\${p_iri}>\`,
 							${error_args()}
 						});
 					}
@@ -2045,13 +2039,16 @@ class Consumer {
 		@{write_chunk()}
 
 		// eof
-		this.eof(1);
+		const e_eof = this.eof(1);
+
+		// handle error
+		if(e_eof) return this._fe_error(e_eof);
 	}
 
 	// consume a stream
 	consume_stream(ds_input) {
 		// go async
-		return new Promise((fk_consumed) => {
+		return new Promise((fk_consumed, fe_reject) => {
 			// bind data listener
 			ds_input.on('data', (s_chunk) => {
 				@{write_chunk()}
@@ -2063,7 +2060,10 @@ class Consumer {
 			// all data has been read
 			ds_input.on('end', () => {
 				// signal eof
-				this.eof(1);
+				const e_eof = this.eof(1);
+
+				// reject with failure
+				if(e_eof) return fe_reject(e_eof);
 
 				// resolve promise
 				fk_consumed();
@@ -2080,13 +2080,10 @@ class Consumer {
 	// once there's no more data to consume, invoke eof
 	ds_@{gc_stream.kind}._@{gc_stream.terminal} = (fke_@{gc_stream.terminal}) => {
 		// now that input stream has ended, clean up remainder
-		try {
-			this.eof(1);
-		}
+		const e_eof = this.eof(1);
+
 		// read error occurred; allow stream to handle error
-		catch(e_eof) {
-			return fke_@{gc_stream.terminal}(e_eof);
-		}
+		if(e_eof) return fke_@{gc_stream.terminal}(e_eof);
 
 		// no errors. done with @{gc_stream.terminal}, close stream
 		fke_@{gc_stream.terminal}();
@@ -2283,10 +2280,10 @@ class Consumer {
 			else {
 				// eof has occurred under safe parse
 				if(null === this.s) return;
-
 				// still invalid parsing state
 				if(this.@{S_STATE_PRIMARY} !== this._f_state) {
-					throw new UnexpectedTokenError({
+					// handle using callback
+					return new UnexpectedTokenError({
 						state: this._f_state.name,
 						found: '<<EOF>>',
 						@{error_args()}
@@ -2315,7 +2312,7 @@ class Consumer {
 				// not EOF
 				if(!(i === this.n - 1 && '\0' === s[i])) {
 					// bad input; parse error
-					throw new UnexpectedTokenError({
+					return new UnexpectedTokenError({
 						state: this._f_state.name,
 						@{error_args()}
 					});

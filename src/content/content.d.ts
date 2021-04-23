@@ -1,10 +1,14 @@
 import EventEmitter = NodeJS.EventEmitter;
 
 import {
+    Readable,
+    Writable,
     Transform,
 } from 'stream';
 
-import * from '@graphy/types';
+import {
+    Term,
+} from '@graphy/types';
 
 import {
     PrefixMap,
@@ -19,14 +23,22 @@ import {
 
 export type JavaScriptCode = string;
 
+export type Input = string | Uint8Array | ArrayBuffer | Buffer | Readable;
+
 export interface ReaderConfig {
     dataFactory?: RDF.DataFactory;
     baseIRI?: string;
     
-    input?: string;
+    /**
+     * Sets the maximum character length for any token such as IRIs and prefixed names. Defaults to 2048 => http://stackoverflow.com/a/417184/1641160
+     */
     maxTokenLength?: number;
-    maxStringLength?: number;
 
+    /**
+     * Sets the maximum character length for string literals. Defaults to 524288 (~1-2 MiB in UTF-16) in order to prevent an out-of-memory crash from potentially unclosed strings. Set to `Infinity` if you wish to disable the limits
+     */
+    maxStringLength?: number;
+    
     readable?(): void;
     finish?(): void;
     end?(): void;
@@ -66,13 +78,49 @@ export interface WriteConfig {
 }
 
 export interface TReaderConfig extends ReaderConfig {
-    relax?: boolean;
-    star?: boolean;
+    /**
+     * Tolerant mode enables an optimization faster read speeds. It disables strict validation of IRIs and prefix IDs, allowing certain characters normally forbidden in TriG/Turtle to be used in IRIs and prefix IDs
+     */
+    tolerant?: boolean;
 
+    /**
+     * Swift mode enables a slight optimization for faster read speeds. It disables line tracking which is normally used to print the line/col offset within an input document when a ContentSyntaxError is thrown
+     */
+    swift?: boolean;
+
+    /**
+     * Callback for when a base statement is read
+     * @param iri - IRI of the new base
+     */
     base?(iri: Iri): void;
+
+    /**
+     * Callback for whIen a prefix statement is read
+     * @param prefixId - ID of the new prefix mapping
+     * @param iri - IRI of the new prefix mapping
+     */
     prefix?(prefixId: string, iri: Iri): void;
-    enter?(graph: Graphable);
-    exit?(graph: Graphable);
+}
+
+export interface TurtleReaderConfig extends TReaderConfig {
+    /**
+     * Star mode enables RDF-star for Turtle
+     */
+    star?: boolean;
+}
+
+export interface TrigReaderConfig extends TReaderConfig {
+    /**
+     * Callback for when a graph block is entered (including the default graph). Does not emit for naked triples outside of graph blocks
+     * @param graph - graph being entered
+     */
+    enter?(graph: Term.Graph): void;
+
+    /**
+     * Callback for when a graph block is exited (including the default graph). Does not emit for naked triples outside of graph blocks
+     * @param graph - graph being exited
+     */
+    exit?(graph: Term.Graph): void;
 }
 
 export interface NReaderConfig extends ReaderConfig {
@@ -91,7 +139,19 @@ export class GraphyTransform extends Transform {
 }
 
 export class TurtleReader extends GraphyTransform implements RDF.Sink<EventEmitter> {
-    constructor(config: TReaderConfig);
+    /**
+     * Runs the reader on an input Turtle document (i.e., parses it)
+     * @param input - input Turtle document
+     * @param config - config for the reader
+     */
+    static async run(input: Input, config: TurtleReaderConfig): Promise<void>;
+
+
+    constructor(config: TurtleReaderConfig);
+}
+
+export class TrigReader extends GraphyTransform implements RDF.Sink<EventEmitter> {
+    constructor(config: TrigReaderConfig);
 }
 
 
