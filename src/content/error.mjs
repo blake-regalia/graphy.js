@@ -5,18 +5,23 @@ export class ContentError extends Error {
 		this._s_message = gc_error.message;
 		this._s_state = gc_error.state;
 		this._s_source = gc_error.source;
-		this._i_position = gc_error.position;
 		this._g_location = gc_error.location;
+		({
+			caret: this._i_caret,
+			start: this._i_token_start=-1,
+			end: this._i_token_end=-1,
+		} = gc_error.token);
 
-		this.name = `@graphy/content.${this.name}`;
+		this.name = `@graphy/content.${this.title}`;
+		// this.name = this.title;
 	}
 
 	get title() {
-		return (this.name || this.constructor.name)+'<'+this.instanceName+'> : '+this.description;
+		return (this.name || this.constructor.name)+'<'+this.instanceName+'>';
 	}
 
 	get instanceName() {
-		return this._k_content.constructor.name;
+		return this._k_content._dc_actor.name;
 	}
 
 	get message() {
@@ -28,19 +33,59 @@ export class ContentError extends Error {
 	// }
 
 	toString() {
-		const i_pos = this._i_position;
+		const i_pos = this._i_caret;
 
-		// 55 sets the relative bias to the front of the message
-		const i_off = Math.min(i_pos, Math.abs(i_pos-55));
+		// sets the max width of the preview
+		const nl_width = Math.min(90, process?.stdout?.columns || 90);
 
-		// 90 sets the max width of the preview
-		const s_preview = this._s_source.substr(i_off, 90).replace(/[\n\t]/g, ' ');
+		// 0.62 sets the relative bias to the front of the message
+		const i_off = Math.min(i_pos, Math.abs(i_pos-Math.floor(nl_width*0.62)));
+
+		// format preview
+		const s_preview = this._s_source.substr(i_off, nl_width).replace(/[\n\t]/g, ' ');
+debugger;
+		// border strings
+		const nl_pre = i_pos - i_off;
+		let s_border_top= '';
+		let s_border_btm = '';
+
+		if(this._i_token_start >= 0) {
+			const a_border_top = '┈'.repeat(nl_width).split('');
+			const a_border_btm = [...a_border_top];
+
+			const ir_token_start = this._i_token_start - i_off;
+			const ir_caret = this._i_caret - i_off;
+			const ir_token_end = this._i_token_end - i_off;
+
+			if(ir_token_start >= 0) {
+				a_border_top[ir_token_start] = '┍';
+				a_border_btm[ir_token_start] = '┕';
+			}
+
+			if(ir_token_end < nl_width) {
+				a_border_top[ir_token_end-1] = '┑';
+				a_border_btm[ir_token_end-1] = '┙';
+			}
+
+			a_border_top[ir_caret] = '┻';
+			a_border_btm[ir_caret] = '┳';
+
+			s_border_top = a_border_top.join('');
+			s_border_btm = a_border_btm.join('');
+		}
+		else {
+			s_border_top = '┈'.repeat(nl_pre);
+			const s_post = '┈'.repeat(nl_width-nl_pre-1);
+			s_border_btm = s_border_top+'┳'+s_post;
+			s_border_top += '┻'+s_post;
+		}
 
 		return this.description+'\n'
-			+(this._g_location? `  at { line: ${this._g_location.line}, col: ${this._g_location.col} }\n`: ' to see the line/col offset, remove or disable the `swift: true` option')
-			+`\n  ${s_preview}\n`
-			+`  ${' '.repeat(i_pos-i_off)}^\n`
-			+`  ${this._s_message}`;
+			+(this._g_location? `  at { line: ${this._g_location.line}, col: ${this._g_location.col} }`: ' to see the line/col offset, remove or disable the `swift: true` option')+'\n'
+			+`  ${s_border_top}\n`
+			+`  ${s_preview}\n`
+			+`  ${s_border_btm}\n`
+			+`\n  ${this._s_message}`;
 	}
 }
 
@@ -51,7 +96,7 @@ ContentSyntaxError.prototype.description = 'A syntax error was found while readi
 export class UnexpectedTokenError extends ContentSyntaxError {
 	constructor(gc_error) {
 		super(gc_error);
-		const s_char = this._s_source[this._i_position];
+		const s_char = this._s_source[this._i_caret];
 		this._s_message = `Expected ${this._s_state} ${gc_error.eofed? 'but encountered <<EOF>>': ''}. Failed to parse a valid token starting at ${s_char? '"'+s_char+'"': '<<EOF>>'}`;
 	}
 }

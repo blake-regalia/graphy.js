@@ -124,9 +124,14 @@
 	\\u[@{s_ins}A-Fa-f0-9]{4}|\\U[@{s_ins}A-Fa-f0-9]{8}
 @;
 
+@>> RANGE_NAMED_NODE_INVALID(b_escapeless)
+	@//@regex
+	\0-\x20<>"{}|^`@{b_escapeless? '': /\\/.source}
+@;
+
 @>> RT_NAMED_NODE_VALID(b_escapeless=false)
 	@//@regex
-	^([^\0-\x20<>"{}|^`@{b_escapeless? ']': /\\/.source+']|'+UCHAR()})*$  @// need to test for `>` since it can be encoded as unicode escape sequence
+	^([^@{RANGE_NAMED_NODE_INVALID(b_escapeless)}]@{b_escapeless? '': '|'+UCHAR()})*$  @// need to test for `>` since it can be encoded as unicode escape sequence
 @;
 
 

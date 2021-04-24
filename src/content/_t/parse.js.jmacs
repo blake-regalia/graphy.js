@@ -278,19 +278,39 @@ const OPHOP = Object.prototype.hasOwnProperty;
 @;
 
 
-@def error_args()
+@def error_args(gc_args={})
 	@//@object-literal
+	@if gc_args.rewind
+		...(() => {
+			const i_token_end = this.i - /[ \t]*$/.exec(this.s.slice(0, this.i))[0].length;
+			const i_token_start = i_token_end - (@{gc_args.rewind});
+			const i_caret = i_token_start + (@{gc_args.caret});
+
+			return {
+	@;
 	content: this,
 	source: this.s,
-	position: this.i,
+	@if gc_args.rewind
+		token: {
+			caret: i_caret,
+			start: i_token_start,
+			end: i_token_end,
+		},
+	@else
+		token: {caret:this.i},
+	@;
 	...this._b_line_tracking
 		? {
 			location: {
-				line: this._c_lines+count_lines(this.s, this.i),
-				col: this.i - this.s.lastIndexOf('\n', this.i),
+				line: 1 + this._c_lines + count_lines_until(this.s, this.i)@{gc_args.line || ''},
+				col: @{gc_args.rewind? /* syntax: js */ `i_caret`: /* syntax: js */ `this.i`} - this.s.lastIndexOf('\n', this.i),
 			},
 		}
 		: {},
+
+	@if gc_args.rewind
+		}})(),
+	@;
 @;
 
 
@@ -1406,23 +1426,25 @@ const match_prefixed_name = (s, i) => {
 	return this.after_eot;
 @;
 
-function count_lines(s_chunk, i_until=Infinity) {
-	let c_lines = 0;
-	let i_scan = 0;
 
-	if(Number.isFinite(i_until)) {
-		for(;;) {
-			let i_next = s_chunk.indexOf('\n', i_scan);
-			if(i_next < 0 || i_next >= i_until) return c_lines;
-			c_lines += 1;
-			i_scan = i_next + 1;
-		}
+function count_all_lines(s_chunk) {
+	let c_lines = 0;
+	let i_scan = -1;
+
+	while((i_scan = s_chunk.indexOf('\n', i_scan+1)) >= 0) {
+		c_lines += 1;
 	}
-	else {
-		while((i_scan = s_chunk.indexOf('\n', i_scan)) >= 0) {
-			c_lines += 1;
-		}
-		return c_lines;
+	return c_lines;
+}
+
+function count_lines_until(s_chunk, i_until=0) {
+	let c_lines = 0;
+	let i_scan = -1;
+
+	for(;;) {
+		i_scan = s_chunk.indexOf('\n', i_scan+1);
+		if(i_scan < 0 || i_scan >= i_until) return c_lines;
+		c_lines += 1;
 	}
 }
 
@@ -1451,7 +1473,7 @@ function count_lines(s_chunk, i_until=Infinity) {
 export class @{S_EXPORT} extends stream.@{B_LOAD? /* syntax: js */ `Writable`: /* syntax: js */ `Transform`} {
 	static async run(z_input, gc_run) {
 		// instantiate consumer
-		const k_consumer = new Consumer(gc_run);
+		const k_consumer = new Consumer(gc_run, @{S_EXPORT});
 
 		// string
 		if('string' === typeof z_input) {
@@ -1481,7 +1503,7 @@ export class @{S_EXPORT} extends stream.@{B_LOAD? /* syntax: js */ `Writable`: /
 		this._h_rewired = {};
 
 		// instantiate consumer
-		const k_consumer = this._k_consumer = new Consumer(gc_consumer);  // eslint-disable-line no-new
+		const k_consumer = this._k_consumer = new Consumer(gc_consumer, @{S_EXPORT});  // eslint-disable-line no-new
 
 		// proxy stream
 		k_consumer.proxy_transform(this);
@@ -1584,15 +1606,19 @@ export default @{S_EXPORT};
 
 
 const F_NOOP = () => {};
-const F_THROW = (e_what) => {throw e_what};
+const F_THROW = (e_what) => {
+	throw e_what;
+};
 
 class Consumer {
-	constructor(gc_consumer) {
+	constructor(gc_consumer, dc_actor) {
 		// impl-specific configs
 		let {
 			// a state to inherit
 			state: g_state={},
 		} = this._gc_consumer = gc_consumer;
+
+		this._dc_actor = dc_actor;
 
 		// assign event callbacks
 		@*{
@@ -1883,7 +1909,17 @@ class Consumer {
 					if(!RT_BLANK_NODE_VALID.test(s_label)) {
 						throw new ContentSyntaxError({
 							message: \`Invalid blank node label: '\${s_label}'\`,
-							${error_args()}
+							${error_args({
+								// past length of label and `_:` sequence
+								rewind: /* syntax: js */ `s_label.length + 2`,
+
+								// position the caret at: [0] first label char [1] next extra-range [2] last char
+								caret: /* syntax: js */ `2 + (
+									/[^${RANGE_PN_CHARS_U()}0-9]/u.test(s_label[0])
+										? 0
+										: /[^${RANGE_PN_CHARS_U()}\\-0-9\\xb7]|[^\\u{0300}-\\u{036f}\\u{203f}-\\u{2040}]/u.exec(s_label.slice(1)).index || s_label.length-1
+									)`.replace(/[\r\n\t]+/g, ''),
+							})}
 						});
 					}
 
@@ -1898,7 +1934,13 @@ class Consumer {
 					if(!RT_NAMED_NODE_VALID.test(p_iri)) {
 						throw new ContentSyntaxError({
 							message: \`Invalid IRI: <\${p_iri}>\`,
-							${error_args()}
+							${error_args({
+								// past length of iri and `<`, `>`` chars
+								rewind: /* syntax: js */ `p_iri.length + 2`,
+
+								// TODO: find invalid char
+								caret: `1`,
+							})}
 						});
 					}
 					return namedNode(p_iri);
@@ -1908,7 +1950,11 @@ class Consumer {
 					if(!RT_NAMED_NODE_ESCAPELESS_VALID.test(p_iri)) {
 						throw new ContentSyntaxError({
 							message: \`Invalid IRI: <\${p_iri}>\`,
-							${error_args()}
+							${error_args({
+								// past `>` char, length of iri, then back to index of first invalid char
+								rewind: /* syntax: js */ `p_iri.length + 2`,
+								caret: /* syntax: js */ `1 + /[${RANGE_NAMED_NODE_INVALID(true)}]/.exec(p_iri).index`,
+							})}
 						});
 					}
 					return namedNode(p_iri);
@@ -2024,7 +2070,7 @@ class Consumer {
 
 		// count lines
 		if(this._b_line_tracking) {
-			this._c_lines += count_lines(s_chunk, -1);
+			this._c_lines += count_all_lines(s_chunk);
 		}
 
 		@if b_fke_chunk
@@ -2282,11 +2328,14 @@ class Consumer {
 				if(null === this.s) return;
 				// still invalid parsing state
 				if(this.@{S_STATE_PRIMARY} !== this._f_state) {
+					debugger;
 					// handle using callback
 					return new UnexpectedTokenError({
 						state: this._f_state.name,
 						found: '<<EOF>>',
-						@{error_args()}
+						@{error_args({
+							line: /* syntax: js */ `+ count_all_lines(this.s)`,
+						})}
 					});
 				}
 			}
@@ -2314,7 +2363,9 @@ class Consumer {
 					// bad input; parse error
 					return new UnexpectedTokenError({
 						state: this._f_state.name,
-						@{error_args()}
+						@{error_args({
+							line: /* syntax: js */ `+ count_all_lines(this.s)`,
+						})}
 					});
 				}
 			}
