@@ -280,30 +280,47 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 @def error_args(gc_args={})
 	@//@object-literal
+	@.{
+		let sj_index = /* syntax: js */ `this.i`;
+	}
 	@if gc_args.rewind
+		@.{
+			sj_index = /* syntax: js */ `i_caret`;
+		}
 		...(() => {
-			const i_token_end = this.i - /[ \t]*$/.exec(this.s.slice(0, this.i))[0].length;
-			const i_token_start = i_token_end - (@{gc_args.rewind});
-			const i_caret = i_token_start + (@{gc_args.caret});
+			@*{
+				let a_rewinds = gc_args.rewind;
+				if(!Array.isArray(a_rewinds)) a_rewinds = [a_rewinds];
+
+				let sj_token_prev = /* syntax: js */ `this.i`;
+				const nl_rewinds = a_rewinds.length;
+				for(let i_rewind=0; i_rewind<nl_rewinds; i_rewind++) {
+					const sj_token_curr = /* syntax: js */ `i_token_${nl_rewinds-i_rewind-1}`;
+					yield /* syntax: js */ `
+						const ${sj_token_curr}_end = ${sj_token_prev} - /[ \\t]*$/.exec(this.s.slice(0, ${sj_token_prev}))[0].length;`;
+					sj_token_prev = /* syntax: js */ `${sj_token_curr}_start`;
+					yield /* syntax: js */ `
+						const ${sj_token_prev} = ${sj_token_curr}_end - (${a_rewinds[i_rewind]});`;
+				}
+			}
+			const i_caret = i_token_0_start + (@{gc_args.caret});
 
 			return {
 	@;
 	content: this,
 	source: this.s,
-	@if gc_args.rewind
-		token: {
-			caret: i_caret,
-			start: i_token_start,
-			end: i_token_end,
-		},
-	@else
-		token: {caret:this.i},
-	@;
+	token: {
+		caret: @{sj_index},
+		@if gc_args.rewind
+			start: i_token_0_start,
+			end: i_token_0_end,
+		@;
+	},
 	...this._b_line_tracking
 		? {
 			location: {
-				line: 1 + this._c_lines + count_lines_until(this.s, this.i)@{gc_args.line || ''},
-				col: @{gc_args.rewind? /* syntax: js */ `i_caret`: /* syntax: js */ `this.i`} - this.s.lastIndexOf('\n', this.i),
+				line: 1 + this._c_lines + count_lines_until(this.s, @{sj_index})@{gc_args.line || ''},
+				col: @{sj_index} - this.s.lastIndexOf('\n', @{sj_index}),
 			},
 		}
 		: {},
@@ -347,7 +364,17 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		if(!b_tolerant && !RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
 			throw new ContentSyntaxError({
 				message: `Invalid namespace for prefixed name: '${s_prefix_id}:'`,
-				@{error_args()}
+				@{error_args({
+					rewind: [
+						/* syntax: js */ `p_prefix_iri.length + 2`,
+						/* syntax: js */ `s_prefix_id.length + 1`,
+					],
+					caret: /* syntax: js */ `
+						/[^${RANGE_PN_CHARS_BASE()}]/u.test(s_prefix_id[0])
+						? 0
+						: /[^.${RANGE_PN_CHARS_U()}\\-0-9\\xb7\\u{203f}-\\u{2040}]/u.exec(s_prefix_id)?.index || s_prefix_id.length-1
+					`,
+				})}
 			});
 		}
 
@@ -1606,8 +1633,8 @@ export default @{S_EXPORT};
 
 
 const F_NOOP = () => {};
-const F_THROW = (e_what) => {
-	throw e_what;
+const F_THROW = (e_read) => {
+	throw e_read;
 };
 
 class Consumer {
@@ -1883,7 +1910,7 @@ class Consumer {
 @;
 
 		// term constructors
-		if(this.tolerant) {
+		if(this._b_tolerant) {
 			@*{yield* declare_properties({
 				// term constructors
 				blank_node: /* syntax: js */ `function(s_label) {
@@ -1917,7 +1944,7 @@ class Consumer {
 								caret: /* syntax: js */ `2 + (
 									/[^${RANGE_PN_CHARS_U()}0-9]/u.test(s_label[0])
 										? 0
-										: /[^${RANGE_PN_CHARS_U()}\\-0-9\\xb7]|[^\\u{0300}-\\u{036f}\\u{203f}-\\u{2040}]/u.exec(s_label.slice(1)).index || s_label.length-1
+										: /[^${RANGE_PN_CHARS_U()}\\-0-9\\xb7\\u{203f}-\\u{2040}]/u.exec(s_label)?.index || s_label.length-1
 									)`.replace(/[\r\n\t]+/g, ''),
 							})}
 						});
@@ -2095,6 +2122,25 @@ class Consumer {
 	consume_stream(ds_input) {
 		// go async
 		return new Promise((fk_consumed, fe_reject) => {
+			// re-route error handling to promise rejection
+			if(F_THROW === this._fe_error) {
+				this._fe_error = fe_reject;
+			}
+			// wrap error handler
+			else {
+				// ref original handler
+				const fe_handler = this._fe_error;
+
+				// set new handler
+				this._fe_error = (e_read) => {
+					// callback user-defined error handler
+					fe_handler(e_read);
+
+					// then, reject promise
+					fe_reject(e_read);
+				};
+			}
+
 			// bind data listener
 			ds_input.on('data', (s_chunk) => {
 				@{write_chunk()}
@@ -2109,7 +2155,7 @@ class Consumer {
 				const e_eof = this.eof(1);
 
 				// reject with failure
-				if(e_eof) return fe_reject(e_eof);
+				if(e_eof) return this._fe_error(e_eof);
 
 				// resolve promise
 				fk_consumed();
