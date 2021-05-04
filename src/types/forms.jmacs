@@ -1,469 +1,550 @@
 @import '../share/iris.jmacs';
 
 @*{
-	const ode = Object.entries;
+	function explicit_union_mutations(s_word) {
+		const a_forms = [];
 
-	{
-		const H_TERM_GENERIC = {
-			properties: {
-				isGraphyTerm:         true,
-				isGraphyQuad:         false,
-				isAbleGraph:          false,
-				isAbleSubject:        false,
-				isAblePredicate:      false,
-				isAbleObject:         false,
-				isDefaultGraph:       false,
-				isNode:               false,
-				isNamedNode:          false,
-				isAbsoluteIri:        false,
-				isRelativeIri:        false,
-				isRdfTypeAlias:       false,
-				isBlankNode:          false,
-				isAnonymousBlankNode: false,
-				isEphemeralBlankNode: false,
-				isLiteral:            false,
-				isSimpleLiteral:      false,
-				isLanguagedLiteral:   false,
-				isDatatypedLiteral:   false,
-				isNumericLiteral:     false,
-				isBooleanLiteral:     false,
-				isIntegerLiteral:     false,
-				isDoubleLiteral:      false,
-				isInfiniteLiteral:    false,
-				isNaNLiteral:         false,
-				isDecimalLiteral:     false,
-				isVariable:           false,
-
-				termType:             /* syntax: ts */ `string`,
-				value:                /* syntax: ts */ `string`,
-			},
-
-			methods: {
-				equals:       si => /* syntax: ts */ `(other: RDFJS.Term): boolean`,
-				concise:      si => /* syntax: ts */ `(prefixes?: PrefixMap): C1.${si}`,
-				terse:        si => /* syntax: ts */ `(prefixes?: PrefixMap): Terse.${si}`,
-				star:         si => /* syntax: ts */ `(prefixes?: PrefixMap): Star.${si}`,
-				verbose:      si => /* syntax: ts */ `(): Verbose.${si}`,
-				isolate:      si => /* syntax: ts */ `(): Isolated.${si}`,
-				hash:         si => /* syntax: ts */ `(): string`,
-				replaceIri:   si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
-				replaceText:  si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
-				replaceValue: si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
-			},
-		};
-
-		const H_TERM_GRAPHABLE = {
-			properties: {
-				...H_TERM_GENERIC.properties,
-				isAbleGraph:  true,
-			},
-		};
-
-		const H_TERM_DEFAULT_GRAPH = {
-			properties: {
-				...H_TERM_GRAPHABLE.properties,
-				isDefaultGraph:       true,
-
-				termType:             /* syntax: ts */ `'DefaultGraph'`,
-				value:                /* syntax: ts */ `''`,
-			},
-		};
-
-		const H_TERM_NODE = {
-			properties: {
-				...H_TERM_GRAPHABLE.properties,
-				isNode:           true,
-				isAbleSubject:    true,
-				isAblePredicate:  true,
-				isAbleObject:     true,
-			},
-		};
-
-		const H_TERM_NAMED_NODE = {
-			properties: {
-				...H_TERM_NODE.properties,
-				isNamedNode:          true,
-				isAbsoluteIri:        true,
-
-				termType:             /* syntax: ts */ `'NamedNode'`,
-				value:                /* syntax: ts */ `Iri`,
-			},
-		};
-
-		const H_TERM_RELATIVE_IRI = {
-			properties: {
-				...H_TERM_NODE.properties,
-				isAbsoluteIri: false,
-				isRelativeIri: true,
-
-				termType:             /* syntax: ts */ `'NamedNode'`,
-				value:                /* syntax: ts */ `string`,
-			},
-			methods: {
-				concise:  () => /* syntax: ts */ `(prefixes?: PrefixMap): C1.NamedNode | never`,
-				terse:    () => /* syntax: ts */ `(prefixes?: PrefixMap): Terse.NamedNode`,
-				star:     () => /* syntax: ts */ `(prefixes?: PrefixMap): Star.NamedNode`,
-				verbose:  () => /* syntax: ts */ `(): never`,
-				hash:     () => /* syntax: ts */ `(): never`,
-				isolate:  () => /* syntax: ts */ `(): Isolated.NamedNode`,
-			},
-		};
-
-		const H_TERM_BLANK_NODE = {
-			properties: {
-				...H_TERM_NODE.properties,
-				isBlankNode:          true,
-
-				termType:             /* syntax: ts */ `'BlankNode'`,
-				value:                /* syntax: ts */ `string`,
-			},
-		};
-
-		const H_TERM_LABELED_BLANK_NODE = {
-			class: 'BlankNode',
-			properties: {
-				...H_TERM_BLANK_NODE.properties,
-			},
-		};
-
-		const H_TERM_ANONYMOUS_BLANK_NODE = {
-			class: 'BlankNode',
-			properties: {
-				...H_TERM_BLANK_NODE.properties,
-				isAnonymousBlankNode: true,
-			},
-		};
-
-		const H_TERM_EPHEMERAL_BLANK_NODE = {
-			class: 'BlankNode',
-			properties: {
-				...H_TERM_BLANK_NODE.properties,
-				isAnonymousBlankNode: true,
-				isEphemeralBlankNode: true,
-			},
-		};
-
-		const H_TERM_LITERAL = {
-			properties: {
-				...H_TERM_GENERIC.properties,
-				isAbleObject:          true,
-				isLiteral:             true,
-
-				termType:              /* syntax: ts */ `'Literal'`,
-				value:                 /* syntax: ts */ `string`,
-				language:              /* syntax: ts */ `string`,
-				datatype:              /* syntax: ts */ `Datatype`,
-
-				boolean:               /* syntax: ts */ `typeof NaN`,
-				number:                /* syntax: ts */ `typeof NaN`,
-				bigint:                /* syntax: ts */ `typeof NaN`,
-			},
-		};
-
-		const H_TERM_SIMPLE_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_LITERAL.properties,
-				isSimpleLiteral:      true,
-			},
-		};
-
-		const H_TERM_LANGUAGED_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_LITERAL.properties,
-				isLanguagedLiteral: true,
-			},
-		};
-
-		const H_TERM_DATATYPED_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_LITERAL.properties,
-				isDatatypedLiteral:  true,
-			},
-		};
-
-		const H_TERM_NUMERIC_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_LITERAL.properties,
-				isNumericLiteral:  true,
-
-				datatype:           /* syntax: ts */ `DatatypeXsdInteger | DatatypeXsdDouble | DatatypeXsdDecimal`,
-			},
-		};
-
-		const H_TERM_BOOLEAN_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_DATATYPED_LITERAL.properties,
-				isBooleanLiteral:  true,
-				isNumberPrecise:   true,
-
-				boolean:            /* syntax: ts */ `boolean`,
-				number:             /* syntax: ts */ `number`,
-				bigint:             /* syntax: ts */ `number`,
-				datatype:           /* syntax: ts */ `DatatypeXsdBoolean`,
-			},
-		};
-
-		const H_TERM_INTEGER_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_NUMERIC_LITERAL.properties,
-				isIntegerLiteral:   true,
-				isNumberPrecise:    true,
-
-				number:             /* syntax: ts */ `number`,
-				bigint:             /* syntax: ts */ `number`,
-				datatype:           /* syntax: ts */ `DatatypeXsdInteger`,
-			},
-		};
-
-		const H_TERM_DOUBLE_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_NUMERIC_LITERAL.properties,
-				isDoubleLiteral:    true,
-				isNumberPrecise:    true,
-
-				number:             /* syntax: ts */ `number`,
-				datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
-			},
-		};
-
-		const H_TERM_POSITIVE_INFINITY_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_DOUBLE_LITERAL.properties,
-				isInfiniteLiteral:  true,
-				isNumberPrecise:    false,
-
-				// number:             /* syntax: ts */ `9e999 /* Infinity */`,
-				value:              /* syntax: ts */ `'INF'`,
-				datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
-			},
-		};
-
-		const H_TERM_NEGATIVE_INFINITY_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_POSITIVE_INFINITY_LITERAL.properties,
-
-				// number:             /* syntax: ts */ `-9e999 /* -Infinity */`,
-				value:              /* syntax: ts */ `'-INF'`,
-				datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
-			},
-		};
-
-		const H_TERM_NAN_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_DOUBLE_LITERAL.properties,
-				isNaNLiteral:    true,
-				isNumberPrecise: false,
-
-				number:             /* syntax: ts */ `typeof NaN`,
-				value:              /* syntax: ts */ `typeof NaN`,
-				datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
-			},
-		};
-
-		const H_TERM_DECIMAL_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_DATATYPED_LITERAL.properties,
-				isNumericLiteral:   true,
-				isDecimalLiteral:   true,
-				isNumberPrecise:    /* syntax: ts */ `boolean`,
-
-				datatype:           /* syntax: ts */ `DatatypeXsdDecimal`,
-				number:             /* syntax: ts */ `number`,
-			},
-		};
-
-		const H_TERM_DATE_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_DATATYPED_LITERAL.properties,
-				isDateLiteral:   true,
-				isNumberPrecise:    /* syntax: ts */ `true`,
-
-				datatype:           /* syntax: ts */ `DatatypeXsdDate`,
-				number:             /* syntax: ts */ `number`,
-			},
-		};
-
-		const H_TERM_DATETIME_LITERAL = {
-			class: 'Literal',
-			properties: {
-				...H_TERM_DATATYPED_LITERAL.properties,
-				isDateTimeLiteral:   true,
-				isNumberPrecise:    /* syntax: ts */ `true`,
-
-				datatype:           /* syntax: ts */ `DatatypeXsdDateTime`,
-				number:             /* syntax: ts */ `number`,
-			},
-		};
-
-		const H_TERM_VARIABLE = {
-			properties: {
-				...H_TERM_GENERIC.properties,
-				isVariable: true,
-
-				termType: /* syntax: ts */ `'Variable'`,
-			},
-		};
-
-		const H_TERM_QUAD = {
-			properties: {
-				...H_TERM_GENERIC.properties,
-				isGraphyQuad: true,
-				termType:  /* syntax: ts */ `'Quad'`,
-				value:     /* syntax: ts */ `''`,
-			},
-			body: /* syntax: ts */ `
-				readonly subject: Term.Subject;
-				readonly predicate: Term.Predicate;
-				readonly object: Term.Object;
-				readonly graph: Term.Graph;
-
-				reify(label?: string): Reification;
-			`,
-		};
-
-		const H_TERMS = {
-			DefaultGraph: H_TERM_DEFAULT_GRAPH,
-			NamedNode: H_TERM_NAMED_NODE,
-			RelativeIri: H_TERM_RELATIVE_IRI,
-			LabeledBlankNode: H_TERM_LABELED_BLANK_NODE,
-			AnonymousBlankNode: H_TERM_ANONYMOUS_BLANK_NODE,
-			EphemeralBlankNode: H_TERM_EPHEMERAL_BLANK_NODE,
-			SimpleLiteral: H_TERM_SIMPLE_LITERAL,
-			LanguagedLiteral: H_TERM_LANGUAGED_LITERAL,
-			DatatypedLiteral: H_TERM_DATATYPED_LITERAL,
-			BooleanLiteral: H_TERM_BOOLEAN_LITERAL,
-			IntegerLiteral: H_TERM_INTEGER_LITERAL,
-			DoubleLiteral: H_TERM_DOUBLE_LITERAL,
-			PositiveInfinityLiteral: H_TERM_POSITIVE_INFINITY_LITERAL,
-			NegativeInfinityLiteral: H_TERM_NEGATIVE_INFINITY_LITERAL,
-			NaNLiteral: H_TERM_NAN_LITERAL,
-			DecimalLiteral: H_TERM_DECIMAL_LITERAL,
-			DateLiteral: H_TERM_DATE_LITERAL,
-			DateTimeLiteral: H_TERM_DATETIME_LITERAL,
-			Variable: H_TERM_VARIABLE,
-			Quad: H_TERM_QUAD,
-		};
-
-		yield /* syntax: ts */ `export namespace Term {\n`;
-
-		let s_accepted = '';
-
-		for(const [si_term, g_term] of ode(H_TERMS)) {
-			yield /* syntax: ts */ `\texport interface ${si_term} {\n`;
-
-			for(const [si_property, sj_property] of ode(g_term.properties)) {
-				yield /* syntax: ts */ `\t\treadonly ${si_property}: ${sj_property};\n`;
-			}
-
-			const s_properties = Object.keys(g_term.properties).sort().join('\n');
-			if(s_properties !== s_accepted) {
-				if(!s_accepted) {
-					s_accepted = s_properties;
-				}
-				else {
-					let s_missing = '';
-					let s_extra = '';
-					const as_acc = new Set(s_accepted.split('\n'));
-					const as_prp = new Set(s_properties.split('\n'));
-					for(const s_each of as_acc) {
-						if(!as_prp.has(s_each)) {
-							s_missing += s_each+'\n';
-						}
-					}
-					for(const s_each of as_prp) {
-						if(!as_acc.has(s_each)) {
-							s_extra += s_each+'\n';
-						}
-					}
-					console.warn(`key mismatch discovered on ${si_term}: missing: '''\n${s_missing}\n'''. extra: '''\n${s_extra}\n'''`);
-				}
-			}
-
-			const si_class = g_term.class || si_term;
-
-			for(const [si_method, f_method] of ode({...H_TERM_GENERIC.methods, ...(g_term.methods || {})})) {
-				yield /* syntax: ts */ `\t\t${si_method}${f_method(si_class)};\n`;
-			}
-
-			yield /* syntax: ts */ `\t}\n\n`;
+		const a_source = s_word.split('');
+		const nl_perms = 1 << s_word.length;
+		for(let i_perm=0; i_perm<nl_perms; i_perm++) {
+			a_forms.push(a_source.reduce((s_out, s_char, i_char) => s_out+((i_perm >> i_char) & 1? s_char.toUpperCase(): s_char), ''));
 		}
 
-		yield /* syntax: ts */ `
-			export interface Reification {
-				readonly node: BlankNode;
-				readonly quads: Array<Quad>;
-			}
-
-			export type BlankNode = LabeledBlankNode | AnonymousBlankNode | EphemeralBlankNode;
-			export type Node = NamedNode | BlankNode;
-			export type Literal = SimpleLiteral | LanguagedLiteral | DatatypedLiteral;
-			export type NumericLiteral = IntegerLiteral | DoubleLiteral | DecimalLiteral;
-
-			export type Graph = DefaultGraph | Node;
-			export type Subject = Node;
-			export type Predicate = NamedNode;
-			export type Object = Node | Literal;
-			export type Datatype = NamedNode;
-
-			interface DatatypeXsdBoolean extends Datatype {
-				value: '${P_IRI_XSD}boolean';
-			}
-
-			interface DatatypeXsdInteger extends Datatype {
-				value: '${P_IRI_XSD}integer';
-			}
-
-			interface DatatypeXsdDouble extends Datatype {
-				value: '${P_IRI_XSD}double';
-			}
-
-			interface DatatypeXsdDecimal extends Datatype {
-				value: '${P_IRI_XSD}decimal';
-			}
-
-			interface DatatypeXsdDate extends Datatype {
-				value: '${P_IRI_XSD}date';
-			}
-
-			interface DatatypeXsdDateTime extends Datatype {
-				value: '${P_IRI_XSD}dateTime';
-			}
-
-			export type Data = Graph | Subject | Predicate | Object;
-			export type Any = Data | Variable | Quad | RelativeIri;
-		`.replace(/\n/g, '\n\t')+'\n';
-
-		yield /* syntax: ts */ `}\n\n`;
+		return `type Literally${s_word[0].toUpperCase()}${s_word.slice(1)} = ${a_forms.map(s => `'${s}'`).join(' | ')};`;
 	}
+
+	const A_WORDS = [
+		'true',
+		'false',
+	];
+
+	for(const s_word of A_WORDS) {
+		yield explicit_union_mutations(s_word)+'\n';
+	}
+
+	yield `type LiterallyTrueOrFalse = LiterallyTrue | LiterallyFalse;\n`;
+}
+
+@.{
+	const ode = Object.entries;
+
+	const H_TERM_GENERIC = {
+		properties: {
+			isGraphyTerm:         true,
+			isGraphyQuad:         false,
+			isAbleGraph:          false,
+			isAbleSubject:        false,
+			isAblePredicate:      false,
+			isAbleObject:         false,
+			isDefaultGraph:       false,
+			isNode:               false,
+			isNamedNode:          false,
+			isAbsoluteIri:        false,
+			isRelativeIri:        false,
+			isRdfTypeAlias:       false,
+			isBlankNode:          false,
+			isAnonymousBlankNode: false,
+			isEphemeralBlankNode: false,
+			isLiteral:            false,
+			isSimpleLiteral:      false,
+			isLanguagedLiteral:   false,
+			isDatatypedLiteral:   false,
+			isNumericLiteral:     false,
+			isBooleanLiteral:     false,
+			isIntegerLiteral:     false,
+			isDoubleLiteral:      false,
+			isInfiniteLiteral:    false,
+			isNaNLiteral:         false,
+			isDecimalLiteral:     false,
+			isVariable:           false,
+
+			termType:             /* syntax: ts */ `string`,
+			value:                /* syntax: ts */ `string`,
+		},
+
+		methods: {
+			equals:       si => /* syntax: ts */ `(other: RDFJS.Term): boolean`,
+			concise:      si => /* syntax: ts */ `(prefixes?: PrefixMap): C1.${si}`,
+			terse:        si => /* syntax: ts */ `(prefixes?: PrefixMap): Terse.${si}`,
+			star:         si => /* syntax: ts */ `(prefixes?: PrefixMap): Star.${si}`,
+			verbose:      si => /* syntax: ts */ `(): Verbose.${si}`,
+			isolate:      si => /* syntax: ts */ `(): Isolated.${si}`,
+			hash:         si => /* syntax: ts */ `(): string`,
+			replaceIri:   si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
+			replaceText:  si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
+			replaceValue: si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
+		},
+	};
+
+	const H_TERM_GRAPHABLE = {
+		properties: {
+			...H_TERM_GENERIC.properties,
+			isAbleGraph:  true,
+		},
+	};
+
+	const H_TERM_DEFAULT_GRAPH = {
+		v1: `'*'`,
+		properties: {
+			...H_TERM_GRAPHABLE.properties,
+			isDefaultGraph:       true,
+
+			termType:             /* syntax: ts */ `'DefaultGraph'`,
+			value:                /* syntax: ts */ `''`,
+		},
+	};
+
+	const H_TERM_NODE = {
+		properties: {
+			...H_TERM_GRAPHABLE.properties,
+			isNode:           true,
+			isAbleSubject:    true,
+			isAblePredicate:  true,
+			isAbleObject:     true,
+		},
+	};
+
+	const SX_C1_ABSOLUTE_IRI = '`>${string}`';
+
+	const H_TERM_NAMED_NODE = {
+		c1: '`${string}:${string}`',
+		v1: SX_C1_ABSOLUTE_IRI,
+		properties: {
+			...H_TERM_NODE.properties,
+			isNamedNode:          true,
+			isAbsoluteIri:        true,
+
+			termType:             /* syntax: ts */ `'NamedNode'`,
+			value:                /* syntax: ts */ `Iri`,
+		},
+	};
+
+	const H_TERM_RELATIVE_IRI = {
+		c1: ['void'],
+		v1: SX_C1_ABSOLUTE_IRI,
+		properties: {
+			...H_TERM_NODE.properties,
+			isAbsoluteIri: false,
+			isRelativeIri: true,
+
+			termType:             /* syntax: ts */ `'NamedNode'`,
+			value:                /* syntax: ts */ `string`,
+		},
+		methods: {
+			concise:  () => /* syntax: ts */ `(prefixes?: PrefixMap): C1.NamedNode | never`,
+			terse:    () => /* syntax: ts */ `(prefixes?: PrefixMap): Terse.NamedNode`,
+			star:     () => /* syntax: ts */ `(prefixes?: PrefixMap): Star.NamedNode`,
+			verbose:  () => /* syntax: ts */ `(): never`,
+			hash:     () => /* syntax: ts */ `(): never`,
+			isolate:  () => /* syntax: ts */ `(): Isolated.NamedNode`,
+		},
+	};
+
+	const H_TERM_BLANK_NODE = {
+		properties: {
+			...H_TERM_NODE.properties,
+			isBlankNode:          true,
+
+			termType:             /* syntax: ts */ `'BlankNode'`,
+			value:                /* syntax: ts */ `string`,
+		},
+	};
+
+	const SX_V1_BLANK_NODE = '`_:${string}`';
+
+	const H_TERM_LABELED_BLANK_NODE = {
+		class: 'BlankNode',
+		v1: SX_V1_BLANK_NODE,
+		properties: {
+			...H_TERM_BLANK_NODE.properties,
+		},
+	};
+
+	const H_TERM_ANONYMOUS_BLANK_NODE = {
+		class: 'BlankNode',
+		v1: SX_V1_BLANK_NODE,
+		properties: {
+			...H_TERM_BLANK_NODE.properties,
+			isAnonymousBlankNode: true,
+		},
+	};
+
+	const H_TERM_EPHEMERAL_BLANK_NODE = {
+		class: 'BlankNode',
+		v1: SX_V1_BLANK_NODE+' | `_#${string}`',
+		properties: {
+			...H_TERM_BLANK_NODE.properties,
+			isAnonymousBlankNode: true,
+			isEphemeralBlankNode: true,
+		},
+	};
+
+	const H_TERM_LITERAL = {
+		properties: {
+			...H_TERM_GENERIC.properties,
+			isAbleObject:          true,
+			isLiteral:             true,
+
+			termType:              /* syntax: ts */ `'Literal'`,
+			value:                 /* syntax: ts */ `string`,
+			language:              /* syntax: ts */ `string`,
+			datatype:              /* syntax: ts */ `Datatype`,
+
+			boolean:               /* syntax: ts */ `typeof NaN`,
+			number:                /* syntax: ts */ `typeof NaN`,
+			bigint:                /* syntax: ts */ `typeof NaN`,
+		},
+	};
+
+	const H_TERM_SIMPLE_LITERAL = {
+		class: 'Literal',
+		v1: '`"${string}`',
+		properties: {
+			...H_TERM_LITERAL.properties,
+			isSimpleLiteral:      true,
+		},
+	};
+
+	const H_TERM_LANGUAGED_LITERAL = {
+		class: 'Literal',
+		// TODO: narrow to BCP47 pattern
+		v1: '`@${string}"${string}`',
+		properties: {
+			...H_TERM_LITERAL.properties,
+			isLanguagedLiteral: true,
+		},
+	};
+
+	const H_TERM_DATATYPED_LITERAL = {
+		class: 'Literal',
+		v1: '`^${NamedNode}"${string}`',
+		c1: ['`^${NamedNode}"${string}`'],
+		properties: {
+			...H_TERM_LITERAL.properties,
+			isDatatypedLiteral:  true,
+		},
+	};
+
+	const SX_V1_DATATYPE_XSD = '`^>http://www.w3.org/2001/XMLSchema#';
+	const SX_V1_DATATYPE_LITERAL_XSD = SX_V1_DATATYPE_XSD+'${string}"${string}`';
+
+	const H_TERM_NUMERIC_LITERAL = {
+		class: 'Literal',
+		properties: {
+			...H_TERM_LITERAL.properties,
+			isNumericLiteral:  true,
+
+			datatype:           /* syntax: ts */ `DatatypeXsdInteger | DatatypeXsdDouble | DatatypeXsdDecimal`,
+		},
+	};
+
+
+	const H_TERM_BOOLEAN_LITERAL = {
+		class: 'Literal',
+		v1: SX_V1_DATATYPE_XSD+'boolean"${LiterallyTrueOrFalse}`',
+		c1: '`^${string}:${string}"${LiterallyTrueOrFalse}`',
+		properties: {
+			...H_TERM_DATATYPED_LITERAL.properties,
+			isBooleanLiteral:  true,
+			isNumberPrecise:   true,
+
+			boolean:            /* syntax: ts */ `boolean`,
+			number:             /* syntax: ts */ `number`,
+			bigint:             /* syntax: ts */ `number`,
+			datatype:           /* syntax: ts */ `DatatypeXsdBoolean`,
+		},
+	};
+
+
+	const H_TERM_INTEGER_LITERAL = {
+		class: 'Literal',
+		v1: SX_V1_DATATYPE_XSD+'integer"${number}`',
+		c1: '`^${string}:${string}"${number}`',
+		properties: {
+			...H_TERM_NUMERIC_LITERAL.properties,
+			isIntegerLiteral:   true,
+			isNumberPrecise:    true,
+
+			number:             /* syntax: ts */ `number`,
+			bigint:             /* syntax: ts */ `number`,
+			datatype:           /* syntax: ts */ `DatatypeXsdInteger`,
+		},
+	};
+
+	const SX_V1_DOUBLE_LITERAL = SX_V1_DATATYPE_XSD+'double"${number}`';
+	const H_TERM_DOUBLE_LITERAL = {
+		class: 'Literal',
+		v1: SX_V1_DOUBLE_LITERAL,
+		c1: '`^${string}:${string}"${number}`',
+		properties: {
+			...H_TERM_NUMERIC_LITERAL.properties,
+			isDoubleLiteral:    true,
+			isNumberPrecise:    true,
+
+			number:             /* syntax: ts */ `number`,
+			datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
+		},
+	};
+
+	const H_TERM_POSITIVE_INFINITY_LITERAL = {
+		class: 'Literal',
+		v1: SX_V1_DATATYPE_XSD+'double"INF`',
+		c1: '`^${string}:${string}"INF`',
+		properties: {
+			...H_TERM_DOUBLE_LITERAL.properties,
+			isInfiniteLiteral:  true,
+			isNumberPrecise:    false,
+
+			// number:             /* syntax: ts */ `9e999 /* Infinity */`,
+			value:              /* syntax: ts */ `'INF'`,
+			datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
+		},
+	};
+
+	const H_TERM_NEGATIVE_INFINITY_LITERAL = {
+		class: 'Literal',
+		v1: SX_V1_DATATYPE_XSD+'double"-INF`',
+		c1: '`^${string}:${string}"-INF`',
+		properties: {
+			...H_TERM_POSITIVE_INFINITY_LITERAL.properties,
+
+			// number:             /* syntax: ts */ `-9e999 /* -Infinity */`,
+			value:              /* syntax: ts */ `'-INF'`,
+			datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
+		},
+	};
+
+	const H_TERM_NAN_LITERAL = {
+		class: 'Literal',
+		v1: SX_V1_DATATYPE_XSD+'double"NaN`',
+		c1: '`^${string}:${string}"NaN`',
+		properties: {
+			...H_TERM_DOUBLE_LITERAL.properties,
+			isNaNLiteral:    true,
+			isNumberPrecise: false,
+
+			number:             /* syntax: ts */ `typeof NaN`,
+			value:              /* syntax: ts */ `typeof NaN`,
+			datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
+		},
+	};
+
+	const SX_C1_DATATYPE_GENERIC = '`^${string}:${string}"${string}`';
+
+	const H_TERM_DECIMAL_LITERAL = {
+		class: 'Literal',
+		v1: SX_V1_DATATYPE_XSD+'decimal"${string}`',
+		c1: SX_C1_DATATYPE_GENERIC,
+		properties: {
+			...H_TERM_DATATYPED_LITERAL.properties,
+			isNumericLiteral:   true,
+			isDecimalLiteral:   true,
+			isNumberPrecise:    /* syntax: ts */ `boolean`,
+
+			datatype:           /* syntax: ts */ `DatatypeXsdDecimal`,
+			number:             /* syntax: ts */ `number`,
+		},
+	};
+
+	const H_TERM_DATE_LITERAL = {
+		class: 'Literal',
+		v1: SX_V1_DATATYPE_XSD+'date"${string}`',
+		c1: SX_C1_DATATYPE_GENERIC,
+		properties: {
+			...H_TERM_DATATYPED_LITERAL.properties,
+			isDateLiteral:   true,
+			isNumberPrecise:    /* syntax: ts */ `true`,
+
+			datatype:           /* syntax: ts */ `DatatypeXsdDate`,
+			number:             /* syntax: ts */ `number`,
+		},
+	};
+
+	const H_TERM_DATETIME_LITERAL = {
+		class: 'Literal',
+		v1: SX_V1_DATATYPE_XSD+'dateTime"${string}`',
+		c1: SX_C1_DATATYPE_GENERIC,
+		properties: {
+			...H_TERM_DATATYPED_LITERAL.properties,
+			isDateTimeLiteral:   true,
+			isNumberPrecise:    /* syntax: ts */ `true`,
+
+			datatype:           /* syntax: ts */ `DatatypeXsdDateTime`,
+			number:             /* syntax: ts */ `number`,
+		},
+	};
+
+	const H_TERM_VARIABLE = {
+		v1: '`?${string}`',
+		properties: {
+			...H_TERM_GENERIC.properties,
+			isVariable: true,
+
+			termType: /* syntax: ts */ `'Variable'`,
+		},
+	};
+
+	const H_TERM_QUAD = {
+		properties: {
+			...H_TERM_GENERIC.properties,
+			isGraphyQuad: true,
+			termType:  /* syntax: ts */ `'Quad'`,
+			value:     /* syntax: ts */ `''`,
+		},
+		body: /* syntax: ts */ `
+			readonly subject: Term.Subject;
+			readonly predicate: Term.Predicate;
+			readonly object: Term.Object;
+			readonly graph: Term.Graph;
+
+			reify(label?: string): Reification;
+		`,
+	};
+
+	const H_TERMS = {
+		DefaultGraph: H_TERM_DEFAULT_GRAPH,
+		NamedNode: H_TERM_NAMED_NODE,
+		RelativeIri: H_TERM_RELATIVE_IRI,
+		LabeledBlankNode: H_TERM_LABELED_BLANK_NODE,
+		AnonymousBlankNode: H_TERM_ANONYMOUS_BLANK_NODE,
+		EphemeralBlankNode: H_TERM_EPHEMERAL_BLANK_NODE,
+		SimpleLiteral: H_TERM_SIMPLE_LITERAL,
+		LanguagedLiteral: H_TERM_LANGUAGED_LITERAL,
+		DatatypedLiteral: H_TERM_DATATYPED_LITERAL,
+		BooleanLiteral: H_TERM_BOOLEAN_LITERAL,
+		IntegerLiteral: H_TERM_INTEGER_LITERAL,
+		DoubleLiteral: H_TERM_DOUBLE_LITERAL,
+		PositiveInfinityLiteral: H_TERM_POSITIVE_INFINITY_LITERAL,
+		NegativeInfinityLiteral: H_TERM_NEGATIVE_INFINITY_LITERAL,
+		NaNLiteral: H_TERM_NAN_LITERAL,
+		DecimalLiteral: H_TERM_DECIMAL_LITERAL,
+		DateLiteral: H_TERM_DATE_LITERAL,
+		DateTimeLiteral: H_TERM_DATETIME_LITERAL,
+		Variable: H_TERM_VARIABLE,
+		Quad: H_TERM_QUAD,
+	};
 }
 
 @*{
-	const ode = Object.entries;
+	yield /* syntax: ts */ `export namespace Term {\n`;
+
+	let s_accepted = '';
+
+	for(const [si_term, g_term] of ode(H_TERMS)) {
+		yield /* syntax: ts */ `\texport interface ${si_term} {\n`;
+
+		for(const [si_property, sj_property] of ode(g_term.properties)) {
+			yield /* syntax: ts */ `\t\treadonly ${si_property}: ${sj_property};\n`;
+		}
+
+		const s_properties = Object.keys(g_term.properties).sort().join('\n');
+		if(s_properties !== s_accepted) {
+			if(!s_accepted) {
+				s_accepted = s_properties;
+			}
+			else {
+				let s_missing = '';
+				let s_extra = '';
+				const as_acc = new Set(s_accepted.split('\n'));
+				const as_prp = new Set(s_properties.split('\n'));
+				for(const s_each of as_acc) {
+					if(!as_prp.has(s_each)) {
+						s_missing += s_each+'\n';
+					}
+				}
+				for(const s_each of as_prp) {
+					if(!as_acc.has(s_each)) {
+						s_extra += s_each+'\n';
+					}
+				}
+				console.warn(`key mismatch discovered on ${si_term}: missing: '''\n${s_missing}\n'''. extra: '''\n${s_extra}\n'''`);
+			}
+		}
+
+		const si_class = g_term.class || si_term;
+
+		for(const [si_method, f_method] of ode({...H_TERM_GENERIC.methods, ...(g_term.methods || {})})) {
+			yield /* syntax: ts */ `\t\t${si_method}${f_method(si_class)};\n`;
+		}
+
+		yield /* syntax: ts */ `\t}\n\n`;
+	}
+
+	yield /* syntax: ts */ `
+		export interface Reification {
+			readonly node: BlankNode;
+			readonly quads: Array<Quad>;
+		}
+
+		export type BlankNode = LabeledBlankNode | AnonymousBlankNode | EphemeralBlankNode;
+		export type Node = NamedNode | BlankNode;
+		export type Literal = SimpleLiteral | LanguagedLiteral | DatatypedLiteral;
+		export type NumericLiteral = IntegerLiteral | DoubleLiteral | DecimalLiteral;
+
+		export type Graph = DefaultGraph | Node;
+		export type Subject = Node;
+		export type Predicate = NamedNode;
+		export type Object = Node | Literal;
+		export type Datatype = NamedNode;
+
+		interface DatatypeXsdBoolean extends Datatype {
+			value: '${P_IRI_XSD}boolean';
+		}
+
+		interface DatatypeXsdInteger extends Datatype {
+			value: '${P_IRI_XSD}integer';
+		}
+
+		interface DatatypeXsdDouble extends Datatype {
+			value: '${P_IRI_XSD}double';
+		}
+
+		interface DatatypeXsdDecimal extends Datatype {
+			value: '${P_IRI_XSD}decimal';
+		}
+
+		interface DatatypeXsdDate extends Datatype {
+			value: '${P_IRI_XSD}date';
+		}
+
+		interface DatatypeXsdDateTime extends Datatype {
+			value: '${P_IRI_XSD}dateTime';
+		}
+
+		export type Data = Graph | Subject | Predicate | Object;
+		export type Any = Data | Variable | Quad | RelativeIri;
+	`.replace(/\n/g, '\n\t')+'\n';
+
+	yield /* syntax: ts */ `}\n\n`;
+}
+
+@*{
+	const cv_extras = (s_cv) => ({
+		Json: /* syntax: ts */ `string`,
+		Directive: /* syntax: ts */ `string`,
+		QuadBundle: {
+			'.extends': /* syntax: ts */ `Iterable<Quad>`,
+			'[Symbol.iterator]': /* syntax: ts */ `() => Iterator<Quad>`,
+			'toString()': /* syntax: ts */ `${s_cv}.Json`,
+		},
+	});
 
 	const H_FORMS = {
+		V1: {
+			primitive: (si, g) => 'v1' in g? g.v1: /* syntax: ts */ `string`,
+			extras: cv_extras('V1'),
+		},
 		C1: {
-			primitive: si => /* syntax: ts */ 'DefaultGraph' === si? `'*'`: `string`,
-			extras: {
-				Json: /* syntax: ts */ `string`,
-				Directive: /* syntax: ts */ `string`,
-				QuadBundle: {
-					'.extends': /* syntax: ts */ `Iterable<Quad>`,
-					'[Symbol.iterator]': /* syntax: ts */ `() => Iterator<Quad>`,
-					'toString()': /* syntax: ts */ `C1.Json`,
-				},
+			primitive: (si, g) => {
+				let a_types = [];
+				if('v1' in g) a_types.push(`V1.${si}`);
+				if('c1' in g) {
+					if('string' === typeof g.c1) a_types.push(g.c1);
+					else a_types = g.c1;
+				}
+				return a_types.length? a_types.join(' | '): /* syntax: ts */ `string`;
 			},
+			extras: cv_extras('C1'),
 		},
 		Verbose: {
 			primitive: si => /* syntax: ts */ 'DefaultGraph' === si? `''`: `string`,
@@ -511,14 +592,19 @@
 		},
 	};
 
-	const A_PRIMITIVES = [
-		'NamedNode',
-		'BlankNode',
-		'DefaultGraph',
-		'Literal',
-		'Variable',
-		'Quad',
-	];
+	const H_PRIMITIVES = {
+		...H_TERMS,
+		NamedNode: H_TERM_NAMED_NODE,
+		BlankNode: {
+			c1: 'LabeledBlankNode | AnonymousBlankNode | EphemeralBlankNode',
+		},
+		DefaultGraph: H_TERM_DEFAULT_GRAPH,
+		Literal: {
+			c1: 'SimpleLiteral | LanguagedLiteral | DatatypedLiteral',
+		},
+		Variable: H_TERM_VARIABLE,
+		Quad: H_TERM_QUAD,
+	};
 
 	const H_COMPOSE_DEFAULT = {
 		Node: /* syntax: ts */ `NamedNode | BlankNode`,
@@ -564,8 +650,8 @@
 
 		const f_prim = g_form.primitive;
 
-		for(const si_prim of A_PRIMITIVES) {
-			s_body += map_typing(si_prim, f_prim(si_prim));
+		for(const si_prim in H_PRIMITIVES) {
+			s_body += map_typing(si_prim, f_prim(si_prim, H_PRIMITIVES[si_prim]));
 		}
 
 		const g_extras = g_form.extras;
