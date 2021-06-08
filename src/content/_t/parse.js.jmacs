@@ -413,7 +413,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	@;
 
 	// emit prefix event
-	this._fk_prefix(s_prefix_id, p_prefix_iri);
+	this._fk_prefix(s_prefix_id, namedNode(p_prefix_iri));
 @;
 
 
@@ -476,7 +476,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			`,
 			modal({
 				read: save_term(s_role, /* syntax: js */ `this.blank_node(s_label)`),
-				load: load_term(s_role, /* syntax: js */ `'_:'+s_label`),
+				load: load_term(s_role, /* syntax: js */ `'#'+s_label`),
 			}),
 			...('graph' === s_mod? [emit_graph_open()]: []),
 		],
@@ -598,7 +598,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			action: [
 				modal({
 					read: save_term(s_role, /* syntax: js */ `this.anonymous_blank_node(this.next_label())`),
-					load: load_term(s_role, /* syntax: js */ `'_:'+this.next_label()`),
+					load: load_term(s_role, /* syntax: js */ `'#'+this.next_label()`),
 				}),
 				...('graph' === s_mod? [emit_graph_open()]: []),
 			],
@@ -1919,7 +1919,7 @@ class Consumer {
 
 					// make term
 					${B_LOAD
-						? /* syntax: js */ `return '_:'+s_label;`
+						? /* syntax: js */ `return '#'+s_label;`
 						: /* syntax: js */ `return blankNode(s_label);`}
 				}`,
 
@@ -2580,7 +2580,7 @@ class Consumer {
 							`,
 							load: /* syntax: js */ `
 								// make blank node
-								let sc1_blank_node = this._sc1_object = '_:'+this.next_label();
+								let sc1_blank_node = this._sc1_object = '#'+this.next_label();
 
 								// commit to memory
 								${load_object(/* syntax: js */ `sc1_blank_node`)}
@@ -3312,7 +3312,7 @@ class Consumer {
 						s_pointer_label = this.next_label();
 						${sj_subject} = ${modal({
 							read: /* syntax: js */ `this.anonymous_blank_node(s_pointer_label)`,
-							load: /* syntax: js */ `'_:'+s_pointer_label`,
+							load: /* syntax: js */ `'#'+s_pointer_label`,
 						})}
 						${push_state('pairs')}
 						// reset subject for later conditional branch
@@ -3358,14 +3358,14 @@ class Consumer {
 							// first item in list
 							if(null === this._sc1_subject) {
 								s_pointer_label = this.next_label();
-								${load_subject(/* syntax: js */ `'_:'+s_pointer_label`)}
+								${load_subject(/* syntax: js */ `'#'+s_pointer_label`)}
 								${load_predicate(SJ_RDF_FIRST)}
 							}
 							// not first item in list
 							else {
 								// make nest list item
 								s_pointer_label = this.next_label();
-								let sc1_blank_node = '_:'+s_pointer_label;
+								let sc1_blank_node = '#'+s_pointer_label;
 								${load_object(/* syntax: js */ `sc1_blank_node`)}
 
 								// setup for object literal
@@ -3416,18 +3416,18 @@ class Consumer {
 						`,
 						load: /* syntax: js */ `
 							// this blank node is just the next item in the list
-							s_pointer_label = '_:'+this.next_label();
+							s_pointer_label = '#'+this.next_label();
 							let sc1_blank_node;
 							if(null !== this._sc1_subject) {
-								sc1_blank_node = '_:'+s_pointer_label;
+								sc1_blank_node = '#'+s_pointer_label;
 								${load_object(/* syntax: js */ `sc1_blank_node`)}
 							}
 
 							// subject needs to be set
-							this._sc1_subject = sc1_blank_node || '_:'+s_pointer_label;
+							this._sc1_subject = sc1_blank_node || '#'+s_pointer_label;
 							this._sc1_predicate = ${SJ_RDF_FIRST};
 							let s_label = this.next_label();
-							sc1_blank_node = '_:'+s_label;
+							sc1_blank_node = '#'+s_label;
 							${load_object(/* syntax: js */ `sc1_blank_node`)}
 
 							// when resume
@@ -3475,7 +3475,7 @@ class Consumer {
 								this._kt_subject = kt_blank_node;
 							`,
 							load: /* syntax: js */ `
-								let sc1_blank_node = '_:'+s_pointer_label;
+								let sc1_blank_node = '#'+s_pointer_label;
 								${load_object(/* syntax: js */ `sc1_blank_node`)}
 
 								// add this list as an item to the outer list
@@ -3543,7 +3543,7 @@ class Consumer {
 						let w_object = this._sc1_object;
 
 						// create blanknode to embed list
-						sc1_blank_node_outer = '_:'+s_pointer_label;
+						sc1_blank_node_outer = '#'+s_pointer_label;
 
 						// commit statement that functions as collection's head "pointer"
 						${load_object(/* syntax: js */ `sc1_blank_node_outer`)}
@@ -3554,7 +3554,7 @@ class Consumer {
 					}
 
 					// emit statement that is item
-					this._open_subject(sc1_blank_node_outer || '_:'+s_pointer_label);
+					this._open_subject(sc1_blank_node_outer || '#'+s_pointer_label);
 					this._open_predicate(${SJ_RDF_FIRST});
 					this._add_object(this._sc1_object);
 
@@ -3621,7 +3621,7 @@ class Consumer {
 							this.i = i;
 
 							// create blanknode to embed list
-							let sc1_blank_node = '_:'+this.next_label();
+							let sc1_blank_node = '#'+this.next_label();
 
 							// commit statement that functions as collection's head "pointer"
 							${load_object(/* syntax: js */ `sc1_blank_node`)}
@@ -3668,7 +3668,7 @@ class Consumer {
 						`,
 						load: /* syntax: js */ `
 							// make blank node
-							let sc1_blank_node = '_:'+this.next_label();
+							let sc1_blank_node = '#'+this.next_label();
 
 							// commit to memory
 							${load_object(/* syntax: js */ `sc1_blank_node`)}
@@ -3680,7 +3680,7 @@ class Consumer {
 
 							// enter blank node
 							${load_predicate(/* syntax: js */ `this._sc1_rdf+'first'`)}
-							sc1_blank_node = '_:'+this.next_label();
+							sc1_blank_node = '#'+this.next_label();
 							${load_object(/* syntax: js */ `sc1_blank_node`)}
 
 							// prepare next triple
@@ -3722,7 +3722,7 @@ class Consumer {
 						load: /* syntax: js */ `
 							// commit list item pointer
 							s_pointer_label = this.next_label();
-							let sc1_blank_node = '_:'+s_pointer_label;
+							let sc1_blank_node = '#'+s_pointer_label;
 							if(null === this._sc1_subject) {
 								let a_recent = this._a_nested[this._a_nested.length-1];
 								${load_subject(/* syntax: js */ `a_recent[0]`)}
@@ -3755,7 +3755,7 @@ class Consumer {
 
 						${modal({
 							read: save_term('object', /* syntax: js */ `this.blank_node(s_label)`),
-							load: load_object(/* syntax: js */ `'_:'+s_label`),
+							load: load_object(/* syntax: js */ `'#'+s_label`),
 						})}
 					`
 				}),
