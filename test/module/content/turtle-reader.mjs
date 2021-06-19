@@ -10,10 +10,10 @@ import {
 	decimalLiteral,
 } from '@graphy/core';
 
-// import {QuadTree} from '@graphy/memory';
-import QuadTree from '@graphy/memory/quad-tree';
+import { BasicQuadTree } from '@graphy/memory';
+// import QuadTree from '@graphy/memory/quad-tree';
 
-import TurtleReader from '@graphy/content/ttl-read';
+import { TurtleReader } from '@graphy/content';
 
 import ReaderSuite from '../../helper/reader-suite.mjs';
 

@@ -91,10 +91,12 @@ const H_GEN_LEAF = {
 					],
 
 					run: /* syntax: bash */ `
-						pushd build/module/${si_module}
+						pushd 'build/module/${si_module}/node_modules/@graphy'
+
+						ln -s ../../../${si_link}
 
 						# link to dep
-						npm link @graphy/${si_link}
+						# npm link @graphy/${si_link}
 					`,
 				}),
 			}), {}),
@@ -122,7 +124,6 @@ const H_GEN_LEAF = {
 			...a_deps,
 			...a_deps_strict,
 			...(a_deps.reduce((a_requires, p_dep) => {
-
 				// skip directories
 				if(fs.statSync(p_dep).isDirectory()) return a_requires;
 
@@ -164,13 +165,46 @@ const H_GEN_LEAF = {
 				// 	.map(p => path.relative(process.cwd(), p));
 			}, [])),
 		],
+
+				// --outDir $(dirname $@) -d $1 \
+				// --outFile $@ -d $1 \
 		run: /* syntax: bash */ `
+			set -e
+
+			p_out=$@
+			pd_build="$p_out.build"
+
 			npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \
 				--strict --skipLibCheck --forceConsistentCasingInFileNames \
-				--outDir $(dirname $@) -d \
-				&& ${run_eslint(/* syntax: bash */ `
-					node emk/pretty-print.js $@/$(basename $1)
-				`)}
+				--moduleResolution node \
+				--outDir $pd_build -d $1
+
+			pd_out=$(dirname $pd_build)
+
+			# move and replace js files
+			for p_src in $pd_build/*.js; do
+				sr_js=$(basename $p_src)
+				sr_mjs="$\{sr_js%.js}.mjs"
+				p_dst="$pd_out/$sr_mjs"
+
+				echo "$ rm -rf $p_dst"
+				rm -rf "$p_dst"
+
+				echo "$ mv $p_src $p_dst"
+				mv "$p_src" "$p_dst"
+			done
+
+			# move ts files
+			echo "$ mv $pd_build/*.ts $pd_out"
+			mv $pd_build/*.ts $pd_out/
+
+			# rm build
+			echo "$ rm -r $pd_build/"
+			rm -r $pd_build/
+
+			${run_eslint(/* syntax: bash */ `
+				node emk/pretty-print.js $@
+			`)}
 		`,
 		//run: /* syntax: bash */ `
 		//	npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \

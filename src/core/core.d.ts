@@ -158,10 +158,10 @@ export namespace DataFactory {
 	
 	function c1ExpandData(term: C1.Data, prefixes: PrefixMap): C1.Data;
 
-	function c1Graph(graph: C1.Graph, prefixes: PrefixMap): Term.Graph;
-	function c1Subject(subject: C1.Subject, prefixes: PrefixMap): Term.Subject;
-	function c1Predicate(subject: C1.Predicate, prefixes: PrefixMap): Term.Predicate;
-	function c1Object(objectRole: C1.Object, prefixes: PrefixMap): Term.Object;
+	function graphFromC1(graph: C1.Graph, prefixes: PrefixMap): Term.Graph;
+	function subjectFromC1(subject: C1.Subject, prefixes: PrefixMap): Term.Subject;
+	function predicateFromC1(subject: C1.Predicate, prefixes: PrefixMap): Term.Predicate;
+	function objectFromC1(objectRole: C1.Object, prefixes: PrefixMap): Term.Object;
 
 	function c1FromGraphRole(graph: Role.Graph, prefixes: PrefixMap): C1.Graph;
 	function c1FromSubjectRole(subject: Role.Subject, prefixes: PrefixMap): C1.Subject;

@@ -126,8 +126,10 @@ export namespace Dataset {
 
 
 	export interface Constructor<DatasetType, BuilderType, TransferType> {
+		Builder: typeof BuilderType;
+
 		empty(prefixes: PrefixMap): DatasetType;
-		builder(prefixes: PrefixMap): BuilderType;
+		// builder(prefixes: PrefixMap): BuilderType;
 
 		new(transfer: TransferType, prefixes: PrefixMap): DatasetType;
 	}
@@ -166,7 +168,7 @@ export namespace Dataset {
 		minus(other: SyncDataset): SyncDataset;
 		// difference(other: SyncDataset): SyncDataset;
 
-		canonicalize(): SyncDataset;
+		normalize(): SyncDataset;
 		//delta(other: SyncDataset): Delta
 	}
 

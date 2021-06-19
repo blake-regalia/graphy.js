@@ -413,7 +413,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	@;
 
 	// emit prefix event
-	this._fk_prefix(s_prefix_id, namedNode(p_prefix_iri));
+	this._fk_prefix(s_prefix_id, this.named_node(p_prefix_iri));
 @;
 
 

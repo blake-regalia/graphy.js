@@ -1,4 +1,4 @@
-/* global crypto C1 Memory Dataset QuadsTree */
+/* global crypto C1 Dataset */
 
 
 const F_SORT_CANONICALIZER_HASH = (g_a: HndqResult, g_b: HndqResult) => g_a.hash < g_b.hash? -1: (g_a.hash > g_b.hash? 1: 0);
@@ -84,13 +84,13 @@ interface HndqResult {
 }
 
 export class Normalizer {
-	_kd_source: Dataset;
-	_hc4_quads: QuadsTree;
+	_kd_source: BasicQuadTree;
+	_hc4_quads: QuadsHash;
 	_k_issuer: Issuer;
 	_h_blanks: BlankNodeBookmark;
 	_h_hashes: BlankNodeHashes;
 
-	constructor(kd_source: Dataset) {
+	constructor(kd_source: BasicQuadTree) {
 		this._kd_source = kd_source;
 		this._hc4_quads = kd_source._hc4_quads;
 		this._k_issuer = new Issuer('_:r');
@@ -99,7 +99,7 @@ export class Normalizer {
 	}
 
 	// implementation of §4.4.2: Normalization Algorithm
-	normalize(): Dataset {
+	normalize(): BasicQuadTree {
 		const {
 			_k_issuer: k_issuer,
 			_hc4_quads: hc4_quads,
@@ -112,11 +112,11 @@ export class Normalizer {
 		const as_non_normal = new Set<C1.BlankNode>();
 
 		// (2) each graph
-		for(const sc1_graph of hc4_quads) {
+		for(const sc1_graph in hc4_quads) {
 			// graph is blank node
-			if('_' === sc1_graph[0]) {
+			if('#' === sc1_graph[0]) {
 				// add it to set
-				as_non_normal.add(sc1_graph);
+				as_non_normal.add(sc1_graph as C1.BlankNode);
 
 				// blank node is registered; update it
 				if(sc1_graph in h_blanks) {
@@ -136,21 +136,21 @@ export class Normalizer {
 			const hc3_trips = hc4_quads[sc1_graph];
 
 			// each subject
-			for(const sc1_subject of hc3_trips) {
+			for(const sc1_subject in hc3_trips) {
 				// subject is blank node and different from graph
-				if('_' === sc1_subject && sc1_graph !== sc1_subject) {
+				if('#' === sc1_subject && sc1_graph !== sc1_subject) {
 					// add it to set
-					as_non_normal.add(sc1_subject);
+					as_non_normal.add(sc1_subject as C1.BlankNode);
 
 					// blank node is registered; update it
 					if(sc1_subject in h_blanks) {
-						h_blanks[sc1_subject].subject.push(sc1_graph);
+						h_blanks[sc1_subject].subject.push(sc1_graph as C1.Graph);
 					}
 					// blank node is unregistered; register it
 					else {
 						h_blanks[sc1_subject] = {
 							graph: 0,
-							subject: [sc1_graph],
+							subject: [sc1_graph as C1.Graph],
 							object: [],
 						};
 					}
@@ -160,20 +160,20 @@ export class Normalizer {
 				const hc2_probs = hc3_trips[sc1_subject];
 
 				// each predicate
-				for(const sc1_predicate of hc2_probs) {
+				for(const sc1_predicate in hc2_probs) {
 					// ref objects set
 					const as_objects = hc2_probs[sc1_predicate];
 
 					// each object
 					for(const sc1_object of as_objects) {
 						// object is blank node and different from subject and graph
-						if('_' === sc1_object[0] && sc1_subject !== sc1_object && sc1_graph !== sc1_object) {
+						if('#' === sc1_object[0] && sc1_subject !== sc1_object && sc1_graph !== sc1_object) {
 							// add it to set
-							as_non_normal.add(sc1_object);
+							as_non_normal.add(sc1_object as C1.BlankNode);
 
 							// blank node is registered; update it
 							if(sc1_object in h_blanks) {
-								h_blanks[sc1_object].object.push([sc1_graph, sc1_subject, sc1_predicate]);
+								h_blanks[sc1_object].object.push([sc1_graph as C1.Graph, sc1_subject as C1.Subject, sc1_predicate as C1.Predicate]);
 							}
 							// blank node is unregistered; register it
 							else {
@@ -181,7 +181,7 @@ export class Normalizer {
 									graph: 0,
 									subject: [],
 									object:[
-										[sc1_graph, sc1_subject, sc1_predicate],
+										[sc1_graph as C1.Graph, sc1_subject as C1.Subject, sc1_predicate as C1.Predicate],
 									],
 								};
 							}
@@ -322,15 +322,15 @@ export class Normalizer {
 		}
 
 		// build output
-		const kb_out = new this._kd_source.constructor.builder(Object.assign({}, this._kd_source._h_prefixes));
+		const kb_out = new this._kd_source.constructor.Builder(Object.assign({}, this._kd_source._h_prefixes));
 
 		// 
 		const s_issuer_prefix = k_issuer._s_prefix;
 
 		// (7) each graph
-		for(let sc1_graph of hc4_quads) {
+		for(let sc1_graph in hc4_quads) {
 			// replace blank node identifier
-			if('_' === sc1_graph[0] && !sc1_graph.startsWith(s_issuer_prefix)) {
+			if('#' === sc1_graph[0] && !sc1_graph.startsWith(s_issuer_prefix)) {
 				sc1_graph = k_issuer._h_existing[sc1_graph];
 			}
 
@@ -341,9 +341,9 @@ export class Normalizer {
 			const hc3_trips = hc4_quads[sc1_graph];
 
 			// each subject
-			for(let sc1_subject of hc3_trips) {
+			for(let sc1_subject in hc3_trips) {
 				// replace blank node identifier
-				if('_' === sc1_subject[0] && !sc1_subject.startsWith(s_issuer_prefix)) {
+				if('#' === sc1_subject[0] && !sc1_subject.startsWith(s_issuer_prefix)) {
 					sc1_subject = k_issuer._h_existing[sc1_subject];
 				}
 
@@ -351,10 +351,10 @@ export class Normalizer {
 				const kh_grub = kh_graph.openC1Subject(sc1_subject);
 
 				// ref probs tree
-				const hc2_probs = hc4_quads[sc1_subject];
+				const hc2_probs = hc3_trips[sc1_subject];
 
 				// each predicate
-				for(const sc1_predicate of hc2_probs) {
+				for(const sc1_predicate in hc2_probs) {
 					// open predicate
 					const kh_grasp = kh_grub.openC1GPredicate(sc1_predicate);
 
@@ -364,8 +364,8 @@ export class Normalizer {
 					// each object
 					for(let sc1_object of as_objects) {
 						// replace blank node identifier
-						if('_' === sc1_object[0] && !sc1_object.startsWith(s_issuer_prefix)) {
-							sc1_object = k_issuer._h_existing[sc1_object];
+						if('#' === sc1_object[0] && !sc1_object.startsWith(s_issuer_prefix)) {
+							sc1_object = k_issuer._h_existing[sc1_object] as C1.Object;
 						}
 
 						// add object to new dataset
@@ -401,17 +401,17 @@ export class Normalizer {
 			const s_norm_g = '_:a\9';
 
 			// each subject
-			for(const sc1_subject of hc3_trips) {
+			for(const sc1_subject in hc3_trips) {
 				// ref probs tree
 				const hc2_probs = hc3_trips[sc1_subject];
 
 				// create norm string
-				const s_norm_gs = s_norm_g+('_' === sc1_subject[0]
+				const s_norm_gs = s_norm_g+('#' === sc1_subject[0]
 					? (sc1_subject === sc1_blank ? '_:a\8': '_:z\8')
 					: sc1_subject+'\8');
 
 				// each predicate
-				for(const sc1_predicate of hc2_probs) {
+				for(const sc1_predicate in hc2_probs) {
 					// ref objects set
 					const as_objects = hc2_probs[sc1_predicate];
 
@@ -421,7 +421,7 @@ export class Normalizer {
 					// each object
 					for(const sc1_object of as_objects) {
 						// push norm string
-						if('_' === sc1_object[0]) {
+						if('#' === sc1_object[0]) {
 							a_norms.push(s_norm_gsp+(sc1_object===sc1_blank? '_:a': '_:z'));
 						}
 						else {
@@ -438,10 +438,10 @@ export class Normalizer {
 			const hc2_probs = hc4_quads[sc1_graph][sc1_blank];
 
 			// create norm string
-			const s_norm_gs = ('_' === sc1_graph[0]? '_:z\9': sc1_graph+'\9')+'_:a\8';
+			const s_norm_gs = ('#' === sc1_graph[0]? '_:z\9': sc1_graph+'\9')+'_:a\8';
 
 			// each predicate
-			for(const sc1_predicate of hc2_probs) {
+			for(const sc1_predicate in hc2_probs) {
 				// ref objects set
 				const as_objects = hc2_probs[sc1_predicate];
 
@@ -451,7 +451,7 @@ export class Normalizer {
 				// each object
 				for(const sc1_object of as_objects) {
 					// push norm string
-					if('_' === sc1_object[0]) {
+					if('#' === sc1_object[0]) {
 						a_norms.push(s_norm_gsp+(sc1_object===sc1_blank? '_:a': '_:z'));
 					}
 					else {
@@ -467,12 +467,12 @@ export class Normalizer {
 			let si_norm_gs = sc1_graph+'\9';
 
 			// graph is blank node
-			if('_' === sc1_graph[0]) {
+			if('#' === sc1_graph[0]) {
 				si_norm_gs = sc1_graph === sc1_blank? '_:a\9': '_:z\9';
 			}
 
 			// subject is blank node
-			if('_' === sc1_subject[0]) {
+			if('#' === sc1_subject[0]) {
 				si_norm_gs += sc1_subject === sc1_blank? '_:a\8': '_:z\8';
 			}
 			else {
@@ -591,23 +591,23 @@ export class Normalizer {
 			const hc3_trips = hc4_quads[sc1_blank];
 
 			// each subject
-			for(const sc1_subject of hc3_trips) {
+			for(const sc1_subject in hc3_trips) {
 				// relate to subject
-				const b_relate_subject = ('_' === sc1_subject[0] && sc1_subject !== sc1_blank);
+				const b_relate_subject = ('#' === sc1_subject[0] && sc1_subject !== sc1_blank);
 
 				// ref probs tree
 				const hc2_probs = hc3_trips[sc1_subject];
 
 				// each predicate
-				for(const sc1_predicate of hc2_probs) {
+				for(const sc1_predicate in hc2_probs) {
 					// relate to subject
 					if(b_relate_subject) {
-						const si_related = this.hash_relative(sc1_subject, sc1_predicate, k_issuer, 1);
+						const si_related = this.hash_relative(sc1_subject as C1.BlankNode, sc1_predicate as C1.Predicate, k_issuer, 1);
 						if(si_related in h_related) {
-							h_related[si_related].push(sc1_subject);
+							h_related[si_related].push(sc1_subject as C1.BlankNode);
 						}
 						else {
-							h_related[si_related] = [sc1_subject];
+							h_related[si_related] = [sc1_subject as C1.BlankNode];
 						}
 					}
 
@@ -617,13 +617,13 @@ export class Normalizer {
 					// each object
 					for(const sc1_object of as_objects) {
 						// relate to object
-						if('_' === sc1_object[0] && sc1_object !== sc1_blank) {
-							const si_related = this.hash_relative(sc1_object, sc1_predicate, k_issuer, 2);
+						if('#' === sc1_object[0] && sc1_object !== sc1_blank) {
+							const si_related = this.hash_relative(sc1_object as C1.BlankNode, sc1_predicate as C1.Predicate, k_issuer, 2);
 							if(si_related in h_related) {
-								h_related[si_related].push(sc1_object);
+								h_related[si_related].push(sc1_object as C1.BlankNode);
 							}
 							else {
-								h_related[si_related] = [sc1_object];
+								h_related[si_related] = [sc1_object as C1.BlankNode];
 							}
 						}
 					}
@@ -634,21 +634,21 @@ export class Normalizer {
 		// each occurrence of subject
 		for(const sc1_graph of g_blank.subject) {
 			// relate to graph (guaranteed to not be graph)
-			const b_relate_graph = '_' === sc1_graph[0];
+			const b_relate_graph = '#' === sc1_graph[0];
 
 			// ref probs tree
 			const hc2_probs = hc4_quads[sc1_graph][sc1_blank];
 
 			// each predicate
-			for(const sc1_predicate of hc2_probs) {
+			for(const sc1_predicate in hc2_probs) {
 				// relate to graph
 				if(b_relate_graph) {
-					const si_related = this.hash_relative(sc1_graph, sc1_predicate, k_issuer, 0);
+					const si_related = this.hash_relative(sc1_graph as C1.BlankNode, sc1_predicate as C1.Predicate, k_issuer, 0);
 					if(si_related in h_related) {
-						h_related[si_related].push(sc1_graph);
+						h_related[si_related].push(sc1_graph as C1.BlankNode);
 					}
 					else {
-						h_related[si_related] = [sc1_graph];
+						h_related[si_related] = [sc1_graph as C1.BlankNode];
 					}
 				}
 
@@ -658,13 +658,13 @@ export class Normalizer {
 				// each object
 				for(const sc1_object of as_objects) {
 					// relate to object
-					if('_' === sc1_object[0] && sc1_object !== sc1_blank) {
-						const si_related = this.hash_relative(sc1_object, sc1_predicate, k_issuer, 2);
+					if('#' === sc1_object[0] && sc1_object !== sc1_blank) {
+						const si_related = this.hash_relative(sc1_object as C1.BlankNode, sc1_predicate as C1.Predicate, k_issuer, 2);
 						if(si_related in h_related) {
-							h_related[si_related].push(sc1_object);
+							h_related[si_related].push(sc1_object as C1.BlankNode);
 						}
 						else {
-							h_related[si_related] = [sc1_object];
+							h_related[si_related] = [sc1_object as C1.BlankNode];
 						}
 					}
 				}
@@ -674,24 +674,24 @@ export class Normalizer {
 		// each occurrence of object
 		for(const [sc1_graph, sc1_subject, sc1_predicate] of g_blank.object) {
 			// relate to graph
-			if('_' === sc1_graph[0]) {
-				const si_related = this.hash_relative(sc1_graph, sc1_predicate, k_issuer, 0);
+			if('#' === sc1_graph[0]) {
+				const si_related = this.hash_relative(sc1_graph as C1.BlankNode, sc1_predicate as C1.Predicate, k_issuer, 0);
 				if(si_related in h_related) {
-					h_related[si_related].push(sc1_graph);
+					h_related[si_related].push(sc1_graph as C1.BlankNode);
 				}
 				else {
-					h_related[si_related] = [sc1_graph];
+					h_related[si_related] = [sc1_graph as C1.BlankNode];
 				}
 			}
 
 			// relate to subject
-			if('_' === sc1_subject[0]) {
-				const si_related = this.hash_relative(sc1_subject, sc1_predicate, k_issuer, 1);
+			if('#' === sc1_subject[0]) {
+				const si_related = this.hash_relative(sc1_subject as C1.BlankNode, sc1_predicate as C1.Predicate, k_issuer, 1);
 				if(si_related in h_related) {
-					h_related[si_related].push(sc1_subject);
+					h_related[si_related].push(sc1_subject as C1.BlankNode);
 				}
 				else {
-					h_related[si_related] = [sc1_subject];
+					h_related[si_related] = [sc1_subject as C1.BlankNode];
 				}
 			}
 		}

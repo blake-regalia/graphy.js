@@ -64,6 +64,7 @@
 
 		methods: {
 			equals:       si => /* syntax: ts */ `(other: RDFJS.Term): boolean`,
+			flat:         si => /* syntax: ts */ `(prefixes?: PrefixMap): F1.${si}`,
 			concise:      si => /* syntax: ts */ `(prefixes?: PrefixMap): C1.${si}`,
 			terse:        si => /* syntax: ts */ `(prefixes?: PrefixMap): Terse.${si}`,
 			star:         si => /* syntax: ts */ `(prefixes?: PrefixMap): Star.${si}`,
@@ -84,7 +85,7 @@
 	};
 
 	const H_TERM_DEFAULT_GRAPH = {
-		v1: `'*'`,
+		f1: `'*'`,
 		properties: {
 			...H_TERM_GRAPHABLE.properties,
 			isDefaultGraph:       true,
@@ -108,7 +109,7 @@
 
 	const H_TERM_NAMED_NODE = {
 		c1: '`${string}:${string}`',
-		v1: SX_C1_ABSOLUTE_IRI,
+		f1: SX_C1_ABSOLUTE_IRI,
 		properties: {
 			...H_TERM_NODE.properties,
 			isNamedNode:          true,
@@ -121,7 +122,7 @@
 
 	const H_TERM_RELATIVE_IRI = {
 		c1: ['void'],
-		v1: SX_C1_ABSOLUTE_IRI,
+		f1: SX_C1_ABSOLUTE_IRI,
 		properties: {
 			...H_TERM_NODE.properties,
 			isAbsoluteIri: false,
@@ -131,6 +132,7 @@
 			value:                /* syntax: ts */ `string`,
 		},
 		methods: {
+			flat:     () => /* syntax: ts */ `(prefixes?: PrefixMap): F1.NamedNode | never`,
 			concise:  () => /* syntax: ts */ `(prefixes?: PrefixMap): C1.NamedNode | never`,
 			terse:    () => /* syntax: ts */ `(prefixes?: PrefixMap): Terse.NamedNode`,
 			star:     () => /* syntax: ts */ `(prefixes?: PrefixMap): Star.NamedNode`,
@@ -150,11 +152,11 @@
 		},
 	};
 
-	const SX_V1_BLANK_NODE = '`_:${string}`';
+	const SX_F1_BLANK_NODE = '`#${string}`';
 
 	const H_TERM_LABELED_BLANK_NODE = {
 		class: 'BlankNode',
-		v1: SX_V1_BLANK_NODE,
+		f1: SX_F1_BLANK_NODE,
 		properties: {
 			...H_TERM_BLANK_NODE.properties,
 		},
@@ -162,7 +164,7 @@
 
 	const H_TERM_ANONYMOUS_BLANK_NODE = {
 		class: 'BlankNode',
-		v1: SX_V1_BLANK_NODE,
+		f1: SX_F1_BLANK_NODE,
 		properties: {
 			...H_TERM_BLANK_NODE.properties,
 			isAnonymousBlankNode: true,
@@ -171,7 +173,7 @@
 
 	const H_TERM_EPHEMERAL_BLANK_NODE = {
 		class: 'BlankNode',
-		v1: SX_V1_BLANK_NODE+' | `_#${string}`',
+		f1: SX_F1_BLANK_NODE+' | `##${string}`',
 		properties: {
 			...H_TERM_BLANK_NODE.properties,
 			isAnonymousBlankNode: true,
@@ -198,7 +200,7 @@
 
 	const H_TERM_SIMPLE_LITERAL = {
 		class: 'Literal',
-		v1: '`"${string}`',
+		f1: '`"${string}`',
 		properties: {
 			...H_TERM_LITERAL.properties,
 			isSimpleLiteral:      true,
@@ -208,7 +210,7 @@
 	const H_TERM_LANGUAGED_LITERAL = {
 		class: 'Literal',
 		// TODO: narrow to BCP47 pattern
-		v1: '`@${string}"${string}`',
+		f1: '`@${string}"${string}`',
 		properties: {
 			...H_TERM_LITERAL.properties,
 			isLanguagedLiteral: true,
@@ -217,7 +219,7 @@
 
 	const H_TERM_DATATYPED_LITERAL = {
 		class: 'Literal',
-		v1: '`^${NamedNode}"${string}`',
+		f1: '`^${NamedNode}"${string}`',
 		c1: ['`^${NamedNode}"${string}`'],
 		properties: {
 			...H_TERM_LITERAL.properties,
@@ -225,8 +227,8 @@
 		},
 	};
 
-	const SX_V1_DATATYPE_XSD = '`^>http://www.w3.org/2001/XMLSchema#';
-	const SX_V1_DATATYPE_LITERAL_XSD = SX_V1_DATATYPE_XSD+'${string}"${string}`';
+	const SX_F1_DATATYPE_XSD = '`^>http://www.w3.org/2001/XMLSchema#';
+	const SX_F1_DATATYPE_LITERAL_XSD = SX_F1_DATATYPE_XSD+'${string}"${string}`';
 
 	const H_TERM_NUMERIC_LITERAL = {
 		class: 'Literal',
@@ -241,7 +243,7 @@
 
 	const H_TERM_BOOLEAN_LITERAL = {
 		class: 'Literal',
-		v1: SX_V1_DATATYPE_XSD+'boolean"${LiterallyTrueOrFalse}`',
+		f1: SX_F1_DATATYPE_XSD+'boolean"${LiterallyTrueOrFalse}`',
 		c1: '`^${string}:${string}"${LiterallyTrueOrFalse}`',
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
@@ -258,7 +260,7 @@
 
 	const H_TERM_INTEGER_LITERAL = {
 		class: 'Literal',
-		v1: SX_V1_DATATYPE_XSD+'integer"${number}`',
+		f1: SX_F1_DATATYPE_XSD+'integer"${number}`',
 		c1: '`^${string}:${string}"${number}`',
 		properties: {
 			...H_TERM_NUMERIC_LITERAL.properties,
@@ -271,10 +273,10 @@
 		},
 	};
 
-	const SX_V1_DOUBLE_LITERAL = SX_V1_DATATYPE_XSD+'double"${number}`';
+	const SX_F1_DOUBLE_LITERAL = SX_F1_DATATYPE_XSD+'double"${number}`';
 	const H_TERM_DOUBLE_LITERAL = {
 		class: 'Literal',
-		v1: SX_V1_DOUBLE_LITERAL,
+		f1: SX_F1_DOUBLE_LITERAL,
 		c1: '`^${string}:${string}"${number}`',
 		properties: {
 			...H_TERM_NUMERIC_LITERAL.properties,
@@ -288,7 +290,7 @@
 
 	const H_TERM_POSITIVE_INFINITY_LITERAL = {
 		class: 'Literal',
-		v1: SX_V1_DATATYPE_XSD+'double"INF`',
+		f1: SX_F1_DATATYPE_XSD+'double"INF`',
 		c1: '`^${string}:${string}"INF`',
 		properties: {
 			...H_TERM_DOUBLE_LITERAL.properties,
@@ -303,7 +305,7 @@
 
 	const H_TERM_NEGATIVE_INFINITY_LITERAL = {
 		class: 'Literal',
-		v1: SX_V1_DATATYPE_XSD+'double"-INF`',
+		f1: SX_F1_DATATYPE_XSD+'double"-INF`',
 		c1: '`^${string}:${string}"-INF`',
 		properties: {
 			...H_TERM_POSITIVE_INFINITY_LITERAL.properties,
@@ -316,7 +318,7 @@
 
 	const H_TERM_NAN_LITERAL = {
 		class: 'Literal',
-		v1: SX_V1_DATATYPE_XSD+'double"NaN`',
+		f1: SX_F1_DATATYPE_XSD+'double"NaN`',
 		c1: '`^${string}:${string}"NaN`',
 		properties: {
 			...H_TERM_DOUBLE_LITERAL.properties,
@@ -333,7 +335,7 @@
 
 	const H_TERM_DECIMAL_LITERAL = {
 		class: 'Literal',
-		v1: SX_V1_DATATYPE_XSD+'decimal"${string}`',
+		f1: SX_F1_DATATYPE_XSD+'decimal"${string}`',
 		c1: SX_C1_DATATYPE_GENERIC,
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
@@ -348,7 +350,7 @@
 
 	const H_TERM_DATE_LITERAL = {
 		class: 'Literal',
-		v1: SX_V1_DATATYPE_XSD+'date"${string}`',
+		f1: SX_F1_DATATYPE_XSD+'date"${string}`',
 		c1: SX_C1_DATATYPE_GENERIC,
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
@@ -362,7 +364,7 @@
 
 	const H_TERM_DATETIME_LITERAL = {
 		class: 'Literal',
-		v1: SX_V1_DATATYPE_XSD+'dateTime"${string}`',
+		f1: SX_F1_DATATYPE_XSD+'dateTime"${string}`',
 		c1: SX_C1_DATATYPE_GENERIC,
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
@@ -375,7 +377,7 @@
 	};
 
 	const H_TERM_VARIABLE = {
-		v1: '`?${string}`',
+		f1: '`?${string}`',
 		properties: {
 			...H_TERM_GENERIC.properties,
 			isVariable: true,
@@ -464,7 +466,7 @@
 		const si_class = g_term.class || si_term;
 
 		for(const [si_method, f_method] of ode({...H_TERM_GENERIC.methods, ...(g_term.methods || {})})) {
-			yield /* syntax: ts */ `\t\t${si_method}${f_method(si_class)};\n`;
+			yield /* syntax: ts */ `\t\t${si_method}${f_method(si_term)};\n`;
 		}
 
 		yield /* syntax: ts */ `\t}\n\n`;
@@ -530,14 +532,14 @@
 	});
 
 	const H_FORMS = {
-		V1: {
-			primitive: (si, g) => 'v1' in g? g.v1: /* syntax: ts */ `string`,
-			extras: cv_extras('V1'),
+		F1: {
+			primitive: (si, g) => 'f1' in g? g.f1: /* syntax: ts */ `string`,
+			extras: cv_extras('F1'),
 		},
 		C1: {
 			primitive: (si, g) => {
 				let a_types = [];
-				if('v1' in g) a_types.push(`V1.${si}`);
+				if('f1' in g) a_types.push(`F1.${si}`);
 				if('c1' in g) {
 					if('string' === typeof g.c1) a_types.push(g.c1);
 					else a_types = g.c1;

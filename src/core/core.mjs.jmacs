@@ -406,15 +406,11 @@ export function c1ToN3(sc1_in, h_prefixes=null, b_verbose=false) {
 			}
 		}
 
-		// blank node?
-		case '_': {
+		// blank node
+		case '#': {
 			// anonymous or ephemeral hint
-			if(sc1_in.length <= 2 || '#' === sc1_in[2]) {
+			if(1 === sc1_in.length || '##' === sc1_in[1]) {
 				return (new EphemeralBlankNode())[b_terse? 'terse': 'verbose']();
-			}
-			// actually prefixed named
-			else if(':' !== sc1_in[1]) {
-				return c1NodeToN3(sc1_in, h_prefixes, !b_terse);
 			}
 			// labeled
 			else {
@@ -528,7 +524,7 @@ export function c1ToN3(sc1_in, h_prefixes=null, b_verbose=false) {
 
 class GenericTerm {
 	valueOf() {
-		return this.concise();
+		return this.flat();
 	}
 
 	equals(z_other) {
@@ -539,7 +535,7 @@ class GenericTerm {
 	}
 
 	hash() {
-		return hash(this.concise());
+		return hash(this.flat());
 	}
 
 	clone() {
@@ -590,6 +586,10 @@ class GenericTerm {
 	},
 	/* eslint-disable no-undef */
 	methods: class {
+		flat() {
+			return '>'+this.value;
+		}
+
 		concise(h_prefixes={}) {
 			return concise(this.value, h_prefixes);
 		}
@@ -680,6 +680,7 @@ class GenericTerm {
 				}
 			`.trim(),
 		}), {}),
+		flat:                  /* syntax: js */ `gp_self.concise`,
 		isAbsoluteIri:         /* syntax: js */ `false`,
 		isRelativeIri:         /* syntax: js */ `true`,
 		star:                  /* syntax: js */ `gp_self.terse`,
@@ -847,6 +848,7 @@ const G_ISOLATE_XSD_STRING = KT_XSD_STRING.isolate();
 	},
 	/* eslint-enable no-undef */
 	properties: {
+		flat:                  /* syntax: js */ `gp_self.concise`,
 		isLanguagedLiteral:    /* syntax: js */ `true`,
 		datatype:              /* syntax: js */ `KT_RDF_LANG_STRING`,
 		star:                  /* syntax: js */ `gp_self.terse`,
@@ -859,6 +861,10 @@ const G_ISOLATE_XSD_STRING = KT_XSD_STRING.isolate();
 class DatatypedLiteral extends GenericLiteral {
 	verbose() {
 		return JSON.stringify(this.value)+'^^'+this.datatype.verbose();
+	}
+
+	flat(h_prefixes=null) {
+		return '^'+this.datatype.flat(h_prefixes)+'"'+this.value;
 	}
 
 	concise(h_prefixes={}) {
@@ -1178,6 +1184,7 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 	/* eslint-enable no-undef */
 	properties: {
 		isSimpleLiteral:       /* syntax: js */ `true`,
+		flat:                  /* syntax: js */ `gp_self.concise`,
 		star:                  /* syntax: js */ `gp_self.terse`,
 	},
 })}
@@ -1408,6 +1415,10 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 				return false;
 			}
 		@;
+
+		flat() {
+			return '^>@{P_IRI_XSD}@{s_type_caps}"'+this.value;
+		}
 
 		concise(h_prefixes={}) {
 			return '^'+KT_XSD_@{s_type_caps}.concise(h_prefixes)+'"'+this.value;
@@ -1732,7 +1743,7 @@ class NaNLiteral extends DoubleLiteral {
 		isNode:                /* syntax: js */ `true`,
 		isBlankNode:           /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'BlankNode'`,
-		concise:               /* syntax: js */ `gp_self.terse = gp_self.star = gp_self.verbose`,
+		concise:               /* syntax: js */ `gp_self.flat = gp_self.terse = gp_self.star = gp_self.verbose`,
 		replaceIri:            /* syntax: js */ `gp_self.replaceText = gp_self.clone`,
 	},
 })}
@@ -1747,7 +1758,7 @@ class NaNLiteral extends DoubleLiteral {
 		}
 
 		concise() {
-			return '_:#'+this.value;
+			return '##'+this.value;
 		}
 
 		terse() {
@@ -1777,6 +1788,7 @@ class NaNLiteral extends DoubleLiteral {
 	properties: {
 		isAnonymousBlankNode:  /* syntax: js */ `true`,
 		isEphemeralBlankNode:  /* syntax: js */ `true`,
+		flat:                  /* syntax: js */ `gp_self.concise`,
 		star:                  /* syntax: js */ `gp_self.terse`,
 		replaceValue:          /* syntax: js */ `gp_self.replaceIri = gp_self.replaceText = gp_self.clone`,
 	},
@@ -1808,6 +1820,7 @@ class NaNLiteral extends DoubleLiteral {
 	properties: {
 		isVariable:            /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'Variable'`,
+		flat:                  /* syntax: js */ `gp_self.concise`,
 		terse:                 /* syntax: js */ `gp_self.star = gp_self.concise`,
 	},
 })}
@@ -1846,6 +1859,7 @@ class NaNLiteral extends DoubleLiteral {
 		isDefaultGraph:        /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'DefaultGraph'`,
 		value:                 /* syntax: js */ `''`,
+		flat:                  /* syntax: js */ `gp_self.concise`,
 		terse:                 /* syntax: js */ `gp_self.star = gp_self.verbose`,
 		replaceIri:            /* syntax: js */ `gp_self.replaceText = gp_self.replaceValue = gp_self.clone`,
 	},
@@ -1893,6 +1907,13 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 				this.object,
 				this.graph,
 			];
+		}
+
+		flat(h_prefixes=null) {
+			return this.graph.flat(h_prefixes)
+				+'\t'+this.subject.flat(h_prefixes)
+				+'\r'+this.predicate.flat(h_prefixes)
+				+'\n'+this.object.flat(h_prefixes);
 		}
 
 		concise(h_prefixes={}) {
@@ -2590,16 +2611,13 @@ export function c1Node(sc1_node, h_prefixes={}) {
 	// default graph
 	if('*' === sc1_node) return defaultGraph();
 
-	// blank node?
-	if('_' === sc1_node[0]) {
-		// prefixed name
-		if(':' !== sc1_node[1]) return fromP1(sc1_node, h_prefixes);
-
+	// blank node
+	if('#' === sc1_node[0]) {
 		// anonymous
-		if(2 === sc1_node.length) return blankNode();
+		if(1 === sc1_node.length) return blankNode();
 
 		// ephemeral hint
-		if('#' === sc1_node[2]) return ephemeralBlankNode();
+		if('#' === sc1_node[1]) return ephemeralBlankNode();
 
 		// create blank node
 		return blankNode(sc1_node.slice(2));
@@ -2625,13 +2643,9 @@ export function c1NodeExplicit(sc1_node, h_prefixes={}) {
 		// iri
 		case '>': return g_raw.namedNode(sc1_node.slice(1));
 
-		// prefixed name
-		case '_': {
-			// blank nodes not allowed
-			if(':' === sc1_node[1]) throw new Error(`BlankNode is not allowed here: ${sc1_node}`);
-
-			// prefixed name
-			return fromP1(sc1_node, h_prefixes);
+		// blank nodes not allowed
+		case '#': {
+			throw new Error(`BlankNode is not allowed here: ${sc1_node}`);
 		}
 
 		// invalid concise-term string
@@ -2932,7 +2946,7 @@ export function c1FromGraphRole(yt_graph, h_prefixes={}) {
 	switch(yt_graph.termType) {
 		case 'NamedNode': return concise(yt_graph.value, h_prefixes);
 		case 'DefaultGraph': return '*';
-		case 'BlankNode': return '_:'+yt_graph.value;
+		case 'BlankNode': return '#'+yt_graph.value;
 		default: throw new Error(`Invalid termType for graph role term: '${yt_graph.termType}'`);
 	}
 }
@@ -2940,7 +2954,7 @@ export function c1FromGraphRole(yt_graph, h_prefixes={}) {
 export function c1FromSubjectRole(yt_subject, h_prefixes={}) {
 	switch(yt_subject.termType) {
 		case 'NamedNode': return concise(yt_subject.value, h_prefixes);
-		case 'BlankNode': return '_:'+yt_subject.value;
+		case 'BlankNode': return '#'+yt_subject.value;
 		default: throw new Error(`Invalid termType for subject role term: '${yt_subject.termType}'`);
 	}
 }
@@ -2958,7 +2972,7 @@ export const c1FromDatatypeRole = c1FromNamedNode;
 export function c1FromObjectRole(yt_object, h_prefixes={}) {
 	switch(yt_object.termType) {
 		case 'NamedNode': return concise(yt_object.value, h_prefixes);
-		case 'BlankNode': return '_:'+yt_object.value;
+		case 'BlankNode': return '#'+yt_object.value;
 		case 'Literal': {
 			if(yt_object.language) {
 				return '@'+yt_object.language+'"'+yt_object.value;

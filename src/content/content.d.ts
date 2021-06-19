@@ -64,11 +64,45 @@ export interface ListsConfig {
     nil: ConciseTerm;
 }
 
+
+/**
+ * Controls styling options when writing RDF to a supported output format
+ */
 export interface StyleConfig {
+    /**
+     * Overrides the whitespace string to use for indentation [defaults to '\t']
+     */
     indent?: string;
+
+    /**
+     * Prints the optional GRAPH keyword for named graph groups; also allows specifying the capitalization style [defaults to false]
+     */
     graphKeyword?: boolean | 'graph' | 'Graph' | 'GRAPH';
+
+    /**
+     * Omits the optional GRAPH group for triples in the default graph (only applies to TriG) [defaults to false]
+     */
     simplifyDefaultGraph?: boolean;
+
+    /**
+     * Specifies the directive style (Turtle vs SPARQL) as well as the capitalization style for prefix and base statements [defaults to 'turtle']
+     */
     directives?: 'turtle' | 'Turtle' | 'TURTLE' | 'sparql' | 'Sparql' | 'SPARQL';
+
+    /**
+     * Refers to the first line of a tree-style triple (where the subject is printed) and whether to print the first predicate-object pair on the same line under various circumstances [defaults to 'line']
+     */
+    heading?: 'line' | 'break-list' | 'break-all';
+
+    /**
+     * Refers to the full-stop terminator for a triple and whether to print it on the same line as the last object [defaults to 'line']
+     */
+    terminator?: 'line' | 'break';
+
+    /**
+     * Refers to objects-lists and when to break line [defaults to 'line']
+     */
+    objects?: 'line' | 'break' | 'break-list' | 'break-all' | 'wrap' | `wrap(${string})`;
 }
 
 export interface WriteConfig {
