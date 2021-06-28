@@ -26,6 +26,12 @@ const {
 	fromTerm,
 } = DataFactory;
 
+import {
+	$_KEYS,
+	$_QUADS,
+	ILinkedQuadTree,
+} from '../common';
+
 
 /**
  * @fileoverview
@@ -48,41 +54,41 @@ const {
  */
 
 
-const $_KEYS = Symbol(' (keys)');
-const $_QUADS = Symbol(' (quads)');
+// const $_KEYS = Symbol(' (keys)');
+// const $_QUADS = Symbol(' (quads)');
 
-interface CountableKeys {
-	[$_KEYS]: number;
-}
+// interface CountableKeys {
+// 	[$_KEYS]: number;
+// }
 
-interface CountableQuads extends CountableKeys {
-	[$_QUADS]: number;
-}
+// interface CountableQuads extends CountableKeys {
+// 	[$_QUADS]: number;
+// }
 
-type ObjectReferencesMap = CountableQuads & {
-	[sc1_predicate: string]: Set<C1.Object>;
-};
+// type ObjectReferencesMap = CountableQuads & {
+// 	[sc1_predicate: string]: Set<C1.Object>;
+// };
 
-interface ObjectDescriptor {
-	value: C1.Object;
-	refs: ObjectReferencesMap;
-}
+// interface ObjectDescriptor {
+// 	value: C1.Object;
+// 	refs: ObjectReferencesMap;
+// }
 
-type ObjectStore = CountableKeys & {
-	[sc1_object: string]: ObjectDescriptor;
-}
+// type ObjectStore = CountableKeys & {
+// 	[sc1_object: string]: ObjectDescriptor;
+// }
 
-type ProbsHash = CountableQuads & {
-	[sc1_predicate: string]: Set<ObjectDescriptor>;
-}
+// type ProbsHash = CountableQuads & {
+// 	[sc1_predicate: string]: Set<ObjectDescriptor>;
+// }
 
-type TriplesHash = CountableQuads & {
-	[sc1_subject: string]: ProbsHash;
-}
+// type TriplesHash = CountableQuads & {
+// 	[sc1_subject: string]: ProbsHash;
+// }
 
-type QuadsHash = CountableQuads & {
-	[sc1_graph: string]: TriplesHash;
-}
+// type QuadsHash = CountableQuads & {
+// 	[sc1_graph: string]: TriplesHash;
+// }
 
 
 class LinkedQuadTreeGraspHandle implements Dataset.GraspHandle {
@@ -90,9 +96,9 @@ class LinkedQuadTreeGraspHandle implements Dataset.GraspHandle {
 	_kh_grub: LinkedQuadTreeGrubHandle;
 	_sc1_predicate: C1.Predicate;
 	_sc1_subject: C1.Subject;
-	_as_objects: Set<ObjectDescriptor>;
+	_as_objects: Set<ILinkedQuadTree.ObjectDescriptor>;
 
-	constructor(kh_grub: LinkedQuadTreeGrubHandle, sc1_predicate: C1.Predicate, as_objects: Set<ObjectDescriptor>) {
+	constructor(kh_grub: LinkedQuadTreeGrubHandle, sc1_predicate: C1.Predicate, as_objects: Set<ILinkedQuadTree.ObjectDescriptor>) {
 		this._k_dataset = kh_grub._k_dataset;
 		this._kh_grub = kh_grub;
 		this._sc1_subject = kh_grub._sc1_subject;
@@ -106,7 +112,7 @@ class LinkedQuadTreeGraspHandle implements Dataset.GraspHandle {
 		const as_objects = this._as_objects;
 
 		// prep object descriptor
-		let g_object: ObjectDescriptor;
+		let g_object: ILinkedQuadTree.ObjectDescriptor;
 
 		// object exists in store
 		if(sc1_object in h_objects) {
@@ -154,8 +160,8 @@ class LinkedQuadTreeGraspHandle implements Dataset.GraspHandle {
 					[$_KEYS]: 1,
 					[$_QUADS]: 1,
 					[this._sc1_predicate]: new Set([this._sc1_subject]),
-				} as ObjectReferencesMap,
-			} as ObjectDescriptor;
+				} as ILinkedQuadTree.ObjectReferencesMap,
+			} as ILinkedQuadTree.ObjectDescriptor;
 		}
 
 		// insert into object set
@@ -320,10 +326,10 @@ class LinkedQuadTreeGraspHandle implements Dataset.GraspHandle {
 class LinkedQuadTreeGrubHandle implements Dataset.GrubHandle {
 	_k_dataset: LinkedQuadTreeBuilder;
 	_kh_graph: InternalGraphHandle;
-	_sc1_subject: string;
-	_hc2_probs: ProbsHash;
+	_sc1_subject: C1.Subject;
+	_hc2_probs: ILinkedQuadTree.ProbsHash;
 
-	constructor(k_dataset: LinkedQuadTreeBuilder, kh_graph: InternalGraphHandle, sc1_subject: C1.Subject, hc2_probs: ProbsHash) {
+	constructor(k_dataset: LinkedQuadTreeBuilder, kh_graph: InternalGraphHandle, sc1_subject: C1.Subject, hc2_probs: ILinkedQuadTree.ProbsHash) {
 		this._k_dataset = k_dataset;
 		this._kh_graph = kh_graph;
 		this._sc1_subject = sc1_subject;
@@ -343,7 +349,7 @@ class LinkedQuadTreeGrubHandle implements Dataset.GrubHandle {
 			hc2_probs[$_KEYS] += 1;
 
 			// create predicate w/ empty objects set
-			const as_objects = hc2_probs[sc1_predicate] = new Set<ObjectDescriptor>();
+			const as_objects = hc2_probs[sc1_predicate] = new Set<ILinkedQuadTree.ObjectDescriptor>();
 
 			// return tuple handle
 			return new LinkedQuadTreeGraspHandle(this, sc1_predicate, as_objects);
@@ -352,16 +358,16 @@ class LinkedQuadTreeGrubHandle implements Dataset.GrubHandle {
 }
 
 interface InternalGraphHandle {
-	_sc1_graph: string;
-	_hc3_triples: TriplesHash;
+	_sc1_graph: C1.Graph;
+	_hc3_triples: ILinkedQuadTree.TriplesHash;
 }
 
 class LinkedQuadTreeGraphHandle implements InternalGraphHandle, Dataset.GraphHandle {
 	_k_dataset: LinkedQuadTreeBuilder;
-	_sc1_graph: string;
-	_hc3_triples: TriplesHash;
+	_sc1_graph: C1.Graph;
+	_hc3_triples: ILinkedQuadTree.TriplesHash;
 
-	constructor(k_dataset: LinkedQuadTreeBuilder, sc1_graph: C1.Graph, hc3_triples: TriplesHash) {
+	constructor(k_dataset: LinkedQuadTreeBuilder, sc1_graph: C1.Graph, hc3_triples: ILinkedQuadTree.TriplesHash) {
 		this._k_dataset = k_dataset;
 		this._sc1_graph = sc1_graph;
 		this._hc3_triples = hc3_triples;
@@ -383,7 +389,7 @@ class LinkedQuadTreeGraphHandle implements InternalGraphHandle, Dataset.GraphHan
 			const hc2_probs = hc3_triples[sc1_subject] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
-			} as ProbsHash;
+			} as ILinkedQuadTree.ProbsHash;
 
 			// return subject handle
 			return new LinkedQuadTreeGrubHandle(this._k_dataset, this, sc1_subject, hc2_probs);
@@ -398,10 +404,10 @@ class LinkedQuadTreeGraphHandle implements InternalGraphHandle, Dataset.GraphHan
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
 export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeBuilder<SyncC1Dataset>, Dataset.SyncC1Dataset {
-	_h_objects: ObjectStore;
-	_sc1_graph = '*';
-	_hc3_triples: TriplesHash;
-	_hc4_quads: QuadsHash;
+	_h_objects: ILinkedQuadTree.ObjectStore;
+	_sc1_graph: C1.Graph = '*';
+	_hc3_triples: ILinkedQuadTree.TriplesHash;
+	_hc4_quads: ILinkedQuadTree.QuadsHash;
 	_h_prefixes: PrefixMap;
 
 	static supportsStar = false;
@@ -411,18 +417,18 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 
 		this._h_objects = {
 			[$_KEYS]: 0,
-		} as ObjectStore;
+		} as ILinkedQuadTree.ObjectStore;
 
 		const hc3_triples = this._hc3_triples = {
 			[$_KEYS]: 0,
 			[$_QUADS]: 0,
-		} as TriplesHash;
+		} as ILinkedQuadTree.TriplesHash;
 
 		this._hc4_quads = {
 			[$_KEYS]: 1,
 			[$_QUADS]: 0,
 			'*': hc3_triples,
-		} as QuadsHash;
+		} as ILinkedQuadTree.QuadsHash;
 	}
 
 	get size(): number {
@@ -443,7 +449,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 		// each graph
 		for(const sc1_graph in hc4_quads) {
 			// make graph node
-			const kt_graph = c1Graph(sc1_graph, h_prefixes);
+			const kt_graph = c1Graph(sc1_graph as C1.Graph, h_prefixes);
 
 			// ref triples tree
 			const hc3_triples = hc4_quads[sc1_graph];
@@ -451,7 +457,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 			// each subject
 			for(const sc1_subject in hc3_triples) {
 				// make subject node
-				const kt_subject = c1Subject(sc1_subject, h_prefixes);
+				const kt_subject = c1Subject(sc1_subject as C1.Subject, h_prefixes);
 
 				// ref probs tree
 				const hc2_probs = hc3_triples[sc1_subject];
@@ -459,7 +465,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 				// each predicate
 				for(const sc1_predicate in hc2_probs) {
 					// make predicate node
-					const kt_predicate = c1Predicate(sc1_predicate, h_prefixes);
+					const kt_predicate = c1Predicate(sc1_predicate as C1.Predicate, h_prefixes);
 
 					// ref objects
 					const as_objects = hc2_probs[sc1_predicate];
@@ -547,7 +553,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 			const hc3_triples = hc4_quads[sc1_graph] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
-			} as TriplesHash;
+			} as ILinkedQuadTree.TriplesHash;
 
 			// return subject handle
 			return new LinkedQuadTreeGraphHandle(this, sc1_graph, hc3_triples);
@@ -575,7 +581,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 			const hc2_probs = hc3_triples[sc1_subject] = {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
-			} as ProbsHash;
+			} as ILinkedQuadTree.ProbsHash;
 
 			// return subject handle
 			return new LinkedQuadTreeGrubHandle(this, this, sc1_subject, hc2_probs);

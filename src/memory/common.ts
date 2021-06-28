@@ -43,7 +43,7 @@ export type OverlayableCountableQuads = CountableQuads & {
 }
 
 
-export namespace BasicQuadTree {
+export namespace IBasicQuadTree {
 	export type QuadsHash = OverlayableCountableQuads & {
 		[sc1_graph: string]: TriplesHash;
 	}
@@ -74,7 +74,7 @@ export namespace BasicQuadTree {
 	export type ObjectSet = Set<C1.Object>;
 }
 
-export namespace LinkedQuadTree {
+export namespace ILinkedQuadTree {
 	export type QuadsHash = OverlayableCountableQuads & {
 		[sc1_graph: string]: TriplesHash;
 	}
@@ -93,7 +93,7 @@ export namespace LinkedQuadTree {
 	}
 
 	export type ObjectReferencesMap = CountableQuads & {
-		[sc1_predicate: string]: Set<C1.Predicate>;
+		[sc1_predicate: string]: Set<C1.Subject>;
 	}
 
 	export type ObjectStore = CountableKeys & {
@@ -103,23 +103,33 @@ export namespace LinkedQuadTree {
 	export type ObjectSet = Set<ObjectDescriptor>;
 }
 
-export namespace GenericQuadTree	 {
-	export type QuadsHash = BasicQuadTree.QuadsHash | LinkedQuadTree.QuadsHash;
-	export type TriplesHash = BasicQuadTree.TriplesHash | LinkedQuadTree.TriplesHash;
+/* eslint-disable no-shadow */
+// eslint-disable-next-line no-var
+export namespace GenericQuadTree {
+	export type QuadsHash = IBasicQuadTree.QuadsHash | ILinkedQuadTree.QuadsHash;
+	export type TriplesHash = IBasicQuadTree.TriplesHash | ILinkedQuadTree.TriplesHash;
 	export type ProbsHash = CountableQuads & {
 		[sc1_predicate: string]: ObjectSet;
 	};
-	export type ObjectSet = Set<C1.Object | LinkedQuadTree.ObjectDescriptor>;
-	export type ObjectIdentifier = C1.Object & LinkedQuadTree.ObjectDescriptor;
+	export type ObjectSet = Set<C1.Object | ILinkedQuadTree.ObjectDescriptor>;
+	export type ObjectIdentifier = C1.Object & ILinkedQuadTree.ObjectDescriptor;
 
 	export type Tree = QuadsHash | TriplesHash | ProbsHash;
 
-	export const overlayTree = (n_keys=0, n_quads=0) => ({
+	// export const overlayTree = (n_keys=0, n_quads=0) => ({
+	// 	[$_KEYS]: n_keys,
+	// 	[$_QUADS]: n_quads,
+	// 	// [$_OVERLAY]: 0,
+	// 	// [$_SUPPORTING]: [],
+	// }) as QuadsHash | TriplesHash | ProbsHash;
+
+	
+	export const overlayTree = <HashType extends QuadsHash | TriplesHash | ProbsHash>(n_keys=0, n_quads=0) => ({
 		[$_KEYS]: n_keys,
 		[$_QUADS]: n_quads,
 		// [$_OVERLAY]: 0,
 		// [$_SUPPORTING]: [],
-	}) as QuadsHash | TriplesHash | ProbsHash;
+	}) as HashType;
 
 	export const overlay = (hcw_src: any): Tree => {
 		// create new tree
@@ -150,7 +160,11 @@ export namespace GenericQuadTree	 {
 		return hcw_dst;
 	};
 
-	export interface Constructor<DatasetType, BuilderType extends Dataset.QuadTreeBuilder, TransferType extends QuadsHash> extends Dataset.Constructor<DatasetType, BuilderType, TransferType> {
+	export interface Constructor<
+		DatasetType extends Dataset.SyncDataset,
+		BuilderType extends Dataset.SyncQuadTreeBuilder<DatasetType>,
+		TransferType extends QuadsHash
+	> extends Dataset.Constructor<DatasetType, BuilderType, TransferType> {
 		empty(prefixes: PrefixMap): DatasetType;
 		builder(prefixes: PrefixMap): BuilderType;
 

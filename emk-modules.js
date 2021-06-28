@@ -159,10 +159,9 @@ const H_GEN_LEAF = {
 
 				return [
 					...g_preprocess.importedFiles.map(g => g.fileName)
-						.filter(s => s.startsWith('.')),
+						.filter(sr => sr.startsWith('.'))
+						.map(sr => path.normalize(path.join(path.dirname(p_dep), `${sr}.mjs`))),
 				];
-				// .filter(s => s.startsWith('/'))
-				// 	.map(p => path.relative(process.cwd(), p));
 			}, [])),
 		],
 
@@ -318,6 +317,7 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 			// transpile mjs to js
 			else if(s_file_exp.endsWith('.mjs')) {
 				const s_file_js = s_file_exp.replace(/\.mjs$/, '.js');
+
 				h_recipe[s_file_js] = H_GEN_LEAF.module_commonjs_lint([p_exp]);
 
 				// target the final build file
@@ -350,7 +350,6 @@ const H_EXPANDED_MODULE_MACROS = A_MODULES.reduce((h_out, si_module) => ({
 		...scoped_package(si_module),
 	}),
 }), {});
-debugger;
 
 module.exports = {
 	defs: {
@@ -557,5 +556,3 @@ module.exports = {
 		},
 	},
 };
-
-debugger;

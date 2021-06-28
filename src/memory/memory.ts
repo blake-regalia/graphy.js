@@ -1,7 +1,7 @@
 
-export {
-	QuadSet,
-} from './quad-set';
+// export {
+// 	QuadSet,
+// } from './quad-set';
 
 export {
 	BasicQuadTree,

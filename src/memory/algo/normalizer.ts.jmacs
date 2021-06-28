@@ -1,9 +1,11 @@
-/* global crypto C1 Dataset */
-
 
 const F_SORT_CANONICALIZER_HASH = (g_a: HndqResult, g_b: HndqResult) => g_a.hash < g_b.hash? -1: (g_a.hash > g_b.hash? 1: 0);
 
-const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
+// import {
+// 	createHash,
+// } from 'crypto';
+
+// const hash = (s: string) => createHash('sha256').update(s).digest('hex');
 
 // the fastest and most memory efficient implemntation of heap's method for javascript
 // adapted from <https://stackoverflow.com/a/37580979/1641160>

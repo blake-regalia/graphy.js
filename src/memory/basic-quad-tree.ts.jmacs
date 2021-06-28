@@ -1,5 +1,7 @@
 /* eslint-disable no-use-before-define */
-import {DataFactory} from '@@graphy/core';
+import {
+	DataFactory,
+} from '@@graphy/core';
 
 import type {
 	RDFJS,
@@ -10,25 +12,29 @@ import type {
 	PrefixMap,
 } from '@@graphy/types';
 
-// import {
-// 	$_KEYS,
-// 	$_QUADS,
-// 	$_OVERLAY,
-// 	$_BURIED,
-// 	// GenericQuadTreeQuadTree,
-// } from './common';
+import {
+	$_KEYS,
+	$_QUADS,
+	$_OVERLAY,
+	$_BURIED,
+	IBasicQuadTree,
+	GenericQuadTree,
+} from './common';
 
-// import ProbsHash = GenericQuadTree.ProbsHash;
-// import TriplesHash = GenericQuadTree.TriplesHash;
-// import QuadsHash = GenericQuadTree.QuadsHash;
-// import GraphHandle = GenericQuadTree.GraphHandle;
-// import GrubHandle = GenericQuadTree.GrubHandle;
-// import GraspHandle = GenericQuadTree.GraspHandle;
-// import ObjectSet = GenericQuadTree.ObjectSet;
+import ProbsHash = IBasicQuadTree.ProbsHash;
+import TriplesHash = IBasicQuadTree.TriplesHash;
+import QuadsHash = IBasicQuadTree.QuadsHash;
 
-// import overlayTree = GenericQuadTree.overlayTree;
-// import overlay = GenericQuadTree.overlay;
-// import trace = GenericQuadTree.trace;
+import overlayTree = GenericQuadTree.overlayTree;
+import overlay = GenericQuadTree.overlay;
+import trace = GenericQuadTree.trace;
+
+import {
+	createHash,
+} from 'crypto';
+
+const hash = (s: string) => createHash('sha256').update(s).digest('hex');
+
 
 const {
 	concise,
@@ -49,74 +55,23 @@ export interface Deliverable {
 	new(...args: any[]): Dataset.SyncC1Dataset;
 }
 
-export interface BasicQuadTreeConstructor {
+export interface BasicQuadTreeConstructor extends Deliverable {
 	new(...args: any[]): BasicQuadTree;
 }
 
 
-/**
- * Caches the number of 'keys' stored in the tree.
- */
-export const $_KEYS = Symbol('key-count');
-
-/**
- * Tracks the total count of quads stored at all descendent levels of the tree.
- */
-export const $_QUADS = Symbol('quad-count');
-
-/**
- * When present, indicates that the tree is overlaying another object via prototype.
- *   This allows for super quick set operations, such as `union` and `difference`, on
- *   the average case and significantly reduces memory consumption and GC time.
- */
-export const $_OVERLAY = Symbol('overlay-status');
-
-/**
- * When present, indicates that the tree was used to create an overlay for another tree.
- *   The implication is that if `add` or `delete` is called on a buried tree, the method
- *   will have to create a new tree since the original object may still be referenced.
- */
-export const $_BURIED = Symbol('buried-status');
-
-
-export interface CountableKeys {
-	[$_KEYS]: number;
-}
-
-export type CountableQuads = CountableKeys & {
-	[$_QUADS]: number;
-}
-
-export type OverlayableCountableQuads = CountableQuads & {
-	[$_OVERLAY]?: number;
-	[$_BURIED]?: number;
-}
-
-export type QuadsHash = OverlayableCountableQuads & {
-	// [sc1_graph: C1.Graph]: TriplesHash;  // why does this cause issues?
-	[sc1_graph: string]: TriplesHash;
-}
-
-export type TriplesHash = OverlayableCountableQuads & {
-	[sc1_subject: string]: ProbsHash;
-}
-
-export type ProbsHash = OverlayableCountableQuads & {
-	[sc1_predicate: string]: Set<C1.Object>;
-}
-
-export interface InternalGraphHandle extends Dataset.GraphHandle {
+export interface InternalGraphHandle extends IBasicQuadTree.GraphHandle {
 	_sc1_graph: C1.Graph;
 	_hc3_trips: TriplesHash;
 }
 
-export interface InternalGrubHandle extends Dataset.GrubHandle {
+export interface InternalGrubHandle extends GrubHandle {
 	_kh_graph: InternalGraphHandle;
 	_sc1_subject: C1.Subject;
 	_hc2_probs: ProbsHash;
 }
 
-export interface InternalGraspHandle extends Dataset.GraspHandle {
+export interface InternalGraspHandle extends GraspHandle {
 	_as_objects: InternalObjectSet;
 }
 
@@ -126,41 +81,41 @@ export type InternalObjectSet = Set<C1.Object>;
 export type Tree = QuadsHash | TriplesHash | ProbsHash;
 
 
-export const overlayTree = <HashType extends QuadsHash | TriplesHash | ProbsHash>(n_keys=0, n_quads=0) => ({
-	[$_KEYS]: n_keys,
-	[$_QUADS]: n_quads,
-	// [$_OVERLAY]: 0,
-	// [$_SUPPORTING]: [],
-}) as HashType;
+// export const overlayTree = <HashType extends QuadsHash | TriplesHash | ProbsHash>(n_keys=0, n_quads=0) => ({
+// 	[$_KEYS]: n_keys,
+// 	[$_QUADS]: n_quads,
+// 	// [$_OVERLAY]: 0,
+// 	// [$_SUPPORTING]: [],
+// }) as HashType;
 
-export const overlay = (hcw_src: any): Tree => {
-	// create new tree
-	const hcw_dst = Object.create(hcw_src);
+// export const overlay = (hcw_src: any): Tree => {
+// 	// create new tree
+// 	const hcw_dst = Object.create(hcw_src);
 
-	// src is now buried
-	hcw_src[$_BURIED] = 1;
+// 	// src is now buried
+// 	hcw_src[$_BURIED] = 1;
 
-	// dst is an overlay
-	hcw_dst[$_OVERLAY] = 1;
+// 	// dst is an overlay
+// 	hcw_dst[$_OVERLAY] = 1;
 
-	return hcw_dst;
-};
+// 	return hcw_dst;
+// };
 
-export const trace = (hcw_overlay: any): Tree => {
-	// create dst tree
-	const hcw_dst = {} as Tree;
+// export const trace = (hcw_overlay: any): Tree => {
+// 	// create dst tree
+// 	const hcw_dst = {} as Tree;
 
-	// check each key
-	for(let sv1_key in hcw_overlay) {
-		hcw_dst[sv1_key] = hcw_overlay[sv1_key];
-	}
+// 	// check each key
+// 	for(let sv1_key in hcw_overlay) {
+// 		hcw_dst[sv1_key] = hcw_overlay[sv1_key];
+// 	}
 
-	// copy key count and quad count
-	hcw_dst[$_KEYS] = hcw_overlay[$_KEYS];
-	hcw_dst[$_QUADS] = hcw_overlay[$_QUADS];
+// 	// copy key count and quad count
+// 	hcw_dst[$_KEYS] = hcw_overlay[$_KEYS];
+// 	hcw_dst[$_QUADS] = hcw_overlay[$_QUADS];
 
-	return hcw_dst;
-};
+// 	return hcw_dst;
+// };
 
 
 
@@ -321,7 +276,7 @@ function graph_to_c1(yt_graph: Role.Graph, h_prefixes: PrefixMap): C1.Graph {
 
 		// other
 		default: {
-			throw new Error(`Cannot convert term type '${yt_graph.termType}' to C1.Graph string`);
+			throw new Error(`Cannot convert term type '${(yt_graph as Role.Graph).termType}' to C1.Graph string`);
 		}
 	}
 }
@@ -400,7 +355,7 @@ export class BasicQuadTreeBuilder implements Dataset.GraphHandle, Dataset.SyncQu
 		return this.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, this._h_prefixes): <C1.BlankNode>('#'+yt_subject.value));
 	}
 
-	deliver(dc_dataset: Deliverable=BasicQuadTree): Dataset.SyncC1Dataset {  // eslint-disable-line require-await
+	deliver(dc_dataset: Deliverable=(BasicQuadTree as BasicQuadTreeConstructor)): Dataset.SyncC1Dataset {  // eslint-disable-line require-await
 		// simplify garbage collection and prevent future modifications to dataset
 		const hc4_quads = this._hc4_quads;
 		this._hc4_quads = null as unknown as QuadsHash;
@@ -792,9 +747,6 @@ export class BasicQuadTree implements Dataset.SyncC1Dataset {
 
 		// none
 		if(!hc3_trips) return false;
-
-		// ref subject
-		const yt_subject = g_quad.subject;
 
 		// create subject c1
 		const sc1_subject = c1FromSubjectRole(g_quad.subject, h_prefixes);
@@ -1728,7 +1680,7 @@ export class BasicQuadTree implements Dataset.SyncC1Dataset {
 				case (this as any).datasetStorageType: {
 					// prefix maps differ; perform expanded union
 					if(prefixMapsDiffer(this._h_prefixes, z_other._h_prefixes)) {
-						return this.toNQuadsDataset().union(z_other.toNQuadsDataset());
+						return this.toCanonical().union(z_other.toCanonical());
 					}
 					// prefix maps are identical
 					else {
@@ -1795,10 +1747,12 @@ export class BasicQuadTree implements Dataset.SyncC1Dataset {
 	}
 
 
-	normalize() {
+	normalize(): BasicQuadTree {
 		return (new Normalizer(this)).normalize();
 	}
 }
+
+BasicQuadTree.prototype.toCanonical = BasicQuadTree.prototype.normalize;
 
 
 // typings for fixed prototype properties
@@ -1816,11 +1770,14 @@ export interface BasicQuadTree {
 	/**
 	 * For typing static properties and methods
 	 */
-	constructor: Dataset.Constructor<BasicQuadTree, BasicQuadTreeBuilder, PrefixMap>;
+	constructor: Dataset.Constructor<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
+
+	toCanonical(): BasicQuadTree;
 }
 
+type BasicQuadTreeClass = Dataset.Constructor<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
 
-const BasicQuadTree_Assertion: Dataset.Constructor<BasicQuadTree, BasicQuadTreeBuilder, PrefixMap> = BasicQuadTree;
+const BasicQuadTree_Assertion: BasicQuadTreeClass = BasicQuadTree;
 
 
 BasicQuadTree.prototype.isGraphyDataset = true;
