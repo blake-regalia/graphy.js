@@ -337,7 +337,7 @@ export class Normalizer {
 			}
 
 			// open graph
-			const kh_graph = kb_out.openC1Graph(sc1_graph);
+			const kh_graph = kb_out.openC1Graph(sc1_graph as C1.Graph);
 
 			// ref trips tree
 			const hc3_trips = hc4_quads[sc1_graph];
@@ -350,7 +350,7 @@ export class Normalizer {
 				}
 
 				// open subject
-				const kh_grub = kh_graph.openC1Subject(sc1_subject);
+				const kh_grub = kh_graph.openC1Subject(sc1_subject as C1.Subject);
 
 				// ref probs tree
 				const hc2_probs = hc3_trips[sc1_subject];
@@ -358,7 +358,7 @@ export class Normalizer {
 				// each predicate
 				for(const sc1_predicate in hc2_probs) {
 					// open predicate
-					const kh_grasp = kh_grub.openC1GPredicate(sc1_predicate);
+					const kh_grasp = kh_grub.openC1Predicate(sc1_predicate as C1.Predicate);
 
 					// ref objects set
 					const as_objects = hc2_probs[sc1_predicate];

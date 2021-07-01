@@ -120,14 +120,14 @@ export namespace Dataset {
 	}
 
 	export interface SyncQuadTreeBuilder<Deliverable extends SyncDataset> extends GraphHandle {
-		attachPrefixes(h_prefixes: PrefixMap): void;
+		// attachPrefixes(h_prefixes: PrefixMap): void;
 		openC1Graph(sc1_graph: C1.Graph): GraphHandle;
 		deliver(datasetClass?: { new(...args: any[]): SyncDataset }): Deliverable;
 	}
 
 
-	export interface Constructor<DatasetType, BuilderType, TransferType> {
-		Builder: typeof BuilderType;
+	export interface Constructor<DatasetType, BuilderClass, TransferType> {
+		Builder: BuilderClass;
 
 		empty(prefixes: PrefixMap): DatasetType;
 		// builder(prefixes: PrefixMap): BuilderType;
@@ -155,10 +155,10 @@ export namespace Dataset {
 		distinctPredicateCount(): number;
 		distinctObjectCount(): number;
 
-		distinctGraphs(): Iterator<Term.Graph>;
-		distinctSubjects(): Iterator<Term.Subject>;
-		distinctPredicates(): Iterator<Term.Predicate>;
-		distinctObjects(): Iterator<Term.Object>;
+		distinctGraphs(): Generator<Term.Graph>;
+		distinctSubjects(): Generator<Term.Subject>;
+		distinctPredicates(): Generator<Term.Predicate>;
+		distinctObjects(): Generator<Term.Object>;
 
 		// equals(other: RDFJS.Dataset): boolean;
 		contains(other: RDFJS.Dataset): boolean;
@@ -173,11 +173,16 @@ export namespace Dataset {
 		//delta(other: SyncDataset): Delta
 	}
 
-	export interface SyncC1Dataset extends SyncDataset {
+	export interface SyncC1Dataset<DatasetType extends SyncDataset> extends SyncDataset {
 		distinctC1Graphs(): Set<C1.Graph>;
 		distinctC1Subjects(): Set<C1.Subject>;
 		distinctC1Predicates(): Set<C1.Predicate>;
 		distinctC1Objects(): Set<C1.Object>;
+
+		addC1Quad(subject: C1.Subject, predicate: C1.Predicate, object: C1.Object, graph?: C1.Graph): boolean;
+		clone(prefixes: PrefixMap): DatasetType;
+		prefixed(): DatasetType;
+		expanded(): DatasetType;
 	}
 
 	export interface AsyncDataset {

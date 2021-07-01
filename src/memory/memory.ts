@@ -8,6 +8,6 @@ export {
 	BasicQuadTree as QuadTree,
 } from './basic-quad-tree';
 
-export {
-	LinkedQuadTree,
-} from './linked-quad-tree';
+// export {
+// 	LinkedQuadTree,
+// } from './linked-quad-tree';

@@ -10,8 +10,8 @@ import {
 } from '@graphy/types';
 
 import {
-	BasicQuadTree,
-} from './basic-quad-tree';
+	GenericQuadTree,
+} from './common';
 
 import SyncDataset = Dataset.SyncDataset;
 
@@ -27,16 +27,24 @@ import {
 // } from '../../core/core';
 
 const {
-	c1Graph: c1GraphRole,
-	c1Subject: c1SubjectRole,
-	c1Predicate: c1PredicateRole,
-	c1Object: c1ObjectRole,
+	graphFromC1,
+	subjectFromC1,
+	predicateFromC1,
+	objectFromC1,
 	concise,
 	fromTerm,
 } = DataFactory;
 
 
-export class LinkedQuadTree extends BasicQuadTree {
+export class LinkedQuadTree extends GenericQuadTree<
+	LinkedQuadTree, ILinkedQuadTree.QuadsHash, ILinkedQuadTree.TriplesHash
+> implements Dataset.SyncC1Dataset<LinkedQuadTree> {
+	static Builder = LinkedQuadTreeBuilder;
+
+	/**
+	 * Data structure for linking Object terms
+	 * @internal
+	 */
 	_h_objects: ILinkedQuadTree.ObjectStore;
 
 	constructor(h_objects: ILinkedQuadTree.ObjectStore, hc4_quads: ILinkedQuadTree.QuadsHash, h_prefixes: PrefixMap) {
@@ -44,7 +52,7 @@ export class LinkedQuadTree extends BasicQuadTree {
 		this._h_objects = h_objects;
 	}
 
-	* [Symbol.iterator](): Iterator<Term.Quad> {
+	* [Symbol.iterator](): Generator<Term.Quad> {
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
@@ -54,7 +62,7 @@ export class LinkedQuadTree extends BasicQuadTree {
 		// each graph
 		for(const sc1_graph in hc4_quads) {
 			// make graph node
-			const kt_graph = c1GraphRole(sc1_graph as C1.Graph, h_prefixes);
+			const kt_graph = graphFromC1(sc1_graph as C1.Graph, h_prefixes);
 
 			// ref triples tree
 			const hc3_triples = hc4_quads[sc1_graph];
@@ -62,7 +70,7 @@ export class LinkedQuadTree extends BasicQuadTree {
 			// each subject
 			for(const sc1_subject in hc3_triples) {
 				// make subject node
-				const kt_subject = c1SubjectRole(sc1_subject as C1.Subject, h_prefixes);
+				const kt_subject = subjectFromC1(sc1_subject as C1.Subject, h_prefixes);
 
 				// ref probs tree
 				const hc2_probs = hc3_triples[sc1_subject];
@@ -70,7 +78,7 @@ export class LinkedQuadTree extends BasicQuadTree {
 				// each predicate
 				for(const sc1_predicate in hc2_probs) {
 					// make predicate node
-					const kt_predicate = c1PredicateRole(sc1_predicate as C1.Predicate, h_prefixes);
+					const kt_predicate = predicateFromC1(sc1_predicate as C1.Predicate, h_prefixes);
 
 					// ref objects
 					const as_objects = (hc2_probs as ILinkedQuadTree.ProbsHash)[sc1_predicate];
@@ -78,7 +86,7 @@ export class LinkedQuadTree extends BasicQuadTree {
 					// each object
 					for(const g_object of as_objects) {
 						// make object node
-						const kt_object = c1ObjectRole(g_object.value, h_prefixes);
+						const kt_object = objectFromC1(g_object.value, h_prefixes);
 
 						// yield quad
 						yield DataFactory.quad(kt_subject, kt_predicate, kt_object, kt_graph);
@@ -88,8 +96,8 @@ export class LinkedQuadTree extends BasicQuadTree {
 		}
 	}
 
-	
-	_total_distinct_predicates(): Set<C1.Predicate> {
+
+	protected _total_distinct_predicates(): Set<C1.Predicate> {
 		// distinct predicates set
 		let as_predicates = new Set<C1.Predicate>();
 

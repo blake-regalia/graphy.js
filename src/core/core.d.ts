@@ -143,11 +143,11 @@ export namespace DataFactory {
 
 	/**
 	 * Construct a graphy NamedNode from a c1 string
-	 * @param {C1.Any} term - the c1 string of a NamedNode
+	 * @param {P1.Any} term - the p1 string of a NamedNode
 	 * @param  {PrefixMap} prefixes - prefix map to use for prefixed names / relative IRIs
 	 * @return {Term.NamedNode} - an RDFJS-compatible graphy NamedNode object
 	 */
-	function fromP1(term: C1.Any, prefixes?: PrefixMap): Term.NamedNode;
+	function fromP1(term: P1.Any, prefixes?: PrefixMap): Term.NamedNode;
 	
 	function comment(): C1.Directive;
 	function newlines(): C1.Directive;
@@ -155,7 +155,7 @@ export namespace DataFactory {
 	function concise(iri: Iri, prefixes?: PrefixMap): C1.NamedNode;
 	function terse(iri: Iri, prefixes?: PrefixMap): Terse.NamedNode;
 
-	
+
 	function c1ExpandData(term: C1.Data, prefixes: PrefixMap): C1.Data;
 
 	function graphFromC1(graph: C1.Graph, prefixes: PrefixMap): Term.Graph;

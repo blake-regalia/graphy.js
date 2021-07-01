@@ -16,10 +16,10 @@ import {
 } from '@graphy/core';
 
 const {
-	c1Graph,
-	c1Subject,
-	c1Predicate,
-	c1Object,
+	graphFromC1,
+	subjectFromC1,
+	predicateFromC1,
+	objectFromC1,
 	c1FromGraphRole,
 	c1FromSubjectRole,
 	concise,
@@ -449,7 +449,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 		// each graph
 		for(const sc1_graph in hc4_quads) {
 			// make graph node
-			const kt_graph = c1Graph(sc1_graph as C1.Graph, h_prefixes);
+			const kt_graph = graphFromC1(sc1_graph as C1.Graph, h_prefixes);
 
 			// ref triples tree
 			const hc3_triples = hc4_quads[sc1_graph];
@@ -457,7 +457,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 			// each subject
 			for(const sc1_subject in hc3_triples) {
 				// make subject node
-				const kt_subject = c1Subject(sc1_subject as C1.Subject, h_prefixes);
+				const kt_subject = subjectFromC1(sc1_subject as C1.Subject, h_prefixes);
 
 				// ref probs tree
 				const hc2_probs = hc3_triples[sc1_subject];
@@ -465,7 +465,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 				// each predicate
 				for(const sc1_predicate in hc2_probs) {
 					// make predicate node
-					const kt_predicate = c1Predicate(sc1_predicate as C1.Predicate, h_prefixes);
+					const kt_predicate = predicateFromC1(sc1_predicate as C1.Predicate, h_prefixes);
 
 					// ref objects
 					const as_objects = hc2_probs[sc1_predicate];
@@ -473,7 +473,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, SyncQuadTreeB
 					// each object
 					for(const g_object of as_objects) {
 						// make object node
-						const kt_object = c1Object(g_object.value, h_prefixes);
+						const kt_object = objectFromC1(g_object.value, h_prefixes);
 
 						// yield quad
 						yield DataFactory.quad(kt_subject, kt_predicate, kt_object, kt_graph);

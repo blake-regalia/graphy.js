@@ -170,14 +170,22 @@ const H_GEN_LEAF = {
 		run: /* syntax: bash */ `
 			set -e
 
+			# output file
 			p_out=$@
+
+			# private build directory
 			pd_build="$p_out.build"
 
+			# compile typescript
 			npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \
 				--strict --skipLibCheck --forceConsistentCasingInFileNames \
 				--moduleResolution node \
 				--outDir $pd_build -d $1
 
+			# cleanup @internal fields
+			npx idtsc "$pd_build/*.d.ts"
+
+			# output directory
 			pd_out=$(dirname $pd_build)
 
 			# move and replace js files
@@ -186,11 +194,12 @@ const H_GEN_LEAF = {
 				sr_mjs="$\{sr_js%.js}.mjs"
 				p_dst="$pd_out/$sr_mjs"
 
-				echo "$ rm -rf $p_dst"
-				rm -rf "$p_dst"
+				echo "$ rm $p_dst"
+				rm -f "$p_dst"
 
+				# fix import/export extensions
 				echo "$ mv $p_src $p_dst"
-				mv "$p_src" "$p_dst"
+				node emk/import-export-module-extension.js < "$p_src" > "$p_dst"
 			done
 
 			# move ts files
