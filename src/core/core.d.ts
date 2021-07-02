@@ -107,13 +107,13 @@ export namespace DataFactory {
 	 * @param term - the Term to convert
 	 * @param prefixes - prefix map to use for prefixed names / relative IRIs in c1 string
 	 */
-	function fromTermLike(term: RDFJS.Term | C1.Any, prefixes: PrefixMap): Term.Any;
+	function fromTermLike<TermType extends Term.Any=Term.Any>(term: RDFJS.Term | C1.Any, prefixes: PrefixMap): TermType;
 
 	/**
 	 * Returns `term` if it is already a graphy Term (including Quads), otherwise calls `fromRdfjsTerm`.
 	 * @param term - the Term to convert
 	 */
-	function fromTerm(term: RDFJS.Term): Term.Any;
+	function fromTerm<TermType extends Term.Any=Term.Any>(term: RDFJS.Term): TermType;
 
 	/**
 	 * Returns `quad` if it is already a graphy Quad, otherwise calls `fromRdfjsQuad`.
@@ -125,7 +125,7 @@ export namespace DataFactory {
 	 * Convert an RDFJS compatible Term (including Quads) to a graphy Term.
 	 * @param term - the Term to convert
 	 */
-	function fromRdfjsTerm(term: RDFJS.Term): Term.Any;
+	function fromRdfjsTerm<TermType extends Term.Any=Term.Any>(term: RDFJS.Term): TermType;
 
 	/**
 	 * Convert an RDFJS compatible Quad to a graphy Quad.
@@ -139,7 +139,7 @@ export namespace DataFactory {
 	 * @param  {PrefixMap} prefixes - prefix map to use for prefixed names / relative IRIs
 	 * @return {Term.NamedNode} - an RDFJS-compatible graphy Term object
 	 */
-	function fromC1(term: C1.Any, prefixes?: PrefixMap): Term.Any;
+	function fromC1<TermType extends Term.Any=Term.Any>(term: C1.Any, prefixes?: PrefixMap): TermType;
 
 	/**
 	 * Construct a graphy NamedNode from a c1 string

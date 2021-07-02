@@ -473,7 +473,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		}
 	}
 
-	protected _total_distinct_predicates(): Set<C1.Predicate> {
+	protected _all_distinct_predicates(): Set<C1.Predicate> {
 		// ref quads tree
 		const hc4_quads = this._hc4_quads;
 
@@ -501,7 +501,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		return as_predicates;
 	}
 
-	protected _total_distinct_objects(): Set<C1.Object> {
+	protected _all_distinct_objects(): Set<C1.Object> {
 		// ref quads tree
 		const hc4_quads = this._hc4_quads;
 
@@ -546,21 +546,21 @@ export class BasicQuadTree extends GenericQuadTree<
 		}
 		// multiple graphs
 		else {
-			return this._total_distinct_predicates().size;
+			return this._all_distinct_predicates().size;
 		}
 	}
 
 	distinctObjectCount(): number {
-		return this._total_distinct_objects().size;
+		return this._all_distinct_objects().size;
 	}
 
 
 	distinctC1Predicates(): Set<C1.Predicate> {
-		return this._total_distinct_predicates();
+		return this._all_distinct_predicates();
 	}
 
 	distinctC1Objects(): Set<C1.Object> {
-		return this._total_distinct_objects();
+		return this._all_distinct_objects();
 	}
 
 
@@ -569,7 +569,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		const h_prefixes = this._h_prefixes;
 
 		// each predicate
-		for(const sc1_predicate of this.distinctC1Predicates()) {
+		for(const sc1_predicate of this._all_distinct_predicates()) {
 			yield predicateFromC1(sc1_predicate, h_prefixes);
 		}
 	}
@@ -579,7 +579,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		const h_prefixes = this._h_prefixes;
 
 		// each object
-		for(const sc1_object of this.distinctC1Objects()) {
+		for(const sc1_object of this._all_distinct_objects()) {
 			yield objectFromC1(sc1_object, h_prefixes);
 		}
 	}
