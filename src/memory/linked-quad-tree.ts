@@ -817,7 +817,7 @@ export class LinkedQuadTree extends GenericQuadTree<
 
 	protected _all_distinct_predicates(): Set<C1.Predicate> {
 		// distinct predicates set
-		let as_predicates = new Set<C1.Predicate>();
+		const as_predicates = new Set<C1.Predicate>();
 
 		// ref objects store
 		const h_objects = this._h_objects;
@@ -837,7 +837,7 @@ export class LinkedQuadTree extends GenericQuadTree<
 
 	protected _all_distinct_objects(): Set<C1.Object> {
 		// distinct objects set
-		let as_objects = new Set<C1.Object>();
+		const as_objects = new Set<C1.Object>();
 
 		// each object; add to set
 		for(const sc1_object in this._h_objects) {
@@ -851,8 +851,8 @@ export class LinkedQuadTree extends GenericQuadTree<
 	distinctPredicateCount(): number {
 		// only default graph
 		if(1 === this._hc4_quads[$_KEYS]) {
-			let as_predicates = new Set();
-			for(let sc1_predicate in this._hc3_trips) {
+			const as_predicates = new Set();
+			for(const sc1_predicate in this._hc3_trips) {
 				as_predicates.add(sc1_predicate);
 			}
 			return as_predicates.size;

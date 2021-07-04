@@ -98,7 +98,7 @@ export class ContentError extends Error {
 		} = HM_PRIVATES.get(this);
 
 		return this.description+'\n'
-			+(g_location? `  at { line: ${g_location.line}, col: ${g_location.col} }`: ' to see the line/col offset, remove or disable the `swift: true` option')+'\n'
+			+(g_location? `  at { line: ${g_location.line}, col: ${g_location.col} }`: ' to see the line/col offset, remove or disable the `swift: true` option')+'\n\n'
 			+`  ${s_border_top}\n`
 			+`  ${s_preview}\n`
 			+`  ${s_border_btm}\n`

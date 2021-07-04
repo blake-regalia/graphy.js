@@ -174,6 +174,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 @def iriref({s_role, sj_matched, b_escapeless=false})
 	@.{
 		let f_load;
+		let b_set_role = false;
 		let b_not_this = false;
 
 		// g, s, p, o or d
@@ -189,8 +190,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				break;
 			}
 
-			case 'base_url': {
-				b_not_this = true;
+			case 'base_iri':
+			case 'prefix_iri': {
+				b_set_role = true;
 				b_gspod = false;
 				break;
 			}
@@ -212,7 +214,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			}
 		}
 		else {
-			let sv_set = (b_not_this? '': 'this._')+(b_gspod? 'kt_': 's_')+s_role;
+			let sv_set = b_set_role
+				? `p_${s_role}`
+				: (b_not_this? '': 'this._')+(b_gspod? 'kt_': 's_')+s_role;
 			f_set = b_gspod
 				? sj => /* syntax: js */ `${sv_set} = this.check_named_node${b_escapeless? '_escapeless': ''}(${sj});`
 				: sj => /* syntax: js */ `${sv_set} = ${sj};`;
@@ -222,19 +226,19 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	let p_@{s_role} = @{sj_matched}[1]@{b_escapeless? '': `.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)`};
 
 	// absolute iri
-	if(!this._s_base_url || RT_IRI_ABSOLUTE.test(p_@{s_role})) {
+	if(!this._s_base_iri || RT_IRI_ABSOLUTE.test(p_@{s_role})) {
 		// set @{s_role}
 		@{f_set(/* syntax: js */ `p_${s_role}`)}
 	}
 	// relative iri
 	else {
 		// set @{s_role}
-		@{f_set(/* syntax: js */ `uri.resolve(this._s_base_url, p_${s_role})`)}
+		@{f_set(/* syntax: js */ `uri.resolve(this._s_base_iri, p_${s_role})`)}
 	}
 
 	@// update the base iri
-	@if 'base_url' === s_role
-		let m_base_iri = R_BASE_IRI.exec(this._p_@{s_role});
+	@if 'base_iri' === s_role
+		const m_base_iri = R_BASE_IRI.exec(p_base_iri);
 		this._s_@{s_role} = m_base_iri[1];
 		this._s_@{s_role}_root = m_base_iri[2] || '';
 		this._s_@{s_role}_scheme = m_base_iri[3] || '';
@@ -430,19 +434,19 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		test: /* syntax: js */ `R_${'graph' === s_mod? 'GRAPH_': ''}IRIREF${b_escapeless? '_ESCAPELESS': ''}`,
 		action: ({sj_matched}) => [
 			iriref({s_role, sj_matched, b_escapeless}),
-			// 	let p_datatype;
-	// 	@{iriref('p_datatype', 'm_iriref_e_datatype', false, false, true, true)}
-			modal({
-				read: save_term(s_role, /* syntax: js */ `this.check_named_node${b_escapeless? '_escapeless': ''}(p_${s_role})`),
-				load: load_term(s_role, /* syntax: js */ `concise(p_${s_role}, this._h_prefixes)`),
-			}),
+
+			// // already handled in iriref above
+			// modal({
+			// 	read: save_term(s_role, /* syntax: js */ `this.check_named_node${b_escapeless? '_escapeless': ''}(p_${s_role})`),
+			// 	load: load_term(s_role, /* syntax: js */ `concise(p_${s_role}, this._h_prefixes)`),
+			// }),
 		],
 	});
 
 	const gen_action_prefixed_name = ({b_escapeless, role:s_role}) => ({sj_matched}) => [
 		valid_prefix(sj_matched),
 		modal({
-			read: save_term(s_role, /* syntax: js */ `this.prefixed_name(${sj_matched}[2])`),
+			read: save_term(s_role, /* syntax: js */ `this.prefixed_name(s_prefix_id, ${sj_matched}[2])`),
 			load: load_term(s_role, /* syntax: js */ `${sj_matched}[1]`),
 		}),
 	];
@@ -495,7 +499,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			iriref({s_role:'base_iri', sj_matched, b_escapeless}),
 			modal({
 				read: /* syntax: js */ `
-						this._fk_base(this._s_base_url);
+						this._fk_base(this._s_base_iri);
 					`,
 				load: '',
 			}),
@@ -628,7 +632,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				// otherwise, it is an integer
 				else {
 					${modal({
-						read: save_term(s_role, /* syntax: js */ `this._dc_factory.integerLiteral(BigInt(${sj_matched}[1]))`),
+						read: save_term(s_role, /* syntax: js */ `this._dc_factory.integerLiteral(${sj_matched}[1])`),
 						load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'integer"'+${sj_matched}[1]`),
 					})}
 				}
@@ -639,7 +643,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			type: 'match',
 			test: /* syntax: js */ `R_BOOLEAN_LITERAL`,
 			action: ({sj_matched}) => modal({
-				read: save_term(s_role, /* syntax: js */ `this._dc_factory.booleanLiteral(${sj_matched}[1]? true: false)`),
+				read: save_term(s_role, /* syntax: js */ `this._dc_factory.booleanLiteral(${sj_matched}[1]? 'true': 'false')`),
 				load: load_term(s_role, /* syntax: js */ `this._scp_xsd+'boolean"'+(${sj_matched}[1]? 'true': 'false')`),
 			}),
 		}),
@@ -734,9 +738,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			`,
 		},
 		chars: {
-			apply: (a_chars, {uncached_char:b_uncached=false}) => /* syntax: js */ `
+			apply: (a_chars, {uncached_char:b_uncached=false, local_i:b_local_i=false}) => /* syntax: js */ `
 				if(${gen_matcher_strs([a_chars], '===', b_uncached? 's[i]': 'x')}) {
-					${whitespace(a_chars.length)}
+					${whitespace(a_chars.length, b_local_i)}
 			`,
 		},
 		not_chars: {
@@ -862,7 +866,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 				// render within else branch
 				if(b_else) {
-					s_body += /* syntax: js.if */ `} else `;
+					s_body += /* syntax: js.if */ `}
+						// ${si_rule}
+						else `;
 
 					// the matcher branches
 					if(g_matcher.branches) {
@@ -1213,12 +1219,12 @@ const match_prefixed_name = (s, i) => {
 
 
 @// consume whitespace
-@def whitespace(z_offset='0', b_local=false)
+@def whitespace(z_offset='0', b_local_i=false)
 	@. let s_offset = 'number' === typeof z_offset? `i+${z_offset}`: z_offset
 	// consume whitespace (and incidentally reset index)
 	R_WS.lastIndex = @{s_offset};
 	R_WS.exec(s);
-	@{b_local? '': 'this.'}i = R_WS.lastIndex;
+	@{b_local_i? '': 'this.'}i = R_WS.lastIndex;
 @;
 
 
@@ -1753,11 +1759,11 @@ class Consumer {
 			// rdf-star
 			_b_rdf_star: /* syntax: js */ `!!gc_consumer.star`,
 
-			// current @base url
-			_s_base_url: SX_STR_EMPTY,
-			_s_base_url_scheme: SX_STR_EMPTY,
-			_s_base_url_root: SX_STR_EMPTY,
-			_s_base_url_path: SX_STR_EMPTY,
+			// current @base iri
+			_s_base_iri: SX_STR_EMPTY,
+			_s_base_iri_scheme: SX_STR_EMPTY,
+			_s_base_iri_root: SX_STR_EMPTY,
+			_s_base_iri_path: SX_STR_EMPTY,
 
 			// current data
 			...(B_LOAD? {
@@ -2037,21 +2043,21 @@ class Consumer {
 		// oops -- user passed string into `base`
 		if('string' === typeof gc_consumer.base) {
 			throw new TypeError(`Invalid type \`string\` was given for 'base' option event listener: '${gc_consumer.base}'\n`
-				+`did you mean to specify the 'base_uri' option instead?`)
+				+`did you mean to specify the 'baseIRI' option instead?`)
 		}
 
-		// base uri
-		let p_set_base_uri = gc_consumer.base_uri || gc_consumer.baseUri || gc_consumer.baseURI || gc_consumer.base_iri || gc_consumer.baseIri || gc_consumer.baseIRI;
-		if(p_set_base_uri) {
-			let m_base_iri = R_BASE_IRI.exec(p_set_base_uri);
-			this._s_base_url = m_base_iri[1];
-			this._s_base_url_root = m_base_iri[2] || '';
-			this._s_base_url_scheme = m_base_iri[3] || '';
-			this._s_base_url_path = m_base_iri[4] || ''; 
+		// base iri
+		let p_set_base_iri = gc_consumer.baseIRI || gc_consumer.baseIri || gc_consumer.base_iri;
+		if(p_set_base_iri) {
+			let m_base_iri = R_BASE_IRI.exec(p_set_base_iri);
+			this._s_base_iri = m_base_iri[1];
+			this._s_base_iri_root = m_base_iri[2] || '';
+			this._s_base_iri_scheme = m_base_iri[3] || '';
+			this._s_base_iri_path = m_base_iri[4] || ''; 
 		}
 		// not set; 'url' variant is
 		else if(gc_consumer.base_url || gc_consumer.baseUrl || gc_consumer.baseURL) {
-			throw new TypeError(`Invalid option: 'base${gc_consumer.base_url? '_url': gc_consumer.baseUrl? 'Url': gc_consumer.baseURL? 'URL': ''}'; use the 'base_uri' option instead`);
+			throw new TypeError(`Invalid option: 'base${gc_consumer.base_url? '_url': gc_consumer.baseUrl? 'Url': gc_consumer.baseURL? 'URL': ''}'; use the 'baseIRI' option instead`);
 		}
 	}
 
@@ -2120,11 +2126,26 @@ class Consumer {
 
 	// consume a stream
 	consume_stream(ds_input) {
+		// input stream destroyed flag
+		let b_destroyed = false;
+
 		// go async
 		return new Promise((fk_consumed, fe_reject) => {
+			// create stream destroyer
+			const fe_destroy = (e_read) => {
+				// attempt to destroy input stream
+				if(ds_input.destroy) ds_input.destroy();
+
+				// forward to promise rejection
+				fe_reject(e_read);
+
+				// destroyed
+				b_destroyed = true;
+			};
+
 			// re-route error handling to promise rejection
 			if(F_THROW === this._fe_error) {
-				this._fe_error = fe_reject;
+				this._fe_error = fe_destroy;
 			}
 			// wrap error handler
 			else {
@@ -2137,7 +2158,7 @@ class Consumer {
 					fe_handler(e_read);
 
 					// then, reject promise
-					fe_reject(e_read);
+					fe_destroy(e_read);
 				};
 			}
 
@@ -2151,6 +2172,9 @@ class Consumer {
 
 			// all data has been read
 			ds_input.on('end', () => {
+				// do not emit eof nor resolve promise
+				if(b_destroyed) return;
+
 				// signal eof
 				const e_eof = this.eof(1);
 
@@ -2623,10 +2647,36 @@ class Consumer {
 					blank_node_property_list: () => ({
 						type: 'chars',
 						test: '[',
-						action: [],
-						goto: 'graph_or_subject_property_list',
+						...(B_TURTLE
+							? {
+								action: modal({
+									read: /* syntax: js */ `
+										// make blank node
+										this._kt_subject = this.anonymous_blank_node(this.next_label());
+
+										// push state to stack so it can resume when we pop state
+										${push_state('post_blank_subject')}
+									`,
+									load: /* syntax: js */ `
+										// make blank node
+										let sc1_blank_node = this._sc1_subject = '#'+this.next_label();
+
+										// commit to memory
+										${load_subject(/* syntax: js */ `sc1_blank_node`)}
+
+										// push state to stack
+										${push_state('post_blank_subject')}
+									`,
+								}),
+								goto: 'pairs',
+							}
+							: {
+								action: [],
+								goto: 'graph_or_subject_property_list',
+							}),
 					}),
-				}: {}),
+				}
+				: {}),
 			collection: () => ({
 				type: 'test',
 				test: /* syntax: js */ `R_CHAR_COLLECTION`,
@@ -3255,11 +3305,14 @@ class Consumer {
 		},
 
 		collection_subject: {
-			preamble: SJ_REF_X_CHAR,
 			apply: {
 				role: 'object',
 			},
 			rules: {
+				_ref_x_char: /* syntax: js */ `
+					// ref char
+					let x = s[i];
+				`,
 				collection_terminator: () => ({
 					type: 'chars',
 					test: ')',
@@ -3320,7 +3373,9 @@ class Consumer {
 						b_pushed = true;
 					}
 				`)(`this._${B_LOAD? 'sc1': 'kt'}_subject`),
-				iriref_escapeless: {},
+				iriref_escapeless: {
+					local_i: true,
+				},
 				prefixed_name_escapeless: {
 					local_i: true,
 				},
@@ -3383,8 +3438,12 @@ class Consumer {
 					}),
 					goto: 'string_literal',
 				}),
-				numeric_literal: {},
-				boolean_literal: {},
+				numeric_literal: {
+					local_i: true,
+				},
+				boolean_literal: {
+					local_i: true,
+				},
 				blank_node_property_list: () => ({
 					type: 'chars',
 					test: '[',
@@ -3490,8 +3549,12 @@ class Consumer {
 						${sj_term}_predicate = ${SJ_RDF_FIRST};
 					`)(`this._${B_LOAD? 'sc1': 'kt'}`),
 				}),
-				labeled_blank_node: {},
-				iriref: {},
+				labeled_blank_node: {
+					local_i: true,
+				},
+				iriref: {
+					local_i: true,
+				},
 				prefixed_name: {
 					local_i: true,
 				},
@@ -3565,30 +3628,39 @@ class Consumer {
 		},
 
 		collection_object: {
-			preamble: SJ_REF_X_CHAR,
+			// preamble: SJ_REF_X_CHAR,
 			apply: {
 				role: 'object',
 			},
 			rules: {
+				_ref_x_char: /* syntax: js */ `
+					// ref char
+					const x = s[i];
+				`,
 				collection_terminator: () => ({
 					type: 'chars',
 					test: ')',
 					action: [
 						// make & emit collection's tail "pointer"
-						modal({
+						...modal({
 							read: [
 								save_term('object', SJ_RDF_NIL),
 								emit_statement(),
 							],
-							load: load_object(/* syntax: js */ `this._sc1_rdf+'nil'`),
+							load: [
+								load_object(/* syntax: js */ `this._sc1_rdf+'nil'`),
+							],
 						}),
+						pop_state(`end of collection object ')'`),
 					],
 				}),
 				_continue: /* syntax: js */ `
 					// otherwise, pre-emptively secure the next blank node label
 					let s_pointer_label;
 				`,
-				iriref_escapeless: {},
+				iriref_escapeless: {
+					local_i: true,
+				},
 				prefixed_name_escapeless: {
 					local_i: true,
 				},
@@ -3639,8 +3711,12 @@ class Consumer {
 					}),
 					goto: 'string_literal',
 				}),
-				numeric_literal: {},
-				boolean_literal: {},
+				numeric_literal: {
+					local_i: true,
+				},
+				boolean_literal: {
+					local_i: true,
+				},
 				blank_node_property_list: () => ({
 					type: 'chars',
 					test: '[',
@@ -3746,6 +3822,9 @@ class Consumer {
 				labeled_blank_node: () => ({
 					type: 'match',
 					test: /* syntax: js */ `R_LABELED_BLANK_NODE`,
+					args: {
+						local_i: true,
+					},
 					action: ({sj_matched}) => /* syntax: js */ `
 						// ref blank node label
 						let s_label = ${sj_matched}[1];
@@ -3759,7 +3838,9 @@ class Consumer {
 						})}
 					`
 				}),
-				iriref: {},
+				iriref: {
+					local_i: true,
+				},
 				prefixed_name: {
 					local_i: true,
 				},

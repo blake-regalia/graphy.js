@@ -137,6 +137,8 @@ export class Readable extends stream.Readable {
 	@{bucket()}
 }
 
+
+
 export class Writable extends stream.Writable {
 	@{rdfjs_import()}
 }

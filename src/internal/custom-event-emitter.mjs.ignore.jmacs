@@ -1,0 +1,294 @@
+
+@> emitter_on(b_new=false)
+	function EventEmitter$_on_@{b_new? 'bare': 'handle'}(si_event, f_listener) {
+		const g_event = this._h_events[si_event];
+
+		// event is registered
+		if(g_event) {
+			@- b_new
+				// emit newListener event
+				this.emit('newListener', si_event, f_listener);
+
+			@;
+			// add listener to list; only listener
+			if(1 === g_event._a_handlers.push(f_listener)) {
+				g_event._f_only = f_listener;
+			}
+			// otherwise, clear the only handler
+			else {
+				g_event._f_only = null;
+			}
+		}
+
+		// chainable
+		return this;
+	}
+@;
+
+@{emitter_on(false)}
+
+@{emitter_on(true)}
+
+
+export class EventEmitter {
+	constructor(a_events=[]) {
+		const h_events = this._h_events = {};
+		for(const si_event of a_events) {
+			h_events[si_event] = {
+				_f_only: null,
+				_a_handlers: [],
+			};
+		}
+
+		this.addListener = this.on = ('newListener' in h_events)
+			? EventEmitter$_on_handle
+			: EventEmitter$_on_bare;
+
+		this.removeListener = this.off;
+	}
+
+	once(si_event, f_listener) {
+		this.on(si_event, () => {
+			this.off(si_event, f_listener);
+			f_listener();
+		});
+
+		return this;
+	}
+
+	prependListener(si_event, f_listener) {
+		const g_event = this._h_events[si_event];
+
+		// event is registered
+		if(g_event) {
+			// emit newListener event
+			this.emit('newListener', si_event, f_listener);
+
+			// add listener to list; only listener
+			if(1 === g_event._a_handlers.unshift(f_listener)) {
+				g_event._f_only = f_listener;
+			}
+			// otherwise, clear the only handler
+			else {
+				g_event._f_only = null;
+			}
+		}
+
+		// chainable
+		return this;
+	}
+
+	prependOnceListener(si_event, f_listener) {
+		this.prependListener(() => {
+			this.off(si_event, f_listener);
+			f_listener();
+		});
+	}
+
+	off(si_event, f_listener) {
+		const g_event = this._h_events[si_event];
+
+		// event is registered
+		if(g_event) {
+			const a_handlers = g_event._a_handlers;
+			const i_handler = a_handlers.indexOf(f_listener);
+
+			// listener exists
+			if(-1 !== i_handler) {
+				// remove from handlers list
+				a_handlers.splice(i_handler, 1);
+
+				// new list has 1 handler remaining; set to only
+				if(1 === a_handlers.length) {
+					g_event._f_only = a_handlers[0];
+				}
+				// listener was only
+				else if(g_event._f_only) {
+					g_event._f_only = null;
+				}
+
+				// emit removeListener event
+				queueMicrotask(() => {
+					this.emit('removeListener', si_event, f_listener);
+				});
+			}
+		}
+
+		return this;
+	}
+
+	removeAllListeners(si_event) {
+		const g_event = this._h_events[si_event];
+
+		// event is registered
+		if(g_event) {
+			// ref handlers
+			const a_handlers = g_event._a_handlers;
+
+			// remove them
+			g_event._a_handlers = [];
+			g_event._f_only = null;
+
+			// emit removeListener events
+			queueMicrotask(() => {
+				for(const f_listener of a_handlers) {
+					this.emit('removeListener', si_event, f_listener);
+				}
+			});
+		}
+
+		return this;
+	}
+
+	emit(si_event, ...a_args) {
+		const g_event = this._h_events[si_event];
+
+		// no such handler
+		if(!g_event) return false;
+
+		// single event listener
+		if(g_event._f_only) {
+			g_event._f_only.apply(this, a_args);
+		}
+		// multiple listeners
+		else {
+			for(const f_handler of g_event._a_handlers) {
+				f_handler.apply(this, a_args);
+			}
+		}
+
+		// event handled
+		return true;
+	}
+
+	eventNames() {
+		const a_names = [];
+
+		const h_events = this._h_events;
+		for(const si_event in h_events) {
+			if(h_events[si_event]._a_handlers.length) {
+				a_names.push(si_event);
+			}
+		}
+
+		return a_names;
+	}
+
+	getMaxListeners() {
+		return Infinity;
+	}
+
+	setMaxListeners() {
+		return this;
+	}
+
+	listenerCount(si_event) {
+		return this._h_events[si_event]?._a_handlers?.length || 0;
+	}
+
+	listeners(si_event) {
+		return [...this._h_events[si_event]?._a_handlers || []];
+	}
+}
+
+@.{
+	const A_EVENTS_READABLE = [
+		'close',
+		'data',
+		'end',
+		'error',
+		'pause',
+		'readable',
+		'resume',
+	];
+
+	const A_EVENTS_WRITABLE = [
+		'close',
+		'drain',
+		'error',
+		'finish',
+		'pipe',
+		'unpipe',
+	];
+}
+
+export class StringReadable extends EventEmitter {
+	@//@class
+	constructor() {
+		super([@{A_EVENTS_READABLE.map(s => `'${s}'`).join(',')}]);
+
+		this.on('newListener', (si_event) => {
+			if('data' === si_event) {
+
+			}
+		});
+	}
+
+	setEncoding() {
+		return this;
+	}
+}
+
+StringReadable.prototype.readableEncoding = 'utf8';
+
+
+export class StringWritable extends EventEmitter {
+	@//@class
+	constructor() {
+		super([@{A_EVENTS_WRITABLE.map(s => `'${s}'`).join(',')}]);
+
+		this.on('newListener', (si_event) => {
+			if('data' === si_event) {
+
+			}
+		});
+	}
+
+	cork() {
+
+	}
+
+	destroy(e_destroy) {
+
+	}
+
+	get destroyed() {
+
+	}
+
+	end(s_chunk, s_encoding, fk_end) {
+
+	}
+
+	setDefaultEncoding() {
+		return this;
+	}
+
+	uncork() {
+
+	}
+
+	write(s_chunk, s_encoding, fk_write) {
+		this._write(s_chunk, s_encoding, fk_write);
+	}
+}
+
+export class StringWritableObjectReadable extends EventEmitter {
+	@//@class
+	constructor() {
+		super([@{[
+			...A_EVENTS_READABLE,
+			...A_EVENTS_WRITABLE,
+		].map(s => `'${s}'`).join(',')}]);
+	}
+
+	write(s_chunk, s_encoding, fke_write) {
+		this._transform(s_chunk, s_encoding, (e_transform) => {
+			// handle error
+			if(e_transform) return fke_write(e_transform);
+
+			// pull next chunk of data
+			
+		});
+	}
+}

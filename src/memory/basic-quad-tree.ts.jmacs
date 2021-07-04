@@ -386,6 +386,21 @@ export class BasicQuadTreeBuilder implements Dataset.GraphHandle, Dataset.SyncQu
 
 // interface Constructor extends GenericQuadTree.Constructor<QuadTree, QuadTreeBuilder, GenericQuadTree.QuadsHash> {}
 
+function empty_quads_hash(): QuadsHash {
+	return {
+		[$_KEYS]: 1,
+		[$_QUADS]: 0,
+		// [$_OVERLAY]: 0,
+		// [$_BURIED]: [],
+		['*']: {
+			[$_KEYS]: 0,
+			[$_QUADS]: 0,
+			// [$_OVERLAY]: 0,
+			// [$_BURIED]: [],
+		},
+	};
+}
+
 
 // export const BasicQuadTree: Constructor = class BasicQuadTree implements QuadTree {
 export class BasicQuadTree extends GenericQuadTree<
@@ -402,26 +417,15 @@ export class BasicQuadTree extends GenericQuadTree<
 	/**
 	 * Create new empty dataset
 	 */
-	static empty(h_prefixes: PrefixMap): BasicQuadTree {
-		return new BasicQuadTree({
-			[$_KEYS]: 1,
-			[$_QUADS]: 0,
-			// [$_OVERLAY]: 0,
-			// [$_BURIED]: [],
-			['*']: {
-				[$_KEYS]: 0,
-				[$_QUADS]: 0,
-				// [$_OVERLAY]: 0,
-				// [$_BURIED]: [],
-			},
-		} as QuadsHash, h_prefixes);
+	static empty(h_prefixes={} as PrefixMap): BasicQuadTree {
+		return new BasicQuadTree(empty_quads_hash(), h_prefixes);
 	}
 
 	/**
 	 * Create new dataset
 	 */
-	constructor(hc4_quads: QuadsHash, h_prefixes: PrefixMap, b_prefixed=false) {
-		super(hc4_quads, h_prefixes, b_prefixed);
+	constructor(hc4_quads=null as QuadsHash, h_prefixes={} as PrefixMap, b_prefixed=false) {
+		super(hc4_quads || empty_quads_hash(), h_prefixes, b_prefixed);
 		this._k_builder = new BasicQuadTreeBuilder(h_prefixes, this);
 	}
 
@@ -478,7 +482,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		const hc4_quads = this._hc4_quads;
 
 		// count distinct predicates using set
-		let as_predicates = new Set<C1.Predicate>();
+		const as_predicates = new Set<C1.Predicate>();
 
 		// each graph
 		for(const sc1_graph in hc4_quads) {
@@ -506,7 +510,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		const hc4_quads = this._hc4_quads;
 
 		// distinct objects set
-		let as_objects = new Set<C1.Object>();
+		const as_objects = new Set<C1.Object>();
 
 		// each graph
 		for(const sc1_graph in hc4_quads) {
@@ -538,8 +542,8 @@ export class BasicQuadTree extends GenericQuadTree<
 	distinctPredicateCount(): number {
 		// only default graph
 		if(1 === this._hc4_quads[$_KEYS]) {
-			let as_predicates = new Set();
-			for(let sc1_predicate in this._hc3_trips) {
+			const as_predicates = new Set();
+			for(const sc1_predicate in this._hc3_trips) {
 				as_predicates.add(sc1_predicate);
 			}
 			return as_predicates.size;
