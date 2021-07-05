@@ -317,6 +317,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		token: {
 			start: i_token_0_start,
 			end: i_token_0_end,
+			caret: @{sj_index},
 		},
 	@+ 'this.i' !== sj_index
 		token: {
@@ -688,11 +689,11 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			goto: 'triple_x',
 		}),
 
-		comment: () => ({
+		comment: ({local_i:b_local_i=true}) => ({
 			type: 'match',
 			test: /* syntax: js */ `R_COMMENT`,
 			args: {
-				local_i: true,
+				local_i: b_local_i,
 			},
 			action: ({sj_matched}) => /* syntax: js */ `
 				if(this.emit_comments) this.emit_comments(${sj_matched}[0]);
@@ -1749,6 +1750,9 @@ class Consumer {
 			// debug state
 			_b_debug: /* syntax: js */ `!!gc_consumer.debug`,
 
+			// errors plain
+			_b_error_plain: /* syntax: js */ `'ansi' !== gc_consumer.colorMode`,
+
 			// tolerant
 			_b_tolerant: /* syntax: js */ `!!gc_consumer.tolerant || !!gc_consumer.relax`,
 
@@ -1983,9 +1987,7 @@ class Consumer {
 							${error_args({
 								// past length of iri and `<`, `>`` chars
 								rewind: /* syntax: js */ `p_iri.length + 2`,
-
-								// TODO: find invalid char
-								caret: `1`,
+								caret: /* syntax: js */ `1 + (/[${RANGE_NAMED_NODE_INVALID()}]/.exec(p_iri)?.index || 0)`,
 							})}
 						});
 					}
@@ -1999,7 +2001,7 @@ class Consumer {
 							${error_args({
 								// past `>` char, length of iri, then back to index of first invalid char
 								rewind: /* syntax: js */ `p_iri.length + 2`,
-								caret: /* syntax: js */ `1 + /[${RANGE_NAMED_NODE_INVALID(true)}]/.exec(p_iri).index`,
+								caret: /* syntax: js */ `1 + (/[${RANGE_NAMED_NODE_INVALID(true)}]/.exec(p_iri)?.index || 0)`,
 							})}
 						});
 					}
@@ -2098,7 +2100,7 @@ class Consumer {
 	if(e_parse) {
 		@if b_fke_chunk
 			// handle thru stream callback
-			return fke_chunk(e_parse);
+			return F_NOOP !== this._fe_error? this._fe_error(e_parse): fke_chunk(e_parse);
 		@else
 			// handle using callback
 			return this._fe_error(e_parse);
@@ -2211,8 +2213,17 @@ class Consumer {
 		// now that input stream has ended, clean up remainder
 		const e_eof = this.eof(1);
 
-		// read error occurred; allow stream to handle error
-		if(e_eof) return fke_@{gc_stream.terminal}(e_eof);
+		// read error occurred
+		if(e_eof) {
+			// error handler
+			if(F_NOOP !== this._fe_error) {
+				return this._fe_error(e_eof);
+			}
+			// allow stream to handle error
+			else {
+				return fke_@{gc_stream.terminal}(e_eof);
+			}
+		}
 
 		// no errors. done with @{gc_stream.terminal}, close stream
 		fke_@{gc_stream.terminal}();
@@ -2325,7 +2336,7 @@ class Consumer {
 
 	enable_comments() {
 		this.emit_comments = (s_captured) => {
-			let a_comments = s_captured.slice(1).replace(/\n\s+$/, '').split(/\n+\s*#/g);
+			let a_comments = s_captured.slice(1).replace(/\r?\n\s*$/, '').split(/(\r?\n)+\s*#/g);
 
 			for(let s_comment of a_comments) {
 				this._fk_comment(s_comment);
@@ -3126,8 +3137,8 @@ class Consumer {
 			apply: {
 				role: 'datatype',
 			},
-			preamble: SJ_REF_X_CHAR,
 			rules: {
+				_ref_x_char: SJ_REF_X_CHAR,
 				datatype_or_langtag: () => ({
 					type: 'strs',
 					test: ['^', '@'],
@@ -3137,7 +3148,7 @@ class Consumer {
 							goto('datatype'),
 
 						// '@' language tag
-						else_if_match('R_LANGTAG', 'm_langtag'),
+						else_if_match('R_LANGTAG', 'm_langtag', true),
 							modal({
 								read: /* syntax: js */ `
 									this._kt_object = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
@@ -3166,6 +3177,9 @@ class Consumer {
 				this._s_literal = '';
 			`,
 			fallthrough: /* syntax: js */ `
+				// update index value before bailing
+				this.i = i;
+
 				// goto end of statement state
 				${eot()}
 			`,
@@ -3338,10 +3352,7 @@ class Consumer {
 				role: 'object',
 			},
 			rules: {
-				_ref_x_char: /* syntax: js */ `
-					// ref char
-					let x = s[i];
-				`,
+				_ref_x_char: SJ_REF_X_CHAR,
 				collection_terminator: () => ({
 					type: 'chars',
 					test: ')',
@@ -3662,10 +3673,7 @@ class Consumer {
 				role: 'object',
 			},
 			rules: {
-				_ref_x_char: /* syntax: js */ `
-					// ref char
-					const x = s[i];
-				`,
+				_ref_x_char: SJ_REF_X_CHAR,
 				collection_terminator: () => ({
 					type: 'chars',
 					test: ')',

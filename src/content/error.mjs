@@ -3,13 +3,27 @@ import styles from 'ansi-styles';
 
 const HM_PRIVATES = new Map();
 
+const S_PREVIEW_TAB_PLAIN = '→';  // ␉
+const S_PREVIEW_NEWLINE_PLAIN = '↵';  // ␤
+
 const B_COLOR = supportsColor.stdout;
-const S_PREVIEW_TAB = B_COLOR? styles.dim.open+'→'+styles.dim.close: '→';
-const S_PREVIEW_NEWLINE = B_COLOR? styles.dim.open+'↵'+styles.dim.close: '↵';
+const S_PREVIEW_TAB = B_COLOR? styles.dim.open+S_PREVIEW_TAB_PLAIN+styles.dim.close: S_PREVIEW_TAB_PLAIN;
+const S_PREVIEW_NEWLINE = B_COLOR? styles.dim.open+S_PREVIEW_NEWLINE_PLAIN+styles.dim.close: S_PREVIEW_NEWLINE_PLAIN;
 
 const inject_color = B_COLOR
 	? (s, i) => s.slice(0, i)+styles.bold.open+s[i]+styles.bold.close+s.slice(i+1)
 	: s => s;
+
+function count_lines_until(s_chunk, i_until=0) {
+	let c_lines = 0;
+	let i_scan = -1;
+
+	for(;;) {
+		i_scan = s_chunk.indexOf('\n', i_scan+1);
+		if(i_scan < 0 || i_scan >= i_until) return c_lines;
+		c_lines += 1;
+	}
+}
 
 export class ContentError extends Error {
 	constructor(k_consumer, gc_error) {
@@ -21,17 +35,18 @@ export class ContentError extends Error {
 			caret: i_caret=k_consumer.i,
 			start: i_token_start=-1,
 			end: i_token_end=-1,
-		} = gc_error.token;
+		} = gc_error.token || {};
 
 		// sets the max width of the preview
 		const nl_width = Math.min(90, process?.stdout?.columns || 90);
 
 		// 0.62 sets the relative bias to the front of the message
-		const i_off = Math.min(i_caret, Math.abs(i_caret-Math.floor(nl_width*0.62)));
+		const i_off = Math.min(i_token_start < 0? Infinity: i_token_start, i_caret, Math.abs(i_caret-Math.floor(nl_width*0.62)));
 
 		// format preview
 		const s_preview = inject_color(s_source.substr(i_off, nl_width), i_caret-i_off)
-			.replace(/\t/g, S_PREVIEW_TAB).replace(/\r?\n/g, S_PREVIEW_NEWLINE);  // ␉␤
+			.replace(/\t/g, k_consumer._b_errors_plain? S_PREVIEW_TAB_PLAIN: S_PREVIEW_TAB)
+			.replace(/\r?\n/g, k_consumer._b_errors_plain? S_PREVIEW_NEWLINE_PLAIN: S_PREVIEW_NEWLINE);
 
 		// border strings
 		const nl_pre = i_caret - i_off;

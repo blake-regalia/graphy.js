@@ -38,6 +38,11 @@ export interface ReaderConfig {
      * Sets the maximum character length for string literals. Defaults to 524288 (~1-2 MiB in UTF-16) in order to prevent an out-of-memory crash from potentially unclosed strings. Set to `Infinity` if you wish to disable the limits
      */
     maxStringLength?: number;
+
+    /**
+     * Controls the error message output color format
+     */
+    colorMode: 'off' | 'ansi';
     
     readable?(): void;
     finish?(): void;

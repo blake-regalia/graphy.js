@@ -10,7 +10,7 @@ import {
 	decimalLiteral,
 } from '@graphy/core';
 
-import { BasicQuadTree } from '@graphy/memory';
+import { QuadTree } from '@graphy/memory';
 // import QuadTree from '@graphy/memory/quad-tree';
 
 import { TurtleReader } from '@graphy/content';
@@ -47,6 +47,20 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 
 			'crammed spaces': () => [`
 				<z://y/a><z://y/b>"f"^^<z://y/g>.
+			`, [
+				['z://y/a', 'z://y/b', '^z://y/g"f'],
+			]],
+
+			'short pnames': () => [`
+				@prefix : <z://y/> .
+				:a :b :c .
+			`, [
+				['z://y/a', 'z://y/b', 'z://y/c'],
+			]],
+
+			'short pnames w/ literal': () => [`
+				@prefix : <z://y/> .
+				:a :b "f"^^:g .
 			`, [
 				['z://y/a', 'z://y/b', '^z://y/g"f'],
 			]],
@@ -1045,6 +1059,13 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 			state: 'post_object',
 		}),
 
+		'missing object': () => ({
+			input: '@prefix : <z://y/> .'
+				+'\n:a :b .	\n',
+			char: '.',
+			state: 'object_list',
+		}),
+
 		'invalid escapes': () => ({
 			input: `
 				:a :b
@@ -1092,25 +1113,25 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 
 			[`invalid linebreak at start of string literal (${s_quote}) contents`]: () => ({
 				input: `<a> <b> ${s_quote}\nworld${s_quote} .`,
-				char: 'y',
+				char: '\n',
 				state: 'string_literal_short_'+('"' === s_quote? 'double': 'single'),
 			}),
 
 			[`invalid escape sequence at start of string literal (${s_quote}) contents`]: () => ({
 				input: `<a> <b> ${s_quote}\\\nworld${s_quote}y .`,
-				char: 'y',
+				string: 'escape sequence',
 				state: 'string_literal',
 			}),
 
 			[`invalid linebreak within string literal (${s_quote}) contents`]: () => ({
 				input: `<a> <b> ${s_quote}helo\nworld${s_quote} .`,
-				char: 'y',
+				string: 'line feed character',
 				state: 'string_literal_short_'+('"' === s_quote? 'double': 'single'),
 			}),
 
 			[`invalid escape sequence within string literal (${s_quote}) contents`]: () => ({
 				input: `<a> <b> ${s_quote}hello\\\nworld${s_quote}y .`,
-				char: 'y',
+				string: 'escape sequence',
 				state: 'string_literal',
 			}),
 		}), {})),
@@ -1126,7 +1147,8 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 		]));
 
 		f_interface({
-			reader: TurtleReader,
+			reader: (...a_args) => TurtleReader.run(...a_args),
+			reader_class: TurtleReader,
 			input: /* syntax: ttl */ `
 				@base <base://> .
 				@prefix : <test://> .
@@ -1150,8 +1172,8 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 
 				prefix(a_prefixes) {
 					expect(a_prefixes).to.eql([
-						['', 'test://'],
-						['test', 'test://test#'],
+						['', namedNode('test://')],
+						['test', namedNode('test://test#')],
 					]);
 				},
 
@@ -1176,4 +1198,4 @@ const f_string_literals = s => ['#a', '#b', '"'+s];
 	});
 
 	reader.specification();
-})).run();
+}));

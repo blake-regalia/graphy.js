@@ -4,7 +4,7 @@ const expect = chai.expect;
 
 import stream from 'readable-stream';
 
-import w3c_rdf_specification from '../interface/w3c-rdf-specification.js';
+import w3c_rdf_specification from '../interface/w3c-rdf-specification.mjs';
 import graphy_reader_interface from '../interface/content-reader.mjs';
 
 import util from './util.mjs';
@@ -21,11 +21,13 @@ export class ReaderSuite {
 			}
 		}
 
-		this._f_reader = (...a_args) => new gc_suite.reader(...a_args);
+		this._f_reader = (...a_args) => gc_suite.reader.run(...a_args);
+		this._dc_reader = gc_suite.reader;
 		this._s_prefix_string = s_prefix_string;
 		this._si_module = 'content';
 		this._si_class = `${gc_suite.syntax}Reader`;
 		this._si_export = `@graphy/${this._si_module}:${this._si_class}`;
+		this._gc_suite = gc_suite;
 
 		describe(this._si_export, () => {
 			f_suite(this);
@@ -40,6 +42,7 @@ export class ReaderSuite {
 					input: st_input,
 					config: gc_read={},
 					char: s_char=null,
+					string: s_string=null,
 					state: s_err_state=null,
 					debug: b_debug=false,
 				} = f_leaf();
@@ -47,7 +50,7 @@ export class ReaderSuite {
 				it(s_label, (fke_test) => {
 
 					// feed input one character at a time
-					stream.Readable.from([...st_input]).pipe(new this._f_reader({
+					this._f_reader(stream.Readable.from([...st_input]), {
 						debug: b_debug,
 						...gc_read,
 
@@ -58,47 +61,29 @@ export class ReaderSuite {
 						error(e_parse) {
 							expect(e_parse).to.be.an('error');
 							if(s_char) {
-								const s_match = 'failed to parse a valid token'; // starting at '+('string' === typeof s_err_char? '"'+s_err_char+'"': '<<EOF>>');
+								let s_match = 'Failed to parse a valid token';
+
+								if('\n' === s_char) {
+									s_match = 'line feed character';
+								}
+
 								expect(e_parse.message).to.have.string(s_match);
 								if(s_err_state) {
-									expect(/expected (\w+)/.exec(e_parse.message)[1]).to.equal(s_err_state);
+									expect(/Expected (\w+)/.exec(e_parse.message)[1]).to.equal(s_err_state);
 								}
+							}
+							else if(s_string) {
+								expect(e_parse.message).to.have.string(s_string);
 							}
 							fke_test();
 						},
 
-						// watch for end
-						end() {
+						// watch for eof
+						eof() {
 							debugger; st_input;  // for debugging
 							fke_test(new Error('should have caught an error'));
 						},
-					}));
-
-					// this._f_reader(st_input, {
-					// 	debug: b_debug,
-
-					// 	// ignore data events
-					// 	data() {},
-
-					// 	// expect error
-					// 	error(e_parse) {
-					// 		expect(e_parse).to.be.an('error');
-					// 		if(s_char) {
-					// 			let s_match = 'failed to parse a valid token'; // starting at '+('string' === typeof s_err_char? '"'+s_err_char+'"': '<<EOF>>');
-					// 			expect(e_parse.message).to.have.string(s_match);
-					// 			if(s_err_state) {
-					// 				expect(/expected (\w+)/.exec(e_parse.message)[1]).to.equal(s_err_state);
-					// 			}
-					// 		}
-					// 		fke_test();
-					// 	},
-
-					// 	// watch for end
-					// 	end() {
-					// 		debugger; st_input;  // for debugging
-					// 		fke_test(new Error('should have caught an error'));
-					// 	},
-					// });
+					}).catch(() => {});
 				});
 			});
 		});
@@ -106,12 +91,12 @@ export class ReaderSuite {
 
 	allows(h_tree) {
 		const g_modes = {
-			'validation enabled (not relaxed)': {
-				relax: false,
+			'validation enabled (not tolerant)': {
+				tolerant: false,
 			},
-			'validation disabled (relaxed)': {
-				relax: true,
-			},
+			'validation disabled (tolerant)': {
+				tolerant: true,
+			}, 
 		};
 
 		for(const [s_mode, gc_read] of Object.entries(g_modes)) {
@@ -130,7 +115,7 @@ export class ReaderSuite {
 						const a_quads = [];
 
 						// feed input one character at a time
-						stream.Readable.from([...st_input]).pipe(this._f_reader({
+						this._f_reader(stream.Readable.from([...st_input]), {
 							debug: b_debug,
 							...gc_read,
 
@@ -145,11 +130,11 @@ export class ReaderSuite {
 							},
 
 							// wait for end
-							end() {
+							eof() {
 								util.validate_quads(a_quads, a_validate);
 								fke_test();
 							},
-						}));
+						});
 					});
 				});
 			});
@@ -165,9 +150,11 @@ export class ReaderSuite {
 	specification() {
 		describe('w3c rdf specification', async() => {
 			await w3c_rdf_specification({
+				package: `content.${this._gc_suite.alias}.read`,
 				reader: this._f_reader,
+				reader_class: this._dc_reader,
 				export: this._si_export,
-				manifest: this._p_manifest,
+				manifest: this._gc_suite.manifest,
 			});
 		});
 	}
