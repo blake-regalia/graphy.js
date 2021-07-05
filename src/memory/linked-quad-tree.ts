@@ -681,20 +681,12 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQ
 export class LinkedQuadTree extends GenericQuadTree<
 	LinkedQuadTree, ILinkedQuadTree.QuadsHash, ILinkedQuadTree.TriplesHash
 > implements Dataset.SyncC1Dataset<LinkedQuadTree> {
-	static Builder = LinkedQuadTreeBuilder;
-
-
 	/**
-	 * Internal self builder for creating match results or appending
-	 * @internal
+	 * Create new LinkedQuadTreeBuilder
 	 */
-	_k_builder: LinkedQuadTreeBuilder;
-
-	/**
-	 * Data structure for linking Object terms
-	 * @internal
-	 */
-	_h_objects: ILinkedQuadTree.ObjectStore;
+	static builder(h_prefixes: PrefixMap): LinkedQuadTreeBuilder {
+		return new LinkedQuadTreeBuilder(h_prefixes);
+	}
 
 	/**
 	 * Create new empty dataset
@@ -715,6 +707,18 @@ export class LinkedQuadTree extends GenericQuadTree<
 			},
 		}, h_prefixes);
 	}
+
+	/**
+	 * Internal self builder for creating match results or appending
+	 * @internal
+	 */
+	_k_builder: LinkedQuadTreeBuilder;
+
+	/**
+	 * Data structure for linking Object terms
+	 * @internal
+	 */
+	_h_objects: ILinkedQuadTree.ObjectStore;
 
 	constructor(h_objects: ILinkedQuadTree.ObjectStore, hc4_quads: ILinkedQuadTree.QuadsHash, h_prefixes: PrefixMap) {
 		super(hc4_quads, h_prefixes);
@@ -768,6 +772,77 @@ export class LinkedQuadTree extends GenericQuadTree<
 	
 	normalize(): LinkedQuadTree {
 		throw new Error('Method not implemented.');
+	}
+
+	_equals(k_other: LinkedQuadTree): boolean {
+		const h_objects_a = this._h_objects;
+		const h_objects_b = k_other._h_objects;
+
+		// object count mismatch
+		if(h_objects_a[$_KEYS] !== h_objects_b[$_KEYS]) return false;
+
+		const hc4_quads_a = this._hc4_quads;
+		const hc4_quads_b = k_other._hc4_quads;
+
+		// each graph in a
+		for(const sc1_graph in hc4_quads_a) {
+			// ref trips
+			const hc3_trips_a = hc4_quads_a[sc1_graph];
+			const hc3_trips_b = hc4_quads_b[sc1_graph];
+
+			// graph missing from b
+			if(!hc3_trips_b) return false;
+
+			// quad count mismatch
+			if(hc3_trips_a[$_QUADS] !== hc3_trips_b[$_QUADS]) return false;
+
+			// key count mismatch
+			if(hc3_trips_a[$_KEYS] !== hc3_trips_b[$_KEYS]) return false;
+
+			// each subject in a
+			for(const sc1_subject in hc3_trips_a) {
+				// ref probs
+				const hc2_probs_a = hc3_trips_a[sc1_subject];
+				const hc2_probs_b = hc3_trips_b[sc1_subject];
+
+				// subject missing from b
+				if(!hc2_probs_b) return false;
+
+				// quad count mismatch
+				if(hc2_probs_a[$_QUADS] !== hc2_probs_b[$_QUADS]) return false;
+
+				// key count mismatch
+				if(hc2_probs_a[$_KEYS] !== hc2_probs_b[$_KEYS]) return false;
+
+				// each predicate in a
+				for(const sc1_predicate in hc2_probs_a) {
+					// ref objects
+					const as_objects_a = hc2_probs_a[sc1_predicate];
+					const as_objects_b = hc2_probs_b[sc1_predicate];
+
+					// predicate missing from b
+					if(!as_objects_b) return false;
+
+					// set size mismatch
+					if(as_objects_a.size !== as_objects_b.size) return false;
+
+					// each object in a
+					for(const g_object of as_objects_a) {
+						// fetch descriptor in b
+						const g_object_b = h_objects_b[g_object.value];
+
+						// object missing from b
+						if(!g_object_b) return false;
+
+						// quad missing from b
+						if(!as_objects_b.has(g_object_b)) return false;
+					}
+				}
+			}
+		}
+
+		// datasets match
+		return true;
 	}
 
 	* [Symbol.iterator](): Generator<Term.Quad> {
@@ -924,7 +999,7 @@ export interface LinkedQuadTree {
 	toCanonical(): LinkedQuadTree;
 }
 
-type LinkedQuadTreeClass = Dataset.Constructor<LinkedQuadTree, typeof LinkedQuadTreeBuilder, ILinkedQuadTree.QuadsHash>;
+type LinkedQuadTreeClass = GenericQuadTree.Static<LinkedQuadTree, LinkedQuadTreeBuilder, ILinkedQuadTree.QuadsHash>;
 
 
 const LinkedQuadTree_Assertion: LinkedQuadTreeClass = LinkedQuadTree;

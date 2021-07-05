@@ -1,11 +1,24 @@
+import supportsColor from 'supports-color';
+import styles from 'ansi-styles';
+
 const HM_PRIVATES = new Map();
 
+const B_COLOR = supportsColor.stdout;
+const S_PREVIEW_TAB = B_COLOR? styles.dim.open+'→'+styles.dim.close: '→';
+const S_PREVIEW_NEWLINE = B_COLOR? styles.dim.open+'↵'+styles.dim.close: '↵';
+
+const inject_color = B_COLOR
+	? (s, i) => s.slice(0, i)+styles.bold.open+s[i]+styles.bold.close+s.slice(i+1)
+	: s => s;
+
 export class ContentError extends Error {
-	constructor(gc_error) {
+	constructor(k_consumer, gc_error) {
 		super();
 
+		const s_source = k_consumer.s;
+
 		const {
-			caret: i_caret,
+			caret: i_caret=k_consumer.i,
 			start: i_token_start=-1,
 			end: i_token_end=-1,
 		} = gc_error.token;
@@ -17,7 +30,8 @@ export class ContentError extends Error {
 		const i_off = Math.min(i_caret, Math.abs(i_caret-Math.floor(nl_width*0.62)));
 
 		// format preview
-		const s_preview = gc_error.source.substr(i_off, nl_width).replace(/[\n\t]/g, ' ');
+		const s_preview = inject_color(s_source.substr(i_off, nl_width), i_caret-i_off)
+			.replace(/\t/g, S_PREVIEW_TAB).replace(/\r?\n/g, S_PREVIEW_NEWLINE);  // ␉␤
 
 		// border strings
 		const nl_pre = i_caret - i_off;
@@ -64,11 +78,16 @@ export class ContentError extends Error {
 		}
 
 		const g_self = {
-			s_instance: gc_error.content?._dc_actor?.name,
+			s_instance: k_consumer?._dc_actor?.name,
 			s_message: gc_error.message,
 			s_state: gc_error.state,
-			s_source: gc_error.source,
-			g_location: gc_error.location,
+			s_source: s_source,
+			g_location: gc_error.location || k_consumer?._b_line_tracking
+				? {
+					line: 1 + k_consumer._c_lines + count_lines_until(s_source, i_caret),
+					col: i_caret - s_source.lastIndexOf('\n', i_caret),
+				}
+				: null,
 			i_caret,
 			s_preview,
 			s_border_top,
@@ -114,11 +133,11 @@ export class ContentSyntaxError extends ContentError {}
 ContentSyntaxError.prototype.description = 'Syntax error found while reading input.';
 
 export class UnexpectedTokenError extends ContentSyntaxError {
-	constructor(gc_error) {
-		super(gc_error);
+	constructor(k_consumer, gc_error) {
+		super(k_consumer, gc_error);
 		const g_self = HM_PRIVATES.get(this);
 		const s_char = g_self.s_source[g_self.i_caret];
-		g_self.s_message = `Expected ${gc_error.state} ${gc_error.eofed? 'but encountered <<EOF>>': ''}. Failed to parse a valid token starting at ${s_char? '"'+s_char+'"': '<<EOF>>'}`;
+		g_self.s_message = `Expected ${gc_error.state} ${gc_error.eofed? 'but encountered <<EOF>>': gc_error.but || ''}. Failed to parse a valid token starting at ${s_char? '"'+s_char+'"': '<<EOF>>'}`;
 	}
 }
 
@@ -126,8 +145,8 @@ export class InvalidStateChangeError extends ContentError {}
 InvalidStateChangeError.prototype.description = 'An invalid state change was detected.';
 
 export class NoSuchPrefixError extends ContentError {
-	constructor(gc_error) {
-		super(gc_error);
+	constructor(k_consumer, gc_error) {
+		super(k_consumer, gc_error);
 		const g_self = HM_PRIVATES.get(this);
 		g_self.s_message = `No such prefix '${gc_error.prefix}' was declared.`;
 	}
@@ -135,13 +154,29 @@ export class NoSuchPrefixError extends ContentError {
 NoSuchPrefixError.description = 'Missing prefix declaration.';
 
 export class ExceededMaximumTokenLengthError extends ContentError {
-	constructor(gc_error) {
-		super(gc_error);
+	constructor(k_consumer, gc_error) {
+		super(k_consumer, gc_error);
 		const g_self = HM_PRIVATES.get(this);
 		g_self.s_message = `The maximum token length is currently set to ${gc_error.mtl}. You can adjust this value in the parameters.`;
 	}
 }
 ExceededMaximumTokenLengthError.prototype.description = 'Exceeded maximum token length while reading input.';
+
+export class EmptyCollectionError extends ContentError {
+	constructor(k_consumer, gc_error) {
+		super(k_consumer, gc_error);
+		const g_self = HM_PRIVATES.get(this);
+		g_self.s_message = '';
+	}
+}
+EmptyCollectionError.prototype.description = 'Empty collection cannot exist in subject position.';
+
+export class ContextualError extends Error {
+	constructor(g_context) {
+		super();
+		this._g_context = g_context;
+	}
+}
 
 /*
 

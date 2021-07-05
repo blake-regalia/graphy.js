@@ -87,6 +87,7 @@ import {DataFactory} from '@@graphy/core';
 @;
 
 import {
+	ContextualError,
 	ContentSyntaxError,
 	UnexpectedTokenError,
 	@if B_LOAD
@@ -285,7 +286,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 @def error_args(gc_args={})
 	@//@object-literal
 	@.{
-		let sj_index = /* syntax: js */ `this.i`;
+		let sj_index = gc_args.index || /* syntax: js */ `this.i`;
 	}
 	@if gc_args.rewind
 		@.{
@@ -311,23 +312,28 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 			return {
 	@;
-	content: this,
-	source: this.s,
-	token: {
-		caret: @{sj_index},
-		@if gc_args.rewind
+
+	@if gc_args.rewind
+		token: {
 			start: i_token_0_start,
 			end: i_token_0_end,
-		@;
-	},
-	...this._b_line_tracking
-		? {
-			location: {
-				line: 1 + this._c_lines + count_lines_until(this.s, @{sj_index})@{gc_args.line || ''},
-				col: @{sj_index} - this.s.lastIndexOf('\n', @{sj_index}),
-			},
-		}
-		: {},
+		},
+	@+ 'this.i' !== sj_index
+		token: {
+			caret: @{sj_index},
+		},
+	@;
+
+	@if gc_args.line
+		...this._b_line_tracking
+			? {
+				location: {
+					line: 1 + this._c_lines + count_lines_until(this.s, @{sj_index})@{gc_args.line || ''},
+					col: @{sj_index} - this.s.lastIndexOf('\n', @{sj_index}),
+				},
+			}
+			: {},
+	@;
 
 	@if gc_args.rewind
 		}})(),
@@ -347,7 +353,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		// doesn't match existing
 		if(p_prefix_iri !== h_prefixes[s_prefix_id]) {
 			@if B_LOAD
-				throw new InvalidStateChangeError({
+				throw new InvalidStateChangeError(this, {
 					message: `Loader requires all prefix mappings declared before data statements. Detected IRI change of prefix namespace '${s_prefix_id}' from <${h_prefixes[s_prefix_id]}> to <${p_prefix_iri}>`,
 					@{error_args()}
 				});
@@ -366,7 +372,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	else {
 		// check namespace, invalid
 		if(!b_tolerant && !RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
-			throw new ContentSyntaxError({
+			throw new ContentSyntaxError(this, {
 				message: `Invalid namespace for prefixed name: '${s_prefix_id}:'`,
 				@{error_args({
 					rewind: [
@@ -401,7 +407,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 	// check iri, invalid
 	if(!b_tolerant && !RT_NAMED_NODE_VALID.test(p_prefix_iri)) {
-		throw new ContentSyntaxError({
+		throw new ContentSyntaxError(this, {
 			message: `Invalid IRI found in prefix delcaration: "${p_prefix_iri}"`,
 			@{error_args()}
 		});
@@ -446,7 +452,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	const gen_action_prefixed_name = ({b_escapeless, role:s_role}) => ({sj_matched}) => [
 		valid_prefix(sj_matched),
 		modal({
-			read: save_term(s_role, /* syntax: js */ `this.prefixed_name(s_prefix_id, ${sj_matched}[2])`),
+			read: [
+				/* syntax: js */ `
+					const s_suffix = ${sj_matched}[2]
+						.replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY)
+						.replace(R_PN_LOCAL_ESCAPES, '$1');
+				`,
+				save_term(s_role, /* syntax: js */ `this.prefixed_name(s_prefix_id, s_suffix)`),
+			],
 			load: load_term(s_role, /* syntax: js */ `${sj_matched}[1]`),
 		}),
 	];
@@ -944,7 +957,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			let sx_loop = ({
 				bypass: '',
 				for: /* syntax: js */ `for(;;) {`,
-				'': /* syntax: js */ `${si_state.toUpperCase()}: while(i < n) {  // !eslint-disable-line no-unmodified-loop-condition`,
+				'': /* syntax: js */ `${si_state.toUpperCase()}: while(i < n) {  // eslint-disable-line no-unmodified-loop-condition`,
 			})[g_state.loop || ''];
 
 			yield /* syntax: js.method */ `
@@ -1239,14 +1252,14 @@ const match_prefixed_name = (s, i) => {
 		@if B_OPTIMIZE_PREFIX_IDS
 			// invalid prefix
 			if(!(this._as_prefix_ids.has(@{sj_var}))) {
-				return new NoSuchPrefixError({
+				return new NoSuchPrefixError(this, {
 					prefix: @{sj_var},
 					@{error_args()}
 				});
 		@else
 			// invalid prefix
 			if(!OPHOP.call(this._h_prefixes, @{sj_var})) {
-				return new NoSuchPrefixError({
+				return new NoSuchPrefixError(this, {
 					prefix: @{sj_var},
 					@{error_args()}
 				});
@@ -1267,7 +1280,7 @@ const match_prefixed_name = (s, i) => {
 @def pop_state(s_err)
 	// invalid place to pop
 	if(!this._a_nested.length) {
-		throw new ContentSyntaxError({
+		throw new ContentSyntaxError(this, {
 			message: `Unexpected @{s_err}`,
 			@{error_args()}
 		});
@@ -1296,7 +1309,7 @@ const match_prefixed_name = (s, i) => {
 		if(0 === i) {
 			// we've exceeded the maximum token length
 			if(this.n > this.@{s_max_token || 'max_token_length'}) {
-				throw new ExceededMaximumTokenLengthError({
+				throw new ExceededMaximumTokenLengthError(this, {
 					state: '@{s_state}',
 					mtl: this.@{s_max_token || 'max_token_length'},
 					constraint: '',
@@ -1644,7 +1657,7 @@ const F_THROW = (e_read) => {
 };
 
 class Consumer {
-	constructor(gc_consumer, dc_actor) {
+	constructor(gc_consumer={}, dc_actor=null) {
 		// impl-specific configs
 		let {
 			// a state to inherit
@@ -1704,7 +1717,7 @@ class Consumer {
 		const namedNode = dc_factory.namedNode;
 
 		@if B_LOAD
-			const k_builder = gc_consumer.into || new BasicQuadTree.Builder();
+			const k_builder = gc_consumer.into || BasicQuadTree.builder();
 		@+ B_READ
 			this.restore_data = function() {
 				this._fk_data(this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_graph));
@@ -1940,7 +1953,7 @@ class Consumer {
 				blank_node: /* syntax: js */ `function(s_label) {
 					// test valid blank node label
 					if(!RT_BLANK_NODE_VALID.test(s_label)) {
-						throw new ContentSyntaxError({
+						throw new ContentSyntaxError(this, {
 							message: \`Invalid blank node label: '\${s_label}'\`,
 							${error_args({
 								// past length of label and `_:` sequence
@@ -1965,7 +1978,7 @@ class Consumer {
 
 				check_named_node: /* syntax: js */ `function(p_iri) {
 					if(!RT_NAMED_NODE_VALID.test(p_iri)) {
-						throw new ContentSyntaxError({
+						throw new ContentSyntaxError(this, {
 							message: \`Invalid IRI: <\${p_iri}>\`,
 							${error_args({
 								// past length of iri and `<`, `>`` chars
@@ -1981,7 +1994,7 @@ class Consumer {
 
 				check_named_node_escapeless: /* syntax: js */ `function(p_iri) {
 					if(!RT_NAMED_NODE_ESCAPELESS_VALID.test(p_iri)) {
-						throw new ContentSyntaxError({
+						throw new ContentSyntaxError(this, {
 							message: \`Invalid IRI: <\${p_iri}>\`,
 							${error_args({
 								// past `>` char, length of iri, then back to index of first invalid char
@@ -2004,7 +2017,7 @@ class Consumer {
 						// no need to check namespace since it was validated during declaration
 						// invalid local name
 						if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name_e[2]) && m_prefixed_name_e[2]) {
-							throw new ContentSyntaxError({
+							throw new ContentSyntaxError(this, {
 								message: \`Invalid prefixed name local name: '\${m_prefixed_name_e[2]}:'\`,
 								${error_args()}
 							});
@@ -2020,7 +2033,7 @@ class Consumer {
 						// no need to check namespace since it was validated during declaration
 						// invalid local name
 						if(!RT_PREFIXED_NAME_LOCAL_NAME_VALID.test(m_prefixed_name[2])) {
-							throw new ContentSyntaxError({
+							throw new ContentSyntaxError(this, {
 								message: \`Invalid prefixed name local name: '\${m_prefixed_name[2]}:'\`,
 								${error_args()}
 							});
@@ -2330,6 +2343,19 @@ class Consumer {
 		}
 		// read error occurred; return it
 		catch(e_read) {
+			// context error
+			if(e_read instanceof ContextualError) {
+				const i_caret = this.i + e_read._g_context.offset;
+
+				// eslint-disable-next-line no-ex-assign
+				e_read = new ContentSyntaxError(this, {
+					message: e_read._g_context.message,
+					@{error_args({
+						index: /* syntax: js */ `i_caret`,
+					})}
+				});
+			}
+
 			return e_read
 		}
 	}
@@ -2398,9 +2424,8 @@ class Consumer {
 				if(null === this.s) return;
 				// still invalid parsing state
 				if(this.@{S_STATE_PRIMARY} !== this._f_state) {
-					debugger;
 					// handle using callback
-					return new UnexpectedTokenError({
+					return new UnexpectedTokenError(this, {
 						state: this._f_state.name,
 						found: '<<EOF>>',
 						@{error_args({
@@ -2431,7 +2456,7 @@ class Consumer {
 				// not EOF
 				if(!(i === this.n - 1 && '\0' === s[i])) {
 					// bad input; parse error
-					return new UnexpectedTokenError({
+					return new UnexpectedTokenError(this, {
 						state: this._f_state.name,
 						@{error_args({
 							line: /* syntax: js */ `+ count_all_lines(this.s)`,
@@ -2480,52 +2505,6 @@ class Consumer {
 			this._kq_star = this._dc_factory.quad(this._kt_subject, this._kt_predicate, this._kt_object);
 		}
 	@;
-
-
-	// after a blank node subject (either property-list or colleciton)
-	post_blank_subject_DELETE_THIS() {
-		let {s, i} = this;
-		if('.' === s[i]) {
-			@{whitespace(+1)}
-
-			@ifB_QUADS
-				// not inside block
-				if(@{SJ_DEFAULT_GRAPH} === this._kt_graph) {
-					@{goto('block')}
-				}
-				// inside block
-				else {
-					@{goto('statement')}
-				}
-			@else
-				@{goto('statement')}
-			@;
-		@if B_QUADS
-			@{else_if_match('R_CHAR_CLOSE')}
-				// empty collection
-				if(@{terms_equal(SJ_RDF_NIL, 'this._kt_subject')}) {
-					throw new Error('empty collection');
-				}
-
-				// emit graph_close event
-				@{emit_graph_close()}
-
-				// reset graph
-				@if B_LOAD
-					@{load_default_graph()}
-				@else
-					this._kt_graph = @{SJ_DEFAULT_GRAPH};
-				@;
-
-				// goto block state
-				@{goto('block')}
-			@{end_else()}
-		@else
-			}
-		@;
-		@{goto('pairs')}
-	}
-	@. a_methods.push('post_blank_subject');
 
 
 	@.{
@@ -2830,7 +2809,7 @@ class Consumer {
 								? /* syntax: js.switch */ `
 									// invalid '\\n'
 									case '\\n': {
-										throw new ContentSyntaxError({
+										throw new ContentSyntaxError(this, {
 											message: \`Expected string_literal_${s_type}_${s_which} but found an invalid line feed character '\\\\n' (newline) within contents.\`,
 											${error_args()}
 										});
@@ -2838,7 +2817,7 @@ class Consumer {
 
 									// invalid '\\r'
 									case '\\r': {
-										throw new ContentSyntaxError({
+										throw new ContentSyntaxError(this, {
 											message: \`Expected string_literal_${s_type}_${s_which} but found an invalid form feed character '\\\\r' (carriage return) within contents.\`,
 											${error_args()}
 										});
@@ -3028,6 +3007,57 @@ class Consumer {
 		object_list: gen_state_object({b_star:false}),
 		object_x: gen_state_object({b_star:true}),
 
+		post_blank_subject:{
+			preamble: SJ_REF_X_CHAR,
+			rules: {
+				terminator: () => ({
+					type: 'chars',
+					test: '.',
+					action: B_TURTLE
+						? goto(S_STATE_PRIMARY)
+						: modal({
+							read: /* syntax: js */ `
+								return (${SJ_DEFAULT_GRAPH} === this._kt_graph)? this.${S_STATE_PRIMARY}(): this.statement();
+							`,
+							load: /* syntax: js */ `
+								return (${SJ_DEFAULT_GRAPH} === this._sc1_graph)? this.${S_STATE_PRIMARY}(): this.statement();
+							`,
+						}),
+				}),
+				...(B_TRIG
+					? {
+						graph_close: () => ({
+							type: 'chars',
+							test: '}',
+							action: [
+								/* syntax: js */ `
+									// empty collection
+									if(${terms_equal(SJ_RDF_NIL, /* syntax: js */ `this._kt_subject`)} && true) {
+										throw new EmptyCollectionError(this);
+									}
+
+									// emit graph_close event
+									${emit_graph_close()}
+
+									// reset graph
+									${modal({
+										read: load_default_graph(),
+										load: /* syntax: js */ `
+											this._kt_graph = ${SJ_DEFAULT_GRAPH};
+										`,
+									})}
+
+									// goto block state
+									${goto('block')}
+								`,
+							],
+						}),
+					}
+					:{}),
+			},
+			else: goto('pairs'),
+		},
+
 		triple_x_close: {
 			loop: 'bypass',
 			rules: {
@@ -3061,7 +3091,6 @@ class Consumer {
 		datatype: {
 			apply: {
 				role: 'datatype',
-
 			},
 			preamble: modal({
 				read: /* syntax: js */ `
@@ -3209,7 +3238,7 @@ class Consumer {
 								this.i = i;
 
 								// emit parse error
-								throw new UnexpectedTokenError({
+								throw new UnexpectedTokenError(this, {
 									state: 'end_of_property_list',
 									${error_args()}
 								});
@@ -3237,7 +3266,7 @@ class Consumer {
 					test: ')',
 					action: /* syntax: js */ `
 						// should not be here
-						throw new UnexpectedTokenError({
+						throw new UnexpectedTokenError(this, {
 							state: 'post_object',
 							found: 'end of collection',
 							${error_args()}
@@ -3963,7 +3992,4 @@ class Consumer {
 		}
 	}
 }
-
-// delete this once post_blank_subject calls have been refactored
-Consumer.prototype.post_blank_subject = Consumer.prototype.pairs;
 

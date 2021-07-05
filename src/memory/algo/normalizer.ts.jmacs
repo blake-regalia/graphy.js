@@ -324,7 +324,7 @@ export class Normalizer {
 		}
 
 		// build output
-		const kb_out = new this._kd_source.constructor.Builder(Object.assign({}, this._kd_source._h_prefixes));
+		const kb_out = this._kd_source.constructor.builder(Object.assign({}, this._kd_source._h_prefixes));
 
 		// 
 		const s_issuer_prefix = k_issuer._s_prefix;

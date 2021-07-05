@@ -126,13 +126,9 @@ export namespace Dataset {
 	}
 
 
-	export interface Constructor<DatasetType, BuilderClass, TransferType> {
-		Builder: BuilderClass;
-
+	export interface Static<DatasetType, BuilderClass, TransferType> {
 		empty(prefixes: PrefixMap): DatasetType;
-		// builder(prefixes: PrefixMap): BuilderType;
-
-		new(transfer: TransferType, prefixes: PrefixMap): DatasetType;
+		builder(prefixes: PrefixMap): BuilderType;
 	}
 
 	/**

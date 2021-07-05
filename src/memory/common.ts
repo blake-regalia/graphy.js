@@ -1,6 +1,7 @@
 import {
 	C1,
 	Term,
+	RDFJS,
 	Dataset,
 	PrefixMap,
 } from '@graphy/types';
@@ -154,6 +155,12 @@ export abstract class GenericQuadTree<
 	 */
 	_b_prefixed: boolean;
 
+	/**
+	 * The graphy storage type string for this dataset
+	 */
+	abstract datasetStorageType: string;
+
+
 	constructor(hc4_quads: QuadsHash, h_prefixes: PrefixMap, b_prefixed=false) {
 		this._hc4_quads = hc4_quads;
 		this._hc3_trips = hc4_quads['*'];
@@ -267,6 +274,38 @@ export abstract class GenericQuadTree<
 			yield subjectFromC1(sc1_subject, h_prefixes);
 		}
 	}
+
+	abstract _equals(k_other: TreeType): boolean;
+
+	equals(y_other: RDFJS.Dataset): boolean {
+		// reflection
+		if(y_other === this) return true;
+
+		// graphy dataset
+		if(y_other.isGraphyDataset) {
+			const hc4_quads_a = this._hc4_quads;
+			const hc4_quads_b = y_other._hc4_quads;
+
+			// quad count mismatch
+			if(hc4_quads_a[$_QUADS] !== hc4_quads_b[$_QUADS]) return false;
+
+			// key count mismatch
+			if(hc4_quads_a[$_KEYS] !== hc4_quads_b[$_KEYS]) return false;
+
+			// matching storage types
+			if(this.datasetStorageType === y_other.datasetStorageType) {
+				// apply impl-specific equals test
+				return this._equals(y_other as TreeType);
+			}
+			else {
+				throw new Error(`not yet implemented`);
+			}
+		}
+		// non-graphy
+		else {
+			throw new Error(`not yet implemented`);
+		}
+	}
 }
 
 // eslint-disable-next-line no-var
@@ -325,14 +364,12 @@ export namespace GenericQuadTree {
 		return hcw_dst;
 	};
 
-	export interface Constructor<
+	export interface Static<
 		DatasetType extends Dataset.SyncDataset,
 		BuilderType extends Dataset.SyncQuadTreeBuilder<DatasetType>,
 		TransferType extends QuadsHash
-	> extends Dataset.Constructor<DatasetType, BuilderType, TransferType> {
+	> extends Dataset.Static<DatasetType, BuilderType, TransferType> {
 		empty(prefixes: PrefixMap): DatasetType;
 		builder(prefixes: PrefixMap): BuilderType;
-
-		new(transfer: TransferType, prefixes: PrefixMap): DatasetType;
 	}
 }

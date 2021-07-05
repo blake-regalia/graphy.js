@@ -406,13 +406,12 @@ function empty_quads_hash(): QuadsHash {
 export class BasicQuadTree extends GenericQuadTree<
 	BasicQuadTree, IBasicQuadTree.QuadsHash, IBasicQuadTree.TriplesHash
 > implements Dataset.SyncC1Dataset<BasicQuadTree> {
-	static Builder = BasicQuadTreeBuilder;
-
 	/**
-	 * Internal self builder for creating match results or appending
-	 * @internal
+	 * Create new LinkedQuadTreeBuilder
 	 */
-	_k_builder: BasicQuadTreeBuilder;
+	static builder(h_prefixes: PrefixMap): BasicQuadTreeBuilder {
+		return new BasicQuadTreeBuilder(h_prefixes);
+	}
 
 	/**
 	 * Create new empty dataset
@@ -420,6 +419,12 @@ export class BasicQuadTree extends GenericQuadTree<
 	static empty(h_prefixes={} as PrefixMap): BasicQuadTree {
 		return new BasicQuadTree(empty_quads_hash(), h_prefixes);
 	}
+
+	/**
+	 * Internal self builder for creating match results or appending
+	 * @internal
+	 */
+	_k_builder: BasicQuadTreeBuilder;
 
 	/**
 	 * Create new dataset
@@ -1615,6 +1620,65 @@ export class BasicQuadTree extends GenericQuadTree<
 		throw new Error(`not yet implemented`);
 	}
 
+	_equals(k_other: BasicQuadTree): boolean {
+		const hc4_quads_a = this._hc4_quads;
+		const hc4_quads_b = k_other._hc4_quads;
+
+		// each graph in a
+		for(const sc1_graph in hc4_quads_a) {
+			// ref trips
+			const hc3_trips_a = hc4_quads_a[sc1_graph];
+			const hc3_trips_b = hc4_quads_b[sc1_graph];
+
+			// graph missing from b
+			if(!hc3_trips_b) return false;
+
+			// quad count mismatch
+			if(hc3_trips_a[$_QUADS] !== hc3_trips_b[$_QUADS]) return false;
+
+			// key count mismatch
+			if(hc3_trips_a[$_KEYS] !== hc3_trips_b[$_KEYS]) return false;
+
+			// each subject in a
+			for(const sc1_subject in hc3_trips_a) {
+				// ref probs
+				const hc2_probs_a = hc3_trips_a[sc1_subject];
+				const hc2_probs_b = hc3_trips_b[sc1_subject];
+
+				// subject missing from b
+				if(!hc2_probs_b) return false;
+
+				// quad count mismatch
+				if(hc2_probs_a[$_QUADS] !== hc2_probs_b[$_QUADS]) return false;
+
+				// key count mismatch
+				if(hc2_probs_a[$_KEYS] !== hc2_probs_b[$_KEYS]) return false;
+
+				// each predicate in a
+				for(const sc1_predicate in hc2_probs_a) {
+					// ref objects
+					const as_objects_a = hc2_probs_a[sc1_predicate];
+					const as_objects_b = hc2_probs_b[sc1_predicate];
+
+					// predicate missing from b
+					if(!as_objects_b) return false;
+
+					// set size mismatch
+					if(as_objects_a.size !== as_objects_b.size) return false;
+
+					// each object in a
+					for(const sc1_object of as_objects_a) {
+						// object missing from b
+						if(!as_objects_b.has(sc1_object)) return false;
+					}
+				}
+			}
+		}
+
+		// datasets match
+		return true;
+	}
+
 
 	minus(y_other: RDFJS.Dataset): Dataset.SyncDataset {
 		// TODO: in some cases, it will be faster to replace a tree in 'src' with an overlay of a tree from 'dst', and then delete keys from original tree
@@ -1645,12 +1709,12 @@ export interface BasicQuadTree {
 	/**
 	 * For typing static properties and methods
 	 */
-	constructor: Dataset.Constructor<BasicQuadTree, typeof BasicQuadTreeBuilder, QuadsHash>;
+	constructor: GenericQuadTree.Static<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
 
 	toCanonical(): BasicQuadTree;
 }
 
-type BasicQuadTreeClass = Dataset.Constructor<BasicQuadTree, typeof BasicQuadTreeBuilder, QuadsHash>;
+type BasicQuadTreeClass = GenericQuadTree.Static<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
 
 const BasicQuadTree_Assertion: BasicQuadTreeClass = BasicQuadTree;
 

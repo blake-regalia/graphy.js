@@ -248,12 +248,17 @@
 				// return s_invalid[1];
 
 				// if relaxed then return s_invalid, otherwise throw:
-				throw new Error(`expected string_literal but invalid escape sequence within contents: '${s_invalid}'. failed to parse a valid token`);
-
+				throw new ContextualError({
+					offset: s_.indexOf(s_invalid),
+					message: `Invalid escape sequence within string literal contents: ${JSON.stringify(s_invalid)}`,
+				});
 			}
 			// bad character
 			else {
-				throw new Error(`expected string_literal but invalid whitespace character within contents: ${JSON.stringify(s_invalid)}. failed to parse a valid token`);
+				throw new ContextualError({
+					offset: s_.indexOf(s_invalid),
+					message: `Invalid whitespace character within string literal contents: ${JSON.stringify(s_invalid)}`,
+				});
 			}
 		}
 		else {

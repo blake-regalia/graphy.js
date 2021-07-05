@@ -2550,41 +2550,63 @@ export function fromP1(sp1_node, h_prefixes={}) {
 	}
 }
 
+
+@> route_blank_node()
+	// anonymous
+	if(1 === sc1_term.length) return blankNode();
+
+	// ephemeral hint
+	if('#' === sc1_term[1]) return ephemeralBlankNode();
+
+	// create blank node
+	return blankNode(sc1_term.slice(2));
+@;
+
+
+@> route_literal_datatyped()
+	// find literal's contents delimiter
+	const i_contents = sc1_term.indexOf('"');
+
+	// no delimiter
+	if(-1 === i_contents) {
+		throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
+	}
+
+	// extract datatype
+	const s_datatype = sc1_term.slice(1, i_contents);
+
+	// make term
+	return literal(sc1_term.slice(i_contents+1), c1NodeExplicit(s_datatype, h_prefixes));
+@;
+
+@> route_literal_languaged()
+	// find literal's contents delimiter
+	const i_contents = sc1_term.indexOf('"');
+
+	// no delimiter
+	if(-1 === i_contents) {
+		throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
+	}
+
+	// extract language
+	const s_language = sc1_term.slice(1, i_contents);
+
+	// make term
+	return literal(sc1_term.slice(i_contents+1), s_language);
+@;
+
+
 export function fromC1(sc1_term, h_prefixes={}) {
 	// deduce term type
 	switch(sc1_term[0]) {
 		// datatyped literal
 		case '^': {
-			// find literal's contents delimiter
-			const i_contents = sc1_term.indexOf('"');
-
-			// no delimiter
-			if(-1 === i_contents) {
-				throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
-			}
-
-			// extract datatype
-			const s_datatype = sc1_term.slice(1, i_contents);
-
-			// make term
-			return literal(sc1_term.slice(i_contents+1), c1NodeExplicit(s_datatype, h_prefixes));
+			@{route_literal_datatyped()}
 		}
 
 		// languaged literal
 		case '@': {
-			// find literal's contents delimiter
-			const i_contents = sc1_term.indexOf('"');
-
-			// no delimiter
-			if(-1 === i_contents) {
-				throw new Error(`Invalid concise-term string, no content literal delimiter found: '${sc1_term}'`);
-			}
-
-			// extract language
-			const s_language = sc1_term.slice(1, i_contents);
-
-			// make term
-			return literal(sc1_term.slice(i_contents+1), s_language);
+			@{route_literal_languaged()}
 		}
 
 		// simple literal
@@ -2603,37 +2625,94 @@ export function fromC1(sc1_term, h_prefixes={}) {
 	}
 }
 
-// construct a term object from a concise term string for nodes
-export function c1Node(sc1_node, h_prefixes={}) {
-	// rdf:type shortcut
-	if('a' === sc1_node) return KT_RDF_TYPE;
-
+export function graphFromC1(sc1_term, h_prefixes={}) {
 	// default graph
-	if('*' === sc1_node) return defaultGraph();
+	if('*' === sc1_term) return defaultGraph();
 
 	// blank node
-	if('#' === sc1_node[0]) {
-		// anonymous
-		if(1 === sc1_node.length) return blankNode();
-
-		// ephemeral hint
-		if('#' === sc1_node[1]) return ephemeralBlankNode();
-
-		// create blank node
-		return blankNode(sc1_node.slice(2));
+	if('#' === sc1_term[0]) {
+		@{route_blank_node()}
 	}
 
 	// other
-	return c1NodeExplicit(sc1_node, h_prefixes);
+	return c1NodeExplicit(sc1_term, h_prefixes);
+}
+
+export function subjectFromC1(sc1_term, h_prefixes={}) {
+	// blank node
+	if('#' === sc1_term[0]) {
+		@{route_blank_node()}
+	}
+
+	// other
+	return c1NodeExplicit(sc1_term, h_prefixes);
+}
+
+export function predicateFromC1(sc1_term, h_prefixes={}) {
+	// rdf:type shortcut
+	if('a' === sc1_term) return KT_RDF_TYPE;
+
+	// other
+	return c1NodeExplicit(sc1_term, h_prefixes);
+}
+
+
+export function objectFromC1(sc1_term, h_prefixes={}) {
+	// deduce term type
+	switch(sc1_term[0]) {
+		// datatyped literal
+		case '^': {
+			@{route_literal_datatyped()}
+		}
+
+		// languaged literal
+		case '@': {
+			@{route_literal_languaged()}
+		}
+
+		// simple literal
+		case '"': {
+			// make term
+			return literal(sc1_term.slice(1));
+		}
+
+		// blank node
+		case '#': {
+			@{route_blank_node()}
+		}
+
+		default: {
+			// other
+			return c1NodeExplicit(sc1_term, h_prefixes);
+		}
+	}
+}
+
+
+// construct a term object from a concise term string for nodes
+export function c1Node(sc1_term, h_prefixes={}) {
+	// rdf:type shortcut
+	if('a' === sc1_term) return KT_RDF_TYPE;
+
+	// default graph
+	if('*' === sc1_term) return defaultGraph();
+
+	// blank node
+	if('#' === sc1_term[0]) {
+		@{route_blank_node()}
+	}
+
+	// other
+	return c1NodeExplicit(sc1_term, h_prefixes);
 }
 
 // construct a named node
-export function c1NamedNode(sc1_node, h_prefixes={}) {
+export function c1NamedNode(sc1_term, h_prefixes={}) {
 	// rdf:type shortcut
-	if('a' === sc1_node) return KT_RDF_TYPE;
+	if('a' === sc1_term) return KT_RDF_TYPE;
 
 	// other
-	return c1NodeExplicit(sc1_node, h_prefixes);
+	return c1NodeExplicit(sc1_term, h_prefixes);
 }
 
 // construct a term object from a concise term string for nodes (no shortcuts)
