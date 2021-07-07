@@ -532,7 +532,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				read: /* syntax: js */ `
 					${update_prefixes()}
 				`,
-				load: '',
+				load: /* syntax: js */ `
+					${update_prefixes()}
+				`,
 			}),
 			// handle full stop
 			full_stop(),
@@ -1524,11 +1526,11 @@ export class @{S_EXPORT} extends stream.@{B_LOAD? /* syntax: js */ `Writable`: /
 
 		// string
 		if('string' === typeof z_input) {
-			k_consumer.consume_string(z_input);
+			return k_consumer.consume_string(z_input);
 		}
 		// stream
 		else {
-			await k_consumer.consume_stream(z_input);
+			return await k_consumer.consume_stream(z_input);
 		}
 	}
 
@@ -2137,6 +2139,10 @@ class Consumer {
 
 		// handle error
 		if(e_eof) return this._fe_error(e_eof);
+
+		@- B_LOAD
+			return this._k_dataset;
+		@;
 	}
 
 	// consume a stream
@@ -2197,7 +2203,11 @@ class Consumer {
 				if(e_eof) return this._fe_error(e_eof);
 
 				// resolve promise
-				fk_consumed();
+				@- B_LOAD
+					fk_consumed(this._k_dataset);
+				@:
+					fk_consumed();
+				@;
 			});
 		});
 	}
@@ -2489,9 +2499,12 @@ class Consumer {
 		@if B_LOAD
 			@if B_LOAD_GSPO_BUILDER
 				// deliver dataset; call 'load' handler
-				this._k_builder.deliver().then((k_dataset) => {
-					this._fk_load(k_dataset);
-				});
+				const k_dataset = this._k_dataset = this._k_builder.deliver();
+
+				// attach prefixes
+				k_dataset.attachPrefixes(this._h_prefixes);
+
+				this._fk_load(k_dataset);
 			@else
 				// ref self
 				const k_self = this;

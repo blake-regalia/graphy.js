@@ -86,6 +86,7 @@
 
 	const H_TERM_DEFAULT_GRAPH = {
 		f1: `'*'`,
+		implements: /* syntax: js */ `RDFJS.DefaultGraph`,
 		properties: {
 			...H_TERM_GRAPHABLE.properties,
 			isDefaultGraph:       true,
@@ -110,6 +111,7 @@
 	const H_TERM_NAMED_NODE = {
 		c1: '`${string}:${string}`',
 		f1: SX_C1_ABSOLUTE_IRI,
+		implements: /* syntax: js */ `RDFJS.NamedNode`,
 		properties: {
 			...H_TERM_NODE.properties,
 			isNamedNode:          true,
@@ -143,6 +145,7 @@
 	};
 
 	const H_TERM_BLANK_NODE = {
+		implements: /* syntax: js */ `RDFJS.BlankNode`,
 		properties: {
 			...H_TERM_NODE.properties,
 			isBlankNode:          true,
@@ -182,6 +185,7 @@
 	};
 
 	const H_TERM_LITERAL = {
+		implements: /* syntax: js */ `RDFJS.Literal`,
 		properties: {
 			...H_TERM_GENERIC.properties,
 			isAbleObject:          true,
@@ -378,6 +382,7 @@
 
 	const H_TERM_VARIABLE = {
 		f1: '`?${string}`',
+		implements: /* syntax: js */ `RDFJS.Variable`,
 		properties: {
 			...H_TERM_GENERIC.properties,
 			isVariable: true,
@@ -387,6 +392,7 @@
 	};
 
 	const H_TERM_QUAD = {
+		implements: /* syntax: js */ `RDFJS.Quad`,
 		properties: {
 			...H_TERM_GENERIC.properties,
 			isGraphyQuad: true,
@@ -433,7 +439,14 @@
 	let s_accepted = '';
 
 	for(const [si_term, g_term] of ode(H_TERMS)) {
-		yield /* syntax: ts */ `\texport interface ${si_term} {\n`;
+		let sj_implements = '';
+		if(g_term.implements) {
+			sj_implements = `extends ${g_term.implements}`;
+		}
+		else if(g_term.class) {
+			sj_implements = `extends RDFJS.${g_term.class}`;
+		}
+		yield /* syntax: ts */ `\texport interface ${si_term} ${sj_implements || ''} {\n`;
 
 		for(const [si_property, sj_property] of ode(g_term.properties)) {
 			yield /* syntax: ts */ `\t\treadonly ${si_property}: ${sj_property};\n`;
@@ -461,6 +474,10 @@
 				}
 				console.warn(`key mismatch discovered on ${si_term}: missing: '''\n${s_missing}\n'''. extra: '''\n${s_extra}\n'''`);
 			}
+		}
+
+		if(g_term.body) {
+			yield '\t\t'+g_term.body.trim().split(/\s*\n+\s*/g).join('\n\t\t')+'\n';
 		}
 
 		const si_class = g_term.class || si_term;

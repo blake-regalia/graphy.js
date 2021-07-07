@@ -6,6 +6,8 @@ import {
 import type {
 	RDFJS,
 	Role,
+	VRole,
+	VStarRole,
 	Term,
 	C1,
 	Dataset,
@@ -79,6 +81,20 @@ export type InternalObjectSet = Set<C1.Object>;
 
 
 export type Tree = QuadsHash | TriplesHash | ProbsHash;
+
+export type AccumulatorHash = Record<string, any>;
+
+export interface CrawlProbsHash {
+	[sc1_object: string]: CrawlTriplesHash | ((as_objs: Set<C1.Object>) => AccumulatorHash | null | undefined);
+}
+
+export interface CrawlTriplesHash {
+	[sc1_predicate: string]: CrawlProbsHash | ((hc2_probs: ProbsHash) => AccumulatorHash | null | undefined);
+}
+
+export interface CrawlQuadsHash {
+	[sc1_subject: string]: CrawlTriplesHash | ((hc3_trips: TriplesHash) => AccumulatorHash | null | undefined);
+}
 
 
 // export const overlayTree = <HashType extends QuadsHash | TriplesHash | ProbsHash>(n_keys=0, n_quads=0) => ({
@@ -663,20 +679,154 @@ export class BasicQuadTree extends GenericQuadTree<
 	}
 
 
+	deleteMatches(yt_subject?: VStarRole.Subject, yt_predicate?: VStarRole.Predicate, yt_object?: VStarRole.Object, yt_graph?: VStarRole.Graph): this {
+		const h_prefixes = this._h_prefixes;
+
+		if(yt_subject && 'Quad' === yt_subject.termType) throw new Error('Quads not supported');
+		if(yt_object && 'Quad' === yt_object.termType) throw new Error('Quads not supported');
+
+		const sc1_subject = yt_subject && 'Variable' !== yt_subject.termType? c1FromSubjectRole(yt_subject, h_prefixes): null;
+		const sc1_predicate = yt_predicate && 'Variable' !== yt_predicate.termType? c1FromPredicateRole(yt_predicate, h_prefixes): null;
+		const sc1_object = yt_object && 'Variable' !== yt_object.termType? c1FromObjectRole(yt_object, h_prefixes): null;
+		const sc1_graph = yt_graph && 'Variable' !== yt_graph.termType? c1FromGraphRole(yt_graph, h_prefixes): null;
+
+		this._delete_matches_c1(sc1_subject, sc1_predicate, sc1_object, sc1_graph);
+
+		return this;
+	}
+
+	deleteMatchesC1(sc1_subject?: null | C1.Subject, sc1_predicate?: null | C1.Predicate, sc1_object?: null | C1.Object, sc1_graph?: null | C1.Graph): this {
+		const h_prefixes = this._h_prefixes;
+
+		this._delete_matches_c1(
+			sc1_subject? c1ExpandData<C1.Subject>(sc1_subject, h_prefixes): null,
+			sc1_predicate? c1ExpandData<C1.Predicate>(sc1_predicate, h_prefixes): null,
+			sc1_object? c1ExpandData<C1.Object>(sc1_object, h_prefixes): null,
+			sc1_graph? c1ExpandData<C1.Graph>(sc1_graph, h_prefixes): null,
+		);
+		return this;
+	}
+
+	_delete_matches_c1(sc1_subject?: null | C1.Subject, sc1_predicate?: null | C1.Predicate, sc1_object?: null | C1.Object, sc1_graph?: null | C1.Graph): number {
+		const hc4_quads = this._hc4_quads;
+
+		// count number of quads deleted
+		let c_deleted = 0;
+
+		// graph specified
+		if(sc1_graph) {
+			// ref trips
+			const hc3_trips = hc4_quads[sc1_graph];
+
+			// graph does not exist
+			if(!hc3_trips) return 0;
+
+			// open graph handle
+			const kh_graph = this._k_builder.openC1Graph(sc1_graph);
+
+			// subject specified
+			if(sc1_subject) {
+				// ref probs
+				const hc2_probs = hc3_trips[sc1_subject];
+
+				// subject does not exist
+				if(!hc2_probs) return 0;
+
+				// open grub handle
+				const kh_grub = kh_graph.openC1Subject(sc1_subject);
+
+				// predicate specified
+				if(sc1_predicate) {
+					// ref objects
+					const as_objects = hc2_probs[sc1_predicate];
+
+					// predicate does not exist
+					if(!as_objects) return 0;
+
+					// open grasp handle
+					const kh_grasp = kh_grub.openC1Predicate(sc1_predicate);
+
+					// object specified
+					if(sc1_object) {
+						// object does not exist
+						if(!as_objects.has(sc1_object)) return 0;
+
+						// object exists; delete it
+						kh_grasp.deleteC1Object(sc1_object);
+
+						// single triple deleted
+						return 1;
+					}
+					// delete all objects
+					else {
+						// TODO: implement
+					}
+				}
+				// predicate wildcard
+				else {
+					// TODO: implement
+				}
+			}
+			// subject wildcard
+			else {
+				// TODO: implement
+			}
+		}
+		// graph wildcard
+		else {
+			// TODO: implement
+		}
+
+		return c_deleted;
+	}
+
+	sibling(): BasicQuadTree {
+		return BasicQuadTree.empty(this._h_prefixes);
+	}
+
 	protected _offspring(hc4_out: QuadsHash): BasicQuadTree {
 		return new BasicQuadTree(hc4_out, this._h_prefixes);
 	}
 
 
-	match(yt_subject?: Role.Subject | null, yt_predicate?: Role.Predicate | null, yt_object?: Role.Object | null, yt_graph?: Role.Graph| null): BasicQuadTree {
+	match(yt_subject?: VStarRole.Subject, yt_predicate?: VStarRole.Predicate, yt_object?: VStarRole.Object, yt_graph?: VStarRole.Graph): BasicQuadTree {
+		// ref prefixes
 		const h_prefixes = this._h_prefixes;
+
+		if(yt_subject && 'Quad' === yt_subject.termType) throw new Error('Quads not supported');
+		if(yt_object && 'Quad' === yt_object.termType) throw new Error('Quads not supported');
+
+		// match on expanded c1s
+		return this._match_c1(
+			yt_subject && 'Variable' !== yt_subject.termType? c1FromSubjectRole(yt_subject, h_prefixes): null,
+			yt_predicate && 'Variable' !== yt_predicate.termType? c1FromPredicateRole(yt_predicate, h_prefixes): null,
+			yt_object && 'Variable' !== yt_object.termType? c1FromObjectRole(yt_object, h_prefixes): null,
+			yt_graph && 'Variable' !== yt_graph.termType? c1FromGraphRole(yt_graph, h_prefixes): null,
+		);
+	}
+
+	matchC1(sc1_subject?: null | C1.Subject, sc1_predicate?: null | C1.Predicate, sc1_object?: null | C1.Object, sc1_graph?: C1.Graph| null): BasicQuadTree {
+		// ref prefixes
+		const h_prefixes = this._h_prefixes;
+
+		// match on expanded c1s
+		return this._match_c1(
+			sc1_subject? c1ExpandData(sc1_subject, h_prefixes): null,
+			sc1_predicate? c1ExpandData(sc1_predicate, h_prefixes): null,
+			sc1_object? c1ExpandData(sc1_object, h_prefixes): null,
+			sc1_graph? c1ExpandData(sc1_graph, h_prefixes): null,
+		);
+	}
+
+	_match_c1(sc1_subject?: null | C1.Subject, sc1_predicate?: null | C1.Predicate, sc1_object?: null | C1.Object, sc1_graph?: C1.Graph| null): BasicQuadTree {
+		// ref prefixes
+		const h_prefixes = this._h_prefixes;
+
+		// ref c4 hash source
 		const hc4_src = this._hc4_quads as QuadsHash;
 
 		// +graph
-		if(yt_graph) {
-			// convert graph to c1
-			const sc1_graph = c1FromGraphRole(yt_graph, h_prefixes);
-
+		if(sc1_graph) {
 			// no such graph; return new empty tree
 			if(!(sc1_graph in hc4_src)) return BasicQuadTree.empty(h_prefixes);
 
@@ -684,10 +834,7 @@ export class BasicQuadTree extends GenericQuadTree<
 			const hc3_src = hc4_src[sc1_graph];
 
 			// +grraph, +subject
-			if(yt_subject) {
-				// convert subject to c1
-				let sc1_subject = c1FromSubjectRole(yt_subject, h_prefixes);
-
+			if(sc1_subject) {
 				// no such subject; return new empty tree
 				if(!(sc1_subject in hc3_src)) return BasicQuadTree.empty(h_prefixes);
 
@@ -695,10 +842,7 @@ export class BasicQuadTree extends GenericQuadTree<
 				const hc2_src = hc3_src[sc1_subject];
 
 				// +graph, +subject, +predicate
-				if(yt_predicate) {
-					// convert predicate to c1
-					const sc1_predicate = c1FromPredicateRole(yt_predicate, h_prefixes);
-
+				if(sc1_predicate) {
 					// no such predicate; return new empty tree
 					if(!(sc1_predicate in hc2_src)) return BasicQuadTree.empty(h_prefixes);
 
@@ -710,10 +854,7 @@ export class BasicQuadTree extends GenericQuadTree<
 					let as_objects_dst: InternalObjectSet;
 
 					// +graph, +subject, +predicate, +object
-					if(yt_object) {
-						// convert object to c1
-						const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
-
+					if(sc1_object) {
 						// no such object; return new empty tree
 						if(!as_objects_src.has(sc1_object)) return BasicQuadTree.empty(h_prefixes);
 						
@@ -754,10 +895,7 @@ export class BasicQuadTree extends GenericQuadTree<
 					} as QuadsHash);
 				}
 				// +graph, +subject, -predicate, +object
-				else if(yt_object) {
-					// convert object to c1
-					const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
-
+				else if(sc1_object) {
 					// prepare for loading into set multiple times
 					const a_object_load = [sc1_object];
 
@@ -768,11 +906,11 @@ export class BasicQuadTree extends GenericQuadTree<
 					const hc2_dst = overlayTree<ProbsHash>();
 
 					// each probs
-					for(const sc1_predicate in hc2_src) {
+					for(const sc1_predicate_in in hc2_src) {
 						// object exists under probs tree
-						if(hc2_src[sc1_predicate].has(sc1_object)) {
+						if(hc2_src[sc1_predicate_in].has(sc1_object)) {
 							// create new objects set and save to dst probs tree
-							hc2_dst[sc1_predicate] = new Set(a_object_load);
+							hc2_dst[sc1_predicate_in] = new Set(a_object_load);
 
 							// increment probs count
 							c_probs += 1;
@@ -815,10 +953,7 @@ export class BasicQuadTree extends GenericQuadTree<
 				}
 			}
 			// +graph, -subject, +predicate
-			else if(yt_predicate) {
-				// convert predicate to c1
-				const sc1_predicate = c1FromPredicateRole(yt_predicate, h_prefixes);
-
+			else if(sc1_predicate) {
 				// how many subject-keys and quads are added
 				let c_subjects = 0;
 				let c_quads = 0;
@@ -827,17 +962,14 @@ export class BasicQuadTree extends GenericQuadTree<
 				const hc3_dst = overlayTree<TriplesHash>();
 
 				// +graph, -subject, +predicate, +object
-				if(yt_object) {
-					// convert object to c1
-					const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
-
+				if(sc1_object) {
 					// prepare for loading into set multiple times
 					const a_object_load = [sc1_object];
 
 					// each triples
-					for(const sc1_subject in hc3_src) {
+					for(const sc1_subject_in in hc3_src) {
 						// ref src probs tree
-						const hc2_src = hc3_src[sc1_subject];
+						const hc2_src = hc3_src[sc1_subject_in];
 
 						// no such predicate; skip
 						if(!(sc1_predicate in hc2_src)) continue;
@@ -849,7 +981,7 @@ export class BasicQuadTree extends GenericQuadTree<
 						if(!as_objects_src.has(sc1_object)) continue;
 
 						// create probs subtree
-						hc3_dst[sc1_subject] = {
+						hc3_dst[sc1_subject_in] = {
 							[$_KEYS]: 1,
 							[$_QUADS]: 1,
 							[sc1_predicate]: new Set(a_object_load),
@@ -865,9 +997,9 @@ export class BasicQuadTree extends GenericQuadTree<
 				// +graph, -subject, +predicate, -object
 				else {
 					// each triples
-					for(const sc1_subject in hc3_src) {
+					for(const sc1_subject_in in hc3_src) {
 						// ref src probs tree
-						const hc2_src = hc3_src[sc1_subject];
+						const hc2_src = hc3_src[sc1_subject_in];
 
 						// no such predicate; skip
 						if(!(sc1_predicate in hc2_src)) continue;
@@ -876,7 +1008,7 @@ export class BasicQuadTree extends GenericQuadTree<
 						const as_objects_dst = new Set(hc2_src[sc1_predicate]);
 
 						// create probs subtree
-						hc3_dst[sc1_subject] = {
+						hc3_dst[sc1_subject_in] = {
 							[$_KEYS]: 1,
 							[$_QUADS]: as_objects_dst.size,
 							[sc1_predicate]: as_objects_dst,
@@ -903,10 +1035,7 @@ export class BasicQuadTree extends GenericQuadTree<
 				} as QuadsHash);
 			}
 			// +graph, -subject, -predicate, +object
-			else if(yt_object) {
-				// convert object to c1
-				const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
-
+			else if(sc1_object) {
 				// prepare for loading into set multiple times
 				const a_object_load = [sc1_object];
 
@@ -918,9 +1047,9 @@ export class BasicQuadTree extends GenericQuadTree<
 				const hc3_dst = overlayTree<TriplesHash>();
 
 				// each triples
-				for(const sc1_subject in hc3_src) {
+				for(const sc1_subject_in in hc3_src) {
 					// ref src probs tree
-					const hc2_src = hc3_src[sc1_subject];
+					const hc2_src = hc3_src[sc1_subject_in];
 
 					// count distinct probs
 					let c_probs = 0;
@@ -929,14 +1058,14 @@ export class BasicQuadTree extends GenericQuadTree<
 					const hc2_dst = overlayTree<ProbsHash>();
 
 					// each probs
-					for(const sc1_predicate in hc2_src) {
+					for(const sc1_predicate_in in hc2_src) {
 						// ref src objects set
-						let as_objects_src = hc2_src[sc1_predicate];
+						let as_objects_src = hc2_src[sc1_predicate_in];
 
 						// set has target object
 						if(as_objects_src.has(sc1_object)) {
 							// create object set
-							hc2_dst[sc1_predicate] = new Set(a_object_load);
+							hc2_dst[sc1_predicate_in] = new Set(a_object_load);
 
 							// increment pair count
 							c_probs += 1;
@@ -951,7 +1080,7 @@ export class BasicQuadTree extends GenericQuadTree<
 					hc2_dst[$_QUADS] = c_probs;
 
 					// save probs tree tree
-					hc3_dst[sc1_subject] = hc2_dst;
+					hc3_dst[sc1_subject_in] = hc2_dst;
 
 					// increment super quads count
 					c_quads += c_probs;
@@ -990,31 +1119,22 @@ export class BasicQuadTree extends GenericQuadTree<
 			const hc4_dst = overlayTree<QuadsHash>();
 
 			// -graph, +subject
-			if(yt_subject) {
-				// convert subject to c1
-				const sc1_subject = c1FromSubjectRole(yt_subject, h_prefixes);
-
+			if(sc1_subject) {
 				// -graph, +subject, +predicate
-				if(yt_predicate) {
-					// convert predicate to c1
-					const sc1_predicate = c1FromPredicateRole(yt_predicate, h_prefixes);
-
+				if(sc1_predicate) {
 					// graph-keys and quads counts
 					let c_graphs = 0;
 					let c_quads = 0;
 
 					// -graph, +subject, +predicate, +object
-					if(yt_object) {
-						// convert object to c1
-						const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
-
+					if(sc1_object) {
 						// prepare for loading into set multiple times
 						const a_object_load = [sc1_object];
 
 						// each graph
-						for(const sc1_graph in hc4_src) {
+						for(const sc1_graph_in in hc4_src) {
 							// ref src triples tree
-							const hc3_src = hc4_src[sc1_graph];
+							const hc3_src = hc4_src[sc1_graph_in];
 
 							// no such subject; skip
 							if(!(sc1_subject in hc3_src)) continue;
@@ -1035,7 +1155,7 @@ export class BasicQuadTree extends GenericQuadTree<
 							const as_objects_dst = new Set(a_object_load);
 
 							// create dst triples tree
-							hc4_dst[sc1_graph] = {
+							hc4_dst[sc1_graph_in] = {
 								[$_KEYS]: 1,
 								[$_QUADS]: 1,
 								[sc1_subject]: {
@@ -1055,9 +1175,9 @@ export class BasicQuadTree extends GenericQuadTree<
 					// -graph, +subject, +predicate, -object
 					else {
 						// each graph
-						for(const sc1_graph in hc4_src) {
+						for(const sc1_graph_in in hc4_src) {
 							// ref src triples tree
-							const hc3_src = hc4_src[sc1_graph];
+							const hc3_src = hc4_src[sc1_graph_in];
 
 							// no such subject; skip
 							if(!(sc1_subject in hc3_src)) continue;
@@ -1075,7 +1195,7 @@ export class BasicQuadTree extends GenericQuadTree<
 							let n_objects = as_objects_dst.size;
 
 							// create dst triples tree
-							hc4_dst[sc1_graph] = {
+							hc4_dst[sc1_graph_in] = {
 								[$_KEYS]: 1,
 								[$_QUADS]: n_objects,
 								[sc1_subject]: {
@@ -1108,17 +1228,14 @@ export class BasicQuadTree extends GenericQuadTree<
 					let c_quads = 0;
 
 					// -graph, +subject, -predicate, +object
-					if(yt_object) {
-						// convert object to c1
-						const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
-
+					if(sc1_object) {
 						// prepare for loading into set multiple times
 						const a_object_load = [sc1_object];
 
 						// each graph
-						for(const sc1_graph in hc4_src) {
+						for(const sc1_graph_in in hc4_src) {
 							// ref src triples tree
-							const hc3_src = hc4_src[sc1_graph];
+							const hc3_src = hc4_src[sc1_graph_in];
 
 							// no such subject; skip
 							if(!(sc1_subject in hc3_src)) continue;
@@ -1133,15 +1250,15 @@ export class BasicQuadTree extends GenericQuadTree<
 							const hc2_dst =  overlayTree<ProbsHash>();
 
 							// each predicate
-							for(const sc1_predicate in hc2_src) {
+							for(const sc1_predicate_in in hc2_src) {
 								// ref src objets set
-								const as_objects_src = hc2_src[sc1_predicate];
+								const as_objects_src = hc2_src[sc1_predicate_in];
 
 								// no such object; skip
 								if(!as_objects_src.has(sc1_object)) continue;
 
 								// create dst objects set
-								hc2_dst[sc1_predicate] = new Set(a_object_load);
+								hc2_dst[sc1_predicate_in] = new Set(a_object_load);
 
 								// increment probs count
 								c_probs += 1;
@@ -1155,7 +1272,7 @@ export class BasicQuadTree extends GenericQuadTree<
 							hc2_dst[$_QUADS] = c_probs;
 
 							// save probs tree tree
-							hc4_dst[sc1_graph] = {
+							hc4_dst[sc1_graph_in] = {
 								[$_KEYS]: 1,
 								[$_QUADS]: c_probs,
 								[sc1_subject]: hc2_dst,
@@ -1169,9 +1286,9 @@ export class BasicQuadTree extends GenericQuadTree<
 					// -graph, +subject, -predicate, -object
 					else {
 						// each graph
-						for(const sc1_graph in hc4_src) {
+						for(const sc1_graph_in in hc4_src) {
 							// ref src triples tree
-							const hc3_src = hc4_src[sc1_graph];
+							const hc3_src = hc4_src[sc1_graph_in];
 
 							// no such subject; skip
 							if(!(sc1_subject in hc3_src)) continue;
@@ -1183,7 +1300,7 @@ export class BasicQuadTree extends GenericQuadTree<
 							const n_quads = hc2_src[$_QUADS];
 
 							// save thin copy of probs tree to dst quads hash
-							hc4_dst[sc1_graph] = {
+							hc4_dst[sc1_graph_in] = {
 								[$_KEYS]: 1,
 								[$_QUADS]: n_quads,
 								[sc1_subject]: overlay(hc2_src),
@@ -1209,26 +1326,20 @@ export class BasicQuadTree extends GenericQuadTree<
 			// -graph, -subject
 			else {
 				// -graph, -subject, +predicate
-				if(yt_predicate) {  // eslint-disable-line no-lonely-if
-					// convert predicate to c1
-					const sc1_predicate = c1FromPredicateRole(yt_predicate, h_prefixes);
-
+				if(sc1_predicate) {  // eslint-disable-line no-lonely-if
 					// graph-keys and quads count
 					let c_graphs = 0;
 					let c_quads = 0;
 
 					// -graph, -subject, +predicate, +object
-					if(yt_object) {
-						// convert predicate to c1
-						const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
-
+					if(sc1_object) {
 						// prepare for loading into set multiple times
 						const a_object_load = [sc1_object];
 
 						// each graph
-						for(const sc1_graph in hc4_src) {
+						for(const sc1_graph_in in hc4_src) {
 							// ref src triples tree
-							const hc3_src = hc4_src[sc1_graph];
+							const hc3_src = hc4_src[sc1_graph_in];
 
 							// subjet-keys count
 							let c_subjects = 0;
@@ -1237,9 +1348,9 @@ export class BasicQuadTree extends GenericQuadTree<
 							const hc3_dst = overlayTree<TriplesHash>();
 
 							// each subject
-							for(const sc1_subject in hc3_src) {
+							for(const sc1_subject_in in hc3_src) {
 								// ref src probs tree
-								const hc2_src = hc3_src[sc1_subject];
+								const hc2_src = hc3_src[sc1_subject_in];
 
 								// no such predicate; skip
 								if(!(sc1_predicate in hc2_src)) continue;
@@ -1251,7 +1362,7 @@ export class BasicQuadTree extends GenericQuadTree<
 								if(!as_objects_src.has(sc1_object)) continue;
 
 								// create dst triples tree
-								hc3_dst[sc1_subject] = {
+								hc3_dst[sc1_subject_in] = {
 									[$_KEYS]: 1,
 									[$_QUADS]: 1,
 									[sc1_predicate]: new Set(a_object_load),
@@ -1269,7 +1380,7 @@ export class BasicQuadTree extends GenericQuadTree<
 							hc3_dst[$_QUADS] = c_subjects;
 
 							// save triples tree tree
-							hc4_dst[sc1_graph] = hc3_dst;
+							hc4_dst[sc1_graph_in] = hc3_dst;
 
 							// increment graph-keys and quads count
 							c_graphs += 1;
@@ -1289,9 +1400,9 @@ export class BasicQuadTree extends GenericQuadTree<
 					// -graph, -subject, +predicate, -object
 					else {
 						// each graph
-						for(const sc1_graph in hc4_src) {
+						for(const sc1_graph_in in hc4_src) {
 							// ref src triples tree
-							const hc3_src = hc4_src[sc1_graph];
+							const hc3_src = hc4_src[sc1_graph_in];
 
 							// subjet-keys and quads count
 							let c_subjects = 0;
@@ -1301,9 +1412,9 @@ export class BasicQuadTree extends GenericQuadTree<
 							const hc3_dst = overlayTree<TriplesHash>();
 
 							// each subject
-							for(const sc1_subject in hc3_src) {
+							for(const sc1_subject_in in hc3_src) {
 								// ref src probs tree
-								const hc2_src = hc3_src[sc1_subject];
+								const hc2_src = hc3_src[sc1_subject_in];
 
 								// no such predicate; skip
 								if(!(sc1_predicate in hc2_src)) continue;
@@ -1315,7 +1426,7 @@ export class BasicQuadTree extends GenericQuadTree<
 								const n_objects = as_objects_dst.size;
 
 								// create dst triples tree
-								hc3_dst[sc1_subject] = {
+								hc3_dst[sc1_subject_in] = {
 									[$_KEYS]: 1,
 									[$_QUADS]: n_objects,
 									[sc1_predicate]: as_objects_dst,
@@ -1334,7 +1445,7 @@ export class BasicQuadTree extends GenericQuadTree<
 							hc3_dst[$_QUADS] = c_triples;
 
 							// save triples tree tree
-							hc4_dst[sc1_graph] = hc3_dst;
+							hc4_dst[sc1_graph_in] = hc3_dst;
 
 							// increment graph-keys and quads count
 							c_graphs += 1;
@@ -1355,10 +1466,7 @@ export class BasicQuadTree extends GenericQuadTree<
 				// -graph, -subject, -predicate
 				else {
 					// -graph, -subject, -predicate, +object
-					if(yt_object) {  // eslint-disable-line no-lonely-if
-						// convert predicate to c1
-						const sc1_object = c1FromObjectRole(yt_object, h_prefixes);
-
+					if(sc1_object) {  // eslint-disable-line no-lonely-if
 						// prepare for loading into set multiple times
 						const a_object_load = [sc1_object];
 
@@ -1367,9 +1475,9 @@ export class BasicQuadTree extends GenericQuadTree<
 						let c_quads = 0;
 
 						// each graph
-						for(const sc1_graph in hc4_src) {
+						for(const sc1_graph_in in hc4_src) {
 							// ref src triples tree
-							const hc3_src = hc4_src[sc1_graph];
+							const hc3_src = hc4_src[sc1_graph_in];
 
 							// subject-keys and quads count
 							let c_subjects = 0;
@@ -1379,9 +1487,9 @@ export class BasicQuadTree extends GenericQuadTree<
 							const hc3_dst = overlayTree<TriplesHash>();
 
 							// each subject
-							for(const sc1_subject in hc3_src) {
+							for(const sc1_subject_in in hc3_src) {
 								// ref src probs tree
-								const hc2_src = hc3_src[sc1_subject];
+								const hc2_src = hc3_src[sc1_subject_in];
 
 								// predicate-keys count
 								let c_predicates = 0;
@@ -1390,15 +1498,15 @@ export class BasicQuadTree extends GenericQuadTree<
 								const hc2_dst = overlayTree<ProbsHash>();
 
 								// each predicate
-								for(const sc1_predicate in hc2_src) {
+								for(const sc1_predicate_in in hc2_src) {
 									// ref src objects set
-									const as_objects_src = hc2_src[sc1_predicate];
+									const as_objects_src = hc2_src[sc1_predicate_in];
 
 									// no such object; skip
 									if(!as_objects_src.has(sc1_object)) continue;
 
 									// create dst probs tree
-									hc2_dst[sc1_predicate] = new Set(a_object_load);
+									hc2_dst[sc1_predicate_in] = new Set(a_object_load);
 
 									// increment predicate-keys count
 									c_predicates += 1;
@@ -1416,7 +1524,7 @@ export class BasicQuadTree extends GenericQuadTree<
 								c_triples += c_predicates;
 
 								// save to triples tree tree
-								hc3_dst[sc1_subject] = hc2_dst;
+								hc3_dst[sc1_subject_in] = hc2_dst;
 							}
 
 							// no quads
@@ -1431,7 +1539,7 @@ export class BasicQuadTree extends GenericQuadTree<
 							c_quads += c_triples;
 
 							// save triples tree tree
-							hc4_dst[sc1_graph] = hc3_dst;
+							hc4_dst[sc1_graph_in] = hc3_dst;
 						}
 
 						// no quads; empty tree
@@ -1452,6 +1560,151 @@ export class BasicQuadTree extends GenericQuadTree<
 				}
 			}
 		}
+	}
+
+
+	_crawl_trips(hc3_trips: TriplesHash, hc3_crawl: CrawlTriplesHash, h_accumulator: AccumulatorHash, sc1_subject: C1.Subject, sv1_subject: C1.Subject): void {
+		// ref prefixes
+		const h_prefixes = this._h_prefixes;
+
+		// ref probs
+		const hc2_probs = hc3_trips[sv1_subject];
+
+		// ref target
+		const z_target_subject = hc3_crawl[sc1_subject];
+
+		// target is function
+		if('function' === typeof z_target_subject) {
+			// invoke
+			const h_merge = z_target_subject(hc2_probs);
+
+			// merge
+			if(h_merge) Object.assign(h_accumulator, h_merge);
+
+			// next
+			return;
+		}
+
+		// each predicate in crawl
+		for(const sc1_predicate in z_target_subject) {
+			// expand
+			const sv1_predicate = c1ExpandData<C1.Predicate>(sc1_predicate as C1.Predicate, h_prefixes);
+
+			// predicate not present; skip
+			if(!(sv1_predicate in hc2_probs)) continue;
+
+			// ref objects
+			const as_objects = hc2_probs[sv1_predicate];
+
+			// ref target
+			const z_target_predicate = z_target_subject[sc1_predicate];
+
+			// target is function
+			if('function' === typeof z_target_predicate) {
+				// invoke
+				const h_merge = z_target_predicate(as_objects);
+
+				// merge
+				if(h_merge) Object.assign(h_accumulator, h_merge);
+
+				// next
+				continue;
+			}
+
+			// each object in crawl
+			for(const sc1_object in z_target_predicate) {
+				// expand
+				const sv1_object = c1ExpandData<C1.Object>(sc1_object as C1.Object, h_prefixes);
+
+				// object not present; skip
+				if(!as_objects.has(sv1_object)) continue;
+
+				// not in subject position
+				if(!(sv1_object in hc3_trips)) continue;
+
+				// recurse
+				this._crawl_trips(hc3_trips, hc3_crawl, h_accumulator, sc1_object as C1.Subject, sv1_object as C1.Subject);
+			}
+		}
+	}
+
+
+	crawlTriples(hc3_crawl: CrawlTriplesHash): AccumulatorHash {
+		// ref prefixes
+		const h_prefixes = this._h_prefixes;
+
+		// accumulator hash
+		const h_accumulator: AccumulatorHash = {};
+
+		// triples in default graph
+		const hc3_trips = this._hc3_trips;
+
+		// each subject in crawl
+		for(const sc1_subject in hc3_crawl) {
+			// expand
+			const sv1_subject = c1ExpandData<C1.Subject>(sc1_subject as C1.Subject, h_prefixes);
+
+			// subject not present; skip
+			if(!(sv1_subject in hc3_trips)) continue;
+
+			// crawl trips
+			this._crawl_trips(hc3_trips, hc3_crawl, h_accumulator, sc1_subject as C1.Subject, sv1_subject);
+		}
+
+		return h_accumulator;
+	}
+
+
+	crawl(hc4_crawl: CrawlQuadsHash): AccumulatorHash {
+		// ref prefixes
+		const h_prefixes = this._h_prefixes;
+
+		// accumulator hash
+		const h_accumulator: AccumulatorHash = {};
+
+		// ref quads
+		const hc4_quads = this._hc4_quads;
+
+		// each graph in crawl
+		for(const sc1_graph in hc4_crawl) {
+			// expand
+			const sv1_graph = c1ExpandData<C1.Graph>(sc1_graph as C1.Graph, h_prefixes);
+
+			// graph not present; skip
+			if(!(sv1_graph in hc4_quads)) continue;
+
+			// ref trips
+			const hc3_trips = hc4_quads[sv1_graph];
+
+			// ref target
+			const z_target_graph = hc4_crawl[sc1_graph];
+
+			// target is function
+			if('function' === typeof z_target_graph) {
+				// invoke
+				const h_merge = z_target_graph(hc3_trips);
+
+				// merge
+				if(h_merge) Object.assign(h_accumulator, h_merge);
+
+				// next
+				continue;
+			}
+
+			// each subject in crawl
+			for(const sc1_subject in z_target_graph) {
+				// expand
+				const sv1_subject = c1ExpandData<C1.Subject>(sc1_subject as C1.Subject, h_prefixes);
+
+				// subject not present; skip
+				if(!(sv1_subject in hc3_trips)) continue;
+
+				// crawl trips
+				this._crawl_trips(hc3_trips, z_target_graph, h_accumulator, sc1_subject as C1.Subject, sv1_subject);
+			}
+		}
+
+		return h_accumulator;
 	}
 
 
@@ -1558,13 +1811,15 @@ export class BasicQuadTree extends GenericQuadTree<
 			switch((z_other as any).datasetType) {
 				// same dataset type
 				case (this as any).datasetStorageType: {
+					const k_other = z_other as unknown as BasicQuadTree;
+
 					// prefix maps differ; perform expanded union
-					if(prefixMapsDiffer(this._h_prefixes, z_other._h_prefixes)) {
-						return this.toCanonical().union(z_other.toCanonical());
+					if(prefixMapsDiffer(this._h_prefixes, k_other._h_prefixes)) {
+						return this.toCanonical().union(k_other.toCanonical());
 					}
 					// prefix maps are identical
 					else {
-						return this._union_same(z_other);
+						return this._union_same(k_other);
 					}
 				}
 				
@@ -1685,9 +1940,68 @@ export class BasicQuadTree extends GenericQuadTree<
 		throw new Error(`not yet implemented`);
 	}
 
+	difference(y_other: RDFJS.Dataset): BasicQuadTree {
+		throw new Error('not yet implemented');
+	}
+
+	filter(f_iteratee: (g_quad: Term.Quad, kd_dataset: this) => boolean): BasicQuadTree {
+		throw new Error('not yet implemented');
+	}
+
 
 	normalize(): BasicQuadTree {
 		return (new Normalizer(this)).normalize();
+	}
+
+	import(ds_stream: RDFJS.Stream): Promise<this> {
+		return new Promise((fk_resolve, fe_reject) => {
+			const k_builder = this._k_builder;
+			const h_prefixes = this._h_prefixes;
+
+			let yt_graph_prev: null | Role.Graph = null;
+			let kh_graph: null | Dataset.GraphHandle = null;
+			let yt_subject_prev: null | Role.Subject = null;
+			let kh_grub: null | Dataset.GrubHandle = null;
+			let yt_predicate_prev: null | Role.Predicate = null;
+			let kh_grasp: null | Dataset.GraspHandle = null;
+
+			ds_stream
+				.on('data', (g_quad: RDFJS.Quad) => {
+					const {
+						graph: yt_graph,
+						subject: yt_subject,
+						predicate: yt_predicate,
+					} = g_quad as Role.Quad;
+
+					if(yt_graph_prev !== yt_graph) {
+						yt_graph_prev = yt_graph;
+						kh_graph = k_builder.openC1Graph(c1FromGraphRole(yt_graph, h_prefixes));
+						kh_grub = kh_graph.openC1Subject(c1FromSubjectRole(yt_subject, h_prefixes));
+						kh_grasp = kh_grub.openC1Predicate(c1FromPredicateRole(yt_predicate, h_prefixes));
+					}
+					else if(yt_subject_prev !== yt_subject) {
+						yt_subject_prev = yt_subject;
+						kh_grub = (kh_graph as Dataset.GraphHandle).openC1Subject(c1FromSubjectRole(yt_subject, h_prefixes));
+						kh_grasp = kh_grub.openC1Predicate(c1FromPredicateRole(yt_predicate, h_prefixes));
+					}
+					else if(yt_predicate_prev !== yt_predicate) {
+						yt_predicate_prev = yt_predicate;
+						kh_grasp = (kh_grub as Dataset.GrubHandle).openC1Predicate(c1FromPredicateRole(yt_predicate, h_prefixes));
+					}
+
+					(kh_grasp as GraspHandle).addC1Object(c1FromObjectRole(g_quad.object, h_prefixes));
+				})
+				.on('error', (e_read: Error) => {
+					fe_reject(e_read);
+				})
+				.on('end', () => {
+					fk_resolve(this);
+				});
+		});
+	}
+
+	intersection(y_other: RDFJS.Dataset): BasicQuadTree {
+		throw new Error('not yet implemented');
 	}
 }
 

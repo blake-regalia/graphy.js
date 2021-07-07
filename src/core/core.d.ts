@@ -156,17 +156,17 @@ export namespace DataFactory {
 	function terse(iri: Iri, prefixes?: PrefixMap): Terse.NamedNode;
 
 
-	function c1ExpandData(term: C1.Data, prefixes: PrefixMap): C1.Data;
+	function c1ExpandData<C1Type extends C1.Data=C1.Data>(term: C1Type, prefixes: PrefixMap): C1Type;
 
 	function graphFromC1(graph: C1.Graph, prefixes: PrefixMap): Term.Graph;
 	function subjectFromC1(subject: C1.Subject, prefixes: PrefixMap): Term.Subject;
 	function predicateFromC1(subject: C1.Predicate, prefixes: PrefixMap): Term.Predicate;
 	function objectFromC1(objectRole: C1.Object, prefixes: PrefixMap): Term.Object;
 
-	function c1FromGraphRole(graph: Role.Graph, prefixes: PrefixMap): C1.Graph;
-	function c1FromSubjectRole(subject: Role.Subject, prefixes: PrefixMap): C1.Subject;
-	function c1FromPredicateRole(predicate: Role.Predicate, prefixes: PrefixMap): C1.Predicate;
-	function c1FromObjectRole(object: Role.Object, prefixes: PrefixMap): C1.Object;
+	function c1FromGraphRole(graph: StarRole.Graph, prefixes: PrefixMap): C1.Graph;
+	function c1FromSubjectRole(subject: StarRole.Subject, prefixes: PrefixMap): C1.Subject;
+	function c1FromPredicateRole(predicate: StarRole.Predicate, prefixes: PrefixMap): C1.Predicate;
+	function c1FromObjectRole(object: StarRole.Object, prefixes: PrefixMap): C1.Object;
 
 	// function c1Graphable(graph: graphy.ConciseGraphable, prefixes?: graphy.PrefixMap): graphy.Graphable;
 	// function c1Node(node: graphy.ConciseNode, prefixes?: graphy.PrefixMap): graphy.Node;

@@ -1,6 +1,8 @@
 import {
 	C1,
 	Term,
+	Role,
+	VStarRole,
 	RDFJS,
 	Dataset,
 	PrefixMap,
@@ -130,7 +132,7 @@ export abstract class GenericQuadTree<
 	TreeType extends Dataset.SyncDataset,
 	QuadsHash extends CountableQuads & {[s:string]:TriplesHash},
 	TriplesHash extends CountableKeys,
-> {
+> implements RDFJS.Dataset<Term.Quad> {
 	/**
 	 * Authoritative and immutable prefix map to use for c1 creation and resolution
 	 * @internal
@@ -279,12 +281,12 @@ export abstract class GenericQuadTree<
 
 	equals(y_other: RDFJS.Dataset): boolean {
 		// reflection
-		if(y_other === this) return true;
+		if((y_other as unknown) === this) return true;
 
 		// graphy dataset
-		if(y_other.isGraphyDataset) {
+		if((y_other as any).isGraphyDataset) {
 			const hc4_quads_a = this._hc4_quads;
-			const hc4_quads_b = y_other._hc4_quads;
+			const hc4_quads_b = (y_other as any)._hc4_quads as QuadsHash;
 
 			// quad count mismatch
 			if(hc4_quads_a[$_QUADS] !== hc4_quads_b[$_QUADS]) return false;
@@ -293,7 +295,7 @@ export abstract class GenericQuadTree<
 			if(hc4_quads_a[$_KEYS] !== hc4_quads_b[$_KEYS]) return false;
 
 			// matching storage types
-			if(this.datasetStorageType === y_other.datasetStorageType) {
+			if(this.datasetStorageType === (y_other as any).datasetStorageType) {
 				// apply impl-specific equals test
 				return this._equals(y_other as TreeType);
 			}
@@ -306,6 +308,75 @@ export abstract class GenericQuadTree<
 			throw new Error(`not yet implemented`);
 		}
 	}
+
+	abstract add(g_quad: RDFJS.Quad): this;
+
+	abstract sibling(): TreeType;
+
+	abstract contains(y_other: RDFJS.Dataset): boolean;
+	
+	abstract deleteMatches(yt_subject?: VStarRole.Subject, predicate?: VStarRole.Predicate, object?: VStarRole.Object, graph?: VStarRole.Graph): this;
+	
+	abstract difference(y_other: RDFJS.Dataset): TreeType;
+
+	abstract filter(f_iteratee: (g_quad: Term.Quad, kd_dataset: this) => boolean): TreeType;
+
+	abstract import(ds_stream: RDFJS.Stream): Promise<this>;
+
+	abstract intersection(y_other: RDFJS.Dataset): TreeType;
+
+	// abstract toCanonical(): string;
+
+	abstract union(y_other: RDFJS.Dataset): TreeType;
+
+	abstract match(yt_subject?: VStarRole.Subject, predicate?: VStarRole.Predicate, object?: VStarRole.Object, graph?: VStarRole.Graph): TreeType;
+
+	abstract delete(g_quad: RDFJS.Quad): this;
+
+	abstract has(g_quad: RDFJS.Quad): boolean;
+
+	addAll(z_quads: RDFJS.Dataset | RDFJS.Quad[]): this {
+		for(const g_quad of z_quads) {
+			this.add(g_quad);
+		}
+
+		return this;
+	}
+
+
+	// every(f_iteratee: QuadFilterIteratee): boolean {
+	// 	for(const g_quad of this) {
+	// 		if(!f_iteratee(g_quad)) return false;
+	// 	}
+
+	// 	return true;
+	// }
+
+	// filter(f_iteratee: QuadFilterIteratee): TreeType {
+	// 	const kd_new = this.sibling();
+
+	// 	for(const g_quad of this) {
+	// 		if(f_iteratee(g_quad)) {
+	// 			kd_new.add(g_quad);
+	// 		}
+	// 	}
+
+	// 	return kd_new;
+	// }
+
+	// some(f_iteratee: QuadFilterIteratee): TreeType {
+	// 	for(const g_quad of this) {
+	// 		if(!f_iteratee(g_quad)) return false;
+	// 	}
+
+	// 	return true;
+	// }
+
+	// forEach(f_iteratee: QuadFilterIteratee): void {
+	// 	for(const g_quad of this) {
+	// 		f_iteratee(g_quad);
+	// 	}
+	// }
 }
 
 // eslint-disable-next-line no-var

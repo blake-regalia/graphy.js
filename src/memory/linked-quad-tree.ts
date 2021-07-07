@@ -675,6 +675,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQ
 		throw new Error('Method not yet implemented.');
 		// return LinkedQuadTree.empty(this._h_prefixes);
 	}
+
 }
 
 
@@ -754,7 +755,7 @@ export class LinkedQuadTree extends GenericQuadTree<
 		throw new Error('Method not implemented.');
 	}
 	
-	match(subject?: any, predicate?: any, object?: any, graph?: any): Dataset.SyncDataset {
+	match(yt_subject?: Role.Subject, yt_predicate?: Role.Predicate, yt_object?: Role.Object, yt_graph?: Role.Graph): LinkedQuadTree {
 		throw new Error('Method not implemented.');
 	}
 	
@@ -973,6 +974,33 @@ export class LinkedQuadTree extends GenericQuadTree<
 	}
 
 
+	sibling(): LinkedQuadTree {
+		throw new Error('not implemented');
+	}
+	
+	deleteMatches(yt_subject?: Role.Subject, predicate?: Role.Predicate, object?: Role.Object, graph?: Role.Graph): this {
+		throw new Error('not implemented');
+	}
+	
+	difference(y_other: RDFJS.Dataset): LinkedQuadTree {
+		throw new Error('not implemented');
+	}
+
+	filter(f_iteratee: (g_quad: Term.Quad, kd_dataset: this) => boolean): LinkedQuadTree {
+		throw new Error('not implemented');
+	}
+
+	import(ds_stream: RDFJS.Stream): Promise<this> {
+		throw new Error('not implemented');
+	}
+
+	intersection(y_other: RDFJS.Dataset): LinkedQuadTree {
+		throw new Error('not implemented');
+	}
+
+	union(y_other: RDFJS.Dataset): LinkedQuadTree {
+		throw new Error('not implemented');
+	}
 }
 
 
