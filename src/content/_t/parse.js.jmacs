@@ -185,6 +185,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			case 'subject': f_load = load_subject; break;
 			case 'predicate': f_load = load_predicate; break;
 			case 'object': f_load = load_object; break;
+			case 'collection_object': f_load = load_collection_object; break;
 
 			case 'datatype': {
 				b_not_this = true;
@@ -1446,11 +1447,20 @@ const match_prefixed_name = (s, i) => {
 	@;
 @;
 
+@def load_collection_object(sj_expr)
+	@if B_LOAD_GSPO_BUILDER
+		sc1_collection_object = @{sj_expr};
+	@else
+		// this.load_object(@{sj_expr});
+	@;
+@;
+
 @.{
 	const H_LOADERS = {
 		subject: load_subject,
 		predicate: load_predicate,
 		object: load_object,
+		collection_object: load_collection_object,
 		graph: load_graph,
 		datatype: (sj_expr) => /* syntax: js */ `
 			sc1_datatype = ${sj_expr};
@@ -1943,9 +1953,10 @@ class Consumer {
 					${no_label_conflict()}
 
 					// make term
-					${B_LOAD
-						? /* syntax: js */ `return '#'+s_label;`
-						: /* syntax: js */ `return blankNode(s_label);`}
+					${modal({
+						read: /* syntax: js */ `return blankNode(s_label);`,
+						load: /* syntax: js */ `return '#'+s_label;`,
+					})}
 				}`,
 
 				check_named_node: /* syntax: js */ `namedNode`,
@@ -2499,10 +2510,10 @@ class Consumer {
 		@if B_LOAD
 			@if B_LOAD_GSPO_BUILDER
 				// deliver dataset; call 'load' handler
-				const k_dataset = this._k_dataset = this._k_builder.deliver();
-
-				// attach prefixes
-				k_dataset.attachPrefixes(this._h_prefixes);
+				const k_dataset = this._k_dataset = this._k_builder.deliver({
+					prefixed: true,
+					prefixes: this._h_prefixes,
+				});
 
 				this._fk_load(k_dataset);
 			@else
@@ -3683,10 +3694,13 @@ class Consumer {
 		collection_object: {
 			// preamble: SJ_REF_X_CHAR,
 			apply: {
-				role: 'object',
+				role: 'collection_object',
 			},
 			rules: {
 				_ref_x_char: SJ_REF_X_CHAR,
+				_collection_item: /* syntax: js */ `
+					let sc1_collection_object;
+				`,
 				collection_terminator: () => ({
 					type: 'chars',
 					test: ')',
@@ -3918,12 +3932,9 @@ class Consumer {
 					this._kt_predicate = ${SJ_RDF_REST};
 				`,
 				load: /* syntax: js */ `
-					// ref object
-					let w_object = this._sc1_object;
-
 					// create blanknode to embed list
 					if(!s_pointer_label) s_pointer_label = this.next_label();
-					let sc1_blank_node_outer = s_pointer_label;
+					let sc1_blank_node_outer = '#'+s_pointer_label;
 
 					// commit statement that functions as collection's head "pointer"
 					${load_object(/* syntax: js */ `sc1_blank_node_outer`)}
@@ -3931,7 +3942,7 @@ class Consumer {
 					// commit statement that is item
 					${load_subject(/* syntax: js */ `sc1_blank_node_outer`)}
 					${load_predicate(SJ_RDF_FIRST)}
-					${load_object(/* syntax: js */ `w_object`)}
+					${load_object(/* syntax: js */ `sc1_collection_object`)}
 
 					// prepare next predicate
 					${load_predicate(SJ_RDF_REST)}

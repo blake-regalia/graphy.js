@@ -378,7 +378,10 @@ export class Normalizer {
 		}
 
 		// (8) deliver canonicalized dataset
-		return kb_out.deliver();
+		return kb_out.deliver({
+			prefixed: false,
+			prefixes: this._kd_source._h_prefixes,
+		});
 	}
 
 	// implementation of §4.6.2: Hash First Degree Quads Algorithm

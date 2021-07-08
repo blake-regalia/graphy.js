@@ -49,6 +49,7 @@ const {
 	c1FromSubjectRole,
 	c1FromPredicateRole,
 	c1FromObjectRole,
+	c1CompactData,
 	c1ExpandData,
 	prefixMapsDiffer,
 } = DataFactory;
@@ -311,13 +312,10 @@ export class BasicQuadTreeBuilder implements Dataset.GraphHandle, Dataset.SyncQu
 	_sc1_graph: C1.Graph = '*';
 	_hc3_trips: TriplesHash;
 	_hc4_quads: QuadsHash;
-	_h_prefixes: PrefixMap;
 
 	static supportsStar = false;
 
-	constructor(h_prefixes={} as PrefixMap, kd_init=BasicQuadTree.empty(h_prefixes)) {
-		this._h_prefixes = h_prefixes;
-
+	constructor(kd_init=BasicQuadTree.empty()) {
 		this._hc4_quads = kd_init._hc4_quads as QuadsHash;
 		this._hc3_trips = kd_init._hc3_trips as TriplesHash;
 	}
@@ -363,15 +361,7 @@ export class BasicQuadTreeBuilder implements Dataset.GraphHandle, Dataset.SyncQu
 		}
 	}
 
-	openGraph(yt_graph: Role.Graph): Dataset.GraphHandle {
-		return this.openC1Graph(graph_to_c1(yt_graph, this._h_prefixes));
-	}
-
-	openSubject(yt_subject: Role.Subject): Dataset.GrubHandle {
-		return this.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, this._h_prefixes): <C1.BlankNode>('#'+yt_subject.value));
-	}
-
-	deliver(dc_dataset: BasicQuadTreeConstructor=(BasicQuadTree as BasicQuadTreeConstructor)): BasicQuadTree {  // eslint-disable-line require-await
+	deliver(gc_dataset: Dataset.Config={}, dc_dataset: BasicQuadTreeConstructor=(BasicQuadTree as BasicQuadTreeConstructor)): BasicQuadTree {  // eslint-disable-line require-await
 		// simplify garbage collection and prevent future modifications to dataset
 		const hc4_quads = this._hc4_quads;
 		this._hc4_quads = null as unknown as QuadsHash;
@@ -381,7 +371,7 @@ export class BasicQuadTreeBuilder implements Dataset.GraphHandle, Dataset.SyncQu
 
 
 		// create dataset
-		return new dc_dataset(hc4_quads, this._h_prefixes);
+		return new dc_dataset(hc4_quads, gc_dataset || {});
 	}
 }
 
@@ -425,15 +415,15 @@ export class BasicQuadTree extends GenericQuadTree<
 	/**
 	 * Create new LinkedQuadTreeBuilder
 	 */
-	static builder(h_prefixes: PrefixMap): BasicQuadTreeBuilder {
-		return new BasicQuadTreeBuilder(h_prefixes);
+	static builder(): BasicQuadTreeBuilder {
+		return new BasicQuadTreeBuilder();
 	}
 
 	/**
 	 * Create new empty dataset
 	 */
-	static empty(h_prefixes={} as PrefixMap): BasicQuadTree {
-		return new BasicQuadTree(empty_quads_hash(), h_prefixes);
+	static empty(gc_dataset: Dataset.Config={}): BasicQuadTree {
+		return new BasicQuadTree(empty_quads_hash(), gc_dataset || {});
 	}
 
 	/**
@@ -445,9 +435,9 @@ export class BasicQuadTree extends GenericQuadTree<
 	/**
 	 * Create new dataset
 	 */
-	constructor(hc4_quads=null as QuadsHash, h_prefixes={} as PrefixMap, b_prefixed=false) {
-		super(hc4_quads || empty_quads_hash(), h_prefixes, b_prefixed);
-		this._k_builder = new BasicQuadTreeBuilder(h_prefixes, this);
+	constructor(hc4_quads=null as QuadsHash, gc_dataset: Dataset.Config={}) {
+		super(hc4_quads || empty_quads_hash(), gc_dataset);
+		this._k_builder = new BasicQuadTreeBuilder(this);
 	}
 
 
@@ -698,11 +688,24 @@ export class BasicQuadTree extends GenericQuadTree<
 	deleteMatchesC1(sc1_subject?: null | C1.Subject, sc1_predicate?: null | C1.Predicate, sc1_object?: null | C1.Object, sc1_graph?: null | C1.Graph): this {
 		const h_prefixes = this._h_prefixes;
 
+		if(this._b_prefixed) {
+			if(sc1_subject) sc1_subject = c1CompactData<C1.Subject>(sc1_subject, h_prefixes);
+			if(sc1_predicate) sc1_predicate = c1CompactData<C1.Predicate>(sc1_predicate, h_prefixes);
+			if(sc1_object) sc1_object = c1CompactData<C1.Object>(sc1_object, h_prefixes);
+			if(sc1_graph) sc1_graph = c1CompactData<C1.Graph>(sc1_graph, h_prefixes);
+		}
+		else {
+			if(sc1_subject) sc1_subject = c1ExpandData<C1.Subject>(sc1_subject, h_prefixes);
+			if(sc1_predicate) sc1_predicate = c1ExpandData<C1.Predicate>(sc1_predicate, h_prefixes);
+			if(sc1_object) sc1_object = c1ExpandData<C1.Object>(sc1_object, h_prefixes);
+			if(sc1_graph) sc1_graph = c1ExpandData<C1.Graph>(sc1_graph, h_prefixes);
+		}
+
 		this._delete_matches_c1(
-			sc1_subject? c1ExpandData<C1.Subject>(sc1_subject, h_prefixes): null,
-			sc1_predicate? c1ExpandData<C1.Predicate>(sc1_predicate, h_prefixes): null,
-			sc1_object? c1ExpandData<C1.Object>(sc1_object, h_prefixes): null,
-			sc1_graph? c1ExpandData<C1.Graph>(sc1_graph, h_prefixes): null,
+			sc1_subject || null,
+			sc1_predicate || null,
+			sc1_object || null,
+			sc1_graph || null,
 		);
 		return this;
 	}
@@ -809,12 +812,25 @@ export class BasicQuadTree extends GenericQuadTree<
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
+		if(this._b_prefixed) {
+			if(sc1_subject) sc1_subject = c1CompactData<C1.Subject>(sc1_subject, h_prefixes);
+			if(sc1_predicate) sc1_predicate = c1CompactData<C1.Predicate>(sc1_predicate, h_prefixes);
+			if(sc1_object) sc1_object = c1CompactData<C1.Object>(sc1_object, h_prefixes);
+			if(sc1_graph) sc1_graph = c1CompactData<C1.Graph>(sc1_graph, h_prefixes);
+		}
+		else {
+			if(sc1_subject) sc1_subject = c1ExpandData<C1.Subject>(sc1_subject, h_prefixes);
+			if(sc1_predicate) sc1_predicate = c1ExpandData<C1.Predicate>(sc1_predicate, h_prefixes);
+			if(sc1_object) sc1_object = c1ExpandData<C1.Object>(sc1_object, h_prefixes);
+			if(sc1_graph) sc1_graph = c1ExpandData<C1.Graph>(sc1_graph, h_prefixes);
+		}
+
 		// match on expanded c1s
 		return this._match_c1(
-			sc1_subject? c1ExpandData(sc1_subject, h_prefixes): null,
-			sc1_predicate? c1ExpandData(sc1_predicate, h_prefixes): null,
-			sc1_object? c1ExpandData(sc1_object, h_prefixes): null,
-			sc1_graph? c1ExpandData(sc1_graph, h_prefixes): null,
+			sc1_subject || null,
+			sc1_predicate || null,
+			sc1_object || null,
+			sc1_graph || null,
 		);
 	}
 
@@ -1564,6 +1580,8 @@ export class BasicQuadTree extends GenericQuadTree<
 
 
 	_crawl_trips(hc3_trips: TriplesHash, hc3_crawl: CrawlTriplesHash, h_accumulator: AccumulatorHash, sc1_subject: C1.Subject, sv1_subject: C1.Subject): void {
+		const f_normalize = this._b_prefixed? c1CompactData: c1ExpandData;
+
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
@@ -1588,7 +1606,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		// each predicate in crawl
 		for(const sc1_predicate in z_target_subject) {
 			// expand
-			const sv1_predicate = c1ExpandData<C1.Predicate>(sc1_predicate as C1.Predicate, h_prefixes);
+			const sv1_predicate = f_normalize<C1.Predicate>(sc1_predicate as C1.Predicate, h_prefixes);
 
 			// predicate not present; skip
 			if(!(sv1_predicate in hc2_probs)) continue;
@@ -1614,7 +1632,7 @@ export class BasicQuadTree extends GenericQuadTree<
 			// each object in crawl
 			for(const sc1_object in z_target_predicate) {
 				// expand
-				const sv1_object = c1ExpandData<C1.Object>(sc1_object as C1.Object, h_prefixes);
+				const sv1_object = f_normalize<C1.Object>(sc1_object as C1.Object, h_prefixes);
 
 				// object not present; skip
 				if(!as_objects.has(sv1_object)) continue;
@@ -1630,6 +1648,8 @@ export class BasicQuadTree extends GenericQuadTree<
 
 
 	crawlTriples(hc3_crawl: CrawlTriplesHash): AccumulatorHash {
+		const f_normalize = this._b_prefixed? c1CompactData: c1ExpandData;
+
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
@@ -1642,7 +1662,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		// each subject in crawl
 		for(const sc1_subject in hc3_crawl) {
 			// expand
-			const sv1_subject = c1ExpandData<C1.Subject>(sc1_subject as C1.Subject, h_prefixes);
+			const sv1_subject = f_normalize<C1.Subject>(sc1_subject as C1.Subject, h_prefixes);
 
 			// subject not present; skip
 			if(!(sv1_subject in hc3_trips)) continue;
@@ -1656,6 +1676,8 @@ export class BasicQuadTree extends GenericQuadTree<
 
 
 	crawl(hc4_crawl: CrawlQuadsHash): AccumulatorHash {
+		const f_normalize = this._b_prefixed? c1CompactData: c1ExpandData;
+
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
@@ -1668,7 +1690,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		// each graph in crawl
 		for(const sc1_graph in hc4_crawl) {
 			// expand
-			const sv1_graph = c1ExpandData<C1.Graph>(sc1_graph as C1.Graph, h_prefixes);
+			const sv1_graph = f_normalize<C1.Graph>(sc1_graph as C1.Graph, h_prefixes);
 
 			// graph not present; skip
 			if(!(sv1_graph in hc4_quads)) continue;
@@ -1694,7 +1716,7 @@ export class BasicQuadTree extends GenericQuadTree<
 			// each subject in crawl
 			for(const sc1_subject in z_target_graph) {
 				// expand
-				const sv1_subject = c1ExpandData<C1.Subject>(sc1_subject as C1.Subject, h_prefixes);
+				const sv1_subject = f_normalize<C1.Subject>(sc1_subject as C1.Subject, h_prefixes);
 
 				// subject not present; skip
 				if(!(sv1_subject in hc3_trips)) continue;

@@ -163,11 +163,11 @@ export abstract class GenericQuadTree<
 	abstract datasetStorageType: string;
 
 
-	constructor(hc4_quads: QuadsHash, h_prefixes: PrefixMap, b_prefixed=false) {
+	constructor(hc4_quads: QuadsHash, gc_dataset: Dataset.Config={}) {
 		this._hc4_quads = hc4_quads;
 		this._hc3_trips = hc4_quads['*'];
-		this._h_prefixes = h_prefixes;
-		this._b_prefixed = b_prefixed;
+		this._h_prefixes = gc_dataset.prefixes || {};
+		this._b_prefixed = gc_dataset.prefixed || false;
 	}
 
 	/**
@@ -189,6 +189,13 @@ export abstract class GenericQuadTree<
 	 */
 	get isExpanded(): boolean {
 		return !this._b_prefixed;
+	}
+
+	/**
+	 * Get the prefixes
+	*/
+	get prefixes(): PrefixMap {
+		return this._h_prefixes;
 	}
 
 	abstract [Symbol.iterator](): Generator<Term.Quad>;

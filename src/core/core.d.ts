@@ -156,6 +156,7 @@ export namespace DataFactory {
 	function terse(iri: Iri, prefixes?: PrefixMap): Terse.NamedNode;
 
 
+	function c1CompactData<C1Type extends C1.Data=C1.Data>(term: C1Type, prefixes: PrefixMap): C1Type;
 	function c1ExpandData<C1Type extends C1.Data=C1.Data>(term: C1Type, prefixes: PrefixMap): C1Type;
 
 	function graphFromC1(graph: C1.Graph, prefixes: PrefixMap): Term.Graph;

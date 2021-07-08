@@ -449,8 +449,8 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQ
 		return this._hc4_quads[$_QUADS];
 	}
 
-	deliver(dc_dataset: LinkedQuadTreeConstructor=(LinkedQuadTree as LinkedQuadTreeConstructor)): LinkedQuadTree {
-		return new LinkedQuadTree(this._h_objects, this._hc4_quads, this._h_prefixes);
+	deliver(gc_dataset: Dataset.Config={}, dc_dataset: LinkedQuadTreeConstructor=(LinkedQuadTree as LinkedQuadTreeConstructor)): LinkedQuadTree {
+		return new LinkedQuadTree(this._h_objects, this._hc4_quads, gc_dataset || {});
 	}
 
 	* [Symbol.iterator](): Iterator<Term.Quad> {
@@ -721,10 +721,10 @@ export class LinkedQuadTree extends GenericQuadTree<
 	 */
 	_h_objects: ILinkedQuadTree.ObjectStore;
 
-	constructor(h_objects: ILinkedQuadTree.ObjectStore, hc4_quads: ILinkedQuadTree.QuadsHash, h_prefixes: PrefixMap) {
-		super(hc4_quads, h_prefixes);
+	constructor(h_objects: ILinkedQuadTree.ObjectStore, hc4_quads: ILinkedQuadTree.QuadsHash, gc_dataset: Dataset.Config={}) {
+		super(hc4_quads, gc_dataset);
 		this._h_objects = h_objects;
-		this._k_builder = new LinkedQuadTreeBuilder(h_prefixes);
+		this._k_builder = new LinkedQuadTreeBuilder(this._h_prefixes);
 	}
 
 	addC1Quad(subject: C1.Node, predicate: C1.NamedNode, object: C1.Object, graph?: C1.Graph): boolean {

@@ -137,6 +137,11 @@ export interface PrefixMapRelation {
 }
 
 export namespace Dataset {
+	export interface Config {
+		prefixed?: boolean;
+		prefixes?: PrefixMap;
+	}
+
 	/**
 	 * A handle on a specific (graph, subject, predicate) within an `QuadTreeBuilder`
 	 */
@@ -193,7 +198,7 @@ export namespace Dataset {
 	export interface SyncQuadTreeBuilder<Deliverable extends SyncDataset> extends GraphHandle {
 		// attachPrefixes(h_prefixes: PrefixMap): void;
 		openC1Graph(sc1_graph: C1.Graph): GraphHandle;
-		deliver(datasetClass?: { new(...args: any[]): SyncDataset }): Deliverable;
+		deliver(gc_dataset?: Config, datasetClass?: { new(...args: any[]): SyncDataset }): Deliverable;
 	}
 
 

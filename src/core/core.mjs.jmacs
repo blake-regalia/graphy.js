@@ -361,6 +361,35 @@ export const concise = (p_iri, h_prefixes={}) => {
 	return '>'+p_iri;
 };
 
+export const c1CompactData = (sc1_term, h_prefixes={}) => {
+	switch(sc1_term[0]) {
+		case '#':
+		case '"':
+		case '@':
+		case '*': {
+			return sc1_term;
+		}
+
+		case '>': {
+			return concise(sc1_term.slice(1), h_prefixes);
+		}
+
+		case '^': {
+			if('>' === sc1_term[1]) return sc1_term;
+
+		}
+
+		case '?':
+		case '`': {
+			throw new Error(`Cannot compact non-data c1 term '${sc1_term}'`);
+		}
+
+		default: {
+			return c1PrefixedNode(sc1_term, h_prefixes).concise(h_prefixes);
+		}
+	}
+};
+
 const R_C1N_DECONSTRUCT = /^([^:]*):(.*)$/;
 const R_C1U_DECONSTRUCT = /^([^_]*)_(.*)$/;
 
@@ -1716,6 +1745,10 @@ class NaNLiteral extends DoubleLiteral {
 	},
 	/* eslint-disable no-undef */
 	methods: class {
+		concise() {
+			return '#'+this.value;
+		}
+
 		verbose() {
 			return '_:'+this.value;
 		}
@@ -1743,7 +1776,7 @@ class NaNLiteral extends DoubleLiteral {
 		isNode:                /* syntax: js */ `true`,
 		isBlankNode:           /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'BlankNode'`,
-		concise:               /* syntax: js */ `gp_self.flat = gp_self.terse = gp_self.star = gp_self.verbose`,
+		flat:                  /* syntax: js */ `gp_self.terse = gp_self.star = gp_self.verbose`,
 		replaceIri:            /* syntax: js */ `gp_self.replaceText = gp_self.clone`,
 	},
 })}
@@ -2294,11 +2327,6 @@ export const g_unfiltered = {
 export {
 	g_unfiltered as unfiltered,
 };
-
-
-function C3Proxy$_toString() {
-	return '|'+JSON.stringify([...this()].map(w => w.concise()));
-}
 
 
 export function adopt(dc_factory) {
@@ -2995,13 +3023,9 @@ export function c1ExpandData(sc1_term, h_prefixes) {
 		case '"':
 		case '@':
 		case '>':
+		case '#':
 		case '*': {
 			return sc1_term;
-		}
-
-		case '_': {
-			if(':' === sc1_term[1]) return sc1_term;
-			return c1ExpandPrefixedNamedNode(sc1_term, h_prefixes);
 		}
 
 		case '^': {
@@ -3154,12 +3178,18 @@ export const DataFactory = {
 	fromRdfjsQuad,
 	fromSparqlResult,
 
+	c1CompactData,
 	c1ExpandData,
 	c1FromGraphRole,
 	c1FromSubjectRole,
 	c1FromPredicateRole,
 	c1FromObjectRole,
 	c1FromDatatypeRole,
+
+	graphFromC1,
+	subjectFromC1,
+	predicateFromC1,
+	objectFromC1,
 
 	comment,
 	newlines,
