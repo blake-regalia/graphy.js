@@ -7,24 +7,45 @@ const [B_BROWSER, B_BROWSERIFY] = (() => 'undefined' === typeof process
 			? [true, false]
 			: [false, false])))();
 
-// import fs from 'fs';
-// import path from 'path';
-// import url from 'url';
-// import {expect} from 'chai';
-const fs = require('fs');
-const path = require('path');
-const url = require('url');
-const expect = require('chai').expect;
+import fs from 'fs';
+import path from 'path';
+import url from 'url';
+import {expect} from 'chai';
+import { dirname } from 'path';
+
+// const fs = require('fs');
+// const path = require('path');
+// const url = require('url');
+// const expect = require('chai').expect;
 
 const pathToFileURL = url.pathToFileURL || (p_path => `file://${p_path}`);
 const fileURLToPath = url.fileURLToPath || (p_url => p_url.replace(/^file:\/\//, ''));
 
-const ttl_read = require('@graphy-stable/content.ttl.read');
-const nt_read = require('@graphy-stable/content.nt.read');
-const nq_read = require('@graphy-stable/content.nq.read');
-const trig_write = require('@graphy-stable/content.trig.write');
-const factory = require('@graphy-stable/core.data.factory');
-const dataset_tree = require('@graphy-stable/memory.dataset.fast');
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// const ttl_read = require('@graphy-stable/content.ttl.read');
+// const nt_read = require('@graphy-stable/content.nt.read');
+// const nq_read = require('@graphy-stable/content.nq.read');
+// const trig_write = require('@graphy-stable/content.trig.write');
+// const factory = require('@graphy-stable/core.data.factory');
+// const dataset_tree = require('@graphy-stable/memory.dataset.fast');
+
+import ttl_read from '@graphy-stable/content.ttl.read';
+import nt_read from '@graphy-stable/content.nt.read';
+import nq_read from '@graphy-stable/content.nq.read';
+import trig_write from '@graphy-stable/content.trig.write';
+import factory from '@graphy-stable/core.data.factory';
+
+import {TurtleLoader} from '@graphy/content';
+
+import {QuadTree} from '@graphy/memory';
+
+const dataset_tree = (gc_tree) => {
+	debugger;
+	const k_tree = new QuadTree(gc_tree);
+	return k_tree;
+}
 
 const write_preview = () => trig_write({
 	style: {
@@ -51,13 +72,13 @@ const expand = sc1 => factory.c1(sc1, H_PREFIXES).value;
 const A_TEST_TYPES_EVAL_POSITIVE = [
 	'rdft:TestTurtleEval',  // turtle
 	'rdft:TestTrigEval',  // trig
-].map(expand);
+];
 
 // negative eval
 const A_TEST_TYPES_EVAL_NEGATIVE = [
 	'rdft:TestTurtleNegativeEval',  // turtle
 	'rdft:TestTrigNegativeEval',  // trig
-].map(expand);
+];
 
 // negative syntax
 const A_TEST_TYPES_SYNTAX_NEGATIVE = [
@@ -65,7 +86,7 @@ const A_TEST_TYPES_SYNTAX_NEGATIVE = [
 	'rdft:TestNQuadsNegativeSyntax',  // n-quads
 	'rdft:TestTurtleNegativeSyntax',  // turtle
 	'rdft:TestTrigNegativeSyntax',  // trig
-].map(expand);
+];
 
 // positive syntax
 const A_TEST_TYPES_SYNTAX_POSITIVE = [
@@ -73,11 +94,13 @@ const A_TEST_TYPES_SYNTAX_POSITIVE = [
 	'rdft:TestNQuadsPositiveSyntax',  // n-quads
 	'rdft:TestTurtlePositiveSyntax',  // turtle
 	'rdft:TestTrigPositiveSyntax',  // trig
-].map(expand);
+];
 
 class TestCase {
 	constructor(gc_test) {
 		this._f_reader = gc_test.reader;
+		this._dc_reader = gc_test.reader_class;
+		this._b_catch = false;
 
 		Object.assign(this, {
 			...gc_test,
@@ -87,24 +110,26 @@ class TestCase {
 	run() {
 		const s_input = fs.readFileSync(this.action, 'utf8');
 
-		it(this.name+'; input:stream', (fke_test) => {
-			this._f_reader({
-				input: {stream:fs.createReadStream(this.action)},
+		it(this.name+`; input:stream [${this.action}]`, (fke_test) => {
+			const dp_read = this._f_reader(fs.createReadStream(this.action), {
 				base_uri: this.base,
 				...this.config(fke_test),
 			});
+
+			if(this._b_catch) dp_read.catch(() => {});
 		});
 
-		it(this.name+'; input:string', (fke_test) => {
-			this._f_reader({
-				input: {string:s_input},
+		it(this.name+`; input:string [${this.action}]`, (fke_test) => {
+			const dp_read = this._f_reader(s_input, {
 				base_uri: this.base,
 				...this.config(fke_test),
-			});
+			})
+
+			if(this._b_catch) dp_read.catch(() => {});
 		});
 
-		it(this.name+'; input:none', (fke_test) => {
-			fs.createReadStream(this.action).pipe(this._f_reader({
+		it(this.name+`; input:none [${this.action}]`, (fke_test) => {
+			fs.createReadStream(this.action).pipe(new this._dc_reader({
 				base_uri: this.base,
 				...this.config(fke_test),
 			}));
@@ -116,51 +141,47 @@ class TestCase_Positive extends TestCase {
 	run() {
 		let s_input = fs.readFileSync(this.action, 'utf8');
 
-		it(this.name+'; input:stream; relax=false', (fke_test) => {
-			this._f_reader({
-				input: {stream:fs.createReadStream(this.action)},
+		it(this.name+'; input:stream; tolerant=false', (fke_test) => {
+			this._f_reader(fs.createReadStream(this.action), {
 				base_uri: this.base,
 				...this.config(fke_test),
 			});
 		});
 
-		it(this.name+'; input:stream; relax=true', (fke_test) => {
-			this._f_reader({
-				input: {stream:fs.createReadStream(this.action)},
+		it(this.name+'; input:stream; tolerant=true', (fke_test) => {
+			this._f_reader(fs.createReadStream(this.action), {
 				base_uri: this.base,
-				relax: true,
+				tolerant: true,
 				...this.config(fke_test),
 			});
 		});
 
-		it(this.name+'; input:string; relax=false', (fke_test) => {
-			this._f_reader({
-				input: {string:s_input},
+		it(this.name+'; input:string; tolerant=false', (fke_test) => {
+			this._f_reader(s_input, {
 				base_uri: this.base,
 				...this.config(fke_test),
 			});
 		});
 
-		it(this.name+'; input:string; relax=true', (fke_test) => {
-			this._f_reader({
-				input: {string:s_input},
+		it(this.name+'; input:string; tolerant=true', (fke_test) => {
+			this._f_reader(s_input, {
 				base_uri: this.base,
-				relax: true,
+				tolerant: true,
 				...this.config(fke_test),
 			});
 		});
 
-		it(this.name+'; input:none; relax=false', (fke_test) => {
-			fs.createReadStream(this.action).pipe(this._f_reader({
+		it(this.name+'; input:none; tolerant=false', (fke_test) => {
+			fs.createReadStream(this.action).pipe(new this._dc_reader({
 				base_uri: this.base,
 				...this.config(fke_test),
 			}));
 		});
 
-		it(this.name+'; input:none; relax=true', (fke_test) => {
-			fs.createReadStream(this.action).pipe(this._f_reader({
+		it(this.name+'; input:none; tolerant=true', (fke_test) => {
+			fs.createReadStream(this.action).pipe(new this._dc_reader({
 				base_uri: this.base,
-				relax: true,
+				tolerant: true,
 				...this.config(fke_test),
 			}));
 		});
@@ -173,6 +194,8 @@ class TestCase_EvalPositive extends TestCase_Positive {
 
 		// actual quads emitted
 		let k_tree_actual = dataset_tree();
+		// let k_tree_act = new QuadTree();
+		debugger;
 
 		return {
 			// collect data events
@@ -187,13 +210,11 @@ class TestCase_EvalPositive extends TestCase_Positive {
 			},
 
 			// done reading
-			end() {
+			eof() {
 				let k_tree_expected = dataset_tree();
 
 				// read expected
-				(k_test.result.endsWith('.nq')? nq_read: nt_read)({
-					input: {stream:fs.createReadStream(k_test.result)},
-
+				(k_test.result.endsWith('.nq')? nq_read: nt_read)(fs.createReadStream(k_test.result), {
 					// build expected
 					data(g_quad) {
 						k_tree_expected.add(g_quad);
@@ -206,7 +227,7 @@ class TestCase_EvalPositive extends TestCase_Positive {
 					},
 
 					// ready to compare
-					end() {
+					eof() {
 						setTimeout(async() => {
 							k_tree_actual = k_tree_actual.canonicalize();
 							k_tree_expected = k_tree_expected.canonicalize();
@@ -257,6 +278,7 @@ class TestCase_EvalPositive extends TestCase_Positive {
 class TestCase_Negative extends TestCase {
 	config(fke_test) {
 		let k_test = this;
+		this._b_catch = true;
 
 		return {
 			// ignore data events
@@ -269,7 +291,7 @@ class TestCase_Negative extends TestCase {
 			},
 
 			// error not caught
-			end() {
+			eof() {
 				debugger;
 				fke_test(new Error(`failed to invalidate: "${k_test.name}"`));
 			},
@@ -283,7 +305,7 @@ class TestCase_SyntaxPositive extends TestCase_Positive {
 
 		return {
 			// disable validation for these tests
-			relax: true,
+			tolerant: true,
 
 			// ignore data events
 			data() {},
@@ -295,7 +317,7 @@ class TestCase_SyntaxPositive extends TestCase_Positive {
 			},
 
 			// successfully finished
-			end() {
+			eof() {
 				fke_test();
 			},
 		};
@@ -303,25 +325,25 @@ class TestCase_SyntaxPositive extends TestCase_Positive {
 }
 
 // mappings [#string/iri type] => class<TestCase>
-const HV1_TEST_TYPES = {
-	...A_TEST_TYPES_EVAL_POSITIVE.reduce((h_out, p_type) => ({
+const HC1_TEST_TYPES = {
+	...A_TEST_TYPES_EVAL_POSITIVE.reduce((h_out, sc1_type) => ({
 		...h_out,
-		['>'+p_type]: TestCase_EvalPositive,
+		[sc1_type]: TestCase_EvalPositive,
 	}), {}),
 
-	...A_TEST_TYPES_EVAL_NEGATIVE.reduce((h_out, p_type) => ({
+	...A_TEST_TYPES_EVAL_NEGATIVE.reduce((h_out, sc1_type) => ({
 		...h_out,
-		['>'+p_type]: TestCase_Negative,
+		[sc1_type]: TestCase_Negative,
 	}), {}),
 
-	...A_TEST_TYPES_SYNTAX_NEGATIVE.reduce((h_out, p_type) => ({
+	...A_TEST_TYPES_SYNTAX_NEGATIVE.reduce((h_out, sc1_type) => ({
 		...h_out,
-		['>'+p_type]: TestCase_Negative,
+		[sc1_type]: TestCase_Negative,
 	}), {}),
 
-	...A_TEST_TYPES_SYNTAX_POSITIVE.reduce((h_out, p_type) => ({
+	...A_TEST_TYPES_SYNTAX_POSITIVE.reduce((h_out, sc1_type) => ({
 		...h_out,
-		['>'+p_type]: TestCase_SyntaxPositive,
+		[sc1_type]: TestCase_SyntaxPositive,
 	}), {}),
 };
 
@@ -349,12 +371,13 @@ const collection = (sv1_head, k_tree, a_collection=[]) => {
 };
 
 
-module.exports = async(gc_tests={}) => {
+export default async function(gc_tests) {
 	// do not use fs in browser
 	if(B_BROWSER) return;
 
 	let {
 		reader: f_reader,
+		reader_class: dc_reader,
 		package: si_package,
 		manifest: p_manifest_source,
 	} = gc_tests;
@@ -362,55 +385,52 @@ module.exports = async(gc_tests={}) => {
 	let p_manifest = path.join(pd_root, 'build/cache/specs', si_package, 'manifest.ttl');
 	let p_iri_manifest = pathToFileURL(p_manifest);
 
-	// pipeline for backwards-compat w/ < v10
-	let k_tree = await fs.createReadStream(p_manifest)
-		.pipe(ttl_read({
-			base_uri: p_iri_manifest,
-		}))
-		.pipe(dataset_tree({
-			error(e_pipeline) {
-				throw e_pipeline;
-			},
-		}))
-		.until('ready');
-
-	let sv1_head = [...k_tree.c1_objects('*', '>'+p_iri_manifest, '>'+H_PREFIXES.mf+'entries', null)][0];
-
-	let a_entries = collection(sv1_head, k_tree);
-
-	let hv3_triples = k_tree._h_quad_tree['*'];
-
-	let as_empty = new Set();
-	describe('w3c rdf specification manifest', () => {
-		for(let sv1_entry of a_entries) {
-			let {
-				['>'+H_PREFIXES.rdf+'type']: as_types=as_empty,
-				['>'+H_PREFIXES.mf+'name']: as_names=as_empty,
-				['>'+H_PREFIXES.mf+'action']: as_actions=as_empty,
-				['>'+H_PREFIXES.mf+'result']: as_results=as_empty,
-			} = hv3_triples[sv1_entry];
-
-			let sv1_type = [...as_types][0];
-			let s_name = [...as_names][0].slice(1);
-			let p_action = fileURLToPath([...as_actions][0].slice(1));
-
-			// no route
-			if(!(sv1_type in HV1_TEST_TYPES)) {
-				debugger;
-				throw new Error(`no such test type: ${sv1_type}`);
-			}
-
-			// route
-			let k_test_case = new HV1_TEST_TYPES[sv1_type]({
-				reader: f_reader,
-				name: s_name,
-				action: p_action,
-				result: as_results.size? fileURLToPath([...as_results][0].slice(1)): null,
-				base: p_manifest_source.replace(/\/[^/]+$/, '/'+path.basename(p_action)),
-			});
-
-			// run
-			k_test_case.run();
-		}
+	let k_tree = await TurtleLoader.run(fs.createReadStream(p_manifest), {
+		baseIri: p_iri_manifest,
 	});
-};
+
+	// get head of list pointer
+	let [sc1_head] = k_tree.matchC1('>'+p_iri_manifest, 'mf:entries', null).distinctC1Objects();
+
+	// traverse collextion
+	for(const sc1_entry of k_tree.collectionC1(sc1_head)) {
+		console.dir(sc1_entry);
+
+		const {
+			a_types=[],
+			a_names=[],
+			a_actions=[],
+			a_results=[],
+		} = k_tree.crawlTriples({
+			[sc1_entry]: {
+				'rdf:type': as_types => ({a_types:[...as_types]}),
+				'mf:name': as_names => ({a_names:[...as_names]}),
+				'mf:action': as_actions => ({a_actions:[...as_actions]}),
+				'mf:result': as_results => ({a_results:[...as_results]}),
+			},
+		});
+
+		let sc1_type = a_types[0];
+		let s_name = a_names[0].slice(1);
+		let p_action = fileURLToPath(a_actions[0].slice(1));
+
+		// no route
+		if(!(sc1_type in HC1_TEST_TYPES)) {
+			debugger;
+			throw new Error(`no such test type: ${sc1_type}`);
+		}
+
+		// route
+		let k_test_case = new HC1_TEST_TYPES[sc1_type]({
+			reader: f_reader,
+			reader_class: dc_reader,
+			name: s_name,
+			action: p_action,
+			result: a_results.length? fileURLToPath(a_results[0].slice(1)): null,
+			base: p_manifest_source.replace(/\/[^/]+$/, '/'+path.basename(p_action)),
+		});
+
+		// run
+		k_test_case.run();
+	}
+}

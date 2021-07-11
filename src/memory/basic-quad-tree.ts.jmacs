@@ -1,3 +1,5 @@
+@import '../share/iris.jmacs'
+
 /* eslint-disable no-use-before-define */
 import {
 	DataFactory,
@@ -432,12 +434,29 @@ export class BasicQuadTree extends GenericQuadTree<
 	 */
 	_k_builder: BasicQuadTreeBuilder;
 
+	_f_normalize: <C1Type extends C1.Data>(sc1_term: C1Type, h_prefixes: PrefixMap) => C1Type;
+
+	private _sc1_rdf_first: C1.NamedNode;
+	private _sc1_rdf_rest: C1.NamedNode;
+	private _sc1_rdf_nil: C1.NamedNode;
+
 	/**
 	 * Create new dataset
 	 */
 	constructor(hc4_quads=null as QuadsHash, gc_dataset: Dataset.Config={}) {
 		super(hc4_quads || empty_quads_hash(), gc_dataset);
 		this._k_builder = new BasicQuadTreeBuilder(this);
+
+		// set normalizer
+		const f_normalize = this._f_normalize = this._b_prefixed? c1CompactData: c1ExpandData;
+
+		// ref prefixes
+		const h_prefixes = this._h_prefixes;
+
+		// static c1 terms
+		this._sc1_rdf_first = f_normalize<C1.NamedNode>('>@{P_IRI_RDF}first', h_prefixes);
+		this._sc1_rdf_rest = f_normalize<C1.NamedNode>('>@{P_IRI_RDF}rest', h_prefixes);
+		this._sc1_rdf_nil = f_normalize<C1.NamedNode>('>@{P_IRI_RDF}nil', h_prefixes);
 	}
 
 
@@ -788,7 +807,10 @@ export class BasicQuadTree extends GenericQuadTree<
 	}
 
 	protected _offspring(hc4_out: QuadsHash): BasicQuadTree {
-		return new BasicQuadTree(hc4_out, this._h_prefixes);
+		return new BasicQuadTree(hc4_out, {
+			prefixed: this._b_prefixed,
+			prefixes: this._h_prefixes,
+		});
 	}
 
 
@@ -1580,10 +1602,11 @@ export class BasicQuadTree extends GenericQuadTree<
 
 
 	_crawl_trips(hc3_trips: TriplesHash, hc3_crawl: CrawlTriplesHash, h_accumulator: AccumulatorHash, sc1_subject: C1.Subject, sv1_subject: C1.Subject): void {
-		const f_normalize = this._b_prefixed? c1CompactData: c1ExpandData;
-
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
+
+		// ref normalizer
+		const f_normalize = this._f_normalize;
 
 		// ref probs
 		const hc2_probs = hc3_trips[sv1_subject];
@@ -1648,10 +1671,11 @@ export class BasicQuadTree extends GenericQuadTree<
 
 
 	crawlTriples(hc3_crawl: CrawlTriplesHash): AccumulatorHash {
-		const f_normalize = this._b_prefixed? c1CompactData: c1ExpandData;
-
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
+
+		// ref normalizer
+		const f_normalize = this._f_normalize;
 
 		// accumulator hash
 		const h_accumulator: AccumulatorHash = {};
@@ -1676,10 +1700,11 @@ export class BasicQuadTree extends GenericQuadTree<
 
 
 	crawl(hc4_crawl: CrawlQuadsHash): AccumulatorHash {
-		const f_normalize = this._b_prefixed? c1CompactData: c1ExpandData;
-
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
+
+		// ref normalizer
+		const f_normalize = this._f_normalize;
 
 		// accumulator hash
 		const h_accumulator: AccumulatorHash = {};
@@ -1753,7 +1778,10 @@ export class BasicQuadTree extends GenericQuadTree<
 			: this._h_prefixes;
 
 		// return new dataset
-		return new BasicQuadTree(hc4_out, h_prefixes);
+		return new BasicQuadTree(hc4_out, {
+			prefixed: this._b_prefixed,
+			prefixes: h_prefixes,
+		});
 	}
 
 
@@ -1819,7 +1847,10 @@ export class BasicQuadTree extends GenericQuadTree<
 		}
 
 		// return new dataset
-		return new BasicQuadTree(hc4_out, h_prefixes);
+		return new BasicQuadTree(hc4_out, {
+			prefixed: this._b_prefixed,
+			prefixes: h_prefixes,
+		});
 	}
 
 
@@ -1837,7 +1868,7 @@ export class BasicQuadTree extends GenericQuadTree<
 
 					// prefix maps differ; perform expanded union
 					if(prefixMapsDiffer(this._h_prefixes, k_other._h_prefixes)) {
-						return this.toCanonical().union(k_other.toCanonical());
+						return this.normalize().union((k_other as BasicQuadTree).normalize());
 					}
 					// prefix maps are identical
 					else {
@@ -1883,9 +1914,84 @@ export class BasicQuadTree extends GenericQuadTree<
 
 		// return new dataset
 		return new BasicQuadTree(hc4_quads_u, {
-			// copy prefixes
-			...this._h_prefixes,
+			prefixed: this._b_prefixed,
+			prefixes: {
+				// copy prefixes
+				...this._h_prefixes,
+			},
 		});
+	}
+
+	// *collection<TermType extends Term.Subject | Term.Object>(yt_head: Role.Subject, yt_graph?: Role.Graph): Generator<TermType> {
+	// 	const di_items = this._collection_c1(c1FromSubjectRole(yt_head, this._h_prefixes), yt_graph? c1FromGraphRole(yt_graph, this._h_prefixes): '*');
+	// 	const h_prefixes = this._h_prefixes;
+	// 	for(const sc1_item of di_items) {
+	// 		yield objectFromC1(sc1_item, h_prefixes);
+	// 	}
+	// }
+
+	*collectionC1(sc1_head: C1.Subject, sc1_graph?: C1.Graph): Generator<C1.Object> {
+		yield* this._collection_c1(this._f_normalize(sc1_head, this._h_prefixes), sc1_graph? this._f_normalize(sc1_graph, this._h_prefixes): '*');
+	}
+
+	// <TermType extends C1.Subject | C1.Object=C1.Subject | C1.Object>
+	*_collection_c1(sc1_head: C1.Subject, sc1_graph: C1.Graph): Generator<C1.Object> {
+		// rdf:first, rdf:rest and rdf:nil
+		const sc1_rdf_first = this._sc1_rdf_first;
+		const sc1_rdf_rest = this._sc1_rdf_rest;
+		const sc1_rdf_nil = this._sc1_rdf_nil;
+
+		// ref trips
+		const hc3_trips = this._hc4_quads[sc1_graph];
+
+		// loop
+		for(;;) {
+			// fetch probs
+			const hc2_probs = hc3_trips[sc1_head];
+
+			// not a subject
+			if(!hc2_probs) {
+				throw new Error(`No such subject '${sc1_head}'`);
+			}
+
+			// ref object set
+			const as_objects_first = hc2_probs[sc1_rdf_first];
+
+			// rdf:first <item>
+			if(!as_objects_first) {
+				throw new Error(`No such '${sc1_rdf_first}' predicate exists for subject '${sc1_head}'`);
+			}
+
+			// not exactly one item
+			if(1 !== as_objects_first.size) {
+				throw new Error(`Expected exactly one object to match {${sc1_head} ${sc1_rdf_first} ?object} but found ${as_objects_first.size}`);
+			}
+
+			// yield
+			yield [...as_objects_first][0];
+
+			// ref object set
+			const as_objects_rest = hc2_probs[sc1_rdf_rest];
+
+			// rdf:rest <item>
+			if(!as_objects_rest) {
+				throw new Error(`No such '${sc1_rdf_rest}' predicate exists for subject '${sc1_head}'`);
+			}
+
+			// not exactly one item
+			if(1 !== as_objects_rest.size) {
+				throw new Error(`Expected exactly one object to match {${sc1_head} ${sc1_rdf_first} ?object} but found ${as_objects_rest.size}`);
+			}
+
+			// ref rest
+			const sc1_rest = [...as_objects_rest][0];
+
+			// rdf:nil, end of list
+			if(sc1_rdf_nil === sc1_rest) return;
+
+			// continue
+			sc1_head = sc1_rest as C1.Subject;
+		}
 	}
 
 
@@ -2027,7 +2133,7 @@ export class BasicQuadTree extends GenericQuadTree<
 	}
 }
 
-BasicQuadTree.prototype.toCanonical = BasicQuadTree.prototype.normalize;
+// BasicQuadTree.prototype.toCanonical = BasicQuadTree.prototype.normalize;
 
 
 // typings for fixed prototype properties
@@ -2047,7 +2153,7 @@ export interface BasicQuadTree {
 	 */
 	constructor: GenericQuadTree.Static<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
 
-	toCanonical(): BasicQuadTree;
+	// toCanonical(): BasicQuadTree;
 }
 
 type BasicQuadTreeClass = GenericQuadTree.Static<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;

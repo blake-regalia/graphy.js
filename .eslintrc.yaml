@@ -39,6 +39,7 @@
   rules:
 
     # "Possible Errors"
+    no-class-assign: off
     for-direction: error
     getter-return:
       - error

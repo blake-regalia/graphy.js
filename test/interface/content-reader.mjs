@@ -68,12 +68,17 @@ const asynchronously = (a_fs) => {
 
 export const graphy_reader_interface = ({
 	reader: f_reader,
+	reader_class: dc_reader,
 	input: s_input,
 	events: h_events_validate,
 }) => {
 	const a_events_capture = Object.keys(h_events_validate);
 
-	const a_untils = ['end', 'finish', 'eof'];
+	const a_untils = [
+		// 'end',
+		// 'finish',
+		'eof',
+	];
 	for(const s_until of a_untils) {
 		describe(`until '${s_until}'`, () => {
 			describe('transform (no input)', () => {
@@ -123,7 +128,7 @@ export const graphy_reader_interface = ({
 							const f_case = h_cases[s_title];
 							it(s_title, (fke_test) => {
 								// create reader
-								const k_reader = f_reader();
+								const k_reader = new dc_reader();
 
 								// bind events
 								bind(s_until, k_reader, a_events_capture, (e_read, h_events) => {
@@ -150,7 +155,7 @@ export const graphy_reader_interface = ({
 							const f_case = h_cases[s_title];
 							it(s_title, (fke_test) => {
 								// create reader
-								const k_reader = f_reader();
+								const k_reader = new dc_reader();
 
 								// async
 								asynchronously([
@@ -182,7 +187,7 @@ export const graphy_reader_interface = ({
 						const f_case = h_cases[s_title];
 						it(s_title, (fke_test) => {
 							// create reader
-							const k_reader = f_reader(summarize_events(s_until, a_events_capture, (e_read, h_events) => {
+							const k_reader = new dc_reader(summarize_events(s_until, a_events_capture, (e_read, h_events) => {
 								if(e_read) return fke_test(e_read);
 
 								// validate
@@ -209,7 +214,7 @@ export const graphy_reader_interface = ({
 							let b_events_inline = false;
 
 							// create reader
-							const k_reader = f_reader(summarize_events(s_until, a_events_capture, (e_read, h_events) => {
+							const k_reader = new dc_reader(summarize_events(s_until, a_events_capture, (e_read, h_events) => {
 								if(e_read) return fke_test(e_read);
 
 								// validate
@@ -256,25 +261,22 @@ export const graphy_reader_interface = ({
 			});  // transform (no input)
 
 			describe('input string', () => {
-				it('.on events', ((fke_test) => {
-					const k_reader = f_reader({
-						input: {string:s_input},
-					});
+				// it('.on events', ((fke_test) => {
+				// 	const k_reader = f_reader(s_input);
 
-					bind(s_until, k_reader, a_events_capture, (e_read, h_events) => {
-						if(e_read) return fke_test(e_read);
+				// 	bind(s_until, k_reader, a_events_capture, (e_read, h_events) => {
+				// 		if(e_read) return fke_test(e_read);
 
-						// validate
-						validate(h_events, h_events_validate);
+				// 		// validate
+				// 		validate(h_events, h_events_validate);
 
-						// done
-						fke_test();
-					});
-				}));
+				// 		// done
+				// 		fke_test();
+				// 	});
+				// }));
 
 				it('inline events', ((fke_test) => {
-					f_reader({
-						input: {string:s_input},
+					f_reader(s_input, {
 						...summarize_events(s_until, a_events_capture, (e_read, h_events) => {
 							if(e_read) return fke_test(e_read);
 
@@ -290,9 +292,7 @@ export const graphy_reader_interface = ({
 
 			describe('input stream', () => {
 				it('.on events', ((fke_test) => {
-					const k_reader = f_reader({
-						input: {stream:Readable.from(s_input)},
-					});
+					const k_reader = new dc_reader();
 
 					bind(s_until, k_reader, a_events_capture, (e_read, h_events) => {
 						if(e_read) return fke_test(e_read);
@@ -303,11 +303,12 @@ export const graphy_reader_interface = ({
 						// done
 						fke_test();
 					});
+
+					Readable.from(s_input).pipe(k_reader);
 				}));
 
 				it('inline events', ((fke_test) => {
-					f_reader({
-						input: {stream:Readable.from(s_input)},
+					f_reader(Readable.from(s_input), {
 						...summarize_events(s_until, a_events_capture, (e_read, h_events) => {
 							if(e_read) return fke_test(e_read);
 

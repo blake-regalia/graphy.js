@@ -421,7 +421,12 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 		// update xsd scp string
 		this._scp_xsd_decimal = '^'+concise('@{P_IRI_XSD}decimal', h_prefixes)+'"';
+
+		// update rdf predicates
 		this._sc1_rdf_type = concise('@{P_IRI_RDF}type', h_prefixes);
+		this._sc1_rdf_first = concise('@{P_IRI_RDF}first', h_prefixes);
+		this._sc1_rdf_rest = concise('@{P_IRI_RDF}rest', h_prefixes);
+		this._sc1_rdf_nil = concise('@{P_IRI_RDF}nil', h_prefixes);
 	@;
 
 	// emit prefix event
@@ -1724,7 +1729,9 @@ class Consumer {
 			kt_default_graph = Object.create(kt_default_graph);
 		}
 
-		const kt_rdf_first = dc_factory.namedNode('@{P_IRI_RDF}first');
+		@- B_READ
+			const kt_rdf_first = dc_factory.namedNode('@{P_IRI_RDF}first');
+		@;
 
 		const blankNode = dc_factory.blankNode;
 		const namedNode = dc_factory.namedNode;
@@ -3712,7 +3719,7 @@ class Consumer {
 								emit_statement(),
 							],
 							load: [
-								load_object(/* syntax: js */ `this._sc1_rdf+'nil'`),
+								load_object(/* syntax: js */ `this._sc1_rdf_nil`),
 							],
 						}),
 						pop_state(`end of collection object ')'`),

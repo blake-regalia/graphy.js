@@ -210,16 +210,16 @@ export namespace Dataset {
 	/**
 	 * 
 	 */
-	export interface SyncDataset extends RDFJS.Dataset<Term.Quad, RDFJS.Quad> {
+	export interface SyncDataset extends RDFJS.Dataset<Term.Quad> {
 		readonly isGraphyDataset: true;
 		readonly datasetStorageType: string;
 		readonly size: number;
 
 		[Symbol.iterator](): Iterator<Term.Quad>;
 
-		add(quad: RDFJS.Quad): this;
-		delete(quad: RDFJS.Quad): this;
-		has(quad: RDFJS.Quad): boolean;
+		add(quad: RDFJS.PlainQuad): this;
+		delete(quad: RDFJS.PlainQuad): this;
+		has(quad: RDFJS.PlainQuad): boolean;
 		match(subject?: Role.Subject | null, predicate?: Role.Predicate | null, object?: Role.Object | null, graph?: Role.Graph| null): SyncDataset;
 
 		distinctGraphCount(): number;
@@ -233,8 +233,8 @@ export namespace Dataset {
 		distinctObjects(): Generator<Term.Object>;
 
 		// equals(other: RDFJS.Dataset): boolean;
-		contains(other: RDFJS.Dataset): boolean;
-		disjoint(other: RDFJS.Dataset): boolean;
+		contains(other: RDFJS.Dataset<RDFJS.PlainQuad>): boolean;
+		disjoint(other: RDFJS.Dataset<RDFJS.PlainQuad>): boolean;
 
 		// union(other: RDFJS.Dataset): SyncDataset;
 		// intersection(other: SyncDataset): SyncDataset;

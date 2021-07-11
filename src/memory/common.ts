@@ -128,6 +128,8 @@ export namespace ILinkedQuadTree {
 
 /* eslint-disable no-shadow */
 
+type Iteratee<DatasetType, ReturnType> = (g_quad: Term.Quad, k_dataset: DatasetType) => ReturnType;
+
 export abstract class GenericQuadTree<
 	TreeType extends Dataset.SyncDataset,
 	QuadsHash extends CountableQuads & {[s:string]:TriplesHash},
@@ -235,6 +237,34 @@ export abstract class GenericQuadTree<
 		return as_subjects;
 	}
 
+	some(f_some: Iteratee<this, boolean>): boolean {
+		for(const g_quad of this) {
+			if(f_some(g_quad, this)) return true;
+		}
+		return false;
+	}
+
+	every(f_every: Iteratee<this, boolean>): boolean {
+		for(const g_quad of this) {
+			if(!f_every(g_quad, this)) return false;
+		}
+		return true;
+	}
+
+	forEach(f_each: Iteratee<this, void>): void {
+		for(const g_quad of this) {
+			f_each(g_quad, this);
+		}
+	}
+
+	map(f_map: Iteratee<TreeType, Term.Quad>): TreeType {
+		throw new Error('not yet implemented');
+	}
+
+	reduce<AccumulatorType=any>(f_reduce: (w_accumulator: AccumulatorType, g_quad: Term.Quad, k_dataset: this) => AccumulatorType, w_initial?: AccumulatorType): AccumulatorType {
+		throw new Error('not yet implemented');
+	}
+
 	distinctGraphCount(): number {
 		return this._hc4_quads[$_KEYS];
 	}
@@ -332,8 +362,6 @@ export abstract class GenericQuadTree<
 
 	abstract intersection(y_other: RDFJS.Dataset): TreeType;
 
-	// abstract toCanonical(): string;
-
 	abstract union(y_other: RDFJS.Dataset): TreeType;
 
 	abstract match(yt_subject?: VStarRole.Subject, predicate?: VStarRole.Predicate, object?: VStarRole.Object, graph?: VStarRole.Graph): TreeType;
@@ -341,6 +369,14 @@ export abstract class GenericQuadTree<
 	abstract delete(g_quad: RDFJS.Quad): this;
 
 	abstract has(g_quad: RDFJS.Quad): boolean;
+
+	toCanonical(): string {
+		throw new Error('Method not yet implemented');
+	}
+
+	toStream(): RDFJS.Stream<Term.Quad> {
+		throw new Error('Method not yet implemented');
+	}
 
 	addAll(z_quads: RDFJS.Dataset | RDFJS.Quad[]): this {
 		for(const g_quad of z_quads) {
@@ -386,7 +422,7 @@ export abstract class GenericQuadTree<
 	// }
 }
 
-// eslint-disable-next-line no-var
+// eslint-disable-next-line no-var,no-shadow
 export namespace GenericQuadTree {
 	export type QuadsHash = IBasicQuadTree.QuadsHash | ILinkedQuadTree.QuadsHash;
 	export type TriplesHash = IBasicQuadTree.TriplesHash | ILinkedQuadTree.TriplesHash;
