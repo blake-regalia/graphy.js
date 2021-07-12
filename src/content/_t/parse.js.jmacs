@@ -167,7 +167,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 @def save_term(s_role, sj_expr)
 	// save @{s_role} term to field
-	@{'datatype' === s_role? '': 'this._'}kt_@{s_role} = @{sj_expr};
+	@{/^(datatype|collection_)/.test(s_role)? '': 'this._'}kt_@{s_role} = @{sj_expr};
 @;
 
 
@@ -185,7 +185,11 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			case 'subject': f_load = load_subject; break;
 			case 'predicate': f_load = load_predicate; break;
 			case 'object': f_load = load_object; break;
-			case 'collection_object': f_load = load_collection_object; break;
+			case 'collection_object': {
+				f_load = load_collection_object;
+				b_not_this = true;
+				break;
+			}
 
 			case 'datatype': {
 				b_not_this = true;
@@ -3705,9 +3709,14 @@ class Consumer {
 			},
 			rules: {
 				_ref_x_char: SJ_REF_X_CHAR,
-				_collection_item: /* syntax: js */ `
-					let sc1_collection_object;
-				`,
+				_collection_item: modal({
+					read: /* syntax: js */ `
+						let kt_collection_object;
+					`,
+					load: /* syntax: js */ `
+						let sc1_collection_object;
+					`,
+				}),
 				collection_terminator: () => ({
 					type: 'chars',
 					test: ')',
@@ -3904,7 +3913,7 @@ class Consumer {
 						s_pointer_label = this.next_label();
 
 						${modal({
-							read: save_term('object', /* syntax: js */ `this.blank_node(s_label)`),
+							read: save_term('collection_object', /* syntax: js */ `this.blank_node(s_label)`),
 							load: load_object(/* syntax: js */ `'#'+s_label`),
 						})}
 					`
@@ -3919,8 +3928,8 @@ class Consumer {
 			},
 			fallthrough: modal({
 				read: /* syntax: js */ `
-					// ref object
-					let w_object = this._kt_object;
+					// // ref object
+					// let w_object = this._kt_object;
 
 					// create blanknode to embed list
 					if(!s_pointer_label) s_pointer_label = this.next_label();
@@ -3932,7 +3941,7 @@ class Consumer {
 					// emit statement that is item
 					this._kt_subject = kt_blank_node_outer;
 					this._kt_predicate = ${SJ_RDF_FIRST};
-					this._kt_object = w_object;
+					this._kt_object = kt_collection_object;
 					${emit_statement()}
 
 					// prepare next predicate
