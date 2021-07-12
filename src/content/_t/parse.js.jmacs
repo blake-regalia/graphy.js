@@ -3914,7 +3914,7 @@ class Consumer {
 
 						${modal({
 							read: save_term('collection_object', /* syntax: js */ `this.blank_node(s_label)`),
-							load: load_object(/* syntax: js */ `'#'+s_label`),
+							load: load_collection_object(/* syntax: js */ `'#'+s_label`),
 						})}
 					`
 				}),
