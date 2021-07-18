@@ -3713,6 +3713,9 @@ class Consumer {
 			`,
 			fallthrough: modal({
 				read: /* syntax: js */ `
+					// save object term
+					this._kt_object = kt_collection_item;
+
 					let kt_blank_node_outer;
 					if(!s_pointer_label) s_pointer_label = this.next_label();
 
