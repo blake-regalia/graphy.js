@@ -2134,6 +2134,7 @@ export class BasicQuadTree extends GenericQuadTree<
 }
 
 // BasicQuadTree.prototype.toCanonical = BasicQuadTree.prototype.normalize;
+BasicQuadTree.prototype.canonicalize = BasicQuadTree.prototype.normalize;
 
 
 // typings for fixed prototype properties
@@ -2154,6 +2155,8 @@ export interface BasicQuadTree {
 	constructor: GenericQuadTree.Static<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
 
 	// toCanonical(): BasicQuadTree;
+
+	canonicalize(): BasicQuadTree;
 }
 
 type BasicQuadTreeClass = GenericQuadTree.Static<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;

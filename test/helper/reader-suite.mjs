@@ -148,14 +148,12 @@ export class ReaderSuite {
 	}
 
 	specification() {
-		describe('w3c rdf specification', async() => {
-			await w3c_rdf_specification({
-				package: `content.${this._gc_suite.alias}.read`,
-				reader: this._f_reader,
-				reader_class: this._dc_reader,
-				export: this._si_export,
-				manifest: this._gc_suite.manifest,
-			});
+		w3c_rdf_specification({
+			package: `content.${this._gc_suite.alias}.read`,
+			reader: this._f_reader,
+			reader_class: this._dc_reader,
+			export: this._si_export,
+			manifest: this._gc_suite.manifest,
 		});
 	}
 }

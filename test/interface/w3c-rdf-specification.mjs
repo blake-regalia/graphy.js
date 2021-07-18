@@ -42,7 +42,6 @@ import {TurtleLoader} from '@graphy/content';
 import {QuadTree} from '@graphy/memory';
 
 const dataset_tree = (gc_tree) => {
-	debugger;
 	const k_tree = new QuadTree(gc_tree);
 	return k_tree;
 }
@@ -195,7 +194,6 @@ class TestCase_EvalPositive extends TestCase_Positive {
 		// actual quads emitted
 		let k_tree_actual = dataset_tree();
 		// let k_tree_act = new QuadTree();
-		debugger;
 
 		return {
 			// collect data events
@@ -371,66 +369,68 @@ const collection = (sv1_head, k_tree, a_collection=[]) => {
 };
 
 
-export default async function(gc_tests) {
-	// do not use fs in browser
-	if(B_BROWSER) return;
+export default function(gc_tests) {
+	before(async() => {
+		// do not use fs in browser
+		if(B_BROWSER) return;
 
-	let {
-		reader: f_reader,
-		reader_class: dc_reader,
-		package: si_package,
-		manifest: p_manifest_source,
-	} = gc_tests;
-
-	let p_manifest = path.join(pd_root, 'build/cache/specs', si_package, 'manifest.ttl');
-	let p_iri_manifest = pathToFileURL(p_manifest);
-
-	let k_tree = await TurtleLoader.run(fs.createReadStream(p_manifest), {
-		baseIri: p_iri_manifest,
-	});
-
-	// get head of list pointer
-	let [sc1_head] = k_tree.matchC1('>'+p_iri_manifest, 'mf:entries', null).distinctC1Objects();
-
-	// traverse collextion
-	for(const sc1_entry of k_tree.collectionC1(sc1_head)) {
-		console.dir(sc1_entry);
-
-		const {
-			a_types=[],
-			a_names=[],
-			a_actions=[],
-			a_results=[],
-		} = k_tree.crawlTriples({
-			[sc1_entry]: {
-				'rdf:type': as_types => ({a_types:[...as_types]}),
-				'mf:name': as_names => ({a_names:[...as_names]}),
-				'mf:action': as_actions => ({a_actions:[...as_actions]}),
-				'mf:result': as_results => ({a_results:[...as_results]}),
-			},
-		});
-
-		let sc1_type = a_types[0];
-		let s_name = a_names[0].slice(1);
-		let p_action = fileURLToPath(a_actions[0].slice(1));
-
-		// no route
-		if(!(sc1_type in HC1_TEST_TYPES)) {
-			debugger;
-			throw new Error(`no such test type: ${sc1_type}`);
-		}
-
-		// route
-		let k_test_case = new HC1_TEST_TYPES[sc1_type]({
+		let {
 			reader: f_reader,
 			reader_class: dc_reader,
-			name: s_name,
-			action: p_action,
-			result: a_results.length? fileURLToPath(a_results[0].slice(1)): null,
-			base: p_manifest_source.replace(/\/[^/]+$/, '/'+path.basename(p_action)),
+			package: si_package,
+			manifest: p_manifest_source,
+		} = gc_tests;
+
+		let p_manifest = path.join(pd_root, 'build/cache/specs', si_package, 'manifest.ttl');
+		let p_iri_manifest = pathToFileURL(p_manifest);
+
+		let k_tree = await TurtleLoader.run(fs.createReadStream(p_manifest), {
+			baseIri: p_iri_manifest,
 		});
 
-		// run
-		k_test_case.run();
-	}
+		// get head of list pointer
+		let [sc1_head] = k_tree.matchC1('>'+p_iri_manifest, 'mf:entries', null).distinctC1Objects();
+
+		describe('w3c rdf specification', () => {
+			// traverse collextion
+			for(const sc1_entry of k_tree.collectionC1(sc1_head)) {
+				const {
+					a_types=[],
+					a_names=[],
+					a_actions=[],
+					a_results=[],
+				} = k_tree.crawlTriples({
+					[sc1_entry]: {
+						'rdf:type': as_types => ({a_types:[...as_types]}),
+						'mf:name': as_names => ({a_names:[...as_names]}),
+						'mf:action': as_actions => ({a_actions:[...as_actions]}),
+						'mf:result': as_results => ({a_results:[...as_results]}),
+					},
+				});
+
+				let sc1_type = a_types[0];
+				let s_name = a_names[0].slice(1);
+				let p_action = fileURLToPath(a_actions[0].slice(1));
+
+				// no route
+				if(!(sc1_type in HC1_TEST_TYPES)) {
+					debugger;
+					throw new Error(`no such test type: ${sc1_type}`);
+				}
+
+				// route
+				let k_test_case = new HC1_TEST_TYPES[sc1_type]({
+					reader: f_reader,
+					reader_class: dc_reader,
+					name: s_name,
+					action: p_action,
+					result: a_results.length? fileURLToPath(a_results[0].slice(1)): null,
+					base: p_manifest_source.replace(/\/[^/]+$/, '/'+path.basename(p_action)),
+				});
+
+				// run
+				k_test_case.run();
+			}
+		});
+	});
 }

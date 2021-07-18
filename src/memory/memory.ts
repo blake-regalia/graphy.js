@@ -11,3 +11,7 @@ export {
 // export {
 // 	LinkedQuadTree,
 // } from './linked-quad-tree';
+
+export {
+	ConciseScribeBuffer,
+} from './concise-scribe-buffer';

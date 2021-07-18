@@ -196,7 +196,7 @@ export class Normalizer {
 		// (1)
 		const h_hashes = this._h_hashes = {} as BlankNodeHashes;
 		let h_assoc = {} as BlankNodeAssociations;
-		const a_keys = [];
+		let a_keys: string[] = [];
 
 		// first iteration
 		// (5)
@@ -205,10 +205,6 @@ export class Normalizer {
 			for(const sc1_blank of as_non_normal) {
 				// (5.3.1) hash 1-degree blanks and storer
 				const si_norm = h_hashes[sc1_blank] = this.hash_1dq(sc1_blank);
-
-				// (5.3.2)
-				// commit assoc
-				h_assoc[si_norm] = [sc1_blank];
 
 				// hash exists; add blank to assoc
 				if(si_norm in h_assoc) {
@@ -239,6 +235,9 @@ export class Normalizer {
 
 				// (5.4.3)
 				as_non_normal.delete(sc1_blank_0);
+
+				// (5.4.4) & (5.4.5)
+				a_keys = [];
 			}
 		}
 
@@ -253,6 +252,7 @@ export class Normalizer {
 
 			// (5.2) reset assoc
 			h_assoc = {};
+			a_keys = [];
 
 			// (5.3) each blank node
 			for(const sc1_blank of as_non_normal) {
@@ -289,13 +289,16 @@ export class Normalizer {
 				// (5.4.3)
 				as_non_normal.delete(sc1_blank_0);
 
+				// (5.4.4) & (5.4.5)
+				a_keys = [];
+
 				// (5.4.5)
 				b_simple = true;
 			}
 		} while(b_simple);
 
-		// (6) keys now sorted
-		for(const si_blank of a_keys) {
+		// (6) keys are already sorted
+		for(const si_blank of a_keys.sort()) {
 			// (6.1)
 			const a_paths = [];
 

@@ -185,8 +185,8 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			case 'subject': f_load = load_subject; break;
 			case 'predicate': f_load = load_predicate; break;
 			case 'object': f_load = load_object; break;
-			case 'collection_object': {
-				f_load = load_collection_object;
+			case 'collection_item': {
+				f_load = load_collection_item;
 				b_not_this = true;
 				break;
 			}
@@ -424,7 +424,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		this._h_prefixes = DataFactory.cachePrefixes(h_prefixes);
 
 		// update xsd scp string
-		this._scp_xsd_decimal = '^'+concise('@{P_IRI_XSD}decimal', h_prefixes)+'"';
+		this._scp_xsd = '^'+concise('@{P_IRI_XSD}', h_prefixes);
 
 		// update rdf predicates
 		this._sc1_rdf_type = concise('@{P_IRI_RDF}type', h_prefixes);
@@ -583,19 +583,19 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				modal({
 					read: /* syntax: js */ `
 						// shift placeholder subject
-						${load_graph(/* syntax: js */ `this._sc1_subject`)}
-
-						// reset subject in case of collections
-						this._sc1_subject = null;
-					`,
-					load: /* syntax: js */ `
-						// shift placeholder subject
 						this._kt_graph = this._kt_subject;
 
 						${emit_graph_open()}
 
 						// reset subject in case of collections
 						this._kt_subject = null;
+					`,
+					load: /* syntax: js */ `
+						// shift placeholder subject
+						${load_graph(/* syntax: js */ `this._sc1_subject`)}
+
+						// reset subject in case of collections
+						this._sc1_subject = null;
 					`,
 				}),
 				b_anon? /* syntax: js */ `
@@ -1045,10 +1045,10 @@ const OPHOP = Object.prototype.hasOwnProperty;
 
 @>> R_PREFIXED_NAME_QUICK()
 	@//@regex
-	(
+	(@{B_LOAD? '(?:': ''}
 		[A-Za-z]  @// PN_CHARS_BASE simplified
 		[A-Za-z0-9_-]*  @// PN_CHARS (omit '.' from middle for perf)
-	@{B_LOAD? ':': ')? :('}  @// load mode can use 1 capture group instead of 2
+	@{B_LOAD? ')?:': ')? :('}  @// load mode can use 1 capture group instead of 2
 		[A-Za-z_0-9:]  @// PN_LOCAL[0]
 		[A-Za-z0-9_:-]*  @// PN_LOCAL[1-$]
 	)
@@ -1284,8 +1284,12 @@ const match_prefixed_name = (s, i) => {
 
 
 @// save current state to stack
-@def push_state(state)
-	this._a_nested.push([this._kt_subject, this._kt_predicate, '@{state}']);
+@def push_state(state, sj_subject=null, sj_predicate=null)
+	@- B_LOAD
+		this._a_nested.push([@{sj_subject || /* syntax: js */ `this._sc1_subject`}, @{sj_predicate || /* syntax: js */ `this._sc1_predicate`}, '@{state}']);
+	@:
+		this._a_nested.push([@{sj_subject || /* syntax: js */ `this._kt_subject`}, @{sj_predicate || /* syntax: js */ `this._kt_predicate`}, '@{state}']);
+	@;
 @;
 
 
@@ -1299,7 +1303,16 @@ const match_prefixed_name = (s, i) => {
 		});
 	}
 	let s_resume_state;
-	[this._kt_subject, this._kt_predicate, s_resume_state] = this._a_nested.pop();
+	@- B_LOAD
+		let sc1_subject_resume, sc1_predicate_resume;
+		[sc1_subject_resume, sc1_predicate_resume, s_resume_state] = this._a_nested.pop();
+		this._sc1_subject = sc1_subject_resume;
+		this._sc1_predicate = sc1_predicate_resume
+		this._kh_grub = this._kh_graph.openC1Subject(sc1_subject_resume);
+		this._kh_greed = this._kh_grub.openC1Predicate(sc1_predicate_resume);
+	@:
+		[this._kt_subject, this._kt_predicate, s_resume_state] = this._a_nested.pop();
+	@;
 	return this[s_resume_state]();
 @;
 
@@ -1396,9 +1409,23 @@ const match_prefixed_name = (s, i) => {
 	@;
 @;
 
-@def load_subject(sj_expr)
+@def load_subject(sj_expr, b_bypass_save=false, b_noscope=false)
 	@if B_LOAD_GSPO_BUILDER
-		this._kh_grub = this._kh_graph.openC1Subject(@{sj_expr});
+		@- /^(this\.)?\w+$/.test(sj_expr) || b_bypass_save
+			@- !b_bypass_save
+				this._sc1_subject = @{sj_expr};
+			@;
+			this._kh_grub = this._kh_graph.openC1Subject(@{sj_expr});
+		@:
+			@- !b_noscope
+				{
+			@;
+				const sc1_subject_load = this._sc1_subject = @{sj_expr};
+				this._kh_grub = this._kh_graph.openC1Subject(sc1_subject_load);
+			@- !b_noscope
+				}
+			@;
+		@;
 	@else
 		@.{
 			const s_rand = Math.round(Math.random()*10e8);
@@ -1406,7 +1433,7 @@ const match_prefixed_name = (s, i) => {
 			const sj_triples = /* syntax: js */ `hc3_triples${s_rand}`;
 		}
 
-		let @{sj_subject} = this._sc1_subject = @{sj_expr};
+		let @{sj_subject} = @{sj_expr};
 		let @{sj_triples} = this._hc3_triples;
 
 		// not first encounter w/ subject
@@ -1424,9 +1451,23 @@ const match_prefixed_name = (s, i) => {
 	@;
 @;
 
-@def load_predicate(sj_expr)
+@def load_predicate(sj_expr, b_bypass_save=false, b_noscope)
 	@if B_LOAD_GSPO_BUILDER
-		this._kh_greed = this._kh_grub.openC1Predicate(@{sj_expr});
+		@- /^(this\.)?\w+$/.test(sj_expr) || b_bypass_save
+			@- !b_bypass_save
+				this._sc1_predicate = @{sj_expr};
+			@;
+			this._kh_greed = this._kh_grub.openC1Predicate(@{sj_expr});
+		@:
+			@- !b_noscope
+				{
+			@;
+			const sc1_predicate_load = this._sc1_predicate = @{sj_expr};
+			this._kh_greed = this._kh_grub.openC1Predicate(sc1_predicate_load);
+			@- !b_noscope
+				}
+			@;
+		@;
 	@else
 		@.{
 			const s_rand = Math.round(Math.random()*10e8);
@@ -1456,9 +1497,9 @@ const match_prefixed_name = (s, i) => {
 	@;
 @;
 
-@def load_collection_object(sj_expr)
+@def load_collection_item(sj_expr)
 	@if B_LOAD_GSPO_BUILDER
-		sc1_collection_object = @{sj_expr};
+		sc1_collection_item = @{sj_expr};
 	@else
 		// this.load_object(@{sj_expr});
 	@;
@@ -1469,7 +1510,7 @@ const match_prefixed_name = (s, i) => {
 		subject: load_subject,
 		predicate: load_predicate,
 		object: load_object,
-		collection_object: load_collection_object,
+		collection_item: load_collection_item,
 		graph: load_graph,
 		datatype: (sj_expr) => /* syntax: js */ `
 			sc1_datatype = ${sj_expr};
@@ -1844,7 +1885,7 @@ class Consumer {
 
 			...(B_LOAD? {
 				// cached concise-term strings
-				_scp_xsd_decimal: SX_NULL,
+				_scp_xsd: SX_NULL,
 				_sc1_rdf_type: SX_NULL,
 			}: {
 				// static terms
@@ -2629,7 +2670,7 @@ class Consumer {
 							`,
 							load: /* syntax: js */ `
 								// make blank node
-								let sc1_blank_node = this._sc1_object = '#'+this.next_label();
+								let sc1_blank_node = '#'+this.next_label();
 
 								// commit to memory
 								${load_object(/* syntax: js */ `sc1_blank_node`)}
@@ -2684,13 +2725,13 @@ class Consumer {
 									`,
 									load: /* syntax: js */ `
 										// make blank node
-										let sc1_blank_node = this._sc1_subject = '#'+this.next_label();
+										let sc1_blank_node = '#'+this.next_label();
 
 										// commit to memory
 										${load_subject(/* syntax: js */ `sc1_blank_node`)}
 
 										// push state to stack
-										${push_state('post_blank_subject')}
+										${push_state('post_blank_subject', /* syntax: js */ `sc1_blank_node`)}
 									`,
 								}),
 								goto: 'pairs',
@@ -2707,7 +2748,13 @@ class Consumer {
 				test: /* syntax: js */ `R_CHAR_COLLECTION`,
 				action: [
 					// indicate that collection subject should commit initial statement
-					commit_term('subject', /* syntax: js */ `null`),
+					modal({
+						read: save_term('subject', /* syntax: js */ `null`),
+						load: /* syntax: js */ `
+							this._sc1_subject = null;
+						`,
+					}),
+					// commit_term('subject', /* syntax: js */ `null`),
 
 					// (don't push state, we don't have a subject yet)
 				],
@@ -3384,10 +3431,34 @@ class Consumer {
 
 		collection_subject: {
 			apply: {
-				role: 'object',
+				role: 'collection_item',
 			},
+			preamble: modal({
+				read: /* syntax: js */ `
+					let kt_collection_item;
+				`,
+				load: /* syntax: js */ `
+					let sc1_collection_item;
+				`,
+			}),
 			rules: {
 				_ref_x_char: SJ_REF_X_CHAR,
+				_indicator: modal({
+					read: /* syntax: js */ `
+						let b_indicator_collection_subject = null !== this._kt_subject;
+					`,
+					load: /* syntax: js */ `
+						let b_indicator_collection_subject = null !== this._sc1_subject;
+					`,
+				}),
+				// _collection_item: modal({
+				// 	read: /* syntax: js */ `
+				// 		let kt_collection_item = this._sc1_subject;
+				// 	`,
+				// 	load: /* syntax: js */ `
+				// 		let sc1_collection_item = this._sc1_subject;
+				// 	`,
+				// }),
 				collection_terminator: () => ({
 					type: 'chars',
 					test: ')',
@@ -3396,7 +3467,7 @@ class Consumer {
 						modal({
 							read: /* syntax: js */ `
 								// no items in collection subject
-								if(null === this._kt_subject) {
+								if(!b_indicator_collection_subject) {
 									// prepare subject
 									this._kt_subject = ${SJ_RDF_NIL};
 
@@ -3411,9 +3482,9 @@ class Consumer {
 							`,
 							load: /* syntax: js */ `
 								// no items in collection subject
-								if(null === this._sc1_subject) {
-									// prepare subject
-									this._sc1_subject = ${SJ_RDF_NIL};
+								if(!b_indicator_collection_subject) {
+									// prepare subjec
+									${load_subject(SJ_RDF_NIL)}
 
 									// state was never pushed to stack, jump to post_subject state
 									${goto('post_blank_subject')}
@@ -3429,25 +3500,23 @@ class Consumer {
 					],
 					goto: null,
 				}),
-				_continue: ((sj_subject) => /* syntax: js */ `
+				_continue: ((sj_subject_push) => /* syntax: js */ `
 					// otherwise, pre-emptively secure the next blank node label
 					let s_pointer_label;
 
 					// very first collection object
 					let b_pushed = false;
-					if(null === ${sj_subject}) {
+					if(!b_indicator_collection_subject) {
 						// set quasi subject (really for resume state)
 						s_pointer_label = this.next_label();
-						${sj_subject} = ${modal({
+						const ${sj_subject_push} = ${modal({
 							read: /* syntax: js */ `this.anonymous_blank_node(s_pointer_label)`,
 							load: /* syntax: js */ `'#'+s_pointer_label`,
 						})}
-						${push_state('pairs')}
-						// reset subject for later conditional branch
-						${sj_subject} = null;
+						${push_state('pairs', sj_subject_push)}
 						b_pushed = true;
 					}
-				`)(`this._${B_LOAD? 'sc1': 'kt'}_subject`),
+				`)(/* syntax: js */ `${B_LOAD? 'sc1': 'kt'}_subject_push`),
 				iriref_escapeless: {
 					local_i: true,
 				},
@@ -3460,7 +3529,7 @@ class Consumer {
 					action: modal({
 						read: /* syntax: js */ `
 							// first item in list
-							if(null === this._kt_subject) {
+							if(!b_indicator_collection_subject) {
 								s_pointer_label = this.next_label();
 								this._kt_subject = this.anonymous_blank_node(s_pointer_label);
 								this._kt_predicate = ${SJ_RDF_FIRST};
@@ -3486,7 +3555,7 @@ class Consumer {
 						`,
 						load: /* syntax: js */ `
 							// first item in list
-							if(null === this._sc1_subject) {
+							if(!b_indicator_collection_subject) {
 								s_pointer_label = this.next_label();
 								${load_subject(/* syntax: js */ `'#'+s_pointer_label`)}
 								${load_predicate(SJ_RDF_FIRST)}
@@ -3527,7 +3596,7 @@ class Consumer {
 							// this blank node is just the next item in the list
 							s_pointer_label = this.next_label();
 							let kt_blank_node;
-							if(null !== this._kt_subject) {
+							if(b_indicator_collection_subject) {
 								kt_blank_node = this._kt_object = this.anonymous_blank_node(s_pointer_label);
 								${emit_statement()}
 							}
@@ -3552,14 +3621,18 @@ class Consumer {
 							// this blank node is just the next item in the list
 							s_pointer_label = '#'+this.next_label();
 							let sc1_blank_node;
-							if(null !== this._sc1_subject) {
+							if(b_indicator_collection_subject) {
 								sc1_blank_node = '#'+s_pointer_label;
 								${load_object(/* syntax: js */ `sc1_blank_node`)}
 							}
 
 							// subject needs to be set
-							this._sc1_subject = sc1_blank_node || '#'+s_pointer_label;
-							this._sc1_predicate = ${SJ_RDF_FIRST};
+							const sc1_subject_set = sc1_blank_node || '#'+s_pointer_label;
+
+							${load_subject(/* syntax: js */ `sc1_subject_set`)}
+
+							${load_predicate(SJ_RDF_FIRST, true)}
+
 							let s_label = this.next_label();
 							sc1_blank_node = '#'+s_label;
 							${load_object(/* syntax: js */ `sc1_blank_node`)}
@@ -3568,7 +3641,7 @@ class Consumer {
 							${load_predicate(SJ_RDF_REST)}
 
 							// push state
-							${push_state('collection_subject')}
+							${push_state('collection_subject', /* syntax: js */ `sc1_subject_set`, SJ_RDF_REST)}
 
 							// prepare next triple
 							${load_subject(/* syntax: js */ `sc1_blank_node`)}
@@ -3586,14 +3659,11 @@ class Consumer {
 						// empty collection
 						if(')' === s[i]) {
 							this.i = i;
-							${sj_term}_subject = this._a_nested[this._a_nested.length-1][0];
-							${sj_term}_predicate = ${SJ_RDF_FIRST};
+							const w_subject_push = this._a_nested[this._a_nested.length-1][0];
+							${commit_term('subject', /* syntax: js */ `w_subject_push`)}
+							${commit_term('predicate', SJ_RDF_FIRST)}
 
-							this._a_nested.push([
-								${sj_term}_subject,
-								${SJ_RDF_REST},
-								'collection_subject',
-							]);
+							${push_state('collection_subject', /* syntax: js */`w_subject_push`, SJ_RDF_REST)}
 							${goto('collection_object')}
 						}
 
@@ -3613,15 +3683,17 @@ class Consumer {
 								${load_object(/* syntax: js */ `sc1_blank_node`)}
 
 								// add this list as an item to the outer list
-								this._sc1_subject = sc1_blank_node;
+								${load_subject(/* syntax: js */ `sc1_blank_node`)}
 							`,
 						})}
 
-						${sj_term}_predicate = ${SJ_RDF_REST};
-						${push_state('collection_object')}
+						${push_state('collection_object', (B_LOAD? 'sc1': 'kt')+/* syntax: js */ `_blank_node`, SJ_RDF_REST)}
 
 						// prepare next triple
-						${sj_term}_predicate = ${SJ_RDF_FIRST};
+						${commit_term('predicate', SJ_RDF_FIRST)}
+						
+						// flowing
+						continue;
 					`)(`this._${B_LOAD? 'sc1': 'kt'}`),
 				}),
 				labeled_blank_node: {
@@ -3645,10 +3717,7 @@ class Consumer {
 					if(!s_pointer_label) s_pointer_label = this.next_label();
 
 					// not the very first item of collection subject
-					if(this._kt_subject !== null) {
-						// ref object
-						let w_object = this._kt_object;
-
+					if(b_indicator_collection_subject) {
 						// create blanknode to embed list
 						kt_blank_node_outer = this._kt_object = this.anonymous_blank_node(s_pointer_label);
 
@@ -3656,7 +3725,7 @@ class Consumer {
 						${emit_statement()}
 
 						// swap back object
-						this._kt_object = w_object;
+						this._kt_object = kt_collection_item;
 					}
 
 					// emit statement that is item
@@ -3672,32 +3741,21 @@ class Consumer {
 					if(!s_pointer_label) s_pointer_label = this.next_label();
 
 					// not the very first item of collection subject
-					if(this._sc1_subject !== null) {
-						// ref object
-						// ?????
-						throw new Error('in LOAD mode, ._sc1_object is not used as a local field');
-						// TODO: fix
-						/*
-						let w_object = this._sc1_object;
-
+					if(b_indicator_collection_subject) {
 						// create blanknode to embed list
 						sc1_blank_node_outer = '#'+s_pointer_label;
 
 						// commit statement that functions as collection's head "pointer"
 						${load_object(/* syntax: js */ `sc1_blank_node_outer`)}
-
-						// swap back object
-						this._sc1_object = w_object;
-						*/
 					}
 
 					// emit statement that is item
-					this._open_subject(sc1_blank_node_outer || '#'+s_pointer_label);
-					this._open_predicate(${SJ_RDF_FIRST});
-					this._add_object(this._sc1_object);
+					${load_subject(/* syntax: js */ `sc1_blank_node_outer || '#'+s_pointer_label`)}
+					${load_predicate(SJ_RDF_FIRST, true)}
+					${load_object(/* syntax: js */ `sc1_collection_item`)}
 
 					// prepare next predicate
-					this._open_predicate(${SJ_RDF_REST});
+					${load_predicate(SJ_RDF_REST, false, true)}
 				`,
 			}),
 		},
@@ -3705,16 +3763,16 @@ class Consumer {
 		collection_object: {
 			// preamble: SJ_REF_X_CHAR,
 			apply: {
-				role: 'collection_object',
+				role: 'collection_item',
 			},
 			rules: {
 				_ref_x_char: SJ_REF_X_CHAR,
 				_collection_item: modal({
 					read: /* syntax: js */ `
-						let kt_collection_object;
+						let kt_collection_item;
 					`,
 					load: /* syntax: js */ `
-						let sc1_collection_object;
+						let sc1_collection_item;
 					`,
 				}),
 				collection_terminator: () => ({
@@ -3738,6 +3796,9 @@ class Consumer {
 					// otherwise, pre-emptively secure the next blank node label
 					let s_pointer_label;
 				`,
+				prefixed_name_quick: {
+					local_i: true,
+				},
 				iriref_escapeless: {
 					local_i: true,
 				},
@@ -3831,17 +3892,17 @@ class Consumer {
 
 							// setup state to resume and push
 							${load_subject(/* syntax: js */ `sc1_blank_node`)}
-							${load_predicate(/* syntax: js */ `this._sc1_rdf+'rest'`)}
+							${load_predicate(/* syntax: js */ `this._sc1_rdf_rest`)}
 							${push_state('collection_object')}
 
 							// enter blank node
-							${load_predicate(/* syntax: js */ `this._sc1_rdf+'first'`)}
+							${load_predicate(/* syntax: js */ `this._sc1_rdf_first`, true)}
 							sc1_blank_node = '#'+this.next_label();
 							${load_object(/* syntax: js */ `sc1_blank_node`)}
 
 							// prepare next triple
 							${load_subject(/* syntax: js */ `sc1_blank_node`)}
-							${load_predicate(/* syntax: js */ `this._sc1_rdf+'first'`)}
+							${load_predicate(/* syntax: js */ `this._sc1_rdf_first`)}
 						`,
 					}),
 					goto: 'pairs',
@@ -3880,9 +3941,9 @@ class Consumer {
 							s_pointer_label = this.next_label();
 							let sc1_blank_node = '#'+s_pointer_label;
 							if(null === this._sc1_subject) {
-								let a_recent = this._a_nested[this._a_nested.length-1];
-								${load_subject(/* syntax: js */ `a_recent[0]`)}
-								${load_predicate(/* syntax: js */ `a_recent[1]`)}
+								let [sc1_subject_load, sc1_predicate_load] = this._a_nested[this._a_nested.length-1];
+								${load_subject(/* syntax: js */ `sc1_subject_load`, true)}
+								${load_predicate(/* syntax: js */ `sc1_predicate_load`, true)}
 							}
 							${load_object(/* syntax: js */ `sc1_blank_node`)}
 
@@ -3913,8 +3974,8 @@ class Consumer {
 						s_pointer_label = this.next_label();
 
 						${modal({
-							read: save_term('collection_object', /* syntax: js */ `this.blank_node(s_label)`),
-							load: load_collection_object(/* syntax: js */ `'#'+s_label`),
+							read: save_term('collection_item', /* syntax: js */ `this.blank_node(s_label)`),
+							load: load_collection_item(/* syntax: js */ `'#'+s_label`),
 						})}
 					`
 				}),
@@ -3941,7 +4002,7 @@ class Consumer {
 					// emit statement that is item
 					this._kt_subject = kt_blank_node_outer;
 					this._kt_predicate = ${SJ_RDF_FIRST};
-					this._kt_object = kt_collection_object;
+					this._kt_object = kt_collection_item;
 					${emit_statement()}
 
 					// prepare next predicate
@@ -3957,8 +4018,8 @@ class Consumer {
 
 					// commit statement that is item
 					${load_subject(/* syntax: js */ `sc1_blank_node_outer`)}
-					${load_predicate(SJ_RDF_FIRST)}
-					${load_object(/* syntax: js */ `sc1_collection_object`)}
+					${load_predicate(SJ_RDF_FIRST, true)}
+					${load_object(/* syntax: js */ `sc1_collection_item`)}
 
 					// prepare next predicate
 					${load_predicate(SJ_RDF_REST)}
