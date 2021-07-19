@@ -442,6 +442,9 @@ export namespace GenericQuadTree {
 	// }) as QuadsHash | TriplesHash | ProbsHash;
 
 
+	/**
+	 * creates a new hash tree with the $_QUADS and $_KEYS properties set
+	 */
 	export const overlayTree = <HashType extends QuadsHash | TriplesHash | ProbsHash>(n_keys=0, n_quads=0) => ({
 		[$_KEYS]: n_keys,
 		[$_QUADS]: n_quads,
@@ -449,6 +452,10 @@ export namespace GenericQuadTree {
 		// [$_SUPPORTING]: [],
 	}) as HashType;
 
+	/**
+	 * overlaying creates an object that inherits all properties from the src via prototype
+	 * chaining and sets the $_BURIED property on the src and the $_OVERLAY property on dst
+	 */
 	export const overlay = (hcw_src: any): Tree => {
 		// create new tree
 		const hcw_dst = Object.create(hcw_src);
@@ -462,6 +469,10 @@ export namespace GenericQuadTree {
 		return hcw_dst;
 	};
 
+	/**
+	 * tracing takes an overlay and creates a new plain object hash that has all the properties
+	 * the overlay's prototype chain and own property set
+	 */
 	export const trace = (hcw_overlay: any): Tree => {
 		// create dst tree
 		const hcw_dst = {} as Tree;

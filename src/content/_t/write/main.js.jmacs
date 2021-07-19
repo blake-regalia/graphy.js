@@ -68,6 +68,16 @@ function Writer$_reify(kq_input) {
 
 
 class @{S_LABEL}Writer extends Writable {
+	// static run(g_event: WritableDataEvent) {
+	// 	const k_inst = new Writer();
+
+	// 	// serialize input value
+	// 	const w_write = this.serialize(g_event);
+
+	// 	// concat internal buffer with returned serialized string
+	// 	return (k_self._s_push || '')+(w_write || '');
+	// }
+
 	constructor(gc_writer={}) {
 		super({
 			...gc_writer,

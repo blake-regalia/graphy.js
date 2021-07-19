@@ -46,7 +46,8 @@ const dataset_tree = (gc_tree) => {
 	return k_tree;
 }
 
-const write_preview = () => trig_write({
+const write_preview = (h_prefixes={}) => trig_write({
+	prefixes: h_prefixes || {},
 	style: {
 		simplify_default_graph: true,
 	},
@@ -111,7 +112,7 @@ class TestCase {
 
 		it(this.name+`; input:stream [${this.action}]`, (fke_test) => {
 			const dp_read = this._f_reader(fs.createReadStream(this.action), {
-				base_uri: this.base,
+				baseIri: this.base,
 				...this.config(fke_test),
 			});
 
@@ -120,7 +121,7 @@ class TestCase {
 
 		it(this.name+`; input:string [${this.action}]`, (fke_test) => {
 			const dp_read = this._f_reader(s_input, {
-				base_uri: this.base,
+				baseIri: this.base,
 				...this.config(fke_test),
 			})
 
@@ -129,7 +130,7 @@ class TestCase {
 
 		it(this.name+`; input:none [${this.action}]`, (fke_test) => {
 			fs.createReadStream(this.action).pipe(new this._dc_reader({
-				base_uri: this.base,
+				baseIri: this.base,
 				...this.config(fke_test),
 			}));
 		});
@@ -142,14 +143,14 @@ class TestCase_Positive extends TestCase {
 
 		it(this.name+'; input:stream; tolerant=false', (fke_test) => {
 			this._f_reader(fs.createReadStream(this.action), {
-				base_uri: this.base,
+				baseIri: this.base,
 				...this.config(fke_test),
 			});
 		});
 
 		it(this.name+'; input:stream; tolerant=true', (fke_test) => {
 			this._f_reader(fs.createReadStream(this.action), {
-				base_uri: this.base,
+				baseIri: this.base,
 				tolerant: true,
 				...this.config(fke_test),
 			});
@@ -157,14 +158,14 @@ class TestCase_Positive extends TestCase {
 
 		it(this.name+'; input:string; tolerant=false', (fke_test) => {
 			this._f_reader(s_input, {
-				base_uri: this.base,
+				baseIri: this.base,
 				...this.config(fke_test),
 			});
 		});
 
 		it(this.name+'; input:string; tolerant=true', (fke_test) => {
 			this._f_reader(s_input, {
-				base_uri: this.base,
+				baseIri: this.base,
 				tolerant: true,
 				...this.config(fke_test),
 			});
@@ -172,14 +173,14 @@ class TestCase_Positive extends TestCase {
 
 		it(this.name+'; input:none; tolerant=false', (fke_test) => {
 			fs.createReadStream(this.action).pipe(new this._dc_reader({
-				base_uri: this.base,
+				baseIri: this.base,
 				...this.config(fke_test),
 			}));
 		});
 
 		it(this.name+'; input:none; tolerant=true', (fke_test) => {
 			fs.createReadStream(this.action).pipe(new this._dc_reader({
-				base_uri: this.base,
+				baseIri: this.base,
 				tolerant: true,
 				...this.config(fke_test),
 			}));
@@ -236,7 +237,6 @@ class TestCase_EvalPositive extends TestCase_Positive {
 							}
 							// mismatch; clarify
 							else {
-								debugger;
 								let k_actual_missing = k_tree_expected.minus(k_tree_actual);
 								let k_actual_misplaced = k_tree_actual.minus(k_tree_expected);
 								let k_present = k_tree_actual.intersection(k_tree_expected);
@@ -244,25 +244,42 @@ class TestCase_EvalPositive extends TestCase_Positive {
 								let s_error = '';
 
 								if(k_tree_actual.size) {
-									let st_actual = await k_tree_actual.end().pipe(write_preview()).bucket();
+									const ds_writer = write_preview(k_tree_actual.prefixes);
+									const st_actual = await ds_writer.end({
+										type: 'c4',
+										value: k_tree_actual._hc4_quads,
+									}).bucket();
 									s_error += `entire actual quad set:\n${st_actual}`;
 								}
 
 								if(k_present.size) {
-									let st_present = await k_present.end().pipe(write_preview()).bucket();
+									const ds_writer = write_preview(k_present.prefixes);
+									const st_present = await ds_writer.end({
+										type: 'c4',
+										value: k_present._hc4_quads,
+									}).bucket();
 									s_error += `actual quad set has that should be there:\n${st_present}`;
 								}
 
 								if(k_actual_missing.size) {
-									let st_missing = await k_actual_missing.end().pipe(write_preview()).bucket();
+									const ds_writer = write_preview(k_actual_missing.prefixes);
+									const st_missing = await ds_writer.end({
+										type: 'c4',
+										value: k_actual_missing._hc4_quads,
+									}).bucket();
 									s_error += `actual quad set missing:\n${st_missing}`;
 								}
 
 								if(k_actual_misplaced.size) {
-									let st_misplaced = await k_actual_misplaced.end().pipe(write_preview()).bucket();
+									const ds_writer = write_preview(k_actual_misplaced.prefixes);
+									const st_misplaced = await ds_writer.end({
+										type: 'c4',
+										value: k_actual_misplaced._hc4_quads,
+									}).bucket();
 									s_error += `\nactual quad set has quads that don't belong:\n${st_misplaced}`;
 								}
 
+								debugger;
 								fke_test(new Error(s_error));
 							}
 						}, 0);
@@ -385,7 +402,7 @@ export default function(gc_tests) {
 		let p_iri_manifest = pathToFileURL(p_manifest);
 
 		let k_tree = await TurtleLoader.run(fs.createReadStream(p_manifest), {
-			baseIri: p_iri_manifest,
+			baseIri: p_iri_manifest+'',
 		});
 
 		// get head of list pointer

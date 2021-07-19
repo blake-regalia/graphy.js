@@ -140,7 +140,7 @@ export class Normalizer {
 			// each subject
 			for(const sc1_subject in hc3_trips) {
 				// subject is blank node and different from graph
-				if('#' === sc1_subject && sc1_graph !== sc1_subject) {
+				if('#' === sc1_subject[0] && sc1_graph !== sc1_subject) {
 					// add it to set
 					as_non_normal.add(sc1_subject as C1.BlankNode);
 

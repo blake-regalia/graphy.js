@@ -1789,12 +1789,18 @@ export class BasicQuadTree extends GenericQuadTree<
 	/**
 	 * Create a new dataset by prefixing all c1 strings
 	 */
-	prefixed(): BasicQuadTree {
-		// already prefixed, just clone it
-		if(this._b_prefixed) return this.clone();
+	prefixed(h_prefixes?: PrefixMap): BasicQuadTree {
+		// no prefixes provided
+		if(!h_prefixes) {
+			// already prefixed, just clone it
+			if(this._b_prefixed) return this.clone();
+
+			// apply own prefixes
+			throw new Error('not yet implemented: prefixed() apply own prefixes');
+		}
 
 		// TODO: implement
-		throw new Error('not yet implemented');
+		throw new Error('not yet implemented: prefixed() apply foreign prefixes');
 	}
 
 
@@ -1848,7 +1854,7 @@ export class BasicQuadTree extends GenericQuadTree<
 
 		// return new dataset
 		return new BasicQuadTree(hc4_out, {
-			prefixed: this._b_prefixed,
+			prefixed: false,  // expanded, not prefixed
 			prefixes: h_prefixes,
 		});
 	}
@@ -2064,8 +2070,182 @@ export class BasicQuadTree extends GenericQuadTree<
 
 
 	minus(y_other: RDFJS.Dataset): Dataset.SyncDataset {
-		// TODO: in some cases, it will be faster to replace a tree in 'src' with an overlay of a tree from 'dst', and then delete keys from original tree
-		throw new Error(`not yet implemented`);
+		// other is also graphy dataset
+		if((y_other as any).isGraphyDataset) {
+			// same storage type
+			if((y_other as any).datasetStorageType === this.datasetStorageType) {
+				const hc4_quads_a = this._hc4_quads;
+				const hc4_quads_b = (y_other as BasicQuadTree)._hc4_quads;
+
+				// same symbols
+				if($_QUADS in hc4_quads_b && $_KEYS in hc4_quads_b) {
+					return this._align_prefixes(this._minus, y_other as BasicQuadTree);
+				}
+				// different symbols
+				else {
+					throw new Error(`not yet implemented`);
+				}
+			}
+			// different storage type
+			else {
+				throw new Error(`not yet implemented`);
+			}
+
+			// TODO: in some cases, it will be faster to replace a tree in 'src' with an overlay of a tree from 'dst', and then delete keys from original tree
+		}
+		// not graphy dataset
+		else {
+			throw new Error(`not yet implemented`);
+		}
+	}
+
+	_align_prefixes(f_method: (k_other: BasicQuadTree, b_prefixed_out?: boolean, h_prefixes_out?: PrefixMap) => BasicQuadTree, k_other: BasicQuadTree) {
+		const b_prefixed_a = this._b_prefixed;
+		const b_prefixed_b = k_other._b_prefixed;
+
+		// prefixed flag for new dataset
+		let b_prefixed_out = false;
+
+		// prefix map for new dataset
+		let h_prefixes_out = {};
+
+		// a is prefixed
+		if(b_prefixed_a) {
+			// ref prefixes
+			const h_prefixes_a = this._h_prefixes;
+
+			// both are prefixed
+			if(b_prefixed_b) {
+				// ref prefixes
+				const h_prefixes_b = k_other._h_prefixes;
+
+				// compare prefix maps
+				const {relation:s_relation} = DataFactory.relatePrefixMaps(h_prefixes_a, h_prefixes_b);
+
+				// depending on prefix map relation
+				switch(s_relation) {
+					// same prefix map
+					case 'equal': {
+						return f_method.call(this, k_other, true);
+					}
+
+					// a is superset of b
+					case 'superset': {
+						// use prefix map from a to compress b
+						return f_method.call(this, k_other.prefixed(h_prefixes_a), true);
+					}
+
+					// a is subset of b
+					case 'subset': {
+						// use prefix map from b to compress a
+						return f_method.call(this.prefixed(h_prefixes_b), k_other, true);
+					}
+
+					// disjoint or overlap; expand both
+					case 'overlap':
+					case 'disjoint':
+					default: {
+						return f_method.call(this.expanded(), k_other.expanded());
+					}
+				}
+			}
+			// b is not prefixed
+			else {
+				// expand this
+				return f_method.call(this.expanded(), k_other);
+			}
+		}
+		// a is not prefixed, but b is prefixed; expand b
+		else if(b_prefixed_b) {
+			return f_method.call(this, k_other.expanded());
+		}
+
+		return f_method.call(this, k_other);
+	}
+
+	_minus(k_other: BasicQuadTree, b_prefixed_out=false, h_prefixes_out=this._h_prefixes): BasicQuadTree {
+		const hc4_quads_a = this._hc4_quads;
+		const hc4_quads_b = k_other._hc4_quads;
+
+		// prep quads dst
+		const hc4_quads_out = overlayTree<QuadsHash>();
+
+		// each graph in b
+		for(const sc1_graph in hc4_quads_b) {
+			// ref trips
+			const hc3_trips_a = hc4_quads_a[sc1_graph];
+			const hc3_trips_b = hc4_quads_b[sc1_graph];
+
+			// graph missing from a; skip
+			if(!hc3_trips_a) continue;
+
+			// prep trips dst
+			const hc3_trips_out = overlayTree<TriplesHash>();
+
+			// each subject in b
+			for(const sc1_subject in hc3_trips_b) {
+				// ref probs
+				const hc2_probs_a = hc3_trips_a[sc1_subject];
+				const hc2_probs_b = hc3_trips_b[sc1_subject];
+
+				// subject missing from a; skip
+				if(!hc2_probs_a) continue;
+
+				// prep probs dst
+				const hc2_probs_out = overlayTree<ProbsHash>();
+
+				// each predicate in b
+				for(const sc1_predicate in hc2_probs_b) {
+					// ref objects
+					const as_objects_a = hc2_probs_a[sc1_predicate];
+					const as_objects_b = hc2_probs_b[sc1_predicate];
+
+					// predicate missing from a; skip
+					if(!as_objects_a) continue;
+
+					// clone a
+					const as_objects_out = new Set(as_objects_a);
+
+					// each object in b
+					for(const sc1_object of as_objects_b) {
+						// object missing from a; skip
+						if(!as_objects_out.has(sc1_object)) continue;
+
+						// delete object from a
+						as_objects_out.delete(sc1_object);
+					}
+
+					// some objects remain
+					if(as_objects_out.size) {
+						// create predicate
+						hc2_probs_out[sc1_predicate] = as_objects_out;
+						hc2_probs_out[$_QUADS] += as_objects_out.size;
+						hc2_probs_out[$_KEYS] += 1;
+					}
+				}
+
+				// some quads were added
+				if(hc2_probs_out[$_QUADS]) {
+					// create subject
+					hc3_trips_out[sc1_subject] = hc2_probs_out;
+					hc3_trips_out[$_QUADS] += hc2_probs_out[$_QUADS];
+					hc3_trips_out[$_KEYS] += 1;
+				}
+			}
+
+			// some quads were added
+			if(hc3_trips_out[$_QUADS]) {
+				// create graph
+				hc4_quads_out[sc1_graph] = hc3_trips_out;
+				hc4_quads_out[$_QUADS] += hc3_trips_out[$_QUADS];
+				hc4_quads_out[$_KEYS] += 1;
+			}
+		}
+
+		return new BasicQuadTree(hc4_quads_out, {
+			prefixed: b_prefixed_out,
+			prefixes: h_prefixes_out,
+		});
 	}
 
 	difference(y_other: RDFJS.Dataset): BasicQuadTree {
@@ -2129,7 +2309,138 @@ export class BasicQuadTree extends GenericQuadTree<
 	}
 
 	intersection(y_other: RDFJS.Dataset): BasicQuadTree {
-		throw new Error('not yet implemented');
+		// other is also graphy dataset
+		if((y_other as any).isGraphyDataset) {
+			// same storage type
+			if((y_other as any).datasetStorageType === this.datasetStorageType) {
+				const hc4_quads_a = this._hc4_quads;
+				const hc4_quads_b = (y_other as BasicQuadTree)._hc4_quads;
+
+				// same symbols
+				if($_QUADS in hc4_quads_b && $_KEYS in hc4_quads_b) {
+					return this._align_prefixes(this._intersection, y_other as BasicQuadTree);
+				}
+				// different symbols
+				else {
+					throw new Error(`not yet implemented`);
+				}
+			}
+			// different storage type
+			else {
+				throw new Error(`not yet implemented`);
+			}
+
+			// TODO: in some cases, it will be faster to replace a tree in 'src' with an overlay of a tree from 'dst', and then delete keys from original tree
+		}
+		// not graphy dataset
+		else {
+			throw new Error(`not yet implemented`);
+		}
+	}
+
+	_intersection(k_other: BasicQuadTree, b_prefixed_out=false, h_prefixes_out=this._h_prefixes): BasicQuadTree {
+		const hc4_quads_a = this._hc4_quads;
+		const hc4_quads_b = k_other._hc4_quads;
+
+		// prep quads dst
+		const hc4_quads_out = overlayTree<QuadsHash>();
+
+		// smaller goes to x
+		const [hc4_quads_x, hc4_quads_y] = hc4_quads_a[$_KEYS] <= hc4_quads_b[$_KEYS]
+			? [hc4_quads_a, hc4_quads_b]
+			: [hc4_quads_b, hc4_quads_a];
+
+		// each graph in x
+		for(const sc1_graph in hc4_quads_x) {
+			// ref trips
+			const hc3_trips_a = hc4_quads_x[sc1_graph];
+			const hc3_trips_b = hc4_quads_y[sc1_graph];
+
+			// graph missing from y; skip
+			if(!hc3_trips_b) continue;
+
+			// prep trips dst
+			const hc3_trips_out = overlayTree<TriplesHash>();
+
+			// smaller goes to x
+			const [hc3_trips_x, hc3_trips_y] = hc3_trips_a[$_KEYS] <= hc3_trips_b[$_KEYS]
+				? [hc3_trips_a, hc3_trips_b]
+				: [hc3_trips_b, hc3_trips_a];
+
+			// each subject in x
+			for(const sc1_subject in hc3_trips_x) {
+				// ref probs
+				const hc2_probs_a = hc3_trips_x[sc1_subject];
+				const hc2_probs_b = hc3_trips_y[sc1_subject];
+
+				// subject missing from y; skip
+				if(!hc2_probs_b) continue;
+
+				// prep probs dst
+				const hc2_probs_out = overlayTree<ProbsHash>();
+
+				// smaller goes to x
+				const [hc2_probs_x, hc2_probs_y] = hc2_probs_a[$_KEYS] <= hc2_probs_b[$_KEYS]
+					? [hc2_probs_a, hc2_probs_b]
+					: [hc2_probs_b, hc2_probs_a];
+
+				// each predicate in x
+				for(const sc1_predicate in hc2_probs_x) {
+					// ref objects
+					const as_objects_a = hc2_probs_x[sc1_predicate];
+					const as_objects_b = hc2_probs_y[sc1_predicate];
+
+					// predicate missing from y; skip
+					if(!as_objects_b) continue;
+
+					// smaller goes to x
+					const [as_objects_x, as_objects_y] = as_objects_a.size <= as_objects_b.size
+						? [as_objects_a, as_objects_b]
+						: [as_objects_b, as_objects_a];
+
+					// new set
+					const as_objects_out: Set<C1.Object> = new Set();
+
+					// each object in x
+					for(const sc1_object of as_objects_x) {
+						// object missing from y; skip
+						if(!as_objects_y.has(sc1_object)) continue;
+
+						// add object to out
+						as_objects_out.add(sc1_object);
+					}
+
+					// some objects remain
+					if(as_objects_out.size) {
+						// create predicate
+						hc2_probs_out[sc1_predicate] = as_objects_out;
+						hc2_probs_out[$_QUADS] += as_objects_out.size;
+						hc2_probs_out[$_KEYS] += 1;
+					}
+				}
+
+				// some quads were added
+				if(hc2_probs_out[$_QUADS]) {
+					// create subject
+					hc3_trips_out[sc1_subject] = hc2_probs_out;
+					hc3_trips_out[$_QUADS] += hc2_probs_out[$_QUADS];
+					hc3_trips_out[$_KEYS] += 1;
+				}
+			}
+
+			// some quads were added
+			if(hc3_trips_out[$_QUADS]) {
+				// create graph
+				hc4_quads_out[sc1_graph] = hc3_trips_out;
+				hc4_quads_out[$_QUADS] += hc3_trips_out[$_QUADS];
+				hc4_quads_out[$_KEYS] += 1;
+			}
+		}
+
+		return new BasicQuadTree(hc4_quads_out, {
+			prefixed: b_prefixed_out,
+			prefixes: h_prefixes_out,
+		});
 	}
 }
 
