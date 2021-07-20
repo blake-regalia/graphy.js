@@ -1,22 +1,47 @@
-@import '../../../share/iris.jmacs'
-@import '../../../share/channel.jmacs'
+@import '../../share/iris.jmacs'
+@import '../../share/channel.jmacs'
 
-@./* global FORMAT */
+@./* global S_FORMAT S_MODE */
 @//@
 
-@$ NT = 'nt' === FORMAT;
-@$ NQ = 'nq' === FORMAT;
+@$ NT = 'nt' === S_FORMAT;
+@$ NQ = 'nq' === S_FORMAT;
 @$ B_QUADS = NQ;
 
 @$ S_LABEL = NT? 'NTriples': 'NQuads';
 
+@$ B_LOAD = 'load' === S_MODE;
+@$ B_READ = 'read' === S_MODE;
+
 @$ B_OPTIMIZE_UNESCAPE = true;
 
 @// import parser macros
-@import '../../text.read.jmacs'
+@import '../text.read.jmacs'
 
-const stream = require('@{channel('core.iso.stream')}');
-const factory = require('@{channel('core.data.factory')}');
+import {stream} from '@@graphy/internal';
+import {DataFactory} from '@@graphy/core';
+
+@if B_LOAD
+	@if B_LOAD_GSPO_BUILDER
+		import {BasicQuadTree} from '@@graphy/memory';
+	@;
+	const {
+		concise,
+	} = DataFactory;
+
+	const $_KEYS = Symbol(' keys');
+	const $_QUADS = Symbol(' quads');
+@;
+
+import {
+	ContextualError,
+	ContentSyntaxError,
+	UnexpectedTokenError,
+	@if B_LOAD
+		InvalidStateChangeError,
+	@;
+	ExceededMaximumTokenLengthError,
+} from '../../error.mjs';
 
 const RT_ABSOLUTE_IRI_VALID = /^[a-z][a-z0-9+\-.]*:(?:[^\0-\x20<>"{}|^`\\]|@{UCHAR()})*$/;
 const RT_ABSOLUTE_IRI_ESCAPELESS_VALID = /^[a-z][a-z0-9+\-.]*:[^\0-\x20<>"{}|^`]*$/;
@@ -183,7 +208,11 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 		let i_group_graph = B_QUADS? 11: 9;
 	}
 	// prep object term
-	let kt_object;
+	@- B_LOAD
+		let sc1_object;
+	@:
+		let kt_object;
+	@;
 
 	@- B_QUADS
 		// where to find the graph component
@@ -193,11 +222,22 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 	// object term type is named node
 	if(@{sji_match}[4]) {
 		let p_object = @{sji_match}[4].slice(1);
-		kt_object = @{sji_named_node}(@{ue_iri('p_object', b_unescape)});
+		@- B_LOAD
+			sc1_object = '>'+@{ue_iri('p_object', b_unescape)};
+		@:
+			kt_object = @{sji_named_node}(@{ue_iri('p_object', b_unescape)});
+		@;
 	}
 	// object term type is blank node
 	else if(@{sji_match}[5]) {
-		kt_object = create_blank_node(@{ue_iri(sji_match+'[5]', b_unescape)});
+		@.{
+			const sj_object_bnode = ue_iri(sji_match+'[5]', b_unescape)
+		}
+		@- B_LOAD
+			sc1_object = '#'+@{sj_object_bnode};
+		@:
+			kt_object = create_blank_node(@{sj_object_bnode});
+		@;
 	}
 	// object term type is literal
 	else {
@@ -218,23 +258,42 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 
 			// datatype is present
 			if(@{sji_match}[@{i_group_strlit+2}]) {
-				// create datatype term
-				let kt_datatype = this.create_named_node@{b_unescape? '': '_escapeless'}(@{ue_iri(sji_match+'['+(i_group_strlit+2)+']')});
+				@.{
+					const sj_datatype = @{ue_iri(sji_match+'['+(i_group_strlit+2)+']')};
+				}
+				@- B_LOAD
+					// create datatype term
+					let sc1_datatype = '>'+@{sj_datatype};
 
-				// create object term
-				kt_object = datatypedLiteral(s_contents, kt_datatype);
+					// create object term
+					sc1_object = '^'+sc1_datatype+'"'+s_contents;
+				@:
+					// create datatype term
+					let kt_datatype = this.create_named_node@{b_unescape? '': '_escapeless'}(@{sj_datatype});
+
+					// create object term
+					kt_object = datatyped_literal(s_contents, kt_datatype);
+				@;
 			}
 			// language tag is present
 			else if(@{sji_match}[@{i_group_strlit+3}]) {
 				// normalize language
 				let s_language = @{sji_match}[@{i_group_strlit+3}].toLowerCase();
 
-				// create object term
-				kt_object = create_languaged_literal(s_contents, s_language);
+				@- B_LOAD
+					sc1_object = '@'+s_language+'"'+s_contents;
+				@:
+					// create object term
+					kt_object = create_languaged_literal(s_contents, s_language);
+				@;
 			}
 			// simple literal
 			else {
-				kt_object = simpleLiteral(s_contents);
+				@- B_LOAD
+					sc1_object = '"'+s_contents;
+				@:
+					kt_object = simple_literal(s_contents);
+				@;
 			}
 		}
 		// no string terminator
@@ -251,16 +310,40 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 
 				// named node
 				if(s_subject || 'string' === typeof s_subject) {
-					this._kt_subject = @{sji_named_node}(@{ue_iri('s_subject', b_unescape)})
+					@.{
+						const sj_subject_name = @{ue_iri('s_subject', b_unescape)};
+					}
+					@- B_LOAD
+						const sc1_subject = this._sc1_subject = '>'+@{sj_subject_name};
+						this._kh_grub = this._kh_graph.openC1Subject(sc1_subject);
+					@:
+						this._kt_subject = @{sji_named_node}(@{sj_subject_name})
+					@;
 				}
 				// blank node
 				else {
-					this._kt_subject = create_blank_node(@{sji_match}[2]);
+					@.{
+						const sj_subject_blank = @{sji_match}[2];
+					}
+					@- B_LOAD
+						const sc1_subject = this._sc1_subject = '#'+@{sj_subject_blank};
+						this._kh_grub = this._kh_graph.openC1Subject(sc1_subject);
+					@:
+						this._kt_subject = create_blank_node(@{sj_subject_blank});
+					@;
 				}
 			}
 
 			// save predicate
-			this._kt_predicate = @{sji_named_node}(@{ue_iri(sji_match+'[3]', b_unescape)});
+			@.{
+				const sj_predicate = @{ue_iri(sji_match+'[3]', b_unescape)};
+			}
+			@- B_LOAD
+				const sc1_predicate = this._sc1_predicate = '>'+@{sj_predicate};
+				this._kh_greed = this._kh_grub.openC1Predicate(sc1_predicate);
+			@:
+				this._kt_predicate = @{sji_named_node}(@{sj_predicate});
+			@;
 
 			// parse contents
 			let z_bail = this.strlit_contents();
@@ -289,7 +372,11 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 	}
 
 	@- B_QUADS
-		let kt_graph = kt_default_graph;
+		@- B_LOAD
+			let sc1_graph = '*';
+		@:
+			let kt_graph = kt_default_graph;
+		@;
 
 		// graph after literal
 		if(b_graph_late) {
@@ -298,11 +385,25 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 
 			// named node
 			if(s_graph || 'string' === typeof s_graph) {
-				kt_graph = @{sji_named_node}(@{ue_iri('s_graph', b_unescape)});
+				@.{
+					const sj_graph_named = @{ue_iri('s_graph', b_unescape)};
+				}
+				@- B_LOAD
+					sc1_graph = '>'+@{sj_graph_named};
+				@:
+					kt_graph = @{sji_named_node}(@{sj_graph_named});
+				@;
 			}
 			// blank node
 			else if(@{sji_match}[14]) {
-				kt_graph = create_blank_node(@{sji_match}[14]);
+				@.{
+					const sj_graph_blank = @{sji_match}[14];
+				}
+				@- B_LOAD
+					sc1_graph = '#'+@{sj_graph_blank};
+				@:
+					kt_graph = create_blank_node(@{sj_graph_blank});
+				@;
 			}
 		}
 		// graph after node
@@ -312,38 +413,101 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 
 			// named node
 			if(s_graph || 'string' === typeof s_graph) {
-				kt_graph = @{sji_named_node}(@{ue_iri('s_graph', b_unescape)});
+				@.{
+					const sj_graph_named = @{ue_iri('s_graph', b_unescape)};
+				}
+				@- B_LOAD
+					sc1_graph = '>'+@{sj_graph_named};
+				@:
+					kt_graph = @{sji_named_node}(@{sj_graph_named});
+				@;
 			}
 			// blank node
 			else if(@{sji_match}[7]) {
-				kt_graph = create_blank_node(@{sji_match}[7]);
+				@.{
+					const sj_graph_blank = @{sji_match}[7];
+				}
+				@- B_LOAD
+					sc1_graph = '#'+@{sj_graph_blank};
+				@:
+					kt_graph = create_blank_node(@{sj_graph_blank});
+				@;
 			}
 		}
 	@;
 
-	let kt_subject;
+	@- B_LOAD
+		let sc1_subject;
+	@:
+		let kt_subject;
+	@;
 	{
 		let s_subject = @{sji_match}[1]
 
 		// named node
 		if(s_subject || 'string' === typeof s_subject) {
-			kt_subject = @{sji_named_node}(@{ue_iri('s_subject', b_unescape)})
+			@.{
+				const sj_subject_named = @{ue_iri('s_subject', b_unescape)};
+			}
+			@- B_LOAD
+				sc1_subject = '>'+@{sj_subject_named};
+			@:
+				kt_subject = @{sji_named_node}(@{sj_subject_named})
+			@;
 		}
 		// blank node
 		else {
-			kt_subject = create_blank_node(@{sji_match}[2]);
+			@.{
+				const sj_subject_blank = @{sji_match}[2];
+			}
+			@- B_LOAD
+				sc1_subject = '#'+@{sj_subject_blank};
+			@:
+				kt_subject = create_blank_node(@{sj_subject_blank});
+			@;
 		}
 	}
 
 	let s_predicate = @{sji_match}[3];
 
-	// emit data event
-	f_data_quad(
-		kt_subject,
-		@{sji_named_node}(@{ue_iri('s_predicate', b_unescape)}),
-		kt_object,
-		@{B_QUADS? 'kt_graph': 'kt_default_graph'}
-	);
+	@.{
+		const sj_predicate = ue_iri('s_predicate', b_unescape);
+	}
+	@- B_LOAD
+		const sc1_predicate = '>'+@{sj_predicate};
+
+		if(sc1_graph !== sc1_graph_prev) {
+			kh_graph = k_builder.openC1Graph(sc1_graph);
+			sc1_graph_prev = sc1_graph;
+
+			kh_grub = kh_graph.openC1Subject(sc1_subject);
+			sc1_subject_prev = sc1_subject;
+
+			kh_greed = kh_grub.openC1Predicate(sc1_predicate);
+			sc1_predicate_prev = sc1_predicate;
+		}
+		else if(sc1_subject !== sc1_subject_prev) {
+			kh_grub = kh_graph.openC1Subject(sc1_subject);
+			sc1_subject_prev = sc1_subject;
+
+			kh_greed = kh_grub.openC1Predicate(sc1_predicate);
+			sc1_predicate_prev = sc1_predicate;
+		}
+		else if(sc1_predicate !== sc1_predicate_prev) {
+			kh_greed = kh_grub.openC1Predicate(sc1_predicate);
+			sc1_predicate_prev = sc1_predicate;
+		}
+
+		kh_greed.addC1Object(sc1_object);
+	@:
+		// emit data event
+		f_data_quad(
+			kt_subject,
+			@{sji_named_node}(@{ue_iri('s_predicate', b_unescape)}),
+			kt_object,
+			@{B_QUADS? 'kt_graph': 'kt_default_graph'}
+		);
+	@;
 
 	// comments
 	if(this.emit_comments) {
@@ -355,68 +519,16 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 	}
 @;
 
+const F_NOOP = () => {};
+const F_THROW = (e_read) => {
+	throw e_read;
+};
 
 
-class @{S_LABEL}_Reader extends stream.Transform {
-	constructor(g_impls) {
-		super({
-			// do not decode strings into buffers
-			decodeStrings: false,
+@{create_parsing_export_class()}
 
-			// accept strings as input on writable side
-			writableObjectMode: false,
-
-			// output quad objects on readable side
-			readableObjectMode: true,
-
-			// implementations
-			flush: g_impls.flush,
-			transform: g_impls.transform,
-		});
-
-		// when the writable side is piped into
-		this.on('pipe', (ds_input) => {
-			this._ds_input = ds_input;
-
-			// input stream has encoding option; ensure stream encoding is utf8
-			if('function' === typeof ds_input.setEncoding) {
-				ds_input.setEncoding('utf8');
-			}
-		});
-	}
-
-	// intercept pipe
-	pipe(ds_out) {
-		let ds_dst = ds_out;
-
-		// non-object mode
-		if(!ds_dst._writableState.objectMode) {
-			// transform to JSON
-			ds_out = stream.quads_to_json();
-		}
-		// yet object mode and graphy writable
-		else if(ds_out.isGraphyWritable) {
-			// transform to quad-stream
-			ds_out = stream.quads_to_writable();
-		}
-
-		// interim stream created
-		if(ds_out !== ds_dst) {
-			// forward output to super
-			super.pipe(ds_out);
-
-			// pipe outpu to destination
-			return ds_out.pipe(ds_dst);
-		}
-		// forward as-is to super
-		else {
-			return super.pipe(ds_dst);
-		}
-	}
-}
-
-class Reader {
-	constructor(g_config) {
+class Consumer {
+	constructor(gc_consumer) {
 		let {
 			// input medium
 			input: g_input=null,
@@ -426,27 +538,30 @@ class Reader {
 
 			// debug
 			debug: b_debug=false,
-		} = g_config;
+		} = gc_consumer;
 
 		// allow relative iris flag
-		let b_allow_relative_iris = g_config.allow_relative_iris || g_config.allowRelativeIRIs || g_config.allowRelativeIris || false;
+		let b_allow_relative_iris = gc_consumer.allow_relative_iris || gc_consumer.allowRelativeIRIs || gc_consumer.allowRelativeIris || false;
 
 		// adopt factory
-		let dc_factory = this._dc_factory = factory.adopt(g_config.dataFactory || g_config.data_factory || factory.unfiltered);
+		let dc_factory = this._dc_factory = DataFactory.adopt(gc_consumer.dataFactory || gc_consumer.data_factory || DataFactory.unfiltered);
 
 		let f_quad = this._f_quad = dc_factory.quad;
+
+		const kt_default_graph = dc_factory.defaultGraph();
 
 		// fields
 		Object.assign(this, {
 			// string buffer, accept left-over string from previous data chunk
-			s: g_config.prepend || '',
+			s: gc_consumer.prepend || '',
 
 			// string buffer length
 			n: 0,
 
 			_b_debug: b_debug,
 
-			_b_relax: b_relax,
+			// tolerant
+			_b_tolerant: !!gc_consumer.tolerant || !!gc_consumer.relax,
 
 			_b_destroyed: false,
 
@@ -454,31 +569,50 @@ class Reader {
 
 			_f_state: this.statement,
 
-			_kt_subject: null,
-			_kt_predicate: null,
-			@- B_QUADS
-				_kt_object: null,
+			// current data
+			@- B_LOAD
+				_sc1_subject: '',
+				_sc1_predicate: '',
+				_sc1_object: '',
+				_sc1_graph: '*',
+
+				_k_builder: k_builder,
+				_kh_graph: k_builder.openC1Graph('*'),
+				_kh_grub: null,
+				_kh_greed: null,
+			@:
+				_kt_subject: null,
+				_kt_predicate: null,
+				@- B_QUADS
+					_kt_object: null,
+					_kt_graph: kt_default_graph,
+				@;
+				_kq_star: null,
 			@;
 
 			_s_literal: '',
 		});
 
-		this._kt_default_graph = dc_factory.defaultGraph();
 		this._kt_rdfs_lang_string = dc_factory.namedNode('@{P_IRI_RDFS}langString');
 
 		// clean regex
 		let r_clean = this._r_clean = R_CLEAN;
 
-		if(g_config.relaxed) {
-			console.warn((new Error(`no such option 'relaxed'; did you mean 'relax' ?`)).stack.replace(/^Error:/, 'Warning:'));
-		}
-		if('validate' in g_config) {
-			console.warn((new Error(`option 'validate' has been removed and validation is now on by default. Use 'relax' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+		if('relaxed' in gc_consumer) {
+			console.warn((new TypeError(`No such option 'relaxed'; did you mean 'relax' ? Suggestion: use 'tolerant' instead`)).stack.replace(/^Error:/, 'Warning:'));
 		}
 
-		let namedNode = dc_factory.namedNode;
-		let blankNode = dc_factory.blankNode;
-		let languagedLiteral = dc_factory.languagedLiteral;
+		if('relax' in gc_consumer) {
+			console.warn((new TypeError(`Option 'relax' will be deprecated in future release. Use the 'tolerant' option if you wish to disable validation for faster parsing.`)));
+		}
+
+		if('input' in gc_consumer) {
+			console.warn((new TypeError(`Option 'input' has been deprecated. You can either use this parser as a Transform or use the static 'run' method.`)));
+		}
+
+		if('validate' in gc_consumer) {
+			console.warn((new TypeError(`Option 'validate' has been deprecated. Validation is now enabled by default. Use the 'tolerant' option if you wish to disable validation.`)).stack.replace(/^Error:/, 'Warning:'));
+		}
 
 		// test for valid named node
 		let rt_named_node_valid = b_allow_relative_iris? RT_NAMED_NODE_VALID: RT_ABSOLUTE_IRI_VALID;
@@ -486,212 +620,54 @@ class Reader {
 		// test for valid named node escapeless
 		let rt_named_node_valid_escapeless = b_allow_relative_iris? RT_NAMED_NODE_ESCAPELESS_VALID: RT_ABSOLUTE_IRI_ESCAPELESS_VALID;
 
-		// validation
-		let k_self = this;
-		Object.assign(this, !b_relax
-			? {
-				create_named_node(p_iri) {
-					if(!rt_named_node_valid.test(p_iri)) return k_self._error(`invalid IRI: "${p_iri}"`);
-					return namedNode(p_iri);
-				},
+		@- B_READ
+			let namedNode = dc_factory.namedNode;
+			let blankNode = dc_factory.blankNode;
+			let languagedLiteral = dc_factory.languagedLiteral;
 
-				create_named_node_escapeless(p_iri) {
-					if(!rt_named_node_valid_escapeless.test(p_iri)) return k_self._error(`invalid IRI: "${p_iri}"`);
-					return namedNode(p_iri);
-				},
+			// validation
+			let k_self = this;
+			Object.assign(this, !b_relax
+				? {
+					create_named_node(p_iri) {
+						if(!rt_named_node_valid.test(p_iri)) return k_self._error(`invalid IRI: "${p_iri}"`);
+						return namedNode(p_iri);
+					},
 
-				create_blank_node(s_label) {
-					if(!RT_BLANK_NODE_LABEL_VALID.test(s_label)) return k_self._error(`Invalid blank node label: "${s_label}"`);
-					return blankNode(s_label);
-				},
+					create_named_node_escapeless(p_iri) {
+						if(!rt_named_node_valid_escapeless.test(p_iri)) return k_self._error(`invalid IRI: "${p_iri}"`);
+						return namedNode(p_iri);
+					},
 
-				create_languaged_literal(s_contents, s_language) {
-					if(!RT_LANGUAGE_VALID.test(s_language)) {
-						return k_self._error(`Invalid literal language tag: ${s_language}`);
-					}
+					create_blank_node(s_label) {
+						if(!RT_BLANK_NODE_LABEL_VALID.test(s_label)) return k_self._error(`Invalid blank node label: "${s_label}"`);
+						return blankNode(s_label);
+					},
 
-					return languagedLiteral(s_contents, s_language);
-				},
-			}
-			: {
-				create_named_node: namedNode,
+					create_languaged_literal(s_contents, s_language) {
+						if(!RT_LANGUAGE_VALID.test(s_language)) {
+							return k_self._error(`Invalid literal language tag: ${s_language}`);
+						}
 
-				create_named_node_escapeless: namedNode,
+						return languagedLiteral(s_contents, s_language);
+					},
+				}
+				: {
+					create_named_node: namedNode,
 
-				create_blank_node: blankNode,
+					create_named_node_escapeless: namedNode,
 
-				create_languaged_literal: languagedLiteral,
-			});
+					create_blank_node: blankNode,
+
+					create_languaged_literal: languagedLiteral,
+				});
+		@;
 
 		// transform stream
 		let ds_transform;
 
 		// whether or not data has been received before
 		let b_init = false;
-
-		// create transform
-		ds_transform = this.transform = new @{S_LABEL}_Reader({
-			// on data event
-			transform: (s_chunk, s_encoding, fk_chunk) => {
-				// first transform
-				if(!b_init) {
-					// notify that data will begin
-					ds_transform.emit('ready');
-
-					// do not emit 'ready' event again
-					b_init = false;
-				}
-
-				// concatenate current chunk to previous chunk
-				let s = this.s += s_chunk;
-
-				// remove whitespace & comments from beginning
-				if(this._b_trim_start) {
-					r_clean.lastIndex = 0;
-					let m_clean = r_clean.exec(s);
-					if(this.emit_comments) {
-						this.emit_comments(m_clean[1]);
-					}
-
-					// update index and prepare to match statement
-					this.i = r_clean.lastIndex;
-				}
-				// do not remove whitespace; reset index
-				else {
-					this.i = 0;
-				}
-
-				// cache chunk length
-				this.n = s.length;
-
-				// resume parsing
-				try {
-					this.parse(true);
-				}
-				// read error occurred; emit and destroy stream
-				catch(e_read) {
-					return ds_transform.destroy(e_read);
-				}
-
-				// emit progress event updates
-				ds_transform.emit('progress', s_chunk.length);
-
-				// done transforming this chunk
-				fk_chunk();
-			},
-
-			// once there's no more data to consume, invoke eof
-			flush: (fk_flush) => {
-				// there is still unparsed data
-				if(this.s.length) {
-					// append newline to end so we can match token
-					this.s += '\n';
-
-					// remove whitespace & comments from beginning
-					if(this._b_trim_start) {
-						r_clean.lastIndex = 0;
-						let m_clean = r_clean.exec(this.s);
-						if(this.emit_comments) {
-							this.emit_comments(m_clean[1]);
-						}
-
-						// update index and prepare to match statement
-						this.i = r_clean.lastIndex;
-					}
-					// do not remove whitespace; reset index
-					else {
-						this.i = 0;
-					}
-
-					// parse
-					try {
-						this.parse();
-					}
-					// read error occurred; pass to flush errback and exit method
-					catch(e_read) {
-						// destroying during flush means overriding push
-						return ds_transform.demolish(e_read);
-					}
-
-					// still unparsed characters; pass to flush errback and exit method
-					if(this.s.length) {
-						return ds_transform.demolish(new Error(`parsing error occurred in state: statement\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
-					}
-				}
-
-				// invalid state
-				if(this._f_state !== this.statement) {
-					return ds_transform.demolish(new Error(`parsing error occurred in state: ${this._f_state.name}\n  ${this.s.substr(0, 50)}\n  ^ starting here`));
-				}
-
-				// make buffer's alloc eligible for gc
-				this.s = null;
-
-				// final progress update: no additional bytes were read
-				ds_transform.emit('progress', 0);
-
-				// call end event listener
-				ds_transform.emit('eof');
-
-				// done flushing, close read stream
-				fk_flush();
-			},
-		});
-
-		// destroy
-		ds_transform._destroy = (...a_args) => {
-			this.destroy(...a_args);
-		};
-
-		// data quad
-		this._f_data_quad = (kt_subject, kt_predicate, kt_object, kt_graph) => ds_transform.push(f_quad(kt_subject, kt_predicate, kt_object, kt_graph));
-
-		// new listener added
-		ds_transform.on('newListener', (s_event) => {
-			// comment
-			if('comment' === s_event) {
-				r_clean = R_CLEAN_COMMENTS;
-				this.emit_comments = (s_captured) => {
-					if(!s_captured) return;
-					let a_comments = s_captured.slice(1).replace(/\n\s+$/, '').split(/\n+\s*#/g);
-
-					for(let s_comment of a_comments) {
-						ds_transform.emit('comment', s_comment);
-					}
-				};
-			}
-		});
-
-		// bind events to transform stream
-		this.bind(g_config);
-
-		// input given
-		if(g_input) {
-			// input is stream
-			if(g_input.stream) {
-				let ds_input = g_input.stream;
-
-				// go async so caller has chance to bind event listeners
-				queueMicrotask(() => {
-					ds_input.pipe(ds_transform);
-				});
-			}
-			// string
-			else if('string' === typeof g_input.string) {
-				let s_input = g_input.string;
-
-				// go async so caller has chance to bind event listeners
-				queueMicrotask(() => {
-					ds_transform.end(s_input, 'utf8');
-				});
-			}
-			// invalid arg
-			else {
-				throw new TypeError(`Invalid argument for input parameter: ${'object' === typeof g_input? JSON.stringify(g_input): g_input}`);
-			}
-		}
-
-		ds_transform._graphy_reader = this;
 	}
 
 	_error(s_message) {
@@ -711,17 +687,6 @@ class Reader {
 	data: {},  // attach data listener last
 };
 
-	bind(g_config) {
-		let ds_transform = this.transform;
-		@*{
-			for(let [s_event, g_event] of Object.entries(H_PARSE_EVENTS)) {
-				yield /* syntax: js */ `
-					if(g_config.${s_event}) ds_transform.${g_event.once? 'once': 'on'}('${s_event}', g_config.${s_event});
-					`.trim()+'\n';
-			}
-		}
-	}
-
 	// begin parsing, keep applying until no more stack bail-outs
 	parse() {
 		let f_sync = this._f_state();
@@ -734,14 +699,25 @@ class Reader {
 		let s = this.s;
 		let n = this.n;
 		let i = this.i;
-		let f_data_quad = this._f_data_quad;
-		let create_named_node = this.create_named_node;
-		let create_named_node_escapeless = this.create_named_node_escapeless;
-		let create_languaged_literal = this.create_languaged_literal;
-		let create_blank_node = this.create_blank_node;
-		let simpleLiteral = this._dc_factory.simpleLiteral;
-		let datatypedLiteral = this._dc_factory.datatypedLiteral;
-		let kt_default_graph = this._kt_default_graph;
+		@- B_LOAD
+			let k_builder = this._k_builder;
+			let kh_graph = this._kh_graph;
+			let kh_grub = this._kh_grub;
+			let kh_greed = this._kh_greed;
+
+			let sc1_graph_prev = '';
+			let sc1_subject_prev = '';
+			let sc1_predicate_prev = '';
+		@+ B_READ
+			let f_data_quad = this._f_data_quad;
+			let create_named_node = this.create_named_node;
+			let create_named_node_escapeless = this.create_named_node_escapeless;
+			let create_languaged_literal = this.create_languaged_literal;
+			let create_blank_node = this.create_blank_node;
+			let simple_literal = this._dc_factory.simpleLiteral;
+			let datatyped_literal = this._dc_factory.datatypedLiteral;
+			let kt_default_graph = this._kt_default_graph;
+		@;
 
 		// match triples/quads
 		for(;;) {
@@ -762,6 +738,13 @@ class Reader {
 
 		// resume here
 		this._f_state = this.statement;
+
+		@- B_LOAD
+			// save locals
+			this._kh_graph = kh_graph;
+			this._kh_grub = kh_grub;
+			this._kh_greed = kh_greed;
+		@;
 
 		// exit
 		return 1;
@@ -836,9 +819,13 @@ class Reader {
 	}
 
 @.{
-	let sji_save_object = B_QUADS
-		? /* syntax: js */ `this._kt_object`
-		: /* syntax: js */ `let kt_object`;
+	let sji_save_object = B_LOAD
+		? (B_QUADS
+			? /* syntax: js */ `this._sc1_object`
+			: /* syntax: js */ `let sc1_object`)
+		: (B_QUADS
+			? /* syntax: js */ `this._kt_object`
+			: /* syntax: js */ `let kt_object`);
 }
 
 	// parse state for datatype_or_langtag
@@ -870,11 +857,19 @@ class Reader {
 							// prepare iri
 							let p_datatype = m_iriref[1].replace(R_UNICODE_ANY, F_REPLACE_UNICODE_ANY);
 
-							// create datatype term
-							let kt_datatype = this.create_named_node(p_datatype);
+							@- B_LOAD
+								// create datatype term
+								let sc1_datatype = '>'+p_datatype;
 
-							// create object term
-							@{sji_save_object} = this._dc_factory.datatypedLiteral(this._s_literal, kt_datatype);
+								// create object term
+								@{sji_save_object} = '^'+sc1_datatype+'"'+this._s_literal;
+							@:
+								// create datatype term
+								let kt_datatype = this.create_named_node(p_datatype);
+
+								// create object term
+								@{sji_save_object} = this._dc_factory.datatypedLiteral(this._s_literal, kt_datatype);
+							@;
 
 							// free literal string
 							this._s_literal = '';
@@ -1106,11 +1101,25 @@ class Reader {
 			let {s, n, i} = this;
 
 			@{if_match('R_IRIREF', 'm_iriref')}
-				// create graph term
-				let kt_graph = this.create_named_node(m_iriref[1]);
+				@.{
+					const sj_graph_iri = /* syntax: js */ `m_iriref[1]`;
+				}
+				@- B_LOAD
+					// create graph term
+					let sc1_graph = '>'+@{sj_graph_iri};
 
-				// emit data event
-				this._f_data_quad(this._kt_subject, this._kt_predicate, this._kt_object, kt_graph);
+					// create object
+					this._k_builder.openC1Graph(sc1_graph)
+						.openC1Subject(this._sc1_subject)
+						.openC1Predicatte(this._sc1_predicate)
+						.addC1Object(this._sc1_object);
+				@:
+					// create graph term
+					let kt_graph = this.create_named_node(@{sj_graph_iri});
+
+					// emit data event
+					this._f_data_quad(this._kt_subject, this._kt_predicate, this._kt_object, kt_graph);
+				@;
 
 				// complete with statement_term
 				return this.statement_term();
@@ -1152,12 +1161,3 @@ class Reader {
 	}
 }
 
-
-module.exports = function(...a_args) {
-	let g_config = {};
-
-	@{normalize_reader_config('g_config')}
-
-	// create reader, return transform stream
-	return (new Reader(g_config)).transform;
-};

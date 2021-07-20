@@ -7,7 +7,10 @@ import {
 	Term,
 	PrefixMap,
 	PrefixMapRelation,
+	F1,
 } from '@graphy/types';
+import { DefaultGraph, NamedNode } from 'rdf-js';
+import { DatatypedLiteral } from '../../build/package/core.data.factory/main';
 
 export namespace DataFactory {
 	/**
@@ -132,6 +135,89 @@ export namespace DataFactory {
 	 * @param quad - the Quad to convert
 	 */
 	function fromRdfjsQuad(quad: RDFJS.Quad): Term.Quad;
+
+	@*{
+		const H_MAPS = {
+			DefaultGraph: {
+				pattern: '*',
+			},
+			BlankNode: {
+				pattern: '#${infer ValueString}',
+				pass: ['ValueString'],
+			},
+			EphemeralBlankNode: {
+				pattern: '##${string}',
+			},
+			LanguagedLiteral: {
+				pattern: '@${infer LanguageString}"${infer ValueString}',
+				pass: ['ValueString', 'LanguageString'],
+			},
+			SimpleLiteral: {
+				pattern: '"${infer ValueString}',
+				pass: ['ValueString'],
+			},
+			Variable: {
+				pattern: '?${infer ValueString}',
+				pass: ['ValueString'],
+			},
+			DatatypedLiteral: {
+				pattern: '^>${infer DatatypeValue}"${infer ValueString}',
+				pass: ['ValueString', 'DatatypeValue'],
+			},
+		};
+
+		yield /* syntax: ts */ `type InferC1<C1String extends C1.Any> = \n\t\t`;
+		for(const [si_type, g_entry] of Object.entries(H_MAPS)) {
+			yield /* syntax: ts */ `C1String extends \`${g_entry.pattern}\`
+						? Term.${si_type}${g_entry.pass? `<${g_entry.pass.join(', ')}>`: ''}
+					: `
+		}
+		yield /* syntax: ts */ `any;`;
+	}
+
+	// type InferTermFromC1<C1String extends C1.Any> =
+	// 	C1String extends C1.EphemeralBlankNode
+	// 		? Term.EphemeralBlankNode
+	// 		: C1String extends C1.LabeledBlankNode
+	// 			? Term.LabeledBlankNode
+	// 				: C1String extends C1.DefaultGraph
+	// 					? Term.DefaultGraph
+	// 					: C1String extends C1.LanguagedLiteral
+	// 						? Term.LanguagedLiteral
+	// 						: C1String extends C1.SimpleLiteral
+	// 							? Term.SimpleLiteral
+	// 							: C1String extends C1.Variable
+	// 								? Term.Variable
+	// 								: C1String extends C1.NamedNode
+	// 									? Term.NamedNode
+	// 									: C1String extends F1.BooleanLiteral
+	// 										? Term.BooleanLiteral
+	// 										: C1String extends F1.IntegerLiteral
+	// 											? Term.IntegerLiteral
+	// 											: C1String extends F1.PositiveInfinityLiteral
+	// 												? Term.PositiveInfinityLiteral
+	// 												: C1String extends F1.NegativeInfinityLiteral
+	// 													? Term.NegativeInfinityLiteral
+	// 													: C1String extends F1.NaNLiteral
+	// 														? Term.NaNLiteral
+	// 														: C1String extends F1.DoubleLiteral
+	// 															? Term.DoubleLiteral
+	// 															: C1String extends F1.DateTimeLiteral
+	// 																? Term.DateTimeLiteral
+	// 																: C1String extends F1.DateLiteral
+	// 																	? Term.DateLiteral
+	// 																	: C1String extends F1.DecimalLiteral
+	// 																		? Term.DecimalLiteral
+	// 																		: C1String extends C1.DatatypedLiteral
+	// 																			? Term.DatatypedLiteral
+	// 																			: Term.Any;
+
+	function fromC1T<
+		C1Type extends C1.Any,
+		TermType extends InferTermFromC1<C1Type>
+	>(term: C1Type, prefixes?: PrefixMap): TermType;
+
+	const kt_x = fromC1T('@yell"what');
 
 	/**
 	 * Construct a graphy Term from a c1 string

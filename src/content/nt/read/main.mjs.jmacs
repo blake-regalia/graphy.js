@@ -1,0 +1,4 @@
+@$ S_FORMAT = 'nt';
+@$ S_MODE = 'read';
+
+@import '../../_n/parse.mjs.jmacs';

@@ -1,8 +1,9 @@
 const G_MODES_N_FAMILY = {
 	read: {},
-	write: {},
+	load: {},
 	scan: {},
 	scribe: {},
+	write: {},
 };
 
 const G_MODES_T_FAMILY = {
@@ -11,15 +12,16 @@ const G_MODES_T_FAMILY = {
 			'uri-js',
 		],
 	},
-	write: {
-		dependencies: [
-			'big-integer',
-		],
-	},
-	scribe: {},
 	load: {
 		dependencies: [
 			'uri-js',
+		],
+	},
+	scan: {},
+	scribe: {},
+	write: {
+		dependencies: [
+			'big-integer',
 		],
 	},
 };

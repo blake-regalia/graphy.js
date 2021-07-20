@@ -1557,8 +1557,6 @@ function count_lines_until(s_chunk, i_until=0) {
 	}
 }
 
-@$ S_EXPORT = S_LABEL+S_MODE[0].toUpperCase()+S_MODE.substr(1)+'er';
-
 
 @$ H_PARSE_EVENTS = {
 	base: {},
@@ -1578,141 +1576,7 @@ function count_lines_until(s_chunk, i_until=0) {
 	data: {},  // attach data listener last
 };
 
-
-export class @{S_EXPORT} extends stream.@{B_LOAD? /* syntax: js */ `Writable`: /* syntax: js */ `Transform`} {
-	static async run(z_input, gc_run) {
-		// instantiate consumer
-		const k_consumer = new Consumer(gc_run, @{S_EXPORT});
-
-		// string
-		if('string' === typeof z_input) {
-			return k_consumer.consume_string(z_input);
-		}
-		// stream
-		else {
-			return await k_consumer.consume_stream(z_input);
-		}
-	}
-
-	constructor(gc_consumer={}) {
-		super({
-			// do not decode strings into buffers
-			decodeStrings: false,
-
-			// accept strings as input on writable side
-			writableObjectMode: false,
-
-			@if !B_LOAD
-				// output quad objects on readable side
-				readableObjectMode: true,
-			@;
-		});
-
-		// hash of rewired event handlers
-		this._h_rewired = {};
-
-		// instantiate consumer
-		const k_consumer = this._k_consumer = new Consumer(gc_consumer, @{S_EXPORT});  // eslint-disable-line no-new
-
-		// proxy stream
-		k_consumer.proxy_transform(this);
-	}
-
-	_rewire_event(si_event) {
-		// event not yet rewired
-		if(this._h_rewired && !(si_event in this._h_rewired)) {
-			let si_handler = `_fk_${si_event}`;
-
-			// ref handler
-			const fk_handler = this._k_consumer[si_handler]
-
-			// legitimate event
-			if(fk_handler){
-				// reassign current handler
-				if(F_NOOP !== fk_handler) {
-					super.on(si_event, fk_handler);
-				}
-
-				// rewire handler
-				this._k_consumer[si_handler] = (...a_args) => {
-					this.emit(si_event, ...a_args);
-				};
-
-				// save to hash
-				this._h_rewired[si_event] = 1;
-			}
-			// error event
-			else if('error' === si_event) {
-				const fe_handler = this._k_consumer._fe_error;
-
-				// reassign current handler
-				if(fe_handler && F_THROW !== fe_handler) {
-					super.on('error', fe_handler);
-				}
-
-				// rewire handler
-				this._k_consumer._fe_error = (...a_args) => {
-					this.emit('error', ...a_args);
-				};
-
-				// save to hash
-				this._h_rewired.error = 1;
-			}
-		}
-	}
-
-	// intercept on
-	on(si_event, fk_event, gc_event) {
-		// harden callback event
-		this._rewire_event(si_event);
-
-		// forward to proxy
-		super.on(si_event, fk_event, gc_event);
-	}
-
-	// intercept once
-	once(si_event, fk_event, gc_event) {
-		// harden callback event
-		this._rewire_event(si_event);
-
-		// forward to proxy
-		super.once(si_event, fk_event, gc_event);
-	}
-
-	@if !B_LOAD
-		// intercept pipe
-		pipe(ds_out) {
-			let ds_dst = ds_out;
-
-			// non-object mode
-			if(!ds_dst._writableState.objectMode) {
-				// transform to JSON
-				ds_out = stream.quads_to_json();
-			}
-			// yet object mode and graphy writable
-			else if(ds_out.isGraphyWritable) {
-				// transform to writable data events
-				ds_out = stream.quads_to_writable();
-			}
-
-			// interim stream created
-			if(ds_out !== ds_dst) {
-				// forward output to super
-				super.pipe(ds_out);
-
-				// pipe outpu to destination
-				return ds_out.pipe(ds_dst);
-			}
-			// forward as-is to super
-			else {
-				return super.pipe(ds_dst);
-			}
-		}
-	@;
-}
-
-export default @{S_EXPORT};
-
+@{create_parsing_export_class()}
 
 const F_NOOP = () => {};
 const F_THROW = (e_read) => {
@@ -1954,7 +1818,7 @@ class Consumer {
 		}, /* syntax: js */ `this`);
 	/* eslint-enable multiline-ternary */ }
 
-	if(gc_consumer.relaxed) {
+	if('relaxed' in gc_consumer) {
 		console.warn((new TypeError(`No such option 'relaxed'; did you mean 'relax' ? Suggestion: use 'tolerant' instead`)).stack.replace(/^Error:/, 'Warning:'));
 	}
 

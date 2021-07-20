@@ -1,4 +1,4 @@
 @$ S_FORMAT = 'ttl';
 @$ S_MODE = 'load';
 
-@import '../../_t/parse.js.jmacs';
+@import '../../_t/parse.mjs.jmacs';

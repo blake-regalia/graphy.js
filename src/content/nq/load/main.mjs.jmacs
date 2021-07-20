@@ -1,0 +1,4 @@
+@$ S_FORMAT = 'nq';
+@$ S_MODE = 'load';
+
+@import '../../_n/parse.mjs.jmacs';
