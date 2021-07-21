@@ -22,9 +22,7 @@ import {stream} from '@@graphy/internal';
 import {DataFactory} from '@@graphy/core';
 
 @if B_LOAD
-	@if B_LOAD_GSPO_BUILDER
-		import {BasicQuadTree} from '@@graphy/memory';
-	@;
+	import {BasicQuadTree} from '@@graphy/memory';
 	const {
 		concise,
 	} = DataFactory;
@@ -231,7 +229,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 	// object term type is blank node
 	else if(@{sji_match}[5]) {
 		@.{
-			const sj_object_bnode = ue_iri(sji_match+'[5]', b_unescape)
+			var sj_object_bnode = ue_iri(sji_match+'[5]', b_unescape)
 		}
 		@- B_LOAD
 			sc1_object = '#'+@{sj_object_bnode};
@@ -259,7 +257,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 			// datatype is present
 			if(@{sji_match}[@{i_group_strlit+2}]) {
 				@.{
-					const sj_datatype = @{ue_iri(sji_match+'['+(i_group_strlit+2)+']')};
+					var sj_datatype = ue_iri(sji_match+'['+(i_group_strlit+2)+']');
 				}
 				@- B_LOAD
 					// create datatype term
@@ -311,7 +309,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 				// named node
 				if(s_subject || 'string' === typeof s_subject) {
 					@.{
-						const sj_subject_name = @{ue_iri('s_subject', b_unescape)};
+						var sj_subject_name = ue_iri('s_subject', b_unescape);
 					}
 					@- B_LOAD
 						const sc1_subject = this._sc1_subject = '>'+@{sj_subject_name};
@@ -323,7 +321,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 				// blank node
 				else {
 					@.{
-						const sj_subject_blank = @{sji_match}[2];
+						var sj_subject_blank = sji_match+'[2]';
 					}
 					@- B_LOAD
 						const sc1_subject = this._sc1_subject = '#'+@{sj_subject_blank};
@@ -336,7 +334,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 
 			// save predicate
 			@.{
-				const sj_predicate = @{ue_iri(sji_match+'[3]', b_unescape)};
+				var sj_predicate = ue_iri(sji_match+'[3]', b_unescape);
 			}
 			@- B_LOAD
 				const sc1_predicate = this._sc1_predicate = '>'+@{sj_predicate};
@@ -386,7 +384,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 			// named node
 			if(s_graph || 'string' === typeof s_graph) {
 				@.{
-					const sj_graph_named = @{ue_iri('s_graph', b_unescape)};
+					var sj_graph_named = ue_iri('s_graph', b_unescape);
 				}
 				@- B_LOAD
 					sc1_graph = '>'+@{sj_graph_named};
@@ -397,7 +395,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 			// blank node
 			else if(@{sji_match}[14]) {
 				@.{
-					const sj_graph_blank = @{sji_match}[14];
+					var sj_graph_blank = sji_match+'[14]';
 				}
 				@- B_LOAD
 					sc1_graph = '#'+@{sj_graph_blank};
@@ -414,7 +412,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 			// named node
 			if(s_graph || 'string' === typeof s_graph) {
 				@.{
-					const sj_graph_named = @{ue_iri('s_graph', b_unescape)};
+					var sj_graph_named = ue_iri('s_graph', b_unescape);
 				}
 				@- B_LOAD
 					sc1_graph = '>'+@{sj_graph_named};
@@ -425,7 +423,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 			// blank node
 			else if(@{sji_match}[7]) {
 				@.{
-					const sj_graph_blank = @{sji_match}[7];
+					var sj_graph_blank = sji_match+'[7]';
 				}
 				@- B_LOAD
 					sc1_graph = '#'+@{sj_graph_blank};
@@ -447,7 +445,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 		// named node
 		if(s_subject || 'string' === typeof s_subject) {
 			@.{
-				const sj_subject_named = @{ue_iri('s_subject', b_unescape)};
+				var sj_subject_named = ue_iri('s_subject', b_unescape);
 			}
 			@- B_LOAD
 				sc1_subject = '>'+@{sj_subject_named};
@@ -458,7 +456,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 		// blank node
 		else {
 			@.{
-				const sj_subject_blank = @{sji_match}[2];
+				var sj_subject_blank = sji_match+'[2]';
 			}
 			@- B_LOAD
 				sc1_subject = '#'+@{sj_subject_blank};
@@ -471,7 +469,7 @@ const R_IRIREF = /<([^>]*)>\s*/y;
 	let s_predicate = @{sji_match}[3];
 
 	@.{
-		const sj_predicate = ue_iri('s_predicate', b_unescape);
+		var sj_predicate = ue_iri('s_predicate', b_unescape);
 	}
 	@- B_LOAD
 		const sc1_predicate = '>'+@{sj_predicate};
@@ -543,12 +541,15 @@ class Consumer {
 		// allow relative iris flag
 		let b_allow_relative_iris = gc_consumer.allow_relative_iris || gc_consumer.allowRelativeIRIs || gc_consumer.allowRelativeIris || false;
 
-		// adopt factory
-		let dc_factory = this._dc_factory = DataFactory.adopt(gc_consumer.dataFactory || gc_consumer.data_factory || DataFactory.unfiltered);
+		@- B_LOAD
+			const k_builder = gc_consumer.into || BasicQuadTree.builder();
+		@:
+			// adopt factory
+			let dc_factory = this._dc_factory = DataFactory.adopt(gc_consumer.dataFactory || gc_consumer.data_factory || DataFactory.unfiltered);
 
-		let f_quad = this._f_quad = dc_factory.quad;
-
-		const kt_default_graph = dc_factory.defaultGraph();
+			const kt_default_graph = dc_factory.defaultGraph();
+			let f_quad = this._f_quad = dc_factory.quad;
+		@;
 
 		// fields
 		Object.assign(this, {
@@ -588,12 +589,12 @@ class Consumer {
 					_kt_graph: kt_default_graph,
 				@;
 				_kq_star: null,
+
+				_kt_rdfs_lang_string: dc_factory.namedNode('@{P_IRI_RDFS}langString'),
 			@;
 
 			_s_literal: '',
 		});
-
-		this._kt_rdfs_lang_string = dc_factory.namedNode('@{P_IRI_RDFS}langString');
 
 		// clean regex
 		let r_clean = this._r_clean = R_CLEAN;
@@ -721,6 +722,8 @@ class Consumer {
 
 		// match triples/quads
 		for(;;) {
+			let sc1_graph = '*';
+
 			@{if_match(STATEMENT_REGEX+'_ESCAPELESS_SP', 'm_statement_e_sp', true)}
 				@{match_body('m_statement_e_sp')}
 
@@ -878,8 +881,13 @@ class Consumer {
 								// graph state
 								return this.post_object();
 							@:
-								// emit data event
-								this._f_data_quad(this._kt_subject, this._kt_predicate, kt_object, this._kt_default_graph);
+								@- B_LOAD
+									// add object
+									this._kh_greed.addC1Object(sc1_object);
+								@:
+									// emit data event
+									this._f_data_quad(this._kt_subject, this._kt_predicate, kt_object, this._kt_default_graph);
+								@;
 
 								// complete with statement_term
 								return this.statement_term();
@@ -912,8 +920,12 @@ class Consumer {
 					// advance index
 					this.i = R_LANGTAG.lastIndex;
 
-					// use direct factory method since regex is validation
-					@{sji_save_object} = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
+					@- B_LOAD
+						@{sji_save_object} = '@'+m_langtag[1]+'"'+this._s_literal;
+					@:
+						// use direct factory method since regex is validation
+						@{sji_save_object} = this._dc_factory.languagedLiteral(this._s_literal, m_langtag[1]);
+					@;
 
 					// free literal string
 					this._s_literal = '';
@@ -922,8 +934,13 @@ class Consumer {
 						// graph state
 						return this.post_object();
 					@:
-						// emit data event
-						this._f_data_quad(this._kt_subject, this._kt_predicate, kt_object, this._kt_default_graph);
+						@- B_LOAD
+							// add object
+							this._kh_greed.addC1Object(sc1_object);
+						@:
+							// emit data event
+							this._f_data_quad(this._kt_subject, this._kt_predicate, kt_object, this._kt_default_graph);
+						@;
 
 						// complete with statement_term
 						return this.statement_term();
@@ -937,8 +954,13 @@ class Consumer {
 			@- B_QUADS
 				// graph component
 				else if('<' === x || '_' === x) {
-					// save simple literal
-					this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+					@- B_LOAD
+						// save simple literal
+						this._sc1_object = '"'+this._s_literal;
+					@:
+						// save simple literal
+						this._kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+					@;
 
 					// free literal string
 					this._s_literal = '';
@@ -949,8 +971,13 @@ class Consumer {
 			@;
 			// triple terminator
 			else if('.' === x) {
-				// save simple literal
-				let kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+				@- B_LOAD
+					// save simple literal
+					let sc1_object = '"'+this._s_literal;
+				@:
+					// save simple literal
+					let kt_object = this._dc_factory.simpleLiteral(this._s_literal);
+				@;
 
 				// free literal string
 				this._s_literal = '';
@@ -958,8 +985,13 @@ class Consumer {
 				// advance index beyond terminator
 				this.i = i + 1;
 
-				// emit data event
-				this._f_data_quad(this._kt_subject, this._kt_predicate, kt_object, this._kt_default_graph);
+				@- B_LOAD
+					// save object
+					this._kh_greed.addC1Object(sc1_object);
+				@:
+					// emit data event
+					this._f_data_quad(this._kt_subject, this._kt_predicate, kt_object, this._kt_default_graph);
+				@;
 
 				// reset state
 				return this.statement;
@@ -1069,8 +1101,13 @@ class Consumer {
 					// advance index beyond terminator
 					this.i = i + 1;
 
-					// emit data event
-					this._f_data_quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_default_graph);
+					@- B_LOAD
+						// save object
+						this._kh_greed.addC1Object(this._sc1_object);
+					@:
+						// emit data event
+						this._f_data_quad(this._kt_subject, this._kt_predicate, this._kt_object, this._kt_default_graph);
+					@;
 
 					// reset state
 					return this.statement;
@@ -1102,17 +1139,17 @@ class Consumer {
 
 			@{if_match('R_IRIREF', 'm_iriref')}
 				@.{
-					const sj_graph_iri = /* syntax: js */ `m_iriref[1]`;
+					var sj_graph_iri = /* syntax: js */ `m_iriref[1]`;
 				}
 				@- B_LOAD
 					// create graph term
-					let sc1_graph = '>'+@{sj_graph_iri};
+					let sc1_graph = this._sc1_graph = '>'+@{sj_graph_iri};
 
-					// create object
-					this._k_builder.openC1Graph(sc1_graph)
-						.openC1Subject(this._sc1_subject)
-						.openC1Predicatte(this._sc1_predicate)
-						.addC1Object(this._sc1_object);
+					// save object
+					this._kh_graph = this._k_builder.openC1Graph(sc1_graph);
+					this._kh_grub = this._kh_graph.openC1Subject(this._sc1_subject);
+					this._kh_greed = this._kh_grub.openC1Predicatte(this._sc1_predicate);
+					this._kh_greed.addC1Object(this._sc1_object);
 				@:
 					// create graph term
 					let kt_graph = this.create_named_node(@{sj_graph_iri});
@@ -1124,11 +1161,22 @@ class Consumer {
 				// complete with statement_term
 				return this.statement_term();
 			@{else_if_match('R_BLANK_NODE', 'm_blank')}
-				// create graph term
-				let kt_graph = this._dc_factory.blankNode(m_blank[1]);
+				@- B_LOAD
+					// create graph term
+					let sc1_graph = this._sc1_graph = '#'+m_blank[1];
 
-				// emit data event
-				this._f_data_quad(this._kt_subject, this._kt_predicate, this._kt_object, kt_graph);
+					// save object
+					this._kh_graph = this._k_builder.openC1Graph(sc1_graph);
+					this._kh_grub = this._kh_graph.openC1Subject(this._sc1_subject);
+					this._kh_greed = this._kh_grub.openC1Predicatte(this._sc1_predicate);
+					this._kh_greed.addC1Object(this._sc1_object);
+				@:
+					// create graph term
+					let kt_graph = this._dc_factory.blankNode(m_blank[1]);
+
+					// emit data event
+					this._f_data_quad(this._kt_subject, this._kt_predicate, this._kt_object, kt_graph);
+				@;
 
 				// complete with statement_term
 				return this.statement_term();

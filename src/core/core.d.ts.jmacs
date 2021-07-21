@@ -138,38 +138,38 @@ export namespace DataFactory {
 
 	@*{
 		const H_MAPS = {
-			DefaultGraph: {
-				pattern: '*',
+			'*': {
+				type: 'DefaultGraph',
 			},
-			BlankNode: {
-				pattern: '#${infer ValueString}',
+			'#${infer ValueString}': {
+				type: 'BlankNode',
 				pass: ['ValueString'],
 			},
-			EphemeralBlankNode: {
-				pattern: '##${string}',
+			'##${string}': {
+				type: 'EphemeralBlankNode',
 			},
-			LanguagedLiteral: {
-				pattern: '@${infer LanguageString}"${infer ValueString}',
+			'@${infer LanguageString}"${infer ValueString}': {
+				type: 'LanguagedLiteral',
 				pass: ['ValueString', 'LanguageString'],
 			},
-			SimpleLiteral: {
-				pattern: '"${infer ValueString}',
+			'"${infer ValueString}': {
+				type: 'SimpleLiteral',
 				pass: ['ValueString'],
 			},
-			Variable: {
-				pattern: '?${infer ValueString}',
+			'?${infer ValueString}': {
+				type: 'Variable',
 				pass: ['ValueString'],
 			},
-			DatatypedLiteral: {
-				pattern: '^>${infer DatatypeValue}"${infer ValueString}',
+			'^>${infer DatatypeValue}"${infer ValueString}': {
+				type: 'DatatypedLiteral',
 				pass: ['ValueString', 'DatatypeValue'],
 			},
 		};
 
 		yield /* syntax: ts */ `type InferC1<C1String extends C1.Any> = \n\t\t`;
-		for(const [si_type, g_entry] of Object.entries(H_MAPS)) {
-			yield /* syntax: ts */ `C1String extends \`${g_entry.pattern}\`
-						? Term.${si_type}${g_entry.pass? `<${g_entry.pass.join(', ')}>`: ''}
+		for(const [si_pattern, g_entry] of Object.entries(H_MAPS)) {
+			yield /* syntax: ts */ `C1String extends \`${si_pattern}\`
+						? Term.${g_entry.type}${g_entry.pass? `<${g_entry.pass.join(', ')}>`: ''}
 					: `
 		}
 		yield /* syntax: ts */ `any;`;

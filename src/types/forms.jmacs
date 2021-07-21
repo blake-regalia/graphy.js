@@ -32,10 +32,30 @@ type IPathAbsolute = string;
 type IPathRootless = string;
 type IPathEmpty = string;
 
-type IRelativePart = string;
+type RepeatStar<TypeString extends string> = '' | `${TypeString}${Repeat<TypeString>}`;
+type RepeatPlus<TypeString extends string> = `${TypeString}${RepeatStar<TypeString>}`;
+
+
+type FragmentParts = IPchar | '/' | '?';
+type XQuery = '' | `?${RepeatStar<IPrivate | FragmentParts>}`;
+type XFragment = '' | `#${RepeatStar<FragmentParts>}`;
+
+type StringRange = never;
+
+type IUnreserved = LiterallyAlpha | LiterallyInteger | '-' | '.' | '_' | '~' | StringRange;
+
+type IUserInfo = RepeatStar<IUnreserved | PctEncoded | SubDelims>;
+
+type Port = LiterallyIntegerSequence;
+type IAuthority = `${''|`${IUserInfo}@`}${IHost}${''|`:${Port}`}`;
+
+type IRelativePart = `//${IAuthority}${IPathAbempty}` | IPathAbsolute | IPathNoScheme | IPathEmpty;
+
+type IRelativeRef = `${IRelativePart}${XQuery}${XFragment}`;
 
 type IhierPart = `//${IAuthority}${IPathAbempty}` | IPathAbsolute | IPathRootless | IPathEmpty;
-type Iri = `${Scheme}:${IhierPart}`;
+
+export type Iri = `${Scheme}:${IhierPart}${XQuery}${XFragment}`;
 
 type NumericSign = '' | '-' | '+';
 
@@ -544,10 +564,10 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 			readonly quads: Array<Quad>;
 		}
 
-		export type BlankNode = LabeledBlankNode | AnonymousBlankNode | EphemeralBlankNode;
-		export type Node = NamedNode | BlankNode;
-		export type Literal = SimpleLiteral | LanguagedLiteral | DatatypedLiteral;
-		export type NumericLiteral = IntegerLiteral | DoubleLiteral | DecimalLiteral;
+		export type BlankNode<ValueString extends string=string> = LabeledBlankNode<ValueString> | AnonymousBlankNode | EphemeralBlankNode;
+		export type Node<ValueString extends string=string> = NamedNode<ValueString> | BlankNode<ValueString>;
+		export type Literal<ValueString extends string=string, LanguageString extends string=string, DatatypeString extends string=string> = SimpleLiteral<ValueString> | LanguagedLiteral<ValueString, LanguageString> | DatatypedLiteral<ValueString, DatatypeString>;
+		export type NumericLiteral<ValueString extends string=string> = IntegerLiteral<ValueString> | DoubleLiteral<ValueString> | DecimalLiteral<ValueString>;
 
 		export type Graph<ValueString extends string=string> = string extends ''? DefaultGraph : DefaultGraph | Node<ValueString>;
 		export type Subject<ValueString extends string=string> = Node<ValueString>;
@@ -555,31 +575,18 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 		export type Object<ValueString extends string=string> = Node<ValueString> | Literal<ValueString>;
 		export type Datatype<DatatypeString extends Iri=Iri> = NamedNode<DatatypeString>;
 
-		interface DatatypeXsdBoolean extends Datatype<'${P_IRI_XSD}boolean'> {
-			value: '${P_IRI_XSD}boolean';
-		}
+		type DatatypeXsdBoolean = Datatype<'${P_IRI_XSD}boolean'>;
+		type DatatypeXsdInteger = Datatype<'${P_IRI_XSD}integer'>;
+		type DatatypeXsdDouble = Datatype<'${P_IRI_XSD}double'>;
+		type DatatypeXsdDecimal = Datatype<'${P_IRI_XSD}decimal'>;
+		type DatatypeXsdDate = Datatype<'${P_IRI_XSD}date'>;
+		type DatatypeXsdDateTime = Datatype<'${P_IRI_XSD}dateTime'>;
 
-		interface DatatypeXsdInteger extends Datatype {
-			value: '${P_IRI_XSD}integer';
-		}
+		export type Data<ValueString extends string=string> = 
+			| Graph<ValueString> | Subject<ValueString> | Object<ValueString>
+			| (ValueString extends Iri? Predicate<ValueString>: never);
+			// ? Graph<ValueString> | Subject<ValueString> | Predicate<ValueString> | Object<ValueString>
 
-		interface DatatypeXsdDouble extends Datatype {
-			value: '${P_IRI_XSD}double';
-		}
-
-		interface DatatypeXsdDecimal extends Datatype {
-			value: '${P_IRI_XSD}decimal';
-		}
-
-		interface DatatypeXsdDate extends Datatype {
-			value: '${P_IRI_XSD}date';
-		}
-
-		interface DatatypeXsdDateTime extends Datatype {
-			value: '${P_IRI_XSD}dateTime';
-		}
-
-		export type Data = Graph | Subject | Predicate | Object;
 		export type Any = Data | Variable | Quad | RelativeIri;
 	`.replace(/\n/g, '\n\t')+'\n';
 
