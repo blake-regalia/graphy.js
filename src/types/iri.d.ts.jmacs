@@ -1,0 +1,42 @@
+
+type Scheme = string;
+type IAuthority = string;
+type IPathAbempty = string;
+type IPathAbsolute = string;
+type IPathRootless = string;
+type IPathEmpty = string;
+
+type RepeatStar<TypeString extends string> = '' | `${TypeString}${Repeat<TypeString>}`;
+type RepeatPlus<TypeString extends string> = `${TypeString}${RepeatStar<TypeString>}`;
+
+
+type FragmentParts = IPchar | '/' | '?';
+type XQuery = '' | `?${RepeatStar<IPrivate | FragmentParts>}`;
+type XFragment = '' | `#${RepeatStar<FragmentParts>}`;
+
+type StringRange = never;
+
+type IUnreserved = LiterallyAlpha | LiterallyInteger | '-' | '.' | '_' | '~' | StringRange;
+
+type IUserInfo = RepeatStar<IUnreserved | PctEncoded | SubDelims>;
+
+type Port = LiterallyIntegerSequence;
+type IAuthority = `${''|`${IUserInfo}@`}${IHost}${''|`:${Port}`}`;
+
+type IRelativePart = `//${IAuthority}${IPathAbempty}` | IPathAbsolute | IPathNoScheme | IPathEmpty;
+
+type IRelativeRef = `${IRelativePart}${XQuery}${XFragment}`;
+
+type IhierPart = `//${IAuthority}${IPathAbempty}` | IPathAbsolute | IPathRootless | IPathEmpty;
+
+export type Iri = `${Scheme}:${IhierPart}${XQuery}${XFragment}`;
+
+type NumericSign = '' | '-' | '+';
+
+type LiterallyIntegerDigit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+type LiterallyIntegerSequence = `${LiterallyIntegerDigit}${LiterallyInteger | ''}`;
+type LiterallyInteger = `${NumericSign}${LiterallyIntegerSequence}`;
+
+type LiterallyDecimal = `${LiterallyInteger}${'' | `.${LiterallyIntegerSequence}`}`;
+
+type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyInteger}`}`;

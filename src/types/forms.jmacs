@@ -1,5 +1,7 @@
 @import '../share/iris.jmacs';
 
+@import './numerics.d.ts.jmacs';
+
 @*{
 	function explicit_union_mutations(s_word) {
 		const a_forms = [];
@@ -25,52 +27,20 @@
 	yield `type LiterallyTrueOrFalse = LiterallyTrue | LiterallyFalse;\n`;
 }
 
-type Scheme = string;
-type IAuthority = string;
-type IPathAbempty = string;
-type IPathAbsolute = string;
-type IPathRootless = string;
-type IPathEmpty = string;
-
-type RepeatStar<TypeString extends string> = '' | `${TypeString}${Repeat<TypeString>}`;
-type RepeatPlus<TypeString extends string> = `${TypeString}${RepeatStar<TypeString>}`;
-
-
-type FragmentParts = IPchar | '/' | '?';
-type XQuery = '' | `?${RepeatStar<IPrivate | FragmentParts>}`;
-type XFragment = '' | `#${RepeatStar<FragmentParts>}`;
-
-type StringRange = never;
-
-type IUnreserved = LiterallyAlpha | LiterallyInteger | '-' | '.' | '_' | '~' | StringRange;
-
-type IUserInfo = RepeatStar<IUnreserved | PctEncoded | SubDelims>;
-
-type Port = LiterallyIntegerSequence;
-type IAuthority = `${''|`${IUserInfo}@`}${IHost}${''|`:${Port}`}`;
-
-type IRelativePart = `//${IAuthority}${IPathAbempty}` | IPathAbsolute | IPathNoScheme | IPathEmpty;
-
-type IRelativeRef = `${IRelativePart}${XQuery}${XFragment}`;
-
-type IhierPart = `//${IAuthority}${IPathAbempty}` | IPathAbsolute | IPathRootless | IPathEmpty;
-
-export type Iri = `${Scheme}:${IhierPart}${XQuery}${XFragment}`;
-
-type NumericSign = '' | '-' | '+';
-
-type LiterallyIntegerDigit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
-type LiterallyIntegerSequence = `${LiterallyIntegerDigit}${LiterallyInteger | ''}`;
-type LiterallyInteger = `${NumericSign}${LiterallyIntegerSequence}`;
-
-type LiterallyDecimal = `${LiterallyInteger}${'' | `.${LiterallyIntegerSequence}`}`;
-
-type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyInteger}`}`;
-
 @.{
 	const ode = Object.entries;
 
 	const A_GENERICS_TERM_VALUE = [/* syntax: ts */ `ValueString extends string=string`];
+
+	function generics_for(si, a_only=null) {
+		const g_term = H_TERMS[si];
+		if(g_term && g_term.generics) {
+			return (a_only? '': '<')+g_term.generics
+				.map(s => `${s.replace(/^(\w+).*/, '$1')}`)
+				.filter(s => a_only? a_only.includes(s): true)
+				.join(', ')+(a_only? '': '>');
+		}
+	}
 
 	const H_TERM_GENERIC = {
 		properties: {
@@ -108,12 +78,12 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 		methods: {
 			equals:       si => /* syntax: ts */ `(other: RDFJS.Term): boolean`,
-			flat:         si => /* syntax: ts */ `(prefixes?: PrefixMap): F1.${si}`,
-			concise:      si => /* syntax: ts */ `(prefixes?: PrefixMap): C1.${si}`,
+			flat:         si => /* syntax: ts */ `(prefixes?: PrefixMap): F1.${si}${generics_for(si)}`,
+			concise:      si => /* syntax: ts */ `(prefixes?: PrefixMap): C1.${si}${generics_for(si)}`,
 			terse:        si => /* syntax: ts */ `(prefixes?: PrefixMap): Terse.${si}`,
 			star:         si => /* syntax: ts */ `(prefixes?: PrefixMap): Star.${si}`,
-			verbose:      si => /* syntax: ts */ `(): Verbose.${si}`,
-			isolate:      si => /* syntax: ts */ `(): Isolated.${si}`,
+			verbose:      si => /* syntax: ts */ `(): Verbose.${si}${generics_for(si)}`,
+			isolate:      si => /* syntax: ts */ `(): Isolated.${si}${generics_for(si)}`,
 			hash:         si => /* syntax: ts */ `(): string`,
 			replaceIri:   si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
 			replaceText:  si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
@@ -150,7 +120,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 		},
 	};
 
-	const SX_C1_ABSOLUTE_IRI = '`>${Iri}`';
+	const SX_C1_ABSOLUTE_IRI = '`>${ValueString}`';
 
 	const H_TERM_NAMED_NODE = {
 		c1: '`${string}:${string}`',
@@ -206,7 +176,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 	const H_TERM_LABELED_BLANK_NODE = {
 		class: 'BlankNode',
-		f1: SX_F1_BLANK_NODE,
+		f1: '`#${ValueString}`',
 		generics: A_GENERICS_TERM_VALUE,
 		properties: {
 			...H_TERM_BLANK_NODE.properties,
@@ -256,7 +226,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 	const H_TERM_SIMPLE_LITERAL = {
 		class: 'Literal',
-		f1: '`"${string}`',
+		f1: '`"${ValueString}`',
 		generics: A_GENERICS_TERM_VALUE,
 		properties: {
 			...H_TERM_LITERAL.properties,
@@ -267,7 +237,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 	const H_TERM_LANGUAGED_LITERAL = {
 		class: 'Literal',
 		// TODO: narrow to BCP47 pattern
-		f1: '`@${string}"${string}`',
+		f1: '`@${LanguageString}"${ValueString}`',
 		generics: [...A_GENERICS_TERM_VALUE, /* syntax: ts */ `LanguageString extends Bcp47=Bcp47`],
 		properties: {
 			...H_TERM_LITERAL.properties,
@@ -279,8 +249,8 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 	const H_TERM_DATATYPED_LITERAL = {
 		class: 'Literal',
-		f1: '`^${NamedNode}"${string}`',
-		c1: ['`^${NamedNode}"${string}`'],
+		f1: '`^${NamedNode<DatatypeString>}"${ValueString}`',
+		c1: ['`^${NamedNode<DatatypeString>}"${ValueString}`'],
 		generics: [...A_GENERICS_TERM_VALUE, /* syntax: ts */ `DatatypeString extends Iri=Iri`],
 		properties: {
 			...H_TERM_LITERAL.properties,
@@ -291,7 +261,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 	};
 
 	const SX_F1_DATATYPE_XSD = '`^>http://www.w3.org/2001/XMLSchema#';
-	const SX_F1_DATATYPE_LITERAL_XSD = SX_F1_DATATYPE_XSD+'${string}"${string}`';
+	const SX_F1_DATATYPE_LITERAL_XSD = SX_F1_DATATYPE_XSD+'${string}"${ValueString}`';
 
 	const H_TERM_NUMERIC_LITERAL = {
 		class: 'Literal',
@@ -326,7 +296,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 	const H_TERM_INTEGER_LITERAL = {
 		class: 'Literal',
-		f1: SX_F1_DATATYPE_XSD+'integer"${number}`',
+		f1: SX_F1_DATATYPE_XSD+'integer"${ValueString}`',
 		c1: '`^${string}:${string}"${number}`',
 		generics: [/* syntax: ts */ 'ValueString extends LiterallyInteger=LiterallyInteger'],
 		properties: {
@@ -340,7 +310,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 		},
 	};
 
-	const SX_F1_DOUBLE_LITERAL = SX_F1_DATATYPE_XSD+'double"${number}`';
+	const SX_F1_DOUBLE_LITERAL = SX_F1_DATATYPE_XSD+'double"${ValueString}`';
 	const H_TERM_DOUBLE_LITERAL = {
 		class: 'Literal',
 		f1: SX_F1_DOUBLE_LITERAL,
@@ -403,7 +373,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 	const H_TERM_DECIMAL_LITERAL = {
 		class: 'Literal',
-		f1: SX_F1_DATATYPE_XSD+'decimal"${string}`',
+		f1: SX_F1_DATATYPE_XSD+'decimal"${ValueString}`',
 		c1: SX_C1_DATATYPE_GENERIC,
 		generics: [/* syntax: ts */ `ValueString extends LiterallyDecimal=LiterallyDecimal`],
 		properties: {
@@ -419,7 +389,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 	const H_TERM_DATE_LITERAL = {
 		class: 'Literal',
-		f1: SX_F1_DATATYPE_XSD+'date"${string}`',
+		f1: SX_F1_DATATYPE_XSD+'date"${ValueString}`',
 		c1: SX_C1_DATATYPE_GENERIC,
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
@@ -433,7 +403,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 	const H_TERM_DATETIME_LITERAL = {
 		class: 'Literal',
-		f1: SX_F1_DATATYPE_XSD+'dateTime"${string}`',
+		f1: SX_F1_DATATYPE_XSD+'dateTime"${ValueString}`',
 		c1: SX_C1_DATATYPE_GENERIC,
 		generics: A_GENERICS_TERM_VALUE,
 		properties: {
@@ -448,7 +418,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 	};
 
 	const H_TERM_VARIABLE = {
-		f1: '`?${string}`',
+		f1: '`?${ValueString}`',
 		implements: /* syntax: js */ `RDFJS.Variable`,
 		generics: A_GENERICS_TERM_VALUE,
 		properties: {
@@ -508,6 +478,8 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 	let s_accepted = '';
 
 	for(const [si_term, g_term] of ode(H_TERMS)) {
+		const sj_generics = g_term.generics? `<${g_term.generics}>`: '';
+
 		let sj_implements = '';
 		if(g_term.implements) {
 			sj_implements = `extends ${g_term.implements}`;
@@ -515,7 +487,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 		else if(g_term.class) {
 			sj_implements = `extends RDFJS.${g_term.class}`;
 		}
-		yield /* syntax: ts */ `\texport interface ${si_term}${g_term.generics? `<${g_term.generics}>`: ''} ${sj_implements || ''} {\n`;
+		yield /* syntax: ts */ `\texport interface ${si_term}${sj_generics} ${sj_implements || ''} {\n`;
 
 		for(const [si_property, sj_property] of ode(g_term.properties)) {
 			yield /* syntax: ts */ `\t\treadonly ${si_property}: ${sj_property};\n`;
@@ -556,12 +528,18 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 		}
 
 		yield /* syntax: ts */ `\t}\n\n`;
+
+		// constructor
+		yield /* syntax: ts */ `\texport interface ${si_term}Constructor {\n`
+			+`\t\tnew${sj_generics}(s_value: ValueString): ${si_term}${generics_for(si_term)};\n`
+			+`\t}\n\n`
+			+`\tdeclare var ${si_term}: ${si_term}Constructor;\n\n`;
 	}
 
 	yield /* syntax: ts */ `
 		export interface Reification {
 			readonly node: BlankNode;
-			readonly quads: Array<Quad>;
+			readonly quads: Quad[];
 		}
 
 		export type BlankNode<ValueString extends string=string> = LabeledBlankNode<ValueString> | AnonymousBlankNode | EphemeralBlankNode;
@@ -644,9 +622,9 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 					case 'Literal': return {
 						termType: /* syntax: ts */ `'Literal'`,
-						value: /* syntax: ts */ `string`,
-						language: /* syntax: ts */ `string`,
-						datatype: /* syntax: ts */ `Datatype`,
+						value: /* syntax: ts */ `ValueString`,
+						language: /* syntax: ts */ `LanguageString`,
+						datatype: /* syntax: ts */ `Datatype<DatatypeString>`,
 					};
 
 					case 'Quad': return {
@@ -660,7 +638,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 
 					default: return {
 						termType: /* syntax: ts */ `'${si}'`,
-						value: /* syntax: ts */ `string`,
+						value: generics_for(si, ['ValueString']) || /* syntax: ts */ `string`,
 					};
 				}
 			},
@@ -691,8 +669,10 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 	};
 
 	function map_typing(si_prim, z_typing) {
+		const g_term = H_TERMS[si_prim];
+
 		if('string' === typeof z_typing) {
-			return `\texport type ${si_prim} = ${z_typing};\n`;
+			return `\texport type ${si_prim}${g_term && g_term.generics? `<${g_term.generics}>`: ''} = ${z_typing};\n`;
 		}
 		else {
 			const s_extends = z_typing['.extends'];
@@ -703,7 +683,7 @@ type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyIntege
 				s_interface += `\t\t${si_key}: ${sj_type};\n`;
 			}
 
-			return `\texport interface ${si_prim} ${s_extends? `extends ${s_extends}`: ''} {`
+			return `\texport interface ${si_prim}${g_term && g_term.generics? `<${g_term.generics}>`: ''} ${s_extends? `extends ${s_extends}`: ''} {`
 				+`\n${s_interface}\t}\n\n`;
 		}
 	}

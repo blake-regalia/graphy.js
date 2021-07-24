@@ -1,0 +1,9 @@
+type NUMERIC_SIGN = '' | '-' | '+';
+
+type DIGIT = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+type DIGITS = `${DIGIT}${''|DIGITS}`;
+type INTEGER = `${NUMERIC_SIGN}${DIGITS}`;
+
+type DECIMAL = `${INTEGER}${''|`.${DIGITS}`}`;
+
+type DOUBLE = `${DECIMAL}${'' | `${'e' | 'E'}${INTEGER}`}`;
