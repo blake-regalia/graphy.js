@@ -1,7 +1,5 @@
 @import '../share/iris.jmacs';
 
-@import './numerics.d.ts.jmacs';
-
 @*{
 	function explicit_union_mutations(s_word) {
 		const a_forms = [];
@@ -27,20 +25,60 @@
 	yield `type LiterallyTrueOrFalse = LiterallyTrue | LiterallyFalse;\n`;
 }
 
+type LiterallyInteger = string;
+type LiterallyDouble = string;
+type LiterallyDecimal = string;
+
+type Bcp47 = string;
+
 @.{
 	const ode = Object.entries;
 
+	const H_GENERICS_EXTENDS = {
+		ValueString: 'string',
+		LanguageString: 'Bcp47',
+		DatatypeString: 'Iri',
+	};
+
+	const fit_generic = si_generic => `${si_generic} extends ${H_GENERICS_EXTENDS[si_generic]}=${H_GENERICS_EXTENDS[si_generic]}`;
+
 	const A_GENERICS_TERM_VALUE = [/* syntax: ts */ `ValueString extends string=string`];
+
+	const R_GENERIC = /[^<]*<([^>]+)>/y;
+	function generics_from(sj_union) {
+		const as_terms = new Set();
+		R_GENERIC.lastIndex = 0;
+		for(;;) {
+			const m_generic = R_GENERIC.exec(sj_union);
+			if(m_generic) {
+				m_generic[1].split(/\s*,\s*/g).forEach((s_term) => {
+					as_terms.add(s_term);
+				});
+				continue;
+			}
+
+			break;
+		}
+
+		return [...as_terms];
+	}
 
 	function generics_for(si, a_only=null) {
 		const g_term = H_TERMS[si];
-		if(g_term && g_term.generics) {
-			return (a_only? '': '<')+g_term.generics
+		if(g_term?.generics?.length) {
+			return g_term.generics
 				.map(s => `${s.replace(/^(\w+).*/, '$1')}`)
-				.filter(s => a_only? a_only.includes(s): true)
-				.join(', ')+(a_only? '': '>');
+				.filter(s => a_only? a_only.includes(s): true);
 		}
 	}
+
+	const parametric = (a_generics) => a_generics && a_generics.length? `<${a_generics.join(', ')}>`: '';
+
+	const paragenerics = (...a_args) => parametric(generics_for(...a_args));
+
+	const docstring = (s_desc, s_super='Term') => si => `
+		A${/^[AEIOUY]/i.test(si)? 'n': ''} ${si} is a {@link ${s_super}} that ${s_desc.trim()}
+	`;
 
 	const H_TERM_GENERIC = {
 		properties: {
@@ -78,12 +116,12 @@
 
 		methods: {
 			equals:       si => /* syntax: ts */ `(other: RDFJS.Term): boolean`,
-			flat:         si => /* syntax: ts */ `(prefixes?: PrefixMap): F1.${si}${generics_for(si)}`,
-			concise:      si => /* syntax: ts */ `(prefixes?: PrefixMap): C1.${si}${generics_for(si)}`,
+			flat:         si => /* syntax: ts */ `(prefixes?: PrefixMap): F1.${si}${paragenerics(si)}`,
+			concise:      si => /* syntax: ts */ `(prefixes?: PrefixMap): C1.${si}${paragenerics(si)}`,
 			terse:        si => /* syntax: ts */ `(prefixes?: PrefixMap): Terse.${si}`,
 			star:         si => /* syntax: ts */ `(prefixes?: PrefixMap): Star.${si}`,
-			verbose:      si => /* syntax: ts */ `(): Verbose.${si}${generics_for(si)}`,
-			isolate:      si => /* syntax: ts */ `(): Isolated.${si}${generics_for(si)}`,
+			verbose:      si => /* syntax: ts */ `(): Verbose.${si}${paragenerics(si)}`,
+			isolate:      si => /* syntax: ts */ `(): Isolated.${si}${paragenerics(si)}`,
 			hash:         si => /* syntax: ts */ `(): string`,
 			replaceIri:   si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
 			replaceText:  si => /* syntax: ts */ `(searchValue: any, replaceValue: any): ${si}`,
@@ -125,8 +163,12 @@
 	const H_TERM_NAMED_NODE = {
 		c1: '`${string}:${string}`',
 		f1: SX_C1_ABSOLUTE_IRI,
-		generics: A_GENERICS_TERM_VALUE,
+		generics: [/* syntax: ts */ `ValueString extends Iri=Iri`],
 		implements: /* syntax: js */ `RDFJS.NamedNode`,
+		docs: docstring(`
+			encapsulates an absolute IRI. It is free from any context such as namespace or document.
+			@see RelativeIri for using relative IRIs.
+		`),
 		properties: {
 			...H_TERM_NODE.properties,
 			isNamedNode:          true,
@@ -140,7 +182,10 @@
 	const H_TERM_RELATIVE_IRI = {
 		c1: ['void'],
 		f1: SX_C1_ABSOLUTE_IRI,
-		generics: [/* syntax: ts */ `ValueString extends IRelativePart=IRelativePart`],
+		generics: [/* syntax: ts */ `ValueString extends IriRelativeRef=IriRelativeRef`],
+		docs: docstring(`
+			encapsulates a relative IRI. In order to be used, it requires a base IRI context from a {@link PrefixMap} or document; however, such a context is not stored with this Term.
+		`),
 		properties: {
 			...H_TERM_NODE.properties,
 			isAbsoluteIri: false,
@@ -161,6 +206,7 @@
 	};
 
 	const H_TERM_BLANK_NODE = {
+		// f1: 'LabeldBlankNode | AnonymousBlankNode',
 		generics: A_GENERICS_TERM_VALUE,
 		implements: /* syntax: js */ `RDFJS.BlankNode`,
 		properties: {
@@ -178,6 +224,9 @@
 		class: 'BlankNode',
 		f1: '`#${ValueString}`',
 		generics: A_GENERICS_TERM_VALUE,
+		docs: docstring(`
+			encapsulates a blank node that was created or read with a specific label.
+		`),
 		properties: {
 			...H_TERM_BLANK_NODE.properties,
 		},
@@ -186,7 +235,9 @@
 	const H_TERM_ANONYMOUS_BLANK_NODE = {
 		class: 'BlankNode',
 		f1: SX_F1_BLANK_NODE,
-		generics: A_GENERICS_TERM_VALUE,
+		docs: docstring(`
+			encapsulates a blank node that was read from a syntactically anonymous blank node token.
+		`),
 		properties: {
 			...H_TERM_BLANK_NODE.properties,
 			isAnonymousBlankNode: true,
@@ -196,6 +247,9 @@
 	const H_TERM_EPHEMERAL_BLANK_NODE = {
 		class: 'BlankNode',
 		f1: '`##${string}`',
+		docs: docstring(`
+			encapsulates a blank node that was created in order to be serialized as an anonymous blank node token.
+		`),
 		properties: {
 			...H_TERM_BLANK_NODE.properties,
 			isAnonymousBlankNode: true,
@@ -228,6 +282,9 @@
 		class: 'Literal',
 		f1: '`"${ValueString}`',
 		generics: A_GENERICS_TERM_VALUE,
+		docs: docstring(`
+			encapsulates a literal without any explicit datatype nor language tag.
+		`),
 		properties: {
 			...H_TERM_LITERAL.properties,
 			isSimpleLiteral:      true,
@@ -239,6 +296,9 @@
 		// TODO: narrow to BCP47 pattern
 		f1: '`@${LanguageString}"${ValueString}`',
 		generics: [...A_GENERICS_TERM_VALUE, /* syntax: ts */ `LanguageString extends Bcp47=Bcp47`],
+		docs: docstring(`
+			encapsulates a literal with a specific language tag.
+		`),
 		properties: {
 			...H_TERM_LITERAL.properties,
 			isLanguagedLiteral: true,
@@ -252,6 +312,9 @@
 		f1: '`^${NamedNode<DatatypeString>}"${ValueString}`',
 		c1: ['`^${NamedNode<DatatypeString>}"${ValueString}`'],
 		generics: [...A_GENERICS_TERM_VALUE, /* syntax: ts */ `DatatypeString extends Iri=Iri`],
+		docs: docstring(`
+			encapsulates a literal with an explicit datatype.
+		`),
 		properties: {
 			...H_TERM_LITERAL.properties,
 			isDatatypedLiteral:  true,
@@ -274,12 +337,16 @@
 		},
 	};
 
+	const docstring_xsd = (s_post='', s_super='Literal') => si => docstring(`
+		has an XSD datatype of ${si.toLowerCase().replace(/Literal.*$/, '')}${s_post? ' '+s_post: '.'}
+	`, s_super)(si);
 
 	const H_TERM_BOOLEAN_LITERAL = {
 		class: 'Literal',
 		f1: SX_F1_DATATYPE_XSD+'boolean"${LiterallyTrueOrFalse}`',
 		c1: '`^${string}:${string}"${LiterallyTrueOrFalse}`',
 		generics: [/* syntax: ts */ `ValueString extends LiterallyTrueOrFalse=LiterallyTrueOrFalse`],
+		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
 			isBooleanLiteral:  true,
@@ -299,6 +366,7 @@
 		f1: SX_F1_DATATYPE_XSD+'integer"${ValueString}`',
 		c1: '`^${string}:${string}"${number}`',
 		generics: [/* syntax: ts */ 'ValueString extends LiterallyInteger=LiterallyInteger'],
+		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_NUMERIC_LITERAL.properties,
 			isIntegerLiteral:   true,
@@ -316,6 +384,7 @@
 		f1: SX_F1_DOUBLE_LITERAL,
 		c1: '`^${string}:${string}"${LiterallyDouble}`',
 		generics: [/* syntax: ts */ `ValueString extends LiterallyDouble=LiterallyDouble`],
+		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_NUMERIC_LITERAL.properties,
 			isDoubleLiteral:    true,
@@ -330,6 +399,7 @@
 		class: 'Literal',
 		f1: SX_F1_DATATYPE_XSD+'double"INF`',
 		c1: '`^${string}:${string}"INF`',
+		docs: docstring_xsd('and a value of positive infinity', 'DoubleLiteral'),
 		properties: {
 			...H_TERM_DOUBLE_LITERAL.properties,
 			isInfiniteLiteral:  true,
@@ -345,6 +415,7 @@
 		class: 'Literal',
 		f1: SX_F1_DATATYPE_XSD+'double"-INF`',
 		c1: '`^${string}:${string}"-INF`',
+		docs: docstring_xsd('and a value of negative infinity', 'DoubleLiteral'),
 		properties: {
 			...H_TERM_POSITIVE_INFINITY_LITERAL.properties,
 
@@ -358,6 +429,7 @@
 		class: 'Literal',
 		f1: SX_F1_DATATYPE_XSD+'double"NaN`',
 		c1: '`^${string}:${string}"NaN`',
+		docs: docstring_xsd('and the reserved value of NaN', 'DoubleLiteral'),
 		properties: {
 			...H_TERM_DOUBLE_LITERAL.properties,
 			isNaNLiteral:    true,
@@ -376,6 +448,7 @@
 		f1: SX_F1_DATATYPE_XSD+'decimal"${ValueString}`',
 		c1: SX_C1_DATATYPE_GENERIC,
 		generics: [/* syntax: ts */ `ValueString extends LiterallyDecimal=LiterallyDecimal`],
+		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
 			isNumericLiteral:   true,
@@ -391,6 +464,7 @@
 		class: 'Literal',
 		f1: SX_F1_DATATYPE_XSD+'date"${ValueString}`',
 		c1: SX_C1_DATATYPE_GENERIC,
+		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
 			isDateLiteral:   true,
@@ -406,6 +480,7 @@
 		f1: SX_F1_DATATYPE_XSD+'dateTime"${ValueString}`',
 		c1: SX_C1_DATATYPE_GENERIC,
 		generics: A_GENERICS_TERM_VALUE,
+		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
 			isDateTimeLiteral:   true,
@@ -421,6 +496,9 @@
 		f1: '`?${ValueString}`',
 		implements: /* syntax: js */ `RDFJS.Variable`,
 		generics: A_GENERICS_TERM_VALUE,
+		docs: docstring(`
+			encapsulates a query variable.
+		`),
 		properties: {
 			...H_TERM_GENERIC.properties,
 			isVariable: true,
@@ -432,6 +510,20 @@
 
 	const H_TERM_QUAD = {
 		implements: /* syntax: js */ `RDFJS.Quad`,
+		generics: [
+			/* syntax: ts */ `SubjectValueString extends string=string`,
+			/* syntax: ts */ `PredicateValueString extends Iri=Iri`,
+			/* syntax: ts */ `ObjectValueString extends string=string`,
+			/* syntax: ts */ `ObjectLanguageString extends Bcp47=Bcp47`,
+			/* syntax: ts */ `ObjectDatatypeString extends Iri=Iri`,
+			/* syntax: ts */ `GraphValueString extends string=string`,
+		],
+		new_args: [
+			/* syntax: ts */ `kt_subject: Term.Subject<SubjectValueString>`,
+			/* syntax: ts */ `kt_predicate: Term.Predicate<PredicateValueString>`,
+			/* syntax: ts */ `kt_object: Term.Object<ObjectValueString>`,
+			/* syntax: ts */ `kt_graph: Term.Graph<GraphValueString>`,
+		],
 		properties: {
 			...H_TERM_GENERIC.properties,
 			isGraphyQuad: true,
@@ -439,10 +531,10 @@
 			value:            /* syntax: ts */ `''`,
 		},
 		body: /* syntax: ts */ `
-			readonly subject: Term.Subject;
-			readonly predicate: Term.Predicate;
-			readonly object: Term.Object;
-			readonly graph: Term.Graph;
+			readonly subject: Term.Subject<SubjectValueString>;
+			readonly predicate: Term.Predicate<PredicateValueString>;
+			readonly object: Term.Object<ObjectValueString, ObjectLanguageString, ObjectDatatypeString>;
+			readonly graph: Term.Graph<GraphValueString>;
 
 			reify(label?: string): Reification;
 		`,
@@ -470,6 +562,11 @@
 		Variable: H_TERM_VARIABLE,
 		Quad: H_TERM_QUAD,
 	};
+
+	// const H_TERMS_ALL = {
+	// 	...H_TERMS,
+	// 	BlankNode: H_TERM_BLANK_NODE,
+	// };
 }
 
 @*{
@@ -486,6 +583,16 @@
 		}
 		else if(g_term.class) {
 			sj_implements = `extends RDFJS.${g_term.class}`;
+		}
+		if(g_term.docs) {
+			let s_docs = g_term.docs;
+
+			if('function' === typeof g_term.docs) {
+				s_docs = g_term.docs(si_term) || '';
+			}
+
+			const a_lines = s_docs.trim().split(/\s*\n\s*/g);
+			yield `\t/**${a_lines.map(s => `\n\t * ${s}`)}\n\t */\n`;
 		}
 		yield /* syntax: ts */ `\texport interface ${si_term}${sj_generics} ${sj_implements || ''} {\n`;
 
@@ -531,9 +638,14 @@
 
 		// constructor
 		yield /* syntax: ts */ `\texport interface ${si_term}Constructor {\n`
-			+`\t\tnew${sj_generics}(s_value: ValueString): ${si_term}${generics_for(si_term)};\n`
+			+`\t\tnew${sj_generics}(${
+				g_term.new_args
+					? g_term.new_args.map(s => `\n\t\t\t${s}`).join(',')
+					: (generics_for(si_term) || [])
+						.map(s => `s_${s.toLowerCase().replace(/string$/, '')}: ${s}`)
+			}): ${si_term}${paragenerics(si_term)};\n`
 			+`\t}\n\n`
-			+`\tdeclare var ${si_term}: ${si_term}Constructor;\n\n`;
+			+`\texport declare const ${si_term}: ${si_term}Constructor;\n\n`;
 	}
 
 	yield /* syntax: ts */ `
@@ -542,28 +654,48 @@
 			readonly quads: Quad[];
 		}
 
-		export type BlankNode<ValueString extends string=string> = LabeledBlankNode<ValueString> | AnonymousBlankNode | EphemeralBlankNode;
+		export type BlankNode<ValueString extends string=string> = ValueString extends Iri
+			? never
+			: LabeledBlankNode<ValueString> | AnonymousBlankNode | EphemeralBlankNode;
+
 		export type Node<ValueString extends string=string> = NamedNode<ValueString> | BlankNode<ValueString>;
-		export type Literal<ValueString extends string=string, LanguageString extends string=string, DatatypeString extends string=string> = SimpleLiteral<ValueString> | LanguagedLiteral<ValueString, LanguageString> | DatatypedLiteral<ValueString, DatatypeString>;
+
+		export type Literal<ValueString extends string=string, LanguageString extends never | string=string, DatatypeString extends never | Iri=Iri> = SimpleLiteral<ValueString>
+			| DatatypeString extends never
+				? (LanguageString extends never
+					? never
+					: LanguagedLiteral<ValueString, LanguageString>)
+				: (DatatypedLiteral<ValueString, DatatypeString>
+					| LanguageString extends never
+						? never
+						: LanguagedLiteral<ValueString, LanguageString>
+					);
+
 		export type NumericLiteral<ValueString extends string=string> = IntegerLiteral<ValueString> | DoubleLiteral<ValueString> | DecimalLiteral<ValueString>;
 
-		export type Graph<ValueString extends string=string> = string extends ''? DefaultGraph : DefaultGraph | Node<ValueString>;
+		export type Graph<ValueString extends string=string> = DefaultGraph
+			| string extends ''
+				? never
+				: Node<ValueString>;
+
 		export type Subject<ValueString extends string=string> = Node<ValueString>;
+
 		export type Predicate<ValueString extends Iri=Iri> = NamedNode<ValueString>;
-		export type Object<ValueString extends string=string> = Node<ValueString> | Literal<ValueString>;
+
+		export type Object<ValueString extends string=string, LanguageString extends Bcp47=Bcp47, DatatypeString extends Iri=Iri> = Node<ValueString> | Literal<ValueString, LanguageString, DatatypeString>;
+
 		export type Datatype<DatatypeString extends Iri=Iri> = NamedNode<DatatypeString>;
 
-		type DatatypeXsdBoolean = Datatype<'${P_IRI_XSD}boolean'>;
-		type DatatypeXsdInteger = Datatype<'${P_IRI_XSD}integer'>;
-		type DatatypeXsdDouble = Datatype<'${P_IRI_XSD}double'>;
-		type DatatypeXsdDecimal = Datatype<'${P_IRI_XSD}decimal'>;
-		type DatatypeXsdDate = Datatype<'${P_IRI_XSD}date'>;
-		type DatatypeXsdDateTime = Datatype<'${P_IRI_XSD}dateTime'>;
+		export type DatatypeXsdBoolean = Datatype<'${P_IRI_XSD}boolean'>;
+		export type DatatypeXsdInteger = Datatype<'${P_IRI_XSD}integer'>;
+		export type DatatypeXsdDouble = Datatype<'${P_IRI_XSD}double'>;
+		export type DatatypeXsdDecimal = Datatype<'${P_IRI_XSD}decimal'>;
+		export type DatatypeXsdDate = Datatype<'${P_IRI_XSD}date'>;
+		export type DatatypeXsdDateTime = Datatype<'${P_IRI_XSD}dateTime'>;
 
-		export type Data<ValueString extends string=string> = 
-			| Graph<ValueString> | Subject<ValueString> | Object<ValueString>
+		export type Data<ValueString extends string=string, LanguageString extends Bcp47=Bcp47, DatatypeString extends Iri=Iri> = 
+			| Graph<ValueString> | Subject<ValueString> | Object<ValueString, LanguageString, DatatypeString>
 			| (ValueString extends Iri? Predicate<ValueString>: never);
-			// ? Graph<ValueString> | Subject<ValueString> | Predicate<ValueString> | Object<ValueString>
 
 		export type Any = Data | Variable | Quad | RelativeIri;
 	`.replace(/\n/g, '\n\t')+'\n';
@@ -590,7 +722,7 @@
 		C1: {
 			primitive: (si, g) => {
 				let a_types = [];
-				if('f1' in g) a_types.push(`F1.${si}`);
+				if('f1' in g) a_types.push(`F1.${si}${paragenerics(si)}`);
 				if('c1' in g) {
 					if('string' === typeof g.c1) a_types.push(g.c1);
 					else a_types = g.c1;
@@ -638,7 +770,7 @@
 
 					default: return {
 						termType: /* syntax: ts */ `'${si}'`,
-						value: generics_for(si, ['ValueString']) || /* syntax: ts */ `string`,
+						value: generics_for(si, ['ValueString'])?.length? 'ValueString': /* syntax: ts */ `string`,
 					};
 				}
 			},
@@ -649,30 +781,39 @@
 		...H_TERMS,
 		NamedNode: H_TERM_NAMED_NODE,
 		BlankNode: {
-			c1: 'LabeledBlankNode | AnonymousBlankNode | EphemeralBlankNode',
+			generics: A_GENERICS_TERM_VALUE,
+			c1: 'LabeledBlankNode<ValueString> | AnonymousBlankNode | EphemeralBlankNode',
 		},
 		DefaultGraph: H_TERM_DEFAULT_GRAPH,
 		Literal: {
-			c1: 'SimpleLiteral | LanguagedLiteral | DatatypedLiteral',
+			generics: [
+				...A_GENERICS_TERM_VALUE,
+				/* syntax: ts */ `LanguageString extends Bcp47=Bcp47`,
+				/* syntax: ts */ `DatatypeString extends Iri=Iri`,
+			],
+			c1: 'SimpleLiteral<ValueString> | LanguagedLiteral<ValueString, LanguageString> | DatatypedLiteral<ValueString, DatatypeString>',
 		},
 		Variable: H_TERM_VARIABLE,
 		Quad: H_TERM_QUAD,
 	};
 
 	const H_COMPOSE_DEFAULT = {
-		Node: /* syntax: ts */ `NamedNode | BlankNode`,
-		Graph: /* syntax: ts */ `DefaultGraph | Node`,
-		Subject: /* syntax: ts */ `Node`,
-		Predicate: /* syntax: ts */ `NamedNode`,
-		Object: /* syntax: ts */ `Node | Literal`,
-		Datatype: /* syntax: ts */ `NamedNode`,
+		Node: /* syntax: ts */ `NamedNode<ValueString> | BlankNode<ValueString>`,
+		Graph: /* syntax: ts */ `DefaultGraph | (ValueString extends ''? never: Node<ValueString>)`,
+		Subject: /* syntax: ts */ `Node<ValueString>`,
+		Predicate: /* syntax: ts */ `NamedNode<ValueString>`,
+		Object: /* syntax: ts */ `Node<ValueString> | Literal<ValueString, LanguageString, DatatypeString>`,
+		Datatype: /* syntax: ts */ `NamedNode<ValueString>`,
 	};
 
 	function map_typing(si_prim, z_typing) {
 		const g_term = H_TERMS[si_prim];
+		const g_prim = H_PRIMITIVES[si_prim];
+
+		const sj_generics =parametric(g_term?.generics) || parametric(g_prim?.generics);
 
 		if('string' === typeof z_typing) {
-			return `\texport type ${si_prim}${g_term && g_term.generics? `<${g_term.generics}>`: ''} = ${z_typing};\n`;
+			return `\texport type ${si_prim}${sj_generics} = ${z_typing};\n`;
 		}
 		else {
 			const s_extends = z_typing['.extends'];
@@ -683,7 +824,7 @@
 				s_interface += `\t\t${si_key}: ${sj_type};\n`;
 			}
 
-			return `\texport interface ${si_prim}${g_term && g_term.generics? `<${g_term.generics}>`: ''} ${s_extends? `extends ${s_extends}`: ''} {`
+			return `\texport interface ${si_prim}${sj_generics} ${s_extends? `extends ${s_extends}`: ''} {`
 				+`\n${s_interface}\t}\n\n`;
 		}
 	}
@@ -713,12 +854,16 @@
 		if(g_extras) {
 			for(const [si_extra, z_typing] of ode(g_extras)) {
 				s_body += map_typing(si_extra, z_typing);
-				a_anies.push(si_extra);
+				if('string' === typeof z_typing) {
+					a_anies.push(si_extra);
+				}
 			}
 		}
 
 		for(const [si_role, sj_typing] of ode(h_compose)) {
-			s_body += `\texport type ${si_role} = ${sj_typing};\n`;
+			s_body += `\texport type ${si_role}${
+				parametric((generics_from(sj_typing) || []).map(fit_generic))
+			} = ${sj_typing};\n`;
 		}
 
 		s_body += /* syntax: ts */ `\texport type Data = ${a_data.join(' | ')};\n`;

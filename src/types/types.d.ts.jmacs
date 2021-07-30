@@ -1,11 +1,19 @@
 // import * as RDFJS from 'rdf-js';
-import * as RDFJS from '@rdfjs/types';
+// import * as RDFJS from '@rdfjs/types';
 
-export {
-	RDFJS as RDFJS,
-};
+// export {
+// 	RDFJS as RDFJS,
+// };
+// 
 
-export type Iri = string;
+
+
+
+type XQuery = '' | `?${string}`;
+type XFragment = '' | `#${string}`
+export type Iri = `${string}:${IriRelativeRef}`;
+export type IriRelativeRef = `${string}${XQuery}${XFragment}`;
+
 
 /**
  * Namespace for cross-library Term role interfaces
