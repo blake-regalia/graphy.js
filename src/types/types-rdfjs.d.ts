@@ -1,10 +1,11 @@
 type MockFalse = 0;
 type MockTrue = 1;
 type MockEither = 2;
+type MockDebug = 3;
 
 type MockTrueOrFalse = MockTrue | MockFalse;
 
-type MockBool = MockTrue | MockFalse | MockEither;
+type MockBool = MockTrue | MockFalse | MockEither | MockDebug;
 
 type AsMockBool<Boolean extends boolean> = Boolean extends true
     ? MockTrue
@@ -196,58 +197,126 @@ export namespace RDFJS {
 		ValueStringB extends string,
 		LanguageStringB extends string,
 		DatatypeStringB extends string,
-	> = StringPairsMatch<TermTypeStringA, TermTypeStringB, ValueStringA, ValueStringB> extends infer TermTypesAndValuesMatch
-		? (TermTypesAndValuesMatch extends MockTrueOrFalse
-			? (TermTypesAndValuesMatch extends MockFalse
-				// (a.termType !== b.termType) || (a.value !== b.value)
-				? MockFalse
-				// (a.termType === b.termType) && (a.value === b.value)
-				: (IsActualString<TermTypeStringA> extends true
-					// a.termType is known
-					? (StringsMatch<TermTypeStringA, 'Literal'> extends MockTrue
-						// a.termType === 'Literal'
-                        ? ([
-                            IsActualString<LanguageStringA>,
-                            IsActualString<DatatypeStringA>,
-                            IsActualString<LanguageStringB>,
-                            IsActualString<DatatypeStringB>,
-                        ] extends [
-                            infer LanguageStringAKnown,
-                            infer DatatypeStringAKnown,
-                            infer LanguageStringBKnown,
-                            infer DatatypeStringBKnown,
-                        ]
-                            // (Language|Datatype)String(A|B)Known := (a|b).(language|datatype) is known
-                            ? (And<
-                                Or<SafeMockBool<LanguageStringAKnown>, SafeMockBool<DatatypeStringAKnown>>,
-                                Or<SafeMockBool<LanguageStringBKnown>, SafeMockBool<DatatypeStringBKnown>>,
-                            > extends MockTrue
-                                // a.(language|datatype) is known && b.(language|datatype) is known
-                                ? (LanguageStringAKnown extends MockTrue
-                                    // a.language is known && b.(language|datatype) is known
-                                    ? (StringsMatch<LanguageStringA, LanguageStringB> extends MockTrue
-                                        ? MockTrue
-                                        : MockFalse
-                                    )
-                                    // a.datatype is known && b.(language|datatype) is known
-                                    : (StringsMatch<DatatypeStringA, DatatypeStringB> extends MockTrue
-                                        ? MockTrue
-                                        : MockFalse
-                                    )
-                                )
-                                : MockEither
+	> = [
+        StringsMatch<TermTypeStringA, TermTypeStringB>,
+        StringsMatch<ValueStringA, ValueStringB>,
+    ] extends [
+        infer TermTypeStringsMatch,
+        infer ValueStringsMatch,
+    ]
+        // (TermType|Value)StringsMatch := a.(termType|value) === b.(termType|value)
+        ? (Or<
+            Not<SafeMockBool<TermTypeStringsMatch>>,
+            Not<SafeMockBool<ValueStringsMatch>>,
+        > extends MockTrue
+            // a.termType !== b.termType || a.value !== b.value
+            ? MockFalse
+            // mixed termTypes and values
+            : (Or<
+                StringsMatch<TermTypeStringA, 'Literal'>,
+                StringsMatch<TermTypeStringB, 'Literal'>,
+            > extends MockTrue
+                // (a|b).termType === 'Literal'
+                ? ([
+                    IsActualString<LanguageStringA>,
+                    IsActualString<DatatypeStringA>,
+                    IsActualString<LanguageStringB>,
+                    IsActualString<DatatypeStringB>,
+                ] extends [
+                    infer LanguageStringAKnown,
+                    infer DatatypeStringAKnown,
+                    infer LanguageStringBKnown,
+                    infer DatatypeStringBKnown,
+                ]
+                    // (Language|Datatype)String(A|B)Known := (a|b).(language|datatype) is known
+                    ? (And<
+                        Or<SafeMockBool<LanguageStringAKnown>, SafeMockBool<DatatypeStringAKnown>>,
+                        Or<SafeMockBool<LanguageStringBKnown>, SafeMockBool<DatatypeStringBKnown>>,
+                    > extends MockTrue
+                        // a.(language|datatype) is known && b.(language|datatype) is known
+                        ? (SafeMockBool<LanguageStringAKnown> extends MockTrue
+                            // a.language is known && b.(language|datatype) is known
+                            ? (Not<StringsMatch<LanguageStringA, LanguageStringB>> extends MockTrue
+                                ? MockFalse
+                                : And<
+                                    SafeMockBool<TermTypeStringsMatch>,
+                                    SafeMockBool<ValueStringsMatch>,
+                                >
                             )
-                            : never
+                            // a.datatype is known && b.(language|datatype) is known
+                            : (Not<StringsMatch<DatatypeStringA, DatatypeStringB>> extends MockTrue
+                                ? MockFalse
+                                : And<
+                                    SafeMockBool<TermTypeStringsMatch>,
+                                    SafeMockBool<ValueStringsMatch>,
+                                >
+                            )
                         )
-						// a.termType !== 'Literal'; term types and values match
-						: TermTypesAndValuesMatch
-					)
-					: MockEither
-				)
-			)
-			: MockEither
-		)
-		: MockEither;
+                        : MockEither
+                    )
+                    : never
+                )
+                // (a|b).termType !== 'Literal'
+                // return (a.termType === b.termType && a.value === b.value)
+                : And<
+                    SafeMockBool<TermTypeStringsMatch>,
+                    SafeMockBool<ValueStringsMatch>,
+                >
+            )
+        )
+        : never;
+
+        // : ([
+        //     IsActualString<TermTypeStringA>,
+        //     IsActualString<TermTypeStringB>,
+        //     IsActualString<ValueStringA>,
+        //     IsActualString<ValueStringB>,
+        // ] extends [
+        //     infer TermTypeStringAKnown,
+        //     infer TermTypeStringBKnown,
+        //     infer ValueStringAKnown,
+        //     infer ValueStringBKnown,
+        // ]
+        //     // (TermType|Value)String(A|B)Known := (a|b).(termType|value) is known
+
+        //     ? 
+        //         ? TermTypeStringsMatch extends MockFalse
+        //             ? MockFalse
+
+        //     ? (And<
+        //         SafeMockBool<TermTypeStringAKnown>,
+        //         SafeMockBool<TermTypeStringBKnown>,
+        //     > extends MockTrue
+        //         // a.termType is known && b.termType is known
+        //         ? (And<
+        //             SafeMockBool<ValueStringAKnown>,
+        //             SafeMockBool<ValueStringBKnown>,
+        //         > extends MockTrue
+                    
+
+        //             // a.value is known && b.value is known
+        //             ? (
+
+        //             )
+        //             : (
+
+        //             )
+        //         )
+        //         // a.termType is unknown || b.termType is unknown
+        //         :
+                
+        //         And<SafeMockBool<TermTypeStringAKnown>, SafeMockBool<TermTypeStringBKnown>> extends MockTrue
+        //         ? And<SafeMockBool<ValueStringAKnown>, SafeMockBool<ValueStringBKnown>>
+
+        // // And<SafeMockBool<ValueStringAKnown>, SafeMockBool<ValueStringBKnown>>
+        // > extends MockTrue
+		// 			// a.termType is known
+		// 			: MockEither
+		// 		)
+		// 	)
+		// 	: MockEither
+		// )
+		// : MockEither;
 
 
 
@@ -289,7 +358,19 @@ export namespace RDFJS {
                         //     )
                         // >
 
+
+    // StringPairsMatch<TermTypeStringA, TermTypeStringB, ValueStringA, ValueStringB> extends infer TermTypesAndValuesMatch
+	// 	? (TermTypesAndValuesMatch extends MockTrueOrFalse
+			// ? (TermTypesAndValuesMatch extends MockFalse
+				// (a.termType !== b.termType) || (a.value !== b.value)
+				// ? MockFalse
+				// (a.termType === b.termType) && (a.value === b.value)
+				// : (
+
+
     {
+        // type TestSafe = SafeMockBool<boolean>;
+
         const FALSE = 0;
         const TRUE = 1;
         const EITHER = 2;
@@ -330,7 +411,24 @@ export namespace RDFJS {
         const LvssLvvs: ObjectsMatch<'Literal', 'A',    string, string, 'Literal', 'A',    'en',   string> = EITHER;
         const LvssLxvs: ObjectsMatch<'Literal', 'A',    string, string, 'Literal', 'B',    'en',   string> = FALSE;
         const LsvsLvvs: ObjectsMatch<'Literal', string, 'en',   string, 'Literal', 'A',    'en',   string> = EITHER;
-        const LsvsLvxs: ObjectsMatch<'Literal', string, 'en',   string, 'Literal', 'A',    'fr',   string> = EITHER;
+        const LsvsLvxs: ObjectsMatch<'Literal', string, 'en',   string, 'Literal', 'A',    'fr',   string> = FALSE;
+        const LvvsLvvs: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', 'A',    'en',   string> = TRUE;
+        const LvvsLvxs: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', 'A',    'fr',   string> = FALSE;
+        const LvvsLxvs: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', 'B',    'en',   string> = FALSE;
+
+        // Literal with value and datatype
+        const LsssLvvs: ObjectsMatch<'Literal', string, string, string, 'Literal', 'A',    'en',   string> = EITHER;
+        const LvssLsvs: ObjectsMatch<'Literal', 'A',    string, string, 'Literal', string, 'en',   string> = EITHER;
+        const LsvsLvss: ObjectsMatch<'Literal', string, 'en',   string, 'Literal', 'A',    string, string> = EITHER;
+        const LvvsLsss: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', string, string, string> = EITHER;
+        const LvvsLvss: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', 'A',    string, string> = EITHER;
+        const LvvsLxss: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', 'B',    string, string> = FALSE;
+        const LvvsLsvs: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', string, 'en',   string> = EITHER;
+        const LvvsLsxs: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', string, 'fr',   string> = FALSE;
+        const LvssLvvs: ObjectsMatch<'Literal', 'A',    string, string, 'Literal', 'A',    'en',   string> = EITHER;
+        const LvssLxvs: ObjectsMatch<'Literal', 'A',    string, string, 'Literal', 'B',    'en',   string> = FALSE;
+        const LsvsLvvs: ObjectsMatch<'Literal', string, 'en',   string, 'Literal', 'A',    'en',   string> = EITHER;
+        const LsvsLvxs: ObjectsMatch<'Literal', string, 'en',   string, 'Literal', 'A',    'fr',   string> = FALSE;
         const LvvsLvvs: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', 'A',    'en',   string> = TRUE;
         const LvvsLvxs: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', 'A',    'fr',   string> = FALSE;
         const LvvsLxvs: ObjectsMatch<'Literal', 'A',    'en',   string, 'Literal', 'B',    'en',   string> = FALSE;
