@@ -4,6 +4,12 @@ type ASSERT_FALSE<Test extends boolean> = [Test] extends [false]? 1: 0;
 type ASSERT_BOOLEAN<Test extends boolean> = [Test] extends [false]? 0: ([Test] extends [true]? 0: 1);
 type ASSERT_NEVER<Test> = [Test] extends [never]? 1: 0;
 
+type Auto<
+    Value,
+    Target,
+    Default,
+> = Value extends Target? Value: Default;
+
 {
     const TEST_TRUE_boolean: ASSERT_TRUE<boolean> = 0;
     const TEST_TRUE_false: ASSERT_TRUE<false> = 0;
@@ -86,20 +92,261 @@ type AsString<Any> = [Any] extends [string]
     ? Any
     : string;
 
-type IsActualString<String extends string | void> = [String] extends [string]
-    ? ([String] extends [`${infer ActualString}`]
+/**
+ * `<Test extends string|void> => true | false`
+ * 
+ * Deduces whether the given type `Test` contains only literal strings:
+ * 
+ *     IsOnlyLiteralStrings<'A'>  // true
+ *     IsOnlyLiteralStrings<'A' | 'B'>  // true
+ *     IsOnlyLiteralStrings<string>  // false
+ *     IsOnlyLiteralStrings<string | 'A'>  // false
+ *     IsOnlyLiteralStrings<string | 'A' | 'B'>  // false
+ *     IsOnlyLiteralStrings<void>  // false
+ */
+type IsOnlyLiteralStrings<Test extends string | void> = [Test] extends [string]
+    ? ([Test] extends [`${infer ActualTest}`]
         ? true
         : false
     ): false;
+
+{
+    const A: ASSERT_TRUE<IsOnlyLiteralStrings<'A'>> = 1;
+    const AB: ASSERT_TRUE<IsOnlyLiteralStrings<'A' | 'B'>> = 1;
+    const S: ASSERT_FALSE<IsOnlyLiteralStrings<string>> = 1;
+    const SA: ASSERT_FALSE<IsOnlyLiteralStrings<string | 'A'>> = 1;
+    const SAB: ASSERT_FALSE<IsOnlyLiteralStrings<string | 'A' | 'B'>> = 1;
+    const O: ASSERT_FALSE<IsOnlyLiteralStrings<void>> = 1;
+}
+
+
+/**
+ * `<Test extends string|void> => true | false`
+ * 
+ * Deduces whether the given type `Test` is a single, literal string by excluding unions:
+ * 
+ *     IsOnlyLiteralStrings<'A'>  // true
+ *     IsOnlyLiteralStrings<'A' | 'B'>  // false
+ *     IsOnlyLiteralStrings<string>  // false
+ *     IsOnlyLiteralStrings<string | 'A'>  // false
+ *     IsOnlyLiteralStrings<string | 'A' | 'B'>  // false
+ *     IsOnlyLiteralStrings<void>  // false
+ */
+type IsSingleString<Test extends string|void> = And<
+    IsOnlyLiteralStrings<Test>,
+    Not<IsUnion<Test>>,
+>;
+
+{
+    const A: ASSERT_TRUE<IsSingleString<'A'>> = 1;
+    const AB: ASSERT_FALSE<IsSingleString<'A' | 'B'>> = 1;
+    const S: ASSERT_FALSE<IsSingleString<string>> = 1;
+    const SA: ASSERT_FALSE<IsSingleString<string | 'A'>> = 1;
+    const SAB: ASSERT_FALSE<IsSingleString<string | 'A' | 'B'>> = 1;
+    const O: ASSERT_FALSE<IsSingleString<void>> = 1;
+}
+
+
+/**
+ * `<Value, Default=string>`
+ * 
+ * Returns the given type `Value` if it is a string, otherwise returns `Default`
+ * 
+ *     AutoString<'A'>  // 'A'
+ *     AutoString<void>  // string
+ *     AutoString<'A', 'Z'>  // 'A'
+ *     AutoString<void, 'Z'>  // 'Z'
+ *     AutoString<12, 'Z'>  // 'Z'
+ *     AutoString<'A' | 'B'>  // 'A' | 'B'
+ *     AutoString<void, 'Y' | 'Z'>  // 'Y' | 'Z'
+ */
+type AutoString<
+    String,
+    Default=string,
+> = String extends string? String: Default;
+
+{
+    const _: ASSERT_EQUAL<AutoString<''>, ''> = 1;
+    const A: ASSERT_EQUAL<AutoString<'A'>, 'A'> = 1;
+    const O: ASSERT_STRING<AutoString<void>> = 1;
+    const NZ: ASSERT_EQUAL<AutoString<12, 'Z'>, 'Z'> = 1;
+    const _Z: ASSERT_EQUAL<AutoString<'', 'Z'>, ''> = 1;
+    const AZ: ASSERT_EQUAL<AutoString<'A', 'Z'>, 'A'> = 1;
+    const OZ: ASSERT_EQUAL<AutoString<void, 'Z'>, 'Z'> = 1;
+    const OYZ: ASSERT_SAME<AutoString<void, 'Y' | 'Z'>, 'Y' | 'Z'> = 1;
+    const AB: ASSERT_SAME<AutoString<'A' | 'B'>, 'A' | 'B'> = 1;
+    const ABZ: ASSERT_SAME<AutoString<'A' | 'B', 'Z'>, 'A' | 'B'> = 1;
+}
+
+type UnionToIntersection<
+    Union,
+> = (Union extends any
+        ? (w_arg: Union) => void
+        : never
+    ) extends ((w_arg: infer Intersection) => void)
+        ? Intersection
+        : never;
+
+type LastOf<
+    Tuple,
+> = UnionToIntersection<
+    Tuple extends any
+        ? () => Tuple
+        : never
+    > extends () => (infer Last)
+        ? Last
+        : never;
+
+type Push<
+    Tuple extends any[],
+    Item,
+> = [...Tuple, Item];
+
+type TuplifyUnion<
+    Tuple,
+    Last=LastOf<Tuple>,
+    IsNever = [Tuple] extends [never] ? true : false,
+> = true extends IsNever
+    ? []
+    : Push<
+        TuplifyUnion<Exclude<Tuple, Last>>,
+        Last,
+    >;
+
+
+/**
+ * `<Test> => true | false`
+ * 
+ * Deduce whether the given type `Test` is an explicit union of types
+ * 
+ *     IsUnion<'A'>  // false
+ *     IsUnion<string>  // false
+ *     IsUnion<void>  // false
+ *     IsUnion<'A' | 'B'>  // true
+ *     IsUnion<'A' | string>  // true
+ *     IsUnion<'A' | void>  // true
+ *     IsUnion<string | void>  // true
+ */
+type IsUnion<Test> = TuplifyUnion<Test>[1] extends undefined? false: true;
+
+{
+    const A: ASSERT_FALSE<IsUnion<'A'>> = 1;
+    const S: ASSERT_FALSE<IsUnion<string>> = 1;
+    const O: ASSERT_FALSE<IsUnion<void>> = 1;
+    const AB: ASSERT_TRUE<IsUnion<'A' | 'B'>> = 1;
+    const AS: ASSERT_FALSE<IsUnion<'A' | string>> = 1;
+    const AO: ASSERT_TRUE<IsUnion<'A' | void>> = 1;
+    const OA: ASSERT_TRUE<IsUnion<void | 'A'>> = 1;
+    const SO: ASSERT_TRUE<IsUnion<string | void>> = 1;
+    const OS: ASSERT_TRUE<IsUnion<void | string>> = 1;
+}
+
+type DirectlyIncludes<Union, Item> = If<
+    IsUnion<Item>,
+    Extends<[Item], [Union]>,
+    Union extends infer Find
+        ? (Find extends Item
+            ? (Item extends Union? true: false)
+            : false
+        )
+        : never
+>;
+
+/**
+ * `<Union, Item> => true | false`
+ * 
+ * Deduces whether the given `Union` explicitly includes the specified `Item`
+ * 
+ *     Includes<'A', 'A'>  // true
+ *     Includes<'A'|'B', 'A'>  // true
+ *     Includes<'A', 'A'|'B'>  // false
+ *     Includes<'A'|'B', 'A'|'B'>  // true
+ *     Includes<'A'|'B'|'C', 'A'|'B'>  // true
+ *     Includes<'A'|string, 'A'>  // false: `'A'|string` merges into just `string`
+ *     Includes<'A'|void, 'A'>  // true
+ *     Includes<'A'|void, void>  // true
+ *     Includes<void, void>  // true
+ *     Includes<string|void, void>  // true
+ *     Includes<string|void, string>  // true
+ */
+type Includes<Union, Item> = DirectlyIncludes<Union, Item> extends infer Directly
+    ? Or<
+        AsBool<Directly>,
+        IsUnion<Directly>,
+    >
+    : never;
+
+{
+    const A_A: ASSERT_TRUE<Includes<'A', 'A'>> = 1;
+    const A_B: ASSERT_FALSE<Includes<'A', 'B'>> = 1;
+    const A_S: ASSERT_FALSE<Includes<'A', string>> = 1;
+    const S_A: ASSERT_FALSE<Includes<string, 'A'>> = 1;
+    const AB_A: ASSERT_TRUE<Includes<'A' | 'B', 'A'>> = 1;
+    const A_AB: ASSERT_FALSE<Includes<'A', 'A' | 'B'>> = 1;
+    const AB_AB: ASSERT_TRUE<Includes<'A' | 'B', 'A' | 'B'>> = 1;
+    const ABC_AB: ASSERT_TRUE<Includes<'A' | 'B' | 'C', 'A' | 'B'>> = 1;
+    const AS_A: ASSERT_FALSE<Includes<'A' | string, 'A'>> = 1;  // `'A'|string` merges into `string`
+    const O_O: ASSERT_TRUE<Includes<void, void>> = 1;
+    const AO_A: ASSERT_TRUE<Includes<'A' | void, 'A'>> = 1;
+    const AO_O: ASSERT_TRUE<Includes<'A' | void, void>> = 1;
+    const O_S: ASSERT_FALSE<Includes<void, string>> = 1;
+    const OS_S: ASSERT_TRUE<Includes<void | string, string>> = 1;
+    const S_O: ASSERT_FALSE<Includes<string, void>> = 1;
+    const SO_O: ASSERT_TRUE<Includes<string | void, void>> = 1;
+}
 
 type ActualStringsMatch<
 	StringA extends `${string}`,
 	StringB extends `${string}`,
 > = And<
-    Extends<StringA, StringB>,
-    Extends<StringB, StringA>,
->;
+        Extends<StringA, StringB>,
+        Extends<StringB, StringA>,
+    > extends false
+        ? false
+        : If<
+            And<
+                Extends<[StringA], [StringB]>,
+                Extends<[StringB], [StringA]>,
+            >,
+            If<
+                Or<
+                    IsUnion<StringA>,
+                    IsUnion<StringB>,
+                >,
+                boolean,
+                true,
+            >,
+            boolean,
+        >;
 
+/**
+ * `<StringA extends string|void, StringB extends string|void> => true | false | boolean`
+ * 
+ * Describes the possible outcomes of matching `StringA` with `StringB`.
+ * 
+ * If both arguments are not unions, then the parametric type returns:
+ *   - `true` if the two arguments are the same string
+ *   - `true` if the two arguments are both `void`
+ *   - `false` otherwise
+ * 
+ * If at least one of the arguments a union, then both arguments are treated as sets and the parametric type returns:
+ *   - `boolean` if the two sets are equals or overlap
+ *   - `false` if the sets are disjoint 
+ * 
+ * 
+ *     StringsMatch<'A', 'A'>  // true
+ *     StringsMatch<'A', 'B'>  // false
+ *     StringsMatch<'A', void>  // false
+ *     StringsMatch<void, void>  // true
+ *     StringsMatch<'A', 'A'|'B'>  // boolean
+ *     StringsMatch<'A', string>  // boolean
+ *     StringsMatch<'A'|'B', 'A'>  // boolean
+ *     StringsMatch<'A'|'B', 'A'|'B'>  // boolean
+ *     StringsMatch<'A'|'B', 'B'|'C'>  // boolean
+ *     StringsMatch<'A'|'B', 'C'>  // false
+ *     StringsMatch<'A'|'B', 'C' | 'D'>  // false
+ *     StringsMatch<'A'|'B', string>  // false
+ */
 type StringsMatch<
 	StringA extends string|void,
 	StringB extends string|void,
@@ -124,6 +371,9 @@ type StringsMatch<
     );
 
 
+type ASSERT_STRING<String extends string> = [Not<IsOnlyLiteralStrings<String>>] extends [true]? 1: 0;
+type ASSERT_EQUAL<StringA extends string, StringB extends string> = [StringsMatch<StringA, StringB>] extends [true]? 1: 0;
+type ASSERT_SAME<ThingA, ThingB> = [And<Extends<ThingA, ThingB>, Extends<ThingB, ThingA>>] extends [true]? 1: 0;
 
 // tests
 {
@@ -149,9 +399,25 @@ type StringsMatch<
 	const AfIBb: ASSERT_BOOLEAN<Or<false, boolean>> = 1;
 	const AtIBb: ASSERT_TRUE<Or<true, boolean>> = 1;
  
-    const Actual: ASSERT_TRUE<IsActualString<'A'>> = 1;
-    const Union: ASSERT_TRUE<IsActualString<'A' | 'B'>> = 1;
-    const String: ASSERT_FALSE<IsActualString<string>> = 1;
+    const Actual: ASSERT_TRUE<IsOnlyLiteralStrings<'A'>> = 1;
+    const Union: ASSERT_TRUE<IsOnlyLiteralStrings<'A' | 'B'>> = 1;
+    const String: ASSERT_FALSE<IsOnlyLiteralStrings<string>> = 1;
+
+    const AmU: ASSERT_BOOLEAN<StringsMatch<'A', 'A' | 'B'>> = 1;
+    const CmU: ASSERT_FALSE<StringsMatch<'C', 'A' | 'B'>> = 1;
+    const SmU: ASSERT_BOOLEAN<StringsMatch<string, 'A' | 'B'>> = 1;
+    const OmU: ASSERT_FALSE<StringsMatch<void, 'A' | 'B'>> = 1;
+    const UmA: ASSERT_BOOLEAN<StringsMatch<'A' | 'B', 'A'>> = 1;
+    const ABmBC: ASSERT_BOOLEAN<StringsMatch<'A' | 'B', 'B' | 'C'>> = 1;
+    const ABmC: ASSERT_FALSE<StringsMatch<'A' | 'B', 'C'>> = 1;
+    const UmC: ASSERT_FALSE<StringsMatch<'A' | 'B', 'C'>> = 1;
+    const UmS: ASSERT_BOOLEAN<StringsMatch<'A' | 'B', string>> = 1;
+    const UmO: ASSERT_FALSE<StringsMatch<'A' | 'B', void>> = 1;
+    const UmU: ASSERT_BOOLEAN<StringsMatch<'A' | 'B', 'A' | 'B'>> = 1;
+
+    const AOmA: ASSERT_BOOLEAN<StringsMatch<'A' | void, 'A'>> = 1;
+    const AOmO: ASSERT_BOOLEAN<StringsMatch<'A' | void, 'A'>> = 1;
+    const AOmAO: ASSERT_BOOLEAN<StringsMatch<'A' | void, 'A' | void>> = 1;
  
     const AmA: ASSERT_TRUE<StringsMatch<'A', 'A'>> = 1;
     const AmB: ASSERT_FALSE<StringsMatch<'A', 'B'>> = 1;
@@ -164,6 +430,38 @@ type StringsMatch<
     const OmS: ASSERT_FALSE<StringsMatch<void, string>> = 1;
     const AmO: ASSERT_FALSE<StringsMatch<'A', void>> = 1;
     const SmO: ASSERT_FALSE<StringsMatch<string, void>> = 1;
+
+    type A = 'A';
+    type U = 'A' | 'B';
+
+    type DEBUG_RAA = Extends<A, A>;      // true
+    type DEBUG_TAA = Extends<[A], [A]>;  // true
+
+    type DEBUG_RUU = Extends<U, U>;      // true
+    type DEBUG_TUU = Extends<[U], [U]>;  // true
+
+    type DEBUG_RAU = Extends<A, U>;      // true
+    type DEBUG_TAU = Extends<[A], [U]>;  // true
+
+    type DEBUG_RUA = Extends<U, A>;      // boolean
+    type DEBUG_TUA = Extends<[U], [A]>;  // false
+
+    type DEBUG_AND = And<DEBUG_RAU, DEBUG_RUA>;
+
+    type IsUn<A extends string, B extends string> = Or<
+        And<
+            Extends<A, B>,
+            Not<
+                Extends<[B], [A]>
+            >,
+        >,
+        And<
+            Extends<B, A>,
+            Not<
+                Extends<[A], [B]>
+            >,
+        >,
+    >;
 }
 
 type StringPairsMatch<
@@ -194,12 +492,12 @@ export namespace RDFJS {
         TermTypeStringB extends string,
     > = And<
         If<
-            IsActualString<TermTypeStringA>,
+            IsOnlyLiteralStrings<TermTypeStringA>,
             Extends<TermTypeStringA, KeySet>,
             true,
         >,
         If<
-            IsActualString<TermTypeStringB>,
+            IsOnlyLiteralStrings<TermTypeStringB>,
             Extends<TermTypeStringB, KeySet>,
             true,
         >,
@@ -356,6 +654,203 @@ export namespace RDFJS {
         const IvBv: NodesMatch<'Invalid',   'A',   'BlankNode', 'A'    > = NEVER;
     }
 
+    `
+        if ValidTermTypes(ObjectTypeKey, TermTypeStringA, TermTypeStringB):
+            TermTypeAndValueStringsMatch = TermTypeStringA == TermTypeStringB and ValueStringA == ValueStringB
+            
+            if TermTypeAndValueStringsMatch is not True:
+                return false
+            
+            if TermTypeStringA == 'Literal' or TermTypeStringB == 'Literal':
+                LanguageStringAKnown = IsActualString(LanguageStringA)
+                DatatypeStringAKnown = IsActualString(DatatypeStringA)
+                LanguageStringBKnown = IsActualString(LanguageStringB)
+                DatatypeStringBKnown = IsActualString(DatatypeStringB)
+
+                if (LanguageStringAKnown or LanguageStringBKnown) and (DatatypeStringAKnown or DatatypeStringBKnown):
+                    if LanguageStringAKnown:
+                        if DatatypeStringA != DatatypeStringB:
+                            return false
+                        else:
+                            return TermTypeAndValueStringsMatch
+                    else:
+    `
+
+    type P_XSD_STRING = 'http://www.w3.org/2001/XMLSchema#string';
+    type P_RDFS_LANGSTRING = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString';
+
+    type AutoDatatype<
+        DatatypeString extends string|void,
+        AutoLanguageString,
+    > = If<
+        StringsMatch<AsString<AutoLanguageString>, ''>,
+        AutoString<DatatypeString, P_XSD_STRING>,
+        If<
+            IsOnlyLiteralStrings<AsString<AutoLanguageString>>,
+            P_RDFS_LANGSTRING,
+            AutoString<DatatypeString>,
+        >,
+    >;
+
+    type NarrowLanguage<
+        AutoLanguageString,
+        AutoDatatypeString,
+    > = If<
+        And<
+            Includes<AutoLanguageString, string>,
+            And<
+                Not<Includes<AutoDatatypeString, P_RDFS_LANGSTRING>>,
+                Not<Includes<AutoDatatypeString, string>>,
+            >,
+        >,
+        '',
+        AutoLanguageString,
+    >;
+
+    type NormalizeLanguageDatatype<
+        LanguageString extends string|void,
+        DatatypeString extends string|void,
+    > = AutoString<LanguageString, ''> extends infer AutoLanguageString
+        ? (AutoDatatype<DatatypeString, AutoLanguageString> extends infer AutoDatatypeString
+            ? (NarrowLanguage<AutoLanguageString, AutoDatatypeString> extends infer NarrowLanguageString
+                ? [NarrowLanguageString, AutoDatatypeString]
+                : never
+            )
+            : never
+        )
+        : never;
+
+    {
+        // language takes precedence over datatype
+        const VV: ASSERT_SAME<NormalizeLanguageDatatype<'en', 'z://'>, ['en', P_RDFS_LANGSTRING]> = 1;
+        const VS: ASSERT_SAME<NormalizeLanguageDatatype<'en', string>, ['en', P_RDFS_LANGSTRING]> = 1;
+        const VO: ASSERT_SAME<NormalizeLanguageDatatype<'en', void>, ['en', P_RDFS_LANGSTRING]> = 1;
+        // even for unions
+        const VU: ASSERT_SAME<NormalizeLanguageDatatype<'en', 'z://'|string>, ['en', P_RDFS_LANGSTRING]> = 1;
+
+        // language unions make it thru
+        const UV: ASSERT_SAME<NormalizeLanguageDatatype<'en'|'fr', 'z://'>, ['en'|'fr', P_RDFS_LANGSTRING]> = 1;
+        const US: ASSERT_SAME<NormalizeLanguageDatatype<'en'|'fr', string>, ['en'|'fr', P_RDFS_LANGSTRING]> = 1;
+        const UO: ASSERT_SAME<NormalizeLanguageDatatype<'en'|'fr', void>, ['en'|'fr', P_RDFS_LANGSTRING]> = 1;
+
+        // empty string language
+        const _V: ASSERT_SAME<NormalizeLanguageDatatype<'', 'z://'>, ['', 'z://']> = 1;
+        const _S: ASSERT_SAME<NormalizeLanguageDatatype<'', string>, ['', string]> = 1;
+        const _O: ASSERT_SAME<NormalizeLanguageDatatype<'', void>, ['', P_XSD_STRING]> = 1;
+
+        // datatype unions make it thru
+        const _U: ASSERT_SAME<NormalizeLanguageDatatype<'', 'z://'|'y://'>, ['', 'z://'|'y://']> = 1;
+        const OU: ASSERT_SAME<NormalizeLanguageDatatype<void, 'z://'|'y://'>, ['', 'z://'|'y://']> = 1;
+        const SU: ASSERT_SAME<NormalizeLanguageDatatype<string, 'z://'|'y://'>, ['', 'z://'|'y://']> = 1;
+
+        // void language => ''
+        const OV: ASSERT_SAME<NormalizeLanguageDatatype<void, 'z://'>, ['', 'z://']> = 1;
+        const OS: ASSERT_SAME<NormalizeLanguageDatatype<void, string>, ['', string]> = 1;
+        const OO: ASSERT_SAME<NormalizeLanguageDatatype<void, void>, ['', P_XSD_STRING]> = 1;
+
+        type DEBUG = NormalizeLanguageDatatype<'en', string>;
+    }
+
+    {
+        type _ = '';
+        type E = 'en';
+
+        type V = 'z://';
+
+        const V_: ASSERT_EQUAL<AutoDatatype<V, ''>, V> = 1;
+        const VE: ASSERT_EQUAL<AutoDatatype<V, E>, P_RDFS_LANGSTRING> = 1;
+        const VS: ASSERT_EQUAL<AutoDatatype<V, string>, V> = 1;
+
+        const S_: ASSERT_STRING<AutoDatatype<string, ''>> = 1;
+        const SE: ASSERT_EQUAL<AutoDatatype<string, E>, P_RDFS_LANGSTRING> = 1;
+        const SS: ASSERT_STRING<AutoDatatype<string, string>> = 1;
+
+        const O_: ASSERT_EQUAL<AutoDatatype<void, ''>, P_XSD_STRING> = 1;
+        const OE: ASSERT_EQUAL<AutoDatatype<void, E>, P_RDFS_LANGSTRING> = 1;
+        const OS: ASSERT_STRING<AutoDatatype<void, string>> = 1;
+    }
+
+	type ObjectsEqualN<
+		TermTypeStringA extends string,
+		ValueStringA extends string,
+		LanguageStringA extends string|void,
+		DatatypeStringA extends string|void,
+		TermTypeStringB extends string,
+		ValueStringB extends string,
+		LanguageStringB extends string|void,
+		DatatypeStringB extends string|void,
+	> = If<
+        ValidTermTypes<ObjectTypeKey, TermTypeStringA, TermTypeStringB>,
+        // (a.termType and b.termType) are each either unknown or in {object-type-key}
+        And<
+            StringsMatch<TermTypeStringA, TermTypeStringB>,
+            StringsMatch<ValueStringA, ValueStringB>,
+        > extends infer TermTypeAndValueStringsMatch
+            // (TermType|Value)StringsMatch := a.(termType|value) === b.(termType|value)
+            ? (Not<AsBool<TermTypeAndValueStringsMatch>> extends true
+                // a.termType !== b.termType || a.value !== b.value
+                ? false
+                // mixed termTypes and values
+                : (Or<
+                    StringsMatch<TermTypeStringA, 'Literal'>,
+                    StringsMatch<TermTypeStringB, 'Literal'>,
+                > extends true
+                    // (a|b).termType === 'Literal'
+                    ? ([
+                        AutoString<LanguageStringA, ''>,
+                        AutoString<LanguageStringB, ''>,
+                    ] extends [
+                        infer AutoLanguageStringA,
+                        infer AutoLanguageStringB,
+                    ]
+                        // AutoLanguageString = LanguageString || ''
+                        ? ([
+                            AutoDatatype<DatatypeStringA, AutoLanguageStringA>,
+                            AutoDatatype<DatatypeStringB, AutoLanguageStringB>,
+                        ] extends [
+                            infer AutoDatatypeStringA,
+                            infer AutoDatatypeStringB,
+                        ]
+                            // AutoDatatypeString = AutoLanguageString? 'rdfs:langString': DatatypeString || 'xsd:string'
+                            ? ([
+                                NarrowLanguage<AutoLanguageStringA, AutoDatatypeStringA>,
+                                NarrowLanguage<AutoLanguageStringB, AutoDatatypeStringB>,
+                            ] extends [
+                                infer NarrowLanguageStringA,
+                                infer NarrowLanguageStringB,
+                            ]
+                                // NarrowLanguageString = AutoDatatypeString !== 'rdfs:langString' && AutoLanguageString includes `string`? '': AutoLanguageString
+                                ? If<
+                                    Or<
+                                        Not<StringsMatch<AsString<NarrowLanguageStringA>, AsString<NarrowLanguageStringB>>>,
+                                        Not<StringsMatch<AsString<AutoDatatypeStringA>, AsString<AutoDatatypeStringB>>>,
+                                    >,
+                                    // a.language !== b.language || a.datatype !== b.datatype
+                                    false,
+                                    // return a.language === b.language && a.datatype === b.datatype
+                                    And<
+                                        AsBool<TermTypeAndValueStringsMatch>,
+                                        And<
+                                            StringsMatch<AsString<NarrowLanguageStringA>, AsString<NarrowLanguageStringB>>,
+                                            StringsMatch<AsString<AutoDatatypeStringA>, AsString<AutoDatatypeStringB>>,
+                                        >,
+                                    >,
+                                >
+                                : never
+                            )
+                            : never
+                        )
+                        : never
+                    )
+                    : NodesMatch<
+                        TermTypeStringA, ValueStringA,
+                        TermTypeStringB, ValueStringB,
+                    >
+                )
+            )
+            : never
+    >;
+
 	type ObjectsEqual<
 		TermTypeStringA extends string,
 		ValueStringA extends string,
@@ -368,18 +863,12 @@ export namespace RDFJS {
 	> = If<
         ValidTermTypes<ObjectTypeKey, TermTypeStringA, TermTypeStringB>,
         // (a.termType and b.termType) are each either unknown or in {object-type-key}
-        ([
+        And<
             StringsMatch<TermTypeStringA, TermTypeStringB>,
             StringsMatch<ValueStringA, ValueStringB>,
-        ] extends [
-            infer TermTypeStringsMatch,
-            infer ValueStringsMatch,
-        ]
+        > extends infer TermTypeAndValueStringsMatch
             // (TermType|Value)StringsMatch := a.(termType|value) === b.(termType|value)
-            ? (Or<
-                Not<AsBool<TermTypeStringsMatch>>,
-                Not<AsBool<ValueStringsMatch>>,
-            > extends true
+            ? (Not<AsBool<TermTypeAndValueStringsMatch>> extends true
                 // a.termType !== b.termType || a.value !== b.value
                 ? false
                 // mixed termTypes and values
@@ -389,84 +878,63 @@ export namespace RDFJS {
                 > extends true
                     // (a|b).termType === 'Literal'
                     ? ([
-                        IsActualString<LanguageStringA>,
-                        IsActualString<DatatypeStringA>,
-                        IsActualString<LanguageStringB>,
-                        IsActualString<DatatypeStringB>,
+                        NormalizeLanguageDatatype<LanguageStringA, DatatypeStringA>,
+                        NormalizeLanguageDatatype<LanguageStringB, DatatypeStringB>,
                     ] extends [
-                        infer LanguageStringAKnown,
-                        infer DatatypeStringAKnown,
-                        infer LanguageStringBKnown,
-                        infer DatatypeStringBKnown,
+                        [infer NormalizeLanguageStringA, infer NormalizeDatatypeStringA],
+                        [infer NormalizeLanguageStringB, infer NormalizeDatatypeStringB],
                     ]
-                        // (Language|Datatype)String(A|B)Known := (a|b).(language|datatype) is known
-                        ? (And<
-                            Or<AsBool<LanguageStringAKnown>, AsBool<DatatypeStringAKnown>>,
-                            Or<AsBool<LanguageStringBKnown>, AsBool<DatatypeStringBKnown>>,
-                        > extends true
-                            // a.(language|datatype) is known && b.(language|datatype) is known
-                            ? (AsBool<LanguageStringAKnown> extends true
-                                // a.language is known && b.(language|datatype) is known
-                                ? If<
-                                    Not<StringsMatch<LanguageStringA, LanguageStringB>>,
-                                    false,
-                                    And<
-                                        AsBool<TermTypeStringsMatch>,
-                                        AsBool<ValueStringsMatch>,
-                                    >,
-                                >
-                                // a.datatype is known && b.(language|datatype) is known
-                                : If<
-                                    Not<StringsMatch<DatatypeStringA, DatatypeStringB>>,
-                                    false,
-                                    And<
-                                        AsBool<TermTypeStringsMatch>,
-                                        AsBool<ValueStringsMatch>,
-                                    >,
-                                >
-                            )
-                            : If<
-                                Or<
-                                    And<
-                                        Extends<[LanguageStringA], [void]>,
-                                        Extends<[LanguageStringB], [void]>,
-                                    >,
-                                    And<
-                                        Extends<[DatatypeStringA], [void]>,
-                                        Extends<[DatatypeStringB], [void]>,
-                                    >,
+                        // AutoLanguageString = LanguageString || ''
+                        // AutoDatatypeString = AutoLanguageString? 'rdfs:langString': DatatypeString || 'xsd:string'
+                        // NarrowLanguageString = AutoDatatypeString !== 'rdfs:langString' && AutoLanguageString includes `string`? '': AutoLanguageString
+                        // Normalize(Language|Datatype)String = [NarrowLanguageString, AutoDatatypeString]
+                        ? If<
+                            Or<
+                                Not<StringsMatch<AsString<NormalizeLanguageStringA>, AsString<NormalizeLanguageStringB>>>,
+                                Not<StringsMatch<AsString<NormalizeDatatypeStringA>, AsString<NormalizeDatatypeStringB>>>,
+                            >,
+                            // a.language !== b.language || a.datatype !== b.datatype
+                            false,
+                            // return a.language === b.language && a.datatype === b.datatype
+                            And<
+                                AsBool<TermTypeAndValueStringsMatch>,
+                                And<
+                                    StringsMatch<AsString<NormalizeLanguageStringA>, AsString<NormalizeLanguageStringB>>,
+                                    StringsMatch<AsString<NormalizeDatatypeStringA>, AsString<NormalizeDatatypeStringB>>,
                                 >,
-                                true,
-                                boolean,
-                            >
-                        ): never
+                            >,
+                        >
+                        : never
                     )
-                    // (a|b).termType !== 'Literal'
-                    // return (a.termType === b.termType && a.value === b.value)
-                    : And<
-                        AsBool<TermTypeStringsMatch>,
-                        AsBool<ValueStringsMatch>,
+                    : NodesMatch<
+                        TermTypeStringA, ValueStringA,
+                        TermTypeStringB, ValueStringB,
                     >
                 )
-            ): never
-        )
+            )
+            : never
     >;
 
+
     {
+
         // Comparing against non-object-types
-        const NaDa: ASSERT_NEVER<ObjectsEqual<'NamedNode',    'A', string, string, 'DefaultGraph', '',  string, string>> = 1;
-        const DaNa: ASSERT_NEVER<ObjectsEqual<'DefaultGraph', '',  string, string, 'NamedNode',    'A', string, string>> = 1;
-        const DaDa: ASSERT_NEVER<ObjectsEqual<'DefaultGraph', '',  string, string, 'DefaultGraph', '',  string, string>> = 1;
+        const NaDa: ASSERT_NEVER<ObjectsEqual<'NamedNode',    'A', void, void, 'DefaultGraph', '',  void, void>> = 1;
+        const DaNa: ASSERT_NEVER<ObjectsEqual<'DefaultGraph', '',  void, void, 'NamedNode',    'A', void, void>> = 1;
+        const DaDa: ASSERT_NEVER<ObjectsEqual<'DefaultGraph', '',  void, void, 'DefaultGraph', '',  void, void>> = 1;
 
         // Comparing against invalid types
-        const NaIa: ASSERT_NEVER<ObjectsEqual<'NamedNode', 'A', string, string, 'Invalid',   'A', string, string>> = 1;
-        const IaNa: ASSERT_NEVER<ObjectsEqual<'Invalid',   'A', string, string, 'NamedNode', 'A', string, string>> = 1;
-        const IaIa: ASSERT_NEVER<ObjectsEqual<'Invalid',   'A', string, string, 'Invalid',   'A', string, string>> = 1;
+        const NaIa: ASSERT_NEVER<ObjectsEqual<'NamedNode', 'A', void, void, 'Invalid',   'A', void, void>> = 1;
+        const IaNa: ASSERT_NEVER<ObjectsEqual<'Invalid',   'A', void, void, 'NamedNode', 'A', void, void>> = 1;
+        const IaIa: ASSERT_NEVER<ObjectsEqual<'Invalid',   'A', void, void, 'Invalid',   'A', void, void>> = 1;
 
         // NamedNodes and BlankNodes
-        const NaNs: ASSERT_BOOLEAN<ObjectsEqual<'NamedNode', 'A', string, string, 'NamedNode', string, string, string>> = 1;
-        const NaNa: ASSERT_TRUE<ObjectsEqual<'NamedNode', 'A', string, string, 'NamedNode', 'A', string, string>> = 1;
-        const BaBa: ASSERT_TRUE<ObjectsEqual<'BlankNode', 'A', string, string, 'BlankNode', 'A', string, string>> = 1;
+        const NaNs: ASSERT_BOOLEAN<ObjectsEqual<'NamedNode', 'A', void, void, 'NamedNode', string, void, void>> = 1;
+        const NaNa: ASSERT_TRUE   <ObjectsEqual<'NamedNode', 'A', void, void, 'NamedNode', 'A',    void, void>> = 1;
+        const BaBa: ASSERT_TRUE   <ObjectsEqual<'BlankNode', 'A', void, void, 'BlankNode', 'A',    void, void>> = 1;
+
+        // Unions
+        const NBvNv: ASSERT_BOOLEAN<ObjectsEqual<'NamedNode' | 'BlankNode', 'A', void, void, 'NamedNode', 'A', void, void>> = 1;
 
         // Literal  [s=string; v='val'; x=other]
         const LsssLsss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, string, 'Literal', string, string, string>> = 1;
@@ -475,19 +943,27 @@ export namespace RDFJS {
         const LsssLvss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, string, 'Literal', 'A',    string, string>> = 1;
         const LvssLsss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    string, string, 'Literal', string, string, string>> = 1;
         const LvssLvss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    string, string, 'Literal', 'A',    string, string>> = 1;
-        const LvssLxss: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    string, string, 'Literal', 'B',    string, string>> = 1;
+        const LvssLxss: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    string, string, 'Literal', 'B',    string, string>> = 1;
+
+        // Simple Literals
+        const LsooLvoo: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, '',   void, 'Literal', 'A',      '',   void>> = 1;
+        const LvooLsoo: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    '',   void, 'Literal', string,   '',   void>> = 1;
+        const LvooLvoo: ASSERT_TRUE   <ObjectsEqual<'Literal', 'A',    '',   void, 'Literal', 'A',      '',   void>> = 1;
+        const LvooLxoo: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    '',   void, 'Literal', 'B',      '',   void>> = 1;
+
+        type DEBUG = ObjectsEqual<'Literal', 'A',    '',   void, 'Literal', 'A',      '',   void>;
         
         // Literal with only language
         const LsssLsvs: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, string, 'Literal', string, 'en',   string>> = 1;
         const LsvsLsss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, 'en',   string, 'Literal', string, string, string>> = 1;
         const LsvsLsvs: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, 'en',   string, 'Literal', string, 'en',   string>> = 1;
-        const LsvsLsxs: ASSERT_FALSE<ObjectsEqual<'Literal', string, 'en',   string, 'Literal', string, 'fr',   string>> = 1;
+        const LsvsLsxs: ASSERT_FALSE  <ObjectsEqual<'Literal', string, 'en',   string, 'Literal', string, 'fr',   string>> = 1;
 
         // Literal with only datatype
         const LsssLssv: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, string, 'Literal', string, string, 'z://'>> = 1;
         const LssvLsss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, 'z://', 'Literal', string, string, string>> = 1;
         const LssvLssv: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, 'z://', 'Literal', string, string, 'z://'>> = 1;
-        const LssvLssx: ASSERT_FALSE<ObjectsEqual<'Literal', string, string, 'z://', 'Literal', string, string, 'y://'>> = 1;
+        const LssvLssx: ASSERT_FALSE  <ObjectsEqual<'Literal', string, string, 'z://', 'Literal', string, string, 'y://'>> = 1;
 
         // Literal with value and language
         const LsssLvvs: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, string, 'Literal', 'A',    'en',   string>> = 1;
@@ -495,16 +971,16 @@ export namespace RDFJS {
         const LsvsLvss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, 'en',   string, 'Literal', 'A',    string, string>> = 1;
         const LvvsLsss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', string, string, string>> = 1;
         const LvvsLvss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', 'A',    string, string>> = 1;
-        const LvvsLxss: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', 'B',    string, string>> = 1;
+        const LvvsLxss: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', 'B',    string, string>> = 1;
         const LvvsLsvs: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', string, 'en',   string>> = 1;
-        const LvvsLsxs: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', string, 'fr',   string>> = 1;
+        const LvvsLsxs: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', string, 'fr',   string>> = 1;
         const LvssLvvs: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    string, string, 'Literal', 'A',    'en',   string>> = 1;
-        const LvssLxvs: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    string, string, 'Literal', 'B',    'en',   string>> = 1;
+        const LvssLxvs: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    string, string, 'Literal', 'B',    'en',   string>> = 1;
         const LsvsLvvs: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, 'en',   string, 'Literal', 'A',    'en',   string>> = 1;
-        const LsvsLvxs: ASSERT_FALSE<ObjectsEqual<'Literal', string, 'en',   string, 'Literal', 'A',    'fr',   string>> = 1;
-        const LvvsLvvs: ASSERT_TRUE<ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', 'A',    'en',   string>> = 1;
-        const LvvsLvxs: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', 'A',    'fr',   string>> = 1;
-        const LvvsLxvs: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', 'B',    'en',   string>> = 1;
+        const LsvsLvxs: ASSERT_FALSE  <ObjectsEqual<'Literal', string, 'en',   string, 'Literal', 'A',    'fr',   string>> = 1;
+        const LvvsLvvs: ASSERT_TRUE   <ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', 'A',    'en',   string>> = 1;
+        const LvvsLvxs: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', 'A',    'fr',   string>> = 1;
+        const LvvsLxvs: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    'en',   string, 'Literal', 'B',    'en',   string>> = 1;
 
         // Literal with value and datatype
         const LsssLvsv: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, string, 'Literal', 'A',    'z://', string>> = 1;
@@ -512,16 +988,16 @@ export namespace RDFJS {
         const LssvLvss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, 'z://', 'Literal', 'A',    string, string>> = 1;
         const LvsvLsss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', string, string, string>> = 1;
         const LvsvLvss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', 'A',    string, string>> = 1;
-        const LvsvLxss: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', 'B',    string, string>> = 1;
+        const LvsvLxss: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', 'B',    string, string>> = 1;
         const LvsvLssv: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', string, string, 'z://'>> = 1;
-        const LvsvLssx: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', string, string, 'y://'>> = 1;
+        const LvsvLssx: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', string, string, 'y://'>> = 1;
         const LvssLvsv: ASSERT_BOOLEAN<ObjectsEqual<'Literal', 'A',    string, string, 'Literal', 'A',    string, 'z://'>> = 1;
-        const LvssLxsv: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    string, string, 'Literal', 'B',    string, 'z://'>> = 1;
+        const LvssLxsv: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    string, string, 'Literal', 'B',    string, 'z://'>> = 1;
         const LssvLvsv: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, 'z://', 'Literal', 'A',    string, 'z://'>> = 1;
-        const LssvLvsx: ASSERT_FALSE<ObjectsEqual<'Literal', string, string, 'z://', 'Literal', 'A',    string, 'y://'>> = 1;
-        const LvsvLvsv: ASSERT_TRUE<ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', 'A',    string, 'z://'>> = 1;
-        const LvsvLvsx: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', 'A',    string, 'y://'>> = 1;
-        const LvsvLxsv: ASSERT_FALSE<ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', 'B',    string, 'z://'>> = 1;
+        const LssvLvsx: ASSERT_FALSE  <ObjectsEqual<'Literal', string, string, 'z://', 'Literal', 'A',    string, 'y://'>> = 1;
+        const LvsvLvsv: ASSERT_TRUE   <ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', 'A',    string, 'z://'>> = 1;
+        const LvsvLvsx: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', 'A',    string, 'y://'>> = 1;
+        const LvsvLxsv: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    string, 'z://', 'Literal', 'B',    string, 'z://'>> = 1;
     }
 
 	type QuadsMatch<
@@ -644,16 +1120,13 @@ export namespace RDFJS {
     type ConditionalLiteralString<
         TermTypeString extends string,
         LanguageOrDatatypeString extends string|void,
-    > = IsActualString<TermTypeString> extends true
+    > = IsOnlyLiteralStrings<TermTypeString> extends true
         ? (TermTypeString extends 'Literal'
             ? LanguageOrDatatypeString
             : void
         )
         : string;
 
-    type AutoString<
-        String,
-    > = String extends string? String: string
 
 	export type ComparableTerm<
         DescriptorA extends TermDescriptor=TermDescriptor,
@@ -728,13 +1201,14 @@ export namespace RDFJS {
         type DLv   = ['Literal', 'z://'];
         type DLvo  = ['Literal', 'z://', void];
         type DLvs  = ['Literal', 'z://', string];
-        type DLvso  = ['Literal', 'z://', string, void];
+        type DLvso = ['Literal', 'z://', string, void];
         type DLvoo = ['Literal', 'z://', void, void];
         type DLx   = ['Literal', 'y://'];
         type DLxo  = ['Literal', 'y://', void];
         type DLxoo = ['Literal', 'y://', void, void];
         type DLvv  = ['Literal', 'z://', 'en'];
         type DLvx  = ['Literal', 'z://', 'fr'];
+        type DLvsv = ['Literal', 'z://', string, 'x://'];
         type DLvov = ['Literal', 'z://', void, 'x://'];
         type DLvox = ['Literal', 'z://', void, 'w://'];
 
@@ -761,13 +1235,17 @@ export namespace RDFJS {
         const DNvo_DNvo: ASSERT_TRUE<TermsEqual<DNvo, DNvo>> = 1;
         const DNvoo_DNvoo: ASSERT_TRUE<TermsEqual<DNvoo, DNvoo>> = 1;
 
-        const DL_DL: ASSERT_TRUE<TermsEqual<DL, DL>> = 1;
+        const DL_DL: ASSERT_BOOLEAN<TermsEqual<DL, DL>> = 1;
         const DL_DLv: ASSERT_BOOLEAN<TermsEqual<DL, DLv>> = 1;
         const DLv_DLv: ASSERT_TRUE<TermsEqual<DLv, DLv>> = 1;
         const DLvo_DLvo: ASSERT_TRUE<TermsEqual<DLvo, DLvo>> = 1;
         const DLvoo_DLvoo: ASSERT_TRUE<TermsEqual<DLvoo, DLvoo>> = 1;
-        const DLvoo_DLvs: ASSERT_FALSE<TermsEqual<DLvoo, DLvs>> = 1;
-        const DLvoo_DLvso: ASSERT_FALSE<TermsEqual<DLvoo, DLvso>> = 1;
+        const DLvoo_DLvs: ASSERT_BOOLEAN<TermsEqual<DLvoo, DLvs>> = 1;
+        const DLvoo_DLvv: ASSERT_FALSE<TermsEqual<DLvoo, DLvv>> = 1;
+        const DLvoo_DLvso: ASSERT_BOOLEAN<TermsEqual<DLvoo, DLvso>> = 1;
+
+        const KASKO: ASSERT_FALSE<TermsEqual<DLvsv, DLvov>> = 1;
+        
 
         const DN_DB: ASSERT_FALSE<TermsEqual<DN, DB>> = 1;
         const DN_DD: ASSERT_NEVER<TermsEqual<DN, DD>> = 1;
