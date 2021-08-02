@@ -878,11 +878,11 @@ export namespace RDFJS {
                 > extends true
                     // (a|b).termType === 'Literal'
                     ? ([
-                        NormalizeLanguageDatatype<LanguageStringA, DatatypeStringA>,
-                        NormalizeLanguageDatatype<LanguageStringB, DatatypeStringB>,
+                        ...NormalizeLanguageDatatype<LanguageStringA, DatatypeStringA>,
+                        ...NormalizeLanguageDatatype<LanguageStringB, DatatypeStringB>,
                     ] extends [
-                        [infer NormalizeLanguageStringA, infer NormalizeDatatypeStringA],
-                        [infer NormalizeLanguageStringB, infer NormalizeDatatypeStringB],
+                        infer NormalizeLanguageStringA, infer NormalizeDatatypeStringA,
+                        infer NormalizeLanguageStringB, infer NormalizeDatatypeStringB,
                     ]
                         // AutoLanguageString = LanguageString || ''
                         // AutoDatatypeString = AutoLanguageString? 'rdfs:langString': DatatypeString || 'xsd:string'
@@ -951,8 +951,6 @@ export namespace RDFJS {
         const LvooLvoo: ASSERT_TRUE   <ObjectsEqual<'Literal', 'A',    '',   void, 'Literal', 'A',      '',   void>> = 1;
         const LvooLxoo: ASSERT_FALSE  <ObjectsEqual<'Literal', 'A',    '',   void, 'Literal', 'B',      '',   void>> = 1;
 
-        type DEBUG = ObjectsEqual<'Literal', 'A',    '',   void, 'Literal', 'A',      '',   void>;
-        
         // Literal with only language
         const LsssLsvs: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, string, string, 'Literal', string, 'en',   string>> = 1;
         const LsvsLsss: ASSERT_BOOLEAN<ObjectsEqual<'Literal', string, 'en',   string, 'Literal', string, string, string>> = 1;
@@ -1120,54 +1118,75 @@ export namespace RDFJS {
     type ConditionalLiteralString<
         TermTypeString extends string,
         LanguageOrDatatypeString extends string|void,
-    > = IsOnlyLiteralStrings<TermTypeString> extends true
-        ? (TermTypeString extends 'Literal'
-            ? LanguageOrDatatypeString
-            : void
+    > = 'Literal' extends TermTypeString
+        ? (LanguageOrDatatypeString extends undefined
+            ? string
+            : LanguageOrDatatypeString
         )
-        : string;
+        : void;
 
 
-	export type ComparableTerm<
-        DescriptorA extends TermDescriptor=TermDescriptor,
-		TermTypeStringA extends string=DescriptorA[0],
-		ValueStringA extends string=AutoString<DescriptorA[1]>,
-		LanguageStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[2]>,
-		DatatypeStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[3]>,
+	export type TermData<
+        Descriptor extends TermDescriptor=TermDescriptor,
+		TermTypeString extends string=Descriptor[0],
+		ValueString extends string=AutoString<Descriptor[1]>,
+		LanguageString extends string|void=ConditionalLiteralString<TermTypeString, Descriptor[2]>,
+		DatatypeString extends string|void=ConditionalLiteralString<TermTypeString, Descriptor[3]>,
 	> = {
-		termType: TermTypeStringA;
-		value: ValueStringA;
-        equals?(y_other: ComparableTerm): boolean;
-    } & (TermTypeStringA extends 'Literal'
-        ? {
-            language: LanguageStringA;
-            datatype: Datatype<AsString<DatatypeStringA>>;
-        }
+		termType: TermTypeString;
+		value: ValueString;
+        equals?(y_other: TermData): boolean;
+    }
+    & ('Literal' extends TermTypeString
+        ? (NormalizeLanguageDatatype<LanguageString, DatatypeString> extends [
+            infer NormalizeLanguageString,
+            infer NormalizeDatatypeString,
+        ]
+            ? (TermTypeString extends 'Literal'
+                ? {
+                    language: NormalizeLanguageString;
+                    datatype: Datatype<AsString<NormalizeDatatypeString>>;
+                }
+                : {
+                    language?: NormalizeLanguageString;
+                    datatype?: Datatype<AsString<NormalizeDatatypeString>>;
+                }
+            )
+            : never
+        )
         : unknown
     ) & {
         [si_key: string]: any;
     };
 
-    type VoidDescriptor = ['@VOID'];
+    type BypassDescriptor = [never];
 
 	export type Term<
-        DescriptorA extends TermDescriptor=VoidDescriptor,
+        DescriptorA extends TermDescriptor=BypassDescriptor,
 
         // these are provided for descriptor inferencing
-		TermTypeStringA extends string=DescriptorA[0],
+		TermTypeStringA extends string=DescriptorA[0] extends never? string: DescriptorA[0],
 		ValueStringA extends string=AutoString<DescriptorA[1]>,
 		LanguageStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[2]>,
 		DatatypeStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[3]>,
 	> = Pick<
-        ComparableTerm<
-            DescriptorA,
+        TermData<
+            // DescriptorA
+            [TermTypeStringA, ValueStringA, LanguageStringA, DatatypeStringA],
             TermTypeStringA,
             ValueStringA,
             LanguageStringA,
             DatatypeStringA,
-        >, 'termType' | 'value'> & (DescriptorA extends VoidDescriptor
+        >,
+        'termType' | 'value' | (
+            // only include language and datatype keys if termType can be 'Literal'
+            'Literal' extends TermTypeStringA
+                ? 'language' | 'datatype'
+                : 'termType'
+        ),
+    > & (DescriptorA extends BypassDescriptor
         ? {
-            equals(y_other: ComparableTerm): boolean;
+            equals(y_other: TermData): boolean;
         }
         : {
             equals<
@@ -1177,8 +1196,8 @@ export namespace RDFJS {
                 LanguageStringB extends string|void=string|void,
                 DatatypeStringB extends string|void=string|void,
             >(y_other: DescriptorB extends TermDescriptor
-                ? ComparableTerm<DescriptorB, TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB> | SmartTerm<DescriptorB, TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB>
-                : ComparableTerm
+                ? TermData<DescriptorB, TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB> | Term<DescriptorB, TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB>
+                : TermData
             ): DescriptorB extends TermDescriptor
                 ? TermsEqual<DescriptorA, [TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB]>
                 : boolean;
@@ -1203,6 +1222,9 @@ export namespace RDFJS {
         type DLvs  = ['Literal', 'z://', string];
         type DLvso = ['Literal', 'z://', string, void];
         type DLvoo = ['Literal', 'z://', void, void];
+        type DLv_k = ['Literal', 'z://', '', P_XSD_STRING];
+        type DLv_v = ['Literal', 'z://', '', 'x://'];
+        type DLvvr = ['Literal', 'z://', 'en', P_RDFS_LANGSTRING];
         type DLx   = ['Literal', 'y://'];
         type DLxo  = ['Literal', 'y://', void];
         type DLxoo = ['Literal', 'y://', void, void];
@@ -1237,14 +1259,18 @@ export namespace RDFJS {
 
         const DL_DL: ASSERT_BOOLEAN<TermsEqual<DL, DL>> = 1;
         const DL_DLv: ASSERT_BOOLEAN<TermsEqual<DL, DLv>> = 1;
-        const DLv_DLv: ASSERT_TRUE<TermsEqual<DLv, DLv>> = 1;
-        const DLvo_DLvo: ASSERT_TRUE<TermsEqual<DLvo, DLvo>> = 1;
+        const DLv_DLv: ASSERT_BOOLEAN<TermsEqual<DLv, DLv>> = 1;
+        const DLvo_DLvo: ASSERT_BOOLEAN<TermsEqual<DLvo, DLvo>> = 1;
         const DLvoo_DLvoo: ASSERT_TRUE<TermsEqual<DLvoo, DLvoo>> = 1;
         const DLvoo_DLvs: ASSERT_BOOLEAN<TermsEqual<DLvoo, DLvs>> = 1;
         const DLvoo_DLvv: ASSERT_FALSE<TermsEqual<DLvoo, DLvv>> = 1;
         const DLvoo_DLvso: ASSERT_BOOLEAN<TermsEqual<DLvoo, DLvso>> = 1;
 
-        const KASKO: ASSERT_FALSE<TermsEqual<DLvsv, DLvov>> = 1;
+        const DLvv_DLvvv: ASSERT_TRUE<TermsEqual<DLvv, DLvvr>> = 1;
+        const DLvoo_DLv_v: ASSERT_TRUE<TermsEqual<DLvoo, DLv_k>> = 1;
+
+        const DLvsv_DLvov: ASSERT_TRUE<TermsEqual<DLvsv, DLvov>> = 1;
+        const DLvsv_DLv_v: ASSERT_TRUE<TermsEqual<DLvsv, DLv_v>> = 1;
         
 
         const DN_DB: ASSERT_FALSE<TermsEqual<DN, DB>> = 1;
@@ -1256,7 +1282,7 @@ export namespace RDFJS {
         const DNvo_DBv: ASSERT_FALSE<TermsEqual<DNvo, DBv>> = 1;
         const DNvoo_DBv: ASSERT_FALSE<TermsEqual<DNvoo, DBv>> = 1;
 
-        const PNv: ComparableTerm = {
+        const PNv: TermData = {
             termType: 'NamedNode',
             value: 'z://',
         };
@@ -1264,29 +1290,29 @@ export namespace RDFJS {
         const RNv: Term = {
             termType: 'NamedNode',
             value: 'z://',
-            equals(y_other: ComparableTerm): boolean {
+            equals(y_other: TermData): boolean {
                 return false;
             },
         };
 
-        const MNv: SmartTerm<DNv> = {
+        const MNv: Term<DNv> = {
             termType: 'NamedNode',
             value: 'z://',
             equals<
                 DescriptorB extends TermDescriptor,
                 ReturnType extends TermsEqual,
-            >(y_other: ComparableTerm<DescriptorB>): ReturnType {
+            >(y_other: TermData<DescriptorB>): ReturnType {
                 return (this.termType === y_other.termType && this.value === y_other.value) as ReturnType;
             },
         };
 
-        const MLv: SmartTerm<DNv> = {
+        const MLv: Term<DNv> = {
             termType: 'NamedNode',
             value: 'z://',
             equals<
                 DescriptorB extends TermDescriptor,
                 ReturnType extends TermsEqual,
-            >(y_other: ComparableTerm<DescriptorB>): ReturnType {
+            >(y_other: TermData<DescriptorB>): ReturnType {
                 return (this.termType === y_other.termType && this.value === y_other.value) as ReturnType;
             },
         };
@@ -1295,7 +1321,7 @@ export namespace RDFJS {
         const MNvC: Term = {
             termType: 'NamedNode',
             value: 'z://',
-            equals(y_other: ComparableTerm): boolean {
+            equals(y_other: TermData): boolean {
                 return (this.termType === y_other.termType && this.value === y_other.value);
             },
         };
@@ -1303,25 +1329,25 @@ export namespace RDFJS {
         const F = MNvC.equals({termType: 'hi', value:'orange'});
 
 
-        const CNv2: ComparableTerm = {
+        const CNv2: TermData = {
             termType: 'NamedNode',
             value: 'z://',
-            equals(y_other: BasicTerm): boolean {
+            equals(y_other: TermData): boolean {
                 return (this.termType === y_other.termType && this.value === y_other.value);
             },
         };
 
-        const Css: ComparableTerm = {
+        const Css: TermData = {
             termType: 'NamedNode',
             value: 'z://',
         };
 
-        const CNs: ComparableTerm<['NamedNode']> = {
+        const CNs: TermData<['NamedNode']> = {
             termType: 'NamedNode',
             value: 'z://',
         };
 
-        const CNv: ComparableTerm<['NamedNode', 'z://']> = {
+        const CNv: TermData<['NamedNode', 'z://']> = {
             termType: 'NamedNode',
             value: 'z://',
         };
@@ -1332,12 +1358,12 @@ export namespace RDFJS {
         const MNv_CNs = MNv.equals(CNs);
         const MNv_CNv: true = MNv.equals(CNv);
 
-        const S!: SmartTerm;
+        const S!: Term;
 
-        const SNv!: SmartTerm<['NamedNode', 'z://', void, void]>;
-        const SBv!: SmartTerm<['BlankNode', 'z://', void, void]>;
-        const SNx!: SmartTerm<['NamedNode', 'y://', void, void]>;
-        const SBx!: SmartTerm<['BlankNode', 'y://', void, void]>;
+        const SNv!: Term<['NamedNode', 'z://', void, void]>;
+        const SBv!: Term<['BlankNode', 'z://', void, void]>;
+        const SNx!: Term<['NamedNode', 'y://', void, void]>;
+        const SBx!: Term<['BlankNode', 'y://', void, void]>;
 
         const S_SNv: boolean = SNv.equals(S);
 
@@ -1357,135 +1383,9 @@ export namespace RDFJS {
         const test = ANv.value;
     }
 
+	export type NamedNode<ValueString extends string=string> = Term<['NamedNode', ValueString]>;
 
-	// export type Term<
-	// 	TermTypeStringA extends string=string,
-	// 	ValueStringA extends string=string,
-	// 	LanguageStringA extends string | void=string,
-	// 	DatatypeStringA extends string | void=string,
-	// > = {
-	// 	termType: TermTypeStringA;
-	// 	value: ValueStringA;
-	// 	equals<
-    //         TypeB extends BasicTerm=BasicTerm,
-	// 	>(y_other: TypeB): TypeB extends SmartTerm
-    //         ? ToBoolean<
-    //             TermsMatch<
-    //                 TermTypeStringA,
-    //                 ValueStringA,
-    //                 LanguageStringA,
-    //                 DatatypeStringA,
-    //                 TermTypeStringB,
-    //                 ValueStringB,
-    //                 LanguageStringB,
-    //                 DatatypeStringB,
-    //             >
-    //         : boolean;
-	// 	// equals<
-	// 	// 	TermTypeStringB extends string,
-	// 	// 	ValueStringB extends string,
-	// 	// 	LanguageStringB extends string | void,
-	// 	// 	DatatypeStringB extends string | void,
-	// 	// >(y_other: Term<TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB>): ToBoolean<
-    //     //     TermsMatch<
-    //     //         TermTypeStringA,
-    //     //         ValueStringA,
-    //     //         LanguageStringA,
-    //     //         DatatypeStringA,
-    //     //         TermTypeStringB,
-    //     //         ValueStringB,
-    //     //         LanguageStringB,
-    //     //         DatatypeStringB,
-    //     //     >
-    //     // >;
-	// }
-	// & (TermTypeStringA extends 'Literal'
-    //     ? (DatatypeStringA extends string
-    //         ? {
-    //             language: LanguageStringA;
-    //             datatype: Datatype<DatatypeStringA>;
-    //         }
-    //         : never
-    //     )
-	// 	: unknown
-	// );
-
-    {
-        type EqualsBool = ToBoolean<TermsEqual<string, string, string, string, string, string, string, string>>;
-
-        const F: BasicTerm<'NamedNode', 'empty'> = {
-            termType: 'NamedNode',
-            value: 'empty',
-            equals(y_other: BasicTerm): boolean {
-                return ('orange' in String);
-            },
-        };
-
-        type Descriptor = [string, string, string|void, string|void];
-
-        type NamedNode_Banana = SmartTerm<'NamedNode', 'z://banana', void, void>;
-
-        const F1: SmartTerm<NamedNode_Banana> = {
-            termType: 'NamedNode',
-            value: 'empty',
-            equals<D extends Descriptor>(): ToBoolean {
-
-            },
-            equals<T extends string, V extends string, L extends string|void, D extends string|void>(y_other: SmartTerm<T, V, L, D>): ToBoolean<TermsEqual<'NamedNode', 'empty', void, void>> {
-                return ('orange' in String);
-            },
-        };
-    }
-
-    {
-        const FALSE = 0;
-        const TRUE = 1;
-        const EITHER = 2;
-
-        const NvssSsss: ToBoolean<TermsEqual<string, string, string, string, string, string, string, string>> = true;
-    }
-
-
-
-			// 	? (IsActualBoolean<TermTypeStringsMatch> extends true
-			// 		? (TermTypeStringsMatch extends true
-			// 			?
-			// 			// a.termType !== b.termType
-			// 			: false
-			// 		)
-			// 		: TermTypeStringsMatch
-			// 	: never;
-
-			// (TermTypeStringA extends `${infer ActualTermTypeString}`
-			// 	? TermTypeStringA extends QuadTermTypeKey
-			// 		? TermTypeStringA extends NonQuadTermTypeKey
-			// 			? TermTypeStringB extends `${infer ActualOtherTermTypeString}`
-			// 				? ActualOtherTermTypeString extends ActualTermTypeString
-			// 					// this.termType === other.termType
-			// 					? ValueStringA extends `${infer ActualValueString}`
-			// 						? ValueStringB extends `${infer ActualOtherValueString}`
-			// 							? ActualOtherValueString extends ActualValueString
-			// 								? true  // this.value === other.value
-			// 								: false  // this.value !== other.value
-			// 							: boolean
-			// 						: boolean
-			// 					// this.termType !== other.termType
-			// 					: false
-			// 				: boolean
-			// 			: boolean
-			// 		: false  // this.termType === 'Quad' && 
-			// 	: never)  // !RDFJS.TermTypes.includes(this.termType)
-			// & (ValueStringA extends `${infer ActualValueString}`
-			// 	? ValueStringB extends `${infer ActualOtherValueString}`
-			// 		? ActualOtherValueString extends ActualValueString
-			// 			? boolean  // this.value === other.value
-			// 			: false  // this.value !== other.value
-			// 		: boolean
-			// 	: boolean);
-	
-	export type NamedNode<ValueString extends string=string> = Term<'NamedNode', ValueString>;
-
-	export type BlankNode<ValueString extends string=string> = Term<'BlankNode', ValueString>;
+	export type BlankNode<ValueString extends string=string> = Term<['BlankNode', ValueString]>;
 
 	export type Literal<
 		TermTypeString extends string=string,
@@ -1494,27 +1394,27 @@ export namespace RDFJS {
 		DatatypeString extends string=string,
 	> = TermTypeString extends `${infer ActualTermTypeString}`
 		? (TermTypeString extends 'Literal'
-			? Term<'Literal', ValueString, LanguageString, DatatypeString>
+			? Term<['Literal', ValueString, LanguageString, DatatypeString]>
 			: never
 		)
-		: Term<'Literal', ValueString, LanguageString, DatatypeString>;
+		: Term<['Literal', ValueString, LanguageString, DatatypeString]>;
 
 
-	export type Variable<ValueString extends string=string> = Term<'Variable', ValueString>;
+	export type Variable<ValueString extends string=string> = Term<['Variable', ValueString]>;
 
 	export type DefaultGraph<TermTypeString extends string=string> = 
 		TermTypeString extends `${infer ActualTermTypeString}`
 			? TermTypeString extends 'DefaultGraph'
-				? Term<'DefaultGraph', ''>
+				? Term<['DefaultGraph', '']>
 				: never
-			: Term<'DefaultGraph', ''>;
+			: Term<['DefaultGraph', '']>;
 
 	export type Datatype<DatatypeString extends string=string> = NamedNode<DatatypeString>;
 
 	export type Node<
 		TermTypeString extends string=string,
 		ValueString extends string=string,
-	> = TermTypeString extends `${infer ActualTermTypeString}`
+	> = IsSingleString<TermTypeString> extends true
 		? (TermTypeString extends 'NamedNode'
 			? NamedNode<ValueString>
 			: (TermTypeString extends 'BlankNode'
