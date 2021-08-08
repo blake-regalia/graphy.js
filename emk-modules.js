@@ -247,6 +247,10 @@ const scoped_package = si_package => ({
 
 	'package.json': H_GEN_LEAF.package_json(si_package),
 
+	'tsconfig.json': () => ({
+		copy: './emk/aux/tsconfig.json',
+	}),
+
 	node_modules: H_GEN_LEAF.node_modules(si_package),
 });
 

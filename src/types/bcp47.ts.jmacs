@@ -1,0 +1,643 @@
+@.{
+	const bcp47 = await import('bcp-47');
+
+	const F_NOOP = () => {};
+	const F_IDENT = w => w;
+	const F_TRUE = w => true;
+	const plainify = (h_input, {filter:f_filter=F_TRUE}={}) => Object
+		.entries(h_input)
+		.filter(f_filter)
+		.reduce((a_out, [si_key, w_value]) => [
+			...a_out,
+			`${si_key}:${JSON.stringify(w_value)}`,
+		], [])
+		.join(', ');
+}
+
+import type {
+	Any,
+	Union,
+	List,
+	String,
+} from 'ts-toolbelt';
+
+import type {
+	Cast,
+	Contains,
+	Key as AnyKey,
+	KnownKeys,
+	Equals,
+	Extends,
+	Try,
+	Type,
+} from 'ts-toolbelt/out/Any/_api';
+
+import type {
+	And,
+	Not,
+	Or,
+	Xor,
+} from 'ts-toolbelt/out/Boolean/_api';
+
+import type {
+	If,
+} from 'ts-toolbelt/out/Any/If';
+
+import type {
+	Remove,
+	KeySet,
+	Length,
+} from 'ts-toolbelt/out/List/_api';
+
+import type {
+	Merge,
+} from 'ts-toolbelt/out/Object/_api';
+
+import type {
+	Greater,
+	GreaterEq,
+	Lower,
+	LowerEq,
+	Range,
+} from 'ts-toolbelt/out/Number/_api';
+
+import type {
+	Join,
+	Split,
+} from 'ts-toolbelt/out/String/_api';
+
+declare const debug_hint: unique symbol;
+declare const debug_info: unique symbol;
+
+type False = 0;
+type True = 1;
+type Bool = True | False;
+
+type ASSERT_NEVER<Test> = [Test] extends [never]? 1: 0;
+
+type ASSERT_SAME<ThingA, ThingB> = [And<Extends<ThingA, ThingB>, Extends<ThingB, ThingA>>] extends [True]? 1: 0;
+
+type ASSERT_VOID<Thing> = ASSERT_SAME<Thing, void>;
+
+
+
+type StrLen<Input extends string> = String.Length<Input>;
+
+type AsString<Input> = Input extends string
+	? Input
+	: Stringify<Input>;
+
+type AsObject<Input> = [Input] extends [object]
+	? Input
+	: object;
+
+
+@.{
+	Object.defineProperties([].__proto__, {
+		strs: {
+			get() {
+				return this.map(s => `'${s}'`);
+			},
+		},
+		or: {
+			get() {
+				return this.join(' | ');
+			},
+		},
+	});
+
+	Object.defineProperties(''.__proto__, {
+		$: {
+			get() {
+				return `\$\{${this}}`;
+			},
+		},
+		opt: {
+			get() {
+				return `''|\`${this}\``.$;
+			},
+		},
+		star: {
+			get() {
+				return `RepeatStar<\`${this}\`>`.$;
+			},
+		},
+		times: {
+			value(n_lower, n_upper=-1) {
+				const s_embed = this;
+				let s_out = s_embed.repeat(n_lower);
+				let s_upper = '';
+				for(let i_recurse=n_lower; i_recurse<n_upper; i_recurse++) {
+					s_upper = (s_embed+s_upper).opt;
+				}
+				return s_out+s_upper;
+			},
+		},
+	});
+
+	const ode = Object.entries;
+
+	function alpha(s_lo, s_hi) {
+		const a_chars = [];
+		for(let i_code=s_lo.charCodeAt(0); i_code<=s_hi.charCodeAt(0); i_code++) {
+			a_chars.push(`'${String.fromCharCode(i_code)}'`);
+		}
+		return a_chars.join(' | ');
+	}
+
+	function numeric(i_lo, i_hi) {
+		const a_chars = [];
+		for(let i_num=i_lo; i_num<=i_hi; i_num++) {
+			a_chars.push(`${i_num}`);
+		}
+		return a_chars.join('|');
+	}
+}
+
+
+type ALPHA = @{alpha('a', 'z')}
+type ALPHA_LOWER = ALPHA;
+type ALPHA_UPPER = Uppercase<ALPHA_LOWER>;
+type ALPHA_ANY = ALPHA_LOWER | ALPHA_UPPER;
+
+type DIGIT = @{alpha('0', '9')}
+type ALPHANUM = ALPHA | DIGIT;
+
+// type RepeatStar<TypeString extends string> = '' | `${TypeString}${Repeat<TypeString>}`;
+// type RepeatPlus<TypeString extends string> = `${TypeString}${RepeatStar<TypeString>}`;
+
+
+type Regular = 'art-lojban' | 'cel-gaulish' | 'no-bok' | 'no-nyn' | 'zh-guoyu'
+	| 'zh-hakka' | 'zh-min' | 'zh-min-nan' | 'zh-xiang';
+
+type Irregular = 'en-GB-oed' | 'i-ami' | 'i-bnn' | 'i-default' | 'i-enochian' | 'i-hak'
+	| 'i-klingon' | 'i-lux' | 'i-mingo' | 'i-navajo' | 'i-pwn' | 'i-tao' | 'i-tay' | 'i-tsu'
+	| 'sgn-BE-FR' | 'sgn-BE-NL' | 'sgn-CH-DE';
+
+
+
+type Invalid<
+	Hint extends any=any,
+> = {
+	[debug_info]: Hint,
+} | {
+	[assertion_err]: Hint,
+};
+
+type Debug<
+	A extends any,
+	Info extends any,
+> = {
+	[debug_info]: Info;
+} & A;
+
+type Stringify2<
+	Input extends any,
+> = Input extends string
+	? Input
+	: (Input extends number | bigint | boolean | null | undefined
+		? `${Input}`
+		: (Input extends any[]
+			? '...'
+			: (Input extends object
+				? `{${ToString<KnownKeys<Input>>}}`
+				: '{unknown}'
+			)
+		)
+	);
+
+type ToString<
+	Input extends any,
+> = Input extends string | number | bigint | boolean | null | undefined
+	? `${Input}`
+	: (Input extends symbol
+		? 'Symbol()'
+		: '{unknown}'
+	);
+
+type Stringify<
+	Input extends any,
+	MaxDepth extends 0|1|2|3|4|5|6=6,
+> = Input extends string
+	? Input
+	: (Input extends number | bigint | boolean | null | undefined
+		? `${Input}`
+		: (Input extends any[]
+			// ? (Lower<MaxDepth, 1> extends True
+			// 	? '...'
+			// 	: `[${Join<Union.ListOf<`'${Stringify2<Input[number], Sub<MaxDepth, 1>>}'`>, ', '>}]`
+			? `[${Join<Union.ListOf<`'${Stringify2<Input[number]>}'`>, ', '>}]`
+			: (Input extends object
+				? `{${ToString<KnownKeys<Input>>}}`
+				: '{unknown}'
+			)
+		)
+	);
+
+{
+	type TEST = Stringify<['a', 'b', 'c']>;
+}
+
+// type StringifyList<
+// 	Input extends any[],
+// > = `[${Join<ListOf<`'${ToString<Input[number]>}'`, ', '>>}]`;
+
+declare const assertion_err: unique symbol;
+
+type AssertionError<
+	A extends any,
+	Info extends any,
+> = {
+	[assertion_err]: Info;
+} & A;
+
+@.{
+
+	const escape_ts = (sj_ts) => (sj_ts+'')
+		.replace(/([`$])/g, '\\$1')
+		.replace(/(?:\\`)?\\\$\{(?:infer\s+)?([^}]+)}(?:\\`)?/g, '\'${$1}\'')
+		.replace(/infer (\w+)/g, '${AsString<$1>}')
+		.replace(/ extends /, ' is ');
+
+	const H_FILLS = {
+		'a-z': 'ALPHA_LOWER',
+	};
+
+	const stringify_ts = (z_ts) => {
+		if('string' === typeof z_ts) {
+			return z_ts;
+		}
+		else if(Array.isArray(z_ts)) {
+			return `[${z_ts.map(w => stringify_ts(w)).join(', ')}]`;
+		}
+		else {
+			return `unknown`;
+		}
+	};
+
+	const $ELSE = Symbol('else');
+
+	class Coder {
+		constructor(s_language) {
+			this._s_language = s_language;
+			this._nl_indent = 1;
+		}
+
+		nl(nl_indent=0) {
+			this._nl_indent += nl_indent;
+			return '\n'+'\t'.repeat(this._nl_indent);
+		}
+
+		incr(sj_code) {
+			return `\n${'\t'.repeat(this._nl_indent-1)}${sj_code.split(/\n/g).map(s => `\t\t${s}`).join('\n')}`;
+		}
+
+		assign(si_var, sj_expr) {
+			return `${sj_expr} extends infer ${si_var}`;
+		}
+
+		assign_str(si_var, sj_expr) {
+			return `${sj_expr} extends \`\${infer ${si_var}}\``;
+		}
+
+		switch_(sj_expr, si_var, h_cases) {
+			return {
+				[sj_expr]: () => Object.entries(h_cases)
+					.reduce((h_out, [sj_case, w_case]) => ({
+						...h_out,
+						[`${si_var} extends ${sj_case}`]: w_case,
+					}), $ELSE in h_cases
+						? {[$ELSE]: h_cases[$ELSE]}
+						: {}),
+			};
+		}
+
+		switch_eq(sj_expr, si_var=`z_${sj_expr.replace(/^a-z/g, '').toLowerCase()}`, h_cases) {
+			return this.switch_(`${sj_expr} extends infer ${si_var}`, si_var, h_cases);
+		}
+
+		switch_str(sj_expr, si_var=`s_${sj_expr.replace(/^a-z/g, '').toLowerCase()}`, h_cases) {
+			return this.switch_(`${sj_expr} extends \`\${infer ${si_var}}\``, si_var, h_cases);
+		}
+
+		and(a_conditions) {
+			const nl_conditions = a_conditions.length;
+			if(!nl_conditions) return 'True';
+			if(1 === nl_conditions) return a_conditions[0];
+
+			// return `And<${this.nl(1)}${a_conditions[0]},${this.nl()}${and(a_conditions.slice(1))}${this.nl(-1)}>`;
+			return [
+				'And<', this.nl(1),
+					a_conditions[0]+',', this.nl(),
+					this.and(a_conditions.slice(1)), this.nl(-1),
+				'>',
+			].join('')
+		}
+
+		match_str(si_var, a_pattern) {
+			return this.and(a_pattern
+				.map((s_pattern, i_char) => `Extends<String.At<${si_var}, ${i_char}>, ${s_pattern}>`)
+			)+' extends True';
+		}
+
+		if_(sj_condition, sj_then, sj_else) {
+			sj_condition = sj_condition.replace(/\?$/, ' extends True');
+
+			return [
+				'(', this.incr(sj_condition), this.nl(1),
+					'? ', sj_then, this.nl(),
+					': ', sj_else, this.nl(-1),
+				')',
+			].join('');
+		}
+
+		compile_struct(h_struct, a_path=['/']) {
+			let s_out = `AssertionError<string, {`
+				+`path: [${a_path.map(s => `\`${escape_ts(s)}\``).join(', ')}],`
+				+`false: \`${escape_ts(Object.keys(h_struct).reverse().slice(-1) || '')}\`,`
+			+`}>`;
+
+			// \`${JSON.stringify(h_struct).replace(/\\[tn"]/g, '')}\`>`;
+
+			if(h_struct[$ELSE]) {
+				s_out = h_struct[$ELSE];
+				delete h_struct[$ELSE];
+			}
+
+			for(let [sj_condition, z_actions] of ode(h_struct).reverse()) {
+				let s_then = '';
+
+				if('function' === typeof z_actions) {
+					z_actions = z_actions(this);
+				}
+
+				if('string' === typeof z_actions) {
+					s_then = z_actions;
+				}
+				else {
+					this._nl_indent += 1;
+					s_then = this.compile_struct(z_actions, [...a_path, sj_condition]);
+					this._nl_indent -= 1;
+				}
+
+				s_out = this.if_(sj_condition, s_then, s_out);
+			}
+
+			return s_out;
+		}
+
+		numeric(i_lo, i_hi=i_lo) {
+			const a_chars = [];
+			for(let i_num=i_lo; i_num<=i_hi; i_num++) {
+				a_chars.push(`${i_num}`);
+			}
+			return a_chars.join('|');
+		}
+
+		valid(h_desc) {
+			const a_out = [];
+			for(const [si_key, w_value] of ode(h_desc)) {
+				a_out.push(`${si_key}: ${stringify_ts(w_value)}`);
+			}
+			return `{${a_out.join(', ')}}`;
+		}
+
+		invalid(h_desc) {
+			const a_out = [];
+			for(const [si_key, sj_value] of ode(h_desc)) {
+				a_out.push(`${si_key}:${sj_value}`);
+			}
+			return `Debug<string, {_message:\`Invalid ${this._s_language}; found in the "${this._si_production}" production\`, ${a_out.join(',')}}>`;
+		}
+
+		merge(si_var) {
+			return h_append => `Merge<AsObject<${si_var}>, ${this.valid(h_append)}>`;
+		}
+	}
+
+
+	function grammar(fk_coder) {
+		const a_out = [];
+		const k_coder = new Coder('BCP-47 language tag');
+		const h_grammar = fk_coder(k_coder);
+		for(const [si_type, h_struct] of ode(h_grammar)) {
+			k_coder._si_production =  si_type.replace(/^([\w$_]+).*$/, '$1');
+			a_out.push(`type ${si_type} = ${k_coder.compile_struct(h_struct)}`);
+		}
+		return a_out.join('\n\n');
+	}
+
+	function cache(a_sets, fk_sets=()=>({})) {
+		return fk_sets(...a_sets);
+	}
+
+	function patterns(h_paterns) {
+		const a_out = [];
+		for(const [si_var, a_matches] of ode(h_paterns)) {
+			const si_type = `R_${si_var}`;
+
+			const nl_matches = a_matches.length;
+
+			const a_cases = [
+				'False',
+				`Extends<String.At<s_input, 0>, ${a_matches[0]}>`,
+			];
+
+			for(let i_char=2; i_char<=nl_matches; i_char++) {
+				a_cases.push([
+					'And<',
+					`	Extends<String.At<s_input, ${i_char-1}>, ${a_matches[i_char-1]}>,`,
+					`	${si_type}<s_input>[${i_char-1}]`,
+					'>',
+				].join('\n\t'));
+			}
+
+			a_out.push(`type ${si_type}<s_input extends string> = {${a_cases.map((s, i) => `\n\t${i}: ${s};`).join('')}\n};`);
+		}
+
+		return a_out.join('\n\n');
+	}
+}
+
+@{patterns({
+	'DIGIT': Array(3).fill('DIGIT'),
+	'ALPHA': Array(8).fill('ALPHA'),
+	'ALPHANUM': Array(8).fill('ALPHANUM'),
+	'DIGIT_ALPHANUM': [
+		'DIGIT',
+		...Array(3).fill('ALPHANUM'),
+	],
+})}
+
+interface SetLanguage<
+	s_language extends string=string,
+> {
+	language: s_language;
+}
+
+@{grammar(k => ({
+	'Language<s_input extends string>': {
+		// length of input
+		[k.assign('nl_input', `StrLen<s_input>`)]: cache([
+			'SetLanguage<s_input>',  // k.valid({language:'s_input'})
+			h_out => () => ({
+				...h_out,
+				[$ELSE]: k.invalid({
+					_reason: `'Must match /[a-z]{2,8}/'`,
+					language: 's_input',
+				}),
+			}),
+		], (sj_valid, catch_) => catch_({
+			// 2-5 chars
+			[`nl_input extends ${numeric(2, 8)}`]: catch_({
+				// 2*3 ALPHA: shortest ISO 639 code
+				// 4ALPHA: reserved for future use
+				// 5*8ALPHA: registered language subtag
+				'R_ALPHA<s_input>[nl_input]?': sj_valid,
+			}),
+		})),
+	},
+
+	'Langtag<Input extends string>': {
+		[k.assign_str('s_input', 'Lowercase<Input>')]: () => ({
+			// split at first '-'
+			's_input extends `${infer s_word0}-${infer s_rest}`': () => ({
+				// everything before '-'
+				[k.assign('g_language', 'Language<s_word0>')]: () => ({
+					// invalid language
+					['g_language extends Invalid']: 'g_language',
+
+					['g_language extends SetLanguage']: cache([
+							k.merge('g_language'),
+						], mlang => () => ({
+							// "-" extlang(3ALPHA): selected ISO 639 codes
+							'And<Extends<StrLen<s_rest>, 3>, R_ALPHA<s_rest>[3]>?': mlang({extendedLanguageSubtags:['s_rest']}),
+
+							// everything after '-'
+							...k.switch_eq('StrLen<s_rest>', 'nl_rest', {
+								4: () => ({
+									// script(4ALPHA): ISO 15924 code
+									'R_ALPHA<s_rest>[4]?': mlang({script:'s_rest'}),
+
+									// variant(DIGIT 3ALPHANUM): registered variants
+									'R_DIGIT_ALPHANUM<s_rest>[4]?': mlang({variant:'s_rest'}),
+								}),
+
+								// region(2ALPHA): selected ISO 639 codes
+								2: () => ({
+									'R_ALPHA<s_rest>[2]?': mlang({region:'s_rest'}),
+								}),
+
+								// region(3DIGIT): UN M.49 code
+								3: () => ({
+									'R_DIGIT<s_rest>[3]?': mlang({region:'s_rest'}),
+								}),
+
+								[$ELSE]: 'LangtagAfterScript<g_language, s_rest>',
+							}),
+						}),
+					),
+				}),
+			}),
+
+			// no '-'
+			[$ELSE]: 'Language<s_input>',
+		}),
+	},
+
+	// [`LangtagAfterScript<
+	// 	g_language extends {language: string},
+	// 	s_input extends string,
+	// >`]: {
+
+	// 	// split at first '-'
+	// 	's_input extends `${infer s_word0}-${s_rest}`': () => ({
+	// 			// region(2ALPHA): selected ISO 639 codes
+	// 			'R_ALPHA<s_rest>[3]?': k.merge('g_language')({region:'s_'}),
+
+	// 						// region(2ALPHA)
+	// 						2: () => ({
+	// 							// 2ALPHA: ISO 3166-1 code
+	// 							'R_ALPHA<s_rest>[nl_rest]?': mlang({region:'s_rest'}),
+	// 						}),
+
+
+	// 						// // extlang(3ALPHA) | region(3DIGIT) | privateuse
+	// 						// 3: () => ({
+	// 						// 	...k.switch_str('String.At<s_rest, 0>', 's_rest0', {
+	// 						// 		// region
+	// 						// 		'DIGIT': () => ({
+	// 						// 			// 3DIGIT: UN M.49 code
+	// 						// 			[k.match_str('s_rest', Array(3).fill('DIGIT'))]: mlang({region:'s_rest'}),
+	// 						// 		}),
+	// 						// 		// privateuse | extlang
+	// 						// 		'"x"': () => ({
+	// 						// 			// "-" (1alphanum)
+	// 						// 			[k.match_str('s_rest', ['"x"', '"-"', 'ALPHANUM'])]: mlang({privateuse:'s_rest'}),
+
+	// 						// 			// 3ALPHA: selected ISO 639 codes
+	// 						// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extland:'s_rest'}),
+	// 						// 		}),
+	// 						// 		// extlang
+	// 						// 		'ALPHA': () => ({
+	// 						// 			// 3ALPHA: selected ISO 639 codes
+	// 						// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extlang:'s_rest'}),
+	// 						// 		}),
+	// 						// 	}),
+	// 						// }),
+	// 	}),
+
+	// },
+}))}
+
+{
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+	@//@
+
+	type TestLanguage = Language<'hahahahahah'>;
+
+	@*{
+		const A_FIXTURES = [
+			'aa-111','aa-7-123abc-abc-a-12','aa-b1b1b-6a8b-cccccc','aa-b1b1b','aa-bb','aa-bbb-ccc-1111-ccccc-b1b1b','aa-bbb-ccc-ddd','aa-bbb','aa-bbbb-cc','aa-bbbb','aa-x-1234ab-d','aa',
+			'aaa-bbb-ccc-ddd-abcd-123-abc123-0abc-b-01-abc123-x-01ab-abc12','aaa-bbb-ccc','aaaa','aaaaa','aaaaaa','aaaaaaa','aaaaaaaa','afb','ar-afb','art-lojban','ast','az-Arab-x-AZE-derbend','az-Latn',
+			'cel-gaulish','cmn-Hans-CN','de-CH-1901','de-CH-x-phonebk','de-DE-u-co-phonebk','de-DE','de-Qaaa','de','en-GB-oed','en-US-u-islamcal','en-US-x-twain','en-US','en-a-myext-b-another','en',
+			'es-005','es-419','fr-CA','fr','hak','hy-Latn-IT-arevela','i-ami','i-bnn','i-default','i-enochian','i-hak','i-klingon','i-lux','i-mingo','i-navajo','i-pwn','i-tao','i-tay','i-tsu','ja','mas',
+			'no-bok','no-nyn','qaa-Qaaa-QM-x-southern','sgn-BE-FR','sgn-BE-NL','sgn-CH-DE','sl-IT-nedis','sl-nedis','sl-rozaj-biske','sl-rozaj','sr-Cyrl','sr-Latn-QM','sr-Latn-RS','sr-Latn','sr-Qaaa-RS',
+			'x-111-aaaaa-BBB','x-whatever','yue-HK','zh-CN-a-myext-x-private','zh-Hans-CN','zh-Hans','zh-Hant-HK','zh-Hant','zh-cmn-Hans-CN','zh-guoyu','zh-hakka','zh-min-nan','zh-min','zh-xiang',
+			'zh-yue-HK','zh-yue.json',
+		];
+
+		const G_CASES = {
+			...A_FIXTURES.reduce((h_out, si_fixture) => ({
+				...h_out,
+				[si_fixture]: {
+					comment: 'auto-generated from bcp-47 test directory',
+				},
+			}), {}),
+		};
+
+		for(const [si_case, gc_case] of ode(G_CASES)) {
+			const sx_case = si_case.replace(/^\*/, '');
+
+			const sj_hash = plainify(bcp47.parse(sx_case), {
+				filter([si_key, z_value]) {
+					if(!z_value) return false
+					if(Array.isArray(z_value)) return z_value.length;
+					return true;
+				},
+			})
+
+			const sj_test = `Langtag<'${sx_case}'>`;
+			const si_assert = sx_case.replace(/[^a-z]/g, '_');
+
+			yield [
+				...(gc_case.comment? [`// ${gc_case.comment}`]: []),
+				`const ${si_assert}: ASSERT_SAME<${sj_test}, {${sj_hash}}> = 1;`,
+			].map(s => s+'\n').join('')+'\n';
+
+			if('*' === si_case[0]){
+				yield `type DEBUG_${si_assert} = ${sj_test};\n`;
+			}
+		}
+	}
+}

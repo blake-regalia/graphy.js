@@ -1,5 +1,8 @@
 {
-	"include": ["./src/**/*.ts"],
+	"include": [
+		"./src/**/*.ts",
+		"./build/module/types/**/*.ts",
+	],
 	"exclude": [
 		"node_modules",
 		"**/node_moodules/*"

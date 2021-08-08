@@ -1,0 +1,108 @@
+
+
+@*{
+	function *compile(h_productions) {
+		for(const si_production of Object.keys(h_productions).reverse()) {
+			const a_unions = h_productions[si_production].map((a_rules) => {
+				return a_rules.join('');
+			})
+
+			yield `\ntype ${si_production} = \`${a_unions.join('\n\t| ')}\`;\n`;
+		}
+	}
+
+
+	yield* compile({
+		LangTag: [
+			[
+				'Language'.$,
+				'-${Script}'.opt,
+				'-${Region}'.opt,
+				'-${Variant}'.star,
+				'-${Extension}'.star,
+				'-${PrivateUse}'.opt,
+			],
+		],
+		Language: [
+			[
+				'ALPHA'.$.times(2, 3),
+				'-${ExtLang}'.opt,
+			],
+			[
+				'ALPHA'.$.times(4),
+			],
+			[
+				'ALPHA'.$.times(5, 8),
+			],
+		],
+		ExtLang: [
+			[
+				'ALPHA'.$.times(3),
+				('-'+'ALPHA'.$.times(3)).times(0, 2),
+			],
+		],
+		Script: [
+			[
+				'ALPHA'.$.times(4),
+			],
+		],
+		Region: [
+			[
+				'ALPHA'.$.times(2),
+			],
+			[
+				'DIGIT'.$.times(3),
+			],
+		],
+		Variant: [
+			[
+				'ALPHA'.$,
+				'ALPHANUM'.$.times(4, 8),
+			],
+			[
+				'DIGIT'.$,
+				'ALPHANUM'.$.times(3, 8),
+			],
+		],
+		Extension: [
+			[
+				'SINGLETON'.$,
+				'ExtensionRepeat'.$,
+			],
+		],
+		ExtensionRepeat: [
+			[
+				('-'+'ALPHANUM'.$.times(2, 8)),
+				'ExtensionRepeat'.opt,
+			],
+		],
+		SINGLETON: [
+			[
+				alpha('a', 'w'),
+				alpha('y', 'z'),
+				alpha('A', 'W'),
+				alpha('Y', 'Z'),
+				'DIGIT'.$,
+			],
+		],
+		PrivateUse: [
+			[
+				['x', 'X'].strs.or,
+				'PrivateUseRepeat'.$,
+			],
+		],
+		PrivateUseRepeat: [
+			[
+				('-'+'ALPHANUM'.$.times(1, 8)),
+				'PrivateUseRepeat'.opt,
+			],
+		],
+		Grandfathered: [
+			[
+				'ALPHA'.$.times(1, 4),
+				('-'+'ALPHANUM'.$.times(2, 8)).times(1, 2),
+			],
+		],
+	});
+}
+
