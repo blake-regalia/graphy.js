@@ -1,5 +1,6 @@
 # graphy v5 Alpha 0 Preview
 ![Gitter](https://img.shields.io/gitter/room/graphy-js/community) ![GitHub issues](https://img.shields.io/github/issues/blake-regalia/graphy.js) 
+
 **Table of Contents**
  - [Foreword](#foreword)
  - [Features](#features)
@@ -32,7 +33,7 @@ RDF-Star is now supported throughout graphy in the form of:
 ### Content Loaders 
 From observations of graphy and other RDFJS libraries in the wild, it appears that the most frequent use of _Content Readers_ (what some call "parsers") is for deserializing RDF datasets into memory where they can be searched, counted and editted. However, the pipeline of [reader --> dataset] is not at all efficient for some formats.
 
-This is where _Content Loaders_ come into play; they deserialize RDF strings/documents directly into a dataset instance that lives in memory. Content Loaders are able to take advantage of Turtle and TriG's tree-based syntax and map quads into a tree-based data structure in memory. They are also able to take advantage of prefixed names by completely bypassing the need to expand prefixes when loading. Instead, the Content Loaders simply pass formatted strings to the dataset rather than creating RDFJS Terms.
+This is where _Content Loaders_ come into play; they deserialize RDF strings/documents directly into a dataset instance that lives in memory. Content Loaders are able to take advantage of Turtle and TriG's tree-based syntax and map quads into a tree-based data structure in memory. They are also able to take advantage of prefixed names by completely bypassing the need to expand prefixes when loading. Instead, Content Loaders simply pass formatted strings to the dataset rather than creating RDFJS Terms.
 
 The result of running a Content Loader returns a dataset in memory that is ready for searching, counting, editting, etc. Since the underlying data structure of an RDF dataset's implementation affects several speed vs. density tradeoffs, users may select between different dataset implementations to use for loading. In fact, Content Loaders depend on the dataset via an interface, so users are free to implement their own.
 
@@ -112,28 +113,26 @@ interface DecimalLiteral extends NumericLiteral {
 	bigint: NaN;
 }
 
-interface DateLiteral {
-	isDateLiteral: true;
-	isNumericLiteral: false;
-	isNumberPrecise: true;  // timestamp integer precision is to milliseconds
-	number: number;  // timestamp in milliseconds
-	bigint: bigint;  // timestamp in milliseconds
-	date: Date;
+interface DateLikeLiteral {
+    isNumericLiteral: false;
+    isNumberPrecise: true;  // timestamp integer precision is to milliseconds
+    number: number;  // timestamp in milliseconds
+    bigint: bigint;  // timestamp in milliseconds
+    date: Date;
 }
 
-interface DateTimeLiteral {
+interface DateLiteral extends DateLikeLiteral {
+	isDateLiteral: true;
+}
+
+interface DateTimeLiteral extends DateLikeLiteral {
 	isDateTimeLiteral: true;
-	isNumericLiteral: false;
-	isNumberPrecise: true;  // timestamp integer precision is to milliseconds
-	number: number;  // timestamp in milliseconds
-	bigint: bigint;  // timestamp in milliseconds
-	date: Date;
 }
 ```
 
 
 ### Prefix Maps
-A PrefixMap is simply an object whose keys are prefixes and values are corresponding IRIs. From the user perspective, PrefixMaps are trivial to create and pass around to various classes and functions by reference.
+A PrefixMap is simply an object whose keys are prefixes and corresponding values are IRIs. From the user perspective, PrefixMaps are trivial to create and pass around by reference to various functions and constructors.
 
 v5 adds a few minor features to the PrefixMap interface such as the ability to store a Base IRI, a hidden cache for reverse lookups, cache invalidation and object freezing. Since these features are also used internally and by certain utility functions, users do not necessarily need to be aware of any of these features in order to benefit from them.
 
@@ -210,6 +209,10 @@ TypeScript support has been a requested feature for quite some time. All modules
    - `.termType`, `.value`, `.language`, `.datatype`, `.subject`, `.predicate`, `.object`, and `.graph`
  - Static code analysis for the `Term#equals()` method
  - TypeScript BCP-47 parser for static string types
+ - TypeScript IRI parser for static string types
+ - Static prefix expansion
+ - RDF mode-dependent typings for Quad components, where the types accepted for subject, predicate, object, graph and datatype depend on the RDF mode:
+   - supports RDF-1.1, RDF-Star and easier-RDF
  - ... and more planned on the roadmap
 
 Here is a simple demonstration of some use case examples:
@@ -222,7 +225,7 @@ import {
 let hello = fromC1('@en-US"Hello world!');
 
 // at this point, `hello` has now automatically inheritted the following extended type information:
-{
+typeof hello extends {
     termType: 'Literal';
     value: 'Hello world!';
     language: 'en-US';
@@ -230,7 +233,7 @@ let hello = fromC1('@en-US"Hello world!');
         termType: 'NamedNode';
         value: 'http://www.w3.org/2000/01/rdf-schema#langString';
     };
-} extends typeof hello;
+};
 
 let hey = factory.literal('hey world', 'en-US');
 
@@ -238,8 +241,16 @@ let hey = factory.literal('hey world', 'en-US');
 const isSame = hello.equals(hey);
 // at this point, `isSame` has inheritted the type `false` because the typings for `.equals` deduced the terms have different values
 
-// 
-typeof BCP47<'en-US'>;
+// ability to parse and validate BCP-47 language tags
+typeof BCP47<'en-far-US-POSIX'> extends {
+    _input: 'en-far-US-POSIX';
+    _normalized: 'en-far-us-posix';
+    language: 'en';
+    extendedLanguageSubtags: ['far'],
+    region: 'US';
+    variants: ['POSIX'];
+    privateuse: ['private', 'use'];
+};
 ```
 
 The `@graphy/types` module provides type utilities for advanced users who may wish to develop custom functions:
@@ -299,20 +310,20 @@ import {
 ### The syntax for concise-term strings (C1) has changed
 The use of C1 strings to store and pass around RDF terms is one of the cheif mechanisms enabling graphy's performance. In previous versions, the term type of any C1 string could _almost_ be deduced by the first character of the string. There was an overlooked corner-case in which C1 strings that began with `"_"` could either be a blank node or a prefixed name.
 
-In v5, the syntax has changed such that blank nodes are longer prefixed by `"_:"` but instead are now prefixed by `"#"`. Other features have been added to the syntax including direct encoding  made A simplified table of the updated syntax is shown below.
+In v5, the syntax has changed such that blank nodes are longer prefixed by `"_:"` but instead are now prefixed by `"#"`. Other features have been added to the syntax such as the ability to represent nested Quads. A simplified table of the updated syntax is shown below:
 
 State                | Production
 ---------------------|-----------
-Term                 | `AbsoluteIri | TypeAlias | BlankNode | PlainLiteral | LanguagedLiteral | DatatypedLiteral | Variable | Quad | Directive | PrefixedName`
+Term                 | `AbsoluteIri \| TypeAlias \| BlankNode \| PlainLiteral \| LanguagedLiteral \| DatatypedLiteral \| Variable \| Quad \| Directive \| PrefixedName`
 AbsoluteIri          | `'>' .+`
 TypeAlias            | `a`
-BlankNode            | `AnonymousBlankNode | LabeledBlankNde`
+BlankNode            | `AnonymousBlankNode \| LabeledBlankNde`
 AnonymousBlankNode   | `'#' '#' .*`
 LabeledBlankNode     | `'#' .+`
 PlainLiteral         | `'"' .*`
 LanguagedLiteral     | `'@' [a-zA-A0-9-]+ PlainLiteral`
 DatatypedLiteral     | `'^' Datatype PlainLiteral`
-Datatype             | `AbsoluteDatatype | RelativeDatatype`
+Datatype             | `AbsoluteDatatype \| RelativeDatatype`
 AbsoluteDatatype     | `'>' [^"]+`
 RelativeDatatype     | `'>' [^:"]* ':' [^"]*`
 DefaultGraph         | `'*'`
@@ -357,7 +368,7 @@ import {
 // in case you really like streams...
 {
     // creates a Transform stream that can be written to and read from
-    readerTransform = new TurtleReader({
+    const readerTransform = new TurtleReader({
         // options...
     });
     
