@@ -353,7 +353,7 @@ import {
     let statementCount = 0;
 
     // 1st arg can be a string or ReadableStream
-    await TurtleReader(process.stdin, {
+    await TurtleReader.run(process.stdin, {
         // options...
 
         // this still works
