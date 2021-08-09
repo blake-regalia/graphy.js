@@ -1,7 +1,9 @@
-# graphy v5 Alpha 0 - Preview v1
+# graphy v5 Alpha 0 - Preview v2
 ![Gitter](https://img.shields.io/gitter/room/graphy-js/community) ![GitHub issues](https://img.shields.io/github/issues/blake-regalia/graphy.js) 
 
-## v1 of this Preview Document
+## v2 of this Preview Document
+ - v2: added Content Writers section
+ - v1: first published draft
 
 **Table of Contents**
  - [Foreword](#foreword)
@@ -16,6 +18,8 @@
    - [Scoped Packages](#scoped-packages)
    - [C1 Syntax](#c1-syntax)
    - [Content Readers](#content-readers)
+ - [Roadmap](#roadmap)
+   - [Content Writers](#content-writers)
 
 ## Foreword
 This document summarizes notable changes introduced in the upcoming v5 alpha release. It is possible that some features described in this document are not yet fully implemented. Furthermore, some features and breaking changes have not yet been added to this document. All material may be subject to change prior to beta releases.
@@ -49,7 +53,6 @@ import {TurtleLoader} from '@graphy/content';
 ```
 
 > TODO: Early benchmarks of Content Loader performance vs Content Reader + Dataset
-
 
 
 ### Numeric Literals and Friends
@@ -382,7 +385,83 @@ import {
 ```
 
 
+## Roadmap
+These features are planned for v5 but have not yet been implemented.
 
+### Content Writers
+The Content Writers continue to gain more style options to enhance user control over the pretty-printing of RDF documments.
+
+The ability to serialize collections has been noted as a requested feature and is planned to be included as part of the updates to Content Writers.
+
+The following Turtle code demonstrates some of the new style options and the effects of their available option values:
+```ttl
+# heading: 'line' (default)
+eg:Alice a dbo:Person ;
+    foaf:name "Alice" .
+
+eg:Bob a dbo:Person .
+
+
+# heading: 'break-list'
+eg:Alice
+    a dbo:Person ;
+    foaf:name "Alice" .
+
+eg:Bob a dbo:Person .
+
+
+# heading: 'break-all'
+eg:Alice
+    a dbo:Person ;
+    foaf:name "Alice" .
+
+eg:Bob
+    a dbo:Person .
+
+
+# terminator: 'line'
+eg:Alice a dbo:Person ;
+    foaf:name "Alice" .
+
+# terminator: 'break'
+eg:Alice a dbo:Person ;
+    foaf:name "Alice" ;
+    .
+
+
+# objects: 'line'
+eg:Alice a dbo:Person ;
+    foaf:name "Alice" ;
+    foaf:knows eg:Bob, eg:Charlie, eg:David, eg:Edward .
+
+# objects: 'break'
+eg:Alice a dbo:Person ;
+    foaf:name "Alice" ;
+    foaf:knows eg:Bob,
+        eg:Charlie,
+        eg:David,
+        eg:Edward .
+
+# objects: 'break-list'
+eg:Alice a dbo:Person ;
+    foaf:name "Alice" ;
+    foaf:knows
+        eg:Bob,
+        eg:Charlie,
+        eg:David,
+        eg:Edward .
+
+# objects: 'break-all'
+eg:Alice a
+        dbo:Person ;
+    foaf:name
+        "Alice" ;
+    foaf:knows
+        eg:Bob,
+        eg:Charlie,
+        eg:David,
+        eg:Edward .
+```
 
 
 
