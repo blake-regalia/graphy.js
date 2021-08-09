@@ -389,7 +389,7 @@ import {
 These features are planned for v5 but have not yet been implemented.
 
 ### Content Writers
-The Content Writers continue to gain more style options to enhance user control over the pretty-printing of RDF documments.
+The Content Writers continue to gain more style options to enhance user control over the pretty-printing of RDF documents.
 
 The ability to serialize collections has been noted as a requested feature and is planned to be included as part of the updates to Content Writers.
 
@@ -419,7 +419,7 @@ eg:Bob
     a dbo:Person .
 
 
-# terminator: 'line'
+# terminator: 'line' (default)
 eg:Alice a dbo:Person ;
     foaf:name "Alice" .
 
@@ -429,7 +429,7 @@ eg:Alice a dbo:Person ;
     .
 
 
-# objects: 'line'
+# objects: 'line' (default)
 eg:Alice a dbo:Person ;
     foaf:name "Alice" ;
     foaf:knows eg:Bob, eg:Charlie, eg:David, eg:Edward .
