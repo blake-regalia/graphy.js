@@ -48,7 +48,9 @@ import {TurtleLoader} from '@graphy/content';
 })();
 ```
 
-Early benchmarks
+> TODO: Early benchmarks of Content Loader performance vs Content Reader + Dataset
+
+
 
 ### Numeric Literals and Friends
 Literals created with one of the following XSD datatypes now have properties that provide users with the equivalent ES primitive value such as `.boolean`, `.number` (with precision loss detection), `.bigint` and `.date`:
