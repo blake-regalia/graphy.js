@@ -1,5 +1,7 @@
-# graphy v5 Alpha 0 Preview
+# graphy v5 Alpha 0 - Preview v1
 ![Gitter](https://img.shields.io/gitter/room/graphy-js/community) ![GitHub issues](https://img.shields.io/github/issues/blake-regalia/graphy.js) 
+
+## v1 of this Preview Document
 
 **Table of Contents**
  - [Foreword](#foreword)
