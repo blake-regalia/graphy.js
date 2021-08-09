@@ -59,6 +59,8 @@ import type {
 	Lower,
 	LowerEq,
 	Range,
+	Add,
+	Sub,
 } from 'ts-toolbelt/out/Number/_api';
 
 import type {
@@ -82,14 +84,6 @@ type ASSERT_VOID<Thing> = ASSERT_SAME<Thing, void>;
 
 
 type StrLen<Input extends string> = String.Length<Input>;
-
-type AsString<Input> = Input extends string
-	? Input
-	: Stringify<Input>;
-
-type AsObject<Input> = [Input] extends [object]
-	? Input
-	: object;
 
 
 @.{
@@ -155,13 +149,15 @@ type AsObject<Input> = [Input] extends [object]
 }
 
 
-type ALPHA = @{alpha('a', 'z')}
+type ALPHA = @{alpha('a', 'z')};
 type ALPHA_LOWER = ALPHA;
 type ALPHA_UPPER = Uppercase<ALPHA_LOWER>;
 type ALPHA_ANY = ALPHA_LOWER | ALPHA_UPPER;
 
 type DIGIT = @{alpha('0', '9')}
 type ALPHANUM = ALPHA | DIGIT;
+
+type SINGLETON = Exclude<ALPHANUM, 'x'>;
 
 // type RepeatStar<TypeString extends string> = '' | `${TypeString}${Repeat<TypeString>}`;
 // type RepeatPlus<TypeString extends string> = `${TypeString}${RepeatStar<TypeString>}`;
@@ -215,6 +211,12 @@ type ToString<
 		: '{unknown}'
 	);
 
+type StringifyList<
+	a_strings extends any[],
+> = Cast<{
+	[K in keyof a_strings]: `${Stringify<a_strings[K]>}`
+}, string[]>
+
 type Stringify<
 	Input extends any,
 	MaxDepth extends 0|1|2|3|4|5|6=6,
@@ -226,7 +228,8 @@ type Stringify<
 			// ? (Lower<MaxDepth, 1> extends True
 			// 	? '...'
 			// 	: `[${Join<Union.ListOf<`'${Stringify2<Input[number], Sub<MaxDepth, 1>>}'`>, ', '>}]`
-			? `[${Join<Union.ListOf<`'${Stringify2<Input[number]>}'`>, ', '>}]`
+			// ? `[${Join<Union.ListOf<`'${Stringify2<Input[number]>}'`>, ', '>}]`
+			? `[${Join<StringifyList<Input>>}]`
 			: (Input extends object
 				? `{${ToString<KnownKeys<Input>>}}`
 				: '{unknown}'
@@ -237,6 +240,7 @@ type Stringify<
 {
 	type TEST = Stringify<['a', 'b', 'c']>;
 }
+
 
 // type StringifyList<
 // 	Input extends any[],
@@ -253,11 +257,30 @@ type AssertionError<
 
 @.{
 
-	const escape_ts = (sj_ts) => (sj_ts+'')
-		.replace(/([`$])/g, '\\$1')
-		.replace(/(?:\\`)?\\\$\{(?:infer\s+)?([^}]+)}(?:\\`)?/g, '\'${$1}\'')
-		.replace(/infer (\w+)/g, '${AsString<$1>}')
-		.replace(/ extends /, ' is ');
+	const escape_ts = (sj_ts, b_no_infer=false) => {
+		let sj_rep = (sj_ts+'')
+			.replace(/([`$])/g, '\\$1')
+
+		if(!b_no_infer) {
+			sj_rep = sj_rep
+				// replace string inference
+				.replace(/^(.*?) extends (?:\\`)?\\\$\{(?:infer\s+)?([^}]+)}(?:\\`)?\s*$/g, '$2 := $1 = \'${$2}\'')
+				// replace direct inference
+				.replace(/^(.*?) extends infer (\w+)/, '$2 := $1 = ${Cast<$1, string>}')
+				// .replace(/infer (\w+)/g, '${AsString<$1>}')
+				// .replace(/ extends /, ' is ');
+
+				.replace(/(?:\\`)?\\\$\{(?:infer\s+)?([^}]+)}(?:\\`)?/g, '\'${$1}\'');
+		}
+		else {
+			sj_rep = sj_rep
+				.replace(/^(.*?) extends infer (\w+)/, '$2 := $1')
+				// .replace(/infer (\w+)/g, '${AsString<$1>}')
+				// .replace(/ extends /, ' is ');
+		}
+
+		return sj_rep;
+	};
 
 	const H_FILLS = {
 		'a-z': 'ALPHA_LOWER',
@@ -276,6 +299,13 @@ type AssertionError<
 	};
 
 	const $ELSE = Symbol('else');
+
+
+	const recurse_expand = (a_conditions, w_actions) => () => ({
+		[a_conditions[0]]: a_conditions.length > 1? recurse_expand(a_conditions.slice(1), w_actions): w_actions,
+	});
+
+	let i_assertion_error = 0;
 
 	class Coder {
 		constructor(s_language) {
@@ -340,26 +370,73 @@ type AssertionError<
 			)+' extends True';
 		}
 
-		if_(sj_condition, sj_then, sj_else) {
+		if_(sj_condition, sj_then, sj_else, s_comment='') {
 			sj_condition = sj_condition.replace(/\?$/, ' extends True');
 
 			return [
-				'(', this.incr(sj_condition), this.nl(1),
-					'? ', sj_then, this.nl(),
-					': ', sj_else, this.nl(-1),
+				// this.nl(),
+				// '(', this.incr(sj_condition), this.nl(1),
+				'(', sj_condition, this.nl(1),
+					...s_comment? [`// ^^ ${s_comment.replace(/\n/g, ' ')}`, this.nl()]: [],
+					'\t? ', sj_then, this.nl(),
+					'\t: ', sj_else, this.nl(-1),
 				')',
 			].join('');
 		}
 
 		compile_struct(h_struct, a_path=['/']) {
-			let s_out = `AssertionError<string, {`
-				+`path: [${a_path.map(s => `\`${escape_ts(s)}\``).join(', ')}],`
-				+`false: \`${escape_ts(Object.keys(h_struct).reverse().slice(-1) || '')}\`,`
-			+`}>`;
+			// refactor
+			{
+				const a_refactor = [];
+				let b_refactored = false;
+
+				for(const [s_conditions, w_actions] of ode(h_struct)) {
+					const a_conditions = s_conditions.split('\0');
+					if(a_conditions.length > 1) {
+						b_refactored = true;
+						a_refactor.push([
+							a_conditions[0],
+							recurse_expand(a_conditions.slice(1), w_actions),
+						]);
+					}
+					else {
+						a_refactor.push([s_conditions, w_actions]);
+					}
+				}
+
+				if(b_refactored) {
+					return this.compile_struct(a_refactor.reduce((h_out, [si_key, w_value]) => ({
+						...h_out,
+						[si_key]: w_value,
+					}), {}), a_path);
+				}
+			}
+
+			const i_condition = i_assertion_error++;
+
+			let s_out = [`AssertionError<string, {`,
+				`assertion_id: ${i_condition};`,
+				`path: [${a_path.map(s => `\`${escape_ts(s)}\``).join(', ')}];`,
+				`false: \`${escape_ts(Object.keys(h_struct).reverse().slice(-1) || '', true)}\`;`,
+				`input: s_input;`,
+				`scope: {
+					${[...new Set(Object.keys(h_struct)
+						.map(sj => sj.replace(/^(.*?) extends .*$/, '$1')))]
+						.reduce((a_out, sj) => [
+							...a_out,
+							`'${sj}': ${sj.replace(/\?$/, '')};`,
+						], [])
+						.join(' ')
+					}
+				};`,
+			`}>`].join(' ');
 
 			// \`${JSON.stringify(h_struct).replace(/\\[tn"]/g, '')}\`>`;
 
+			let b_asserted = true;
+
 			if(h_struct[$ELSE]) {
+				b_asserted = false;
 				s_out = h_struct[$ELSE];
 				delete h_struct[$ELSE];
 			}
@@ -380,7 +457,7 @@ type AssertionError<
 					this._nl_indent -= 1;
 				}
 
-				s_out = this.if_(sj_condition, s_then, s_out);
+				s_out = this.if_(sj_condition, s_then, s_out, b_asserted? `Assertion ID: ${i_condition}`: '');
 			}
 
 			return s_out;
@@ -407,11 +484,15 @@ type AssertionError<
 			for(const [si_key, sj_value] of ode(h_desc)) {
 				a_out.push(`${si_key}:${sj_value}`);
 			}
-			return `Debug<string, {_message:\`Invalid ${this._s_language}; found in the "${this._si_production}" production\`, ${a_out.join(',')}}>`;
+			return `Debug<string, {_message:\`Invalid ${this._s_language}; found in the "${this._si_production}" production\`, ${a_out.join(',')}}>`.replace(/\n/g, '\\n');
 		}
 
 		merge(si_var) {
-			return h_append => `Merge<AsObject<${si_var}>, ${this.valid(h_append)}>`;
+			return h_append => `Merge<Cast<${si_var}, object>, ${this.valid(h_append)}>`;
+		}
+
+		steps(a_steps) {
+			return a_steps.join('\0');
 		}
 	}
 
@@ -421,8 +502,8 @@ type AssertionError<
 		const k_coder = new Coder('BCP-47 language tag');
 		const h_grammar = fk_coder(k_coder);
 		for(const [si_type, h_struct] of ode(h_grammar)) {
-			k_coder._si_production =  si_type.replace(/^([\w$_]+).*$/, '$1');
-			a_out.push(`type ${si_type} = ${k_coder.compile_struct(h_struct)}`);
+			k_coder._si_production =  si_type.replace(/^\s*([a-zA-Z0-9$_]+).*$/, '$1');
+			a_out.push(`type ${si_type} = ${k_coder.compile_struct(h_struct)};`);
 		}
 		return a_out.join('\n\n');
 	}
@@ -431,9 +512,19 @@ type AssertionError<
 		return fk_sets(...a_sets);
 	}
 
-	function patterns(h_paterns) {
+	function* patterns(g_types) {
+		const {
+			pure: a_pures=[],
+			mixed: h_patterns={},
+		} = g_types;
+
+		for(const si_pure of a_pures) {
+			yield `\ntype RTA_${si_pure}<a_input extends string[]> = Extends<a_input, ${si_pure}[]>;\n`;
+			yield `\ntype RTS_${si_pure}<s_input extends string> = RTA_${si_pure}<Split<s_input>>;\n`;
+		}
+
 		const a_out = [];
-		for(const [si_var, a_matches] of ode(h_paterns)) {
+		for(const [si_var, a_matches] of ode(h_patterns)) {
 			const si_type = `R_${si_var}`;
 
 			const nl_matches = a_matches.length;
@@ -452,34 +543,73 @@ type AssertionError<
 				].join('\n\t'));
 			}
 
-			a_out.push(`type ${si_type}<s_input extends string> = {${a_cases.map((s, i) => `\n\t${i}: ${s};`).join('')}\n};`);
+			yield `\ntype ${si_type}<s_input extends string> = {${a_cases.map((s, i) => `\n\t${i}: ${s};`).join('')}\n};\n`;
 		}
-
-		return a_out.join('\n\n');
 	}
+
+	const join = a_parts => a_parts.join('\0');
 }
 
-@{patterns({
-	'DIGIT': Array(3).fill('DIGIT'),
-	'ALPHA': Array(8).fill('ALPHA'),
-	'ALPHANUM': Array(8).fill('ALPHANUM'),
-	'DIGIT_ALPHANUM': [
+@*{yield* patterns({
+	pure: [
+		'ALPHA',
 		'DIGIT',
-		...Array(3).fill('ALPHANUM'),
+		'ALPHANUM',
 	],
+	// 'DIGIT': Array(3).fill('DIGIT'),
+	// 'ALPHA': Array(8).fill('ALPHA'),
+	// 'ALPHANUM': Array(8).fill('ALPHANUM'),
+	mixed: {
+		// 'DIGIT_ALPHANUM': [
+		// 	'DIGIT',
+		// 	...Array(3).fill('ALPHANUM'),
+		// ],
+	},
 })}
 
-interface SetLanguage<
+@{`
+
+type RTAS_ALPHA<a_parts extends string[]> = Extends<{
+	[K in keyof a_parts]: RTS_ALPHA<Cast<a_parts[K], string>>;
+}, 1[]>;
+
+type RTS_DIGIT_ALPHANUM<
+	s_input extends string,
+> = RTA_DIGIT_ALPHANUM<Split<s_input>>;
+
+type RTA_DIGIT_ALPHANUM<
+	a_input extends string[],
+> = And<
+	Extends<a_input[0], DIGIT>,
+	Extends<List.Omit<a_input, 0>, ALPHA[]>
+>;
+
+type Parsed<
+	g_set extends object={},
+> = Merge<
+	g_set,
+	{
+		_input: string;
+		_normalized: string;
+		extendedLanguageSubtags: string[];
+	}
+>;
+
+type SetLanguage<
 	s_language extends string=string,
-> {
+> = {
 	language: s_language;
-}
+};
+`}
 
 @{grammar(k => ({
-	'Language<s_input extends string>': {
+	[`Language<
+		g_parsed extends Parsed,
+		s_input extends string,
+	>`]: {
 		// length of input
 		[k.assign('nl_input', `StrLen<s_input>`)]: cache([
-			'SetLanguage<s_input>',  // k.valid({language:'s_input'})
+			'Merge<g_parsed, SetLanguage<s_input>>',  // k.valid({language:'s_input'})
 			h_out => () => ({
 				...h_out,
 				[$ELSE]: k.invalid({
@@ -493,118 +623,244 @@ interface SetLanguage<
 				// 2*3 ALPHA: shortest ISO 639 code
 				// 4ALPHA: reserved for future use
 				// 5*8ALPHA: registered language subtag
-				'R_ALPHA<s_input>[nl_input]?': sj_valid,
+				'RTS_ALPHA<s_input>?': sj_valid,
 			}),
 		})),
 	},
 
-	'Langtag<Input extends string>': {
-		[k.assign_str('s_input', 'Lowercase<Input>')]: () => ({
-			// split at first '-'
-			's_input extends `${infer s_word0}-${infer s_rest}`': () => ({
+	'Langtag<s_input extends string>': {
+		[join([
+			// s_lower := s_input.toLowerCase()
+			k.assign_str('s_lower', 'Lowercase<s_input>'),
+
+			// g_init := {_input: s_input} as Parsed
+			k.assign('g_init', 'Parsed<{_input:s_input; _normalized:s_lower;}>'),
+			'g_init extends Parsed',
+		])]: () => ({
+			[join([
+				// split at first '-'
+				's_lower extends `${infer s_language}-${infer s_rest}`',
+
 				// everything before '-'
-				[k.assign('g_language', 'Language<s_word0>')]: () => ({
-					// invalid language
-					['g_language extends Invalid']: 'g_language',
+				k.assign('g_parsed', 'Language<g_init, s_language>')
+			])]: () => ({
+				// invalid language
+				['g_parsed extends Invalid']: 'g_language',
 
-					['g_language extends SetLanguage']: cache([
-							k.merge('g_language'),
-						], mlang => () => ({
-							// "-" extlang(3ALPHA): selected ISO 639 codes
-							'And<Extends<StrLen<s_rest>, 3>, R_ALPHA<s_rest>[3]>?': mlang({extendedLanguageSubtags:['s_rest']}),
+				// valid language
+				['g_parsed extends Parsed<SetLanguage>']: `LangtagAfterLanguage<
+					g_parsed,
+					s_rest,
+				>`,
 
-							// everything after '-'
-							...k.switch_eq('StrLen<s_rest>', 'nl_rest', {
-								4: () => ({
-									// script(4ALPHA): ISO 15924 code
-									'R_ALPHA<s_rest>[4]?': mlang({script:'s_rest'}),
+				// cache([
+				// 		k.merge('g_language'),
+				// 	], out => () => ({
+				// 		// a_rest := s_rest.split('') as string[]
+				// 		[join([
+				// 			k.assign('a_rest', 'Split<s_rest>'),
+				// 			'a_rest extends string[]',
+				// 		])]: () => ({
+				// 			// everything after '-'
+				// 			...k.switch_eq('StrLen<s_rest>', 'nl_rest', {
+				// 				2: () => ({
+				// 					// region(2ALPHA): selected ISO 639 codes
+				// 					'RTA_ALPHA<a_rest>?': out({region:'s_rest'}),
+				// 				}),
 
-									// variant(DIGIT 3ALPHANUM): registered variants
-									'R_DIGIT_ALPHANUM<s_rest>[4]?': mlang({variant:'s_rest'}),
-								}),
+				// 				3: () => ({
+				// 					// "-" extlang(3ALPHA): selected ISO 639 codes
+				// 					'RTA_ALPHA<a_rest>?': out({extendedLanguageSubtags:['s_rest']}),
 
-								// region(2ALPHA): selected ISO 639 codes
-								2: () => ({
-									'R_ALPHA<s_rest>[2]?': mlang({region:'s_rest'}),
-								}),
+				// 					// region(3DIGIT): UN M.49 code
+				// 					'RTA_DIGIT<a_rest>?': out({region:'s_rest'}),
 
-								// region(3DIGIT): UN M.49 code
-								3: () => ({
-									'R_DIGIT<s_rest>[3]?': mlang({region:'s_rest'}),
-								}),
+				// 					// privateuse("x" "-" ALPHANUM)
+				// 					[$ELSE]: 'PrivateUse<g_language, s_rest>',
+				// 				}),
 
-								[$ELSE]: 'LangtagAfterScript<g_language, s_rest>',
-							}),
-						}),
-					),
-				}),
+				// 				4: () => ({
+				// 					// script(4ALPHA): ISO 15924 code
+				// 					'RTA_ALPHA<a_rest>?': out({script:'s_rest'}),
+
+				// 					// variant(DIGIT 3ALPHANUM): registered variants
+				// 					'RTS_DIGIT_ALPHANUM<s_rest>?': out({variant:'s_rest'}),
+				// 				}),
+
+				// 				[$ELSE]: 'LangtagAfterScript<g_language, s_rest>',
+				// 			}),
+				// 		}),
+				// 	}),
+				// ),
 			}),
 
 			// no '-'
-			[$ELSE]: 'Language<s_input>',
+			[$ELSE]: 'Language<g_init, s_input>',
 		}),
 	},
 
-	// [`LangtagAfterScript<
-	// 	g_language extends {language: string},
-	// 	s_input extends string,
-	// >`]: {
+	[`PrivateNames<
+		g_parsed extends Parsed,
+		s_privateuse extends string,
+		a_parts extends string[],
+	>`]: cache([
+		{
+			[$ELSE]: k.invalid({
+				_reason: '`Must match /^x(-[a-z0-9]{1,8})+/`',
+				privateuse: 's_privateuse',
+			}),
+		},
+	], g_invalid => ({
+		[`Extends<{
+			[K in keyof a_parts]: a_parts[K] extends \`\${infer s_part}\`
+				? And<
+					Extends<StrLen<s_part>, ${k.numeric(1, 8)}>,
+					RTS_ALPHA<s_part>
+				>
+				: False;
+		}, 1[]>?`]: k.merge('g_parsed')({privateuse:'a_parts'}),
 
-	// 	// split at first '-'
-	// 	's_input extends `${infer s_word0}-${s_rest}`': () => ({
-	// 			// region(2ALPHA): selected ISO 639 codes
-	// 			'R_ALPHA<s_rest>[3]?': k.merge('g_language')({region:'s_'}),
+		...g_invalid,
+	})),
 
-	// 						// region(2ALPHA)
-	// 						2: () => ({
-	// 							// 2ALPHA: ISO 3166-1 code
-	// 							'R_ALPHA<s_rest>[nl_rest]?': mlang({region:'s_rest'}),
-	// 						}),
+	[`PrivateUse<
+		g_parsed extends Parsed,
+		s_input extends string,
+	>`]: {
+		// s_input.startsWith('x-')
+		's_input extends `x${infer s_name}`': () => ({
+			[k.assign('a_parts', 'Split<s_name, "-">')]: 'PrivateNames<g_parsed, s_input, Cast<a_parts, string[]>>',
+		}),
+		[$ELSE]: k.invalid({
+			_reason: '`Must match /^x(-[a-z0-9]{1,8})+/`',
+			privateuse: 's_input',
+		}),
+	},
+
+	[`LangtagAfterScript<
+		g_parsed extends Parsed<SetLanguage>,
+		s_input extends string,
+	>`]: cache([
+		k.merge('g_parsed'),
+	], out => ({
+		// split at first '-'
+		's_input extends `${infer s_word0}-${infer s_rest}`': () => ({
+			// region(2ALPHA): selected ISO 639 codes
+			'R_ALPHA<s_rest>[3]?': ({region:'s_'}),
+
+			// // region(2ALPHA)
+			// 2: () => ({
+			// 	// 2ALPHA: ISO 3166-1 code
+			// 	'RTA_ALPHA<s_rest>?': out({region:'s_rest'}),
+			// }),
 
 
-	// 						// // extlang(3ALPHA) | region(3DIGIT) | privateuse
-	// 						// 3: () => ({
-	// 						// 	...k.switch_str('String.At<s_rest, 0>', 's_rest0', {
-	// 						// 		// region
-	// 						// 		'DIGIT': () => ({
-	// 						// 			// 3DIGIT: UN M.49 code
-	// 						// 			[k.match_str('s_rest', Array(3).fill('DIGIT'))]: mlang({region:'s_rest'}),
-	// 						// 		}),
-	// 						// 		// privateuse | extlang
-	// 						// 		'"x"': () => ({
-	// 						// 			// "-" (1alphanum)
-	// 						// 			[k.match_str('s_rest', ['"x"', '"-"', 'ALPHANUM'])]: mlang({privateuse:'s_rest'}),
+			// // extlang(3ALPHA) | region(3DIGIT) | privateuse
+			// 3: () => ({
+			// 	...k.switch_str('String.At<s_rest, 0>', 's_rest0', {
+			// 		// region
+			// 		'DIGIT': () => ({
+			// 			// 3DIGIT: UN M.49 code
+			// 			[k.match_str('s_rest', Array(3).fill('DIGIT'))]: mlang({region:'s_rest'}),
+			// 		}),
+			// 		// privateuse | extlang
+			// 		'"x"': () => ({
+			// 			// "-" (1alphanum)
+			// 			[k.match_str('s_rest', ['"x"', '"-"', 'ALPHANUM'])]: mlang({privateuse:'s_rest'}),
 
-	// 						// 			// 3ALPHA: selected ISO 639 codes
-	// 						// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extland:'s_rest'}),
-	// 						// 		}),
-	// 						// 		// extlang
-	// 						// 		'ALPHA': () => ({
-	// 						// 			// 3ALPHA: selected ISO 639 codes
-	// 						// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extlang:'s_rest'}),
-	// 						// 		}),
-	// 						// 	}),
-	// 						// }),
-	// 	}),
+			// 			// 3ALPHA: selected ISO 639 codes
+			// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extland:'s_rest'}),
+			// 		}),
+			// 		// extlang
+			// 		'ALPHA': () => ({
+			// 			// 3ALPHA: selected ISO 639 codes
+			// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extlang:'s_rest'}),
+			// 		}),
+			// 	}),
+			// }),
+		}),
 
-	// },
+		// a_input := s_input.split('')
+		[k.assign('a_input', 'Split<s_input>')]: () => ({
+			// switch length
+			...k.switch_eq('StrLen<s_input>', 'nl_input', {
+				2: () => ({
+					// region(2ALPHA): ISO 3166-1 code
+					'RTA_ALPHA<a_input>?': out({region:'s_input'}),
+				}),
+			}),
+		}),
+	})),
+
+	[`ExtendedLanguageSubtags<
+		g_init extends Parsed<SetLanguage>,
+		a_parts extends string[],
+		c_recursions extends number=0,
+	>`]: {
+		[`c_recursions extends ${k.numeric(0, 3)}`]: () => ({
+			'a_parts[0] extends `${infer s_part}`': () => ({
+				[`And<
+					Equals<StrLen<s_part>, 3>,
+					RTS_ALPHA<s_part>
+				>?`]: `ExtendedLanguageSubtags<
+					Merge<
+						{
+							extendedLanguageSubtags: [...g_init['extendedLanguageSubtags'], Cast<s_part, string>],
+						},
+						g_init
+					>,
+					List.Omit<a_parts, 0>,
+					Add<c_recursions, 1>
+				>`,
+				[$ELSE]: 'g_init',
+			}),
+			[$ELSE]: 'g_init',
+		}),
+		[$ELSE]: k.invalid({
+			_reason: '`Too many extended language subtags, expected at most 3 subtags`',
+		}),
+	},
+
+	[`LangtagAfterLanguage<
+		g_init extends Parsed<SetLanguage>,
+		s_input extends string,
+	>`]: {
+		[join([
+			// a_lower := s_lower.split('-')
+			k.assign('a_parts', 'Split<s_input, "-">'),
+
+			k.assign('g_parsed', 'ExtendedLanguageSubtags<g_init, s_input>')
+		])]: () => ({
+			// [k.assign('g_parsed_extlang', 'ExtendedLanguageSubtags<g_parsed, s_input>')]: 
+		}),
+	},
 }))}
 
 {
 	/* eslint-disable @typescript-eslint/no-unused-vars */
 	@//@
 
-	type TestLanguage = Language<'hahahahahah'>;
+	@{`
+		type HHOHO = ExtendedLanguageSubtags<
+			Parsed<{
+				_input: 'input';
+				extendedLanguageSubtags: Cast<[], string[]>;
+				language:'en';
+			}>,
+			['ext', 'mor', 'for', 'you']
+		>;
+	`}
+
 
 	@*{
 		const A_FIXTURES = [
-			'aa-111','aa-7-123abc-abc-a-12','aa-b1b1b-6a8b-cccccc','aa-b1b1b','aa-bb','aa-bbb-ccc-1111-ccccc-b1b1b','aa-bbb-ccc-ddd','aa-bbb','aa-bbbb-cc','aa-bbbb','aa-x-1234ab-d','aa',
+			'aa-111','*aa-7-123abc-abc-a-12','aa-b1b1b-6a8b-cccccc','aa-b1b1b','aa-bb','aa-bbb-ccc-1111-ccccc-b1b1b','aa-bbb-ccc-ddd','aa-bbb','aa-bbbb-cc','aa-bbbb','aa-x-1234ab-d','aa',
 			'aaa-bbb-ccc-ddd-abcd-123-abc123-0abc-b-01-abc123-x-01ab-abc12','aaa-bbb-ccc','aaaa','aaaaa','aaaaaa','aaaaaaa','aaaaaaaa','afb','ar-afb','art-lojban','ast','az-Arab-x-AZE-derbend','az-Latn',
 			'cel-gaulish','cmn-Hans-CN','de-CH-1901','de-CH-x-phonebk','de-DE-u-co-phonebk','de-DE','de-Qaaa','de','en-GB-oed','en-US-u-islamcal','en-US-x-twain','en-US','en-a-myext-b-another','en',
 			'es-005','es-419','fr-CA','fr','hak','hy-Latn-IT-arevela','i-ami','i-bnn','i-default','i-enochian','i-hak','i-klingon','i-lux','i-mingo','i-navajo','i-pwn','i-tao','i-tay','i-tsu','ja','mas',
 			'no-bok','no-nyn','qaa-Qaaa-QM-x-southern','sgn-BE-FR','sgn-BE-NL','sgn-CH-DE','sl-IT-nedis','sl-nedis','sl-rozaj-biske','sl-rozaj','sr-Cyrl','sr-Latn-QM','sr-Latn-RS','sr-Latn','sr-Qaaa-RS',
 			'x-111-aaaaa-BBB','x-whatever','yue-HK','zh-CN-a-myext-x-private','zh-Hans-CN','zh-Hans','zh-Hant-HK','zh-Hant','zh-cmn-Hans-CN','zh-guoyu','zh-hakka','zh-min-nan','zh-min','zh-xiang',
-			'zh-yue-HK','zh-yue.json',
+			'zh-yue-HK','zh-yue',
 		];
 
 		const G_CASES = {
@@ -619,16 +875,20 @@ interface SetLanguage<
 		for(const [si_case, gc_case] of ode(G_CASES)) {
 			const sx_case = si_case.replace(/^\*/, '');
 
-			const sj_hash = plainify(bcp47.parse(sx_case), {
+			const sj_hash = plainify({
+				...bcp47.parse(sx_case),
+				_input: sx_case,
+				_normalized: sx_case,
+			}, {
 				filter([si_key, z_value]) {
 					if(!z_value) return false
 					if(Array.isArray(z_value)) return z_value.length;
 					return true;
 				},
-			})
+			});
 
 			const sj_test = `Langtag<'${sx_case}'>`;
-			const si_assert = sx_case.replace(/[^a-z]/g, '_');
+			const si_assert = sx_case.replace(/[^a-z0-9]/g, '_');
 
 			yield [
 				...(gc_case.comment? [`// ${gc_case.comment}`]: []),

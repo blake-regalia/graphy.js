@@ -1041,6 +1041,15 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 					// precision lost
 					return false;
 				}
+				// integer
+				else if(this.isLiteralInteger) {
+					// ref bigint value
+					const xg_value = this.bigint;
+
+					// deduce precision
+					return xg_value <= BigInt(Number.MAX_SAFE_INTEGER)
+						&& xg_value >= BigInt(Number.MIN_SAFE_INTEGER);
+				}
 				// no precision
 				else if(this.isNaNLiteral || this.isInfiniteLiteral) {
 					return false;
@@ -1443,6 +1452,15 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 				// precision lost
 				return false;
 			}
+		@+ b_integer
+			get isNumberPrecise() {
+				// ref bigint value
+				const xg_value = this.bigint;
+
+				// deduce precision
+				return xg_value <= BigInt(Number.MAX_SAFE_INTEGER)
+					&& xg_value >= BigInt(Number.MIN_SAFE_INTEGER);
+			}
 		@;
 
 		flat() {
@@ -1473,7 +1491,7 @@ const H_VAGUE_LITERAL_DESCRIPTORS = {
 			gp_self.isNumericLiteral = true;
 			gp_self.is@{s_type_proper}Literal = true;
 		@;
-		@- !b_decimal
+		@- !b_decimal && !b_integer
 			gp_self.isNumberPrecise = true;
 		@;
 		gp_self.star = gp_self.terse;
@@ -1943,17 +1961,17 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 		}
 
 		flat(h_prefixes=null) {
-			return this.graph.flat(h_prefixes)
-				+'\t'+this.subject.flat(h_prefixes)
-				+'\r'+this.predicate.flat(h_prefixes)
-				+'\n'+this.object.flat(h_prefixes);
+			return '\f'+this.graph.flat(h_prefixes)
+				+'\r'+this.subject.flat(h_prefixes)
+				+'\n'+this.predicate.flat(h_prefixes)
+				+'\t'+this.object.flat(h_prefixes);
 		}
 
 		concise(h_prefixes={}) {
-			return this.graph.concise(h_prefixes)
-				+'\t'+this.subject.concise(h_prefixes)
-				+'\r'+this.predicate.concise(h_prefixes)
-				+'\n'+this.object.concise(h_prefixes);
+			return '\f'+this.graph.concise(h_prefixes)
+				+'\r'+this.subject.concise(h_prefixes)
+				+'\n'+this.predicate.concise(h_prefixes)
+				+'\t'+this.object.concise(h_prefixes);
 		}
 
 		terse(h_prefixes={}) {
