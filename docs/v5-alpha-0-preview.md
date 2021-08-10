@@ -1,4 +1,4 @@
-# graphy v5 Alpha 0 - Preview v3
+# graphy v5 Alpha 0 - Preview v4
 ![Gitter](https://img.shields.io/gitter/room/graphy-js/community) ![GitHub issues](https://img.shields.io/github/issues/blake-regalia/graphy.js) 
 
 ## v4 of this Preview Document
