@@ -40,6 +40,12 @@ Please [open an issue](https://github.com/blake-regalia/graphy.js/issues) on the
  - [Prefix Maps](#prefix-maps) now support base IRIs and have internal caches
  - [Error Reporting](#error-reporting) has significantly improved for readers
  - [Advanced Typings](#advanced-typings) for TypeScript allow for deep static code analysis
+ - BREAKING:
+   - [Scoped Packages](#scoped-packages) have changed names and will require migration
+   - [Content Readers](#content-readers) have a different (siimpler) interface
+ - Roadmap:
+   - [Content Writers](#content-writers) will receive new syle options and support reserializing collections read from disk
+
 
 
 ## Features
