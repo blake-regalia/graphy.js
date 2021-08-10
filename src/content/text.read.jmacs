@@ -676,6 +676,42 @@ function debug_arg(w_arg) {
 	return `${typeof w_arg} "${s_arg.slice(0, 80)}${s_arg.length > 80? '[...]': ''}"`;
 }
 
+class ArrayBufferReader {
+	constructor(z_input) {
+		this._atu8_content = z_input instanceof Uint8Array
+			? z_input
+			: (z_input instanceof ArrayBuffer
+				? new Uint8Array(z_input)
+				: new Uint8Array(z_input.buffer)
+			);
+	}
+
+	async* [Symbol.asyncIterator]() {
+		const k_decoder = new DecoderProxy();
+		const atu8_content = this._atu8_content;
+		const nb_content = atu8_content.byteLength;
+
+		let ib_next = 0;
+		for(let ib_read=0; ib_read<nb_content; ib_read=ib_next) {
+			// read 64 KiB at a time
+			ib_next += @{1 << 16};
+
+			// take next chunk
+			const atu8_chunk = atu8_content.subarray(ib_read, ib_next);
+
+			// decode to string
+			const s_chunk = k_decoder.decode(atu8_chunk);
+
+			// yield if anything is there
+			if(s_chunk) yield s_chunk;
+		}
+
+		// flush
+		const s_flush = k_decoder.flush();
+		if(s_flush) yield s_chunk;
+	}
+}
+
 @> create_parsing_export_class()
 	@$ S_EXPORT = S_LABEL+S_MODE[0].toUpperCase()+S_MODE.substr(1)+'er';
 
@@ -776,6 +812,12 @@ function debug_arg(w_arg) {
 		if(Symbol.asyncIterator in z_input) {
 			// consume as async iterable of any value types
 			return await k_consumer.consume_async_iterable_any(z_input);
+		}
+
+		// ArrayBuffer
+		if(ArrayBuffer.isView(z_input) || z_input instanceof ArrayBuffer) {
+			// scan in chunks
+			return await k_consumer.consume_async_iterable_strings(new ArrayBufferReader(z_input));
 		}
 
 		// nothing worked

@@ -7,6 +7,7 @@ import {
 } from 'stream';
 
 import {
+    Dataset,
     Term,
 } from '@graphy/types';
 
@@ -21,9 +22,14 @@ import {
     ConciseQuads,
 } from './factory';
 
+
 export type JavaScriptCode = string;
 
-export type Input = string | Uint8Array | ArrayBuffer | Buffer | Readable;
+type InputValue = string | NodeJS.TypedArray | ArrayBuffer;
+
+export type ResolvedInput = InputValue | ReadableStream<InputValue> | Response | AsyncIterable<InputValue> | NodeJS.ReadableStream;
+
+export type Input = ResolvedInput | Promise<Input>;
 
 export interface ReaderConfig {
     dataFactory?: RDF.DataFactory;
@@ -187,6 +193,19 @@ export class TurtleReader extends GraphyTransform implements RDF.Sink<EventEmitt
 
 
     constructor(config: TurtleReaderConfig);
+}
+
+
+export class TurtleLoader extends GraphyTransform implements RDF.Sink<EventEmitter> {
+    /**
+     * Runs the reader on an input Turtle document (i.e., parses it)
+     * @param input - input Turtle document
+     * @param config - config for the reader
+     */
+    static async run(input: Input, config: TurtleLoaderConfig): Promise<Dataset>;
+
+
+    constructor(config: TurtleLoaderConfig);
 }
 
 export class TrigReader extends GraphyTransform implements RDF.Sink<EventEmitter> {
