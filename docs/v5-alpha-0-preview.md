@@ -1,13 +1,15 @@
 # graphy v5 Alpha 0 - Preview v3
 ![Gitter](https://img.shields.io/gitter/room/graphy-js/community) ![GitHub issues](https://img.shields.io/github/issues/blake-regalia/graphy.js) 
 
-## v3 of this Preview Document
+## v4 of this Preview Document
+ - v4: add TL;DR
  - v3: added WHATWG Streams section
  - v2: added Content Writers section
  - v1: first published draft
 
 **Table of Contents**
  - [Foreword](#foreword)
+ - [TL;DR](#tl-dr)
  - [Features](#features)
    - [RDF-Star](#rdf-star)
    - [Content Loaders](#content-loaders)
@@ -28,6 +30,17 @@ This document summarizes notable changes introduced in the upcoming v5 alpha rel
 
 The primary purpose of this document is to preview these changes to the community in order to collect feedback. Comments and suggestions are very welcome!
 Please [open an issue](https://github.com/blake-regalia/graphy.js/issues) on the monorepo or drop by the [gitter channel](https://gitter.im/graphy-js/community).
+
+
+## TL;DR
+ - [RDF-Star](#rdf-star) supported throughout
+ - [Content Loaders](#content-loaders) are RDF deserializers that load quads directly into an in-memory dataset
+ - [WHATWG Streams](#whatwg-streams) are now supported for reading and writing
+ - [Numeric Literals](#numeric-literals-and-friends) provide ES primitive values for certain XSD datatypes
+ - [Prefix Maps](#prefix-maps) now support base IRIs and have internal caches
+ - [Error Reporting](#error-reporting) has significantly improved for readers
+ - [Advanced Typings](#advanced-typings) for TypeScript allow for deep static code analysis
+
 
 ## Features
 
