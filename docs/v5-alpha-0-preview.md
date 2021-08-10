@@ -1,7 +1,8 @@
-# graphy v5 Alpha 0 - Preview v2
+# graphy v5 Alpha 0 - Preview v3
 ![Gitter](https://img.shields.io/gitter/room/graphy-js/community) ![GitHub issues](https://img.shields.io/github/issues/blake-regalia/graphy.js) 
 
-## v2 of this Preview Document
+## v3 of this Preview Document
+ - v3: added WHATWG Streams section
  - v2: added Content Writers section
  - v1: first published draft
 
@@ -10,6 +11,7 @@
  - [Features](#features)
    - [RDF-Star](#rdf-star)
    - [Content Loaders](#content-loaders)
+   - [WHATWG Streams](#whatwg-streams)
    - [Numeric Literals](#numeric-literals-and-friends)
    - [Prefix Maps](#prefix-maps)
    - [Error Reporting](#error-reporting)
@@ -135,6 +137,33 @@ interface DateLiteral extends DateLikeLiteral {
 interface DateTimeLiteral extends DateLikeLiteral {
 	isDateTimeLiteral: true;
 }
+```
+
+
+### WHATWG Streams
+Content Readers now support WHATWG streams and overall play much nicer with Web APIs in the browser. 
+
+```js
+import {
+    TurtleLoader,
+} from '@graphy/content';
+
+(async() => {
+    // initiate a request to download a Turtle file
+    const data = fetch('./people-data.ttl');
+
+    // run() accepts Response objects
+    await TurtleLoader.run(await data, loadOptions);
+
+    // it also automatically resolves Promises, so awaitting is optional
+    await TurtleLoader.run(data, loadOptions);
+
+    // let's create a ReadableStream
+    const readableStream = (await data).body;
+
+    // run() accepts that too! and it will take care of any decoding if necessary
+    await TurtleLoader.run(readableStream, loadOptions);
+})();
 ```
 
 
