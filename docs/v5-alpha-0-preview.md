@@ -158,11 +158,14 @@ import {
     // it also automatically resolves Promises, so awaitting is optional
     await TurtleLoader.run(data, loadOptions);
 
-    // let's create a ReadableStream
-    const readableStream = (await data).body;
+    // perhaps we want to read the Response body in more than one place
+    const [
+        readableStream1,
+        readableStream2,
+    ] = (await data).body.tee();
 
-    // run() accepts that too! and it will take care of any decoding if necessary
-    await TurtleLoader.run(readableStream, loadOptions);
+    // run() accepts ReadableStreams too! and it will take care of any decoding if necessary
+    await TurtleLoader.run(readableStream2, loadOptions);
 })();
 ```
 
@@ -400,6 +403,11 @@ import {
     // at this point, input stream has emited 'end' and reading is completely done!
     console.log(statementCount);
 })();
+
+// reading strings is synchronous  :)
+TurtleReader.run(turtleString, {
+    // ...
+});
 
 // in case you really like streams...
 {
