@@ -1583,6 +1583,48 @@ const F_THROW = (e_read) => {
 	throw e_read;
 };
 
+class TextDecoderProxy {
+	constructor() {
+		const d_decoder = this._d_decoder = new TextDecoder('utf-8', {
+			fatal: true,
+		});
+
+		this.decode = ab => d_decoder.decode(ab);
+	}
+
+	flush() {
+		return this._d_decoder.decode();
+	}
+}
+
+class StringDecoderProxy {
+	constructor() {
+		const d_decoder = this._d_decoder = new StringDecoder('utf8');
+
+		this.decode = ab => d_decoder.write(ab);
+	}
+
+	flush() {
+		return this._d_decoder.end();
+	}
+}
+
+class DecoderUnavailableProxy {
+	decode() {
+		throw new Error(`Unable to decode chunk of bytes since no UTF-8 encoder is available in the current environment`);
+	}
+
+	flush() {
+		return '';
+	}
+}
+
+const DecoderProxy = 'function' === typeof TextDecoder
+	? TextDecoderProxy
+	: ('function' === typeof StringDecoder
+		? StringDecoderProxy
+		: DecoderUnavailableProxy)
+
 class Consumer {
 	constructor(gc_consumer={}, dc_actor=null) {
 		// impl-specific configs
@@ -2072,7 +2114,123 @@ class Consumer {
 		@;
 	}
 
-	// consume a stream
+	// consume async iterable
+	async consume_async_iterable_strings(w_subject) {
+		// each chunk
+		for await(s_chunk of w_subject) {
+			@{write_chunk()}
+		}
+
+		// eof
+		const e_eof = this.eof(1);
+
+		// handle error
+		if(e_eof) return this._fe_error(e_eof);
+
+		@- B_LOAD
+			return this._k_dataset;
+		@;
+	}
+
+	// consume async iterable
+	async consume_async_iterable_any(w_subject) {
+		// prep decoder in case needed
+		const d_decoder = new DecoderProxy();
+
+		// each chunk
+		for await(z_chunk of w_subject) {
+			let s_chunk = '';
+
+			// already string
+			if('string' === typeof z_chunk) {
+				s_chunk = z_chunk;
+			}
+			// buffer chunk
+			else if(ArrayBuffer.isView(z_chunk) || z_chunk instanceof ArrayBuffer) {
+				s_chunk = d_decoder.decode(z_chunk);
+			}
+
+			// nothing to write
+			if(!s_chunk) continue;
+
+			@{write_chunk()}
+		}
+
+		// flush
+		const s_flush = d_decoder.flush();
+		if(s_flush) {
+			const s_chunk = s_flush;
+			@{write_chunk()}
+		}
+		
+		// eof
+		const e_eof = this.eof(1);
+
+		// handle error
+		if(e_eof) return this._fe_error(e_eof);
+
+		@- B_LOAD
+			return this._k_dataset;
+		@;
+	}
+
+	// consume WHATWG ReadableStream
+	consume_whatwg_readable_stream_strings(d_stream) {
+		// ref reader
+		const d_reader = d_stream.getReader();
+
+		// go async
+		return new Promise((fk_consumed, fe_reject) => {
+			// re-route error handling to promise rejection
+			if(F_THROW === this._fe_error) {
+				this._fe_error = fe_reject;
+			}
+			// wrap error handler
+			else {
+				// ref original handler
+				const fe_handler = this._fe_error;
+
+				// set new handler
+				this._fe_error = (e_read) => {
+					// callback user-defined error handler
+					fe_handler(e_read);
+
+					// then, reject promise
+					fe_reject(e_read);
+				};
+			}
+
+			// start processing
+			d_reader.read().then(function process(g_read) {
+				const {
+					value: s_chunk,
+					done: b_done,
+				} = g_read;
+
+				// stream is done
+				if(b_done) {
+					// eof
+					const e_eof = this.eof(1);
+
+					// handle error
+					if(e_eof) return this._fe_error(e_eof);
+
+					@- B_LOAD
+						return fk_consumed(this._k_dataset);
+					@:
+						return fk_consumed();
+					@;
+				}
+
+				@{write_chunk()}
+
+				// read next chunk
+				d_reader.read().then(process);
+			});
+		});
+	}
+
+	// consume a node.js stream
 	consume_stream(ds_input) {
 		// input stream destroyed flag
 		let b_destroyed = false;

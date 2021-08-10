@@ -387,7 +387,7 @@ import {
 (async() => {
     let statementCount = 0;
 
-    // 1st arg can be a string or ReadableStream
+    // 1st arg can be a string, node.js stream, WHATWG ReadableStream, Response, async iterable, TypedArray, ArrayBuffer, or a Promise that resolves to any of those
     await TurtleReader.run(process.stdin, {
         // options...
 
