@@ -42,9 +42,9 @@ Please [open an issue](https://github.com/blake-regalia/graphy.js/issues) on the
  - [Advanced Typings](#advanced-typings) for TypeScript allow for deep static code analysis
  - BREAKING:
    - [Scoped Packages](#scoped-packages) have changed names and will require migration
-   - [Content Readers](#content-readers) have a different (siimpler) interface
+   - [Content Readers](#content-readers) have a different (simpler) interface
  - Roadmap:
-   - [Content Writers](#content-writers) will receive new syle options and support reserializing collections read from disk
+   - [Content Writers](#content-writers) will receive new style options and support reserializing collections read from disk
 
 
 

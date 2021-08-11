@@ -69,10 +69,9 @@
 @import '../text.read.jmacs'
 
 import uri from 'uri-js';
-import string_decoder from 'string_decoder';
 
-import {stream} from '@@graphy/internal';
 import {DataFactory} from '@@graphy/core';
+import {stream} from '@@graphy/core/_internal';
 
 @if B_LOAD
 	@if B_LOAD_GSPO_BUILDER
@@ -1576,56 +1575,8 @@ function count_lines_until(s_chunk, i_until=0) {
 	data: {},  // attach data listener last
 };
 
-@{create_parsing_export_class()}
 
-const F_NOOP = () => {};
-const F_THROW = (e_read) => {
-	throw e_read;
-};
-
-class TextDecoderProxy {
-	constructor() {
-		const d_decoder = this._d_decoder = new TextDecoder('utf-8', {
-			fatal: true,
-		});
-
-		this.decode = ab => d_decoder.decode(ab);
-	}
-
-	flush() {
-		return this._d_decoder.decode();
-	}
-}
-
-class StringDecoderProxy {
-	constructor() {
-		const d_decoder = this._d_decoder = new StringDecoder('utf8');
-
-		this.decode = ab => d_decoder.write(ab);
-	}
-
-	flush() {
-		return this._d_decoder.end();
-	}
-}
-
-class DecoderUnavailableProxy {
-	decode() {
-		throw new Error(`Unable to decode chunk of bytes since no UTF-8 encoder is available in the current environment`);
-	}
-
-	flush() {
-		return '';
-	}
-}
-
-const DecoderProxy = 'function' === typeof TextDecoder
-	? TextDecoderProxy
-	: ('function' === typeof StringDecoder
-		? StringDecoderProxy
-		: DecoderUnavailableProxy)
-
-class Consumer {
+export class Consumer {
 	constructor(gc_consumer={}, dc_actor=null) {
 		// impl-specific configs
 		let {
@@ -2134,6 +2085,8 @@ class Consumer {
 
 	// consume async iterable
 	async consume_async_iterable_any(w_subject) {
+		const DecoderProxy = await stream.resolve_decoder_proxy();
+
 		// prep decoder in case needed
 		const d_decoder = new DecoderProxy();
 
@@ -2350,7 +2303,8 @@ class Consumer {
 		// set decoding on write
 		else {
 			let f_write = ds_@{gc_stream.kind}.write;
-			let d_decoder = new string_decoder.StringDecoder('utf8');
+			let d_decoder; 
+			resolve_decoder_proxy().then(DecoderProxy => d_decoder = new DecoderProxy('utf8'));
 
 			let f_write_track = (s_chunk, s_encoding, fk_write) => {
 				// TODO: optimize by testing for multibyte chars and using string length instead?
@@ -2363,11 +2317,11 @@ class Consumer {
 			let f_decode_write_track = (ab_chunk, s_encoding, fk_write) => {
 				let nb_chunk = this._nb_last = ab_chunk.length;
 				this._nb_seen += nb_chunk;
-				return f_write.call(ds_@{gc_stream.kind}, d_decoder.write(ab_chunk), s_encoding, fk_write);
+				return f_write.call(ds_@{gc_stream.kind}, d_decoder.decode(ab_chunk), s_encoding, fk_write);
 			};
 
 			let f_decode_write = (ab_chunk, s_encoding, fk_write) => {
-				return f_write.call(ds_@{gc_stream.kind}, d_decoder.write(ab_chunk), s_encoding, fk_write);
+				return f_write.call(ds_@{gc_stream.kind}, d_decoder.decode(ab_chunk), s_encoding, fk_write);
 			};
 
 			ds_@{gc_stream.kind}.write = function(z_chunk, s_encoding, fk_write) {
@@ -2380,6 +2334,20 @@ class Consumer {
 					// chunk is buffer; adapt by setting decoder write method
 					else {
 						ds_@{gc_stream.kind}.write = b_byte_tracking? f_decode_write_track: f_decode_write;
+
+						// also ensure final bits are flushed
+						const f_@{gc_stream.terminal} = ds_@{gc_stream.kind}._@{gc_stream.terminal};
+						ds_@{gc_stream.kind}._@{gc_stream.terminal} = (fke_@{gc_stream.terminal}) => {
+							const f_ack = () => f_@{gc_stream.terminal}.call(ds_transform, fke_@{gc_stream.terminal});
+
+							const s_@{gc_stream.terminal} = d_decoder.flush();
+							if(s_@{gc_stream.terminal}) {
+								ds_@{gc_stream.kind}.write(s_@{gc_stream.terminal}, 'utf8', f_ack);
+							}
+							else {
+								f_ack();
+							}
+						};
 					}
 
 					// use set method

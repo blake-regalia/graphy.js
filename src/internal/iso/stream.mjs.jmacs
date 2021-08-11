@@ -1,112 +1,112 @@
 import stream from 'readable-stream';
 
 
-@> bucket()
-	@//@class
-	bucket(s_encoding='utf8') {
-		const g_readable = this._readableState;
+function Stream$bucket(s_encoding='utf8') {
+	const g_readable = this._readableState;
+
+	// async operation
+	return new Promise((fk_bucket, fe_bucket) => {
+		// writable descriptor
+		let gc_writable = null;
 
 		// object mode
 		if(g_readable.objectMode) {
-			// async operation
-			return new Promise((fk_bucket, fe_bucket) => {
-				const a_data = [];
+			const a_data = [];
 
-				// pipe to writable
-				this.pipe(new stream.Writable({
-					write(w_event, s_write_encoding, fk_write) {
-						a_data.push(w_event);
-						fk_write();
-					},
+			// create writable
+			gc_writable = {
+				write(w_event, s_write_encoding, fk_write) {
+					a_data.push(w_event);
+					fk_write();
+				},
 
-					writev(a_chunks, fk_writev) {
-						a_data.push(...a_chunks);
-						fk_writev();
-					},
-				}))
-					// error
-					.on('error', (e_stream) => {
-						fe_bucket(e_stream);
-					})
-					// wait for it to finish
-					.on('finish', () => {
-						fk_bucket(a_data);
-					});
-			});
+				writev(a_chunks, fk_writev) {
+					a_data.push(...a_chunks);
+					fk_writev();
+				},
+			};
 		}
 		// utf8-encoded strings
 		else if('utf8' === s_encoding || 'utf-8' === s_encoding) {
-			// async operation
-			return new Promise((fk_bucket, fe_bucket) => {
-				let s_data = '';
+			let s_data = '';
 
-				// set encoding
-				this.setEncoding(s_encoding);
+			// set encoding
+			this.setEncoding(s_encoding);
 
-				// pipe to writable
-				this.pipe(new stream.Writable({
-					decodeStrings: false,
+			// create writable
+			gc_writable = {
+				decodeStrings: false,
 
-					write(s_chunk, s_write_encoding, fk_write) {
-						s_data += s_chunk;
-						fk_write();
-					},
+				write(s_chunk, s_write_encoding, fk_write) {
+					s_data += s_chunk;
+					fk_write();
+				},
 
-					writev(a_chunks, fk_writev) {
-						s_data += a_chunks.join('');
-						fk_writev();
-					},
-				}))
-					// error
-					.on('error', (e_stream) => {
-						fe_bucket(e_stream);
-					})
-					// wait for it to finish
-					.on('finish', () => {
-						fk_bucket(s_data);
-					});
-			});
+				writev(a_chunks, fk_writev) {
+					s_data += a_chunks.join('');
+					fk_writev();
+				},
+			};
 		}
 		// buffer
 		else if('buffer' === s_encoding) {
-			// async operation
-			return new Promise((fk_bucket, fe_bucket) => {
-				let ab_data = Buffer.from([]);
+			let ab_data = Buffer.from([]);
 
-				// pipe to writable
-				this.pipe(new stream.Writable({
-					decodeStrings: true,
+			// create writable
+			gc_writable = {
+				decodeStrings: true,
 
-					write(ab_chunk, s_write_encoding, fk_write) {
-						ab_data = Buffer.concat([ab_data, ab_chunk], ab_data.length+ab_chunk.length);
-						fk_write();
-					},
-				}))
-					// error
-					.on('error', (e_stream) => {
-						fe_bucket(e_stream);
-					})
-					// wait for it to finish
-					.on('finish', () => {
-						fk_bucket(ab_data);
-					});
-			});
+				write(ab_chunk, s_write_encoding, fk_write) {
+					ab_data = Buffer.concat([ab_data, ab_chunk], ab_data.length+ab_chunk.length);
+					fk_write();
+				},
+			};
 		}
-	}
-@;
+		// anything else
+		else {
+			const a_data = [];
 
-@> rdfjs_import()
-	@//@object-literal
-	// rdfjs impl
-	import(ds_source) {
-		ds_source
-			.on('data', w_chunk => this.write(w_chunk))
-			.on('end', () => this.end())
-			.on('error', e_read => this.emit('error', e_read));
+			// create writable
+			gc_writable = {
+				write(w_event, s_write_encoding, fk_write) {
+					a_data.push(w_event);
+					fk_write();
+				},
 
-		return this;
-	}
-@;
+				writev(a_chunks, fk_writev) {
+					a_data.push(...a_chunks);
+					fk_writev();
+				},
+			};
+		}
+
+		// writable options set
+		if(gc_writable) {
+			// pipe to writable
+			return this.pipe(new stream.Writable(gc_writable))
+				// error
+				.on('error', (e_stream) => {
+					fe_bucket(e_stream);
+				})
+				// wait for it to finish
+				.on('finish', () => {
+					fk_bucket(a_data);
+				});
+		}
+
+		return fe_bucket(`Unable to deduce stream's encoding`);
+	});
+}
+
+function Stream$import(ds_source) {
+	ds_source
+		.on('data', w_chunk => this.write(w_chunk))
+		.on('end', () => this.end())
+		.on('error', e_read => this.emit('error', e_read));
+
+	return this;
+}
+Readable.prototype.import = Stream$import;
 
 @//@
 export class Readable extends stream.Readable {
@@ -124,34 +124,18 @@ export class Readable extends stream.Readable {
 			},
 		});
 	}
-
-	constructor(gc_readable={}) {
-		super(gc_readable);
-
-		// use iterator
-		if(gc_readable.iterator) {
-			throw new Error('readable stream iterator shortcut not yet implemented');
-		}
-	}
-
-	@{bucket()}
 }
+Readable.prototype.bucket = Stream$bucket;
 
 
 
-export class Writable extends stream.Writable {
-	@{rdfjs_import()}
-}
+export class Writable extends stream.Writable {}
+Writable.prototype.import = Stream$import;
 
-export class Duplex extends stream.Duplex {
-	@{bucket()}
-}
+export class Duplex extends stream.Duplex {}
+Duplex.prototype.bucket = Stream$bucket;
 
 export class Transform extends stream.Transform {
-	@{bucket()}
-
-	@{rdfjs_import()}
-
 	demolish(e_destroy) {
 		// do not allow to push
 		this.push = (z_chunk) => {
@@ -175,6 +159,8 @@ export class Transform extends stream.Transform {
 		}
 	}
 }
+Transform.prototype.import = Stream$import;
+Transform.prototype.bucket = Stream$bucket;
 
 export class QuadsToOther extends Transform {
 	constructor(gc_transform={}) {
@@ -228,6 +214,8 @@ export class QuadsToWritable extends QuadsToOther {
 }
 
 Transform.QuadsToOther = QuadsToOther;
+
+
 
 const {
 	Stream,

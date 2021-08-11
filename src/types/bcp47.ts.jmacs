@@ -326,6 +326,14 @@ type AssertionError<
 			return `${sj_expr} extends infer ${si_var}`;
 		}
 
+		cassign(si_var, sj_expr) {
+			const [, sj_var, s_cast] = /^([\w0-9_$]+)(?:<([^>]+)>)?$/.exec(si_var);
+			return [
+				`${sj_expr} extends infer ${sj_var}`,
+				`${sj_var} extends ${s_cast}`,
+			];
+		}
+
 		assign_str(si_var, sj_expr) {
 			return `${sj_expr} extends \`\${infer ${si_var}}\``;
 		}
@@ -502,7 +510,7 @@ type AssertionError<
 		const k_coder = new Coder('BCP-47 language tag');
 		const h_grammar = fk_coder(k_coder);
 		for(const [si_type, h_struct] of ode(h_grammar)) {
-			k_coder._si_production =  si_type.replace(/^\s*([a-zA-Z0-9$_]+).*$/, '$1');
+			k_coder._si_production =  si_type.replace(/\r?\n/g, '').replace(/^\s*([a-zA-Z0-9$_]+).*$/, '$1');
 			a_out.push(`type ${si_type} = ${k_coder.compile_struct(h_struct)};`);
 		}
 		return a_out.join('\n\n');
@@ -591,7 +599,8 @@ type Parsed<
 	{
 		_input: string;
 		_normalized: string;
-		extendedLanguageSubtags: string[];
+		_rest: Cast<[], string[]>;
+		extendedLanguageSubtags: Cast<[], string[]>;
 	}
 >;
 
@@ -634,8 +643,7 @@ type SetLanguage<
 			k.assign_str('s_lower', 'Lowercase<s_input>'),
 
 			// g_init := {_input: s_input} as Parsed
-			k.assign('g_init', 'Parsed<{_input:s_input; _normalized:s_lower;}>'),
-			'g_init extends Parsed',
+			...k.cassign('g_init<Parsed>', 'Parsed<{_input:s_input; _normalized:s_lower;}>'),
 		])]: () => ({
 			[join([
 				// split at first '-'
@@ -645,12 +653,12 @@ type SetLanguage<
 				k.assign('g_parsed', 'Language<g_init, s_language>')
 			])]: () => ({
 				// invalid language
-				['g_parsed extends Invalid']: 'g_language',
+				['g_parsed extends Invalid']: 'g_parsed',
 
 				// valid language
 				['g_parsed extends Parsed<SetLanguage>']: `LangtagAfterLanguage<
 					g_parsed,
-					s_rest,
+					s_rest
 				>`,
 
 				// cache([
@@ -743,42 +751,42 @@ type SetLanguage<
 	>`]: cache([
 		k.merge('g_parsed'),
 	], out => ({
-		// split at first '-'
-		's_input extends `${infer s_word0}-${infer s_rest}`': () => ({
-			// region(2ALPHA): selected ISO 639 codes
-			'R_ALPHA<s_rest>[3]?': ({region:'s_'}),
+		// // split at first '-'
+		// 's_input extends `${infer s_word0}-${infer s_rest}`': () => ({
+		// 	// region(2ALPHA): selected ISO 639 codes
+		// 	'R_ALPHA<s_rest>[3]?': ({region:'s_'}),
 
-			// // region(2ALPHA)
-			// 2: () => ({
-			// 	// 2ALPHA: ISO 3166-1 code
-			// 	'RTA_ALPHA<s_rest>?': out({region:'s_rest'}),
-			// }),
+		// 	// // region(2ALPHA)
+		// 	// 2: () => ({
+		// 	// 	// 2ALPHA: ISO 3166-1 code
+		// 	// 	'RTA_ALPHA<s_rest>?': out({region:'s_rest'}),
+		// 	// }),
 
 
-			// // extlang(3ALPHA) | region(3DIGIT) | privateuse
-			// 3: () => ({
-			// 	...k.switch_str('String.At<s_rest, 0>', 's_rest0', {
-			// 		// region
-			// 		'DIGIT': () => ({
-			// 			// 3DIGIT: UN M.49 code
-			// 			[k.match_str('s_rest', Array(3).fill('DIGIT'))]: mlang({region:'s_rest'}),
-			// 		}),
-			// 		// privateuse | extlang
-			// 		'"x"': () => ({
-			// 			// "-" (1alphanum)
-			// 			[k.match_str('s_rest', ['"x"', '"-"', 'ALPHANUM'])]: mlang({privateuse:'s_rest'}),
+		// 	// // extlang(3ALPHA) | region(3DIGIT) | privateuse
+		// 	// 3: () => ({
+		// 	// 	...k.switch_str('String.At<s_rest, 0>', 's_rest0', {
+		// 	// 		// region
+		// 	// 		'DIGIT': () => ({
+		// 	// 			// 3DIGIT: UN M.49 code
+		// 	// 			[k.match_str('s_rest', Array(3).fill('DIGIT'))]: mlang({region:'s_rest'}),
+		// 	// 		}),
+		// 	// 		// privateuse | extlang
+		// 	// 		'"x"': () => ({
+		// 	// 			// "-" (1alphanum)
+		// 	// 			[k.match_str('s_rest', ['"x"', '"-"', 'ALPHANUM'])]: mlang({privateuse:'s_rest'}),
 
-			// 			// 3ALPHA: selected ISO 639 codes
-			// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extland:'s_rest'}),
-			// 		}),
-			// 		// extlang
-			// 		'ALPHA': () => ({
-			// 			// 3ALPHA: selected ISO 639 codes
-			// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extlang:'s_rest'}),
-			// 		}),
-			// 	}),
-			// }),
-		}),
+		// 	// 			// 3ALPHA: selected ISO 639 codes
+		// 	// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extland:'s_rest'}),
+		// 	// 		}),
+		// 	// 		// extlang
+		// 	// 		'ALPHA': () => ({
+		// 	// 			// 3ALPHA: selected ISO 639 codes
+		// 	// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extlang:'s_rest'}),
+		// 	// 		}),
+		// 	// 	}),
+		// 	// }),
+		// }),
 
 		// a_input := s_input.split('')
 		[k.assign('a_input', 'Split<s_input>')]: () => ({
@@ -786,7 +794,7 @@ type SetLanguage<
 			...k.switch_eq('StrLen<s_input>', 'nl_input', {
 				2: () => ({
 					// region(2ALPHA): ISO 3166-1 code
-					'RTA_ALPHA<a_input>?': out({region:'s_input'}),
+					'RTA_ALPHA<Cast<a_input, string[]>>?': out({region:'s_input'}),
 				}),
 			}),
 		}),
@@ -805,20 +813,70 @@ type SetLanguage<
 				>?`]: `ExtendedLanguageSubtags<
 					Merge<
 						{
-							extendedLanguageSubtags: [...g_init['extendedLanguageSubtags'], Cast<s_part, string>],
+							extendedLanguageSubtags: [...g_init['extendedLanguageSubtags'], Cast<s_part, string>];
 						},
 						g_init
 					>,
 					List.Omit<a_parts, 0>,
 					Add<c_recursions, 1>
 				>`,
-				[$ELSE]: 'g_init',
+				[$ELSE]: 'Merge<{_rest: a_parts}, g_init>',
 			}),
-			[$ELSE]: 'g_init',
+			[$ELSE]: 'Merge<{_rest: a_parts}, g_init>',
 		}),
 		[$ELSE]: k.invalid({
 			_reason: '`Too many extended language subtags, expected at most 3 subtags`',
 		}),
+	},
+
+	[`Script<
+		g_init extends Parsed,
+		a_parts extends string[],
+	>`]: {
+		'a_parts[0] extends `${infer s_part}`': () => ({
+			[`And<
+				Equals<StrLen<s_part>, 4>,
+				RTS_ALPHA<s_part>
+			>?`]: `Merge<
+				{
+					_rest: List.Omit<a_parts, 0>;
+					script: s_part;
+				},
+				g_init
+			>`,
+			[$ELSE]: 'g_init',
+		}),
+		[$ELSE]: 'g_init',
+	},
+
+	[`Region<
+		g_init extends Parsed,
+		a_parts extends string[],
+	>`]: {
+		'a_parts[0] extends `${infer s_part}`': () => ({
+			[`And<
+				Equals<StrLen<s_part>, 2>,
+				RTS_ALPHA<s_part>
+			>?`]: `Merge<
+				{
+					_rest: List.Omit<a_parts, 0>;
+					region: s_part;
+				},
+				g_init
+			>`,
+			[`And<
+				Equals<StrLen<s_part>, 3>,
+				RTS_DIGIT<s_part>
+			>?`]: `Merge<
+				{
+					_rest: List.Omit<a_parts, 0>;
+					region: s_part;
+				},
+				g_init
+			>`,
+			[$ELSE]: 'g_init',
+		}),
+		[$ELSE]: 'g_init',
 	},
 
 	[`LangtagAfterLanguage<
@@ -829,9 +887,25 @@ type SetLanguage<
 			// a_lower := s_lower.split('-')
 			k.assign('a_parts', 'Split<s_input, "-">'),
 
-			k.assign('g_parsed', 'ExtendedLanguageSubtags<g_init, s_input>')
+			// g_parsed := ExtendedLanguageSubtags(g_init, a_parts)
+			...k.cassign('g_parsed<Parsed>', 'ExtendedLanguageSubtags<g_init, Cast<a_parts, string[]>>'),
+
+			// a_rest := g_parsed.rest
+			k.assign('a_rest', 'g_parsed["_rest"]'),
+
+			// g_parsed_script := Script(a_rest)
+			...k.cassign('g_parsed_script<Parsed>', 'Script<g_parsed, Cast<a_rest, string[]>>'),
+
+			// a_rest_script := g_parsed_script.rest
+			k.assign('a_rest_script', 'g_parsed_script["_rest"]'),
+
+			// g_parsed_region := Region(a_rest_scrpit)
+			...k.cassign('g_parsed_region<Parsed>', 'Region<g_parsed_script, Cast<a_rest_script, string[]>>'),
+
+			// a_rest_region := g_parsed_region.rest
+			k.assign('a_rest_region', 'g_parsed_region["_rest"]'),
 		])]: () => ({
-			// [k.assign('g_parsed_extlang', 'ExtendedLanguageSubtags<g_parsed, s_input>')]: 
+			'True?': 'g_parsed_region',
 		}),
 	},
 }))}
@@ -854,14 +928,14 @@ type SetLanguage<
 
 	@*{
 		const A_FIXTURES = [
-			'aa-111','*aa-7-123abc-abc-a-12','aa-b1b1b-6a8b-cccccc','aa-b1b1b','aa-bb','aa-bbb-ccc-1111-ccccc-b1b1b','aa-bbb-ccc-ddd','aa-bbb','aa-bbbb-cc','aa-bbbb','aa-x-1234ab-d','aa',
+			'aa-111','aa-7-123abc-abc-a-12','aa-b1b1b-6a8b-cccccc','aa-b1b1b','aa-bb','aa-bbb-ccc-1111-ccccc-b1b1b','aa-bbb-ccc-ddd','aa-bbb','aa-bbbb-cc','aa-bbbb','aa-x-1234ab-d','aa',
 			'aaa-bbb-ccc-ddd-abcd-123-abc123-0abc-b-01-abc123-x-01ab-abc12','aaa-bbb-ccc','aaaa','aaaaa','aaaaaa','aaaaaaa','aaaaaaaa','afb','ar-afb','art-lojban','ast','az-Arab-x-AZE-derbend','az-Latn',
 			'cel-gaulish','cmn-Hans-CN','de-CH-1901','de-CH-x-phonebk','de-DE-u-co-phonebk','de-DE','de-Qaaa','de','en-GB-oed','en-US-u-islamcal','en-US-x-twain','en-US','en-a-myext-b-another','en',
 			'es-005','es-419','fr-CA','fr','hak','hy-Latn-IT-arevela','i-ami','i-bnn','i-default','i-enochian','i-hak','i-klingon','i-lux','i-mingo','i-navajo','i-pwn','i-tao','i-tay','i-tsu','ja','mas',
 			'no-bok','no-nyn','qaa-Qaaa-QM-x-southern','sgn-BE-FR','sgn-BE-NL','sgn-CH-DE','sl-IT-nedis','sl-nedis','sl-rozaj-biske','sl-rozaj','sr-Cyrl','sr-Latn-QM','sr-Latn-RS','sr-Latn','sr-Qaaa-RS',
 			'x-111-aaaaa-BBB','x-whatever','yue-HK','zh-CN-a-myext-x-private','zh-Hans-CN','zh-Hans','zh-Hant-HK','zh-Hant','zh-cmn-Hans-CN','zh-guoyu','zh-hakka','zh-min-nan','zh-min','zh-xiang',
 			'zh-yue-HK','zh-yue',
-		];
+		].map(s => `*${s}`);
 
 		const G_CASES = {
 			...A_FIXTURES.reduce((h_out, si_fixture) => ({

@@ -1,0 +1,31 @@
+import {
+	F_NOOP,
+	F_THROW,
+	create_static_run_method,
+} from './_interface.mjs';
+
+
+@> create_export_class(s_format, s_mode)
+	@.{
+		const s_label = ({
+			ttl: 'Turtle',
+			trig: 'TriG',
+		})[s_format];
+
+		const b_load = 'load' === s_mode;
+		const sji_export = s_label+s_mode[0].toUpperCase()+s_mode.substr(1)+'erLite';
+		const sji_consumer = /* syntax: js */ `${sji_export}Consumer`;
+	}
+
+	import {
+		Consumer as @{sji_consumer},
+	} from './ttl/@{s_format}/@{s_mode}.mjs';
+
+	export const @{sji_export} = {
+		run: create_static_run_method(@{sji_consumer}, null),
+	}
+
+@;
+
+@{create_export_class('ttl', 'read')}
+@{create_export_class('ttl', 'loaod')}

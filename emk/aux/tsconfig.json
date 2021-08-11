@@ -1,0 +1,39 @@
+{
+	"include": [
+		"./**/*.ts",
+	],
+	"exclude": [
+		"node_modules",
+		"**/node_moodules/*"
+	],
+ 
+	"compilerOptions": {
+	//   "baseUrl": "./src",
+	//   "rootDir": "./src",
+ 
+		"module": "es2020",
+		// "module": "commonjs",
+		"target": "es2020",
+		"lib": ["es2020"],
+
+		"moduleResolution": "node",
+
+		//   "lib": ["es2019", "es2020.promise", "es2020.bigint", "es2020.string", "es2020.symbol.wellknown"],
+
+
+
+		"skipLibCheck": true,
+
+		// "allowJs": true,
+
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+
+		"forceConsistentCasingInFileNames": true,
+
+		"resolveJsonModule": true,
+		"strict": true,
+
+	  "sourceMap": true
+	}
+ }
