@@ -300,9 +300,9 @@ const isSame = hello.equals(hey);
 // at this point, `isSame` has inheritted the type `false` because the typings for `.equals` deduced the terms have different values
 
 // ability to parse and validate BCP-47 language tags
-typeof BCP47<'en-far-US-POSIX'> extends {
-    _input: 'en-far-US-POSIX';
-    _normalized: 'en-far-us-posix';
+typeof BCP47<'en-far-US-POSIX-x-private-use'> extends {
+    _input: 'en-far-US-POSIX-x-private-use';
+    _normalized: 'en-far-us-posix-x-private-use';
     language: 'en';
     extendedLanguageSubtags: ['far'],
     region: 'US';
