@@ -300,9 +300,12 @@ type AssertionError<
 
 	const $ELSE = Symbol('else');
 
+	const $ASSERTIONS = Symbol('assertions');
 
-	const recurse_expand = (a_conditions, w_actions) => () => ({
+
+	const recurse_expand = (a_conditions, w_actions, h_append={}) => () => ({
 		[a_conditions[0]]: a_conditions.length > 1? recurse_expand(a_conditions.slice(1), w_actions): w_actions,
+		...h_append,
 	});
 
 	let i_assertion_error = 0;
@@ -393,6 +396,18 @@ type AssertionError<
 		}
 
 		compile_struct(h_struct, a_path=['/']) {
+			let h_append = {};
+
+			let s_assertion_input = 's_input';
+			const gc_assertion = h_struct[$ASSERTIONS];
+			if(gc_assertion) {
+				if('string' === typeof gc_assertion.input) {
+					s_assertion_input = gc_assertion.input;
+				}
+
+				h_append[$ASSERTIONS] = gc_assertion;
+			}
+
 			// refactor
 			{
 				const a_refactor = [];
@@ -404,7 +419,7 @@ type AssertionError<
 						b_refactored = true;
 						a_refactor.push([
 							a_conditions[0],
-							recurse_expand(a_conditions.slice(1), w_actions),
+							recurse_expand(a_conditions.slice(1), w_actions, h_append),
 						]);
 					}
 					else {
@@ -416,7 +431,10 @@ type AssertionError<
 					return this.compile_struct(a_refactor.reduce((h_out, [si_key, w_value]) => ({
 						...h_out,
 						[si_key]: w_value,
-					}), {}), a_path);
+					}), {
+						...h_append,
+						...(h_struct[$ELSE]? {[$ELSE]:h_struct[$ELSE]}: {}),
+					}), a_path);
 				}
 			}
 
@@ -426,13 +444,18 @@ type AssertionError<
 				`assertion_id: ${i_condition};`,
 				`path: [${a_path.map(s => `\`${escape_ts(s)}\``).join(', ')}];`,
 				`false: \`${escape_ts(Object.keys(h_struct).reverse().slice(-1) || '', true)}\`;`,
-				`input: s_input;`,
+				`input: ${s_assertion_input};`,
 				`scope: {
 					${[...new Set(Object.keys(h_struct)
-						.map(sj => sj.replace(/^(.*?) extends .*$/, '$1')))]
+						.map(sj => sj.replace(/^(.*?) extends .*$/, '$1').replace(/\n\s*/g, ' ')))]
 						.reduce((a_out, sj) => [
 							...a_out,
-							`'${sj}': ${sj.replace(/\?$/, '')};`,
+							`'${sj.replace(/\n\s*/, ' ')}': ${
+									sj
+										.replace(/\n\s*/g, ' ')
+										.replace(/\?$/, ``)
+										.replace(/( extends infer .*)$/, `$1? 'True': 'False'`)
+								};`,
 						], [])
 						.join(' ')
 					}
@@ -496,7 +519,7 @@ type AssertionError<
 		}
 
 		merge(si_var) {
-			return h_append => `Merge<Cast<${si_var}, object>, ${this.valid(h_append)}>`;
+			return h_append => `Merge<${this.valid(h_append)}, Cast<${si_var}, object>>`;
 		}
 
 		steps(a_steps) {
@@ -576,10 +599,35 @@ type AssertionError<
 })}
 
 @{`
+type IRREGULAR = 
+	| 'en-GB-oed'
+	| 'i-ami'
+	| 'i-bnn'
+	| 'i-default'
+	| 'i-enochian'
+	| 'i-hak'
+	| 'i-klingon'
+	| 'i-lux'
+	| 'i-mingo'
+	| 'i-navajo'
+	| 'i-pwn'
+	| 'i-tao'
+	| 'i-tay'
+	| 'i-tsu'
+	| 'sgn-BE-FR'
+	| 'sgn-BE-NL'
+	| 'sgn-CH-DE';
 
-type RTAS_ALPHA<a_parts extends string[]> = Extends<{
-	[K in keyof a_parts]: RTS_ALPHA<Cast<a_parts[K], string>>;
-}, 1[]>;
+type REGULAR = 
+	| 'art-lojban'
+	| 'cel-gaulish'
+	| 'no-bok'
+	| 'no-nyn'
+	| 'zh-guoyu'
+	| 'zh-hakka'
+	| 'zh-min'
+	| 'zh-min'
+	| 'zh-xiang';
 
 type RTS_DIGIT_ALPHANUM<
 	s_input extends string,
@@ -589,27 +637,76 @@ type RTA_DIGIT_ALPHANUM<
 	a_input extends string[],
 > = And<
 	Extends<a_input[0], DIGIT>,
-	Extends<List.Omit<a_input, 0>, ALPHA[]>
+	Extends<List.Omit<a_input, 0>, ALPHANUM[]>
 >;
 
-type Parsed<
+type ExtensionStruct = {
+	singleton: ALPHANUM;
+	extensions: string[];
+};
+
+type Parsed = {
+	_input: string;
+	_normalized: string;
+	_rest: string[];
+	language: string;
+	extendedLanguageSubtags: string[];
+	script: string | null;
+	region: string | null;
+	variants: string[];
+	extensions: ExtensionStruct[];
+	privateuse: string[];
+	regular: string | null;
+	irregular: string | null;
+};
+
+type ParsedDefaults<
 	g_set extends object={},
 > = Merge<
 	g_set,
 	{
-		_input: string;
-		_normalized: string;
-		_rest: Cast<[], string[]>;
-		extendedLanguageSubtags: Cast<[], string[]>;
+		_input: '';
+		_normalized: '';
+		_rest: [];
+		language: '';
+		extendedLanguageSubtags: [];
+		script: null;
+		region: null;
+		variants: [];
+		extensions: [];
+		privateuse: [];
+		regular: null;
+		irregular: null;
 	}
 >;
+
+type Finalize<
+	g_init extends Parsed,
+> = Omit<g_init, "_rest">;
 
 type SetLanguage<
 	s_language extends string=string,
 > = {
 	language: s_language;
 };
+
+type NestedExtensionsStruct = {
+	_rest: string[];
+	extensions: string[];
+};
+
+type NestedPrivateUsesStruct = {
+	_rest: string[];
+	privateuse: string[];
+};
 `}
+
+@.{
+
+	const G_ELSE_REST = ({
+		[$ELSE]: 'Merge<{_rest: a_parts}, g_init>',
+	});
+}
 
 @{grammar(k => ({
 	[`Language<
@@ -618,7 +715,7 @@ type SetLanguage<
 	>`]: {
 		// length of input
 		[k.assign('nl_input', `StrLen<s_input>`)]: cache([
-			'Merge<g_parsed, SetLanguage<s_input>>',  // k.valid({language:'s_input'})
+			'Merge<SetLanguage<s_input>, Finalize<g_parsed>>',
 			h_out => () => ({
 				...h_out,
 				[$ELSE]: k.invalid({
@@ -643,63 +740,37 @@ type SetLanguage<
 			k.assign_str('s_lower', 'Lowercase<s_input>'),
 
 			// g_init := {_input: s_input} as Parsed
-			...k.cassign('g_init<Parsed>', 'Parsed<{_input:s_input; _normalized:s_lower;}>'),
+			...k.cassign('g_init<Parsed>', 'ParsedDefaults<{_input:s_input; _normalized:s_lower;}>'),
 		])]: () => ({
-			[join([
-				// split at first '-'
-				's_lower extends `${infer s_language}-${infer s_rest}`',
+			// grandfathered irregular
+			's_lower extends IRREGULAR': 'Finalize<Merge<{irregular:s_lower}, g_init>>',
+
+			// grandfathered regular
+			's_lower extends REGULAR': 'Finalize<Merge<{regular:s_lower}, g_init>>',
+
+			// split at first '-'
+			's_lower extends `${infer s_part_0}-${infer s_rest}`': () => ({
+				// 'x' privateuse
+				's_part_0 extends "x"': () => ({
+					[join([
+						...k.cassign('g_parsed_privateuses<Parsed>', 'PrivateUse<g_init, Split<s_lower, "-">>'),
+					])]: 'Finalize<g_parsed_privateuses>',
+				}),
 
 				// everything before '-'
-				k.assign('g_parsed', 'Language<g_init, s_language>')
-			])]: () => ({
-				// invalid language
-				['g_parsed extends Invalid']: 'g_parsed',
+				[k.assign('g_parsed_language', 'Language<g_init, s_part_0>')]: () => ({
+					// valid language
+					['g_parsed_language extends Parsed']: `LangtagAfterLanguage<
+						g_parsed_language,
+						s_rest
+					>`,
 
-				// valid language
-				['g_parsed extends Parsed<SetLanguage>']: `LangtagAfterLanguage<
-					g_parsed,
-					s_rest
-				>`,
+					[$ELSE]: 'g_parsed_language',
+				}),
 
-				// cache([
-				// 		k.merge('g_language'),
-				// 	], out => () => ({
-				// 		// a_rest := s_rest.split('') as string[]
-				// 		[join([
-				// 			k.assign('a_rest', 'Split<s_rest>'),
-				// 			'a_rest extends string[]',
-				// 		])]: () => ({
-				// 			// everything after '-'
-				// 			...k.switch_eq('StrLen<s_rest>', 'nl_rest', {
-				// 				2: () => ({
-				// 					// region(2ALPHA): selected ISO 639 codes
-				// 					'RTA_ALPHA<a_rest>?': out({region:'s_rest'}),
-				// 				}),
-
-				// 				3: () => ({
-				// 					// "-" extlang(3ALPHA): selected ISO 639 codes
-				// 					'RTA_ALPHA<a_rest>?': out({extendedLanguageSubtags:['s_rest']}),
-
-				// 					// region(3DIGIT): UN M.49 code
-				// 					'RTA_DIGIT<a_rest>?': out({region:'s_rest'}),
-
-				// 					// privateuse("x" "-" ALPHANUM)
-				// 					[$ELSE]: 'PrivateUse<g_language, s_rest>',
-				// 				}),
-
-				// 				4: () => ({
-				// 					// script(4ALPHA): ISO 15924 code
-				// 					'RTA_ALPHA<a_rest>?': out({script:'s_rest'}),
-
-				// 					// variant(DIGIT 3ALPHANUM): registered variants
-				// 					'RTS_DIGIT_ALPHANUM<s_rest>?': out({variant:'s_rest'}),
-				// 				}),
-
-				// 				[$ELSE]: 'LangtagAfterScript<g_language, s_rest>',
-				// 			}),
-				// 		}),
-				// 	}),
-				// ),
+				[$ELSE]: k.invalid({
+					_reason: '`Unable to parse "${s_lower}"`',
+				}),
 			}),
 
 			// no '-'
@@ -731,77 +802,74 @@ type SetLanguage<
 		...g_invalid,
 	})),
 
-	[`PrivateUse<
-		g_parsed extends Parsed,
-		s_input extends string,
-	>`]: {
-		// s_input.startsWith('x-')
-		's_input extends `x${infer s_name}`': () => ({
-			[k.assign('a_parts', 'Split<s_name, "-">')]: 'PrivateNames<g_parsed, s_input, Cast<a_parts, string[]>>',
-		}),
-		[$ELSE]: k.invalid({
-			_reason: '`Must match /^x(-[a-z0-9]{1,8})+/`',
-			privateuse: 's_input',
-		}),
-	},
-
-	[`LangtagAfterScript<
-		g_parsed extends Parsed<SetLanguage>,
-		s_input extends string,
+	[`NestedPrivateUses<
+		a_parts extends string[],
+		a_prev extends string[]=[],
 	>`]: cache([
-		k.merge('g_parsed'),
-	], out => ({
-		// // split at first '-'
-		// 's_input extends `${infer s_word0}-${infer s_rest}`': () => ({
-		// 	// region(2ALPHA): selected ISO 639 codes
-		// 	'R_ALPHA<s_rest>[3]?': ({region:'s_'}),
-
-		// 	// // region(2ALPHA)
-		// 	// 2: () => ({
-		// 	// 	// 2ALPHA: ISO 3166-1 code
-		// 	// 	'RTA_ALPHA<s_rest>?': out({region:'s_rest'}),
-		// 	// }),
-
-
-		// 	// // extlang(3ALPHA) | region(3DIGIT) | privateuse
-		// 	// 3: () => ({
-		// 	// 	...k.switch_str('String.At<s_rest, 0>', 's_rest0', {
-		// 	// 		// region
-		// 	// 		'DIGIT': () => ({
-		// 	// 			// 3DIGIT: UN M.49 code
-		// 	// 			[k.match_str('s_rest', Array(3).fill('DIGIT'))]: mlang({region:'s_rest'}),
-		// 	// 		}),
-		// 	// 		// privateuse | extlang
-		// 	// 		'"x"': () => ({
-		// 	// 			// "-" (1alphanum)
-		// 	// 			[k.match_str('s_rest', ['"x"', '"-"', 'ALPHANUM'])]: mlang({privateuse:'s_rest'}),
-
-		// 	// 			// 3ALPHA: selected ISO 639 codes
-		// 	// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extland:'s_rest'}),
-		// 	// 		}),
-		// 	// 		// extlang
-		// 	// 		'ALPHA': () => ({
-		// 	// 			// 3ALPHA: selected ISO 639 codes
-		// 	// 			[k.match_str('s_rest', Array(3).fill('ALPHA'))]: mlang({extlang:'s_rest'}),
-		// 	// 		}),
-		// 	// 	}),
-		// 	// }),
-		// }),
-
-		// a_input := s_input.split('')
-		[k.assign('a_input', 'Split<s_input>')]: () => ({
-			// switch length
-			...k.switch_eq('StrLen<s_input>', 'nl_input', {
-				2: () => ({
-					// region(2ALPHA): ISO 3166-1 code
-					'RTA_ALPHA<Cast<a_input, string[]>>?': out({region:'s_input'}),
-				}),
-			}),
+		{
+			[$ELSE]: `{
+				_rest: a_parts;
+				privateuse: a_prev;
+			}`,
+		},
+	], g_else_rest => ({
+		'a_parts[0] extends `${infer s_part}`': () => ({
+			[`And<
+				Extends<StrLen<s_part>, ${k.numeric(1, 8)}>,
+				RTS_ALPHANUM<s_part>
+			>?`]: `NestedPrivateUses<
+				List.Omit<a_parts, 0>,
+				[...a_prev, s_part]
+			>`,
+			...g_else_rest,
 		}),
+		...g_else_rest,
 	})),
 
+	[`PrivateUse<
+		g_init extends Parsed,
+		a_parts extends string[],
+	>`]: {
+		'a_parts[0] extends "x"': () => ({
+			'a_parts[1] extends `${infer s_part_1}`': () => ({
+				[$ASSERTIONS]: {
+					input: 'a_parts',
+				},
+				[`And<
+					Extends<StrLen<s_part_1>, ${k.numeric(1, 8)}>,
+					RTS_ALPHANUM<s_part_1>
+				>?`]: () => ({
+					[$ASSERTIONS]: {
+						input: 'a_parts',
+					},
+					[join([
+						`NestedPrivateUses<
+							List.Omit<a_parts, 0|1>
+						> extends infer g_nested`,
+						'g_nested extends NestedPrivateUsesStruct',
+					])]: `Merge<
+							{
+								_rest: g_nested["_rest"];
+								privateuse: [s_part_1, ...g_nested["privateuse"]];
+							},
+							g_init
+						>`,
+					// ...G_ELSE_REST,
+				}),
+
+				// [k.assign('a_parts', 'Split<s_name, "-">')]: 'PrivateNames<g_parsed, s_input, Cast<a_parts, string[]>>',
+			}),
+			// ...G_ELSE_REST,
+			[$ELSE]: k.invalid({
+				_reason: '`Must match /^x(-[a-z0-9]{1,8})+/`',
+				privateuse: '`${a_parts[0]}-${a_parts[1]}`',
+			}),
+		}),
+		...G_ELSE_REST,
+	},
+
 	[`ExtendedLanguageSubtags<
-		g_init extends Parsed<SetLanguage>,
+		g_init extends Parsed,
 		a_parts extends string[],
 		c_recursions extends number=0,
 	>`]: {
@@ -820,14 +888,81 @@ type SetLanguage<
 					List.Omit<a_parts, 0>,
 					Add<c_recursions, 1>
 				>`,
-				[$ELSE]: 'Merge<{_rest: a_parts}, g_init>',
+				...G_ELSE_REST,
 			}),
-			[$ELSE]: 'Merge<{_rest: a_parts}, g_init>',
+			...G_ELSE_REST,
 		}),
 		[$ELSE]: k.invalid({
 			_reason: '`Too many extended language subtags, expected at most 3 subtags`',
 		}),
 	},
+
+	[`NestedExtensions<
+		a_parts extends string[],
+		a_prev extends string[]=[],
+	>`]: cache([
+		{
+			[$ELSE]: `{
+				_rest: a_parts;
+				extensions: a_prev;
+			}`,
+		},
+	], g_else_rest => ({
+		'a_parts[0] extends `${infer s_part}`': () => ({
+			[`And<
+				Extends<StrLen<s_part>, ${k.numeric(2, 8)}>,
+				RTS_ALPHANUM<s_part>
+			>?`]: `NestedExtensions<
+				List.Omit<a_parts, 0>,
+				[...a_prev, s_part]
+			>`,
+			...g_else_rest,
+		}),
+		...g_else_rest,
+	})),
+
+	[`Extensions<
+		g_init extends Parsed,
+		a_parts extends string[],
+	>`]: {
+		'a_parts[0] extends SINGLETON': () => ({
+			'a_parts[1] extends `${infer s_part_1}`': () => ({
+				[`And<
+					Extends<StrLen<s_part_1>, ${k.numeric(2, 8)}>,
+					RTS_ALPHANUM<s_part_1>
+				>?`]: () => ({
+					[$ASSERTIONS]: {
+						input: 'a_parts',
+					},
+					[join([
+						`NestedExtensions<
+							List.Omit<a_parts, 0|1>
+						> extends infer g_nested`,
+						'g_nested extends NestedExtensionsStruct',
+					])]: `Extensions<
+						Merge<
+							{
+								extensions: [
+									...g_init["extensions"],
+									{
+										singleton: a_parts[0];
+										extensions: [s_part_1, ...g_nested["extensions"]];
+									},
+								];
+							},
+							g_init
+						>,
+						g_nested["_rest"]
+					>`,
+					// ...G_ELSE_REST,
+				}),
+				...G_ELSE_REST,
+			}),
+			...G_ELSE_REST,
+		}),
+		...G_ELSE_REST,
+	},
+
 
 	[`Script<
 		g_init extends Parsed,
@@ -879,8 +1014,44 @@ type SetLanguage<
 		[$ELSE]: 'g_init',
 	},
 
+	[`Variants<
+		g_init extends Parsed,
+		a_parts extends string[],
+		c_recursions extends number=0,
+	>`]: {
+		...cache([
+			`Variants<
+					Merge<
+						{
+							variants: [...g_init['variants'], Cast<s_part, string>];
+						},
+						g_init
+					>,
+					List.Omit<a_parts, 0>,
+					Add<c_recursions, 1>
+				>`,
+		], (sj_recurse) => ({
+			'a_parts[0] extends `${infer s_part}`': () => ({
+				// 5*8ALPHANUM
+				[`And<
+					Extends<StrLen<s_part>, ${k.numeric(5, 8)}>,
+					RTS_ALPHANUM<s_part>
+				>?`]: sj_recurse,
+
+				// DIGIT 3ALPHANUM
+				[`And<
+					Equals<StrLen<s_part>, 4>,
+					RTS_DIGIT_ALPHANUM<s_part>
+				>?`]: sj_recurse,
+
+				...G_ELSE_REST,
+			}),
+			...G_ELSE_REST,
+		})),
+	},
+
 	[`LangtagAfterLanguage<
-		g_init extends Parsed<SetLanguage>,
+		g_init extends Parsed,
 		s_input extends string,
 	>`]: {
 		[join([
@@ -899,13 +1070,35 @@ type SetLanguage<
 			// a_rest_script := g_parsed_script.rest
 			k.assign('a_rest_script', 'g_parsed_script["_rest"]'),
 
-			// g_parsed_region := Region(a_rest_scrpit)
+			// g_parsed_region := Region(a_rest_script)
 			...k.cassign('g_parsed_region<Parsed>', 'Region<g_parsed_script, Cast<a_rest_script, string[]>>'),
 
 			// a_rest_region := g_parsed_region.rest
 			k.assign('a_rest_region', 'g_parsed_region["_rest"]'),
+
+			// g_parsed_variant := Variant(a_rest_region)
+			...k.cassign('g_parsed_variant<Parsed>', 'Variants<g_parsed_region, Cast<a_rest_region, string[]>>'),
+
+			// a_rest_variant := g_parsed_variant.rest
+			k.assign('a_rest_variant', 'g_parsed_variant["_rest"]'),
+
+			// g_parsed_extensions := Extensions(a_rest_variant)
+			...k.cassign('g_parsed_extensions<Parsed>', 'Extensions<g_parsed_variant, Cast<a_rest_variant, string[]>>'),
+
+			// a_rest_extensions := g_parsed_extensions.rest
+			k.assign('a_rest_extensions', 'g_parsed_extensions["_rest"]'),
+
+			// g_parsed_privateuses := PrivateUse(a_rest_extensions)
+			...k.cassign('g_parsed_privateuses<Parsed>', 'PrivateUse<g_parsed_extensions, Cast<a_rest_extensions, string[]>>'),
+
+			// a_rest_privateuses := g_parsed_privateuses.rest
+			...k.cassign('a_rest_privateuses<string[]>', 'g_parsed_privateuses["_rest"]'),
 		])]: () => ({
-			'True?': 'g_parsed_region',
+			'a_rest_privateuses["length"] extends 0': 'Finalize<g_parsed_privateuses>',
+
+			[$ELSE]: k.invalid({
+				_reason: '`Unable to match text at the end: ${Join<a_rest_privateuses, "-">}`',
+			}),
 		}),
 	},
 }))}
@@ -913,18 +1106,6 @@ type SetLanguage<
 {
 	/* eslint-disable @typescript-eslint/no-unused-vars */
 	@//@
-
-	@{`
-		type HHOHO = ExtendedLanguageSubtags<
-			Parsed<{
-				_input: 'input';
-				extendedLanguageSubtags: Cast<[], string[]>;
-				language:'en';
-			}>,
-			['ext', 'mor', 'for', 'you']
-		>;
-	`}
-
 
 	@*{
 		const A_FIXTURES = [
@@ -955,8 +1136,8 @@ type SetLanguage<
 				_normalized: sx_case,
 			}, {
 				filter([si_key, z_value]) {
-					if(!z_value) return false
-					if(Array.isArray(z_value)) return z_value.length;
+					// if(!z_value) return false
+					// if(Array.isArray(z_value)) return z_value.length;
 					return true;
 				},
 			});

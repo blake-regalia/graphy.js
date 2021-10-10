@@ -1,0 +1,4 @@
+@$ S_FORMAT = 'ttl';
+@$ S_MODE = 'write';
+
+@import '../_t/write.mjs.jmacs';

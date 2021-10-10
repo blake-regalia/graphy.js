@@ -12,12 +12,24 @@ import {
 	TurtleLoaderLite,
 } from './lite.mjs';
 
+import {
+	TurtleScriber,
+} from './ttl/scribe.mjs';
+
+import {
+	TurtleWriter,
+} from './ttl/write.mjs';
+
 export {
 	TurtleReader,
 	TurtleLoader,
+	TurtleScriber,
+	TurtleWriter,
 };
 
 export default {
 	TurtleReader,
 	TurtleLoader,
+	TurtleScriber,
+	TurtleWriter,
 };

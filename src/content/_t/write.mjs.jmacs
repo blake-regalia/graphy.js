@@ -1,0 +1,986 @@
+@.{/* global S_FORMAT */}
+
+@import '../text.read.jmacs'
+@import '../../share/iris.jmacs'
+@import '../../share/writer.jmacs'
+
+@$ B_TTL = 'ttl' === S_FORMAT;
+@$ B_TRIG = 'trig' === S_FORMAT;
+@$ B_QUADS = B_TRIG;
+
+@$ S_LABEL = B_TTL? 'Turtle': 'Trig';
+
+@$ S_CONTENT_TYPE = B_TTL? 'text/turtle': 'application/trig';
+
+import {
+	DataFactory,
+} from '@@graphy/core';
+
+import {
+	WritableContent,
+} from '../api/writable.mjs';
+
+const {
+	SI_PREFIX_BASE,
+} = DataFactory;
+
+// eslint-disable-next-line no-misleading-character-class
+const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;
+const N_MAX_STRING_BUFFER = 1 << 12;
+
+const XC_DIRECTIVES_TYPE_SPARQL = @{1 << 0};
+const XC_DIRECTIVES_CASE_PASCAL = @{1 << 1};
+const XC_DIRECTIVES_CASE_UPPER = @{1 << 2};
+
+const XC_HEADING_BREAK_SOME = @{1 << 0};
+const XC_HEADING_BREAK_ALL = @{1 << 1};
+
+const XC_OBJECTS_BREAK_OBJECT = @{1 << 0};
+const XC_OBJECTS_BREAK_PREDICATE_SOME = @{1 << 1};
+const XC_OBJECTS_BREAK_PREDICATE_ALL = @{1 << 2};
+const XC_OBJECTS_WRAP = @{1 << 3};
+
+const XC_COLLECTIONS_PAD = @{1 << 0};
+const XC_COLLECTIONS_BREAK_PAREN = @{1 << 1};
+const XC_COLLECTIONS_BREAK_ITEM = @{1 << 2};
+
+@.{/*
+const P_IRI_RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+*/}
+
+
+function Writer$_reify(kq_input) {
+	// non-default graph
+	if(!kq_input.graph.isDefaultGraph) {
+		// warn about non-default graph
+		this._fk_warn(`The RDF vocabulary does not describe a predicate to use for the graph component of a reified statement; default reification function is dropping non-default graph component for the quad: ${kq_input.verbose()}`);
+	}
+
+	// reified node
+	const sc1_reified = '_:_'+DataFactory.uuidv4();
+
+	// result
+	return {
+		node: sc1_reified,
+		quads: {
+			type: 'c3',
+			value: {
+				[sc1_reified]: {
+					a: '>@{P_IRI_RDF}Statement',
+					'>@{P_IRI_RDF}subject': kq_input.subject,
+					'>@{P_IRI_RDF}predicate': kq_input.predicate,
+					'>@{P_IRI_RDF}object': kq_input.object,
+				},
+			},
+		},
+	};
+}
+
+
+export class @{S_LABEL}Writer extends WritableContent {
+	// static run(g_event: WritableDataEvent) {
+	// 	const k_inst = new Writer();
+
+	// 	// serialize input value
+	// 	const w_write = this.serialize(g_event);
+
+	// 	// concat internal buffer with returned serialized string
+	// 	return (k_self._s_push || '')+(w_write || '');
+	// }
+
+	constructor(gc_writer={}) {
+		super({
+			...gc_writer,
+			_terse: true,
+		});
+
+		const {
+			prefixes: h_prefixes={},
+			lists: gc_lists=null,
+			debug: b_debug=false,
+			style: gc_style=null,
+			star: b_star=false,
+			reify: f_reify=null,
+		} = gc_writer;
+
+		// conflict
+		if(b_star && f_reify) {
+			throw new Error(`Conflicting options passed to @{S_LABEL}Writer; '.star' and '.reify' are mutually exclusive.`);
+		}
+
+		Object.assign(this, {
+			_b_debug: b_debug,
+			_s_indent: '\t',
+			_b_simplify_default_graph: false,
+			_xc_directives: 0,
+			_xc_heading: 0,
+			_b_terminator_break: false,
+			_xc_objects: 0,
+			_xc_collections: 0,
+			_s_token_prefix: '@prefix',
+			_s_token_base: '@base',
+			_b_star: !!b_star,
+			_f_reify: f_reify || Writer$_reify,
+		});
+
+		@- B_QUADS
+			let s_graph_keyword = '';
+		@;
+
+		// style config
+		if(gc_style) {
+			@- B_QUADS
+				// 'graph' keyword
+				let z_graph_keyword = gc_style.graph_keyword || gc_style.graphKeyword || gc_style['graph-keyword'];
+				if(z_graph_keyword) {
+					// boolean true
+					if(true === z_graph_keyword) {
+						s_graph_keyword = 'GRAPH ';
+					}
+					// invalid type
+					else if('string' !== typeof z_graph_keyword) {
+						throw new TypeError(`Invalid argument type given for 'graph' token: ${z_graph_keyword}`);
+					}
+					// invalid token string
+					else if(!/^graph$/i.test(z_graph_keyword)) {
+						throw new Error(`Graph token must equal case-insensitive "GRAPH"; found: "${z_graph_keyword}"`);
+					}
+					// valid graph token; append space
+					else {
+						s_graph_keyword = z_graph_keyword+' ';
+					}
+				}
+
+				// default graph simplification
+				let w_simplify_default_graph = gc_style.simplify_default_graph || gc_style.simplifyDefaultGraph || gc_style['simplify-default-graph'];
+				if(w_simplify_default_graph) {
+					this._b_simplify_default_graph = !!w_simplify_default_graph;
+				}
+			@;
+
+			// indent
+			if(gc_style.indent) {
+				this._s_indent = gc_style.indent.replace(/[^\s]/g, '');
+			}
+
+			// use sparql directives
+			const z_directives = gc_style.directives;
+			if(z_directives) {
+				switch(z_directives) {
+					case 'sparql': {
+						this._xc_directives = XC_DIRECTIVES_TYPE_SPARQL;
+						this._s_token_prefix = 'prefix';
+						this._s_token_base = 'base';
+						break;
+					}
+
+					case 'Sparql': {
+						this._xc_directives = XC_DIRECTIVES_TYPE_SPARQL | XC_DIRECTIVES_CASE_PASCAL;
+						this._s_token_prefix = 'Prefix';
+						this._s_token_base = 'Base';
+						break;
+					}
+
+					case 'SPARQL': {
+						this._xc_directives = XC_DIRECTIVES_TYPE_SPARQL | XC_DIRECTIVES_CASE_UPPER;
+						this._s_token_prefix = 'PREFIX';
+						this._s_token_base = 'BASE';
+						break;
+					}
+
+					case 'turtle': {
+						break;
+					}
+
+					case 'Turtle': {
+						this._xc_directives = XC_DIRECTIVES_CASE_PASCAL;
+						this._s_token_prefix = '@Prefix';
+						this._s_token_base = '@Base';
+						break;
+					}
+
+					case 'TURTLE': {
+						this._xc_directives = XC_DIRECTIVES_CASE_UPPER;
+						this._s_token_prefix = '@PREFIX';
+						this._s_token_base = '@BASE';
+						break;
+					}
+
+					default: {
+						throw new TypeError(`Value not understood for 'directives' style option: ${z_directives}`);
+					}
+				}
+			}
+
+			// heading
+			const z_heading = gc_style.heading;
+			if(z_heading) {
+				switch(z_heading) {
+					// default
+					case 'line': {
+						break;
+					}
+
+					case 'break-list': {
+						this._xc_heading = XC_HEADING_BREAK_SOME;
+						break;
+					}
+
+					case 'break-all': {
+						this._xc_heading = XC_HEADING_BREAK_ALL;
+						break;
+					}
+
+					default: {
+						throw new TypeError(`Value not understood for 'heading' style option: ${z_heading}`);
+					}
+				}
+			}
+
+			// terminator
+			const z_terminator = gc_style.terminator;
+			if(z_terminator) {
+				switch(z_terminator) {
+					// default
+					case 'line': {
+						break;
+					}
+
+					case 'break': {
+						this._b_terminator_break = true;
+						break;
+					}
+
+					default: {
+						throw new TypeError(`Value not understood for 'terminator' style option: ${z_terminator}`);
+					}
+				}
+			}
+
+			// objects
+			const z_objects = gc_style.objects;
+			if(z_objects) {
+				switch(z_objects) {
+					// default
+					case 'line': {
+						break;
+					}
+
+					case 'break': {
+						this._xc_objects = XC_OBJECTS_BREAK_OBJECT;
+						break;
+					}
+
+					case 'break-list': {
+						this._xc_objects = XC_OBJECTS_BREAK_OBJECT | XC_OBJECTS_BREAK_PREDICATE_SOME;
+						break;
+					}
+
+					case 'break-all': {
+						this._xc_objects = XC_OBJECTS_BREAK_OBJECT | XC_OBJECTS_BREAK_PREDICATE_ALL;
+						break;
+					}
+
+					case 'wrap': {
+						this._xc_objects = XC_OBJECTS_WRAP;
+						break;
+					}
+
+					default: {
+						const m_wrap = /^wrap(?: +(\d+)(chr))?(?: +(line|content))$/.exec(z_objects.trim());
+						if(m_wrap) {
+							const [, s_width_num, s_width_unit, s_context] = m_wrap;
+							this._xc_objects = XC_OBJECTS_WRAP;
+
+							// chr is only supported unit for now
+							const n_width = +s_width_num;
+
+							// TODO: wrap
+							break;
+						}
+
+						throw new TypeError(`Value not understood for 'objects' style option: ${z_objects}`);
+					}
+				}
+			}
+
+			// collections
+			const z_collections = gc_style.collections;
+			if(z_collections) {
+				switch(z_collections) {
+					// default
+					case 'dense': {
+						break;
+					}
+
+					case 'padded': {
+						this._xc_collections = XC_COLLECTIONS_PAD;
+						break;
+					}
+
+					case 'indent': {
+						this._xc_collections = XC_COLLECTIONS_BREAK_PAREN;
+						break;
+					}
+
+					case 'break': {
+						this._xc_collections = XC_COLLECTIONS_BREAK_PAREN | XC_COLLECTIONS_BREAK_ITEM;
+						break;
+					}
+
+					default: {
+						throw new TypeError(`Value not understood for 'collections' style option: ${z_collections}`);
+					}
+				}
+			}
+		}
+
+		@- B_QUADS
+			// set graph token
+			this._s_graph_keyword = s_graph_keyword;
+		@;
+
+			@.{/*
+			// 'a' token
+			let b_alias_rdf_type = false;
+			if(gc_tokens.a) {
+				let z_token = gc_tokens.graph;
+
+				// boolean true
+				if(true === gc_tokens.a) {
+					b_alias_rdf_type = true;
+				}
+				// invalid type
+				else if('boolean' !== typeof z_token) {
+					throw new TypeError(`Expected boolean value; invalid argument type given for 'a' token: ${z_token}`);
+				}
+			}
+
+			// set alias rdf type
+			this.alias_rdf_type = b_alias_rdf_type;
+		}
+			*/}
+
+		// custom list keys
+		if(gc_lists) {
+			// serialize list object
+			this._serialize_list_object = function(a_list, n_nest_level) {
+				// transcode list object
+				const hc2_transcoded = this._transcode_list(a_list);
+
+				// serialize object
+				return this._encode_objects(hc2_transcoded, n_nest_level);
+			};
+		}
+
+		// head string
+		let s_head = '';
+		const s_directive_eol = (this._xc_directives & XC_DIRECTIVES_TYPE_SPARQL)? '\n': ' .\n';
+
+		// serialize base
+		if(this._p_base) {
+			s_head += `${this._s_base_prefix} ${DataFactory.namedNode(this._p_base).verbose()}${s_directive_eol}`;
+		}
+
+		// serialize initial prefix mappings
+		const s_token_prefix = this._s_token_prefix;
+		try {
+			// each user-defined prefix
+			for(const s_prefix_id in h_prefixes) {
+				// invalid prefix id
+				if(!RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
+					throw new Error(`Invlalid prefix id for @{S_CONTENT_TYPE} RDF serialization format: '${s_prefix_id}'`);
+				}
+				
+				// append to string
+				s_head += `${s_token_prefix} ${s_prefix_id}: ${DataFactory.namedNode(h_prefixes[s_prefix_id]).verbose()}${s_directive_eol}`;
+			}
+		}
+		// serialization error
+		catch(e_serialize) {
+			queueMicrotask(() => {
+				this._fe_error(e_serialize);
+			});
+		}
+
+		// push head
+		if(s_head) this.push(s_head);
+	}
+
+	// serialize base
+	_serialize_base(p_base) {
+		// update state
+		this._xc_state = @{XC_STATE_INITIAL};
+
+		// update prefixes object
+		Object.defineProperty(this._h_prefixes, SI_PREFIX_BASE, {
+			enumerable: false,
+			value: p_base,
+		});
+
+		// save base value
+		this._p_base = p_base;
+
+		// render string
+		return ((@{XC_STATE_DATA} === this._xc_state)? '\n\n': '')
+			+this._s_token_base
+			+' '+DataFactory.namedNode(p_base).verbose()
+			+((this._xc_directives & XC_DIRECTIVES_TYPE_SPARQL)? '\n': ' .\n');
+	}
+
+	// serialize prefixes
+	_serialize_prefixes(h_prefixes) {
+		// build prefixes string
+		let s_prefixes = (@{XC_STATE_DATA} === this._xc_state)? '\n\n': '';
+
+		// update state
+		this._xc_state = @{XC_STATE_INITIAL};
+
+		// clone prefixes
+		this._h_prefixes = {...this._h_prefixes};
+
+		// ref prefix token
+		const s_token_prefix = this._s_token_prefix;
+
+		// prep eol string
+		const s_prefix_eol = (this._xc_directives & XC_DIRECTIVES_TYPE_SPARQL)? '\n': ' .\n';
+
+		// each user-defined prefix
+		for(const s_prefix_id in h_prefixes) {
+			// invalid prefix id
+			if(!RT_PREFIXED_NAME_NAMESPACE_VALID.test(s_prefix_id)) {
+				throw new Error(`Invlalid prefix id for @{S_CONTENT_TYPE} RDF serialization format: '${s_prefix_id}'`);
+			}
+
+			// append to string
+			s_prefixes += `${s_token_prefix} ${s_prefix_id}: ${DataFactory.namedNode(h_prefixes[s_prefix_id]).verbose()}${s_prefix_eol}`;
+
+			// set prefix
+			this._h_prefixes[s_prefix_id] = h_prefixes[s_prefix_id];
+		}
+
+		// recache
+		DataFactory.cachePrefixes(this._h_prefixes, true);
+
+		// return prefix string
+		return s_prefixes;
+	}
+
+@> serialize_cn(n_n)
+	@.{
+		let b_c4 = false;
+		let s_name = 'triples';
+		if(4 === n_n) {
+			s_name = 'quads';
+			b_c4 = true;
+		}
+	}
+	@//@object-literal
+	// serialize c@{n_n} hash
+	_serialize_c@{n_n}(hc@{n_n}_@{s_name}) {
+		@//@
+		const {
+			_h_prefixes: h_prefixes,
+			_s_indent: s_indent,
+			_b_star: b_star,
+			@.{/*alias_rdf_type: b_alias_rdf_type,*/}
+		} = this;
+
+		// break line if non-data state
+		let s_write = @{XC_STATE_DATA} !== this._xc_state? '\n': '';
+
+		// update state
+		this._xc_state = @{XC_STATE_DATA};
+
+		@- b_c4
+			// force default graph brace
+			let b_simplify_default_graph = this._b_simplify_default_graph;
+
+			// graph token
+			let s_graph_keyword = this._s_graph_keyword;
+
+			// graph exit listener
+			let f_exit_graph = null;
+			
+			// each graph
+			for(let sc1_graph in hc4_quads) {
+				// directive
+				if('`' === sc1_graph[0]) {
+					let g_apply = this._apply_directive(sc1_graph, hc4_quads[sc1_graph]);
+
+					// write data
+					if(g_apply.write) s_write += g_apply.write;
+
+					// save exit listener
+					if(g_apply.exit) f_exit_graph = g_apply.exit;
+					continue;
+				}
+
+				// serialize open graph
+				let st_graph = DataFactory.c1Node(sc1_graph, h_prefixes).terse(h_prefixes);
+
+				s_write += st_graph
+					? s_graph_keyword+st_graph+' {\n'
+					: (b_simplify_default_graph? '': s_graph_keyword+'{\n');
+
+				// simplify default graph implies no indent
+				let s_indent_root = (!st_graph && b_simplify_default_graph)? '': s_indent;
+
+				// update state
+				this._xc_state = @{XC_STATE_DATA};
+
+				// ref triples
+				let hc3_triples = hc4_quads[sc1_graph];
+		@;
+
+			// triple delimiter
+			let s_delim_triples = '';
+
+			// subject exit listener
+			let f_exit_subject = null;
+
+			// each subject
+			for(const sc1_subject in hc3_triples) {
+				// directive
+				if('`' === sc1_subject[0]) {
+					const g_apply = this._apply_directive(sc1_subject, hc3_triples[sc1_subject]);
+
+					// write data
+					if(g_apply.write) {
+						s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}g_apply.write;
+
+						// do not break next line
+						s_delim_triples = '';
+					}
+
+					// save exit listener
+					if(g_apply.exit) f_exit_subject = g_apply.exit;
+					continue;
+				}
+
+				// position before subject
+				const i_triples = s_write.length;
+
+				// data
+				let a_stars = [];
+				if('{' === sc1_subject[0]) {
+					let g_data;
+					try {
+						g_data = JSON.parse(sc1_subject);
+					}
+					catch(e_parse) {
+						throw new Error(`Invalid concise-term string; failed to parse JSON '${sc1_subject}'`);
+					}
+
+					// c3 object
+					if('c3' === g_data.type) {
+						// spread triples
+						a_stars = [...DataFactory.c3(g_data.value, h_prefixes)];
+
+						// no data
+						if(!a_stars.length) {
+							throw new Error(`Concise-term data string is empty, but must have triples for subject term: '${sc1_subject}'`);
+						}
+
+						// rdf-star supported; first triple
+						if(b_star) {
+							s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}a_stars[0].star(h_prefixes)+' ';
+						}
+						// no rdf-star
+						else {
+							// reified nodes list
+							const a_reified_nodes = [];
+
+							// reify quads
+							for(const kq_star of a_stars) {  /* eslint-disable no-loop-func */
+								const {
+									node: z_reify,
+									quads: w_quads,
+								} = this._f_reify(kq_star);
+
+								// write reified statements
+								this.write(w_quads);
+
+								// add reified node
+								a_reified_nodes.push('string' === typeof z_reify? DataFactory.c1Node(z_reify, h_prefixes): DataFactory.fromQuad(z_reify));
+							}  /* eslint-disable no-loop-func */
+
+							// delimit triple(s)
+							s_delim_triples = '\n';
+
+							// reset stars list
+							a_stars = a_reified_nodes;
+
+							// write first node
+							s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}a_stars[0].terse(h_prefixes)+' ';
+						}
+					}
+					// invalid
+					else {
+						throw new Error(`Invalid concise-term data type: '${g_data.type}'`);
+					}
+				}
+				// concise-term; serialize object
+				else {
+					s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}DataFactory.c1Node(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
+				}
+
+				// pair indent & terminator
+				let s_indent_pairs = '';
+				let s_term_pairs = '';
+
+				// ref pairs
+				const hc2_pairs = hc3_triples[sc1_subject];
+
+				// position before pairs
+				const i_pairs = s_write.length;
+
+				// were objects written?
+				let b_empty = true;
+
+				// predicate exit listener
+				let f_exit_predicate = null;
+
+				// each predicate
+				for(const sc1_predicate in hc2_pairs) {
+					// directive
+					if('`' === sc1_predicate[0]) {
+						// apply directive
+						const g_apply = this._apply_directive(sc1_predicate, hc2_pairs[sc1_predicate]);
+
+						// write data
+						if(g_apply.write) {
+							// break line
+							s_write += (s_indent_pairs? s_term_pairs: '\n')+s_indent@{b_c4? '+s_indent_root': ''}+g_apply.write;
+
+							// pair already terminated
+							s_term_pairs = '';
+
+							// indent next pair
+							s_indent_pairs = s_indent@{b_c4? '+s_indent_root': ''};
+						}
+
+						// save exit listener
+						if(g_apply.exit) f_exit_predicate = g_apply.exit;
+						continue;
+					}
+
+					// ref objects
+					const z_objects = hc2_pairs[sc1_predicate];
+
+					// serialize objects
+					const st_objects = this._encode_objects(z_objects);
+
+					// no objects; skip pair
+					if(!st_objects) continue;
+
+					// not empty
+					b_empty = false;
+
+					// cannot use blank node in predicate position
+					if('_' === sc1_predicate[0] && ':' === sc1_predicate[1]) {
+						throw new Error(`Cannot use blank node in predicate position of c@{n_n} hash;@{b_c4? ` graph:'\${sc1_graph}',`: ''} subject:'${sc1_subject}', predicate:'${sc1_predicate}'`);
+					}
+
+					// create predicate
+					const kt_predicate = DataFactory.c1NamedNode(sc1_predicate, h_prefixes);
+
+					// tersify rdf:type
+					const st_predicate = kt_predicate.isRdfTypeAlias? 'a': kt_predicate.terse(h_prefixes);
+
+					// serialize predicate and object(s)
+					s_write += s_term_pairs+s_indent_pairs+st_predicate+' '+st_objects;
+
+					// update state
+					this._xc_state = @{XC_STATE_DATA};
+
+					// // string buffer became too large
+					// if(s_write.length >= N_MAX_STRING_BUFFER) {
+					// 	debugger;
+					// }
+
+					// terminate next pair
+					s_term_pairs = ' ;\n';
+
+					// indent next pair
+					s_indent_pairs = s_indent@{b_c4? '+s_indent_root': ''};
+
+					// call exit predicate listener
+					if(f_exit_predicate) f_exit_predicate();
+				}
+
+				// empty triples; cut out
+				if(b_empty) {
+					s_write = s_write.slice(0, i_triples)+s_write.slice(i_pairs);
+					continue;
+				}
+
+				// delimit triple(s)
+				s_delim_triples = '\n';
+
+				// close triple
+				s_write += `${s_term_pairs? ' ': s_indent_pairs}.\n`; // @{b_c4? '\\n': ''}
+
+				// write all stars
+				if(a_stars.length > 1) {
+					// prep rewrite string
+					const s_rewrite = s_write.slice(i_pairs);
+
+					// serialization method to use
+					const s_method = b_star? 'star': 'terse';
+
+					// each star; rewrite
+					for(let i_star=1, nl_stars=a_stars.length; i_star<nl_stars; i_star++) {
+						s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}a_stars[i_star][s_method](h_prefixes)+' '+s_rewrite;
+					}
+				}
+
+				// call exit subject listener
+				if(f_exit_subject) f_exit_subject();
+			}
+
+		@- b_c4
+				// close graph
+				s_write += ((st_graph || !b_simplify_default_graph)? '}\n': '')+'\n';
+
+				// call exit graph listener
+				if(f_exit_graph) f_exit_graph();
+			}
+		@:
+			s_write += '\n';
+		@;
+		return s_write;
+	}
+@;
+
+	@{serialize_cn(3)}
+
+	@- B_QUADS
+		@{serialize_cn(4)}
+	@;
+
+	@//@object-literal
+	// write objects
+	_encode_objects(z_objects, n_nest_level=1) {
+		const {
+			_h_prefixes: h_prefixes,
+			_s_indent: s_indent,
+			_hm_coercions: hm_coercions,
+		} = this;
+
+		const s_indent_root = '\n'+s_indent.repeat(@{B_QUADS? 2: 1}+n_nest_level);
+
+		// deduce object value type
+		switch(typeof z_objects) {
+			// concise-term string
+			case 'string': return DataFactory.c1(z_objects, h_prefixes).terse(h_prefixes);
+
+			// numeric type
+			case 'number': return DataFactory.number(z_objects).terse(h_prefixes);
+
+			// boolean type
+			case 'boolean': return DataFactory.boolean(z_objects).terse(h_prefixes);
+
+			// object
+			case 'object': {
+				// null; reject
+				if(null === z_objects) throw new Error('Refusing to serialize null value given as an object of quad');
+
+				// styling
+				const xc_objects = this._xc_objects;
+
+				// array, list of objects
+				if(Array.isArray(z_objects) || z_objects instanceof Set) {
+					let s_write = '';
+
+					// object terminator
+					const s_term_object = (xc_objects & XC_OBJECTS_BREAK_OBJECT)? ','+s_indent_root+'\t': ', ';
+					let s_separate_object = '';
+
+					// break predicate
+					if(xc_objects & XC_OBJECTS_BREAK_PREDICATE_ALL || (xc_objects & XC_OBJECTS_BREAK_PREDICATE_SOME && z_objects.length > 1)) {
+						s_write += s_indent_root+'\t';
+					}
+
+					// each object
+					for(const z_item of z_objects) {
+						// item is an array; serialize list
+						if(Array.isArray(z_item)) {
+							s_write += s_separate_object + this._serialize_list_object(z_item, n_nest_level);
+						}
+						// non-array
+						else {
+							// recurse on item
+							s_write += s_separate_object + this._encode_objects(z_item, n_nest_level);
+						}
+
+						// terminate next object
+						if(!s_separate_object) s_separate_object = s_term_object;
+					}
+
+					return s_write;
+				}
+				// plain object, blank node
+				else if(Object === z_objects.constructor) {
+					// open blank node block
+					let s_write = (xc_objects & XC_OBJECTS_BREAK_PREDICATE_ALL)? s_indent_root+'\t[': '[';
+
+					// whether the block is empty
+					let b_empty = true;
+
+					// object exit listener
+					let f_exit_object = null;
+
+					// each pair
+					for(const sc1_predicate in z_objects) {
+						// block is not empty
+						b_empty = false;
+
+						// terminate previous pair
+						s_write += '\n'+s_indent.repeat(@{B_QUADS? 2: 1}+n_nest_level);
+
+						// directive; serialize it
+						if('`' === sc1_predicate[0]) {
+							const g_apply = this._apply_directive(sc1_predicate, z_objects[sc1_predicate]);
+
+							// write data
+							if(g_apply.write) s_write += g_apply.write;
+
+							// save exit listener
+							if(g_apply.exit) f_exit_object = g_apply.exit;
+							continue;
+						}
+
+						// write predicate and object(s)
+						s_write += DataFactory.c1(sc1_predicate, h_prefixes).terse(h_prefixes) + ' '
+							+ this._encode_objects(z_objects[sc1_predicate], n_nest_level+1) +' ;';
+					}
+
+					// close blank node block
+					s_write += (b_empty? '': '\n'+s_indent.repeat(@{B_QUADS? '1+': ''}n_nest_level))+']';
+
+					// call exit object listener
+					if(f_exit_object) f_exit_object();
+
+					// serialize current predicate to blank node
+					return s_write;
+				}
+				// coercable instance
+				else if(hm_coercions.has(z_objects.constructor)) {
+					// convert javascript object to term object
+					const kt_converted = hm_coercions.get(z_objects.constructor).apply(this, [z_objects, n_nest_level]);
+
+					// serialize
+					return kt_converted.terse(h_prefixes);
+				}
+				// graphy term
+				else if(z_objects.isGraphyTerm) {
+					return z_objects.terse(h_prefixes);
+				}
+				// RDFJS term
+				else if(z_objects.termType) {
+					return DataFactory.fromTerm(z_objects).terse(h_prefixes);
+				}
+			}
+
+			// fallthrough: other
+			default: {
+				throw new Error(`Bad type for RDF object: [${typeof z_objects}] ${z_objects? z_objects.constructor: z_objects}`);
+			}
+		}
+	}
+
+	// serialize collection object
+	_serialize_collection_object(a_collection, n_nest_level) {
+		const s_indent = this._s_indent;
+		const xc_collections = this._xc_collections;
+
+		// open collection block
+		let s_write = (xc_collections & XC_COLLECTIONS_PAD? '( ': '(');
+
+		// break line with indent
+		const s_break_indent = '\n'+s_indent.repeat(@{B_QUADS? 2: 1}+n_nest_level);
+
+		// break item
+		const s_break_item = (xc_collections & XC_COLLECTIONS_BREAK_ITEM)
+			? s_break_indent
+			: ' ';
+
+		// break paren if collection is non-emtpy
+		if(xc_collections & XC_COLLECTIONS_BREAK_PAREN && a_collection.length) s_write += s_break_indent;
+
+		// each item
+		let b_rest = false;
+		for(const z_item of a_collection) {
+			let s_objects = '';
+
+			// item is array; serialize as sub-collection
+			if(Array.isArray(z_item)) {
+				s_objects = this._serialize_collection_object(z_item, n_nest_level+1);
+			}
+			// non-array item
+			else {
+				s_objects = this._encode_objects(z_item, n_nest_level+1);
+			}
+			
+			// serialize collection
+			if(b_rest) {
+				s_write += s_break_item+s_objects;
+			}
+			else {
+				s_write += s_objects;
+				b_rest = true;
+			}
+		}
+
+		// // break line if anything was written (including comments)
+		// if(a_collection.length) s_write += '\n'+s_indent.repeat(@{B_QUADS? '1+': ''}n_nest_level);
+
+		// break paren
+		if(xc_collections & XC_COLLECTIONS_BREAK_PAREN) s_write += '\n'+s_indent.repeat(n_nest_level@{B_QUADS? '+1': ''});
+
+		// close collection block
+		s_write += (xc_collections & XC_COLLECTIONS_PAD? ' )': ')');
+
+		return s_write;
+	}
+
+	// rdfjs quad
+	_serialize_quad(g_quad) {
+		const h_prefixes = this._h_prefixes;
+		const kq_quad = DataFactory.fromQuad(g_quad);
+
+		@- B_QUADS
+			let st_graph = kq_quad.graph.terse(h_prefixes);
+		@;
+
+		// serialize quad
+		this._s_push += (@{XC_STATE_DATA} !== this._xc_state? '\n': '')
+			@- B_QUADS
+				+this._s_graph_keyword+(st_graph? st_graph+' ': '')+'{\n\t'
+			@;
+			+kq_quad.subject.terse(h_prefixes)
+				+(this._xc_heading & XC_HEADING_BREAK_ALL? '\n\t'@{B_QUADS? `+(st_graph? '\t': '')`: ''}: ' ')
+			+kq_quad.predicate.terse(h_prefixes)
+				+(this._xc_objects & XC_OBJECTS_BREAK_PREDICATE_ALL? '\n\t\t'@{B_QUADS? `+(st_graph? '\t': '')`: ''}: ' ')
+			+kq_quad.object.terse(h_prefixes)
+				+(this._b_terminator_break? ' ;\n\t@{B_QUADS? `'+(st_graph? '\t.': '.')`: `.'`}: ' .\n@{B_QUADS? `'`: `\\n'`})
+			@- B_QUADS
+				+'}\n\n';
+			@;
+			;
+
+		// update state
+		this._xc_state = @{XC_STATE_DATA};
+	}
+}
+
+Object.assign(@{S_LABEL}Writer.prototype, {
+	anonymous_blank_nodes: true,
+	_serialize_c3r: @{S_LABEL}Writer.prototype._serialize_c3,
+	_serialize_c4r: @{S_LABEL}Writer.prototype._serialize_c4,
+	_serialize_comment: WritableContent.prototype._serialize_hash_comment,
+	_serialize_list_object: @{S_LABEL}Writer.prototype._serialize_collection_object,
+});
+
+export default @{S_LABEL}Writer;

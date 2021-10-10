@@ -8,6 +8,7 @@ import {
 
 import {
     Dataset,
+    Iri,
     Term,
 } from '@graphy/types';
 
@@ -31,17 +32,28 @@ export type ResolvedInput = InputValue | ReadableStream<InputValue> | Response |
 
 export type Input = ResolvedInput | Promise<Input>;
 
+
+/**
+ * Option inputs to Readers
+ */
 export interface ReaderConfig {
+    /**
+     * Specify a custom RDFJS DataFactory object to use when creating Terms instead of graphy's
+     */
     dataFactory?: RDF.DataFactory;
-    baseIRI?: string;
+
+    /**
+     * Provide a base IRI to use when resolving relative IRIs in the document
+     */
+    baseIRI?: Iri;
     
     /**
-     * Sets the maximum character length for any token such as IRIs and prefixed names. Defaults to 2048 => http://stackoverflow.com/a/417184/1641160
+     * Set the maximum character length for any token such as IRIs and prefixed names. Defaults to 2048 => http://stackoverflow.com/a/417184/1641160
      */
     maxTokenLength?: number;
 
     /**
-     * Sets the maximum character length for string literals. Defaults to 524288 (~1-2 MiB in UTF-16) in order to prevent an out-of-memory crash from potentially unclosed strings. Set to `Infinity` if you wish to disable the limits
+     * Set the maximum character length for string literals. Defaults to 524288 (~1-2 MiB in UTF-16) in order to prevent an out-of-memory crash from potentially unclosed strings. Set to `Infinity` if you wish to disable the limits
      */
     maxStringLength?: number;
 
@@ -50,16 +62,38 @@ export interface ReaderConfig {
      */
     colorMode: 'off' | 'ansi';
     
-    readable?(): void;
-    finish?(): void;
-    end?(): void;
-    error?(err: Error): void;
 
+    /**
+     * Callback each time a quad/triple is read
+     * @param quad - the statement data
+     */
     data?(quad: Quad): void;
+
+    /**
+     * Callback each time a comment is read
+     * @param comment - the comment as a string
+     */
     comment?(comment: string): void;
+
+    /**
+     * Callback in event of an unrecoverable error. If ommitted, the error will be thrown or the parent promise will be rejected
+     * @param err - the error
+     */
+    error?(err: Error): void;
+    
+    /**
+     * Callback each time the stream receives a new input chunk (useful for UIs showing read progress)
+     * @param delta - the number of characters read during the last update
+     */
     progress?(delta: number): void;
+
+    /**
+     * Callback once the process has successfully read the entire input
+     * @param prefixes - the final prefix map
+     */
     eof?(prefixes: PrefixMap): void;
 }
+
 
 export interface ScannerConfig extends ReaderConfig {
     preset?: 'count' | 'scribe' | 'ndjson';
@@ -69,9 +103,23 @@ export interface ScannerConfig extends ReaderConfig {
     threads?: number;
 }
 
+/**
+ * Configuration to override the serialization of lists
+ */
 export interface ListsConfig {
+    /**
+     * The predicate to use in place of rdf:first
+     */
     first: ConciseNamedNode;
+
+    /**
+     * The predicate to use in place of rdf:rest
+     */
     rest: ConciseNamedNode;
+
+    /**
+     * The predicate to use in place of rdf:nil
+     */
     nil: ConciseTerm;
 }
 
@@ -114,14 +162,36 @@ export interface StyleConfig {
      * Refers to objects-lists and when to break line [defaults to 'line']
      */
     objects?: 'line' | 'break' | 'break-list' | 'break-all' | 'wrap' | `wrap(${string})`;
+
+    /**
+     * Refers to RDF collections
+     */
+    collections?: 'dense' | 'padded' | 'indent' | 'break';
 }
 
+/**
+ * Option inputs to Writers
+ */
 export interface WriteConfig {
+    /**
+     * The prefix map to use when serializing the document
+     */
     prefixes?: PrefixMap;
+
+    /**
+     * Optionally override the predicates used when serializing lists from c3/c4 objects
+     */
     lists?: ListsConfig;
+
+    /**
+     * Control styling options when writing RDF to a supported output format
+     */
     style?: StyleConfig;
 }
 
+/**
+ * Option inputs to Turtle and TriG Readers
+ */
 export interface TReaderConfig extends ReaderConfig {
     /**
      * Tolerant mode enables an optimization faster read speeds. It disables strict validation of IRIs and prefix IDs, allowing certain characters normally forbidden in TriG/Turtle to be used in IRIs and prefix IDs
@@ -147,6 +217,9 @@ export interface TReaderConfig extends ReaderConfig {
     prefix?(prefixId: string, iri: Iri): void;
 }
 
+/**
+ * Option inputs to the Turtle Reader
+ */
 export interface TurtleReaderConfig extends TReaderConfig {
     /**
      * Star mode enables RDF-star for Turtle
@@ -154,6 +227,9 @@ export interface TurtleReaderConfig extends TReaderConfig {
     star?: boolean;
 }
 
+/**
+ * Option inputs to the TriG Reader
+ */
 export interface TrigReaderConfig extends TReaderConfig {
     /**
      * Callback for when a graph block is entered (including the default graph). Does not emit for naked triples outside of graph blocks
@@ -183,31 +259,58 @@ export class GraphyTransform extends Transform {
     async bucket(): Promise<string>;
 }
 
-export class TurtleReader extends GraphyTransform implements RDF.Sink<EventEmitter> {
+/**
+ * An object that only has static methods for reading Turtle documents
+ */
+export class TurtleReader {
     /**
      * Runs the reader on an input Turtle document (i.e., parses it)
-     * @param input - input Turtle document
+     * @param input - input Turtle document (including a chain of Promises that eventually resolves to one)
      * @param config - config for the reader
      */
     static async run(input: Input, config: TurtleReaderConfig): Promise<void>;
 
+    /**
+     * @deprecated TurtleReader is not a constructor, it only has static methods
+     */
+    constructor(): never;
+}
 
+/**
+ * Allows for creating RDFJS-compatible streams (node.js Transform) for reading Turtle documents
+ */
+export class TurtleReaderNodeStream extends GraphyTransform {
+    constructor(config: TurtleReaderConfig);
+}
+
+/**
+ * Allows for creating instances of WHATWG TransformStream for reading Turtle documents
+ */
+export class TurtleReaderWebStream extends TransformStream {
     constructor(config: TurtleReaderConfig);
 }
 
 
-export class TurtleLoader extends GraphyTransform implements RDF.Sink<EventEmitter> {
+/**
+ * An object that only has static methods for loading Turtle documents
+ */
+export class TurtleLoader {
     /**
      * Runs the reader on an input Turtle document (i.e., parses it)
-     * @param input - input Turtle document
+     * @param input - input Turtle document (including a chain of Promises that eventually resolves to one)
      * @param config - config for the reader
      */
     static async run(input: Input, config: TurtleLoaderConfig): Promise<Dataset>;
 
-
-    constructor(config: TurtleLoaderConfig);
+    /**
+     * @deprecated TurtleLoader is not a constructor, it only has static methods
+     */
+    constructor(): never;
 }
 
+/**
+ * An object that only has static methods for reading TriG documents
+ */
 export class TrigReader extends GraphyTransform implements RDF.Sink<EventEmitter> {
     constructor(config: TrigReaderConfig);
 }

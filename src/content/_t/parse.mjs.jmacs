@@ -2,8 +2,7 @@
 
 @import '../../share/iris.jmacs'
 
-@./* global S_FORMAT S_MODE */
-@//
+@.{/* global S_FORMAT S_MODE */}
 
 @$ TTL = 'ttl' === S_FORMAT;
 @$ TRIG = 'trig' === S_FORMAT;
@@ -36,8 +35,6 @@
 	let SJ_RDF_NIL;
 	let SJ_DEFAULT_GRAPH;
 
-	let terms_equal;
-
 	if(B_LOAD) {
 		SJ_RDF_TYPE = /* syntax: js */ `this._sc1_rdf_type`;
 		SJ_RDF_FIRST = /* syntax: js */ `this._sc1_rdf_first`;
@@ -53,7 +50,7 @@
 		SJ_DEFAULT_GRAPH = /* syntax: js */ `this._kt_default_graph`;
 	}
 
-	terms_equal = (sj_a, sj_b) => /* syntax: js */ `${sj_a}.equals(${sj_b})`;
+	const terms_equal = (sj_a, sj_b) => /* syntax: js */ `${sj_a}.equals(${sj_b})`;
 
 	let prefixed_name;
 
@@ -68,10 +65,12 @@
 @// import parser macros
 @import '../text.read.jmacs'
 
+@{import_content_interface()}
+
 import uri from 'uri-js';
 
 import {DataFactory} from '@@graphy/core';
-import {stream} from '@@graphy/core/_internal';
+import {stream} from '@@graphy/core/_internal/iso';
 
 @if B_LOAD
 	@if B_LOAD_GSPO_BUILDER
@@ -214,12 +213,12 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				f_set = sj => f_load(/* syntax: js */ `concise(${sj}, this._h_prefixes)`);
 			}
 			else {
-				let sv_set = (b_not_this? '': 'this._')+(b_gspod? 'sc1_': 's_')+s_role;
+				const sv_set = (b_not_this? '': 'this._')+(b_gspod? 'sc1_': 's_')+s_role;
 				f_set = sj => /* syntax: js */ `${sv_set} = ${sj};`;
 			}
 		}
 		else {
-			let sv_set = b_set_role
+			const sv_set = b_set_role
 				? `p_${s_role}`
 				: (b_not_this? '': 'this._')+(b_gspod? 'kt_': 's_')+s_role;
 			f_set = b_gspod
@@ -252,7 +251,9 @@ const OPHOP = Object.prototype.hasOwnProperty;
 @;
 
 @def deduce_strlit_path(s_mode)
-	@. let sj_char = 'single' === s_mode? `"'"`: `'"'`;
+	@.{
+		const sj_char = 'single' === s_mode? `"'"`: `'"'`;
+	}
 	// enough chars to deduce type
 	if((i+2) < n) {
 		// long type
@@ -522,8 +523,8 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			iriref({s_role:'base_iri', sj_matched, b_escapeless}),
 			modal({
 				read: /* syntax: js */ `
-						this._fk_base(this._s_base_iri);
-					`,
+					this._fk_base(this._s_base_iri);
+				`,
 				load: '',
 			}),
 			// handle full stop
@@ -597,10 +598,12 @@ const OPHOP = Object.prototype.hasOwnProperty;
 						this._sc1_subject = null;
 					`,
 				}),
-				b_anon? /* syntax: js */ `
-					// pop dummy state
-					this._a_nested.pop();
-				`: '',
+				b_anon
+					? /* syntax: js */ `
+						// pop dummy state
+						this._a_nested.pop();
+					`
+					: '',
 			],
 			goto: 'statement',
 		}),
@@ -715,14 +718,14 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	};
 
 	const gen_matcher_strs = (a_strs, s_cmp='===', s_id='x') => a_strs.map((s_str) => {
-			let b_mono = 1 === s_str.length;
+			const b_mono = 1 === s_str.length;
 			return (b_mono? '': '(')+s_str.split('')
 				.map((s, i) => `'${s.replace(/'/g, '\\\'')}' ${s_cmp} ${i? `s[i+${i}]`: s_id}`)
 				.join(' && ')+(b_mono? '': ')');
 		}).join(' || ');
 
 	const gen_matcher_regex = (b_match=false) => (sj_var, {role:s_role='it', local_i:b_local_i=false}) => {
-		let sj_matched = /* syntax: js */ `m_${sj_var.replace(/^R_/, '').toLowerCase()}_${s_role}`;
+		const sj_matched = /* syntax: js */ `m_${sj_var.replace(/^R_/, '').toLowerCase()}_${s_role}`;
 
 		return {
 			context: {
@@ -784,8 +787,8 @@ const OPHOP = Object.prototype.hasOwnProperty;
 		call: {
 			branches: true,
 			apply: (sj_method, {role:s_role, local_i:b_local_i=false}) => {
-				let sj_no_shadow = (sj_method+'_'+s_role).replace(/[^a-z0-9]/gi, '_');
-				let sj_matched = /* syntax: js */ `m_${sj_method.replace(/^this\./, '')}_${s_role}`;
+				const sj_no_shadow = (sj_method+'_'+s_role).replace(/[^a-z0-9]/gi, '_');
+				const sj_matched = /* syntax: js */ `m_${sj_method.replace(/^this\./, '')}_${s_role}`;
 				return {
 					context: {
 						sj_matched,
@@ -810,7 +813,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 	};
 
 	function* states(h_states) {
-		for(let [si_state, g_state] of ode(h_states)) {
+		for(const [si_state, g_state] of ode(h_states)) {
 			// prep body string
 			let s_body = '';
 
@@ -821,7 +824,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			let c_branches = 1;
 
 			// each rule
-			for(let [si_rule, z_rule] of ode(g_state.rules)) {
+			for(const [si_rule, z_rule] of ode(g_state.rules)) {
 				// create args
 				let h_args = {
 					...(g_state.apply || {}),
@@ -880,10 +883,10 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				}
 
 				// specifier
-				let g_spec = f_rule(h_args);
+				const g_spec = f_rule(h_args);
 
-				let si_matcher = g_spec.type;
-				let g_matcher = H_MATCHERS[si_matcher];
+				const si_matcher = g_spec.type;
+				const g_matcher = H_MATCHERS[si_matcher];
 
 				if(!g_matcher) {
 					 throw new Error(`no such matcher defined '${si_matcher}'`);
@@ -906,7 +909,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 				b_else = true;
 
 				// apply matcher
-				let z_applied = g_matcher.apply(g_spec.test, {
+				const z_applied = g_matcher.apply(g_spec.test, {
 					...h_args,
 					...(g_spec.args || {}),
 				});
@@ -966,7 +969,7 @@ const OPHOP = Object.prototype.hasOwnProperty;
 			s_body += '}\n'.repeat(c_branches);
 
 			// loop control type
-			let sx_loop = ({
+			const sx_loop = ({
 				bypass: '',
 				for: /* syntax: js */ `for(;;) {`,
 				'': /* syntax: js */ `${si_state.toUpperCase()}: while(i < n) {  // eslint-disable-line no-unmodified-loop-condition`,
@@ -1244,19 +1247,23 @@ const match_prefixed_name = (s, i) => {
 
 
 @// consume whitespace
-@def whitespace(z_offset='0', b_local_i=false)
-	@. let s_offset = 'number' === typeof z_offset? `i+${z_offset}`: z_offset
+@def whitespace(z_offset='0', b_local_i=false, sji_this='this')
+	@.{
+		const s_offset = 'number' === typeof z_offset? `i+${z_offset}`: z_offset;
+	}
 	// consume whitespace (and incidentally reset index)
 	R_WS.lastIndex = @{s_offset};
 	R_WS.exec(s);
-	@{b_local_i? '': 'this.'}i = R_WS.lastIndex;
+	@{b_local_i? '': sji_this+'.'}i = R_WS.lastIndex;
 @;
 
 
 @// assert the prefix found in prefixed name is valid
 @def valid_prefix(match, n_group)
 	@if B_READ
-		@. let sj_var = `s_prefix_id${n_group? '_'+n_group: ''}`;
+		@.{
+			const sj_var = `s_prefix_id${n_group? '_'+n_group: ''}`;
+		}
 
 		// check valid prefix
 		let @{sj_var} = @{match}[@{n_group || 1}] || '';
@@ -1998,49 +2005,49 @@ export class Consumer {
 		}
 	}
 
-@def write_chunk(b_fke_chunk)
+@def write_chunk(b_fke_chunk, sji_this='this')
 	@//@
 	// concatenate current chunk to previous chunk
-	const s = this.s = this.pre + s_chunk;
+	const s = @{sji_this}.s = @{sji_this}.pre + s_chunk;
 
 	// cache chunk length
-	this.n = s.length;
+	@{sji_this}.n = s.length;
 
 	// eat whitespace before token and reset index
-	if(this._b_trim_start) {
-		@{whitespace()}
+	if(@{sji_this}._b_trim_start) {
+		@{whitespace('0', false, sji_this)}
 	}
 	// do not eat whitespace; start at beginning
 	else {
-		this.i = 0;
+		@{sji_this}.i = 0;
 	}
 
 	// resume parsing
-	const e_parse = this.safe_parse(true);
+	const e_parse = @{sji_this}.safe_parse(true);
 
 	// parse error
 	if(e_parse) {
 		@if b_fke_chunk
 			// handle thru stream callback
-			return F_NOOP !== this._fe_error? this._fe_error(e_parse): fke_chunk(e_parse);
+			return F_NOOP !== @{sji_this}._fe_error? @{sji_this}._fe_error(e_parse): fke_chunk(e_parse);
 		@else
 			// handle using callback
-			return this._fe_error(e_parse);
+			return @{sji_this}._fe_error(e_parse);
 		@;
 	}
 	// no errors
 	else {
 		@if B_LOAD
 			// debugger;
-			// this.emit_data();
+			// @{sji_this}.emit_data();
 		@;
 
 		// emit progress event updates
-		this._fk_progress(s_chunk.length);
+		@{sji_this}._fk_progress(s_chunk.length);
 
 		// count lines
-		if(this._b_line_tracking) {
-			this._c_lines += count_all_lines(s_chunk);
+		if(@{sji_this}._b_line_tracking) {
+			@{sji_this}._c_lines += count_all_lines(s_chunk);
 		}
 
 		@if b_fke_chunk
@@ -2049,6 +2056,8 @@ export class Consumer {
 		@;
 	}
 @;
+
+@//@class
 
 	// consume a string
 	consume_string(s_chunk) {
@@ -2068,7 +2077,7 @@ export class Consumer {
 	// consume async iterable
 	async consume_async_iterable_strings(w_subject) {
 		// each chunk
-		for await(s_chunk of w_subject) {
+		for await(const s_chunk of w_subject) {
 			@{write_chunk()}
 		}
 
@@ -2085,13 +2094,13 @@ export class Consumer {
 
 	// consume async iterable
 	async consume_async_iterable_any(w_subject) {
-		const DecoderProxy = await stream.resolve_decoder_proxy();
+		const DecoderProxy = await resolve_decoder_proxy();
 
 		// prep decoder in case needed
 		const d_decoder = new DecoderProxy();
 
 		// each chunk
-		for await(z_chunk of w_subject) {
+		for await(const z_chunk of w_subject) {
 			let s_chunk = '';
 
 			// already string
@@ -2153,6 +2162,8 @@ export class Consumer {
 				};
 			}
 
+			const k_consumer = this;
+
 			// start processing
 			d_reader.read().then(function process(g_read) {
 				const {
@@ -2163,19 +2174,19 @@ export class Consumer {
 				// stream is done
 				if(b_done) {
 					// eof
-					const e_eof = this.eof(1);
+					const e_eof = k_consumer.eof(1);
 
 					// handle error
-					if(e_eof) return this._fe_error(e_eof);
+					if(e_eof) return k_consumer._fe_error(e_eof);
 
 					@- B_LOAD
-						return fk_consumed(this._k_dataset);
+						return fk_consumed(k_consumer._k_dataset);
 					@:
 						return fk_consumed();
 					@;
 				}
 
-				@{write_chunk()}
+				@{write_chunk(false, 'k_consumer')}
 
 				// read next chunk
 				d_reader.read().then(process);
@@ -2250,14 +2261,17 @@ export class Consumer {
 		});
 	}
 
-@def gen_steam_proxy(gc_stream)
+@def gen_node_stream_proxy(gc_stream)
+	@.{
+		const sj_instance = /* syntax: js */ `ds_${gc_stream.kind}`;
+	}
 	// on data event
-	ds_@{gc_stream.kind}._@{gc_stream.data} = (s_chunk, s_encoding, fke_chunk) => {
-		@{write_chunk('stream')}
+	@{sj_instance}._@{gc_stream.data} = (s_chunk, s_encoding, fke_chunk) => {
+		@{write_chunk(true)}
 	};
 
 	// once there's no more data to consume, invoke eof
-	ds_@{gc_stream.kind}._@{gc_stream.terminal} = (fke_@{gc_stream.terminal}) => {
+	@{sj_instance}._@{gc_stream.terminal} = (fke_@{gc_stream.terminal}) => {
 		// now that input stream has ended, clean up remainder
 		const e_eof = this.eof(1);
 
@@ -2278,7 +2292,7 @@ export class Consumer {
 	};
 
 	// new listener added
-	ds_@{gc_stream.kind}.on('newListener', (s_event) => {
+	@{sj_instance}.on('newListener', (s_event) => {
 		// comment
 		if('comment' === s_event && !this.emit_comments) {
 			this.enable_comments();
@@ -2286,12 +2300,12 @@ export class Consumer {
 	});
 
 	// destroy
-	ds_@{gc_stream.kind}._destroy = (...a_args) => {
+	@{sj_instance}._destroy = (...a_args) => {
 		this.destroy(...a_args);
 	};
 
 	// when the writable side is piped into
-	ds_@{gc_stream.kind}.on('pipe', (ds_input) => {
+	@{sj_instance}.on('pipe', (ds_input) => {
 		this._ds_input = ds_input;
 
 		let b_byte_tracking = this._b_byte_tracking;
@@ -2302,7 +2316,7 @@ export class Consumer {
 		}
 		// set decoding on write
 		else {
-			let f_write = ds_@{gc_stream.kind}.write;
+			let f_write = @{sj_instance}.write;
 			let d_decoder; 
 			resolve_decoder_proxy().then(DecoderProxy => d_decoder = new DecoderProxy('utf8'));
 
@@ -2311,38 +2325,38 @@ export class Consumer {
 				let nb_chunk = Buffer.from(s_chunk, 'utf8').length;
 				this._nb_seen += nb_chunk;
 				this._nb_last = nb_chunk;
-				return f_write.call(ds_@{gc_stream.kind}, s_chunk, s_encoding, fk_write);
+				return f_write.call(@{sj_instance}, s_chunk, s_encoding, fk_write);
 			};
 
 			let f_decode_write_track = (ab_chunk, s_encoding, fk_write) => {
 				let nb_chunk = this._nb_last = ab_chunk.length;
 				this._nb_seen += nb_chunk;
-				return f_write.call(ds_@{gc_stream.kind}, d_decoder.decode(ab_chunk), s_encoding, fk_write);
+				return f_write.call(@{sj_instance}, d_decoder.decode(ab_chunk), s_encoding, fk_write);
 			};
 
 			let f_decode_write = (ab_chunk, s_encoding, fk_write) => {
-				return f_write.call(ds_@{gc_stream.kind}, d_decoder.decode(ab_chunk), s_encoding, fk_write);
+				return f_write.call(@{sj_instance}, d_decoder.decode(ab_chunk), s_encoding, fk_write);
 			};
 
-			ds_@{gc_stream.kind}.write = function(z_chunk, s_encoding, fk_write) {
+			@{sj_instance}.write = function(z_chunk, s_encoding, fk_write) {
 				// not null
 				if(null !== z_chunk) {
 					// chunk is string; adapt by resetting method to original
 					if('string' === typeof z_chunk) {
-						ds_@{gc_stream.kind}.write = b_byte_tracking? f_write_track: f_write;
+						@{sj_instance}.write = b_byte_tracking? f_write_track: f_write;
 					}
 					// chunk is buffer; adapt by setting decoder write method
 					else {
-						ds_@{gc_stream.kind}.write = b_byte_tracking? f_decode_write_track: f_decode_write;
+						@{sj_instance}.write = b_byte_tracking? f_decode_write_track: f_decode_write;
 
 						// also ensure final bits are flushed
-						const f_@{gc_stream.terminal} = ds_@{gc_stream.kind}._@{gc_stream.terminal};
-						ds_@{gc_stream.kind}._@{gc_stream.terminal} = (fke_@{gc_stream.terminal}) => {
-							const f_ack = () => f_@{gc_stream.terminal}.call(ds_transform, fke_@{gc_stream.terminal});
+						const f_@{gc_stream.terminal} = @{sj_instance}._@{gc_stream.terminal};
+						@{sj_instance}._@{gc_stream.terminal} = (fke_@{gc_stream.terminal}) => {
+							const f_ack = () => f_@{gc_stream.terminal}.call(@{sj_instance}, fke_@{gc_stream.terminal});
 
 							const s_@{gc_stream.terminal} = d_decoder.flush();
 							if(s_@{gc_stream.terminal}) {
-								ds_@{gc_stream.kind}.write(s_@{gc_stream.terminal}, 'utf8', f_ack);
+								@{sj_instance}.write(s_@{gc_stream.terminal}, 'utf8', f_ack);
 							}
 							else {
 								f_ack();
@@ -2351,11 +2365,11 @@ export class Consumer {
 					}
 
 					// use set method
-					return ds_@{gc_stream.kind}.write(z_chunk, s_encoding, fk_write);
+					return @{sj_instance}.write(z_chunk, s_encoding, fk_write);
 				}
 
 				// null, use parent
-				return f_write.call(ds_@{gc_stream.kind}, z_chunk, s_encoding, fk_write);
+				return f_write.call(@{sj_instance}, z_chunk, s_encoding, fk_write);
 			};
 
 			// byte tracking is enabled
@@ -2367,35 +2381,141 @@ export class Consumer {
 					let ib_post = this._nb_seen - nb_post;
 					g_quad.byteRange = [this._nb_curr, ib_post];
 					this._nb_curr = ib_post;
-					ds_@{gc_stream.kind}.push(g_quad);
+					@{sj_instance}.push(g_quad);
 				};
 			}
 		}
 	});
 @;
 
+@//@class
+
 	// proxy a stream wrapper
 	@if B_LOAD
-		proxy_writable(ds_writable) {
+		proxy_node_writable(ds_writable) {
 			this._ds_proxy = ds_writable;
 
-			@{gen_steam_proxy({
+			@{gen_node_stream_proxy({
 				kind: 'writable',
 				data: 'write',
 				terminal: 'final',
 			})}
 		}
 	@+ B_READ
-		proxy_transform(ds_transform) {
+		proxy_node_transform(ds_transform) {
 			this._ds_proxy = ds_transform;
 
-			@{gen_steam_proxy({
+			@{gen_node_stream_proxy({
 				kind: 'transform',
 				data: 'transform',
 				terminal: 'flush',
 			})}
 		}
 	@;
+
+	web_writable() {
+		const k_consumer = this;
+
+		const b_direct = F_NOOP === this._fk_data;
+		let b_needs_rewire = true;
+		let d_start_controller;
+
+		return {
+			start(d_controller) {
+				d_start_controller = d_controller;
+
+				// direct
+				if(F_NOOP === k_consumer._fk_data) {
+					k_consumer._fk_data = w => d_controller.enqueue(w);
+				}
+				// split
+				else {
+					const fk_original = k_consumer._fk_data;
+					k_consumer._fk_data = (w) => {
+						fk_original(w);
+						d_controller.enqueue(w);
+					};
+				}
+			},
+
+			write(s_chunk, d_controller) {
+				@{write_chunk()}
+			},
+
+			// once there's no more data to consume, invoke eof
+			close() {
+				// now that input stream has ended, clean up remainder
+				const e_eof = k_consumer.eof(1);
+
+				// read error occurred
+				if(e_eof) {
+					// error handler
+					if(F_NOOP !== k_consumer._fe_error) {
+						return k_consumer._fe_error(e_eof);
+					}
+					// allow stream to handle error
+					else {
+						return d_start_controller.error(e_eof);
+					}
+				}
+			},
+		};
+	}
+
+	web_transform() {
+		const k_consumer = this;
+
+		const b_direct = F_NOOP === this._fk_data;
+		let b_needs_rewire = true;
+
+		return {
+			transform(s_chunk, d_controller) {
+				// data emitter needs to be rewired
+				if(b_needs_rewire) {
+					// direct
+					if(F_NOOP === k_consumer._fk_data) {
+						k_consumer._fk_data = w => d_controller.enqueue(w);
+					}
+					// split
+					else {
+						const fk_original = k_consumer._fk_data;
+						k_consumer._fk_data = (w) => {
+							fk_original(w);
+							d_controller.enqueue(w);
+						};
+					}
+
+					// don't do this again
+					b_needs_rewire = false;
+				}
+
+				@{write_chunk()}
+			},
+
+			// once there's no more data to consume, invoke eof
+			flush(d_controller) {
+				// now that input stream has ended, clean up remainder
+				const e_eof = k_consumer.eof(1);
+
+				// read error occurred
+				if(e_eof) {
+					// error handler
+					if(F_NOOP !== k_consumer._fe_error) {
+						return k_consumer._fe_error(e_eof);
+					}
+					// allow stream to handle error
+					else {
+						return d_controller.error(e_eof);
+					}
+				}
+
+				// no errors. done with flush, close stream
+				d_controller.close();
+			},
+		};
+	}
+
+@//@class
 
 	enable_comments() {
 		this.emit_comments = (s_captured) => {
@@ -2586,7 +2706,7 @@ export class Consumer {
 
 	@.{
 		function subassign(h_source, h_add) {
-			for(let [, h_sub] of ode(h_source)) {
+			for(const [, h_sub] of ode(h_source)) {
 				Object.assign(h_sub, h_add);
 			}
 		}
@@ -2640,50 +2760,54 @@ export class Consumer {
 				string_literal_single: {},
 				numeric_literal: {},
 				boolean_literal: {},
-				...(!b_star? {
-					blank_node_property_list: () => ({
-						type: 'chars',
-						test: '[',
-						action: modal({
-							read: /* syntax: js */ `
-								// make blank node
-								let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
+				...(!b_star
+					? {
+						blank_node_property_list: () => ({
+							type: 'chars',
+							test: '[',
+							action: modal({
+								read: /* syntax: js */ `
+									// make blank node
+									let kt_blank_node = this._kt_object = this.anonymous_blank_node(this.next_label());
 
-								// emit statement event
-								${emit_statement()}
+									// emit statement event
+									${emit_statement()}
 
-								// push state to stack
-								${push_state('post_object')}
+									// push state to stack
+									${push_state('post_object')}
 
-								// set new subject
-								this._kt_subject = kt_blank_node;
-							`,
-							load: /* syntax: js */ `
-								// make blank node
-								let sc1_blank_node = '#'+this.next_label();
+									// set new subject
+									this._kt_subject = kt_blank_node;
+								`,
+								load: /* syntax: js */ `
+									// make blank node
+									let sc1_blank_node = '#'+this.next_label();
 
-								// commit to memory
-								${load_object(/* syntax: js */ `sc1_blank_node`)}
+									// commit to memory
+									${load_object(/* syntax: js */ `sc1_blank_node`)}
 
-								// push state to stack
-								${push_state('post_object')}
+									// push state to stack
+									${push_state('post_object')}
 
-								// set new subject
-								${load_subject(/* syntax: js */ `sc1_blank_node`)}
-							`,
+									// set new subject
+									${load_subject(/* syntax: js */ `sc1_blank_node`)}
+								`,
+							}),
+							goto: 'pairs',
 						}),
-						goto: 'pairs',
-					}),
-				}: {}),
+					}
+					: {}),
 				labeled_blank_node_terminal: {},
-				...(!b_star? {
-					collection_object: () => ({
-						type: 'chars',
-						test: '(',
-						action: push_state('post_object'),
-						goto: 'collection_object',
-					}),
-				}: {}),
+				...(!b_star
+					? {
+						collection_object: () => ({
+							type: 'chars',
+							test: '(',
+							action: push_state('post_object'),
+							goto: 'collection_object',
+						}),
+					}
+					: {}),
 				iriref: {},
 				prefixed_name: {},
 				rdf_star: {},
@@ -2777,7 +2901,8 @@ export class Consumer {
 				? {
 					// closing graph '}'
 					graph_terminator: {},
-				}: {}),
+				}
+				: {}),
 			iriref: {},
 			prefixed_name: {},
 			...h_append,
@@ -2963,123 +3088,125 @@ export class Consumer {
 	}
 
 	@*{yield* states({
-		...(B_TRIG? {
-			block: {
-				apply: {
-					role: 'graph',
-					goto: 'statement',
-					node_mod: 'graph',
-				},
-				rules: {
-					graph_iriref_escapeless: {},
-					prefixed_name: {},
-					graph_open: () => ({
-						type: 'test',
-						test: /* syntax: js */ `R_CHAR_OPEN`,
-						action: modal({
-							read: [
-								save_term('graph', /* syntax: js */ `this._dc_factory.defaultGraph()`),
-								emit_graph_open(),
-							],
-							load: load_default_graph(),
-						}),
-					}),
-					anonymous_blank_node: {},
-					labeled_blank_node: {},
-					iriref_escapeless: {
-						role: 'subject',
-						goto: 'graph_or_subject',
+		...(B_TRIG
+			? {
+				block: {
+					apply: {
+						role: 'graph',
+						goto: 'statement',
+						node_mod: 'graph',
 					},
-					...subassign(gen_rules_triples({b_directives:true, b_star:false}), {
-						role: 'subject',
-						goto: 'pairs',
-					}),
-					graph_iri: () => ({
-						type: 'match',
-						test: /* syntax: js */ `R_GRAPH_IRI`,
-						action: ({sj_matched}) => [
-							iriref({s_role:'graph', sj_matched}),
-							modal({
+					rules: {
+						graph_iriref_escapeless: {},
+						prefixed_name: {},
+						graph_open: () => ({
+							type: 'test',
+							test: /* syntax: js */ `R_CHAR_OPEN`,
+							action: modal({
+								read: [
+									save_term('graph', /* syntax: js */ `this._dc_factory.defaultGraph()`),
+									emit_graph_open(),
+								],
+								load: load_default_graph(),
+							}),
+						}),
+						anonymous_blank_node: {},
+						labeled_blank_node: {},
+						iriref_escapeless: {
+							role: 'subject',
+							goto: 'graph_or_subject',
+						},
+						...subassign(gen_rules_triples({b_directives:true, b_star:false}), {
+							role: 'subject',
+							goto: 'pairs',
+						}),
+						graph_iri: () => ({
+							type: 'match',
+							test: /* syntax: js */ `R_GRAPH_IRI`,
+							action: ({sj_matched}) => [
+								iriref({s_role:'graph', sj_matched}),
+								modal({
+									read: emit_graph_open(),
+									load: '',
+								}),
+							],
+						}),
+						comment: {},
+						graph: () => ({
+							type: 'test',
+							test: /* syntax: js */ `R_GRAPH`,
+							action: [],
+							goto: 'graph_keyword',
+						}),
+					},
+				},
+
+				graph_or_subject: {
+					preamble: SJ_REF_X_CHAR,
+					rules: {
+						disambiguating_graph_open: {},
+						non_comment: {},
+						comment: {},
+					},
+				},
+
+				graph_or_subject_property_list: {
+					preamble: SJ_REF_X_CHAR,
+					rules: {
+						blank_node_property_list_terminator: () => ({
+							type: 'chars',
+							test: ']',
+							goto: 'graph_or_subject_anon',
+						}),
+						non_comment: {},
+						comment: {},
+					},
+				},
+
+				graph_or_subject_anon: {
+					preamble: SJ_REF_X_CHAR,
+					rules: {
+						disambiguating_graph_open: {
+							anonymous: true,
+						},
+						non_comment: {},
+						comment: {},
+					},
+				},
+
+				graph_keyword: () => ({
+					apply: {
+						role: 'graph',
+						goto: 'graph_post_name',
+					},
+					rules: {
+						prefixed_name_quick: {},
+						iriref_escapeless: {},
+						labeled_blank_node: {},
+						anonymous_blank_node: {},
+						iriref: {},
+						prefixed_name: {},
+						comment: {},
+					},
+				}),
+
+				graph_post_name: () => ({
+					preamble: SJ_REF_X_CHAR,
+					rules: {
+						graph_open_block: () => ({
+							type: 'chars',
+							test: '{',
+							action: modal({
 								read: emit_graph_open(),
 								load: '',
 							}),
-						],
-					}),
-					comment: {},
-					graph: () => ({
-						type: 'test',
-						test: /* syntax: js */ `R_GRAPH`,
-						action: [],
-						goto: 'graph_keyword',
-					}),
-				},
-			},
-
-			graph_or_subject: {
-				preamble: SJ_REF_X_CHAR,
-				rules: {
-					disambiguating_graph_open: {},
-					non_comment: {},
-					comment: {},
-				},
-			},
-
-			graph_or_subject_property_list: {
-				preamble: SJ_REF_X_CHAR,
-				rules: {
-					blank_node_property_list_terminator: () => ({
-						type: 'chars',
-						test: ']',
-						goto: 'graph_or_subject_anon',
-					}),
-					non_comment: {},
-					comment: {},
-				},
-			},
-
-			graph_or_subject_anon: {
-				preamble: SJ_REF_X_CHAR,
-				rules: {
-					disambiguating_graph_open: {
-						anonymous: true,
-					},
-					non_comment: {},
-					comment: {},
-				},
-			},
-
-			graph_keyword: () => ({
-				apply: {
-					role: 'graph',
-					goto: 'graph_post_name',
-				},
-				rules: {
-					prefixed_name_quick: {},
-					iriref_escapeless: {},
-					labeled_blank_node: {},
-					anonymous_blank_node: {},
-					iriref: {},
-					prefixed_name: {},
-					comment: {},
-				},
-			}),
-
-			graph_post_name: () => ({
-				preamble: SJ_REF_X_CHAR,
-				rules: {
-					graph_open_block: () => ({
-						type: 'chars',
-						test: '{',
-						action: modal({
-							read: emit_graph_open(),
-							load: '',
+							goto: 'statement',
 						}),
-						goto: 'statement',
-					}),
-					comment: {},
-				},
-			}),
-		}: {}),
+						comment: {},
+					},
+				}),
+			}
+			: {}),
 
 		statement: gen_state_subject({b_star:false}),
 		triple_x: gen_state_subject({b_star:true}),
@@ -3359,10 +3486,12 @@ export class Consumer {
 						});
 					`,
 				}),
-				...(B_QUADS? {
-					// closing graph '}'
-					graph_terminator: {},
-				}: {}),
+				...(B_QUADS
+					? {
+						// closing graph '}'
+						graph_terminator: {},
+					}
+					: {}),
 				comment: {},
 			},
 		},
@@ -4021,7 +4150,8 @@ export class Consumer {
 		},
 	})}
 
-	@//@class
+@//@class
+
 	star_predicate_x() {
 		// set as subject
 		this._kt_subject = this._kq_star;
@@ -4064,10 +4194,8 @@ export class Consumer {
 		// resume
 		@{goto('post_object')}
 	}
-	@//@
 
-
-	@//@object-literal
+@//@class
 
 	destroy(e_destroy) {
 		@*{

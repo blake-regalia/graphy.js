@@ -1,3 +1,56 @@
+import type {
+	Any,
+	Union,
+	List,
+	String,
+} from 'ts-toolbelt';
+
+import type {
+	Cast,
+	Contains,
+	Key as AnyKey,
+	KnownKeys,
+	Equals,
+	Extends,
+	Try,
+	Type,
+} from 'ts-toolbelt/out/Any/_api';
+
+import type {
+	And,
+	Not,
+	Or,
+	Xor,
+} from 'ts-toolbelt/out/Boolean/_api';
+
+import type {
+	If,
+} from 'ts-toolbelt/out/Any/If';
+
+import type {
+	Remove,
+	KeySet,
+	Length,
+} from 'ts-toolbelt/out/List/_api';
+
+import type {
+	Merge,
+} from 'ts-toolbelt/out/Object/_api';
+
+import type {
+	Greater,
+	GreaterEq,
+	Lower,
+	LowerEq,
+	Range,
+	Add,
+	Sub,
+} from 'ts-toolbelt/out/Number/_api';
+
+import type {
+	Join,
+	Split,
+} from 'ts-toolbelt/out/String/_api';
 
 type Scheme = string;
 type IAuthority = string;
@@ -40,3 +93,6 @@ type LiterallyInteger = `${NumericSign}${LiterallyIntegerSequence}`;
 type LiterallyDecimal = `${LiterallyInteger}${'' | `.${LiterallyIntegerSequence}`}`;
 
 type LiterallyDouble = `${LiterallyDecimal}${'' | `${'e' | 'E'}${LiterallyInteger}`}`;
+
+
+// type Iri<s_input extends string> = 

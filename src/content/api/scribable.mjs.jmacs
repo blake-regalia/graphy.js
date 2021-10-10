@@ -1,4 +1,3 @@
-@import '../../share/channel.jmacs'
 @import '../../share/iris.jmacs'
 @import '../../share/writer.jmacs'
 
@@ -9,31 +8,14 @@ import {
 } from '@graphy/core';
 
 import {
-	Transform,
-} from '../iso/stream.mjs';
-
-// max string buffer size
-const N_DEFAULT_MAX_BUFFER = 1 << 15;  // 32 KiB
+	streamType,
+	TransformOTS,
+} from '@graphy/core/stream';
 
 
-export class ScribableContent extends Transform {
-	// flush buffer
-	static _flush_buffer(k_self) {
-		// no buffer; exit
-		if(!k_self._s_push) return;
-
-		// push buffer to stream
-		k_self.push(k_self._s_push);
-
-		// reset buffer
-		k_self._s_push = '';
-	}
-
+export class ScribableContent extends TransformOTS {
 	constructor(gc_scribable={}) {
-		super({
-			writableObjectMode: true,
-			readableObjectMode: false,
-		});
+		super(gc_scribable);
 
 		const {
 			prefixes: h_prefixes={},
@@ -44,33 +26,33 @@ export class ScribableContent extends Transform {
 		// set base
 		this._p_base = p_base;
 
-		// internal buffer
-		this._s_push = '';
-
-		// max buffer length
-		this._n_max_buffer = gc_scribable.max_buffer || gc_scribable.maxBuffer || N_DEFAULT_MAX_BUFFER;
-
 		// prefixes
 		this._h_prefixes = cachePrefixes(h_prefixes || {}, b_terse, p_base);
 
 		// on new source(s)
-		this.on('pipe', (ds_src) => {
-			// listen for prefix events
-			ds_src.on('prefix', (s_prefix_id, p_iri) => {
-				this.write({
-					type: 'prefixes',
-					value: {
-						[s_prefix_id]: p_iri,
-					},
-				})
-			});
+		this.on('import', (z_src) => {
+			streamType(z_src, {
+				node(ds_src) {
+					// listen for prefix events
+					ds_src.on('prefix', (s_prefix_id, p_iri) => {
+						this.write({
+							type: 'prefixes',
+							value: {
+								[s_prefix_id]: p_iri,
+							},
+						})
+					});
 
-			// listen for comment events
-			ds_src.on('comment', (s_comment) => {
-				this.write({
-					type: 'comment',
-					value: s_comment,
-				});
+					// listen for comment events
+					ds_src.on('comment', (s_comment) => {
+						this.write({
+							type: 'comment',
+							value: s_comment,
+						});
+					});
+				},
+
+				other() {},
 			});
 		});
 
@@ -132,10 +114,8 @@ export class ScribableContent extends Transform {
 			// warn about implicit union
 			const s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => fromC1(sc1, h_prefixes).verbose()).join(', ')}`;
 
-			// emit warning, wasn't listened to; force thru warn/stderr channel
-			if(!this.emit('warning', s_warning)) {
-				console.warn(s_warning);
-			}
+			// emit warning
+			this._fk_warn(s_warning);
 		}
 
 		return s_write;
@@ -186,8 +166,8 @@ export class ScribableContent extends Transform {
 		this._h_prefixes = cachePrefixes(h_prefixes || {}, b_terse);
 	}
 
-	// implement stream.Transform
-	_transform(g_event, s_encoding, fke_transform) {
+	// implement transform
+	_transform(g_event) {
 		let w_write;
 
 		// try to serialize input value
@@ -197,7 +177,7 @@ export class ScribableContent extends Transform {
 		// serialization error
 		catch(e_serialize) {
 			// report error
-			fke_transform(e_serialize);
+			this._fke_transform(e_serialize);
 
 			// bail on transform
 			return e_serialize;
@@ -206,10 +186,12 @@ export class ScribableContent extends Transform {
 		// data to push
 		if(w_write) {
 			// flush internal buffer
-			ScribableContent._flush_buffer(this);
+			this._flush_buffer();
 
 			// push data to stream
-			this.push(w_write);
+			if(this.push(w_write)) {
+				this._apply_backpressure();
+			}
 		}
 		// nothing returned from serialization
 		else {
@@ -217,30 +199,16 @@ export class ScribableContent extends Transform {
 
 			// internal buffer high water mark
 			if(nl_push > this._n_max_buffer) {
-				ScribableContent._flush_buffer(this);
+				// backpressure signal
+				if(this._flush_buffer()) {
+					this._apply_backpressure();
+				}
 			}
 			// allow buffer to build
 			else if(nl_push) {
 				// do not worry about clearing timeouts
-				queueMicrotask(() => ScribableContent._flush_buffer(this));
+				queueMicrotask(() => this._flush_buffer());
 			}
-		}
-
-		// callback
-		fke_transform();
-	}
-
-	// queue data to be pushed later
-	_queue(s_push) {
-		this._s_push += s_push;
-
-		// internal buffer high water mark
-		if(this._s_push.length > this._n_max_buffer) {
-			ScribableContent._flush_buffer(this);
-		}
-		else {
-			// do not worry about clearing timeouts
-			queueMicrotask(() => ScribableContent._flush_buffer(this));
 		}
 	}
 
@@ -314,20 +282,6 @@ export class ScribableContent extends Transform {
 				throw new Error(`no such writable data event type for RDF stream: '${g_event.type}'`);
 			}
 		}
-	}
-
-	// rinse off buffer to writable
-	rinse() {
-		this._reset();
-		ScribableContent._flush_buffer(this);
-	}
-
-	_flush() {
-		// flush buffer
-		ScribableContent._flush_buffer(this);
-
-		// eof
-		this.push(null);
 	}
 }
 

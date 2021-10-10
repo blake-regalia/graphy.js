@@ -570,7 +570,28 @@ type Bcp47 = string;
 }
 
 @*{
-	yield /* syntax: ts */ `export namespace Term {\n`;
+	yield /* syntax: ts */ `export namespace Term {`;
+
+	// generic type
+	{
+		yield `\n\texport interface GenericTerm {`;
+		for(const [si_property, z_default] of Object.entries(H_TERM_GENERIC.properties)) {
+			let s_value;
+
+			if(true === z_default) {
+				s_value = 'true';
+			}
+			else if(false === z_default) {
+				s_value = 'boolean';
+			}
+			else {
+				s_value += z_default;
+			}
+
+			yield `\n\t\treadonly ${si_property}: ${s_value};`;
+		}
+		yield `\n\t}\n\n`;
+	}
 
 	let s_accepted = '';
 
@@ -594,6 +615,7 @@ type Bcp47 = string;
 			const a_lines = s_docs.trim().split(/\s*\n\s*/g);
 			yield `\t/**${a_lines.map(s => `\n\t * ${s}`)}\n\t */\n`;
 		}
+
 		yield /* syntax: ts */ `\texport interface ${si_term}${sj_generics} ${sj_implements || ''} {\n`;
 
 		for(const [si_property, sj_property] of ode(g_term.properties)) {

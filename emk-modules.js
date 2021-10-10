@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const url = require('url').URL;
 
 const jmacs = require('jmacs');
 const detective = require('detective');
@@ -179,6 +178,7 @@ const H_GEN_LEAF = {
 			# compile typescript
 			npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \
 				--strict --skipLibCheck --forceConsistentCasingInFileNames \
+				--allowSyntheticDefaultImports \
 				--moduleResolution node \
 				--outDir $pd_build -d $1
 
@@ -255,11 +255,28 @@ const scoped_package = si_package => ({
 });
 
 
+// ensure a given set of paths exists on an object
+const mk_path = (h_src, h_make) => {
+	const h_out = {};
+
+	for(const [si_key, z_value] of Object.entries(h_make)) {
+		const h_sub = h_src[si_key] = h_src[si_key] || {};
+		if('function' === typeof z_value) {
+			h_out[z_value()] = h_sub;
+		}
+		else {
+			Object.assign(h_out, mk_path(h_sub, z_value));
+		}
+	}
+
+	return h_out;
+};
+
 // turn a source file name into a main module file
 const mainify = (s_file, si_module) => s_file.replace(new RegExp('^'+si_module.replace(/([.$+])/g, '\\$1'), 'g'), 'main');
 
 // carry files from a main source file's subdirectory
-const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
+const expand_macros = (pd_src, sr_build=null, h_recipe={}) => {
 	// deps
 	const a_deps = [];
 	const a_direct = [];
@@ -270,7 +287,7 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 	// each file
 	for(const s_file_src of a_files) {
 		const p_src = path.join(pd_src, s_file_src);
-		const pd_dst = path.join('build', 'module', si_module);
+		const pd_dst = path.join('build', 'module', sr_build);
 
 		// subdirectory
 		if(fs.statSync(p_src).isDirectory()) {
@@ -281,7 +298,7 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 			const {
 				deps: a_subdeps,
 				recipe: h_subrecipe,
-			} = expand_macros(p_src, path.join(si_module, s_file_src));
+			} = expand_macros(p_src, path.join(sr_build, s_file_src));
 
 			// make subrecipe; put in this recipe
 			h_recipe[s_file_src] = h_subrecipe;
@@ -294,6 +311,55 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 		}
 		// file
 		else {
+			const si_module = sr_build.replace(/[/\\].*$/, '');
+
+			const add_browser_exports = (s_file_out_mjs, s_file_out_js) => {
+				// target browser
+				if(/-browser\./.test(s_file_out_mjs)) {
+					const {
+						h_esm,
+						h_cjs,
+					} = mk_path(H_MODULES[si_module].json, {
+						exports: {
+							browser: {
+								import: () => 'h_esm',
+								require: () => 'h_cjs',
+							},
+						},
+					});
+
+					h_esm['./'+path.join(sr_build, s_file_out_mjs.replace(/-browser/, ''))] = './'+path.join(sr_build, s_file_out_mjs);
+					h_cjs['./'+path.join(sr_build, s_file_out_js.replace(/-browser/, ''))] = './'+path.join(sr_build, s_file_out_js);
+
+					// rebulid package.json
+					h_recipe['package.json'] = H_GEN_LEAF.package_json(si_module);
+
+					console.dir(H_MODULES[si_module].json.exports);
+				}
+				// target node
+				else if(/-node\./.test(s_file_out_mjs)) {
+					const {
+						h_esm,
+						h_cjs,
+					} = mk_path(H_MODULES[si_module].json, {
+						exports: {
+							node: {
+								require: () => 'h_cjs',
+								default: () => 'h_esm',
+							},
+						},
+					});
+
+					h_esm['./'+path.join(sr_build, s_file_out_mjs.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_mjs);
+					h_cjs['./'+path.join(sr_build, s_file_out_js.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_js);
+
+					// rebulid package.json
+					h_recipe['package.json'] = H_GEN_LEAF.package_json(si_module);
+
+					console.dir(H_MODULES[si_module].json.exports);
+				}
+			};
+
 			// expanded intermediate file
 			let s_file_exp = mainify(s_file_src, si_module);
 			let p_exp = path.join(pd_src, s_file_exp);
@@ -324,6 +390,9 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 				const s_file_js = s_file_exp.replace(/\.ts$/, '.js');
 				h_recipe[s_file_js] = H_GEN_LEAF.module_commonjs_lint([path.join(pd_dst, s_file_mjs)]);
 
+				// add browser exports
+				add_browser_exports(s_file_mjs, s_file_js);
+
 				// target the final build file
 				a_deps.push(path.join(pd_dst, s_file_js));
 			}
@@ -332,6 +401,9 @@ const expand_macros = (pd_src, si_module=null, h_recipe={}) => {
 				const s_file_js = s_file_exp.replace(/\.mjs$/, '.js');
 
 				h_recipe[s_file_js] = H_GEN_LEAF.module_commonjs_lint([p_exp]);
+
+				// add browser exports
+				add_browser_exports(s_file_exp, s_file_js);
 
 				// target the final build file
 				a_deps.push(path.join(pd_dst, s_file_js));

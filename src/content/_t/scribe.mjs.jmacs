@@ -1,0 +1,430 @@
+@.{/* global S_FORMAT */}
+
+@import '../../share/writer.jmacs'
+
+@$ B_TTL = 'ttl' === S_FORMAT;
+@$ B_TRIG = 'trig' === S_FORMAT;
+
+@$ B_QUADS = B_TRIG;
+
+@$ S_LABEL = B_TTL? 'Turtle': 'Trig';
+
+import {
+	DataFactory,
+} from '@@graphy/core';
+
+import {
+	ScribableContent,
+} from '../api/scribable.mjs';
+
+const {
+	terse,
+	c1ToN3,
+	SI_PREFIX_BASE,
+} = DataFactory;
+
+@- B_QUADS
+	const KT_DEFAULT_GRAPH = DataFactory.defaultGraph();
+@;
+
+
+function star(yq_input, h_prefixes) {
+	return '<< '
+		+terse_s(yq_input.subject, h_prefixes)
+		+' '+terse_p(yq_input.predicate.value, h_prefixes)
+		+' '+terse_o(yq_input.object, h_prefixes)
+		@- B_QUADS
+			+(yq_input.graph.isDefaultGraph? '': ' '+terse_g(yq_input.graph, h_prefixes))
+		@;
+		+' >>';
+}
+
+function terse_s(yt_subject, h_prefixes) {
+	switch(yt_subject.termType) {
+		// named node
+		case 'NamedNode': return terse(yt_subject.value, h_prefixes);
+
+		// blank node
+		case 'BlankNode': return '_:'+yt_subject.value;
+
+		// quad
+		case 'Quad': return star(yt_subject, h_prefixes);
+
+		// other
+		default: {
+			throw new Error(`Cannot serialize term type '${yt_subject.termType}' in subject position: '${yt_subject}'`);
+		}
+	}
+}
+
+
+@- B_QUADS
+	function terse_g(yt_grpah, h_prefixes) {
+		switch(yt_grpah.termType) {
+			// default graph
+			case 'DefaultGraph': return '';
+
+			// named node
+			case 'NamedNode': return terse(yt_grpah.value, h_prefixes);
+
+			// blank node
+			case 'BlankNode': return '_:'+yt_grpah.value;
+
+			// other
+			default: {
+				throw new Error(`Cannot serialize term type '${yt_graph.termType}' in graph position: '${yt_graph}'`);
+			}
+		}
+	}
+@;
+
+
+const terse_p = (yt_predicate, h_prefixes) => terse(yt_predicate.value, h_prefixes);
+
+const P_IRI_XSD_STRING = 'http://www.w3.org/2001/XMLSchema#';
+function terse_o(yt_object, h_prefixes) {
+	switch(yt_object.termType) {
+		// named node
+		case 'NamedNode': return terse(yt_object.value, h_prefixes);
+
+		// literal
+		case 'Literal': {
+			const s_contents = JSON.stringify(yt_object.value);
+
+			if(yt_object.language) {
+				return s_contents+'@'+yt_object.language;
+			}
+			else if(P_IRI_XSD_STRING === yt_object.datatype.value) {
+				return s_contents;
+			}
+			else {
+				return s_contents+'^^'+terse(yt_object.datatype.value, h_prefixes);
+			}
+		}
+
+		// blank node
+		case 'BlankNode': return '_:'+yt_object.value;
+
+		// quad
+		case 'Quad': return star(yt_object, h_prefixes);
+
+		// other
+		default: {
+			throw new Error(`Cannot serialize term type '${yt_object.termType}' in graph position: '${yt_object}'`);
+		}
+	}
+}
+
+
+
+export class @{S_LABEL}Scriber extends ScribableContent {
+	constructor(gc_scriber={}) {
+		super({
+			...gc_scriber,
+			_terse: true,
+		});
+
+		@- B_QUADS
+			this._yt_graph = KT_DEFAULT_GRAPH;
+		@;
+		this._yt_subject = null;
+		this._yt_predicate = null;
+
+		// prefixes given
+		if(gc_scriber.prefixes) {
+			// update prefixes and push to output
+			this.push(this._serialize_prefixes(gc_scriber.prefixes, true) || '');
+		}
+	}
+
+	_reset() {
+		// some subject is open
+		if(this._yt_subject) {
+			@- B_QUADS
+				// some graph is open
+				if(!KT_DEFAULT_GRAPH.equals(this._yt_graph)) {
+					// reset graph
+					this._yt_graph = KT_DEFAULT_GRAPH;
+
+					// close graph
+					this._s_push += ' .\n}\n\n';
+				}
+				// no graph, just subject; close subject
+				else {
+					this._s_push += ' .\n\n';
+				}
+			@:
+				// close subject
+				this._s_push += ' .\n\n';
+			@;
+
+			// reset subject
+			this._yt_subject = null;
+		}
+
+		// reset predicate
+		this._yt_predicate = null;
+	}
+
+	_serialize_base(p_base) {
+		// reset all markers
+		this._reset();
+
+		// update prefixes object
+		Object.defineProperty(this._h_prefixes, SI_PREFIX_BASE, {
+			enumerable: false,
+			value: p_base,
+		});
+
+		// save base value
+		this._p_base = p_base;
+
+		// serialize new base
+		return `@base ${DataFactory.namedNode(p_base).verbose()} .\n\n`;
+	}
+
+	_serialize_prefixes(h_prefixes_in, b_force_serialize=false) {
+		// ref current prefixes
+		const h_prefixes = this._h_prefixes;
+
+		// serialize new prefixes
+		let st_prefixes = '';
+		for(const si_prefix in h_prefixes_in) {
+			// prefix already exists and no change; skip
+			if((si_prefix in h_prefixes) && h_prefixes_in[si_prefix] === h_prefixes[si_prefix] && !b_force_serialize) {
+				continue;
+			}
+
+			// serialize addition
+			st_prefixes += `@prefix ${si_prefix}: ${DataFactory.namedNode(h_prefixes_in[si_prefix]).verbose()} .\n`;
+		}
+
+		// change detected
+		if(st_prefixes) {
+			// (re)cache prefixes
+			this._update_prefixes(h_prefixes_in, true);
+
+			// reset all markers
+			this._reset();
+
+			// write prefixes
+			return st_prefixes+'\n';
+		}
+	}
+
+
+	_serialize_c3r(hc3r_triples) {
+		// ref prefixes
+		const h_prefixes = this._h_prefixes;
+
+		// string building
+		let st_quads = '';
+
+@> serialize_c3r(b_indent=false)
+		let b_subjects = false;
+
+		for(const sc1_subject in hc3r_triples) {
+			// quick convert subject from concise term to terse
+			const st1_subject = c1ToN3(sc1_subject, h_prefixes);
+
+			// not a term; skip
+			if(!st1_subject) continue;
+
+			let st_triples = '';
+			if(b_subjects) st_triples += ' .\n\n';
+
+			// 
+			st_triples += @{b_indent? `'\t'+`: ''}st1_subject+' ';
+
+			let b_predicates = false;
+
+			// each predicate
+			const hc2r_pairs = hc3r_triples[sc1_subject];
+			for(const sc1_predicate in hc2r_pairs) {
+				// quick convert predicate from concise term to terse
+				const st1_predicate = c1ToN3(sc1_predicate, h_prefixes);
+
+				// not a term; skip
+				if(!st1_predicate) continue;
+
+				// 
+				let st_pairs = '';
+				if(b_predicates) st_pairs += ' ;\n\t@{b_indent? '\t': ''}';
+
+				// pairs output
+				st_pairs += st1_predicate+' ';
+
+				let b_objects = false;
+
+				// each object
+				for(const sc1_object of hc2r_pairs[sc1_predicate]) {
+					// quick convert object from concise term to terse
+					const st1_object = c1ToN3(sc1_object, h_prefixes);
+
+					// not a term; skip
+					if(!st1_object) continue;
+
+					if(b_objects) st_pairs += ', ';
+					b_objects = true;
+
+					// add object to pairs
+					st_pairs += st1_object;
+				}
+
+				// objects written; add pairs to output
+				if(b_objects) {
+					st_triples += st_pairs;
+					b_predicates = true;
+				}
+			}
+
+			// predicates written; add triples to output
+			if(b_predicates) {
+				st_quads += st_triples;
+				b_subjects = true;
+			}
+		}
+@;
+
+		@{serialize_c3r()}
+
+		// subjects written; terminate
+		if(b_subjects) st_quads += ' .\n\n';
+
+		// reset all markers
+		this._reset();
+
+		return st_quads;
+	}
+
+	@- B_QUADS
+		_serialize_c4r(hc4r_quads) {
+			// ref prefixes
+			let h_prefixes = this._h_prefixes;
+
+			// string building
+			let st_build = '';
+
+			let b_graphs = false;
+
+			for(let sc1_graph in hc4r_quads) {
+				// quick convert subject from concise term to terse
+				let st1_graph = c1ToN3(sc1_graph, h_prefixes);
+
+				// not a term; skip
+				if('*' !== sc1_graph && !st1_graph) continue;
+
+				st_build += (st1_graph? st1_graph+' ': '')+'{\n';
+				
+				let st_quads = '';
+				let hc3r_triples = hc4r_quads[sc1_graph];
+				@{serialize_c3r(true)}
+
+				if(b_subjects) st_build += st_quads+' .\n';
+
+				// subjects written; terminate
+				st_build += '}\n\n';
+			}
+
+			// reset all markers
+			this._reset();
+
+			return st_build;
+		}
+	@;
+
+	_serialize_quad(g_quad) {
+		const h_prefixes = this._h_prefixes;
+
+		const {
+			subject: yt_subject,
+			predicate: yt_predicate,
+			object: yt_object,
+			@- B_QUADS
+				graph: yt_graph,
+			@;
+		} = g_quad;
+
+		@- B_QUADS
+			// same graph
+			if(yt_graph.equals(this._yt_graph)) {
+		@;
+
+		// same subject
+		if(yt_subject.equals(this._yt_subject)) {
+			// same prediate
+			if(yt_predicate.equals(this._yt_predicate)) {
+				// write object
+				this._s_push += ', '+terse_o(yt_object, h_prefixes);
+			}
+			// different predicate
+			else {
+				// write pair
+				this._s_push += ' ;\n\t'+terse_p(yt_predicate, h_prefixes)+' '+terse_o(yt_object, h_prefixes);
+
+				// update prediate
+				this._yt_predicate = yt_predicate;
+			}
+		}
+		// subject not identical to previous
+		else {
+			const st_line = terse_s(yt_subject, h_prefixes)+' '+terse_p(yt_predicate, h_prefixes)+' '+terse_o(yt_object, h_prefixes);
+
+			// different subject
+			if(this._yt_subject) {
+				// write triple
+				this._s_push += ' .\n\n'+st_line;
+			}
+			// first subject
+			else {
+				this._s_push += st_line;
+			}
+
+			// save subject and predicate
+			this._yt_subject = yt_subject;
+			this._yt_predicate = yt_predicate;
+		}
+
+		@- B_QUADS
+			}
+			// graph not identical to previous
+			else {
+				// what to write this call
+				let s_write = '';
+
+				// different graph
+				if(this._yt_graph) {
+					// close graph
+					s_write = ' .\n}\n\n';
+				}
+
+				// write graph
+				this._s_push += s_write+terse_g(yt_graph, h_prefixes)+' {\n';
+
+				// save graph
+				this._yt_graph = yt_graph;
+				this._yt_subject = yt_subject;
+				this._yt_predicate = yt_predicate;
+			}
+		@;
+	}
+
+	_flush() {
+		// flush buffer
+		this._flush_buffer();
+
+		// triple needs closing
+		if(this._yt_subject) {
+			this.push(' .\n');
+		}
+
+		// eof
+		this.end();
+	}
+};
+
+Object.assign(@{S_LABEL}Scriber, {
+	_serialize_comment: ScribableContent.prototype._serialize_hash_comment,
+});
+
+export default @{S_LABEL}Scriber;

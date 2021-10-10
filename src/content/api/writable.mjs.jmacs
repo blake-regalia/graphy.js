@@ -1,6 +1,5 @@
-@import '../../share/channel.jmacs'
-@import '../../share/iris.jmacs'
-@import '../../share/writer.jmacs'
+@import '../../../share/iris.jmacs'
+@import '../../../share/writer.jmacs'
 
 import {
 	fromC1,
@@ -255,10 +254,8 @@ export class WritableContent extends ScribableContent {
 			// warn about implicit union
 			const s_warning = `Destination format does not support quads; an implicit union into the default graph was performed on the quads contained in graphs: ${a_unions.map(sc1 => fromC1(sc1, h_prefixes).verbose()).join(', ')}`;
 
-			// emit warning, wasn't listened to; force thru warn/stderr channel
-			if(!this.emit('warning', s_warning)) {
-				console.warn(s_warning);
-			}
+			// emit warning
+			this._fk_warn(s_warning);
 		}
 
 		return s_write;

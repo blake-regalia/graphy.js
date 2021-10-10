@@ -18,7 +18,7 @@
 @// import parser macros
 @import '../text.read.jmacs'
 
-import {stream} from '@@graphy/internal';
+import {stream} from '@@graphy/core/_internal/iso/stream.mjs';
 import {DataFactory} from '@@graphy/core';
 
 @if B_LOAD

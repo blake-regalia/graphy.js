@@ -8,12 +8,10 @@
 
 
 
-
-type XQuery = '' | `?${string}`;
-type XFragment = '' | `#${string}`
-export type Iri = `${string}:${IriRelativeRef}`;
-export type IriRelativeRef = `${string}${XQuery}${XFragment}`;
-
+/**
+ * Reserved for future TypeScript static string parsing
+ */
+export type Iri = string;
 
 /**
  * Namespace for cross-library Term role interfaces

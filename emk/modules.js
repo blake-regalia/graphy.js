@@ -20,19 +20,33 @@ const H_MODULES = {
 			exports: {},
 		},
 	},
-	internal: {
-		links: ['types'],
-		description: 'Internal to graphy',
-		dependencies: [
-			'readable-stream',
-		],
-	},
+	// internal: {
+	// 	links: ['types'],
+	// 	description: 'Internal to graphy',
+	// 	dependencies: [
+	// 		'readable-stream',
+	// 	],
+	// },
 	core: {
 		links: ['types'],
 		description: 'Contains the core classes used by all other modules',
 		dependencies: [
 			'uri-js',
 		],
+		json: {
+			exports: {
+				'./node-stream': {
+					node: {
+						require: './stream/node-stream-node.js',
+						default: './stream/node-stream-node.mjs',
+					},
+					default: {
+						require: './stream/node-stream-other.js',
+						default: './stream/node-stream-other.mjs',
+					},
+				},
+			},
+		},
 	},
 	memory: {
 		links: ['types', 'core'],
