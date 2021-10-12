@@ -1,16 +1,10 @@
 import type {
 	Union,
-	List,
 } from 'ts-toolbelt';
 
 import type {
-	Cast,
-	Contains,
-	Key as AnyKey,
-	Equals,
 	Extends,
 	Try,
-	Type,
 } from 'ts-toolbelt/out/Any/_api';
 
 import type {
@@ -23,19 +17,6 @@ import type {
 import type {
 	If,
 } from 'ts-toolbelt/out/Any/If';
-
-import type {
-	Remove,
-	KeySet,
-} from 'ts-toolbelt/out/List/_api';
-
-import type {
-	Merge,
-} from 'ts-toolbelt/out/Object/_api';
-
-import type {
-	Join,
-} from 'ts-toolbelt/out/String/_api';
 
 
 export type False = 0;
@@ -107,6 +88,7 @@ export type ASSERT_VOID<Thing> = ASSERT_SAME<Thing, void>;
 
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const At_t: ASSERT_TRUE<true> = 1;
 	const At_f: ASSERT_TRUE<false> = 0;
 	const At_b: ASSERT_TRUE<boolean> = 0;
@@ -140,6 +122,7 @@ export type ASSERT_VOID<Thing> = ASSERT_SAME<Thing, void>;
 	const AbIBt: ASSERT_TRUE<Or<Bool, True>> = 1;
 	const AfIBb: ASSERT_BOOLEAN<Or<False, Bool>> = 1;
 	const AtIBb: ASSERT_TRUE<Or<True, Bool>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
@@ -163,12 +146,14 @@ export type IsOnlyLiteralStrings<Test extends string | void> =
 		): False;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const A: ASSERT_TRUE<IsOnlyLiteralStrings<'A'>> = 1;
 	const AB: ASSERT_TRUE<IsOnlyLiteralStrings<'A' | 'B'>> = 1;
 	const S: ASSERT_FALSE<IsOnlyLiteralStrings<string>> = 1;
 	const SA: ASSERT_FALSE<IsOnlyLiteralStrings<string | 'A'>> = 1;
 	const SAB: ASSERT_FALSE<IsOnlyLiteralStrings<string | 'A' | 'B'>> = 1;
 	const O: ASSERT_FALSE<IsOnlyLiteralStrings<void>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
@@ -197,6 +182,7 @@ export type AutoString<
 		: Default;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const _: ASSERT_EQUAL<AutoString<''>, ''> = 1;
 	const A: ASSERT_EQUAL<AutoString<'A'>, 'A'> = 1;
 	const O: ASSERT_STRING<AutoString<void>> = 1;
@@ -211,6 +197,7 @@ export type AutoString<
 	const U: ASSERT_SAME<AutoString<undefined>, string> = 1;
 	const UZ: ASSERT_EQUAL<AutoString<undefined, 'Z'>, 'Z'> = 1;
 	const UA: ASSERT_SAME<AutoString<undefined | 'A', 'Z'>, 'A' | 'Z'> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
@@ -291,6 +278,7 @@ export type ActualStringsMatch<
 		);
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const AmU: ASSERT_BOOLEAN<StringsMatch<'A', 'A' | 'B'>> = 1;
 	const CmU: ASSERT_FALSE<StringsMatch<'C', 'A' | 'B'>> = 1;
 	const SmU: ASSERT_BOOLEAN<StringsMatch<string, 'A' | 'B'>> = 1;
@@ -318,6 +306,7 @@ export type ActualStringsMatch<
 	const OmS: ASSERT_FALSE<StringsMatch<void, string>> = 1;
 	const AmO: ASSERT_FALSE<StringsMatch<'A', void>> = 1;
 	const SmO: ASSERT_FALSE<StringsMatch<string, void>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
@@ -337,6 +326,7 @@ export type ActualStringsMatch<
 export type IsUnion<Test> = Union.ListOf<Test>['length'] extends 1? False: True;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const A: ASSERT_FALSE<IsUnion<'A'>> = 1;
 	const S: ASSERT_FALSE<IsUnion<string>> = 1;
 	const O: ASSERT_FALSE<IsUnion<void>> = 1;
@@ -346,14 +336,15 @@ export type IsUnion<Test> = Union.ListOf<Test>['length'] extends 1? False: True;
 	const OA: ASSERT_TRUE<IsUnion<void | 'A'>> = 1;
 	const SO: ASSERT_TRUE<IsUnion<string | void>> = 1;
 	const OS: ASSERT_TRUE<IsUnion<void | string>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
  
-export type DirectlyIncludes<Union, Item> = If<
+export type DirectlyIncludes<UnionType, Item> = If<
 	IsUnion<Item>,
-	Extends<[Item], [Union]>,
-	Union extends infer Find
+	Extends<[Item], [UnionType]>,
+	UnionType extends infer Find
 		? (Find extends Item
-			? (Item extends Union? True: False)
+			? (Item extends UnionType? True: False)
 			: False
 		)
 	: never
@@ -377,7 +368,7 @@ export type DirectlyIncludes<Union, Item> = If<
   *     Includes<string|void, void>  // true
   *     Includes<string|void, string>  // true
   */
-export type Includes<Union, Item> = DirectlyIncludes<Union, Item> extends infer Directly
+export type Includes<UnionType, Item> = DirectlyIncludes<UnionType, Item> extends infer Directly
 	? Or<
 		AsBool<Directly>,
 		IsUnion<Directly>
@@ -385,6 +376,7 @@ export type Includes<Union, Item> = DirectlyIncludes<Union, Item> extends infer 
 	: never;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const A_A: ASSERT_TRUE<Includes<'A', 'A'>> = 1;
 	const A_B: ASSERT_FALSE<Includes<'A', 'B'>> = 1;
 	const A_S: ASSERT_FALSE<Includes<'A', string>> = 1;
@@ -401,6 +393,7 @@ export type Includes<Union, Item> = DirectlyIncludes<Union, Item> extends infer 
 	const OS_S: ASSERT_TRUE<Includes<void | string, string>> = 1;
 	const S_O: ASSERT_FALSE<Includes<string, void>> = 1;
 	const SO_O: ASSERT_TRUE<Includes<string | void, void>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
@@ -429,7 +422,9 @@ export type Auto<
 
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const AS: ASSERT_EQUAL<Coerce<'A', string, 'Z'>, 'A'> = 1;
 	const ABS: ASSERT_SAME<Coerce<'A' | 'B', string, 'Z'>, 'A' | 'B'> = 1;
 	const SS: ASSERT_EQUAL<Coerce<string, string, 'Z'>, 'Z'> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }

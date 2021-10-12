@@ -18,7 +18,7 @@ import {stream} from 'readable-stream';
 		const sji_consumer = /* syntax: js */ `${sji_export}Consumer`;
 	}
 
-	import {Consumer as @{sji_consumer}} from './@{s_format}/@{s_mode}/main.mjs';
+	import {Consumer as @{sji_consumer}} from './@{s_format}/@{s_mode}.mjs';
 
 	export class @{sji_export} extends stream.@{b_load? /* syntax: js */ `Writable`: /* syntax: js */ `Transform`} {
 		constructor(gc_consumer={}) {

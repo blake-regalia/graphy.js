@@ -4,12 +4,8 @@ import type {
 } from 'ts-toolbelt';
 
 import type {
-	Cast,
-	Contains,
-	Key as AnyKey,
 	Equals,
 	Extends,
-	Try,
 	Type,
 } from 'ts-toolbelt/out/Any/_api';
 
@@ -17,17 +13,11 @@ import type {
 	And,
 	Not,
 	Or,
-	Xor,
 } from 'ts-toolbelt/out/Boolean/_api';
 
 import type {
 	If,
 } from 'ts-toolbelt/out/Any/If';
-
-import type {
-	Remove,
-	KeySet,
-} from 'ts-toolbelt/out/List/_api';
 
 import type {
 	Merge,
@@ -56,6 +46,7 @@ import type {
 	AutoString,
 	Includes,
 	ToPrimitiveBoolean,
+	AsString,
 } from './utility';
 
 import {
@@ -69,7 +60,7 @@ import {
 } from './const';
 
 
-declare const debug_hint: unique symbol; 
+declare const debug_hint: unique symbol;
 
 // Debug and Error types
 type Debug<
@@ -94,8 +85,8 @@ type IncompatibleTermTypeError<
 
 type FavorTermType<
 	TermTypeSring extends string,
-	KeySet extends TermTypeKey=TermTypeKey,
-> = Coerce<TermTypeSring, string, KeySet>;
+	KeysSet extends TermTypeKey=TermTypeKey,
+> = Coerce<TermTypeSring, string, KeysSet>;
 
 
 interface TermTypes {
@@ -108,32 +99,33 @@ interface TermTypes {
 }
 
 type ValidTermType<
-	KeySet extends string,
+	KeysSet extends string,
 	TermTypeString extends string,
 > = If<
 	IsOnlyLiteralStrings<TermTypeString>,
-	Extends<TermTypeString, KeySet>,
+	Extends<TermTypeString, KeysSet>,
 	True
 >;
 
 type ValidTermTypes<
-	KeySet extends string,
+	KeysSet extends string,
 	TermTypeStringA extends string,
 	TermTypeStringB extends string,
 > = And<
 	If<
 		IsOnlyLiteralStrings<TermTypeStringA>,
-		Extends<TermTypeStringA, KeySet>,
+		Extends<TermTypeStringA, KeysSet>,
 		True
 	>,
 	If<
 		IsOnlyLiteralStrings<TermTypeStringB>,
-		Extends<TermTypeStringB, KeySet>,
+		Extends<TermTypeStringB, KeysSet>,
 		True
 	>
 >;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const HS: ASSERT_FALSE<Extends<string, ObjectTypeKey>> = 1;
 	const HN: ASSERT_TRUE<Extends<'NamedNode', ObjectTypeKey>> = 1;
 	const HD: ASSERT_FALSE<Extends<'DefaultGraph', ObjectTypeKey>> = 1;
@@ -175,17 +167,48 @@ type ValidTermTypes<
 
 	const OLN: ASSERT_TRUE<ValidTermTypes<ObjectTypeKey, 'Literal', 'NamedNode'>> = 1;
 	const OLB: ASSERT_TRUE<ValidTermTypes<ObjectTypeKey, 'Literal', 'BlankNode'>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
+/**
+ * Union of all valid .termType string value types
+ */
 type TermTypeKey = keyof TermTypes;
 
+/**
+ * The .termType string value type "NamedNode"
+ */
 type NamedNodeTypeKey = Extract<TermTypeKey, 'NamedNode'>;
+
+/**
+ * The .termType string value type "BlankNode"
+ */
 type BlankNodeTypeKey = Extract<TermTypeKey, 'BlankNode'>;
+
+/**
+ * The .termType string value type "Literal"
+ */
 type LiteralTypeKey = Extract<TermTypeKey, 'Literal'>;
+
+/**
+ * The .termType string value type "DefaultGraph"
+ */
 type DefaultGraphTypeKey = Extract<TermTypeKey, 'DefaultGraph'>;
+
+/**
+ * The .termType string value type "Quad"
+ */
 type QuadTypeKey = Extract<TermTypeKey, 'Quad'>;
+
+/**
+ * The .termType string value type "Variable"
+ */
 type VariableTypeKey = Extract<TermTypeKey, 'Variable'>;
 
+
+/**
+ * Union of NamedNode and BlankNode term types
+ */
 type NodeTypeKey = NamedNodeTypeKey | BlankNodeTypeKey;
 
 /**
@@ -221,7 +244,7 @@ type UnvaluableDataTypeKey = Exclude<DataTypeKey, ValuableDataTypeKey>;
 
 /**
  * `<RdfMode extends AllowedRdfMode=RdfMode_11> => TermTypeKey`
- * 
+ *
  * Returns the union of valid .termType string values for Terms that appear in the subject position for the given `RdfMode`
  */
 type SubjectTypeKey<
@@ -235,16 +258,18 @@ type SubjectTypeKey<
 >[RdfMode];
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const _: ASSERT_SAME<SubjectTypeKey, NodeTypeKey> = 1;
 	const N: ASSERT_SAME<SubjectTypeKey<RdfMode_11>, NodeTypeKey> = 1;
 	const S: ASSERT_SAME<SubjectTypeKey<RdfMode_star>, NodeTypeKey | QuadTypeKey> = 1;
 	const E: ASSERT_SAME<SubjectTypeKey<RdfMode_easier>, DataTypeKey> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
 /**
  * `<RdfMode extends AllowedRdfMode=RdfMode_11> => TermTypeKey`
- * 
+ *
  * Returns the union of valid .termType string values for Terms that appear in the predicate position for the given `RdfMode`
  */
 type PredicateTypeKey<
@@ -255,16 +280,18 @@ type PredicateTypeKey<
 >[RdfMode];
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const _: ASSERT_SAME<PredicateTypeKey, NamedNodeTypeKey> = 1;
 	const N: ASSERT_SAME<PredicateTypeKey<RdfMode_11>, NamedNodeTypeKey> = 1;
 	const S: ASSERT_SAME<PredicateTypeKey<RdfMode_star>, NamedNodeTypeKey> = 1;
 	const E: ASSERT_SAME<PredicateTypeKey<RdfMode_easier>, DataTypeKey> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
 /**
  * `<RdfMode extends AllowedRdfMode=RdfMode_11> => TermTypeKey`
- * 
+ *
  * Returns the union of valid .termType string values for Terms that appear in the object position for the given `RdfMode`
  */
 type ObjectTypeKey<
@@ -278,16 +305,18 @@ type ObjectTypeKey<
 >[RdfMode];
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const _: ASSERT_SAME<ObjectTypeKey, ValuableDataTypeKey> = 1;
 	const N: ASSERT_SAME<ObjectTypeKey<RdfMode_11>, ValuableDataTypeKey> = 1;
 	const S: ASSERT_SAME<ObjectTypeKey<RdfMode_star>, ValuableDataTypeKey | QuadTypeKey> = 1;
 	const E: ASSERT_SAME<ObjectTypeKey<RdfMode_easier>, DataTypeKey> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
 /**
  * `<RdfMode extends AllowedRdfMode=RdfMode_11> => TermTypeKey`
- * 
+ *
  * Returns the union of valid .termType string values for Terms that appear in the graph position for the given `RdfMode`
  */
 type GraphTypeKey<
@@ -298,16 +327,18 @@ type GraphTypeKey<
 >[RdfMode];
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const _: ASSERT_SAME<GraphTypeKey, NodeTypeKey | DefaultGraphTypeKey> = 1;
 	const N: ASSERT_SAME<GraphTypeKey<RdfMode_11>, NodeTypeKey | DefaultGraphTypeKey> = 1;
 	const S: ASSERT_SAME<GraphTypeKey<RdfMode_star>, NodeTypeKey | DefaultGraphTypeKey> = 1;
 	const E: ASSERT_SAME<GraphTypeKey<RdfMode_easier>, DataTypeKey> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
 /**
  * `<RdfMode extends AllowedRdfMode=RdfMode_11> => TermTypeKey`
- * 
+ *
  * Returns the union of valid .termType string values for Terms that appear in the datatype position for the given `RdfMode`
  */
 type DatatypeTypeKey<
@@ -318,10 +349,12 @@ type DatatypeTypeKey<
 >[RdfMode];
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const _: ASSERT_SAME<DatatypeTypeKey, NamedNodeTypeKey> = 1;
 	const N: ASSERT_SAME<DatatypeTypeKey<RdfMode_11>, NamedNodeTypeKey> = 1;
 	const S: ASSERT_SAME<DatatypeTypeKey<RdfMode_star>, NamedNodeTypeKey> = 1;
 	const E: ASSERT_SAME<DatatypeTypeKey<RdfMode_easier>, DataTypeKey> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 type SolvedDescriptor<
@@ -402,6 +435,7 @@ type DescriptorTermType<
 	: DefaultTypeString;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	const Y: ASSERT_STRING<DescriptorTermType<BypassDescriptor>> = 1;
 	const O: ASSERT_STRING<DescriptorTermType<[void]>> = 1;
 
@@ -420,6 +454,7 @@ type DescriptorTermType<
 
 	const ON: ASSERT_EQUAL<DescriptorTermType<[void], NamedNodeTypeKey>, NamedNodeTypeKey> = 1;
 	const OL: ASSERT_EQUAL<DescriptorTermType<[void], LiteralTypeKey>, LiteralTypeKey> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 type DescriptorQuadComponent<
@@ -438,13 +473,13 @@ type DescriptorQuadComponent<
 
 
 type ValidTermTypesMatch<
-	KeySet extends string,
+	KeysSet extends string,
 	TermTypeStringA extends string,
 	ValueStringA extends string,
 	TermTypeStringB extends string,
 	ValueStringB extends string,
 > = If<
-	ValidTermTypes<KeySet, TermTypeStringA, TermTypeStringB>,
+	ValidTermTypes<KeysSet, TermTypeStringA, TermTypeStringB>,
 	And<
 		// Equals<TermTypeStringA, TermTypeStringB>,
 		// Equals<ValueStringA, ValueStringB>,
@@ -489,10 +524,10 @@ type NarrowLanguage<
  * 	DatatypeString extends string|void,
  * > => [string, string]
  * ```
- * 
+ *
  * Deduces the proper value types for the .language and .datatype.value properties.
  * Gives precedence to `LanguageString` in case both arguments are specific, non-empty strings.
- * 
+ *
  *     NormalizeLanguageDatatype<void, void>  // ['', P_XSD_STRING]
  *     NormalizeLanguageDatatype<'en', void>  // ['en', P_RDFS_LANGSTRING]
  *     NormalizeLanguageDatatype<'en', 'z://y/'>  // ['en', P_RDFS_LANGSTRING]
@@ -514,6 +549,8 @@ type NormalizeLanguageDatatype<
 	: never;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+
 	// language takes precedence over datatype
 	const VV: ASSERT_SAME<NormalizeLanguageDatatype<'en', 'z://'>, ['en', P_RDFS_LANGSTRING]> = 1;
 	const VS: ASSERT_SAME<NormalizeLanguageDatatype<'en', string>, ['en', P_RDFS_LANGSTRING]> = 1;
@@ -540,9 +577,13 @@ type NormalizeLanguageDatatype<
 	const OV: ASSERT_SAME<NormalizeLanguageDatatype<void, 'z://'>, ['', 'z://']> = 1;
 	const OS: ASSERT_SAME<NormalizeLanguageDatatype<void, string>, ['', string]> = 1;
 	const OO: ASSERT_SAME<NormalizeLanguageDatatype<void, void>, ['', P_XSD_STRING]> = 1;
+
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+
 	type _ = '';
 	type E = 'en';
 
@@ -559,6 +600,8 @@ type NormalizeLanguageDatatype<
 	const O_: ASSERT_EQUAL<AutoDatatype<void, ''>, P_XSD_STRING> = 1;
 	const OE: ASSERT_EQUAL<AutoDatatype<void, E>, P_RDFS_LANGSTRING> = 1;
 	const OS: ASSERT_STRING<AutoDatatype<void, string>> = 1;
+
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 
@@ -750,7 +793,7 @@ type DescriptorMap<
 type SolveDescriptor<
 	Descriptor extends TermDescriptor,
 	Target extends TermTypeKey=TermTypeKey,
-> = 
+> =
 	DescriptorTermType<Descriptor, Target> extends infer TermTypeString
 		? (TermTypeString extends TermTypeKey
 			? DescriptorMap<TermTypeString, Descriptor>[TermTypeString]
@@ -759,6 +802,7 @@ type SolveDescriptor<
 		: never;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	type N = SolveDescriptor<[NamedNodeTypeKey]>;
 	const N_0: ASSERT_EQUAL<N[0], NamedNodeTypeKey> = 1;
 	const N_1: ASSERT_STRING<N[1]> = 1;
@@ -832,6 +876,7 @@ type SolveDescriptor<
 	const Q_5: ASSERT_SAME<Q[5][0], PredicateTypeKey> = 1;
 	const Q_6: ASSERT_SAME<Q[6][0], ObjectTypeKey> = 1;
 	const Q_7: ASSERT_SAME<Q[7][0], GraphTypeKey> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 /**
@@ -842,7 +887,7 @@ type SolveDescriptor<
  * 	TermTypeSring extends TermTypeKey=DescriptorTermType<Descriptor, Target>,
  * > => TermDescriptor<Target>
  * ```
- * 
+ *
  * Converts `Descriptor` into `TermDescriptor<Target>`
  */
 type FilterDescriptor<
@@ -872,12 +917,12 @@ type QuadTermData<
 	// GraphDescriptorA extends TermDescriptor=DescriptorQuadComponent<DescriptorA, 7>,
 
 	// RdfMode extends AllowedRdfMode=AutoString<DescriptorA[8], RdfMode_11>,
-> = SolveDescriptor<DescriptorA, QuadTypeKey> extends infer SolvedDescriptor
+> = SolveDescriptor<DescriptorA, QuadTypeKey> extends infer Solved
 		? {
 			termType: QuadTypeKey;
 			value: '';
 
-			subject: SubjectData<DescriptorQuadComponent<SolvedDescriptor, 4>, RdfMode>;
+			subject: SubjectData<DescriptorQuadComponent<Solved, 4>, RdfMode>;
 			predicate: PredicateData<PredicateDescriptorA, RdfMode>;
 			object: ObjectData<ObjectDescriptorA, RdfMode>;
 			graph: GraphData<GraphDescriptorA, RdfMode>;
@@ -957,6 +1002,8 @@ type Term<
 >;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+
 	// basic fully compatible quad
 	type d_BNLD = ['Quad', '', void, void, ['BlankNode'], ['NamedNode'], ['Literal' | 'NamedNode'], ['DefaultGraph']];
 	type BNLD = QuadTermData<d_BNLD>;
@@ -964,7 +1011,7 @@ type Term<
 	type BNLD_s = BNLD['subject'];
 	const BNLD_st: ASSERT_EQUAL<BNLD_s['termType'], 'BlankNode'> = 1;
 	const BNLD_sv: ASSERT_STRING<BNLD_s['value']> = 1;
-	
+
 	type BNLD_p = BNLD['predicate'];
 	const BNLD_pt: ASSERT_EQUAL<BNLD_p['termType'], 'NamedNode'> = 1;
 	const BNLD_pv: ASSERT_STRING<BNLD_p['value']> = 1;
@@ -993,7 +1040,7 @@ type Term<
 	type QQQQe_s = QQQQe['subject'];
 	const QQQQe_st: ASSERT_EQUAL<QQQQe_s['termType'], 'Quad'> = 1;
 	const QQQQe_sv: ASSERT_EQUAL<QQQQe_s['value'], ''> = 1;
-	
+
 	// type BNLD_p = BNLD['predicate'];
 	// const BNLD_pt: ASSERT_EQUAL<BNLD_p['termType'], 'NamedNode'> = 1;
 	// const BNLD_pv: ASSERT_STRING<BNLD_p['value']> = 1;
@@ -1008,7 +1055,7 @@ type Term<
 
 
 	type LBDV = QuadTermData<['Quad', '', void, void, ['Literal'], ['BlankNode'], ['DefaultGraph'], ['Variable']]>;
-	
+
 	type GenericCoreTerm = CoreTermData<TermDescriptor, string>;
 
 	type ValidGenericQuad = QuadTermData<['Quad', '', void, void, [SubjectTypeKey], [PredicateTypeKey], [ObjectTypeKey], [GraphTypeKey]]>;
@@ -1049,6 +1096,8 @@ type Term<
 	if('Literal' === g_subject.termType) {
 
 	}
+
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 // TESTQUAD.graph.graph.
 
@@ -1056,10 +1105,10 @@ type Term<
 
 type SafeTermType<
 	Descriptor extends TermDescriptor,
-	KeySet extends TermTypeKey,
-	Category extends string=Join<Union.ListOf<KeySet>, ', '>,
+	KeysSet extends TermTypeKey,
+	Category extends string=Join<Union.ListOf<KeysSet>, ', '>,
 	TermTypeString extends string=DescriptorTermType<Descriptor>,
-> = TermTypeString extends KeySet
+> = TermTypeString extends KeysSet
 	? (TermTypeString extends keyof TermTypeMap
 		? TermTypeMap<Descriptor>[TermTypeString]
 		: never
@@ -1068,10 +1117,10 @@ type SafeTermType<
 
 type AllowedTermType<
 	Descriptor extends TermDescriptor,
-	KeySet extends TermTypeKey,
-	Category extends string=Join<Union.ListOf<KeySet>, ', '>,
+	KeysSet extends TermTypeKey,
+	Category extends string=Join<Union.ListOf<KeysSet>, ', '>,
 	TermTypeString extends string=DescriptorTermType<Descriptor>,
-> = TermTypeString extends KeySet
+> = TermTypeString extends KeysSet
 	? TermTypeMap<Descriptor>[TermTypeString]
 	: InvalidTermTypeError<TermTypeString, CoreTermData>;
 
@@ -1109,7 +1158,7 @@ export type SubjectData<
 	Descriptor extends TermDescriptor,
 	RdfMode extends AllowedRdfMode=RdfMode_11,
 	Category extends string=ExplainPosition<CategorySubjectPosition, RdfMode>,
-> = RdfMode extends RdfMode_11 
+> = RdfMode extends RdfMode_11
 	? NodeTermData<Descriptor, Category>
 	: (RdfMode extends RdfMode_star
 		? SafeTermType<Descriptor, NodeTypeKey | QuadTypeKey, Category>
@@ -1299,6 +1348,7 @@ type ConditionalQuadString<
 // >;
 
 {
+	/* eslint-disable @typescript-eslint/no-unused-vars, no-multi-spaces */
 
 	const Invalid_RHS: ASSERT_TRUE<
 		Extends<
@@ -1361,7 +1411,7 @@ type ConditionalQuadString<
 	const DNs_DNs: ASSERT_BOOLEAN<TermsEqual<DNs, DNs>> = 1;
 	const DNso_DNso: ASSERT_BOOLEAN<TermsEqual<DNso, DNso>> = 1;
 	const DNsoo_DNsoo: ASSERT_BOOLEAN<TermsEqual<DNsoo, DNsoo>> = 1;
-	
+
 	const DNv_DNv: ASSERT_TRUE<TermsEqual<DNv, DNv>> = 1;
 	const DNvo_DNvo: ASSERT_TRUE<TermsEqual<DNvo, DNvo>> = 1;
 	const DNvoo_DNvoo: ASSERT_TRUE<TermsEqual<DNvoo, DNvoo>> = 1;
@@ -1380,7 +1430,7 @@ type ConditionalQuadString<
 
 	const DLvsv_DLvov: ASSERT_TRUE<TermsEqual<DLvsv, DLvov>> = 1;
 	const DLvsv_DLv_v: ASSERT_TRUE<TermsEqual<DLvsv, DLv_v>> = 1;
-	
+
 
 	const DN_DB: ASSERT_FALSE<TermsEqual<DN, DB>> = 1;
 	const DN_DD: ASSERT_FALSE<TermsEqual<DN, DD>> = 1;
@@ -1573,6 +1623,8 @@ type ConditionalQuadString<
 
 	const ANv = namedNode('z://');
 	const test = ANv.value;
+
+	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 export type NamedNode<
@@ -1590,7 +1642,7 @@ export type Literal<
 > = Term<['Literal', ValueString, LanguageString, DatatypeString]>;
 
 export type DefaultGraph = Term<['DefaultGraph', '']>;
-		
+
 export type Variable<
 	ValueString extends string=string,
 > = Term<['Variable', ValueString]>;
@@ -1820,7 +1872,7 @@ export type Graph<
 // 				)
 // 				: boolean
 // 			: boolean;
-			
+
 
 // 			(TermTypeString extends `${infer ActualTermTypeString}`
 // 				? TermTypeString extends TermTypeKey

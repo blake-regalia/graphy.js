@@ -186,7 +186,7 @@ export namespace DataFactory {
 	 * Returns `quad` if it is already a graphy Quad, otherwise calls `fromRdfjsQuad`.
 	 * @param term - the Quad to convert
 	 */
-	function fromQuad(quad: RDFJS.Quad): Term.Quad;
+	function fromQuad(src: RDFJS.Quad): Term.Quad;
 
 	/**
 	 * Convert an RDFJS compatible Term (including Quads) to a graphy Term.
@@ -198,7 +198,7 @@ export namespace DataFactory {
 	 * Convert an RDFJS compatible Quad to a graphy Quad.
 	 * @param quad - the Quad to convert
 	 */
-	function fromRdfjsQuad(quad: RDFJS.Quad): Term.Quad;
+	function fromRdfjsQuad(src: RDFJS.Quad): Term.Quad;
 
 	type C1Map<ValueString extends string=string, LanguageString extends string=string, DatatypeString extends string=string> = {
 		_Never: never;

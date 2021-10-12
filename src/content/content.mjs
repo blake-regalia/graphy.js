@@ -7,14 +7,14 @@ import {
 	TurtleLoader,
 } from './exports.mjs';
 
-import {
-	TurtleReaderLite,
-	TurtleLoaderLite,
-} from './lite.mjs';
+// import {
+// 	TurtleReaderLite,
+// 	TurtleLoaderLite,
+// } from './lite.mjs';
 
-import {
-	TurtleScriber,
-} from './ttl/scribe.mjs';
+// import {
+// 	TurtleScriber,
+// } from './ttl/scribe.mjs';
 
 import {
 	TurtleWriter,
@@ -23,13 +23,13 @@ import {
 export {
 	TurtleReader,
 	TurtleLoader,
-	TurtleScriber,
+	// TurtleScriber,
 	TurtleWriter,
 };
 
 export default {
 	TurtleReader,
 	TurtleLoader,
-	TurtleScriber,
+	// TurtleScriber,
 	TurtleWriter,
 };

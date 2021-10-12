@@ -1,5 +1,5 @@
-@import '../../../share/iris.jmacs'
-@import '../../../share/writer.jmacs'
+@import '../../share/iris.jmacs'
+@import '../../share/writer.jmacs'
 
 import {
 	fromC1,
@@ -9,7 +9,7 @@ import {
 
 import {
 	ScribableContent,
-} from './scribable-content.mjs';
+} from './scribable.mjs';
 
 const R_DIRECTIVE_CONTENTS = /^`\[[^\]]+\](.*)$/;
 

@@ -6,7 +6,7 @@
 		F_THROW,
 		create_static_run_method,
 		resolve_decoder_proxy,
-	} from '../../_interface.mjs';
+	} from '../_interface.mjs';
 @;
 
 @// for counting if/else braces in regex matching

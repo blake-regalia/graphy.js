@@ -6,7 +6,7 @@ import type {
 	Transform as NodeTransform,
 } from 'stream';
 
-import stream from '@graphy/core/node-stream';
+import {stream} from './node-stream';
 
 type ReadableFunction = () => Promise<string>;
 type WritableFunction = (s_write: string) => Promise<void> | void;
@@ -96,7 +96,7 @@ export function streamType<
 		}
 		// iterable
 		else if(z_stream[Symbol.asyncIterator] || z_stream[Symbol.iterator]) {
-			if(h_router.iterator) return h_router.iterator(z_stream as Iterator | AsyncIterator);
+			if(h_router.iterable) return h_router.iterable(z_stream as Iterator | AsyncIterator);
 		}
 	}
 
@@ -646,7 +646,7 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 			const k_self = this;
 
 			// create readable stream
-			const ds_readable = this._ds_readable = new stream.Readable({
+			const ds_readable = this._ds_readable = new Readable({
 				encoding: 'utf8',
 				objectMode: false,
 				read() {

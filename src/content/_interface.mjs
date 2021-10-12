@@ -2,6 +2,8 @@
 // 	StringDecoder,
 // } from 'string_decoder';
 
+/* global StringDecoder TextDecoderStream TransformStream */
+
 export const F_NOOP = () => {};
 export const F_THROW = (e_read) => {
 	throw e_read;
@@ -113,7 +115,7 @@ export class ArrayBufferReader {
 		let ib_next = 0;
 		for(let ib_read=0; ib_read<nb_content; ib_read=ib_next) {
 			// read 64 KiB at a time
-			ib_next += @{1 << 16};
+			ib_next += 0x10000;
 
 			// take next chunk
 			const atu8_chunk = atu8_content.subarray(ib_read, ib_next);
@@ -127,7 +129,7 @@ export class ArrayBufferReader {
 
 		// flush
 		const s_flush = k_decoder.flush();
-		if(s_flush) yield s_chunk;
+		if(s_flush) yield s_flush;
 	}
 }
 
@@ -176,7 +178,7 @@ export function create_static_run_method(dc_consumer, dc_stream) {
 				d_input = z_input.body;
 			}
 			// input is a ReadableStream, values could be anything
-			else if(z_input instanceof ReadableSteam) {
+			else if(z_input instanceof ReadableStream) {
 				// create a value-agnostic decoder transform stream
 				d_transform = new TransformStream({
 					...G_TEXT_DECODER_STREAM_METHODS,
@@ -196,7 +198,6 @@ export function create_static_run_method(dc_consumer, dc_stream) {
 						}
 						// invalid
 						else {
-
 							throw new Error(`Invalid chunk type encountered while reading user provided ReadableStream: ${debug_arg(w_chunk)}`);
 						}
 					},
@@ -241,5 +242,5 @@ export function create_static_run_method(dc_consumer, dc_stream) {
 
 		// nothing worked
 		throw new TypeError(`Invalid 'input' argument type in call to @graphy/content.${dc_consumer.name}.run(); ${debug_arg(z_input)}"`);
-	}
+	};
 }

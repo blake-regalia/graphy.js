@@ -286,6 +286,9 @@ const expand_macros = (pd_src, sr_build=null, h_recipe={}) => {
 
 	// each file
 	for(const s_file_src of a_files) {
+		// igonre
+		if(s_file_src.endsWith('.ignore')) continue;
+
 		const p_src = path.join(pd_src, s_file_src);
 		const pd_dst = path.join('build', 'module', sr_build);
 
@@ -334,29 +337,50 @@ const expand_macros = (pd_src, sr_build=null, h_recipe={}) => {
 					// rebulid package.json
 					h_recipe['package.json'] = H_GEN_LEAF.package_json(si_module);
 
-					console.dir(H_MODULES[si_module].json.exports);
+					// console.dir(H_MODULES[si_module].json.exports);
 				}
 				// target node
 				else if(/-node\./.test(s_file_out_mjs)) {
 					const {
-						h_esm,
-						h_cjs,
+						// h_esm,
+						// h_cjs,
+						// h_esm_node,
+						// h_cjs_node,
+						h_node,
+						h_default,
 					} = mk_path(H_MODULES[si_module].json, {
 						exports: {
-							node: {
-								require: () => 'h_cjs',
-								default: () => 'h_esm',
+							[`./${s_file_out_mjs.replace(/-node\.mjs$/, '')}`]: {
+								node: () => 'h_node',
+								// 	require: () => 'h_cjs_node',
+								// 	default: () => 'h_esm_node',
+								// },
+								default: () => 'h_default',
+								// 	require: () => 'h_cjs',
+								// 	default: () => 'h_esm',
+								// },
 							},
 						},
 					});
 
-					h_esm['./'+path.join(sr_build, s_file_out_mjs.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_mjs);
-					h_cjs['./'+path.join(sr_build, s_file_out_js.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_js);
+					h_node.require = './'+path.join(sr_build, s_file_out_js);
+					h_node.default = './'+path.join(sr_build, s_file_out_mjs);
+
+					// h_esm_node['./'+path.join(sr_build, s_file_out_mjs.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_mjs);
+					// h_cjs_node['./'+path.join(sr_build, s_file_out_js.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_js);
+
+					const s_file_other_mjs = s_file_out_mjs.replace(/-node/, '-other');
+					const s_file_other_js = s_file_out_js.replace(/-node/, '-other');
+					// h_esm['./'+path.join(sr_build, s_file_other_mjs)] = './'+path.join(sr_build, s_file_other_mjs);
+					// h_cjs['./'+path.join(sr_build, s_file_other_js)] = './'+path.join(sr_build, s_file_other_js);
+
+					h_default.require = './'+path.join(sr_build, s_file_other_js);
+					h_default.default = './'+path.join(sr_build, s_file_other_mjs);
 
 					// rebulid package.json
 					h_recipe['package.json'] = H_GEN_LEAF.package_json(si_module);
 
-					console.dir(H_MODULES[si_module].json.exports);
+					// console.dir(H_MODULES[si_module].json.exports);
 				}
 			};
 

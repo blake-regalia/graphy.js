@@ -69,12 +69,15 @@
 
 import uri from 'uri-js';
 
-import {DataFactory} from '@@graphy/core';
-import {stream} from '@@graphy/core/_internal/iso';
+import {
+	DataFactory,
+} from '@@graphy/core';
 
 @if B_LOAD
 	@if B_LOAD_GSPO_BUILDER
-		import {BasicQuadTree} from '@@graphy/memory';
+		import {
+			BasicQuadTree,
+		} from '@@graphy/memory';
 	@;
 	const {
 		concise,
@@ -93,7 +96,7 @@ import {
 	@;
 	NoSuchPrefixError,
 	ExceededMaximumTokenLengthError,
-} from '../../error.mjs';
+} from '../error.mjs';
 
 // eslint-disable-next-line no-misleading-character-class
 const RT_PREFIXED_NAME_NAMESPACE_VALID = /^(@{PN_PREFIX()})?$/u;

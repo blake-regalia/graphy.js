@@ -7,6 +7,7 @@ import {
 	PrefixMap,
 	Dataset,
 	Role,
+	VStarRole,
 } from '@graphy/types';
 
 import {
@@ -675,7 +676,6 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQ
 		throw new Error('Method not yet implemented.');
 		// return LinkedQuadTree.empty(this._h_prefixes);
 	}
-
 }
 
 
@@ -692,7 +692,7 @@ export class LinkedQuadTree extends GenericQuadTree<
 	/**
 	 * Create new empty dataset
 	 */
-	 static empty(h_prefixes: PrefixMap): LinkedQuadTree {
+	static empty(h_prefixes: PrefixMap): LinkedQuadTree {
 		return new LinkedQuadTree({
 			[$_KEYS]: 0,
 		}, {
@@ -700,7 +700,7 @@ export class LinkedQuadTree extends GenericQuadTree<
 			[$_QUADS]: 0,
 			// [$_OVERLAY]: 0,
 			// [$_BURIED]: [],
-			['*']: {
+			'*': {
 				[$_KEYS]: 0,
 				[$_QUADS]: 0,
 				// [$_OVERLAY]: 0,
@@ -730,47 +730,47 @@ export class LinkedQuadTree extends GenericQuadTree<
 	addC1Quad(subject: C1.Node, predicate: C1.NamedNode, object: C1.Object, graph?: C1.Graph): boolean {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	clone(prefixes: PrefixMap): LinkedQuadTree {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	prefixed(): LinkedQuadTree {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	expanded(): LinkedQuadTree {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	add(quad: any): this {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	delete(quad: any): this {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	has(quad: any): boolean {
 		throw new Error('Method not implemented.');
 	}
-	
-	match(yt_subject?: Role.Subject, yt_predicate?: Role.Predicate, yt_object?: Role.Object, yt_graph?: Role.Graph): LinkedQuadTree {
+
+	match(yt_subject?: VStarRole.Subject, yt_predicate?: VStarRole.Predicate, yt_object?: VStarRole.Object, yt_graph?: VStarRole.Graph): LinkedQuadTree {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	contains(other: any): boolean {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	disjoint(other: any): boolean {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	minus(other: Dataset.SyncDataset): Dataset.SyncDataset {
 		throw new Error('Method not implemented.');
 	}
-	
+
 	normalize(): LinkedQuadTree {
 		throw new Error('Method not implemented.');
 	}
@@ -977,11 +977,11 @@ export class LinkedQuadTree extends GenericQuadTree<
 	sibling(): LinkedQuadTree {
 		throw new Error('not implemented');
 	}
-	
+
 	deleteMatches(yt_subject?: Role.Subject, predicate?: Role.Predicate, object?: Role.Object, graph?: Role.Graph): this {
 		throw new Error('not implemented');
 	}
-	
+
 	difference(y_other: RDFJS.Dataset): LinkedQuadTree {
 		throw new Error('not implemented');
 	}
@@ -1001,10 +1001,14 @@ export class LinkedQuadTree extends GenericQuadTree<
 	union(y_other: RDFJS.Dataset): LinkedQuadTree {
 		throw new Error('not implemented');
 	}
+
+	toArray(): Term.Quad[] {
+		throw new Error('not implemented');
+	}
 }
 
 
-LinkedQuadTree.prototype.toCanonical = LinkedQuadTree.prototype.normalize;
+// LinkedQuadTree.prototype.toCanonical = LinkedQuadTree.prototype.normalize;
 
 
 // typings for fixed prototype properties
@@ -1024,7 +1028,9 @@ export interface LinkedQuadTree {
 	 */
 	// constructor: Dataset.Constructor<LinkedQuadTree, typeof LinkedQuadTreeBuilder, ILinkedQuadTree.QuadsHash>;
 
-	toCanonical(): LinkedQuadTree;
+	// toCanonical(): LinkedQuadTree;
+
+	toCanonical(): string;
 }
 
 type LinkedQuadTreeClass = GenericQuadTree.Static<LinkedQuadTree, LinkedQuadTreeBuilder, ILinkedQuadTree.QuadsHash>;

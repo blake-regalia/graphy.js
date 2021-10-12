@@ -134,7 +134,8 @@ export abstract class GenericQuadTree<
 	TreeType extends Dataset.SyncDataset,
 	QuadsHash extends CountableQuads & {[s:string]:TriplesHash},
 	TriplesHash extends CountableKeys,
-> implements RDFJS.Dataset<Term.Quad> {
+> {
+// > implements RDFJS.Dataset<Term.Quad> {
 	/**
 	 * Authoritative and immutable prefix map to use for c1 creation and resolution
 	 * @internal
@@ -351,9 +352,9 @@ export abstract class GenericQuadTree<
 	abstract sibling(): TreeType;
 
 	abstract contains(y_other: RDFJS.Dataset): boolean;
-	
+
 	abstract deleteMatches(yt_subject?: VStarRole.Subject, predicate?: VStarRole.Predicate, object?: VStarRole.Object, graph?: VStarRole.Graph): this;
-	
+
 	abstract difference(y_other: RDFJS.Dataset): TreeType;
 
 	abstract filter(f_iteratee: (g_quad: Term.Quad, kd_dataset: this) => boolean): TreeType;
