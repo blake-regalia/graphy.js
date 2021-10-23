@@ -59,6 +59,13 @@ import {
 	DescribeRdfMode,
 } from './const';
 
+import {
+	BypassDescriptor,
+	Descriptor,
+	FromQualifier,
+	Qualifier,
+} from './descriptor';
+
 
 declare const debug_hint: unique symbol;
 
@@ -173,73 +180,73 @@ type ValidTermTypes<
 /**
  * Union of all valid .termType string value types
  */
-type TermTypeKey = keyof TermTypes;
+export type TermTypeKey = keyof TermTypes;
 
 /**
  * The .termType string value type "NamedNode"
  */
-type NamedNodeTypeKey = Extract<TermTypeKey, 'NamedNode'>;
+export type NamedNodeTypeKey = Extract<TermTypeKey, 'NamedNode'>;
 
 /**
  * The .termType string value type "BlankNode"
  */
-type BlankNodeTypeKey = Extract<TermTypeKey, 'BlankNode'>;
+export type BlankNodeTypeKey = Extract<TermTypeKey, 'BlankNode'>;
 
 /**
  * The .termType string value type "Literal"
  */
-type LiteralTypeKey = Extract<TermTypeKey, 'Literal'>;
+export type LiteralTypeKey = Extract<TermTypeKey, 'Literal'>;
 
 /**
  * The .termType string value type "DefaultGraph"
  */
-type DefaultGraphTypeKey = Extract<TermTypeKey, 'DefaultGraph'>;
+export type DefaultGraphTypeKey = Extract<TermTypeKey, 'DefaultGraph'>;
 
 /**
  * The .termType string value type "Quad"
  */
-type QuadTypeKey = Extract<TermTypeKey, 'Quad'>;
+export type QuadTypeKey = Extract<TermTypeKey, 'Quad'>;
 
 /**
  * The .termType string value type "Variable"
  */
-type VariableTypeKey = Extract<TermTypeKey, 'Variable'>;
+export type VariableTypeKey = Extract<TermTypeKey, 'Variable'>;
 
 
 /**
  * Union of NamedNode and BlankNode term types
  */
-type NodeTypeKey = NamedNodeTypeKey | BlankNodeTypeKey;
+export type NodeTypeKey = NamedNodeTypeKey | BlankNodeTypeKey;
 
 /**
  * Union of valid .termType string value types which only require the .termType and .value properties.
  */
-type TrivialTypeKey = NodeTypeKey | DefaultGraphTypeKey | VariableTypeKey;
+export type TrivialTypeKey = NodeTypeKey | DefaultGraphTypeKey | VariableTypeKey;
 
 /**
  * Union of valid .termType string value types which carry actual data.
  */
-type DataTypeKey = Exclude<TermTypeKey, VariableTypeKey>;
+export type DataTypeKey = Exclude<TermTypeKey, VariableTypeKey>;
 
 /**
  * Union of valid .termType string value types which carry actual data.
  */
-type ValuableTypeKey = Extract<TermTypeKey, NodeTypeKey | LiteralTypeKey | VariableTypeKey>;
+export type ValuableTypeKey = Extract<TermTypeKey, NodeTypeKey | LiteralTypeKey | VariableTypeKey>;
 
 /**
  * Union of valid .termType string value types which carry actual data.
  */
-type UnvaluableTypeKey = Exclude<TermTypeKey, ValuableTypeKey>;
+export type UnvaluableTypeKey = Exclude<TermTypeKey, ValuableTypeKey>;
 
 /**
  * Union of valid .termType string value types which carry actual data and ARE NOT required to have an empty .value property.
  */
-type ValuableDataTypeKey = Extract<DataTypeKey, ValuableTypeKey>;
+export type ValuableDataTypeKey = Extract<DataTypeKey, ValuableTypeKey>;
 
 /**
  * Union of valid .termType string value types which carry actual data and ARE required to have an empty .value property.
  */
-type UnvaluableDataTypeKey = Exclude<DataTypeKey, ValuableDataTypeKey>;
+export type UnvaluableDataTypeKey = Exclude<DataTypeKey, ValuableDataTypeKey>;
 
 
 /**
@@ -247,7 +254,7 @@ type UnvaluableDataTypeKey = Exclude<DataTypeKey, ValuableDataTypeKey>;
  *
  * Returns the union of valid .termType string values for Terms that appear in the subject position for the given `RdfMode`
  */
-type SubjectTypeKey<
+export type SubjectTypeKey<
 	RdfMode extends AllowedRdfMode=RdfMode_11,
 > = Merge<
 	{[K in RdfMode_11]: NodeTypeKey},
@@ -272,7 +279,7 @@ type SubjectTypeKey<
  *
  * Returns the union of valid .termType string values for Terms that appear in the predicate position for the given `RdfMode`
  */
-type PredicateTypeKey<
+export type PredicateTypeKey<
 	RdfMode extends AllowedRdfMode=RdfMode_11,
 > = Merge<
 	{[K in RdfMode_11 | RdfMode_star]: NamedNodeTypeKey},
@@ -294,7 +301,7 @@ type PredicateTypeKey<
  *
  * Returns the union of valid .termType string values for Terms that appear in the object position for the given `RdfMode`
  */
-type ObjectTypeKey<
+export type ObjectTypeKey<
 	RdfMode extends AllowedRdfMode=RdfMode_11,
 > = Merge<
 	{[K in RdfMode_11]: ValuableDataTypeKey},
@@ -319,7 +326,7 @@ type ObjectTypeKey<
  *
  * Returns the union of valid .termType string values for Terms that appear in the graph position for the given `RdfMode`
  */
-type GraphTypeKey<
+export type GraphTypeKey<
 	RdfMode extends AllowedRdfMode=RdfMode_11,
 > = Merge<
 	{[K in RdfMode_11 | RdfMode_star]: NodeTypeKey | DefaultGraphTypeKey},
@@ -341,7 +348,7 @@ type GraphTypeKey<
  *
  * Returns the union of valid .termType string values for Terms that appear in the datatype position for the given `RdfMode`
  */
-type DatatypeTypeKey<
+export type DatatypeTypeKey<
 	RdfMode extends AllowedRdfMode=RdfMode_11,
 > = Merge<
 	{[K in RdfMode_11 | RdfMode_star]: NamedNodeTypeKey},
@@ -357,323 +364,321 @@ type DatatypeTypeKey<
 	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
-type SolvedDescriptor<
-	TermTypeString extends TermTypeKey,
-	RdfMode extends AllowedRdfMode,
-> =
-	| [UnvaluableTypeKey, '']
-	| [ValuableTypeKey, string]
-	| [LiteralTypeKey, string, string, string]
-	| [
-		QuadTypeKey, string, void, void,
-		SolvedDescriptor<SubjectTypeKey<RdfMode>, RdfMode>,
-		SolvedDescriptor<PredicateTypeKey<RdfMode>, RdfMode>,
-		SolvedDescriptor<ObjectTypeKey<RdfMode>, RdfMode>,
-		SolvedDescriptor<GraphTypeKey<RdfMode>, RdfMode>,
-		RdfMode,
-	];
-
-
-type TrivialTermDescriptor<TermTypeString extends TrivialTypeKey=TrivialTypeKey> =
-	| [TermTypeString]
-	| [TermTypeString, string];
-
-type TermDescriptor<TermTypeString extends TermTypeKey=TermTypeKey> =
-	| [void]
-	| [TermTypeString]
-	| [TermTypeString, string]
-	| [TermTypeString, string, string|void]
-	| [TermTypeString, string, string|void, string|void]
-	| [
-		TermTypeString, string, void, void,
-		TrivialTermDescriptor<SubjectTypeKey<RdfMode_11>>,
-		TrivialTermDescriptor<PredicateTypeKey<RdfMode_11>>,
-		TermDescriptor<ObjectTypeKey<RdfMode_11>>,
-		TrivialTermDescriptor<GraphTypeKey<RdfMode_11>>
-	]
-	| [
-		TermTypeString, string, void, void,
-		TrivialTermDescriptor<SubjectTypeKey<RdfMode_11>>,
-		TrivialTermDescriptor<PredicateTypeKey<RdfMode_11>>,
-		TermDescriptor<ObjectTypeKey<RdfMode_11>>,
-		TrivialTermDescriptor<GraphTypeKey<RdfMode_11>>,
-		RdfMode_11
-	]
-	| [
-		TermTypeString, string, void, void,
-		TermDescriptor<SubjectTypeKey<RdfMode_star>>,
-		TrivialTermDescriptor<PredicateTypeKey<RdfMode_star>>,
-		TermDescriptor<ObjectTypeKey<RdfMode_star>>,
-		TrivialTermDescriptor<GraphTypeKey<RdfMode_star>>,
-		RdfMode_star
-	]
-	| [
-		TermTypeString, string, void, void,
-		TermDescriptor<SubjectTypeKey<RdfMode_easier>>,
-		TermDescriptor<PredicateTypeKey<RdfMode_easier>>,
-		TermDescriptor<ObjectTypeKey<RdfMode_easier>>,
-		TermDescriptor<GraphTypeKey<RdfMode_easier>>,
-		RdfMode_easier
-	];
-
-
-type AutoDescriptor<
-	Thing extends any,
-> = Thing extends void
-	? [void]
-	: Thing;
 
 
 /**
- * Returns the appropriate union of .termType string types for the given `Descriptor`
+ * Type for Term data as an argument
  */
-type DescriptorTermType<
-	Descriptor extends TermDescriptor,
-	DefaultTypeString extends string=Descriptor[0] extends void? string: TermTypeKey,
-> = Descriptor[0] extends string
-	? FavorTermType<Descriptor[0]>
-	: DefaultTypeString;
+export type TermDataArgument<
+	a_descriptor extends Descriptor | BypassDescriptor = BypassDescriptor,
+> = a_descriptor extends Descriptor
+	? AsTypedTermData<a_descriptor>
+	: {
+		// core
+		termType: string;
+		value: string;
+
+		// literal
+		language?: string;
+		datatype?: Datatype;
+
+		// quad
+		subject?: TermDataArgument;
+		predicate?: TermDataArgument;
+		object?: TermDataArgument;
+		graph?: TermDataArgument;
+	};
+
+
+/**
+ * Base type for term data (i.e., no methods, just data fields)
+ */
+export type CoreData<
+	a_descriptor extends Descriptor = Descriptor,
+> = {
+	termType: Descriptor.Access<a_descriptor, 'termType'>;
+	value: Descriptor.Access<a_descriptor, 'value'>;
+};
+
+/**
+ * Type for Literal term data (i.e., no methods, just data fields)
+ */
+export type LiteralData<
+	a_descriptor extends Descriptor<LiteralTypeKey> = Descriptor<LiteralTypeKey>,
+	> = Merge<CoreData<a_descriptor>, {
+		language: Descriptor.Access<a_descriptor, 'language'>;
+		datatype: Descriptor.Access<a_descriptor, 'datatype'>;
+	}>;
+
+
+/**
+ * Type for quad term data (i.e., no methods, just data fields)
+ */
+export type QuadData<
+	a_descriptor extends Descriptor<QuadTypeKey> = Descriptor<QuadTypeKey>,
+> = Merge<CoreData<a_descriptor>, {
+	subject: SubjectData<Descriptor.Access<a_descriptor, 'subject'>>;
+	predicate: PredicateData<Descriptor.Access<a_descriptor, 'predicate'>>;
+	object: ObjectData<Descriptor.Access<a_descriptor, 'object'>>;
+	graph: GraphData<Descriptor.Access<a_descriptor, 'graph'>>;
+}>;
+
+
+type SafeTermType<
+	a_descriptor extends Descriptor,
+	s_term_restrict extends TermTypeKey,
+	s_category extends string = Join<Union.ListOf<s_term_restrict>, ', '>,
+	s_term extends string = Descriptor.Access<a_descriptor, 'termType'>,
+> = s_term extends s_term_restrict
+	? (s_term extends TermTypeKey
+		? AsTypedTermData<a_descriptor>
+		: never
+	)
+	: IncompatibleTermTypeError<s_term, s_category, CoreData>;
+
+
+type BlankNodeData<
+	a_descriptor extends Descriptor,
+	s_category extends string = 'a blank node',
+> = SafeTermType<a_descriptor, 'BlankNode', s_category>
+
+
+type NamedNodeData<
+	a_descriptor extends Descriptor,
+	s_category extends string = 'a named node',
+> = SafeTermType<a_descriptor, 'NamedNode', s_category>
+
+
+type NodeData<
+	a_descriptor extends Descriptor,
+	s_category extends string = 'a node type',
+> = SafeTermType<a_descriptor, NodeTypeKey, s_category>
+
+
+type DatatypeData<
+	a_descriptor extends Descriptor,
+	> = NamedNodeData<a_descriptor, 'a datatype'>;
+
+
+type CategorySubjectPosition = 'the subject position';
+type CategoryPredicatePosition = 'the predicate position';
+type CategoryObjectPosition = 'the object position';
+type CategoryGraphPosition = 'the graph position';
+
+type ExplainPosition<
+	Category extends string,
+	RdfMode extends AllowedRdfMode,
+> = `${Category} in ${DescribeRdfMode<RdfMode>}`;
+
+
+
+
+/**
+ * Type for subject position term data
+ */
+export type SubjectData<
+	a_descriptor extends Descriptor<SubjectTypeKey<AllowedRdfMode>> = Descriptor<SubjectTypeKey>,
+	s_mode extends AllowedRdfMode=Descriptor.Access<a_descriptor, 'mode'>,
+	s_category extends string = ExplainPosition<CategorySubjectPosition, s_mode>,
+> = Merge<
+	{
+		[K in RdfMode_11]: NodeData<a_descriptor, s_category>;
+	},
+	Merge<
+		{
+			[K in RdfMode_star]: SafeTermType<a_descriptor, NodeTypeKey | QuadTypeKey, s_category>;
+		},
+		{
+			[K in RdfMode_easier]: AllowedTermType<a_descriptor, TermTypeKey>;
+		}
+	>
+>[s_mode];
+
+
+/**
+ * Type for predicatte position term data
+ */
+export type PredicateData<
+	a_descriptor extends Descriptor<PredicateTypeKey<AllowedRdfMode>> = Descriptor<PredicateTypeKey>,
+	s_mode extends AllowedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
+	s_category extends string = ExplainPosition<CategoryPredicatePosition, s_mode>,
+> = Merge<
+	{
+		[K in RdfMode_11 | RdfMode_star]: NamedNodeData<a_descriptor, s_category>;
+	},
+	{
+		[K in RdfMode_easier]: AllowedTermType<a_descriptor, TermTypeKey>;
+	}
+>[s_mode];
+
+
+/**
+ * Type for object position term data
+ */
+export type ObjectData<
+	a_descriptor extends Descriptor<ObjectTypeKey<AllowedRdfMode>> = Descriptor<ObjectTypeKey>,
+	s_mode extends AllowedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
+	s_category extends string = ExplainPosition<CategoryObjectPosition, s_mode>,
+> = Merge<
+	{
+		[K in RdfMode_11]: SafeTermType<a_descriptor, ObjectTypeKey, s_category>;
+	},
+	Merge<
+		{
+			[K in RdfMode_star]: SafeTermType<a_descriptor, ObjectTypeKey | QuadTypeKey, s_category>;
+		},
+		{
+			[K in RdfMode_easier]: AllowedTermType<a_descriptor, TermTypeKey>;
+		}
+	>
+>[s_mode];
+
+
+/**
+ * Type for graph position term data
+ */
+export type GraphData<
+	a_descriptor extends Descriptor<GraphTypeKey<AllowedRdfMode>> = Descriptor<GraphTypeKey>,
+	s_mode extends AllowedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
+	s_category extends string = ExplainPosition<CategoryGraphPosition, s_mode>,
+> = Merge<
+	{
+		[K in RdfMode_11 | RdfMode_star]: SafeTermType<a_descriptor, GraphTypeKey, s_category>;
+	},
+	{
+		[K in RdfMode_easier]: AllowedTermType<a_descriptor, TermTypeKey>;
+	}
+>[s_mode];
+
+
+
+/**
+ * Routes to a term data type based on descriptor
+ */
+type AsTypedTermData<
+	a_descriptor extends Descriptor,
+> = Merge<
+	{
+		[K in QuadTypeKey]: a_descriptor extends Descriptor<QuadTypeKey>? QuadData<a_descriptor>: never;
+		// 	Descriptor.Filter<a_descriptor, Descriptor.Access<a_descriptor, 'termType'>>
+		// >;
+	},
+	Merge<
+		{
+			[K in LiteralTypeKey]: a_descriptor extends Descriptor<LiteralTypeKey>? LiteralData<a_descriptor>: never;
+			// 	Descriptor.Filter<a_descriptor, Descriptor.Access<a_descriptor, 'termType'>>
+			// >;
+		},
+		// Merge<
+			{
+				[K in TermTypeKey]: CoreData<
+					Descriptor.Filter<a_descriptor, Descriptor.Access<a_descriptor, 'termType'>>
+				>
+			}
+		// >
+	>
+>[Descriptor.Access<a_descriptor, 'termType'>];
 
 {
-	/* eslint-disable @typescript-eslint/no-unused-vars */
-	const Y: ASSERT_STRING<DescriptorTermType<BypassDescriptor>> = 1;
-	const O: ASSERT_STRING<DescriptorTermType<[void]>> = 1;
-
-	const N: ASSERT_EQUAL<DescriptorTermType<[NamedNodeTypeKey]>, NamedNodeTypeKey> = 1;
-	const L: ASSERT_EQUAL<DescriptorTermType<[LiteralTypeKey]>, LiteralTypeKey> = 1;
-	const D: ASSERT_SAME<DescriptorTermType<[NodeTypeKey]>, NodeTypeKey> = 1;
-	const J: ASSERT_SAME<DescriptorTermType<[ObjectTypeKey]>, ObjectTypeKey> = 1;
-
-	const NN: ASSERT_EQUAL<DescriptorTermType<[NamedNodeTypeKey], NamedNodeTypeKey>, NamedNodeTypeKey> = 1;
-	const LL: ASSERT_EQUAL<DescriptorTermType<[LiteralTypeKey], LiteralTypeKey>, LiteralTypeKey> = 1;
-	const DD: ASSERT_SAME<DescriptorTermType<[NodeTypeKey], NodeTypeKey>, NodeTypeKey> = 1;
-	const JJ: ASSERT_SAME<DescriptorTermType<[ObjectTypeKey], ObjectTypeKey>, ObjectTypeKey> = 1;
-
-	const DN: ASSERT_SAME<DescriptorTermType<[NodeTypeKey], NamedNodeTypeKey>, NodeTypeKey> = 1;
-	const JL: ASSERT_SAME<DescriptorTermType<[ObjectTypeKey], LiteralTypeKey>, ObjectTypeKey> = 1;
-
-	const ON: ASSERT_EQUAL<DescriptorTermType<[void], NamedNodeTypeKey>, NamedNodeTypeKey> = 1;
-	const OL: ASSERT_EQUAL<DescriptorTermType<[void], LiteralTypeKey>, LiteralTypeKey> = 1;
-	/* eslint-enable @typescript-eslint/no-unused-vars */
+	type TEST = AsTypedTermData<FromQualifier<['Literal']>>;
+	type WT = Term<['Literal', string, void, void]>
 }
 
-type DescriptorQuadComponent<
-	Descriptor,
-	Index extends number,
-> = Descriptor extends TermDescriptor
-	? (Descriptor extends BypassDescriptor
-		? BypassDescriptor
-		: (Descriptor[Index] extends TermDescriptor
-			? Descriptor[Index]
-			: BypassDescriptor
-		)
-	): never;
-
-// type TES = DescriptorQuadComponent<[['NamedNode']], 0>;
-
-
-type ValidTermTypesMatch<
-	KeysSet extends string,
-	TermTypeStringA extends string,
-	ValueStringA extends string,
-	TermTypeStringB extends string,
-	ValueStringB extends string,
-> = If<
-	ValidTermTypes<KeysSet, TermTypeStringA, TermTypeStringB>,
-	And<
-		// Equals<TermTypeStringA, TermTypeStringB>,
-		// Equals<ValueStringA, ValueStringB>,
-		StringsMatch<TermTypeStringA, TermTypeStringB>,
-		StringsMatch<ValueStringA, ValueStringB>
-	>
->;
-
-
-type AutoDatatype<
-	DatatypeString extends string|void,
-	AutoLanguageString,
-> = If<
-	Equals<AutoLanguageString, ''>,
-	AutoString<DatatypeString, P_XSD_STRING>,
-	If<
-		IsOnlyLiteralStrings<AsString<AutoLanguageString>>,
-		P_RDFS_LANGSTRING,
-		AutoString<DatatypeString>
-	>
->;
-
-type NarrowLanguage<
-	AutoLanguageString,
-	AutoDatatypeString,
-> = If<
-	And<
-		Includes<AutoLanguageString, string>,
-		And<
-			Not<Includes<AutoDatatypeString, P_RDFS_LANGSTRING>>,
-			Not<Includes<AutoDatatypeString, string>>
-		>
-	>,
-	'',
-	AutoLanguageString
->;
 
 /**
- * ```ts
- * NormalizeLanguageDatatype<
- * 	LanguageString extends string|void,
- * 	DatatypeString extends string|void,
- * > => [string, string]
- * ```
- *
- * Deduces the proper value types for the .language and .datatype.value properties.
- * Gives precedence to `LanguageString` in case both arguments are specific, non-empty strings.
- *
- *     NormalizeLanguageDatatype<void, void>  // ['', P_XSD_STRING]
- *     NormalizeLanguageDatatype<'en', void>  // ['en', P_RDFS_LANGSTRING]
- *     NormalizeLanguageDatatype<'en', 'z://y/'>  // ['en', P_RDFS_LANGSTRING]
- *     NormalizeLanguageDatatype<void, 'z://y/'>  // ['', 'z://y/']
- *     NormalizeLanguageDatatype<string, 'z://y/'>  // ['', 'z://y/']
- *     NormalizeLanguageDatatype<'', 'z://y/'>  // ['', 'z://y/']
+ * Complements term data type with RDFJS methods
  */
-type NormalizeLanguageDatatype<
-	LanguageString extends string|void,
-	DatatypeString extends string|void,
-> = AutoString<LanguageString, ''> extends infer AutoLanguageString
-	? (AutoDatatype<DatatypeString, AutoLanguageString> extends infer AutoDatatypeString
-		? (NarrowLanguage<AutoLanguageString, AutoDatatypeString> extends infer NarrowLanguageString
-			? [NarrowLanguageString, AutoDatatypeString]
-			: never
-		)
+type Term<
+	z_qualifier_a extends Qualifier = BypassDescriptor,
+> = FromQualifier<z_qualifier_a> extends infer a_descriptor_a
+	? (a_descriptor_a extends Descriptor
+		? Merge<
+			AsTypedTermData<a_descriptor_a>,
+			z_qualifier_a extends BypassDescriptor
+			? {
+				equals<
+					z_other extends TermDataArgument | null | undefined,
+				>(y_other: z_other): z_other extends null | undefined? false: boolean;
+			}
+			: {
+				equals<
+					a_descriptor_b extends Descriptor = Descriptor,
+				>(y_other: AsTypedTermData<a_descriptor_b>): a_descriptor_b extends Descriptor
+					? TermsEqual<a_descriptor_a, a_descriptor_b>
+					: boolean
+			}
+		>
 		: never
 	)
 	: never;
 
 {
-	/* eslint-disable @typescript-eslint/no-unused-vars */
-
-	// language takes precedence over datatype
-	const VV: ASSERT_SAME<NormalizeLanguageDatatype<'en', 'z://'>, ['en', P_RDFS_LANGSTRING]> = 1;
-	const VS: ASSERT_SAME<NormalizeLanguageDatatype<'en', string>, ['en', P_RDFS_LANGSTRING]> = 1;
-	const VO: ASSERT_SAME<NormalizeLanguageDatatype<'en', void>, ['en', P_RDFS_LANGSTRING]> = 1;
-	// even for unions
-	const VU: ASSERT_SAME<NormalizeLanguageDatatype<'en', 'z://'|string>, ['en', P_RDFS_LANGSTRING]> = 1;
-
-	// language unions make it thru
-	const UV: ASSERT_SAME<NormalizeLanguageDatatype<'en'|'fr', 'z://'>, ['en'|'fr', P_RDFS_LANGSTRING]> = 1;
-	const US: ASSERT_SAME<NormalizeLanguageDatatype<'en'|'fr', string>, ['en'|'fr', P_RDFS_LANGSTRING]> = 1;
-	const UO: ASSERT_SAME<NormalizeLanguageDatatype<'en'|'fr', void>, ['en'|'fr', P_RDFS_LANGSTRING]> = 1;
-
-	// empty string language
-	const _V: ASSERT_SAME<NormalizeLanguageDatatype<'', 'z://'>, ['', 'z://']> = 1;
-	const _S: ASSERT_SAME<NormalizeLanguageDatatype<'', string>, ['', string]> = 1;
-	const _O: ASSERT_SAME<NormalizeLanguageDatatype<'', void>, ['', P_XSD_STRING]> = 1;
-
-	// datatype unions make it thru
-	const _U: ASSERT_SAME<NormalizeLanguageDatatype<'', 'z://'|'y://'>, ['', 'z://'|'y://']> = 1;
-	const OU: ASSERT_SAME<NormalizeLanguageDatatype<void, 'z://'|'y://'>, ['', 'z://'|'y://']> = 1;
-	const SU: ASSERT_SAME<NormalizeLanguageDatatype<string, 'z://'|'y://'>, ['', 'z://'|'y://']> = 1;
-
-	// void language => ''
-	const OV: ASSERT_SAME<NormalizeLanguageDatatype<void, 'z://'>, ['', 'z://']> = 1;
-	const OS: ASSERT_SAME<NormalizeLanguageDatatype<void, string>, ['', string]> = 1;
-	const OO: ASSERT_SAME<NormalizeLanguageDatatype<void, void>, ['', P_XSD_STRING]> = 1;
-
-	/* eslint-enable @typescript-eslint/no-unused-vars */
+	type TEST = FromQualifier<['Literal', string, void, void]>;
+	type LitDesc = Descriptor<'Literal'>;
+	type SHO = TEST extends LitDesc? 'Y': 'N';
+	type TEST1 = Term<['Literal', string, void, void]>;
 }
-
-{
-	/* eslint-disable @typescript-eslint/no-unused-vars */
-
-	type _ = '';
-	type E = 'en';
-
-	type V = 'z://';
-
-	const V_: ASSERT_EQUAL<AutoDatatype<V, ''>, V> = 1;
-	const VE: ASSERT_EQUAL<AutoDatatype<V, E>, P_RDFS_LANGSTRING> = 1;
-	const VS: ASSERT_EQUAL<AutoDatatype<V, string>, V> = 1;
-
-	const S_: ASSERT_STRING<AutoDatatype<string, ''>> = 1;
-	const SE: ASSERT_EQUAL<AutoDatatype<string, E>, P_RDFS_LANGSTRING> = 1;
-	const SS: ASSERT_STRING<AutoDatatype<string, string>> = 1;
-
-	const O_: ASSERT_EQUAL<AutoDatatype<void, ''>, P_XSD_STRING> = 1;
-	const OE: ASSERT_EQUAL<AutoDatatype<void, E>, P_RDFS_LANGSTRING> = 1;
-	const OS: ASSERT_STRING<AutoDatatype<void, string>> = 1;
-
-	/* eslint-enable @typescript-eslint/no-unused-vars */
-}
-
 
 type RawTermsEqual<
-	DescriptorA extends TermDescriptor=TermDescriptor,
-	DescriptorB extends TermDescriptor=TermDescriptor,
+	a_descriptor_a extends Descriptor,
+	a_descriptor_b extends Descriptor,
 
-	TermTypeStringA extends string=DescriptorTermType<DescriptorA>,
-	ValueStringA extends string=AutoString<DescriptorA[1]>,
-	LanguageStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[2]>,
-	DatatypeStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[3]>,
-
-	TermTypeStringB extends string=DescriptorTermType<DescriptorB>,
-	ValueStringB extends string=AutoString<DescriptorB[1]>,
-	LanguageStringB extends string|void=ConditionalLiteralString<TermTypeStringB, DescriptorB[2]>,
-	DatatypeStringB extends string|void=ConditionalLiteralString<TermTypeStringB, DescriptorB[3]>,
+	s_term_a extends string=Descriptor.Access<a_descriptor_a, 'termType'>,
+	s_term_b extends string=Descriptor.Access<a_descriptor_b, 'termType'>,
 > = If<
-		Not<ValidTermType<TermTypeKey, TermTypeStringA>>,
-		InvalidTermTypeError<TermTypeStringA, boolean>,
+		Not<ValidTermType<TermTypeKey, s_term_a>>,
+		InvalidTermTypeError<s_term_a, boolean>,
 		If<
-			Not<ValidTermType<TermTypeKey, TermTypeStringB>>,
-			InvalidTermTypeError<TermTypeStringB, boolean>,
+			Not<ValidTermType<TermTypeKey, s_term_b>>,
+			InvalidTermTypeError<s_term_b, boolean>,
 			// (a|b).termType are strings in {valid-term-type-keys}
 			And<
-				StringsMatch<TermTypeStringA, TermTypeStringB>,
-				StringsMatch<ValueStringA, ValueStringB>
-			> extends infer TermTypeAndValueStringsMatch
+				StringsMatch<s_term_a, s_term_b>,
+				StringsMatch<
+					Descriptor.Access<a_descriptor_a, 'value'>,
+					Descriptor.Access<a_descriptor_b, 'value'>
+				>
+			> extends infer b_terms_and_values_match
 				// (TermType|Value)StringsMatch := a.(termType|value) === b.(termType|value)
 				// ? (Not<AsBool<TermTypeAndValueStringsMatch>> extends True
-				? (TermTypeAndValueStringsMatch extends False
+				? (b_terms_and_values_match extends False
 					// a.termType !== b.termType || a.value !== b.value
 					? False
 					// mixed termTypes and values
 					: (Or<
-						Equals<TermTypeStringA, 'Literal'>,
-						Equals<TermTypeStringB, 'Literal'>
+						Equals<s_term_a, 'Literal'>,
+						Equals<s_term_b, 'Literal'>
 					> extends True
 						// (a|b).termType === 'Literal'
-						? ([
-							...NormalizeLanguageDatatype<LanguageStringA, DatatypeStringA>,
-							...NormalizeLanguageDatatype<LanguageStringB, DatatypeStringB>,
-						] extends [
-							infer NormalizeLanguageStringA, infer NormalizeDatatypeStringA,
-							infer NormalizeLanguageStringB, infer NormalizeDatatypeStringB,
-						]
-							// AutoLanguageString = LanguageString || ''
-							// AutoDatatypeString = AutoLanguageString? 'rdfs:langString': DatatypeString || 'xsd:string'
-							// NarrowLanguageString = AutoDatatypeString !== 'rdfs:langString' && AutoLanguageString includes `string`? '': AutoLanguageString
-							// Normalize(Language|Datatype)String = [NarrowLanguageString, AutoDatatypeString]
-							? If<
-								Or<
-									Not<StringsMatch<AsString<NormalizeLanguageStringA>, AsString<NormalizeLanguageStringB>>>,
-									Not<StringsMatch<AsString<NormalizeDatatypeStringA>, AsString<NormalizeDatatypeStringB>>>
-								>,
-								// a.language !== b.language || a.datatype !== b.datatype
-								False,
-								// return a.language === b.language && a.datatype === b.datatype
+						? If<
+							Or<
+								Not<StringsMatch<
+									Descriptor.Access<a_descriptor_a, 'language'>,
+									Descriptor.Access<a_descriptor_b, 'language'>
+								>>,
+								Not<StringsMatch<
+									Descriptor.Access<a_descriptor_a, 'datatype'>,
+									Descriptor.Access<a_descriptor_b, 'datatype'>
+								>>
+							>,
+							// a.language !== b.language || a.datatype !== b.datatype
+							False,
+							// return a.language === b.language && a.datatype === b.datatype
+							And<
+								AsBool<b_terms_and_values_match>,
 								And<
-									AsBool<TermTypeAndValueStringsMatch>,
-									And<
-										StringsMatch<AsString<NormalizeLanguageStringA>, AsString<NormalizeLanguageStringB>>,
-										StringsMatch<AsString<NormalizeDatatypeStringA>, AsString<NormalizeDatatypeStringB>>
+									StringsMatch<
+										Descriptor.Access<a_descriptor_a, 'language'>,
+										Descriptor.Access<a_descriptor_b, 'language'>
+									>,
+									StringsMatch<
+										Descriptor.Access<a_descriptor_a, 'datatype'>,
+										Descriptor.Access<a_descriptor_b, 'datatype'>
 									>
 								>
 							>
-							: never
-						)
-						: AsBool<TermTypeAndValueStringsMatch>
-						// : NodesMatch<
-						// 	TermTypeStringA, ValueStringA,
-						// 	TermTypeStringB, ValueStringB,
-						// >
+						>
+						: AsBool<b_terms_and_values_match>
 					)
 				)
 				: never
@@ -681,332 +686,32 @@ type RawTermsEqual<
 	>;
 
 export type TermsEqual<
-	DescriptorA extends TermDescriptor=TermDescriptor,
-	DescriptorB extends TermDescriptor=TermDescriptor,
+	a_descriptor_a extends Descriptor=Descriptor,
+	a_descriptor_b extends Descriptor=Descriptor,
 > = ToPrimitiveBoolean<
-		RawTermsEqual<DescriptorA, DescriptorB>
-	>;
-
-
-type ConditionalLiteralString<
-	TermTypeString extends string,
-	LanguageOrDatatypeString extends string|void,
-> = 'Literal' extends TermTypeString
-	? (LanguageOrDatatypeString extends undefined
-		? string
-		: LanguageOrDatatypeString
-	)
-	: void;
-
-
-type CoreTermData<
-	Descriptor extends TermDescriptor=TermDescriptor,
-	TermTypeString extends string=DescriptorTermType<Descriptor, TrivialTypeKey>,
-	ValueString extends string=AutoString<Descriptor[1]>,
-> = FavorTermType<TermTypeString, TrivialTypeKey> extends infer FavorTermTypeString
-	? {
-		termType: FavorTermTypeString;
-		value: ValueString;
-
-		equals?(y_other: TermDataArgument): boolean;
-	}
-	: never;
-
-
-type LiteralTermData<
-	DescriptorA extends TermDescriptor=BypassDescriptor,
-
-	// these are provided for descriptor inferencing
-	TermTypeStringA extends string=DescriptorTermType<DescriptorA, LiteralTypeKey>,
-	ValueStringA extends string=AutoString<DescriptorA[1]>,
-	LanguageStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[2]>,
-	DatatypeStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[3]>,
-> = NormalizeLanguageDatatype<LanguageStringA, DatatypeStringA> extends [
-	infer NormalizeLanguageStringA,
-	infer NormalizeDatatypeStringA,
-]
-	? {
-		termType: 'Literal';
-		value: ValueStringA;
-
-		language: NormalizeLanguageStringA;
-		datatype: Datatype<AsString<NormalizeDatatypeStringA>>;
-
-		equals?(y_other: TermDataArgument): boolean;
-	}
-	: never;
-
-
-type SolveQuadDescriptor<
-	Descriptor extends TermDescriptor,
-> =
-	QuadTypeKey extends Descriptor[0]
-		? [
-			QuadTypeKey,
-
-		]
-		: never;
-
-type NormalizeQuadComponents = false;
-
-type DescriptorMap<
-	TermTypeString extends TermTypeKey,
-	Descriptor extends TermDescriptor,
-	RdfMode extends AllowedRdfMode=AutoString<Descriptor[8], RdfMode_11>,
-> =
-	Merge<
-		// trivial, unvaluable term types
-		{
-			[K in Extract<TrivialTypeKey, UnvaluableTypeKey>]: [
-				TermTypeString, '', void, void,
-			];
-		},
-		Merge<
-			// trivial, valuable term types
-			{
-				[K in Extract<TrivialTypeKey, ValuableTypeKey>]: [
-					TermTypeString, AutoString<Descriptor[1]>, void, void,
-				];
-			},
-			Merge<
-				// literal
-				{
-					[K in LiteralTypeKey]: [
-						LiteralTypeKey, AutoString<Descriptor[1]>,
-						...NormalizeLanguageDatatype<Descriptor[2], Descriptor[3]>,
-					];
-				},
-				// quad
-				{
-					[K in QuadTypeKey]: [
-						QuadTypeKey, '', void, void,
-						SolveDescriptor<AutoDescriptor<Descriptor[4]>, SubjectTypeKey<RdfMode>>,
-						SolveDescriptor<AutoDescriptor<Descriptor[5]>, PredicateTypeKey<RdfMode>>,
-						SolveDescriptor<AutoDescriptor<Descriptor[6]>, ObjectTypeKey<RdfMode>>,
-						SolveDescriptor<AutoDescriptor<Descriptor[7]>, GraphTypeKey<RdfMode>>,
-					];
-				}
-			>
-		>
-	>;
-
-type SolveDescriptor<
-	Descriptor extends TermDescriptor,
-	Target extends TermTypeKey=TermTypeKey,
-> =
-	DescriptorTermType<Descriptor, Target> extends infer TermTypeString
-		? (TermTypeString extends TermTypeKey
-			? DescriptorMap<TermTypeString, Descriptor>[TermTypeString]
-			: never
-		)
-		: never;
-
-{
-	/* eslint-disable @typescript-eslint/no-unused-vars */
-	type N = SolveDescriptor<[NamedNodeTypeKey]>;
-	const N_0: ASSERT_EQUAL<N[0], NamedNodeTypeKey> = 1;
-	const N_1: ASSERT_STRING<N[1]> = 1;
-	const N_2: ASSERT_VOID<N[2]> = 1;
-	const N_3: ASSERT_VOID<N[3]> = 1;
-
-	type Nv = SolveDescriptor<[NamedNodeTypeKey, 'A']>;
-	const Nv0: ASSERT_EQUAL<Nv[0], NamedNodeTypeKey> = 1;
-	const Nv1: ASSERT_EQUAL<Nv[1], 'A'> = 1;
-	const Nv2: ASSERT_VOID<Nv[2]> = 1;
-	const Nv3: ASSERT_VOID<Nv[3]> = 1;
-
-	type B = SolveDescriptor<[BlankNodeTypeKey]>;
-	const B_0: ASSERT_EQUAL<B[0], BlankNodeTypeKey> = 1;
-	const B_1: ASSERT_STRING<B[1]> = 1;
-	const B_2: ASSERT_VOID<B[2]> = 1;
-	const B_3: ASSERT_VOID<B[3]> = 1;
-
-	type Bv = SolveDescriptor<[BlankNodeTypeKey, 'A']>;
-	const Bv0: ASSERT_EQUAL<Bv[0], BlankNodeTypeKey> = 1;
-	const Bv1: ASSERT_EQUAL<Bv[1], 'A'> = 1;
-	const Bv2: ASSERT_VOID<Bv[2]> = 1;
-	const Bv3: ASSERT_VOID<Bv[3]> = 1;
-
-	type L = SolveDescriptor<[LiteralTypeKey]>;
-	const L_0: ASSERT_EQUAL<L[0], LiteralTypeKey> = 1;
-	const L_1: ASSERT_STRING<L[1]> = 1;
-	const L_2: ASSERT_EQUAL<L[2], ''> = 1;
-	const L_3: ASSERT_EQUAL<L[3], P_XSD_STRING> = 1;
-
-	type Lv = SolveDescriptor<[LiteralTypeKey, 'A']>;
-	const Lv0: ASSERT_EQUAL<Lv[0], LiteralTypeKey> = 1;
-	const Lv1: ASSERT_EQUAL<Lv[1], 'A'> = 1;
-	const Lv2: ASSERT_EQUAL<Lv[2], ''> = 1;
-	const Lv3: ASSERT_EQUAL<Lv[3], P_XSD_STRING> = 1;
-
-	type Lvv = SolveDescriptor<[LiteralTypeKey, 'A', 'en']>;
-	const Lvv0: ASSERT_EQUAL<Lvv[0], LiteralTypeKey> = 1;
-	const Lvv1: ASSERT_EQUAL<Lvv[1], 'A'> = 1;
-	const Lvv2: ASSERT_EQUAL<Lvv[2], 'en'> = 1;
-	const Lvv3: ASSERT_EQUAL<Lvv[3], P_RDFS_LANGSTRING> = 1;
-
-	type G = SolveDescriptor<[DefaultGraphTypeKey]>;
-	const G_0: ASSERT_EQUAL<G[0], DefaultGraphTypeKey> = 1;
-	const G_1: ASSERT_EQUAL<G[1], ''> = 1;
-	const G_2: ASSERT_VOID<G[2]> = 1;
-	const G_3: ASSERT_VOID<G[3]> = 1;
-
-	type R = SolveDescriptor<[VariableTypeKey]>;
-	const R_0: ASSERT_EQUAL<R[0], VariableTypeKey> = 1;
-	const R_1: ASSERT_STRING<R[1]> = 1;
-	const R_2: ASSERT_VOID<R[2]> = 1;
-	const R_3: ASSERT_VOID<R[3]> = 1;
-
-	const NmO_N: ASSERT_SAME<N, SolveDescriptor<[void], NamedNodeTypeKey>> = 1;
-	const BmO_B: ASSERT_SAME<B, SolveDescriptor<[void], BlankNodeTypeKey>> = 1;
-	const LmO_L: ASSERT_SAME<L, SolveDescriptor<[void], LiteralTypeKey>> = 1;
-	const GmO_G: ASSERT_SAME<G, SolveDescriptor<[void], DefaultGraphTypeKey>> = 1;
-	const RmO_R: ASSERT_SAME<R, SolveDescriptor<[void], VariableTypeKey>> = 1;
-
-
-	type NL = SolveDescriptor<[NamedNodeTypeKey | LiteralTypeKey]>;
-	const NL_0: ASSERT_SAME<NL[0], NamedNodeTypeKey | LiteralTypeKey> = 1;
-	const NL_1: ASSERT_STRING<NL[1]> = 1;
-	const NL_2: ASSERT_SAME<NL[2], void | ''> = 1;
-	const NL_3: ASSERT_SAME<NL[3], void | P_XSD_STRING> = 1;
-
-	type Q = SolveDescriptor<[QuadTypeKey]>;
-	const Q_0: ASSERT_SAME<Q[0], QuadTypeKey> = 1;
-	const Q_4: ASSERT_SAME<Q[4][0], SubjectTypeKey> = 1;
-	const Q_5: ASSERT_SAME<Q[5][0], PredicateTypeKey> = 1;
-	const Q_6: ASSERT_SAME<Q[6][0], ObjectTypeKey> = 1;
-	const Q_7: ASSERT_SAME<Q[7][0], GraphTypeKey> = 1;
-	/* eslint-enable @typescript-eslint/no-unused-vars */
-}
-
-/**
- * ```ts
- * FilterDescriptor<
- * 	Descriptor extends TermDescriptor,
- * 	Target extends TermTypeKey,
- * 	TermTypeSring extends TermTypeKey=DescriptorTermType<Descriptor, Target>,
- * > => TermDescriptor<Target>
- * ```
- *
- * Converts `Descriptor` into `TermDescriptor<Target>`
- */
-type FilterDescriptor<
-	Descriptor extends TermDescriptor,
-	Target extends TermTypeKey,
-	TermTypeSring extends TermTypeKey=DescriptorTermType<Descriptor, Target>,
-> = [Extract<TermTypeSring, Target>, ...List.Omit<Descriptor, 0>] extends infer NewDescriptor
-	? (NewDescriptor extends TermDescriptor<Target>
-		? NewDescriptor
-		: never
-	)
-	: never;
-
-
-type QuadTermData<
-	DescriptorA extends TermDescriptor=BypassDescriptor,
-
-	// // these are provided for descriptor inferencing
-	// TermTypeStringA extends string=DescriptorTermType<DescriptorA, QuadTypeKey>,
-	// ValueStringA extends string=AutoString<DescriptorA[1]>,
-	// LanguageStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[2]>,
-	// DatatypeStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[3]>,
-
-	// SubjectDescriptorA extends TermDescriptor=DescriptorQuadComponent<DescriptorA, 4>,
-	// PredicateDescriptorA extends TermDescriptor=DescriptorQuadComponent<DescriptorA, 5>,
-	// ObjectDescriptorA extends TermDescriptor=DescriptorQuadComponent<DescriptorA, 6>,
-	// GraphDescriptorA extends TermDescriptor=DescriptorQuadComponent<DescriptorA, 7>,
-
-	// RdfMode extends AllowedRdfMode=AutoString<DescriptorA[8], RdfMode_11>,
-> = SolveDescriptor<DescriptorA, QuadTypeKey> extends infer Solved
-		? {
-			termType: QuadTypeKey;
-			value: '';
-
-			subject: SubjectData<DescriptorQuadComponent<Solved, 4>, RdfMode>;
-			predicate: PredicateData<PredicateDescriptorA, RdfMode>;
-			object: ObjectData<ObjectDescriptorA, RdfMode>;
-			graph: GraphData<GraphDescriptorA, RdfMode>;
-
-			equals?(y_other: TermDataArgument): boolean;
-		}
-		: never;
-
-type TermTypeMap<
-	Descriptor extends TermDescriptor=BypassDescriptor,
-	// TermTypeString extends TermTypeKey=DescriptorTermType<Descriptor, TermTypeKey>,
-> = {
-	NamedNode: CoreTermData<FilterDescriptor<Descriptor, NamedNodeTypeKey>>;
-	BlankNode: CoreTermData<FilterDescriptor<Descriptor, BlankNodeTypeKey>>;
-	Variable: CoreTermData<FilterDescriptor<Descriptor, VariableTypeKey>>;
-	DefaultGraph: CoreTermData<FilterDescriptor<Descriptor, DefaultGraphTypeKey>>;
-	Literal: LiteralTermData<FilterDescriptor<Descriptor, LiteralTypeKey>>;
-	Quad: QuadTermData<FilterDescriptor<Descriptor, QuadTypeKey>>;
-};
-
-export type TermData<
-	Descriptor extends TermDescriptor=BypassDescriptor,
-	TermTypeString extends TermTypeKey=DescriptorTermType<Descriptor, TermTypeKey>,
-> = TermTypeString extends keyof TermTypeMap
-	? TermTypeMap<Descriptor>[TermTypeString]
-	: never;
-
-export type TermDataArgument<
-	Descriptor extends TermDescriptor=BypassDescriptor,
-> = DescriptorTermType<Descriptor, string> extends infer TermTypeString
-	? TermTypeString extends TermTypeKey
-		? TermData<Descriptor>
-		: {
-			termType: string;
-			value: string;
-
-			language?: string;
-			datatype?: Datatype;
-		}
-	: never;
-
-
-type Term<
-	DescriptorA extends TermDescriptor=BypassDescriptor,
-> = Merge<
-	TermData<DescriptorA>,
-	DescriptorA extends BypassDescriptor
-		? {
-			equals(y_other: TermDataArgument): boolean;
-		}
-		: {
-			equals<
-				DescriptorB extends TermDescriptor=BypassDescriptor,
-
-				// forward descriptor inferencing
-				TermTypeStringB extends string=DescriptorTermType<DescriptorB>,
-				ValueStringB extends string=AutoString<DescriptorB[1]>,
-				LanguageStringB extends string|void=ConditionalLiteralString<TermTypeStringB, DescriptorB[2]>,
-				DatatypeStringB extends string|void=ConditionalLiteralString<TermTypeStringB, DescriptorB[3]>,
-
-				SubjectDescriptorB extends TermDescriptor=DescriptorQuadComponent<DescriptorB, 4>,
-				PredicateDescriptorB extends TermDescriptor=BypassDescriptor,
-				ObjectDescriptorB extends TermDescriptor=BypassDescriptor,
-				GraphDescriptorB extends TermDescriptor=BypassDescriptor,
-			>(y_other: DescriptorB extends BypassDescriptor
-				? TermData
-				: TermData<DescriptorB> | Term<DescriptorB>
-			): DescriptorB extends BypassDescriptor
-				? boolean
-				: TermsEqual<
-					DescriptorA,
-					// [TermTypeStringA, ValueStringA, LanguageStringA, DatatypeStringA],
-					DescriptorB
-					// [TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB],
-				>;
-		}
+	RawTermsEqual<a_descriptor_a, a_descriptor_b>
 >;
 
+
+
 {
 	/* eslint-disable @typescript-eslint/no-unused-vars */
 
+	type B = FromQualifier<[BlankNodeTypeKey]>;
+	type N = FromQualifier<[NamedNodeTypeKey]>;
+	type L = FromQualifier<[LiteralTypeKey]>;
+	type NL = FromQualifier<[NamedNodeTypeKey | LiteralTypeKey]>;
+	type D = FromQualifier<[DefaultGraphTypeKey]>;
+
 	// basic fully compatible quad
-	type d_BNLD = ['Quad', '', void, void, ['BlankNode'], ['NamedNode'], ['Literal' | 'NamedNode'], ['DefaultGraph']];
-	type BNLD = QuadTermData<d_BNLD>;
+	type d_BNLD = FromQualifier<[
+		'Quad', '', void, void,
+		B,
+		N,
+		NL,
+		D,
+	]>;
+	type BNLD = QuadData<d_BNLD>;
 
 	type BNLD_s = BNLD['subject'];
 	const BNLD_st: ASSERT_EQUAL<BNLD_s['termType'], 'BlankNode'> = 1;
@@ -1027,7 +732,7 @@ type Term<
 	type ODATA = ObjectData<['NamedNode' | 'Literal', 'hey']>;
 
 	// rdf-star
-	type QQQQs = QuadTermData<['Quad', '', void, void, d_BNLD, ['NamedNode'], d_BNLD, ['NamedNode'], RdfMode_star]>;
+	type QQQQs = QuadData<['Quad', '', void, void, d_BNLD, ['NamedNode'], d_BNLD, ['NamedNode'], RdfMode_star]>;
 
 	type QQQQs_s = QQQQs['subject'];
 	const QQQQs_st: ASSERT_EQUAL<QQQQs_s['termType'], 'Quad'> = 1;
@@ -1035,7 +740,7 @@ type Term<
 
 
 	// easier-rdf
-	type QQQQe = QuadTermData<['Quad', '', void, void, d_BNLD, d_BNLD, d_BNLD, d_BNLD, RdfMode_easier]>;
+	type QQQQe = QuadData<['Quad', '', void, void, d_BNLD, d_BNLD, d_BNLD, d_BNLD, RdfMode_easier]>;
 
 	type QQQQe_s = QQQQe['subject'];
 	const QQQQe_st: ASSERT_EQUAL<QQQQe_s['termType'], 'Quad'> = 1;
@@ -1054,13 +759,13 @@ type Term<
 	// const BNLD_gv: ASSERT_STRING<BNLD_g['value']> = 1;
 
 
-	type LBDV = QuadTermData<['Quad', '', void, void, ['Literal'], ['BlankNode'], ['DefaultGraph'], ['Variable']]>;
+	type LBDV = QuadData<['Quad', '', void, void, ['Literal'], ['BlankNode'], ['DefaultGraph'], ['Variable']]>;
 
-	type GenericCoreTerm = CoreTermData<TermDescriptor, string>;
+	type GenericCoreTerm = CoreData<Descriptor, string>;
 
-	type ValidGenericQuad = QuadTermData<['Quad', '', void, void, [SubjectTypeKey], [PredicateTypeKey], [ObjectTypeKey], [GraphTypeKey]]>;
+	type ValidGenericQuad = QuadData<['Quad', '', void, void, [SubjectTypeKey], [PredicateTypeKey], [ObjectTypeKey], [GraphTypeKey]]>;
 
-	type AnyGenericQuad = QuadTermData<[
+	type AnyGenericQuad = QuadData<[
 		'Quad', '', void, void,
 		[SubjectTypeKey<RdfMode_easier>],
 		[PredicateTypeKey<RdfMode_easier>],
@@ -1103,251 +808,24 @@ type Term<
 
 
 
-type SafeTermType<
-	Descriptor extends TermDescriptor,
-	KeysSet extends TermTypeKey,
-	Category extends string=Join<Union.ListOf<KeysSet>, ', '>,
-	TermTypeString extends string=DescriptorTermType<Descriptor>,
-> = TermTypeString extends KeysSet
-	? (TermTypeString extends keyof TermTypeMap
-		? TermTypeMap<Descriptor>[TermTypeString]
-		: never
-	)
-	: IncompatibleTermTypeError<TermTypeString, Category, CoreTermData>;
-
 type AllowedTermType<
-	Descriptor extends TermDescriptor,
-	KeysSet extends TermTypeKey,
-	Category extends string=Join<Union.ListOf<KeysSet>, ', '>,
-	TermTypeString extends string=DescriptorTermType<Descriptor>,
-> = TermTypeString extends KeysSet
-	? TermTypeMap<Descriptor>[TermTypeString]
-	: InvalidTermTypeError<TermTypeString, CoreTermData>;
-
-type BlankNodeTermData<
-	Descriptor extends TermDescriptor,
-	Category extends string='a blank node',
-> = SafeTermType<Descriptor, 'BlankNode', Category>
-
-type NamedNodeTermData<
-	Descriptor extends TermDescriptor,
-	Category extends string='a named node',
-> = SafeTermType<Descriptor, 'NamedNode', Category>
-
-type NodeTermData<
-	Descriptor extends TermDescriptor,
-	Category extends string='a node type',
-> = SafeTermType<Descriptor, NodeTypeKey, Category>
+	a_descriptor extends Descriptor,
+	s_term_restrict extends TermTypeKey,
+	s_category extends string=Join<Union.ListOf<s_term_restrict>, ', '>,
+	s_term extends string=Descriptor.Access<a_descriptor, 'termType'>,
+> = s_term extends s_term_restrict
+	? AsTypedTermData<a_descriptor>
+	: InvalidTermTypeError<s_term, CoreData>;
 
 
-type DatatypeTermData<
-	Descriptor extends TermDescriptor,
-> = NamedNodeTermData<Descriptor, 'a datatype'>;
-
-type CategorySubjectPosition = 'the subject position';
-type CategoryPredicatePosition = 'the predicate position';
-type CategoryObjectPosition = 'the object position';
-type CategoryGraphPosition = 'the graph position';
-
-type ExplainPosition<
-	Category extends string,
-	RdfMode extends AllowedRdfMode,
-> = `${Category} in ${DescribeRdfMode<RdfMode>}`;
-
-export type SubjectData<
-	Descriptor extends TermDescriptor,
-	RdfMode extends AllowedRdfMode=RdfMode_11,
-	Category extends string=ExplainPosition<CategorySubjectPosition, RdfMode>,
-> = RdfMode extends RdfMode_11
-	? NodeTermData<Descriptor, Category>
-	: (RdfMode extends RdfMode_star
-		? SafeTermType<Descriptor, NodeTypeKey | QuadTypeKey, Category>
-		: AllowedTermType<Descriptor, TermTypeKey>
-	);
-
-type PredicateData<
-	Descriptor extends TermDescriptor,
-	RdfMode extends AllowedRdfMode=RdfMode_11,
-	Category extends string=ExplainPosition<CategoryPredicatePosition, RdfMode>,
-> = RdfMode extends RdfMode_11 | RdfMode_star
-	? NamedNodeTermData<Descriptor, Category>
-	: AllowedTermType<Descriptor, TermTypeKey>;
-
-type ObjectData<
-	Descriptor extends TermDescriptor,
-	RdfMode extends AllowedRdfMode=RdfMode_11,
-	Category extends string=ExplainPosition<CategoryObjectPosition, RdfMode>,
-> = RdfMode extends RdfMode_11
-	? SafeTermType<Descriptor, ObjectTypeKey, Category>
-	: RdfMode extends RdfMode_star
-		? SafeTermType<Descriptor, ObjectTypeKey | QuadTypeKey, Category>
-		: AllowedTermType<Descriptor, TermTypeKey>;
-
-type GraphData<
-	Descriptor extends TermDescriptor,
-	RdfMode extends AllowedRdfMode=RdfMode_11,
-	Category extends string=ExplainPosition<CategoryGraphPosition, RdfMode>,
-> = RdfMode extends RdfMode_11 | RdfMode_star
-	? SafeTermType<Descriptor, GraphTypeKey, Category>
-	: AllowedTermType<Descriptor, TermTypeKey>;
-
-
-type BypassTermType = Type<void, 'Bypass'>
-
-type BypassDescriptor = [BypassTermType];
-
-type BasicTermEquals = {
-	equals(y_other: TermData): boolean;
-};
-
-// type PlainTermEquals<
-// 	TermTypeStringA extends string,
-// 	ValueStringA extends string,
-// 	LanguageStringA extends string|void,
-// 	DatatypeStringA extends string|void,
-// > = {
-// 	equals<
-// 		DescriptorB extends TermDescriptor=BypassDescriptor,
-
-// 		// forward descriptor inferencing
-// 		TermTypeStringB extends string=DescriptorB[0] extends BypassTermType? string: DescriptorB[0],
-// 		ValueStringB extends string=AutoString<DescriptorB[1]>,
-// 		LanguageStringB extends string|void=ConditionalLiteralString<TermTypeStringB, DescriptorB[2]>,
-// 		DatatypeStringB extends string|void=ConditionalLiteralString<TermTypeStringB, DescriptorB[3]>,
-// 	>(y_other: DescriptorB extends BypassDescriptor
-// 		? TermData
-// 		: (TermData<DescriptorB, TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB>
-// 			| Term<DescriptorB, TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB>
-// 		)
-// 	): DescriptorB extends BypassDescriptor
-// 		? boolean
-// 		: TermsEqual<
-// 			// DescriptorA
-// 			[TermTypeStringA, ValueStringA, LanguageStringA, DatatypeStringA],
-// 			// DescriptorB
-// 			[TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB],
-// 		>;
-// };
-
-// type QuadTermEquals<
-// 	SubjectTermTypeString extends string|void,
-// 	SubjectValueTypeString extends string|void,
-// 	PredicateTermTypeTypeString extends string|void,
-// 	PredicateValueTypeString extends string|void,
-// 	ObjectTermTypeString extends string|void,
-// 	ObjectValueString extends string|void,
-// 	ObjectLanguageString extends string|void,
-// 	ObjectDatatypeTypeString extends string|void,
-// 	GraphTermTypeString extends string|void,
-// 	GraphValueString extends string|void,
-// > = {
-// 	equals<
-// 		DescriptorB extends TermDescriptor=BypassDescriptor,
-
-// 		// forward descriptor inferencing
-// 		TermTypeStringB extends string=DescriptorB[0] extends BypassTermType? string: DescriptorB[0],
-// 		ValueStringB extends string=AutoString<DescriptorB[1]>,
-// 		LanguageStringB extends string|void=ConditionalLiteralString<TermTypeStringB, DescriptorB[2]>,
-// 		DatatypeStringB extends string|void=ConditionalLiteralString<TermTypeStringB, DescriptorB[3]>,
-
-// 		SubjectTermTypeStringB extends string|void=ConditionalQuadString<TermTypeStringB, DescriptorB[4]>,
-// 		SubjectValueTypeStringB extends string|void=ConditionalQuadString<TermTypeStringB, DescriptorB[5]>,
-// 		PredicateTermTypeTypeStringB extends string|void=ConditionalQuadString<TermTypeStringB, DescriptorB[6]>,
-// 		PredicateValueTypeStringB extends string|void=ConditionalQuadString<TermTypeStringB, DescriptorB[7]>,
-// 		ObjectTermTypeStringB extends string|void=ConditionalQuadString<TermTypeStringB, DescriptorB[8]>,
-// 		ObjectValueStringB extends string|void=ConditionalQuadString<TermTypeStringB, DescriptorB[9]>,
-// 		ObjectLanguageStringB extends string|void=ConditionalQuadString<TermTypeStringB, ConditionalLiteralString<AsString<ObjectTermTypeString>, DescriptorB[10]>>,
-// 		ObjectDatatypeTypeStringB extends string|void=ConditionalQuadString<TermTypeStringB, ConditionalLiteralString<AsString<ObjectTermTypeString>, DescriptorB[11]>>,
-// 		GraphTermTypeStringB extends string|void=ConditionalQuadString<TermTypeStringB, DescriptorB[12]>,
-// 		GraphValueStringB extends string|void=ConditionalQuadString<TermTypeStringB, DescriptorB[13]>,
-// 	>(y_other: DescriptorB extends BypassDescriptor
-// 		? TermData
-// 		: (TermData<DescriptorB, TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB>
-// 			| Term<DescriptorB, TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB>
-// 		)
-// 	): DescriptorB extends BypassDescriptor
-// 		? boolean
-// 		: TermsEqual<
-// 			// DescriptorA
-// 			[TermTypeStringA, ValueStringA, LanguageStringA, DatatypeStringA],
-// 			// DescriptorB
-// 			[TermTypeStringB, ValueStringB, LanguageStringB, DatatypeStringB],
-// 		>;
-// };
-
-type ConditionalQuadString<
-	TermTypeString extends string,
-	ComponentString extends string|void,
-> = 'Quad' extends TermTypeString
-	? (ComponentString extends undefined
-		? string
-		: ComponentString
-	)
-	: void;
-
-// export type Term<
-// 	DescriptorA extends TermDescriptor=BypassDescriptor,
-
-// 	// these are provided for descriptor inferencing
-// 	TermTypeStringA extends string=DescriptorA[0] extends BypassTermType? string: DescriptorA[0],
-// 	ValueStringA extends string=AutoString<DescriptorA[1]>,
-// 	LanguageStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[2]>,
-// 	DatatypeStringA extends string|void=ConditionalLiteralString<TermTypeStringA, DescriptorA[3]>,
-
-// 	SubjectTermTypeString extends string|void=ConditionalQuadString<TermTypeStringA, DescriptorA[4]>,
-// 	SubjectValueTypeString extends string|void=ConditionalQuadString<TermTypeStringA, DescriptorA[5]>,
-// 	PredicateTermTypeTypeString extends string|void=ConditionalQuadString<TermTypeStringA, DescriptorA[6]>,
-// 	PredicateValueTypeString extends string|void=ConditionalQuadString<TermTypeStringA, DescriptorA[7]>,
-// 	ObjectTermTypeString extends string|void=ConditionalQuadString<TermTypeStringA, DescriptorA[8]>,
-// 	ObjectValueString extends string|void=ConditionalQuadString<TermTypeStringA, DescriptorA[9]>,
-// 	ObjectLanguageString extends string|void=ConditionalQuadString<TermTypeStringA, ConditionalLiteralString<AsString<ObjectTermTypeString>, DescriptorA[10]>>,
-// 	ObjectDatatypeTypeString extends string|void=ConditionalQuadString<TermTypeStringA, ConditionalLiteralString<AsString<ObjectTermTypeString>, DescriptorA[11]>>,
-// 	GraphTermTypeString extends string|void=ConditionalQuadString<TermTypeStringA, DescriptorA[12]>,
-// 	GraphValueString extends string|void=ConditionalQuadString<TermTypeStringA, DescriptorA[13]>,
-// > = Merge<
-// 	// Pick<
-// 		TermData<
-// 			DescriptorA
-// 			// [TermTypeStringA, ValueStringA, LanguageStringA, DatatypeStringA],
-// 			// TermTypeStringA,
-// 			// ValueStringA,
-// 			// LanguageStringA,
-// 			// DatatypeStringA,
-// 		>
-// 		// 'termType' | 'value' | (
-// 		// 	// only include language and datatype keys if termType can be 'Literal'
-// 		// 	'Literal' extends TermTypeStringA
-// 		// 		? 'language' | 'datatype'
-// 		// 		: 'termType'
-// 		// ),
-// 	// >
-// 	,
-// 	DescriptorA extends BypassDescriptor
-// 		? BasicTermEquals
-// 		: (
-// 			TermTypeStringA extends 'Quad'
-// 				? ('Quad' extends TermTypeStringA
-// 					// quad
-// 					? QuadTermEquals<
-// 						SubjectTermTypeString,
-// 						SubjectValueTypeString,
-// 						PredicateTermTypeTypeString,
-// 						PredicateValueTypeString,
-// 						ObjectTermTypeString,
-// 						ObjectValueString,
-// 						ObjectLanguageString,
-// 						ObjectDatatypeTypeString,
-// 						GraphTermTypeString,
-// 						GraphValueString
-// 					>
-// 					// union termType, take easy way uot
-// 					: BasicTermEquals
-// 				)
-// 				: PlainTermEquals<TermTypeStringA, ValueStringA, LanguageStringA, DatatypeStringA>
-// 		)
-// >;
 
 {
+	// function tquad<
+	// 	a_descriptor extends Descriptor,
+	// >(): Quad {
+
+	// }
+
 	/* eslint-disable @typescript-eslint/no-unused-vars, no-multi-spaces */
 
 	const Invalid_RHS: ASSERT_TRUE<
@@ -1541,9 +1019,9 @@ type ConditionalQuadString<
 		termType: 'NamedNode',
 		value: 'z://',
 		equals<
-			DescriptorB extends TermDescriptor,
+			a_descriptor_b extends Descriptor,
 			ReturnType extends TermsEqual,
-		>(y_other: TermData<DescriptorB>): ReturnType {
+		>(y_other: TermData<a_descriptor_b>): ReturnType {
 			return (this.termType === y_other.termType && this.value === y_other.value) as ReturnType;
 		},
 	};
@@ -1552,9 +1030,9 @@ type ConditionalQuadString<
 		termType: 'NamedNode',
 		value: 'z://',
 		equals<
-			DescriptorB extends TermDescriptor,
+			a_descriptor_b extends Descriptor,
 			ReturnType extends TermsEqual,
-		>(y_other: TermData<DescriptorB>): ReturnType {
+		>(y_other: TermData<a_descriptor_b>): ReturnType {
 			return (this.termType === y_other.termType && this.value === y_other.value) as ReturnType;
 		},
 	};
@@ -1627,71 +1105,78 @@ type ConditionalQuadString<
 	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
+
 export type NamedNode<
-	ValueString extends string=string,
-> = Term<['NamedNode', ValueString]>;
+	s_value extends string=string,
+> = Term<['NamedNode', s_value]>;
 
 export type BlankNode<
-	ValueString extends string=string,
-> = Term<['BlankNode', ValueString]>;
+	s_value extends string=string,
+> = Term<['BlankNode', s_value]>;
 
 export type Literal<
-	ValueString extends string=string,
-	LanguageString extends string|void=string,
-	DatatypeString extends string|void=string,
-> = Term<['Literal', ValueString, LanguageString, DatatypeString]>;
+	s_value extends string=string,
+	s_language extends string|void=string,
+	s_datatype extends string|void=string,
+> = Term<['Literal', s_value, s_language, s_datatype]>;
 
 export type DefaultGraph = Term<['DefaultGraph', '']>;
 
 export type Variable<
-	ValueString extends string=string,
-> = Term<['Variable', ValueString]>;
+	s_value extends string=string,
+> = Term<['Variable', s_value]>;
 
 export type Datatype<
-	DatatypeString extends string=string,
-> = NamedNode<DatatypeString>;
+	s_datatype extends string=string,
+> = NamedNode<s_datatype>;
 
 export type Node<
-	TermTypeString extends string=TermTypeKey,
-	ValueString extends string=string,
-> = FavorTermType<TermTypeString> extends infer FavorTermTypeString
-	? (FavorTermTypeString extends NodeTypeKey
+	s_term extends string=TermTypeKey,
+	s_value extends string=string,
+> = FavorTermType<s_term> extends infer s_favored
+	? (s_favored extends NodeTypeKey
 		? {
-			[K in NodeTypeKey]: Term<[FavorTermTypeString, ValueString]>
-		}[FavorTermTypeString]
+			[K in NodeTypeKey]: Term<[s_favored, s_value]>
+		}[s_favored]
 		: never
 	)
 	: never;
 
 export type Subject<
-	TermTypeString extends string=string,
-	ValueString extends string=string,
-> = Node<TermTypeString, ValueString>;
+	s_term extends string=string,
+	s_value extends string=string,
+> = Node<s_term, s_value>;
 
 export type Predicate<
-	TermTypeString extends string=string,
-	ValueString extends string=string,
-> = TermTypeString extends `${infer ActualTermTypeString}`
-	? (TermTypeString extends 'NamedNode'
-		? NamedNode<ValueString>
+	s_term extends string=string,
+	s_value extends string=string,
+> = s_term extends `${infer ActualTermTypeString}`
+	? (ActualTermTypeString extends NamedNodeTypeKey
+		? NamedNode<s_value>
 		: never
 	)
-	: NamedNode<ValueString>;
+	: NamedNode<s_value>;
 
 export type Object<
-	TermTypeString extends string=string,
-	ValueString extends string=string,
-	LanguageString extends string=string,
-	DatatypeString extends string=string,
-> = Node<TermTypeString, ValueString>
-	| Literal<TermTypeString, ValueString, LanguageString, DatatypeString>;
+	s_term extends string=string,
+	s_value extends string=string,
+	s_language extends string=string,
+	s_datatype extends string=string,
+> = s_term extends `${infer ActualTermTypeString}`
+	? (ActualTermTypeString extends NodeTypeKey
+		? Node<ActualTermTypeString, s_value>
+		: (ActualTermTypeString extends LiteralTypeKey
+			? Literal<ActualTermTypeString, s_language, s_datatype>
+			: never)
+	)
+	: Node<s_term, s_value> | Literal<s_value, s_language, s_datatype>;
 
 export type Graph<
-	TermTypeString extends string=string,
-	ValueString extends string=string,
-> = TermTypeString extends `${infer ActualTermTypeString}`
-	? Node<ActualTermTypeString, ValueString> | DefaultGraph<ActualTermTypeString>
-	: Node<TermTypeString, ValueString> | DefaultGraph;
+	s_term extends string=string,
+	s_value extends string=string,
+> = s_term extends `${infer ActualTermTypeString}`
+	? Node<ActualTermTypeString, s_value> | DefaultGraph<ActualTermTypeString>
+	: Node<s_term, s_value> | DefaultGraph;
 
 
 
@@ -1711,8 +1196,8 @@ export type Graph<
 // type QuadsMatch<
 // 	TermTypeStringA extends string,
 // 	ValueStringA extends string,
-// 	LanguageStringA extends string,
-// 	DatatypeStringA extends string,
+// 	s_languageA extends string,
+// 	s_datatypeA extends string,
 
 // 	SubjectTermTypeStringA extends string,
 // 	SubjectValueStringA extends string,
@@ -1720,15 +1205,15 @@ export type Graph<
 // 	PredicateValueStringA extends string,
 // 	ObjectTermTypeStringA extends string,
 // 	ObjectValueStringA extends string,
-// 	ObjectLanguageStringA extends string,
-// 	ObjectDatatypeStringA extends string,
+// 	Objects_languageA extends string,
+// 	Objects_datatypeA extends string,
 // 	GraphTermTypeStringA extends string,
 // 	GraphValueStringA extends string,
 
 // 	TermTypeStringB extends string,
 // 	ValueStringB extends string,
-// 	LanguageStringB extends string,
-// 	DatatypeStringB extends string,
+// 	s_languageB extends string,
+// 	s_datatypeB extends string,
 
 // 	SubjectTermTypeStringB extends string,
 // 	SubjectValueStringB extends string,
@@ -1736,8 +1221,8 @@ export type Graph<
 // 	PredicateValueStringB extends string,
 // 	ObjectTermTypeStringB extends string,
 // 	ObjectValueStringB extends string,
-// 	ObjectLanguageStringB extends string,
-// 	ObjectDatatypeStringB extends string,
+// 	Objects_languageB extends string,
+// 	Objects_datatypeB extends string,
 // 	GraphTermTypeStringB extends string,
 // 	GraphValueStringB extends string,
 // > = And<
@@ -1749,12 +1234,12 @@ export type Graph<
 // 		ObjectsEqual<
 // 			ObjectTermTypeStringA,
 // 			ObjectValueStringA,
-// 			ObjectLanguageStringA,
-// 			ObjectDatatypeStringA,
+// 			Objects_languageA,
+// 			Objects_datatypeA,
 // 			ObjectTermTypeStringB,
 // 			ObjectValueStringB,
-// 			ObjectLanguageStringB,
-// 			ObjectDatatypeStringB,
+// 			Objects_languageB,
+// 			Objects_datatypeB,
 // 		>,
 // 	>,
 // 	StringPairsMatch<GraphTermTypeStringA, GraphTermTypeStringB, GraphValueStringA, GraphValueStringB>,
@@ -1799,8 +1284,8 @@ export type Graph<
 // 	PredicateValueStringA extends string=string,
 // 	ObjectTermTypeStringA extends string=string,
 // 	ObjectValueStringA extends string=string,
-// 	ObjectLanguageStringA extends string=string,
-// 	ObjectDatatypeStringA extends string=string,
+// 	Objects_languageA extends string=string,
+// 	Objects_datatypeA extends string=string,
 // 	GraphTermTypeStringA extends string=string,
 // 	GraphValueStringA extends string=string,
 // > = {
@@ -1816,8 +1301,8 @@ export type Graph<
 // 		// PredicateValueStringB extends string=string,
 // 		// ObjectTermTypeStringB extends string=string,
 // 		// ObjectValueStringB extends string=string,
-// 		// ObjectLanguageStringB extends string=string,
-// 		// ObjectDatatypeStringB extends string=string,
+// 		// Objects_languageB extends string=string,
+// 		// Objects_datatypeB extends string=string,
 // 		// GraphTermTypeStringB extends string=string,
 // 		// GraphValueStringB extends string=string,
 // 	>(y_other: TypeB):
@@ -1834,7 +1319,7 @@ export type Graph<
 // 										StringsMatch<ObjectTermTypeString, OtherObjectTermTypeString>,
 // 										StringsMatch<ObjectValueString, OtherObjectTermTypeString>
 // 									>,
-// 									StringsMatch<ObjectLanguageString, OtherObjectLanguageString>
+// 									StringsMatch<Objects_language, OtherObjects_language>
 // 						>)
 // 						? And<And<And<SubjectsMatch, PredicatesMatch>, ObjectsEqual>, GraphsMatch>
 
@@ -1848,8 +1333,8 @@ export type Graph<
 // 								OtherPredicateValueString,
 // 								OtherObjectTermTypeString,
 // 								OtherObjectValueString,
-// 								OtherObjectLanguageString,
-// 								OtherObjectDatatypeString,
+// 								OtherObjects_language,
+// 								OtherObjects_datatype,
 // 								OtherGraphTermTypeString,
 // 								OtherGraphValueString,
 // 							>
@@ -1901,7 +1386,7 @@ export type Graph<
 
 // 	subject: Subject<SubjectTermTypeString, SubjectValueString>;
 // 	predicate: Predicate<PredicateTermTypeString, PredicateValueString>;
-// 	object: Object<ObjectTermTypeString, ObjectValueString, ObjectLanguageString, ObjectDatatypeString>;
+// 	object: Object<ObjectTermTypeString, ObjectValueString, Objects_language, Objects_datatype>;
 // 	graph: Graph<GraphTermTypeString, GraphValueString>;
 // };
 

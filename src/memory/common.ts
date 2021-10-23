@@ -6,6 +6,9 @@ import {
 	RDFJS,
 	Dataset,
 	PrefixMap,
+	AllowedRdfMode,
+	RdfMode_11,
+	RdfMode_star,
 } from '@graphy/types';
 
 import {
@@ -130,10 +133,19 @@ export namespace ILinkedQuadTree {
 
 type Iteratee<DatasetType, ReturnType> = (g_quad: Term.Quad, k_dataset: DatasetType) => ReturnType;
 
+type Optional<z_arg> = z_arg | null | undefined;
+
+
 export abstract class GenericQuadTree<
 	TreeType extends Dataset.SyncDataset,
 	QuadsHash extends CountableQuads & {[s:string]:TriplesHash},
 	TriplesHash extends CountableKeys,
+
+	s_mode extends AllowedRdfMode = RdfMode_11,
+	SubjectArg = Optional<SubjectData<s_mode>>,
+	PredicateArg = Optional<PredicateData<s_mode>>,
+	ObjectArg = Optional<ObjectData<s_mode>>,
+	GraphArg = Optional<GraphData<s_mode>>,
 > {
 // > implements RDFJS.Dataset<Term.Quad> {
 	/**
@@ -258,6 +270,10 @@ export abstract class GenericQuadTree<
 		}
 	}
 
+	toArray(): Term.Quad[] {
+		return [...this];
+	}
+
 	map(f_map: Iteratee<TreeType, Term.Quad>): TreeType {
 		throw new Error('not yet implemented');
 	}
@@ -318,6 +334,13 @@ export abstract class GenericQuadTree<
 	abstract _equals(k_other: TreeType): boolean;
 
 	equals(y_other: RDFJS.Dataset): boolean {
+		// falsy
+		if(!y_other) {
+			const e_falsy = new TypeError(`'other' argument is falsy`);
+			console.warn(`WARNING: ${e_falsy.stack}`);
+			return false;
+		}
+
 		// reflection
 		if((y_other as unknown) === this) return true;
 
@@ -335,7 +358,7 @@ export abstract class GenericQuadTree<
 			// matching storage types
 			if(this.datasetStorageType === (y_other as any).datasetStorageType) {
 				// apply impl-specific equals test
-				return this._equals(y_other as TreeType);
+				return this._equals(y_other as unknown as TreeType);
 			}
 			else {
 				throw new Error(`not yet implemented`);
@@ -347,29 +370,29 @@ export abstract class GenericQuadTree<
 		}
 	}
 
-	abstract add(g_quad: RDFJS.Quad): this;
+	// abstract add(g_quad: RDFJS.Quad): this;
 
-	abstract sibling(): TreeType;
+	// abstract sibling(): TreeType;
 
-	abstract contains(y_other: RDFJS.Dataset): boolean;
+	// abstract contains(y_other: RDFJS.Dataset): boolean;
 
-	abstract deleteMatches(yt_subject?: VStarRole.Subject, predicate?: VStarRole.Predicate, object?: VStarRole.Object, graph?: VStarRole.Graph): this;
+	// abstract deleteMatches(yt_subject?: VStarRole.Subject, predicate?: VStarRole.Predicate, object?: VStarRole.Object, graph?: VStarRole.Graph): this;
 
-	abstract difference(y_other: RDFJS.Dataset): TreeType;
+	// abstract difference(y_other: RDFJS.Dataset): TreeType;
 
-	abstract filter(f_iteratee: (g_quad: Term.Quad, kd_dataset: this) => boolean): TreeType;
+	// abstract filter(f_iteratee: (g_quad: Term.Quad, kd_dataset: this) => boolean): TreeType;
 
-	abstract import(ds_stream: RDFJS.Stream): Promise<this>;
+	// abstract import(ds_stream: RDFJS.Stream): Promise<this>;
 
-	abstract intersection(y_other: RDFJS.Dataset): TreeType;
+	// abstract intersection(y_other: RDFJS.Dataset): TreeType;
 
-	abstract union(y_other: RDFJS.Dataset): TreeType;
+	// abstract union(y_other: RDFJS.Dataset): TreeType;
 
-	abstract match(yt_subject?: VStarRole.Subject, predicate?: VStarRole.Predicate, object?: VStarRole.Object, graph?: VStarRole.Graph): TreeType;
+	// abstract match(yt_subject?: SubjectArg, predicate?: PredicateArg, object?: ObjectArg, graph?: GraphArg): TreeType;
 
-	abstract delete(g_quad: RDFJS.Quad): this;
+	// abstract delete(g_quad: RDFJS.Quad): this;
 
-	abstract has(g_quad: RDFJS.Quad): boolean;
+	// abstract has(g_quad: RDFJS.Quad): boolean;
 
 	toCanonical(): string {
 		throw new Error('Method not yet implemented');

@@ -1,12 +1,16 @@
 /* eslint indent: 0, padded-blocks: 0 */
-const expect = require('chai').expect;
+import chai from 'chai';
+const expect = chai.expect;
 
-const stream = require('@graphy/core.iso.stream');
-const dataset_tree = require('@graphy/memory.dataset.fast');
+// import stream = require('@graphy/core.iso.stream');
 
-const util = require('./util.js');
+import {
+	QuadTree,
+} from '@graphy/memory';
 
-class writer_suite {
+import util from './util.js';
+
+export class WriterSuite {
 	constructor(gc_suite, f_suite) {
 		let s_prefix_string = '';
 		if(gc_suite.prefixes) {
@@ -33,7 +37,7 @@ class writer_suite {
 			.pipe(((b_interpret && this.interpreter) || this.validator)())
 
 			// canonicalize in dataset
-			.pipe(dataset_tree({
+			.pipe(new DatasetTree({
 				canonicalize: true,
 			}))
 
@@ -263,6 +267,4 @@ class writer_suite {
 	}
 }
 
-module.exports = function(...a_args) {
-	return new writer_suite(...a_args);
-};
+export default WriterSuite;

@@ -19,10 +19,11 @@ import type {
 	Term,
 } from './forms';
 
-
+export * from './const';
 export * from './root';
-export * from './forms';
+export * as Graphy from './forms';
 export * from './rdfjs';
+export * as Api from './term';
 
 type Rdfjs11Quad = RDFJS.Quad<RdfMode_11>;
 
@@ -100,7 +101,7 @@ export namespace Dataset {
 	/**
 	 *
 	 */
-	export interface SyncDataset extends RDFJS.Dataset<Term.Quad> {
+	export interface SyncDataset /*extends RDFJS.Dataset<Term.Quad>*/ {
 		readonly isGraphyDataset: true;
 		readonly datasetStorageType: string;
 		readonly size: number;
@@ -123,12 +124,12 @@ export namespace Dataset {
 		distinctObjects(): Generator<Term.Object>;
 
 		// equals(other: RDFJS.Dataset): boolean;
-		contains(other: RDFJS.Dataset<Rdfjs11Quad>): boolean;
-		disjoint(other: RDFJS.Dataset<Rdfjs11Quad>): boolean;
+		contains(other: RDFJS.Dataset): boolean;
+		disjoint(other: RDFJS.Dataset): boolean;
 
 		// union(other: RDFJS.Dataset): SyncDataset;
 		// intersection(other: SyncDataset): SyncDataset;
-		minus(other: SyncDataset): SyncDataset;
+		minus(other: RDFJS.Dataset): SyncDataset;
 		// difference(other: SyncDataset): SyncDataset;
 
 		normalize(): SyncDataset;

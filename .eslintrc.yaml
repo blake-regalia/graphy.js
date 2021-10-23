@@ -32,9 +32,10 @@
       rules:
         no-use-before-define: off
         '@typescript-eslint/ban-types': off
-        '@typescript-eslint/no-namespace':
-          - warn
-          - allowDefinitionFiles: true
+        '@typescript-eslint/no-namespace': off
+          # - off
+          # - allowDefinitionFiles: true
+        '@typescript-eslint/no-explicit-any': off
 
   rules:
 

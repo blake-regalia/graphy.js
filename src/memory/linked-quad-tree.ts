@@ -767,7 +767,7 @@ export class LinkedQuadTree extends GenericQuadTree<
 		throw new Error('Method not implemented.');
 	}
 
-	minus(other: Dataset.SyncDataset): Dataset.SyncDataset {
+	minus(other: RDFJS.Dataset): Dataset.SyncDataset {
 		throw new Error('Method not implemented.');
 	}
 

@@ -7,12 +7,16 @@ import {
 	Terse,
 	C1,
 	Term,
+	SubjectData,
+	PredicateData,
+	ObjectData,
+	GraphData,
 	PrefixMap,
 	PrefixMapRelation,
+	Qualifier,
+	Descriptor,
 	F1,
 } from '@graphy/types';
-import { DefaultGraph, NamedNode } from 'rdf-js';
-import { DatatypedLiteral } from '../../build/package/core.data.factory/main';
 
 export namespace DataFactory {
 	/**
@@ -129,6 +133,18 @@ export namespace DataFactory {
 	 */
 	function dateTimeLiteral(dateTime: Date): Term.DateTimeLiteral;
 
+	type quad<
+		w_qualifier extends Qualifier = [QuadTypeKey],
+	> = FromQualifier<w_qualifier> extends infer a_descriptor
+		? a_descriptor extends Descriptor
+			? (subject: SubjectData<Descriptor.Access<a_descriptor, 'subject'>>,
+				predicate: PredicateData<Descriptor.Access<a_descriptor, 'predicate'>>,
+				object: ObjectData<Descriptor.Access<a_descriptor, 'object'>>,
+				graph?: GraphData<Descriptor.Access<a_descriptor, 'graph'>>
+			) => Term.Quad<a_descriptor>
+			: never
+		: never;
+
 	/**
 	 * Creates a new `Quad`.
 	 * @param subject - the subject of this Quad
@@ -136,26 +152,28 @@ export namespace DataFactory {
 	 * @param object - the object of this Quad
 	 * @param graph - the optional graph of this Quad; otherwise, defaults to `DefaultGraph`
 	 */
-	function quad<
-		SubjectTermTypeString extends string=string,
-		SubjectValueString extends string=string,
-		PredicateValueString extends string=string,
-		ObjectTermTypeString extends string=string,
-		ObjectValueString extends string=string,
-		ObjectLanguageString extends string=string,
-		ObjectDatatypeString extends string=string,
-		GraphTermTypeString extends string=string,
-		GraphValueString extends string=string,
-	>(subject: Role.Subject<SubjectTermTypeString, SubjectValueString>,
-		predicate: Role.Predicate<PredicateValueString>,
-		object: Role.Object<ObjectTermTypeString, ObjectValueString, ObjectLanguageString, ObjectDatatypeString>,
-		graph?: Role.Graph<GraphTermTypeString, GraphValueString>
-	): Term.Quad<
-		Term.Subject<SubjectTermTypeString, SubjectValueString>,
-		Term.Predicate<PredicateValueString>,
-		Term.Object<ObjectTermTypeString, ObjectValueString, ObjectLanguageString, ObjectDatatypeString>,
-		Term.Graph<GraphTermTypeString, GraphValueString>,
-	>;
+	const quad: quad;
+
+	// function quad<
+	// 	SubjectTermTypeString extends string=string,
+	// 	SubjectValueString extends string=string,
+	// 	PredicateValueString extends string=string,
+	// 	ObjectTermTypeString extends string=string,
+	// 	ObjectValueString extends string=string,
+	// 	ObjectLanguageString extends string=string,
+	// 	ObjectDatatypeString extends string=string,
+	// 	GraphTermTypeString extends string=string,
+	// 	GraphValueString extends string=string,
+	// >(subject: Role.Subject<SubjectTermTypeString, SubjectValueString>,
+	// 	predicate: Role.Predicate<PredicateValueString>,
+	// 	object: Role.Object<ObjectTermTypeString, ObjectValueString, ObjectLanguageString, ObjectDatatypeString>,
+	// 	graph?: Role.Graph<GraphTermTypeString, GraphValueString>
+	// ): Term.Quad<
+	// 	Term.Subject<SubjectTermTypeString, SubjectValueString>,
+	// 	Term.Predicate<PredicateValueString>,
+	// 	Term.Object<ObjectTermTypeString, ObjectValueString, ObjectLanguageString, ObjectDatatypeString>,
+	// 	Term.Graph<GraphTermTypeString, GraphValueString>,
+	// >;
 
 	/**
 	 * @deprecated Use `.quad()` instead

@@ -420,6 +420,14 @@ export type Auto<
 		? Thing
 		: Default;
 
+// export type Auto<
+// 	Thing extends any,
+// 	Default extends any,
+// > = Thing extends void
+// 	? Default
+// 	: Thing extends Default
+// 		? Thing
+// 		: Default;
 
 {
 	/* eslint-disable @typescript-eslint/no-unused-vars */

@@ -1,6 +1,8 @@
 @import '../share/iris.jmacs';
 
-import type RDFJS from '@@rdfjs/types';
+// import type RDFJS from '@@rdfjs/types';
+
+import * as Api from './term';
 
 import type {
 	Iri,
@@ -48,7 +50,7 @@ type Bcp47 = string;
 
 	const fit_generic = si_generic => `${si_generic} extends ${H_GENERICS_EXTENDS[si_generic]}=${H_GENERICS_EXTENDS[si_generic]}`;
 
-	const A_GENERICS_TERM_VALUE = [/* syntax: ts */ `ValueString extends string=string`];
+	const A_GENERICS_TERM_VALUE = [/* syntax: ts */ `s_value extends string=string`];
 
 	const R_GENERIC = /[^<]*<([^>]+)>/y;
 	function generics_from(sj_union) {
@@ -116,12 +118,12 @@ type Bcp47 = string;
 			isDecimalLiteral:     false,
 			isVariable:           false,
 
-			termType:             /* syntax: ts */ `string`,
-			value:                /* syntax: ts */ `string`,
+			// termType:             /* syntax: ts */ `string`,
+			// value:                /* syntax: ts */ `string`,
 		},
 
 		methods: {
-			equals:       si => /* syntax: ts */ `(other: RDFJS.Term): boolean`,
+			// equals:       si => /* syntax: ts */ `(other: RDFJS.Term): boolean`,
 			flat:         si => /* syntax: ts */ `(prefixes?: PrefixMap): F1.${si}${paragenerics(si)}`,
 			concise:      si => /* syntax: ts */ `(prefixes?: PrefixMap): C1.${si}${paragenerics(si)}`,
 			terse:        si => /* syntax: ts */ `(prefixes?: PrefixMap): Terse.${si}`,
@@ -144,7 +146,7 @@ type Bcp47 = string;
 
 	const H_TERM_DEFAULT_GRAPH = {
 		f1: `'*'`,
-		implements: /* syntax: js */ `RDFJS.DefaultGraph`,
+		implements: /* syntax: js */ `Api.DefaultGraph`,
 		properties: {
 			...H_TERM_GRAPHABLE.properties,
 			isDefaultGraph:       true,
@@ -170,7 +172,7 @@ type Bcp47 = string;
 		c1: '`${string}:${string}`',
 		f1: SX_C1_ABSOLUTE_IRI,
 		generics: [/* syntax: ts */ `ValueString extends Iri=Iri`],
-		implements: /* syntax: js */ `RDFJS.NamedNode`,
+		implements: /* syntax: js */ `Api.NamedNode`,
 		docs: docstring(`
 			encapsulates an absolute IRI. It is free from any context such as namespace or document.
 			@see RelativeIri for using relative IRIs.
@@ -214,7 +216,7 @@ type Bcp47 = string;
 	const H_TERM_BLANK_NODE = {
 		// f1: 'LabeldBlankNode | AnonymousBlankNode',
 		generics: A_GENERICS_TERM_VALUE,
-		implements: /* syntax: js */ `RDFJS.BlankNode`,
+		implements: /* syntax: js */ `Api.BlankNode`,
 		properties: {
 			...H_TERM_NODE.properties,
 			isBlankNode:          true,
@@ -266,17 +268,17 @@ type Bcp47 = string;
 	};
 
 	const H_TERM_LITERAL = {
-		implements: /* syntax: js */ `RDFJS.Literal`,
+		implements: sj_super_args => /* syntax: js */ `Api.Literal${sj_super_args}`,
 		generics: A_GENERICS_TERM_VALUE,
 		properties: {
 			...H_TERM_GENERIC.properties,
 			isAbleObject:          true,
 			isLiteral:             true,
 
-			termType:              /* syntax: ts */ `'Literal'`,
-			value:                 /* syntax: ts */ `ValueString`,
-			language:              /* syntax: ts */ `string`,
-			datatype:              /* syntax: ts */ `Datatype`,
+			// termType:              /* syntax: ts */ `'Literal'`,
+			// value:                 /* syntax: ts */ `ValueString`,
+			// language:              /* syntax: ts */ `string`,
+			// datatype:              /* syntax: ts */ `Datatype`,
 
 			boolean:               /* syntax: ts */ `typeof NaN`,
 			number:                /* syntax: ts */ `typeof NaN`,
@@ -286,8 +288,9 @@ type Bcp47 = string;
 
 	const H_TERM_SIMPLE_LITERAL = {
 		class: 'Literal',
-		f1: '`"${ValueString}`',
+		f1: '`"${s_value}`',
 		generics: A_GENERICS_TERM_VALUE,
+		super_args: `s_value, void, void`,
 		docs: docstring(`
 			encapsulates a literal without any explicit datatype nor language tag.
 		`),
@@ -300,8 +303,9 @@ type Bcp47 = string;
 	const H_TERM_LANGUAGED_LITERAL = {
 		class: 'Literal',
 		// TODO: narrow to BCP47 pattern
-		f1: '`@${LanguageString}"${ValueString}`',
-		generics: [...A_GENERICS_TERM_VALUE, /* syntax: ts */ `LanguageString extends Bcp47=Bcp47`],
+		f1: '`@${s_language}"${s_value}`',
+		generics: [...A_GENERICS_TERM_VALUE, /* syntax: ts */ `s_language extends Bcp47=Bcp47`],
+		super_args: `s_value, s_language, void`,
 		docs: docstring(`
 			encapsulates a literal with a specific language tag.
 		`),
@@ -309,15 +313,16 @@ type Bcp47 = string;
 			...H_TERM_LITERAL.properties,
 			isLanguagedLiteral: true,
 
-			language:              /* syntax: ts */ `LanguageString`,
+			// language:              /* syntax: ts */ `LanguageString`,
 		},
 	};
 
 	const H_TERM_DATATYPED_LITERAL = {
 		class: 'Literal',
-		f1: '`^${NamedNode<DatatypeString>}"${ValueString}`',
-		c1: ['`^${NamedNode<DatatypeString>}"${ValueString}`'],
-		generics: [...A_GENERICS_TERM_VALUE, /* syntax: ts */ `DatatypeString extends Iri=Iri`],
+		f1: '`^${NamedNode<s_datatype>}"${s_value}`',
+		c1: ['`^${NamedNode<s_datatype>}"${s_value}`'],
+		generics: [...A_GENERICS_TERM_VALUE, /* syntax: ts */ `s_datatype extends Iri=Iri`],
+		super_args: 's_value, void, s_datatype',
 		docs: docstring(`
 			encapsulates a literal with an explicit datatype.
 		`),
@@ -325,7 +330,7 @@ type Bcp47 = string;
 			...H_TERM_LITERAL.properties,
 			isDatatypedLiteral:  true,
 
-			datatype:              /* syntax: ts */ `Datatype<DatatypeString>`,
+			datatype:              /* syntax: ts */ `Datatype<s_datatype>`,
 		},
 	};
 
@@ -351,18 +356,19 @@ type Bcp47 = string;
 		class: 'Literal',
 		f1: SX_F1_DATATYPE_XSD+'boolean"${LiterallyTrueOrFalse}`',
 		c1: '`^${string}:${string}"${LiterallyTrueOrFalse}`',
-		generics: [/* syntax: ts */ `ValueString extends LiterallyTrueOrFalse=LiterallyTrueOrFalse`],
+		generics: [/* syntax: ts */ `s_value extends LiterallyTrueOrFalse=LiterallyTrueOrFalse`],
+		super_args: `s_value, void, '${P_IRI_XSD}boolean'`,
 		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
 			isBooleanLiteral:  true,
 			isNumberPrecise:   true,
 
-			value:              /* syntax: ts */ `ValueString`,
+			// value:              /* syntax: ts */ `ValueString`,
 			boolean:            /* syntax: ts */ `boolean`,
 			number:             /* syntax: ts */ `number`,
 			bigint:             /* syntax: ts */ `number`,
-			datatype:           /* syntax: ts */ `DatatypeXsdBoolean`,
+			// datatype:           /* syntax: ts */ `DatatypeXsdBoolean`,
 		},
 	};
 
@@ -500,7 +506,7 @@ type Bcp47 = string;
 
 	const H_TERM_VARIABLE = {
 		f1: '`?${ValueString}`',
-		implements: /* syntax: js */ `RDFJS.Variable`,
+		implements: /* syntax: js */ `Api.Variable`,
 		generics: A_GENERICS_TERM_VALUE,
 		docs: docstring(`
 			encapsulates a query variable.
@@ -515,7 +521,7 @@ type Bcp47 = string;
 	};
 
 	const H_TERM_QUAD = {
-		implements: /* syntax: js */ `RDFJS.Quad`,
+		implements: /* syntax: js */ `Api.Quad`,
 		generics: [
 			/* syntax: ts */ `SubjectValueString extends string=string`,
 			/* syntax: ts */ `PredicateValueString extends Iri=Iri`,
@@ -580,7 +586,7 @@ type Bcp47 = string;
 
 	// generic type
 	{
-		yield `\n\texport interface GenericTerm {`;
+		yield `\n\texport interface GenericTerm extends Api.CoreData {`;
 		for(const [si_property, z_default] of Object.entries(H_TERM_GENERIC.properties)) {
 			let s_value;
 
@@ -603,13 +609,28 @@ type Bcp47 = string;
 
 	for(const [si_term, g_term] of ode(H_TERMS)) {
 		const sj_generics = g_term.generics? `<${g_term.generics}>`: '';
+		const sj_super_args = g_term.super_args? `<${g_term.super_args}>`: '';
 
 		let sj_implements = '';
 		if(g_term.implements) {
-			sj_implements = `extends ${g_term.implements}`;
+			let z_implements = g_term.implements;
+			if('function' === typeof z_implements) {
+				z_implements = z_implements(sj_super_args);
+			}
+			else if(sj_super_args) {
+				z_implements += sj_super_args;
+			}
+			sj_implements = `extends ${z_implements}`;
 		}
 		else if(g_term.class) {
-			sj_implements = `extends RDFJS.${g_term.class}`;
+			let z_class = g_term.class;
+			if('function' === typeof z_class) {
+				z_class = z_class(sj_super_args);
+			}
+			else if(sj_super_args) {
+				z_class += sj_super_args;
+			}
+			sj_implements = `extends Api.${z_class}`;
 		}
 		if(g_term.docs) {
 			let s_docs = g_term.docs;

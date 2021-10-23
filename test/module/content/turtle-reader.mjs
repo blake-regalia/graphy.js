@@ -1,4 +1,4 @@
-/* eslint indent: 0, padded-blocks: 0, quote-props: 0 */
+/* eslint indent: 0, padded-blocks: 0, quote-props: 0, no-new: 0 */
 import chai from 'chai';
 const expect = chai.expect;
 
