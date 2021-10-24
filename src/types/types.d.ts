@@ -1,6 +1,7 @@
 // import * as RDFJS from '@rdfjs/types';
 
 import type {
+	AllowedRdfMode,
 	RdfMode_11,
 } from './const';
 
@@ -19,9 +20,11 @@ import type {
 	Term,
 } from './forms';
 
+import * as Api from './term';
+
 export * from './const';
 export * from './root';
-export * as Graphy from './forms';
+export * from './forms';
 export * from './rdfjs';
 export * as Api from './term';
 
@@ -86,10 +89,13 @@ export namespace Dataset {
 		deliver(): Promise<dc_dataset>;
 	}
 
-	export interface SyncQuadTreeBuilder<Deliverable extends SyncDataset> extends GraphHandle {
+	export interface SyncQuadTreeBuilder<
+		s_mode extends AllowedRdfMode,
+		Deliverable extends SyncDataset<s_mode>,
+	> extends GraphHandle {
 		// attachPrefixes(h_prefixes: PrefixMap): void;
 		openC1Graph(sc1_graph: C1.Graph): GraphHandle;
-		deliver(gc_dataset?: Config, datasetClass?: { new(...args:any[]): SyncDataset }): Deliverable;
+		deliver(gc_dataset?: Config, datasetClass?: { new(...args:any[]): SyncDataset<s_mode> }): Deliverable;
 	}
 
 
@@ -101,17 +107,25 @@ export namespace Dataset {
 	/**
 	 *
 	 */
-	export interface SyncDataset /*extends RDFJS.Dataset<Term.Quad>*/ {
+	export interface SyncDataset<
+		s_mode extends AllowedRdfMode=AllowedRdfMode,
+
+		SubjectArg extends Api.Optional<Api.SubjectArg<s_mode>> = Api.Optional<Api.SubjectArg<s_mode>>,
+		PredicateArg extends Api.Optional<Api.PredicateArg<s_mode>> = Api.Optional<Api.PredicateArg<s_mode>>,
+		ObjectArg extends Api.Optional<Api.ObjectArg<s_mode>> = Api.Optional<Api.ObjectArg<s_mode>>,
+		GraphArg extends Api.Optional<Api.GraphArg<s_mode>> = Api.Optional<Api.GraphArg<s_mode>>,
+		QuadArg extends Api.QuadArg<s_mode> = Api.QuadArg<s_mode>,
+	> /*extends RDFJS.Dataset<Term.Quad>*/ {
 		readonly isGraphyDataset: true;
 		readonly datasetStorageType: string;
 		readonly size: number;
 
 		[Symbol.iterator](): Iterator<Term.Quad>;
 
-		add(quad: RDFJS.Quad): this;
-		delete(quad: RDFJS.Quad): this;
-		has(quad: RDFJS.Quad): boolean;
-		match(subject?: Role.Subject | null, predicate?: Role.Predicate | null, object?: Role.Object | null, graph?: Role.Graph| null): SyncDataset;
+		add(quad: QuadArg): this;
+		delete(quad: QuadArg): this;
+		has(quad: QuadArg): boolean;
+		match(subject?: SubjectArg, predicate?: PredicateArg, object?: ObjectArg, graph?: GraphArg): SyncDataset<s_mode>;
 
 		distinctGraphCount(): number;
 		distinctSubjectCount(): number;
@@ -129,14 +143,17 @@ export namespace Dataset {
 
 		// union(other: RDFJS.Dataset): SyncDataset;
 		// intersection(other: SyncDataset): SyncDataset;
-		minus(other: RDFJS.Dataset): SyncDataset;
+		minus(other: RDFJS.Dataset): SyncDataset<s_mode>;
 		// difference(other: SyncDataset): SyncDataset;
 
-		normalize(): SyncDataset;
+		normalize(): SyncDataset<s_mode>;
 		// delta(other: SyncDataset): Delta
 	}
 
-	export interface SyncC1Dataset<DatasetType extends SyncDataset> extends SyncDataset {
+	export interface SyncC1Dataset<
+		s_mode extends AllowedRdfMode,
+		DatasetType extends SyncDataset<s_mode>,
+	> extends SyncDataset<s_mode> {
 		distinctC1Graphs(): Set<C1.Graph>;
 		distinctC1Subjects(): Set<C1.Subject>;
 		distinctC1Predicates(): Set<C1.Predicate>;

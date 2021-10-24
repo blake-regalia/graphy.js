@@ -1,6 +1,7 @@
 @import '../share/iris.jmacs';
 
 import {
+	Api,
 	RDFJS,
 	Role,
 	Iri,
@@ -198,7 +199,16 @@ export namespace DataFactory {
 	 * Returns `term` if it is already a graphy Term (including Quads), otherwise calls `fromRdfjsTerm`.
 	 * @param term - the Term to convert
 	 */
-	function fromTerm<TermType extends Term.Any=Term.Any>(term: RDFJS.Term): TermType;
+	function fromTerm<
+		z_term extends Api.Term,
+	>(term: z_term): {
+		DefaultGraph: Term.DefaultGraph;
+		NamedNode: Term.NamedNode;
+		BlankNode: Term.BlankNode;
+		Literal: Term.Literal;
+		Quad: Term.Quad;
+		Variable: Term.Variable;
+	}[z_term['termType']];
 
 	/**
 	 * Returns `quad` if it is already a graphy Quad, otherwise calls `fromRdfjsQuad`.

@@ -5,6 +5,10 @@
 import * as Api from './term';
 
 import type {
+	Merge,
+} from 'ts-toolbelt/out/Object/_api';
+
+import type {
 	Iri,
 } from './root';
 
@@ -43,9 +47,9 @@ type Bcp47 = string;
 	const ode = Object.entries;
 
 	const H_GENERICS_EXTENDS = {
-		ValueString: 'string',
-		LanguageString: 'Bcp47',
-		DatatypeString: 'Iri',
+		s_value: 'string',
+		s_language: 'Bcp47',
+		s_datatype: 'Iri',
 	};
 
 	const fit_generic = si_generic => `${si_generic} extends ${H_GENERICS_EXTENDS[si_generic]}=${H_GENERICS_EXTENDS[si_generic]}`;
@@ -117,9 +121,6 @@ type Bcp47 = string;
 			isNaNLiteral:         false,
 			isDecimalLiteral:     false,
 			isVariable:           false,
-
-			// termType:             /* syntax: ts */ `string`,
-			// value:                /* syntax: ts */ `string`,
 		},
 
 		methods: {
@@ -150,9 +151,6 @@ type Bcp47 = string;
 		properties: {
 			...H_TERM_GRAPHABLE.properties,
 			isDefaultGraph:       true,
-
-			termType:             /* syntax: ts */ `'DefaultGraph'`,
-			value:                /* syntax: ts */ `''`,
 		},
 	};
 
@@ -166,12 +164,13 @@ type Bcp47 = string;
 		},
 	};
 
-	const SX_C1_ABSOLUTE_IRI = '`>${ValueString}`';
+	const SX_C1_ABSOLUTE_IRI = '`>${s_value}`';
 
 	const H_TERM_NAMED_NODE = {
 		c1: '`${string}:${string}`',
 		f1: SX_C1_ABSOLUTE_IRI,
-		generics: [/* syntax: ts */ `ValueString extends Iri=Iri`],
+		generics: [/* syntax: ts */ `s_value extends Iri=Iri`],
+		super_args: 's_value',
 		implements: /* syntax: js */ `Api.NamedNode`,
 		docs: docstring(`
 			encapsulates an absolute IRI. It is free from any context such as namespace or document.
@@ -181,16 +180,13 @@ type Bcp47 = string;
 			...H_TERM_NODE.properties,
 			isNamedNode:          true,
 			isAbsoluteIri:        true,
-
-			termType:             /* syntax: ts */ `'NamedNode'`,
-			value:                /* syntax: ts */ `ValueString`,
 		},
 	};
 
 	const H_TERM_RELATIVE_IRI = {
 		c1: ['void'],
 		f1: SX_C1_ABSOLUTE_IRI,
-		generics: [/* syntax: ts */ `ValueString extends IriRelativeRef=IriRelativeRef`],
+		generics: [/* syntax: ts */ `s_value extends IriRelativeRef=IriRelativeRef`],
 		docs: docstring(`
 			encapsulates a relative IRI. In order to be used, it requires a base IRI context from a {@link PrefixMap} or document; however, such a context is not stored with this Term.
 		`),
@@ -200,7 +196,7 @@ type Bcp47 = string;
 			isRelativeIri: true,
 
 			termType:             /* syntax: ts */ `'NamedNode'`,
-			value:                /* syntax: ts */ `ValueString`,
+			value:                /* syntax: ts */ `s_value`,
 		},
 		methods: {
 			flat:     () => /* syntax: ts */ `(prefixes?: PrefixMap): F1.NamedNode | never`,
@@ -217,12 +213,10 @@ type Bcp47 = string;
 		// f1: 'LabeldBlankNode | AnonymousBlankNode',
 		generics: A_GENERICS_TERM_VALUE,
 		implements: /* syntax: js */ `Api.BlankNode`,
+		super_args: 's_value',
 		properties: {
 			...H_TERM_NODE.properties,
 			isBlankNode:          true,
-
-			termType:             /* syntax: ts */ `'BlankNode'`,
-			value:                /* syntax: ts */ `ValueString`,
 		},
 	};
 
@@ -230,7 +224,8 @@ type Bcp47 = string;
 
 	const H_TERM_LABELED_BLANK_NODE = {
 		class: 'BlankNode',
-		f1: '`#${ValueString}`',
+		super_args: '`#${string}`',
+		f1: '`#${s_value}`',
 		generics: A_GENERICS_TERM_VALUE,
 		docs: docstring(`
 			encapsulates a blank node that was created or read with a specific label.
@@ -254,6 +249,7 @@ type Bcp47 = string;
 
 	const H_TERM_EPHEMERAL_BLANK_NODE = {
 		class: 'BlankNode',
+		super_args: '`#${string}`',
 		f1: '`##${string}`',
 		docs: docstring(`
 			encapsulates a blank node that was created in order to be serialized as an anonymous blank node token.
@@ -276,7 +272,7 @@ type Bcp47 = string;
 			isLiteral:             true,
 
 			// termType:              /* syntax: ts */ `'Literal'`,
-			// value:                 /* syntax: ts */ `ValueString`,
+			// value:                 /* syntax: ts */ `s_value`,
 			// language:              /* syntax: ts */ `string`,
 			// datatype:              /* syntax: ts */ `Datatype`,
 
@@ -305,7 +301,7 @@ type Bcp47 = string;
 		// TODO: narrow to BCP47 pattern
 		f1: '`@${s_language}"${s_value}`',
 		generics: [...A_GENERICS_TERM_VALUE, /* syntax: ts */ `s_language extends Bcp47=Bcp47`],
-		super_args: `s_value, s_language, void`,
+		super_args: `s_value, s_language, '${P_IRI_XSD}langString'`,
 		docs: docstring(`
 			encapsulates a literal with a specific language tag.
 		`),
@@ -313,7 +309,7 @@ type Bcp47 = string;
 			...H_TERM_LITERAL.properties,
 			isLanguagedLiteral: true,
 
-			// language:              /* syntax: ts */ `LanguageString`,
+			// language:              /* syntax: ts */ `s_language`,
 		},
 	};
 
@@ -335,7 +331,7 @@ type Bcp47 = string;
 	};
 
 	const SX_F1_DATATYPE_XSD = '`^>http://www.w3.org/2001/XMLSchema#';
-	const SX_F1_DATATYPE_LITERAL_XSD = SX_F1_DATATYPE_XSD+'${string}"${ValueString}`';
+	const SX_F1_DATATYPE_LITERAL_XSD = SX_F1_DATATYPE_XSD+'${string}"${s_value}`';
 
 	const H_TERM_NUMERIC_LITERAL = {
 		class: 'Literal',
@@ -354,17 +350,17 @@ type Bcp47 = string;
 
 	const H_TERM_BOOLEAN_LITERAL = {
 		class: 'Literal',
-		f1: SX_F1_DATATYPE_XSD+'boolean"${LiterallyTrueOrFalse}`',
-		c1: '`^${string}:${string}"${LiterallyTrueOrFalse}`',
-		generics: [/* syntax: ts */ `s_value extends LiterallyTrueOrFalse=LiterallyTrueOrFalse`],
 		super_args: `s_value, void, '${P_IRI_XSD}boolean'`,
+		f1: SX_F1_DATATYPE_XSD+'boolean"${s_value}`',
+		c1: '`^${string}:${string}"${s_value}`',
+		generics: [/* syntax: ts */ `s_value extends LiterallyTrueOrFalse=LiterallyTrueOrFalse`],
 		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
 			isBooleanLiteral:  true,
 			isNumberPrecise:   true,
 
-			// value:              /* syntax: ts */ `ValueString`,
+			// value:              /* syntax: ts */ `s_value`,
 			boolean:            /* syntax: ts */ `boolean`,
 			number:             /* syntax: ts */ `number`,
 			bigint:             /* syntax: ts */ `number`,
@@ -375,9 +371,10 @@ type Bcp47 = string;
 
 	const H_TERM_INTEGER_LITERAL = {
 		class: 'Literal',
-		f1: SX_F1_DATATYPE_XSD+'integer"${ValueString}`',
+		super_args: `s_value, void, '${P_IRI_XSD}integer'`,
+		f1: SX_F1_DATATYPE_XSD+'integer"${s_value}`',
 		c1: '`^${string}:${string}"${number}`',
-		generics: [/* syntax: ts */ 'ValueString extends LiterallyInteger=LiterallyInteger'],
+		generics: [/* syntax: ts */ 's_value extends LiterallyInteger=LiterallyInteger'],
 		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_NUMERIC_LITERAL.properties,
@@ -386,16 +383,16 @@ type Bcp47 = string;
 
 			number:             /* syntax: ts */ `number`,
 			bigint:             /* syntax: ts */ `number`,
-			datatype:           /* syntax: ts */ `DatatypeXsdInteger`,
 		},
 	};
 
-	const SX_F1_DOUBLE_LITERAL = SX_F1_DATATYPE_XSD+'double"${ValueString}`';
+	const SX_F1_DOUBLE_LITERAL = SX_F1_DATATYPE_XSD+'double"${s_value}`';
 	const H_TERM_DOUBLE_LITERAL = {
 		class: 'Literal',
+		super_args: `s_value, void, '${P_IRI_XSD}double'`,
 		f1: SX_F1_DOUBLE_LITERAL,
-		c1: '`^${string}:${string}"${LiterallyDouble}`',
-		generics: [/* syntax: ts */ `ValueString extends LiterallyDouble=LiterallyDouble`],
+		c1: '`^${string}:${string}"${s_value}`',
+		generics: [/* syntax: ts */ `s_value extends LiterallyDouble=LiterallyDouble`],
 		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_NUMERIC_LITERAL.properties,
@@ -403,12 +400,12 @@ type Bcp47 = string;
 			isNumberPrecise:    true,
 
 			number:             /* syntax: ts */ `number`,
-			datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
 		},
 	};
 
 	const H_TERM_POSITIVE_INFINITY_LITERAL = {
 		class: 'Literal',
+		super_args: `'INF', void, '${P_IRI_XSD}double'`,
 		f1: SX_F1_DATATYPE_XSD+'double"INF`',
 		c1: '`^${string}:${string}"INF`',
 		docs: docstring_xsd('and a value of positive infinity', 'DoubleLiteral'),
@@ -418,13 +415,12 @@ type Bcp47 = string;
 			isNumberPrecise:    false,
 
 			// number:             /* syntax: ts */ `9e999 /* Infinity */`,
-			value:              /* syntax: ts */ `'INF'`,
-			datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
 		},
 	};
 
 	const H_TERM_NEGATIVE_INFINITY_LITERAL = {
 		class: 'Literal',
+		super_args: `'-INF', void, '${P_IRI_XSD}double'`,
 		f1: SX_F1_DATATYPE_XSD+'double"-INF`',
 		c1: '`^${string}:${string}"-INF`',
 		docs: docstring_xsd('and a value of negative infinity', 'DoubleLiteral'),
@@ -432,13 +428,12 @@ type Bcp47 = string;
 			...H_TERM_POSITIVE_INFINITY_LITERAL.properties,
 
 			// number:             /* syntax: ts */ `-9e999 /* -Infinity */`,
-			value:              /* syntax: ts */ `'-INF'`,
-			datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
 		},
 	};
 
 	const H_TERM_NAN_LITERAL = {
 		class: 'Literal',
+		super_args: `'NaN', void, '${P_IRI_XSD}double'`,
 		f1: SX_F1_DATATYPE_XSD+'double"NaN`',
 		c1: '`^${string}:${string}"NaN`',
 		docs: docstring_xsd('and the reserved value of NaN', 'DoubleLiteral'),
@@ -448,8 +443,6 @@ type Bcp47 = string;
 			isNumberPrecise: false,
 
 			number:             /* syntax: ts */ `typeof NaN`,
-			value:              /* syntax: ts */ `typeof NaN`,
-			datatype:           /* syntax: ts */ `DatatypeXsdDouble`,
 		},
 	};
 
@@ -457,9 +450,9 @@ type Bcp47 = string;
 
 	const H_TERM_DECIMAL_LITERAL = {
 		class: 'Literal',
-		f1: SX_F1_DATATYPE_XSD+'decimal"${ValueString}`',
+		f1: SX_F1_DATATYPE_XSD+'decimal"${s_value}`',
 		c1: SX_C1_DATATYPE_GENERIC,
-		generics: [/* syntax: ts */ `ValueString extends LiterallyDecimal=LiterallyDecimal`],
+		generics: [/* syntax: ts */ `s_value extends LiterallyDecimal=LiterallyDecimal`],
 		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
@@ -467,29 +460,30 @@ type Bcp47 = string;
 			isDecimalLiteral:   true,
 			isNumberPrecise:    /* syntax: ts */ `boolean`,
 
-			datatype:           /* syntax: ts */ `DatatypeXsdDecimal`,
 			number:             /* syntax: ts */ `number`,
 		},
 	};
 
 	const H_TERM_DATE_LITERAL = {
 		class: 'Literal',
-		f1: SX_F1_DATATYPE_XSD+'date"${ValueString}`',
+		super_args: `s_value, void, '${P_IRI_XSD}date'`,
+		f1: SX_F1_DATATYPE_XSD+'date"${s_value}`',
 		c1: SX_C1_DATATYPE_GENERIC,
+		generics: A_GENERICS_TERM_VALUE,
 		docs: docstring_xsd(),
 		properties: {
 			...H_TERM_DATATYPED_LITERAL.properties,
 			isDateLiteral:   true,
 			isNumberPrecise:    /* syntax: ts */ `true`,
 
-			datatype:           /* syntax: ts */ `DatatypeXsdDate`,
 			number:             /* syntax: ts */ `number`,
 		},
 	};
 
 	const H_TERM_DATETIME_LITERAL = {
 		class: 'Literal',
-		f1: SX_F1_DATATYPE_XSD+'dateTime"${ValueString}`',
+		super_args: `s_value, void, '${P_IRI_XSD}dateTime'`,
+		f1: SX_F1_DATATYPE_XSD+'dateTime"${s_value}`',
 		c1: SX_C1_DATATYPE_GENERIC,
 		generics: A_GENERICS_TERM_VALUE,
 		docs: docstring_xsd(),
@@ -498,15 +492,15 @@ type Bcp47 = string;
 			isDateTimeLiteral:   true,
 			isNumberPrecise:    /* syntax: ts */ `true`,
 
-			value:              /* syntax: ts */ `ValueString`,
-			datatype:           /* syntax: ts */ `DatatypeXsdDateTime`,
 			number:             /* syntax: ts */ `number`,
 		},
 	};
 
 	const H_TERM_VARIABLE = {
-		f1: '`?${ValueString}`',
-		implements: /* syntax: js */ `Api.Variable`,
+		f1: '`?${s_value}`',
+		// implements: /* syntax: js */ `Api.Variable`,
+		class: 'Variable',
+		super_args: 's_value',
 		generics: A_GENERICS_TERM_VALUE,
 		docs: docstring(`
 			encapsulates a query variable.
@@ -514,39 +508,34 @@ type Bcp47 = string;
 		properties: {
 			...H_TERM_GENERIC.properties,
 			isVariable: true,
-
-			value:             /* syntax: ts */ `ValueString`,
-			termType:          /* syntax: ts */ `'Variable'`,
 		},
 	};
 
 	const H_TERM_QUAD = {
 		implements: /* syntax: js */ `Api.Quad`,
 		generics: [
-			/* syntax: ts */ `SubjectValueString extends string=string`,
-			/* syntax: ts */ `PredicateValueString extends Iri=Iri`,
-			/* syntax: ts */ `ObjectValueString extends string=string`,
-			/* syntax: ts */ `ObjectLanguageString extends Bcp47=Bcp47`,
-			/* syntax: ts */ `ObjectDatatypeString extends Iri=Iri`,
-			/* syntax: ts */ `GraphValueString extends string=string`,
+			/* syntax: ts */ `s_value_subject extends string=string`,
+			/* syntax: ts */ `s_value_predicate extends Iri=Iri`,
+			/* syntax: ts */ `s_value_object extends string=string`,
+			/* syntax: ts */ `s_language_object extends Bcp47=Bcp47`,
+			/* syntax: ts */ `s_datatype_object extends Iri=Iri`,
+			/* syntax: ts */ `s_value_graph extends string=string`,
 		],
 		new_args: [
-			/* syntax: ts */ `kt_subject: Term.Subject<SubjectValueString>`,
-			/* syntax: ts */ `kt_predicate: Term.Predicate<PredicateValueString>`,
-			/* syntax: ts */ `kt_object: Term.Object<ObjectValueString>`,
-			/* syntax: ts */ `kt_graph: Term.Graph<GraphValueString>`,
+			/* syntax: ts */ `kt_subject: Term.Subject<s_value_subject>`,
+			/* syntax: ts */ `kt_predicate: Term.Predicate<s_value_predicate>`,
+			/* syntax: ts */ `kt_object: Term.Object<s_value_object>`,
+			/* syntax: ts */ `kt_graph: Term.Graph<s_value_graph>`,
 		],
 		properties: {
 			...H_TERM_GENERIC.properties,
 			isGraphyQuad: true,
-			termType:         /* syntax: ts */ `'Quad'`,
-			value:            /* syntax: ts */ `''`,
 		},
 		body: /* syntax: ts */ `
-			readonly subject: Term.Subject<SubjectValueString>;
-			readonly predicate: Term.Predicate<PredicateValueString>;
-			readonly object: Term.Object<ObjectValueString, ObjectLanguageString, ObjectDatatypeString>;
-			readonly graph: Term.Graph<GraphValueString>;
+			readonly subject: Term.Subject<s_value_subject>;
+			readonly predicate: Term.Predicate<s_value_predicate>;
+			readonly object: Term.Object<s_value_object, s_language_object, s_datatype_object>;
+			readonly graph: Term.Graph<s_value_graph>;
 
 			reify(label?: string): Reification;
 		`,
@@ -620,7 +609,7 @@ type Bcp47 = string;
 			else if(sj_super_args) {
 				z_implements += sj_super_args;
 			}
-			sj_implements = `extends ${z_implements}`;
+			sj_implements = `Merge<${z_implements}, `;
 		}
 		else if(g_term.class) {
 			let z_class = g_term.class;
@@ -630,7 +619,7 @@ type Bcp47 = string;
 			else if(sj_super_args) {
 				z_class += sj_super_args;
 			}
-			sj_implements = `extends Api.${z_class}`;
+			sj_implements = `Merge<Api.${z_class}, `;
 		}
 		if(g_term.docs) {
 			let s_docs = g_term.docs;
@@ -643,7 +632,7 @@ type Bcp47 = string;
 			yield `\t/**${a_lines.map(s => `\n\t * ${s}`)}\n\t */\n`;
 		}
 
-		yield /* syntax: ts */ `\texport interface ${si_term}${sj_generics} ${sj_implements || ''} {\n`;
+		yield /* syntax: ts */ `\texport type ${si_term}${sj_generics} = ${sj_implements || ''}{\n`;
 
 		for(const [si_property, sj_property] of ode(g_term.properties)) {
 			yield /* syntax: ts */ `\t\treadonly ${si_property}: ${sj_property};\n`;
@@ -683,7 +672,7 @@ type Bcp47 = string;
 			yield /* syntax: ts */ `\t\t${si_method}${f_method(si_term)};\n`;
 		}
 
-		yield /* syntax: ts */ `\t}\n\n`;
+		yield /* syntax: ts */ `\t}${sj_implements? '>;': ''}\n\n`;
 
 		// constructor
 		yield /* syntax: ts */ `\texport interface ${si_term}Constructor {\n`
@@ -703,37 +692,37 @@ type Bcp47 = string;
 			readonly quads: Quad[];
 		}
 
-		export type BlankNode<ValueString extends string=string> = ValueString extends Iri
+		export type BlankNode<s_value extends string=string> = s_value extends Iri
 			? never
-			: LabeledBlankNode<ValueString> | AnonymousBlankNode | EphemeralBlankNode;
+			: LabeledBlankNode<s_value> | AnonymousBlankNode | EphemeralBlankNode;
 
-		export type Node<ValueString extends string=string> = NamedNode<ValueString> | BlankNode<ValueString>;
+		export type Node<s_value extends string=string> = NamedNode<s_value> | BlankNode<s_value>;
 
-		export type Literal<ValueString extends string=string, LanguageString extends never | string=string, DatatypeString extends never | Iri=Iri> = SimpleLiteral<ValueString>
-			| DatatypeString extends never
-				? (LanguageString extends never
+		export type Literal<s_value extends string=string, s_language extends never | string=string, s_datatype extends never | Iri=Iri> = SimpleLiteral<s_value>
+			| s_datatype extends never
+				? (s_language extends never
 					? never
-					: LanguagedLiteral<ValueString, LanguageString>)
-				: (DatatypedLiteral<ValueString, DatatypeString>
-					| LanguageString extends never
+					: LanguagedLiteral<s_value, s_language>)
+				: (DatatypedLiteral<s_value, s_datatype>
+					| s_language extends never
 						? never
-						: LanguagedLiteral<ValueString, LanguageString>
+						: LanguagedLiteral<s_value, s_language>
 					);
 
-		export type NumericLiteral<ValueString extends string=string> = IntegerLiteral<ValueString> | DoubleLiteral<ValueString> | DecimalLiteral<ValueString>;
+		export type NumericLiteral<s_value extends string=string> = IntegerLiteral<s_value> | DoubleLiteral<s_value> | DecimalLiteral<s_value>;
 
-		export type Graph<ValueString extends string=string> = DefaultGraph
+		export type Graph<s_value extends string=string> = DefaultGraph
 			| string extends ''
 				? never
-				: Node<ValueString>;
+				: Node<s_value>;
 
-		export type Subject<ValueString extends string=string> = Node<ValueString>;
+		export type Subject<s_value extends string=string> = Node<s_value>;
 
-		export type Predicate<ValueString extends Iri=Iri> = NamedNode<ValueString>;
+		export type Predicate<s_value extends Iri=Iri> = NamedNode<s_value>;
 
-		export type Object<ValueString extends string=string, LanguageString extends Bcp47=Bcp47, DatatypeString extends Iri=Iri> = Node<ValueString> | Literal<ValueString, LanguageString, DatatypeString>;
+		export type Object<s_value extends string=string, s_language extends Bcp47=Bcp47, s_datatype extends Iri=Iri> = Node<s_value> | Literal<s_value, s_language, s_datatype>;
 
-		export type Datatype<DatatypeString extends Iri=Iri> = NamedNode<DatatypeString>;
+		export type Datatype<s_datatype extends Iri=Iri> = NamedNode<s_datatype>;
 
 		export type DatatypeXsdBoolean = Datatype<'${P_IRI_XSD}boolean'>;
 		export type DatatypeXsdInteger = Datatype<'${P_IRI_XSD}integer'>;
@@ -742,9 +731,9 @@ type Bcp47 = string;
 		export type DatatypeXsdDate = Datatype<'${P_IRI_XSD}date'>;
 		export type DatatypeXsdDateTime = Datatype<'${P_IRI_XSD}dateTime'>;
 
-		export type Data<ValueString extends string=string, LanguageString extends Bcp47=Bcp47, DatatypeString extends Iri=Iri> = 
-			| Graph<ValueString> | Subject<ValueString> | Object<ValueString, LanguageString, DatatypeString>
-			| (ValueString extends Iri? Predicate<ValueString>: never);
+		export type Data<s_value extends string=string, s_language extends Bcp47=Bcp47, s_datatype extends Iri=Iri> = 
+			| Graph<s_value> | Subject<s_value> | Object<s_value, s_language, s_datatype>
+			| (s_value extends Iri? Predicate<s_value>: never);
 
 		export type Any = Data | Variable | Quad | RelativeIri;
 	`.replace(/\n/g, '\n\t')+'\n';
@@ -803,9 +792,9 @@ type Bcp47 = string;
 
 					case 'Literal': return {
 						termType: /* syntax: ts */ `'Literal'`,
-						value: /* syntax: ts */ `ValueString`,
-						language: /* syntax: ts */ `LanguageString`,
-						datatype: /* syntax: ts */ `Datatype<DatatypeString>`,
+						value: /* syntax: ts */ `s_value`,
+						language: /* syntax: ts */ `s_language`,
+						datatype: /* syntax: ts */ `Datatype<s_datatype>`,
 					};
 
 					case 'Quad': return {
@@ -819,7 +808,7 @@ type Bcp47 = string;
 
 					default: return {
 						termType: /* syntax: ts */ `'${si}'`,
-						value: generics_for(si, ['ValueString'])?.length? 'ValueString': /* syntax: ts */ `string`,
+						value: generics_for(si, ['s_value'])?.length? 's_value': /* syntax: ts */ `string`,
 					};
 				}
 			},
@@ -831,28 +820,28 @@ type Bcp47 = string;
 		NamedNode: H_TERM_NAMED_NODE,
 		BlankNode: {
 			generics: A_GENERICS_TERM_VALUE,
-			c1: 'LabeledBlankNode<ValueString> | AnonymousBlankNode | EphemeralBlankNode',
+			c1: 'LabeledBlankNode<s_value> | AnonymousBlankNode | EphemeralBlankNode',
 		},
 		DefaultGraph: H_TERM_DEFAULT_GRAPH,
 		Literal: {
 			generics: [
 				...A_GENERICS_TERM_VALUE,
-				/* syntax: ts */ `LanguageString extends Bcp47=Bcp47`,
-				/* syntax: ts */ `DatatypeString extends Iri=Iri`,
+				/* syntax: ts */ `s_language extends Bcp47=Bcp47`,
+				/* syntax: ts */ `s_datatype extends Iri=Iri`,
 			],
-			c1: 'SimpleLiteral<ValueString> | LanguagedLiteral<ValueString, LanguageString> | DatatypedLiteral<ValueString, DatatypeString>',
+			c1: 'SimpleLiteral<s_value> | LanguagedLiteral<s_value, s_language> | DatatypedLiteral<s_value, s_datatype>',
 		},
 		Variable: H_TERM_VARIABLE,
 		Quad: H_TERM_QUAD,
 	};
 
 	const H_COMPOSE_DEFAULT = {
-		Node: /* syntax: ts */ `NamedNode<ValueString> | BlankNode<ValueString>`,
-		Graph: /* syntax: ts */ `DefaultGraph | (ValueString extends ''? never: Node<ValueString>)`,
-		Subject: /* syntax: ts */ `Node<ValueString>`,
-		Predicate: /* syntax: ts */ `NamedNode<ValueString>`,
-		Object: /* syntax: ts */ `Node<ValueString> | Literal<ValueString, LanguageString, DatatypeString>`,
-		Datatype: /* syntax: ts */ `NamedNode<ValueString>`,
+		Node: /* syntax: ts */ `NamedNode<s_value> | BlankNode<s_value>`,
+		Graph: /* syntax: ts */ `DefaultGraph | (s_value extends ''? never: Node<s_value>)`,
+		Subject: /* syntax: ts */ `Node<s_value>`,
+		Predicate: /* syntax: ts */ `NamedNode<s_value>`,
+		Object: /* syntax: ts */ `Node<s_value> | Literal<s_value, s_language, s_datatype>`,
+		Datatype: /* syntax: ts */ `NamedNode<s_value>`,
 	};
 
 	function map_typing(si_prim, z_typing) {

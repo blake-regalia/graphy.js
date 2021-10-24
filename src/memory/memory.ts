@@ -16,8 +16,8 @@ export {
 // 	ConciseScribeBuffer,
 // } from './concise-scribe-buffer';
 
-export default {
-	QuadTree: BasicQuadTree,
-	BasicQuadTree,
-	ConciseScribeBuffer,
-};
+// export default {
+// 	QuadTree: BasicQuadTree,
+// 	BasicQuadTree,
+// 	ConciseScribeBuffer,
+// };

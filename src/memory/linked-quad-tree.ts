@@ -6,8 +6,8 @@ import {
 	Term,
 	PrefixMap,
 	Dataset,
-	Role,
-	VStarRole,
+	RdfMode_11,
+	Api,
 } from '@graphy/types';
 
 import {
@@ -23,7 +23,6 @@ import {
 import {
 	DataFactory,
 } from '@graphy/core';
-// } from '../../core/core';
 
 const {
 	c1FromGraphRole,
@@ -37,6 +36,13 @@ const {
 	concise,
 	fromTerm,
 } = DataFactory;
+
+
+type SubjectArg = Api.Optional<Api.SubjectArg<RdfMode_11>>;
+type PredicateArg = Api.Optional<Api.PredicateArg<RdfMode_11>>;
+type ObjectArg = Api.Optional<Api.ObjectArg<RdfMode_11>>;
+type GraphArg = Api.Optional<Api.GraphArg<RdfMode_11>>;
+type QuadArg = Api.QuadArg<RdfMode_11>;
 
 
 /**
@@ -98,7 +104,7 @@ const {
 
 
 export interface Deliverable {
-	new(...args: any[]): Dataset.SyncC1Dataset<LinkedQuadTree>;
+	new(...args: any[]): Dataset.SyncC1Dataset<RdfMode_11, LinkedQuadTree>;
 }
 
 export interface LinkedQuadTreeConstructor extends Deliverable {
@@ -418,7 +424,7 @@ class LinkedQuadTreeGraphHandle implements InternalGraphHandle, Dataset.GraphHan
  * SOME: gs?o
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
-export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQuadTreeBuilder<Dataset.SyncC1Dataset<LinkedQuadTree>> {
+export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQuadTreeBuilder<RdfMode_11, Dataset.SyncC1Dataset<RdfMode_11, LinkedQuadTree>> {
 	_h_objects: ILinkedQuadTree.ObjectStore;
 	_sc1_graph: C1.Graph = '*';
 	_hc3_triples: ILinkedQuadTree.TriplesHash;
@@ -548,7 +554,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQ
 		this._h_prefixes = h_prefixes;
 	}
 
-	openGraph(y_graph: Role.Graph): LinkedQuadTreeGraphHandle {
+	openGraph(y_graph: Api.GraphData): LinkedQuadTreeGraphHandle {
 		return this.openC1Graph(c1FromGraphRole(y_graph, this._h_prefixes));
 	}
 
@@ -575,7 +581,7 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQ
 		}
 	}
 
-	openSubject(y_subject: Role.Subject): LinkedQuadTreeGrubHandle {
+	openSubject(y_subject: Api.SubjectData): LinkedQuadTreeGrubHandle {
 		return this.openC1Subject(c1FromSubjectRole(y_subject, this._h_prefixes));
 	}
 
@@ -607,24 +613,24 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQ
 		return this.openC1Subject(sc1_subject).openC1Predicate(sc1_predicate).addC1Object(sc1_object);
 	}
 
-	add(g_quad: RDFJS.Quad): this {
+	add(g_quad: QuadArg): this {
 		const h_prefixes = this._h_prefixes;
 		const yt_subject = g_quad.subject;
 
-		this.openC1Graph(c1FromGraphRole(g_quad.graph as Role.Graph, h_prefixes))
+		this.openC1Graph(c1FromGraphRole(g_quad.graph, h_prefixes))
 			.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, h_prefixes): ('#'+yt_subject.value) as C1.BlankNode)
 			.openC1Predicate(concise(g_quad.predicate.value, h_prefixes))
-			.addC1Object(fromTerm<Term.Object>(g_quad.object).concise(h_prefixes));
+			.addC1Object(fromTerm(g_quad.object).concise(h_prefixes));
 
 		return this;
 	}
 
-	has(g_quad: RDFJS.Quad): boolean {
+	has(g_quad: QuadArg): boolean {
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
 		// fetch triples tree
-		const hc3_triples = this._hc4_quads[c1FromGraphRole(g_quad.graph as Role.Graph, h_prefixes)];
+		const hc3_triples = this._hc4_quads[c1FromGraphRole(g_quad.graph, h_prefixes)];
 
 		// none
 		if(!hc3_triples) return false;
@@ -660,19 +666,19 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQ
 		return as_objects.has(g_object);
 	}
 
-	delete(g_quad: RDFJS.Quad): this {
+	delete(g_quad: QuadArg): this {
 		const h_prefixes = this._h_prefixes;
 		const yt_subject = g_quad.subject;
 
-		this.openC1Graph(c1FromGraphRole(g_quad.graph as Role.Graph, h_prefixes))
+		this.openC1Graph(c1FromGraphRole(g_quad.graph, h_prefixes))
 			.openC1Subject('NamedNode' === yt_subject.termType? concise(yt_subject.value, h_prefixes): ('#'+yt_subject.value) as C1.BlankNode)
 			.openC1Predicate(concise(g_quad.predicate.value, h_prefixes))
-			.deleteC1Object(fromTerm<Term.Object>(g_quad.object).concise(h_prefixes));
+			.deleteC1Object(fromTerm(g_quad.object).concise(h_prefixes));
 
 		return this;
 	}
 
-	match(yt_subject?: RDFJS.Term, yt_predicate?: RDFJS.Term, yt_object?: RDFJS.Term, yt_graph?: RDFJS.Term): LinkedQuadTree {
+	match(yt_subject?: SubjectArg, yt_predicate?: PredicateArg, yt_object?: ObjectArg, yt_graph?: GraphArg): LinkedQuadTree {
 		throw new Error('Method not yet implemented.');
 		// return LinkedQuadTree.empty(this._h_prefixes);
 	}
@@ -680,8 +686,8 @@ export class LinkedQuadTreeBuilder implements InternalGraphHandle, Dataset.SyncQ
 
 
 export class LinkedQuadTree extends GenericQuadTree<
-	LinkedQuadTree, ILinkedQuadTree.QuadsHash, ILinkedQuadTree.TriplesHash
-> implements Dataset.SyncC1Dataset<LinkedQuadTree> {
+	RdfMode_11, LinkedQuadTree, ILinkedQuadTree.QuadsHash, ILinkedQuadTree.TriplesHash
+> implements Dataset.SyncC1Dataset<RdfMode_11, LinkedQuadTree> {
 	/**
 	 * Create new LinkedQuadTreeBuilder
 	 */
@@ -755,7 +761,7 @@ export class LinkedQuadTree extends GenericQuadTree<
 		throw new Error('Method not implemented.');
 	}
 
-	match(yt_subject?: VStarRole.Subject, yt_predicate?: VStarRole.Predicate, yt_object?: VStarRole.Object, yt_graph?: VStarRole.Graph): LinkedQuadTree {
+	match(yt_subject?: SubjectArg, yt_predicate?: PredicateArg, yt_object?: ObjectArg, yt_graph?: GraphArg): LinkedQuadTree {
 		throw new Error('Method not implemented.');
 	}
 
@@ -767,7 +773,7 @@ export class LinkedQuadTree extends GenericQuadTree<
 		throw new Error('Method not implemented.');
 	}
 
-	minus(other: RDFJS.Dataset): Dataset.SyncDataset {
+	minus(other: RDFJS.Dataset): Dataset.SyncDataset<RdfMode_11> {
 		throw new Error('Method not implemented.');
 	}
 
@@ -978,7 +984,7 @@ export class LinkedQuadTree extends GenericQuadTree<
 		throw new Error('not implemented');
 	}
 
-	deleteMatches(yt_subject?: Role.Subject, predicate?: Role.Predicate, object?: Role.Object, graph?: Role.Graph): this {
+	deleteMatches(yt_subject?: SubjectArg, predicate?: PredicateArg, object?: ObjectArg, graph?: GraphArg): this {
 		throw new Error('not implemented');
 	}
 
@@ -1033,7 +1039,7 @@ export interface LinkedQuadTree {
 	toCanonical(): string;
 }
 
-type LinkedQuadTreeClass = GenericQuadTree.Static<LinkedQuadTree, LinkedQuadTreeBuilder, ILinkedQuadTree.QuadsHash>;
+type LinkedQuadTreeClass = GenericQuadTree.Static<RdfMode_11, LinkedQuadTree, LinkedQuadTreeBuilder, ILinkedQuadTree.QuadsHash>;
 
 
 const LinkedQuadTree_Assertion: LinkedQuadTreeClass = LinkedQuadTree;

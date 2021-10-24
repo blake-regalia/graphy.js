@@ -8,12 +8,12 @@ import {
 import type {
 	RDFJS,
 	Role,
-	VRole,
-	VStarRole,
 	Term,
 	C1,
 	Dataset,
 	PrefixMap,
+	Api,
+	RdfMode_11,
 } from '@@graphy/types';
 
 import {
@@ -57,7 +57,7 @@ const {
 } = DataFactory;
 
 export interface Deliverable {
-	new(...args: any[]): Dataset.SyncC1Dataset<BasicQuadTree>;
+	new(...args: any[]): Dataset.SyncC1Dataset<RdfMode_11, BasicQuadTree>;
 }
 
 export interface BasicQuadTreeConstructor extends Deliverable {
@@ -310,7 +310,7 @@ function dataset_already_delivered(): never {
  * SOME: gs?o
  * NOT: ???o, ??p?, ??po, ?s??, ?s?o, ?sp?, ?spo, g?p?
  */
-export class BasicQuadTreeBuilder implements Dataset.GraphHandle, Dataset.SyncQuadTreeBuilder<Dataset.SyncC1Dataset<BasicQuadTree>> {
+export class BasicQuadTreeBuilder implements Dataset.GraphHandle, Dataset.SyncQuadTreeBuilder<RdfMode_11, Dataset.SyncC1Dataset<RdfMode_11, BasicQuadTree>> {
 	_sc1_graph: C1.Graph = '*';
 	_hc3_trips: TriplesHash;
 	_hc4_quads: QuadsHash;
@@ -409,11 +409,16 @@ function empty_quads_hash(): QuadsHash {
 	};
 }
 
+type SubjectArg = Api.Optional<Api.SubjectArg<RdfMode_11>> | Api.Variable;
+type PredicateArg = Api.Optional<Api.PredicateArg<RdfMode_11>> | Api.Variable;
+type ObjectArg = Api.Optional<Api.ObjectArg<RdfMode_11>> | Api.Variable;
+type GraphArg = Api.Optional<Api.GraphArg<RdfMode_11>> | Api.Variable;
+type QuadArg = Api.QuadArg<RdfMode_11>;
 
 // export const BasicQuadTree: Constructor = class BasicQuadTree implements QuadTree {
 export class BasicQuadTree extends GenericQuadTree<
-	BasicQuadTree, IBasicQuadTree.QuadsHash, IBasicQuadTree.TriplesHash
-> implements Dataset.SyncC1Dataset<BasicQuadTree> {
+	RdfMode_11, BasicQuadTree, IBasicQuadTree.QuadsHash, IBasicQuadTree.TriplesHash
+> implements Dataset.SyncC1Dataset<RdfMode_11, BasicQuadTree> {
 	/**
 	 * Create new LinkedQuadTreeBuilder
 	 */
@@ -443,7 +448,7 @@ export class BasicQuadTree extends GenericQuadTree<
 	/**
 	 * Create new dataset
 	 */
-	constructor(hc4_quads=null as QuadsHash, gc_dataset: Dataset.Config={}) {
+	constructor(hc4_quads:null|QuadsHash=null, gc_dataset: Dataset.Config={}) {
 		super(hc4_quads || empty_quads_hash(), gc_dataset);
 		this._k_builder = new BasicQuadTreeBuilder(this);
 
@@ -632,7 +637,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		return kh_handle.openC1Subject(sc1_subject).openC1Predicate(sc1_predicate).addC1Object(sc1_object);
 	}
 
-	add(g_quad: RDFJS.Quad): this {
+	add(g_quad: QuadArg): this {
 		const h_prefixes = this._h_prefixes;
 
 		// use builder to efficiently add quad
@@ -644,7 +649,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		return this;
 	}
 
-	has(g_quad: RDFJS.Quad): boolean {
+	has(g_quad: QuadArg): boolean {
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
@@ -676,7 +681,7 @@ export class BasicQuadTree extends GenericQuadTree<
 		return as_objects.has(sc1_object);
 	}
 
-	delete(g_quad: RDFJS.Quad): this {
+	delete(g_quad: QuadArg): this {
 		const h_prefixes = this._h_prefixes;
 
 		this._k_builder.openC1Graph(c1FromGraphRole(g_quad.graph, h_prefixes))
@@ -688,11 +693,14 @@ export class BasicQuadTree extends GenericQuadTree<
 	}
 
 
-	deleteMatches(yt_subject?: VStarRole.Subject, yt_predicate?: VStarRole.Predicate, yt_object?: VStarRole.Object, yt_graph?: VStarRole.Graph): this {
+	deleteMatches(yt_subject?: SubjectArg, yt_predicate?: PredicateArg, yt_object?: ObjectArg, yt_graph?: GraphArg): this {
 		const h_prefixes = this._h_prefixes;
 
-		if(yt_subject && 'Quad' === yt_subject.termType) throw new Error('Quads not supported');
-		if(yt_object && 'Quad' === yt_object.termType) throw new Error('Quads not supported');
+		// @ts-expect-error for non-typescript dev environments
+		if(yt_subject && 'Quad' === yt_subject.termType) throw new Error('Quads are not supported in subject position for RDF 1.1 mode');
+
+		// @ts-expect-error for non-typescript dev environments
+		if(yt_object && 'Quad' === yt_object.termType) throw new Error('Quads are not supported in subject position for RDF 1.1 mode');
 
 		const sc1_subject = yt_subject && 'Variable' !== yt_subject.termType? c1FromSubjectRole(yt_subject, h_prefixes): null;
 		const sc1_predicate = yt_predicate && 'Variable' !== yt_predicate.termType? c1FromPredicateRole(yt_predicate, h_prefixes): null;
@@ -814,12 +822,15 @@ export class BasicQuadTree extends GenericQuadTree<
 	}
 
 
-	match(yt_subject?: VStarRole.Subject, yt_predicate?: VStarRole.Predicate, yt_object?: VStarRole.Object, yt_graph?: VStarRole.Graph): BasicQuadTree {
+	match(yt_subject?: SubjectArg, yt_predicate?: PredicateArg, yt_object?: ObjectArg, yt_graph?: GraphArg): BasicQuadTree {
 		// ref prefixes
 		const h_prefixes = this._h_prefixes;
 
-		if(yt_subject && 'Quad' === yt_subject.termType) throw new Error('Quads not supported');
-		if(yt_object && 'Quad' === yt_object.termType) throw new Error('Quads not supported');
+		// @ts-expect-error for non-typescript dev environments
+		if(yt_subject && 'Quad' === yt_subject.termType) throw new Error('Quads are not supported in subject position for RDF 1.1 mode');
+
+		// @ts-expect-error for non-typescript dev environments
+		if(yt_object && 'Quad' === yt_object.termType) throw new Error('Quads are not supported in subject position for RDF 1.1 mode');
 
 		// match on expanded c1s
 		return this._match_c1(
@@ -2069,7 +2080,7 @@ export class BasicQuadTree extends GenericQuadTree<
 	}
 
 
-	minus(y_other: RDFJS.Dataset): Dataset.SyncDataset {
+	minus(y_other: RDFJS.Dataset): Dataset.SyncDataset<RdfMode_11> {
 		// other is also graphy dataset
 		if((y_other as any).isGraphyDataset) {
 			// same storage type
