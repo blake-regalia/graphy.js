@@ -176,7 +176,7 @@ const H_GEN_LEAF = {
 			pd_build="$p_out.build"
 
 			# compile typescript
-			npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \
+			npx tsc -t es2019 --lib ES2020,DOM \
 				--strict --skipLibCheck --forceConsistentCasingInFileNames \
 				--allowSyntheticDefaultImports \
 				--moduleResolution node \
@@ -315,6 +315,7 @@ const expand_macros = (pd_src, sr_build=null, h_recipe={}) => {
 		// file
 		else {
 			const si_module = sr_build.replace(/[/\\].*$/, '');
+			const sr_inner = sr_build.replace(/^[^/]+\//, '');
 
 			const add_browser_exports = (s_file_out_mjs, s_file_out_js) => {
 				// target browser
@@ -331,8 +332,8 @@ const expand_macros = (pd_src, sr_build=null, h_recipe={}) => {
 						},
 					});
 
-					h_esm['./'+path.join(sr_build, s_file_out_mjs.replace(/-browser/, ''))] = './'+path.join(sr_build, s_file_out_mjs);
-					h_cjs['./'+path.join(sr_build, s_file_out_js.replace(/-browser/, ''))] = './'+path.join(sr_build, s_file_out_js);
+					h_esm['./'+path.join(sr_inner, s_file_out_mjs.replace(/-browser/, ''))] = './'+path.join(sr_inner, s_file_out_mjs);
+					h_cjs['./'+path.join(sr_inner, s_file_out_js.replace(/-browser/, ''))] = './'+path.join(sr_inner, s_file_out_js);
 
 					// rebulid package.json
 					h_recipe['package.json'] = H_GEN_LEAF.package_json(si_module);
@@ -363,8 +364,8 @@ const expand_macros = (pd_src, sr_build=null, h_recipe={}) => {
 						},
 					});
 
-					h_node.require = './'+path.join(sr_build, s_file_out_js);
-					h_node.default = './'+path.join(sr_build, s_file_out_mjs);
+					h_node.require = './'+path.join(sr_inner, s_file_out_js);
+					h_node.default = './'+path.join(sr_inner, s_file_out_mjs);
 
 					// h_esm_node['./'+path.join(sr_build, s_file_out_mjs.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_mjs);
 					// h_cjs_node['./'+path.join(sr_build, s_file_out_js.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_js);
@@ -374,8 +375,8 @@ const expand_macros = (pd_src, sr_build=null, h_recipe={}) => {
 					// h_esm['./'+path.join(sr_build, s_file_other_mjs)] = './'+path.join(sr_build, s_file_other_mjs);
 					// h_cjs['./'+path.join(sr_build, s_file_other_js)] = './'+path.join(sr_build, s_file_other_js);
 
-					h_default.require = './'+path.join(sr_build, s_file_other_js);
-					h_default.default = './'+path.join(sr_build, s_file_other_mjs);
+					h_default.require = './'+path.join(sr_inner, s_file_other_js);
+					h_default.default = './'+path.join(sr_inner, s_file_other_mjs);
 
 					// rebulid package.json
 					h_recipe['package.json'] = H_GEN_LEAF.package_json(si_module);

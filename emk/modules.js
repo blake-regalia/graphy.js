@@ -34,15 +34,21 @@ const H_MODULES = {
 			'uri-js',
 		],
 		json: {
+		},
+	},
+	stream: {
+		links: [],
+		description: 'Cross-platform stream implementations',
+		json: {
 			exports: {
-				'./node-stream': {
+				'./readable': {
 					node: {
-						require: './stream/node-stream-node.js',
-						default: './stream/node-stream-node.mjs',
+						require: './readable/readable-node.js',
+						default: './readable/readable-node.mjs',
 					},
 					default: {
-						require: './stream/node-stream-other.js',
-						default: './stream/node-stream-other.mjs',
+						require: './readable/readable-other.js',
+						default: './readable/readable-other.mjs',
 					},
 				},
 			},
@@ -58,7 +64,7 @@ const H_MODULES = {
 		},
 	},
 	content: {
-		links: ['types', 'core', 'memory'],
+		links: ['types', 'core', 'memory', 'stream'],
 		description: 'RDF content manipulators; read, write, scan, scribe, load',
 		dependencies: [
 			'uri-js',

@@ -4,7 +4,7 @@ import {
 	create_static_run_method,
 } from './_interface.mjs';
 
-import {stream} from 'readable-stream';
+import stream from 'readable-stream';
 
 @> create_export_class(s_format, s_mode)
 	@.{

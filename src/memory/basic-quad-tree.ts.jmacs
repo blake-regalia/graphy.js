@@ -39,6 +39,7 @@ import {
 
 const hash = (s: string) => createHash('sha256').update(s).digest('hex');
 
+type OtherDataset = RDFJS.Dataset | BasicQuadTree;
 
 const {
 	concise,
@@ -1874,7 +1875,7 @@ export class BasicQuadTree extends GenericQuadTree<
 	/**
 	 * Perform the union of two datasets
 	 */
-	union(z_other: RDFJS.Dataset): BasicQuadTree {
+	union(z_other: OtherDataset): BasicQuadTree {
 		// other is graphy dataset
 		if((z_other as any).isGraphyDataset) {
 			// deduce dataset type
@@ -1885,7 +1886,7 @@ export class BasicQuadTree extends GenericQuadTree<
 
 					// prefix maps differ; perform expanded union
 					if(prefixMapsDiffer(this._h_prefixes, k_other._h_prefixes)) {
-						return this.normalize().union((k_other as BasicQuadTree).normalize());
+						return this.normalize().union(k_other.normalize());
 					}
 					// prefix maps are identical
 					else {
@@ -2474,14 +2475,14 @@ export interface BasicQuadTree {
 	/**
 	 * For typing static properties and methods
 	 */
-	constructor: GenericQuadTree.Static<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
+	constructor: GenericQuadTree.Static<RdfMode_11, BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
 
 	// toCanonical(): BasicQuadTree;
 
 	canonicalize(): BasicQuadTree;
 }
 
-type BasicQuadTreeClass = GenericQuadTree.Static<BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
+type BasicQuadTreeClass = GenericQuadTree.Static<RdfMode_11, BasicQuadTree, BasicQuadTreeBuilder, QuadsHash>;
 
 const BasicQuadTree_Assertion: BasicQuadTreeClass = BasicQuadTree;
 

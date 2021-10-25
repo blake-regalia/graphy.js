@@ -73,7 +73,7 @@ class DecoderUnavailableProxy {
 
 let DecoderProxy = null;
 
-async function resolve_decoder_proxy() {
+export async function resolve_decoder_proxy() {
 	if(DecoderProxy) return DecoderProxy;
 
 	if('function' === typeof TextDecoder) return DecoderProxy = TextDecoder;

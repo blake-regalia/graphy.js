@@ -773,13 +773,13 @@ export class @{S_LABEL}Writer extends WritableContent {
 		// deduce object value type
 		switch(typeof z_objects) {
 			// concise-term string
-			case 'string': return DataFactory.c1(z_objects, h_prefixes).terse(h_prefixes);
+			case 'string': return DataFactory.fromC1(z_objects, h_prefixes).terse(h_prefixes);
 
 			// numeric type
-			case 'number': return DataFactory.number(z_objects).terse(h_prefixes);
+			case 'number': return DataFactory.numericLiteral(z_objects).terse(h_prefixes);
 
 			// boolean type
-			case 'boolean': return DataFactory.boolean(z_objects).terse(h_prefixes);
+			case 'boolean': return DataFactory.booleanLiteral(z_objects).terse(h_prefixes);
 
 			// object
 			case 'object': {
@@ -852,7 +852,7 @@ export class @{S_LABEL}Writer extends WritableContent {
 						}
 
 						// write predicate and object(s)
-						s_write += DataFactory.c1(sc1_predicate, h_prefixes).terse(h_prefixes) + ' '
+						s_write += DataFactory.fromC1(sc1_predicate, h_prefixes).terse(h_prefixes) + ' '
 							+ this._encode_objects(z_objects[sc1_predicate], n_nest_level+1) +' ;';
 					}
 

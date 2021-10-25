@@ -400,9 +400,8 @@ export abstract class GenericQuadTree<
 		throw new Error('Method not yet implemented');
 	}
 
-	addAll(z_quads: RDFJS.Dataset | QuadArg[]): this {
+	addAll(z_quads: Dataset.SyncDataset | QuadArg[]): this {
 		for(const g_quad of z_quads) {
-			// @ts-expect-error RDFJS.Dataset
 			this.add(g_quad);
 		}
 

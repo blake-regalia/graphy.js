@@ -10,7 +10,7 @@ import {
 import {
 	streamType,
 	TransformOTS,
-} from '@graphy/core/stream';
+} from '@graphy/stream';
 
 
 export class ScribableContent extends TransformOTS {

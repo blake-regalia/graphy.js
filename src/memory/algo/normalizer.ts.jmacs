@@ -406,7 +406,7 @@ export class Normalizer {
 			const hc3_trips = hc4_quads[sc1_blank];
 
 			// create norm string
-			const s_norm_g = '_:a\9';
+			const s_norm_g = '_:a\x02';
 
 			// each subject
 			for(const sc1_subject in hc3_trips) {
@@ -415,8 +415,8 @@ export class Normalizer {
 
 				// create norm string
 				const s_norm_gs = s_norm_g+('#' === sc1_subject[0]
-					? (sc1_subject === sc1_blank ? '_:a\8': '_:z\8')
-					: sc1_subject+'\8');
+					? (sc1_subject === sc1_blank ? '_:a\x01': '_:z\x01')
+					: sc1_subject+'\x01');
 
 				// each predicate
 				for(const sc1_predicate in hc2_probs) {
@@ -446,7 +446,7 @@ export class Normalizer {
 			const hc2_probs = hc4_quads[sc1_graph][sc1_blank];
 
 			// create norm string
-			const s_norm_gs = ('#' === sc1_graph[0]? '_:z\9': sc1_graph+'\9')+'_:a\8';
+			const s_norm_gs = ('#' === sc1_graph[0]? '_:z\x02': sc1_graph+'\x02')+'_:a\x01';
 
 			// each predicate
 			for(const sc1_predicate in hc2_probs) {
@@ -472,19 +472,19 @@ export class Normalizer {
 		// each occurrence of object
 		for(const [sc1_graph, sc1_subject, sc1_predicate] of g_blank.object) {
 			// init norm string
-			let si_norm_gs = sc1_graph+'\9';
+			let si_norm_gs = sc1_graph+'\x02';
 
 			// graph is blank node
 			if('#' === sc1_graph[0]) {
-				si_norm_gs = sc1_graph === sc1_blank? '_:a\9': '_:z\9';
+				si_norm_gs = sc1_graph === sc1_blank? '_:a\x02': '_:z\x02';
 			}
 
 			// subject is blank node
 			if('#' === sc1_subject[0]) {
-				si_norm_gs += sc1_subject === sc1_blank? '_:a\8': '_:z\8';
+				si_norm_gs += sc1_subject === sc1_blank? '_:a\x01': '_:z\x01';
 			}
 			else {
-				si_norm_gs += sc1_subject+'\8';
+				si_norm_gs += sc1_subject+'\x01';
 			}
 
 			// push norm string
