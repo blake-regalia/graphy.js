@@ -43,7 +43,7 @@ import {
 	RdfMode_11,
 	RdfMode_star,
 	RdfMode_easier,
-	AllowedRdfMode,
+	SupportedRdfMode,
 	DescribeRdfMode,
 } from './const';
 
@@ -237,7 +237,7 @@ export type UnvaluableDataTypeKey = Exclude<DataTypeKey, ValuableDataTypeKey>;
  * Returns the union of valid .termType string values for Terms that appear in the subject position for the given `RdfMode`
  */
 export type SubjectTypeKey<
-	RdfMode extends AllowedRdfMode=AllowedRdfMode,
+	RdfMode extends SupportedRdfMode=SupportedRdfMode,
 > = Merge<
 	{[K in RdfMode_11]: NodeTypeKey},
 		Merge<
@@ -262,7 +262,7 @@ export type SubjectTypeKey<
  * Returns the union of valid .termType string values for Terms that appear in the predicate position for the given `RdfMode`
  */
 export type PredicateTypeKey<
-	RdfMode extends AllowedRdfMode=AllowedRdfMode,
+	RdfMode extends SupportedRdfMode=SupportedRdfMode,
 > = Merge<
 	{[K in RdfMode_11 | RdfMode_star]: NamedNodeTypeKey},
 	{[K in RdfMode_easier]: DataTypeKey}
@@ -284,7 +284,7 @@ export type PredicateTypeKey<
  * Returns the union of valid .termType string values for Terms that appear in the object position for the given `RdfMode`
  */
 export type ObjectTypeKey<
-	RdfMode extends AllowedRdfMode=AllowedRdfMode,
+	RdfMode extends SupportedRdfMode=SupportedRdfMode,
 > = Merge<
 	{[K in RdfMode_11]: ValuableDataTypeKey},
 		Merge<
@@ -309,7 +309,7 @@ export type ObjectTypeKey<
  * Returns the union of valid .termType string values for Terms that appear in the graph position for the given `RdfMode`
  */
 export type GraphTypeKey<
-	RdfMode extends AllowedRdfMode=AllowedRdfMode,
+	RdfMode extends SupportedRdfMode=SupportedRdfMode,
 > = Merge<
 	{[K in RdfMode_11 | RdfMode_star]: NodeTypeKey | DefaultGraphTypeKey},
 	{[K in RdfMode_easier]: DataTypeKey}
@@ -331,7 +331,7 @@ export type GraphTypeKey<
  * Returns the union of valid .termType string values for Terms that appear in the datatype position for the given `RdfMode`
  */
 export type DatatypeTypeKey<
-	RdfMode extends AllowedRdfMode=AllowedRdfMode,
+	RdfMode extends SupportedRdfMode=SupportedRdfMode,
 > = Merge<
 	{[K in RdfMode_11 | RdfMode_star]: NamedNodeTypeKey},
 	{[K in RdfMode_easier]: DataTypeKey}
@@ -452,7 +452,7 @@ type CategoryGraphPosition = 'the graph position';
 
 type ExplainPosition<
 	Category extends string,
-	RdfMode extends AllowedRdfMode,
+	RdfMode extends SupportedRdfMode,
 > = `${Category} in ${DescribeRdfMode<RdfMode>}`;
 
 
@@ -460,7 +460,7 @@ type ExplainPosition<
  * Type for subject argument
  */
 export type SubjectArg<
-	s_mode extends AllowedRdfMode=AllowedRdfMode,
+	s_mode extends SupportedRdfMode=SupportedRdfMode,
 > = SubjectData<FromQualifier<[SubjectTypeKey<s_mode>]>, s_mode>;
 
 
@@ -468,7 +468,7 @@ export type SubjectArg<
  * Type for predicate argument
  */
 export type PredicateArg<
-	s_mode extends AllowedRdfMode = AllowedRdfMode,
+	s_mode extends SupportedRdfMode = SupportedRdfMode,
 > = PredicateData<FromQualifier<[PredicateTypeKey<s_mode>]>, s_mode>;
 
 
@@ -476,21 +476,21 @@ export type PredicateArg<
  * Type for object argument
  */
 export type ObjectArg<
-	s_mode extends AllowedRdfMode=AllowedRdfMode,
+	s_mode extends SupportedRdfMode=SupportedRdfMode,
 > = ObjectData<FromQualifier<[ObjectTypeKey<s_mode>]>, s_mode>;
 
 /**
  * Type for graph argument
  */
 export type GraphArg<
-	s_mode extends AllowedRdfMode = AllowedRdfMode,
+	s_mode extends SupportedRdfMode = SupportedRdfMode,
 	> = GraphData<FromQualifier<[GraphTypeKey<s_mode>]>, s_mode>;
 
 /**
  * Type for quad argument
  */
 export type QuadArg<
-	s_mode extends AllowedRdfMode = AllowedRdfMode,
+	s_mode extends SupportedRdfMode = SupportedRdfMode,
 > = QuadData<FromQualifier<{termType:QuadTypeKey; mode:s_mode}>>;
 
 type SHO = FromQualifier<{ termType: QuadTypeKey; mode: RdfMode_11 }>;
@@ -501,7 +501,7 @@ type INSPECT = QuadArg<RdfMode_easier>;
  */
 export type SubjectData<
 	a_descriptor extends Descriptor<SubjectTypeKey> = Descriptor<SubjectTypeKey>,
-	s_mode extends AllowedRdfMode=Descriptor.Access<a_descriptor, 'mode'>,
+	s_mode extends SupportedRdfMode=Descriptor.Access<a_descriptor, 'mode'>,
 	s_category extends string = ExplainPosition<CategorySubjectPosition, s_mode>,
 > = Merge<
 	{
@@ -523,7 +523,7 @@ export type SubjectData<
  */
 export type PredicateData<
 	a_descriptor extends Descriptor<PredicateTypeKey> = Descriptor<PredicateTypeKey>,
-	s_mode extends AllowedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
+	s_mode extends SupportedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
 	s_category extends string = ExplainPosition<CategoryPredicatePosition, s_mode>,
 > = Merge<
 	{
@@ -540,7 +540,7 @@ export type PredicateData<
  */
 export type ObjectData<
 	a_descriptor extends Descriptor<ObjectTypeKey> = Descriptor<ObjectTypeKey>,
-	s_mode extends AllowedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
+	s_mode extends SupportedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
 	s_category extends string = ExplainPosition<CategoryObjectPosition, s_mode>,
 > = Merge<
 	{
@@ -562,7 +562,7 @@ export type ObjectData<
  */
 export type GraphData<
 	a_descriptor extends Descriptor<GraphTypeKey> = Descriptor<GraphTypeKey>,
-	s_mode extends AllowedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
+	s_mode extends SupportedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
 	s_category extends string = ExplainPosition<CategoryGraphPosition, s_mode>,
 > = Merge<
 	{
@@ -610,10 +610,10 @@ type InputTermData<
 	value: string;
 	language?: string;
 	datatype?: CoreData;
-	subject?: InputTermData<SubjectTypeKey<AllowedRdfMode>>;
-	predicate?: InputTermData<PredicateTypeKey<AllowedRdfMode>>;
-	object?: InputTermData<ObjectTypeKey<AllowedRdfMode>>;
-	graph?: InputTermData<GraphTypeKey<AllowedRdfMode>>;
+	subject?: InputTermData<SubjectTypeKey<SupportedRdfMode>>;
+	predicate?: InputTermData<PredicateTypeKey<SupportedRdfMode>>;
+	object?: InputTermData<ObjectTypeKey<SupportedRdfMode>>;
+	graph?: InputTermData<GraphTypeKey<SupportedRdfMode>>;
 }
 
 export type FromTermData<

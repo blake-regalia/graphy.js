@@ -10,11 +10,12 @@ import type {
 	Role,
 	Term,
 	C1,
-	Dataset,
 	PrefixMap,
 	Api,
 	RdfMode_11,
 } from '@@graphy/types';
+
+import type * as Dataset from './api';
 
 import {
 	$_KEYS,

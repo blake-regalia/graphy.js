@@ -5,7 +5,7 @@ import type {
 import type * as ActualRDFJS from '@rdfjs/types';
 
 import {
-	AllowedRdfMode,
+	SupportedRdfMode,
 	RdfMode_star,
 } from './const';
 
@@ -155,24 +155,24 @@ export namespace RDFJS {
 	 */
 	export namespace Role {
 		export type Subject<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 		> = NamedNode | BlankNode | (RdfMode extends RdfMode_star? Quad: never);
 
 		export type Predicate<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 		> = NamedNode;
 
 		export type Object<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 			LiteralDatatype extends Datatype=Datatype,
 		> = NamedNode | BlankNode | Literal<LiteralDatatype> | (RdfMode extends RdfMode_star? Quad: never);
 
 		export type Graph<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 		> = DefaultGraph | NamedNode | BlankNode;
 
 		export type Datatype<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 		> = NamedNode;
 	}
 
@@ -182,24 +182,24 @@ export namespace RDFJS {
 	 */
 	export namespace Pattern {
 		export type Subject<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 		> = Role.Subject<RdfMode> | TermPattern;
 
 		export type Predicate<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 		> = Role.Predicate<RdfMode> | TermPattern;
 
 		export type Object<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 			LiteralDatatype extends Datatype=Datatype,
 		> = Role.Object<RdfMode> | TermPattern;
 
 		export type Graph<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 		> = Role.Graph<RdfMode> | TermPattern;
 
 		export type Datatype<
-			RdfMode extends AllowedRdfMode=RdfMode_star,
+			RdfMode extends SupportedRdfMode=RdfMode_star,
 		> = Role.Datatype<RdfMode> | TermPattern;
 	}
 
@@ -209,7 +209,7 @@ export namespace RDFJS {
 	 * @deprecated Consider using one of the following types instead: @see Role.Subject or @see Pattern.Subject
 	 */
 	export type Quad_Subject<
-		RdfMode extends AllowedRdfMode=RdfMode_star,
+		RdfMode extends SupportedRdfMode=RdfMode_star,
 	> = Role.Subject<RdfMode> | Variable;
 
 	/**
@@ -217,7 +217,7 @@ export namespace RDFJS {
 	 * @deprecated Consider using one of the following types instead: @see Role.Predicate or @see Pattern.Predicate
 	 */
 	export type Quad_Predicate<
-		RdfMode extends AllowedRdfMode=RdfMode_star,
+		RdfMode extends SupportedRdfMode=RdfMode_star,
 	> = Role.Predicate<RdfMode> | Variable;
 
 	/**
@@ -225,7 +225,7 @@ export namespace RDFJS {
 	 * @deprecated Consider using one of the following types instead: @see Role.Object or @see Pattern.Object
 	 */
 	export type Quad_Object<
-		RdfMode extends AllowedRdfMode=RdfMode_star,
+		RdfMode extends SupportedRdfMode=RdfMode_star,
 	> = Role.Object<RdfMode> | Variable;
 
 	/**
@@ -233,7 +233,7 @@ export namespace RDFJS {
 	 * @deprecated Consider using one of the following types instead: @see Role.Graph or @see Pattern.Graph
 	 */
 	export type Quad_Graph<
-		RdfMode extends AllowedRdfMode=RdfMode_star,
+		RdfMode extends SupportedRdfMode=RdfMode_star,
 	> = Role.Graph<RdfMode> | Variable;
 
 	/**
@@ -281,7 +281,7 @@ export namespace RDFJS {
 	 * An RDF quad, containing the subject, predicate, object and graph terms.
 	 */
 	export interface Quad<
-		RdfMode extends AllowedRdfMode=RdfMode_star,
+		RdfMode extends SupportedRdfMode=RdfMode_star,
 		LiteralDataype extends Role.Datatype=Role.Datatype<RdfMode>
 	> extends BaseQuad {
 		/**
@@ -313,7 +313,7 @@ export namespace RDFJS {
 	 * An RDF quad, containing the subject, predicate, object and graph terms.
 	 */
 	export interface QuadPattern<
-		RdfMode extends AllowedRdfMode=RdfMode_star,
+		RdfMode extends SupportedRdfMode=RdfMode_star,
 		LiteralDataype extends Role.Datatype=Role.Datatype<RdfMode>
 	> {
 		/**

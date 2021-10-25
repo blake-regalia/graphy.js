@@ -5,10 +5,11 @@ import {
 	C1,
 	Term,
 	PrefixMap,
-	Dataset,
 	RdfMode_11,
 	Api,
 } from '@graphy/types';
+
+import type * as Dataset from './api';
 
 import {
 	GenericQuadTree,

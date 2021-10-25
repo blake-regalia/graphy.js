@@ -483,6 +483,8 @@ export class @{S_LABEL}Writer extends WritableContent {
 			_h_prefixes: h_prefixes,
 			_s_indent: s_indent,
 			_b_star: b_star,
+			_xc_heading: xc_heading,
+			_b_terminator_break: b_terminator_break,
 			@.{/*alias_rdf_type: b_alias_rdf_type,*/}
 		} = this;
 
@@ -561,6 +563,9 @@ export class @{S_LABEL}Writer extends WritableContent {
 				// position before subject
 				const i_triples = s_write.length;
 
+				// ref pairs
+				const hc2_pairs = hc3_triples[sc1_subject];
+
 				// data
 				let a_stars = [];
 				if('{' === sc1_subject[0]) {
@@ -622,15 +627,15 @@ export class @{S_LABEL}Writer extends WritableContent {
 				}
 				// concise-term; serialize object
 				else {
-					s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}DataFactory.c1Node(sc1_subject, h_prefixes).terse(h_prefixes)+' ';
+					s_write += s_delim_triples+@{b_c4? 's_indent_root+': ''}DataFactory.c1Node(sc1_subject, h_prefixes).terse(h_prefixes)
+						+(XC_HEADING_BREAK_ALL === xc_heading || (XC_HEADING_BREAK_SOME === xc_heading && Object.keys(hc2_pairs).length > 1)
+							? '\n'+s_indent@{b_c4? '+s_indent_root': ''}
+							: ' ');
 				}
 
 				// pair indent & terminator
 				let s_indent_pairs = '';
 				let s_term_pairs = '';
-
-				// ref pairs
-				const hc2_pairs = hc3_triples[sc1_subject];
 
 				// position before pairs
 				const i_pairs = s_write.length;
@@ -719,7 +724,7 @@ export class @{S_LABEL}Writer extends WritableContent {
 				s_delim_triples = '\n';
 
 				// close triple
-				s_write += `${s_term_pairs? ' ': s_indent_pairs}.\n`; // @{b_c4? '\\n': ''}
+				s_write += `${s_term_pairs? (b_terminator_break? ' ;\n'+s_indent_pairs: ' '): s_indent_pairs}.\n`; // @{b_c4? '\\n': ''}
 
 				// write all stars
 				if(a_stars.length > 1) {

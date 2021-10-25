@@ -12,10 +12,10 @@ export type RdfMode_11 = 'rdf-1.1';
 export type RdfMode_star = 'rdf-star';
 export type RdfMode_easier = 'easier-rdf';
 
-export type AllowedRdfMode = RdfMode_11 | RdfMode_star | RdfMode_easier;
+export type SupportedRdfMode = RdfMode_11 | RdfMode_star | RdfMode_easier;
 
 export type DescribeRdfMode<
-	RdfMode extends AllowedRdfMode,
+	RdfMode extends SupportedRdfMode,
 > = Merge<
 	{[K in RdfMode_11]: 'RDF 1.1'},
 	Merge<

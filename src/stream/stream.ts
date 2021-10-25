@@ -192,7 +192,7 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 	});
 
 	protected _f_start: VoidFunction = F_NOOP;
-	
+
 	// internal push buffer
 	protected _s_push: string = '';
 	protected _a_pushes: string[] = [];
@@ -275,6 +275,10 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 
 					break;
 				}
+
+				default: {
+					break;
+				}
 			}
 		});
 
@@ -313,6 +317,10 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 						};
 					}
 
+					break;
+				}
+
+				default: {
 					break;
 				}
 			}
@@ -358,11 +366,12 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 		}
 	}
 
-	protected _consumer_ready() {
+	protected _consumer_ready(): void {
+		debugger;
 		this._f_start();
 		this._f_start = F_NOOP;
 	}
-	
+
 	// flush buffer
 	protected _flush_buffer(): boolean {
 		// no buffer; exit
@@ -378,7 +387,7 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 		return this.push(s_push);
 	}
 
-	protected _flush() {
+	protected _flush(): void {
 		// flush buffer
 		this._flush_buffer();
 
@@ -387,7 +396,7 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 	}
 
 	// rinse off buffer to writable
-	protected rinse() {
+	protected rinse(): void {
 		this._reset();
 		this._flush_buffer();
 	}
@@ -434,7 +443,7 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 							write(g_item: ObjectType, s_encoding: string, fke_write: ErrCallback) {
 								// perform transform
 								k_self._transform(g_item);
-								
+
 								// backpressure detected while transforming
 								if(k_self._c_backpressure) {
 									// once downstream is ready to resume
@@ -657,6 +666,13 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 				},
 			});
 
+			// // wtf
+			// ds_readable.on('newListener', (si_event: string) => {
+			// 	if('data' === si_event) {
+			// 		k_self._consumer_ready();
+			// 	}
+			// });
+
 			// handle backpressure
 			{
 				ds_readable.on('pause', () => {
@@ -721,7 +737,7 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 		}
 	}
 
-	protected _update_dests(xm_set: XM_DESTS) {
+	protected _update_dests(xm_set: XM_DESTS): unknown {
 		this._xm_dests = xm_set;
 
 		switch(xm_set) {
@@ -755,6 +771,10 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 
 			case XM_DESTS.DATA | XM_DESTS.NODE | XM_DESTS.WHATWG: {
 				return this.push = TransformOTS$_push_all;
+			}
+
+			default: {
+				break;
 			}
 		}
 	}

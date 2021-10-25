@@ -2,12 +2,13 @@ import {
 	C1,
 	Term,
 	RDFJS,
-	Dataset,
 	PrefixMap,
-	AllowedRdfMode,
+	SupportedRdfMode,
 	RdfMode_11,
 	Api,
 } from '@graphy/types';
+
+import type * as Dataset from './api';
 
 import {
 	DataFactory,
@@ -133,7 +134,7 @@ type Iteratee<DatasetType, ReturnType> = (g_quad: Term.Quad, k_dataset: DatasetT
 
 
 export abstract class GenericQuadTree<
-	s_mode extends AllowedRdfMode,
+	s_mode extends SupportedRdfMode,
 
 	TreeType extends Dataset.SyncDataset<s_mode>,
 	QuadsHash extends CountableQuads & {[s:string]:TriplesHash},
@@ -512,7 +513,7 @@ export namespace GenericQuadTree {
 	};
 
 	export interface Static<
-		s_mode extends AllowedRdfMode,
+		s_mode extends SupportedRdfMode,
 		DatasetType extends Dataset.SyncDataset<s_mode>,
 		BuilderType extends Dataset.SyncQuadTreeBuilder<s_mode, DatasetType>,
 		TransferType extends QuadsHash

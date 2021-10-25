@@ -40,7 +40,7 @@ import {
 	P_XSD_STRING,
 	P_RDFS_LANGSTRING,
 	RdfMode_star,
-	AllowedRdfMode,
+	SupportedRdfMode,
 	RdfMode_11,
 } from './const';
 
@@ -86,7 +86,7 @@ export type BypassDescriptor = [BypassTermType];
 
 type QualifierSparse<
 	s_term extends TermTypeKey=TermTypeKey,
-	s_mode extends AllowedRdfMode=AllowedRdfMode,
+	s_mode extends SupportedRdfMode=SupportedRdfMode,
 > =
 	| [void]
 	| [s_term]
@@ -94,7 +94,7 @@ type QualifierSparse<
 	| [s_term, string | void, string | void]
 	| [s_term, string | void, string | void, string | void]
 	| ({
-		[K in AllowedRdfMode]: [
+		[K in SupportedRdfMode]: [
 			s_term, string, void, void,
 			Descriptor<SubjectTypeKey<s_mode>>,
 			Descriptor<PredicateTypeKey<s_mode>>,
@@ -112,7 +112,7 @@ type QualifierSparse<
 
 type QualifierMap<
 	s_term extends TermTypeKey=TermTypeKey,
-	s_mode extends AllowedRdfMode=AllowedRdfMode,
+	s_mode extends SupportedRdfMode=SupportedRdfMode,
 > =
 	Merge<
 		{
@@ -126,9 +126,9 @@ type QualifierMap<
 			predicate: void;
 			object: void;
 			graph: void;
-			mode: void | AllowedRdfMode;
+			mode: void | SupportedRdfMode;
 		} | ({
-			[K in AllowedRdfMode]: {
+			[K in SupportedRdfMode]: {
 				subject: void | Descriptor<SubjectTypeKey<s_mode>, s_mode>;
 				predicate: void | Descriptor<PredicateTypeKey<s_mode>, s_mode>;
 				object: void | Descriptor<ObjectTypeKey<s_mode>, s_mode>;
@@ -144,7 +144,7 @@ type QualifierMap<
  */
 export type Qualifier<
 	s_term extends TermTypeKey=TermTypeKey,
-	s_mode extends AllowedRdfMode=AllowedRdfMode,
+	s_mode extends SupportedRdfMode=SupportedRdfMode,
 > = QualifierSparse<s_term, s_mode> | Partial<QualifierMap<s_term, s_mode>>;
 
 
@@ -282,16 +282,16 @@ namespace NormalizeQualifier {
 
 
 	export type Mode<
-		s_mode extends AllowedRdfMode | void,
-		s_mode_default extends AllowedRdfMode|void=void,
+		s_mode extends SupportedRdfMode | void,
+		s_mode_default extends SupportedRdfMode|void=void,
 	> = s_mode extends void
-		? (s_mode_default extends AllowedRdfMode
+		? (s_mode_default extends SupportedRdfMode
 			? s_mode_default
 			: RdfMode_star
 		)
-		: s_mode extends AllowedRdfMode
+		: s_mode extends SupportedRdfMode
 			? s_mode
-			: (s_mode_default extends AllowedRdfMode
+			: (s_mode_default extends SupportedRdfMode
 				? s_mode_default
 				: RdfMode_star
 			);
@@ -300,9 +300,9 @@ namespace NormalizeQualifier {
 type FromQualifierSparse<
 	a_qualifier extends QualifierSparse,
 	s_term_restrict extends TermTypeKey,
-	s_mode_default extends AllowedRdfMode,
+	s_mode_default extends SupportedRdfMode,
 > = NormalizeQualifier.Mode<a_qualifier[8], s_mode_default> extends infer s_mode
-	? (s_mode extends AllowedRdfMode
+	? (s_mode extends SupportedRdfMode
 		? Descriptor.New<
 			[
 				Extract<s_term_restrict, a_qualifier[0]>,
@@ -326,11 +326,11 @@ type FromQualifierSparse<
 type FromQualifierMap<
 	g_qualifier extends Partial<QualifierMap>,
 	s_term_restrict extends TermTypeKey,
-	s_mode_default extends AllowedRdfMode,
+	s_mode_default extends SupportedRdfMode,
 > = NormalizeQualifier.Mode<g_qualifier['mode'], s_mode_default> extends infer s_mode
-	? (s_mode extends AllowedRdfMode | void
-		? ((s_mode extends void? AllowedRdfMode: s_mode extends AllowedRdfMode? s_mode: AllowedRdfMode) extends infer s_mode_pass
-			? s_mode_pass extends AllowedRdfMode
+	? (s_mode extends SupportedRdfMode | void
+		? ((s_mode extends void? SupportedRdfMode: s_mode extends SupportedRdfMode? s_mode: SupportedRdfMode) extends infer s_mode_pass
+			? s_mode_pass extends SupportedRdfMode
 				? Descriptor.New<[
 						g_qualifier['termType'],
 						g_qualifier['value'],
@@ -375,11 +375,11 @@ type FromQualifierMap<
 export type FromQualifier<
 	z_qualifier extends Qualifier|Descriptor|void=void,
 	s_term_restrict extends TermTypeKey=TermTypeKey,
-	s_mode_input extends AllowedRdfMode|void=void,
+	s_mode_input extends SupportedRdfMode|void=void,
 > = z_qualifier extends Descriptor
 	? z_qualifier
-	: Auto<s_mode_input, AllowedRdfMode> extends infer s_mode
-		? (s_mode extends AllowedRdfMode
+	: Auto<s_mode_input, SupportedRdfMode> extends infer s_mode
+		? (s_mode extends SupportedRdfMode
 			? (z_qualifier extends QualifierSparse
 				? FromQualifierSparse<z_qualifier, s_term_restrict, s_mode>
 				: (z_qualifier extends Partial<QualifierMap>
@@ -467,7 +467,7 @@ export type FromQualifier<
  */
 export type Descriptor<
 	s_term extends TermTypeKey = TermTypeKey,
-	s_mode extends AllowedRdfMode = AllowedRdfMode,
+	s_mode extends SupportedRdfMode = SupportedRdfMode,
 	b_recurse extends boolean=false,
 > = (Merge<
 	{
@@ -485,7 +485,7 @@ export type Descriptor<
 			[K in LiteralTypeKey]: [
 				Extract < LiteralTypeKey, s_term >, string, string, string,
 				void, void, void, void,
-				AllowedRdfMode,
+				SupportedRdfMode,
 			];
 		},
 		Merge<
@@ -493,14 +493,14 @@ export type Descriptor<
 				[K in ValuableTypeKey]: [
 					Extract<ValuableTypeKey, s_term>, string, void, void,
 					void, void, void, void,
-					AllowedRdfMode,
+					SupportedRdfMode,
 				];
 			},
 			{
 				[K in UnvaluableTypeKey]: [
 					Extract < DefaultGraphTypeKey, s_term >, '', void, void,
 					void, void, void, void,
-					AllowedRdfMode,
+					SupportedRdfMode,
 				];
 			}
 		>
@@ -582,7 +582,7 @@ export namespace Descriptor {
 
 	type NestedQuad<
 		s_term extends QuadTypeKey = QuadTypeKey,
-		s_mode extends AllowedRdfMode = AllowedRdfMode,
+		s_mode extends SupportedRdfMode = SupportedRdfMode,
 	> = [
 		Extract<QuadTypeKey, s_term>, '', void, void,
 		Descriptor<SubjectTypeKey<s_mode>, s_mode>,
@@ -594,7 +594,7 @@ export namespace Descriptor {
 
 	export type Route<
 		s_term extends TermTypeKey = TermTypeKey,
-		s_mode extends AllowedRdfMode = AllowedRdfMode,
+		s_mode extends SupportedRdfMode = SupportedRdfMode,
 		b_recurse extends boolean = false,
 	> = s_term extends QuadTypeKey
 		? (b_recurse extends true
@@ -613,13 +613,13 @@ export namespace Descriptor {
 		NewArgs | void,
 		NewArgs | void,
 		NewArgs | void,
-		AllowedRdfMode | void,
+		SupportedRdfMode | void,
 	];
 
 	type RecurseNew<
 		a_args extends NewArgs | void,
 		s_term_restrict extends TermTypeKey,
-		s_mode_default extends AllowedRdfMode,
+		s_mode_default extends SupportedRdfMode,
 	> = a_args extends NewArgs
 		? New<a_args, s_term_restrict, s_mode_default>
 		: void;
@@ -642,11 +642,11 @@ export namespace Descriptor {
 	export type New<
 		a_args extends NewArgs,
 		s_term_restrict extends TermTypeKey = TermTypeKey,
-		s_mode_default extends AllowedRdfMode = AllowedRdfMode,
+		s_mode_default extends SupportedRdfMode = SupportedRdfMode,
 	> = NormalizeQualifier.TermType<a_args[0], s_term_restrict> extends infer s_term
 		? (s_term extends s_term_restrict
 			? (Auto<a_args[8], s_mode_default> extends infer s_mode
-				? (s_mode extends AllowedRdfMode
+				? (s_mode extends SupportedRdfMode
 					? (Merge<
 						{
 							[K in QuadTypeKey]: [
