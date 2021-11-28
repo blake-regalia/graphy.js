@@ -3063,10 +3063,10 @@ class Reader {
 		@{else_if_match('R_BOOLEAN_LITERAL', 'm_boolean_literal', true)}
 			@- B_UPGRADE_FACTORY
 				// make literal
-				this._kt_object = this._dc_factory.booelan(m_boolean_literal[1]? true: false);
+				this._kt_object = this._dc_factory.boolean(m_boolean_literal[1]? true: false);
 			@:
 				// make literal
-				this._kt_object = factory.booelan(m_boolean_literal[1]? true: false);
+				this._kt_object = factory.boolean(m_boolean_literal[1]? true: false);
 			@;
 
 		// blank node property list
