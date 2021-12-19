@@ -4,6 +4,7 @@ import type {
 } from 'ts-toolbelt';
 
 import type {
+	Cast,
 	Equals,
 	Type,
 } from 'ts-toolbelt/out/Any/_api';
@@ -573,6 +574,28 @@ export namespace Descriptor {
 		a_descriptor extends Descriptor,
 		s_at extends keyof KeyMap,
 	> = AccessMap<a_descriptor>[s_at];
+
+	export type Mutation = {
+		termType?: TermTypeKey;
+		value?: string;
+		language?: string;
+		datatype?: string;
+	};
+
+	export type Mutate<
+		a_descriptor extends Descriptor,
+		g_mutator extends Mutation,
+	> = Descriptor.New<[
+		Auto<g_mutator['termType'], TermTypeKey, a_descriptor[0]>,
+		Auto<g_mutator['value'], string, a_descriptor[1]>,
+		Auto<g_mutator['language'], string, a_descriptor[2]>,
+		Auto<g_mutator['datatype'], string, a_descriptor[3]>,
+		a_descriptor[4],
+		a_descriptor[5],
+		a_descriptor[6],
+		a_descriptor[7],
+		a_descriptor[8]
+	]>
 
 	export type Devoid<
 		z_descriptor extends any,

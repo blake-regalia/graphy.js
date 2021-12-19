@@ -60,7 +60,7 @@ export interface ReaderConfig {
     /**
      * Controls the error message output color format
      */
-    colorMode: 'off' | 'ansi';
+    colorMode?: 'off' | 'ansi';
     
 
     /**

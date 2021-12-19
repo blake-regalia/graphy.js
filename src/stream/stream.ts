@@ -635,13 +635,13 @@ export abstract class TransformOTS<ObjectType extends Lookup=Lookup> extends Eve
 	}
 
 	_apply_backpressure() {
-		if(!this._c_backpressure++) {
+		if(0 === this._c_backpressure++) {
 			this._f_apply_backpressure();
 		}
 	}
 
 	_relieve_backpressure() {
-		if(!--this._c_backpressure) {
+		if(0 === --this._c_backpressure) {
 			this._f_relieve_backpressure();
 		}
 

@@ -1,98 +1,35 @@
 const fs = require('fs');
 const path = require('path');
-const url = require('url').URL;
 
 const jmacs = require('jmacs');
 const detective = require('detective');
 const ts = require('typescript');
 
-const h_package_tree = require('./emk/aux/package-tree.js');
-const {
-	packages: h_content_packages,
-	modes: h_content_modes,
-} = require('./emk/aux/content.js');
-
-const s_super = process.env.GRAPHY_CHANNEL || 'graphy';
-
-const g_package_json_super = require('./package.json');
-
+// the 'base' package.json to use as boilerplate for all packages
 const P_PACKAGE_JSON_BASE = `./emk/base-package-json.js`;
-const g_package_json_base = require(P_PACKAGE_JSON_BASE);
-const s_base_version = g_package_json_base.version;
 
-// const s_base_version = g_package_json_super.version;
-const s_semver = `^${s_base_version}`;
-
+// package prefix
 const P_PACKAGE_PREFIX = process.env.GRAPHY_PACKAGE_PREFIX || '.npm-packages';
 
-let a_link_selected = [];
+// module descriptors
+const H_MODULES = require('./emk/modules.js');
 
-const dir_struct = (a_files) => {
-	let a_paths = [];
-	for(let z_file of a_files) {
-		if('string' === typeof z_file) {
-			a_paths.push(z_file);
-		}
-		else {
-			for(let s_dir in z_file) {
-				a_paths.push(...dir_struct(z_file[s_dir]).map(s => `${s_dir}/${s}`));
-			}
-		}
-	}
+// escape string for cli without substitutions
+const escape_cli = sj => sj.trim()
+	.replace(/'/g, `'"'"'`)
+	.replace(/(^|\n)\s*\/\/[^\n]*/g, '')
+	.replace(/[\t\n]+/g, ' ');
 
-	return a_paths;
-};
-
-const files = (g_config={}, pd_rel=null) => {
-	// accumulate results
-	let a_outputs = [];
-
-	// recurse on this directory
-	if(g_config.under) {
-		let p_pwd = g_config.under;
-		pd_rel = pd_rel || p_pwd;
-
-		// filter
-		let f_filter = g_config.filter || (() => true);
-
-		// map
-		let f_map = g_config.map || (s => s);
-
-		// each file under directory
-		for(let s_file of fs.readdirSync(p_pwd)) {
-			let p_file = `${p_pwd}/${s_file}`;
-
-			// stat file
-			let d_stat = fs.statSync(p_file);
-
-			// subdirectory
-			if(d_stat.isDirectory()) {
-				a_outputs.push(...files({
-					...g_config,
-					under: p_file,
-				}, pd_rel));
-			}
-			// file; filter, then map
-			else if(f_filter(path.relative(pd_rel, p_file))) {
-				a_outputs.push(f_map(path.relative(pd_rel, p_file)));
-			}
-		}
-	}
-	// bad input
-	else {
-		throw new TypeError(`expected 'under' key in files args struct`);
-	}
-
-	return a_outputs;
-};
+// run some javscript from the command line
+const run_lambduh = sj => /* syntax: bash */ `npx lambduh '${escape_cli(sj)}'`;
 
 
 // for run commands to lint js files
-const eslint = (sx_more='') => /* syntax: bash */ `
+const run_eslint = (sx_more='', b_ignore_errors=false) => /* syntax: bash */ `
 	npx eslint --fix --color --rule 'no-debugger: off' $@
 	eslint_exit=$?
 	# do not fail on warnings
-	if [ $eslint_exit -eq 2 ]; then
+	if [ $eslint_exit -eq 2 ]${b_ignore_errors? /* syntax: bash */ ` | [ $eslint_exit -eq 1 ]`: ''}; then
 		${sx_more}
 		exit 0
 	fi
@@ -100,546 +37,476 @@ const eslint = (sx_more='') => /* syntax: bash */ `
 	exit $eslint_exit
 `;
 
-// root library
-const h_lib_root_package_json = {
-	dependencies: {},
-};
+// reusable leaf recipes
+const H_GEN_LEAF = {
+	// make .npmrc file
+	npmrc: () => () => ({
+		deps: [],
 
-// package map
-const h_packages_top = {
-	core: {
-		description: 'Contains DataFactory',
-		links: ['core.data.factory'],
-	},
+		run: /* syntax: bash */ `
+			# write .npmrc file
+			echo "prefix=$PWD/.npm-packages" > $@
+		`,
+	}),
 
-	memory: {
-		description: 'Contains FastDataset',
-		links: ['memory.dataset.fast'],
-	},
-
-	content: {
-		description: 'Contains NTriplesReader, NTriplesScanner, NTriplesWriterScriber, NTriplesWriter, NQuadsReader, NQuadsScanner, NQuadsScriber, NQuadsWriter, TurtleReader, TurtleScriber, TurtleWriter, TriGReader, TriGScriber, TriGWriter, RdfXmlScriber',
-		links: [
-			'content.nt.read',
-			'content.nt.scan',
-			'content.nt.scribe',
-			'content.nt.write',
-			'content.nq.read',
-			'content.nq.scan',
-			'content.nq.scribe',
-			'content.nq.write',
-			'content.ttl.read',
-			'content.ttl.scribe',
-			'content.ttl.write',
-			'content.trig.read',
-			'content.trig.scribe',
-			'content.trig.write',
-			'content.xml.scribe',
+	// recipe to make package.json file
+	package_json: si_package => () => ({
+		deps: [
+			P_PACKAGE_JSON_BASE,
+			'package.json',
 		],
-	},
-};
 
-const h_packages = {
-	// ...h_packages_top,
-};
+		run: /* syntax: bash */ `
+			# load base package.json and enter
+			node emk/json-stringify.js $1 | ${run_lambduh(/* syntax: js */ `
+					G_PACKAGE_JSON_BASE => {
+						// load package info
+						const g_package_json = ${JSON.stringify(H_MODULES[si_package].json)};
 
-// each package in the tree
-(function map_tree(h_tree, s_path='') {
-	// each branch in subtree
-	for(let [s_key, z_value] of Object.entries(h_tree)) {
-		// leaf node; call value producer and save normalized version to map
-		if('function' === typeof z_value) {
-			h_packages[s_path+s_key] = Object.assign({
-				links: [],
-			}, z_value());
-		}
-		// another subtree; recurse
-		else {
-			map_tree(z_value, s_path+s_key+'.');
-		}
-	}
-})(h_package_tree);
+						// update package.json
+						return {
+							...G_PACKAGE_JSON_BASE,
+							...g_package_json,
 
-// list of content subs
-let a_content_subs = [];
+							// merge exports
+							exports: {
+								...G_PACKAGE_JSON_BASE.exports,
+								...(g_package_json.exports || {}),
+							},
+						};
+					}
+				`)} > $@
 
-// each content package
-for(let [s_content, g_content] of Object.entries(h_content_packages)) {
-	// ref base description
-	let s_description_base = g_content.description;
+			# sort its package.json
+			npx sort-package-json $@
+		`,
+	}),
 
-	// each content mode of this package
-	for(let [s_mode, g_mode_extend] of Object.entries(g_content.modes)) {
-		let g_mode = {
-			...h_content_modes[s_mode],
-			...g_mode_extend,
-		};
+	// ensure node_modules closure for development & testing
+	node_modules: si_module => ({
+		// inter-module links
+		[`@graphy`]: {
+			...H_MODULES[si_module].links.reduce((h, si_link) => Object.assign(h, {
+				[si_link]: () => ({
+					deps: [
+						`link.module.${si_link}`,
 
-		// mode description
-		let s_description_mode = g_mode.description(s_description_base);
+						// `link_ready.${si_link}`,
+						// 'link.packages',
+						// ...h_packages[si_link].links.map(s => `build/${s}/**`),
+					],
 
-		// build package name
-		let si_name = `content.${s_content}.${s_mode}`;
+					run: /* syntax: bash */ `
+						pushd 'build/module/${si_module}/node_modules/@graphy'
 
-		// add definition to package hash
-		h_packages[si_name] = {
-			...g_content,
-			...g_mode,
-			description: s_description_mode,
-		};
+						ln -s ../../../${si_link}
 
-		// content sub; add to sub map
-		if(g_content.super) {
-			h_packages[si_name].super = g_content.super;
-			a_content_subs.push(si_name);
-			// h_content_heirs[s_content] = si_name;
-		}
-	}
-}
-debugger;
+						# link to dep
+						# npm link @graphy/${si_link}
+					`,
+				}),
+			}), {}),
+		},
 
-// normalize packages
-let h_super_deps = Object.assign(g_package_json_super.dependencies);
-for(let [si_package, g_package] of Object.entries(h_packages)) {
-	// auto-default ref package.json struct
-	let g_json = g_package.json = g_package.json || {};
+		// external dependencies
+		...(H_MODULES[si_module].dependencies || [])
+			.reduce((h_deps, si_dep) => Object.assign(h_deps, {
+				[si_dep]: () => ({
+					deps: [
+						`node_modules/${si_dep}`,
+						'package.json',
+					],
+					run: /* syntax: bash */ `
+						cd "build/module/${si_module}/node_modules"
+						ln -sf "../../../../$1" ${si_dep}
+					`,
+				}),
+			}), {}),
+	}),
 
-	// no name, use default
-	if(!g_json.name) {
-		g_json.name = `@${s_super}/${si_package}`;
-	}
+	// recipe to build jmacs file
+	jmacs_lint: (a_deps=[], a_deps_strict=[]) => () => ({
+		deps: [
+			...a_deps,
+			...a_deps_strict,
+			...(a_deps.reduce((a_requires, p_dep) => {
+				// skip directories
+				if(fs.statSync(p_dep).isDirectory()) return a_requires;
 
-	// copy-by-value fields
-	Object.assign(g_json, {
-		description: g_package.description,
-	});
+				// load script into jmacs
+				const g_compiled = jmacs.load(p_dep);
 
-	// auto-default ref dependencies
-	let h_dependencies = g_json.dependencies = (g_package.dependencies || [])
-		.reduce((h_deps, si_dep) => {
-			if(!(si_dep in h_super_deps)) throw new Error(`super repository missing sub-package (${si_package}) dependency: ${si_dep}`);
-			return {
-				[si_dep]: h_super_deps[si_dep],
-			};
-		}, {});
+				return [
+					...detective(g_compiled.meta.code),
+					...g_compiled.meta.deps,
+				].filter(s => s.startsWith('/'))
+					.map(p => path.relative(process.cwd(), p));
+			}, [])),
+		],
+		run: /* syntax: bash */ `
+			npx jmacs $1 > $@ \
+				&& ${run_eslint(/* syntax: bash */ `
+					node emk/pretty-print.js $@
+				`)}
+		`,
+	}),
 
-	// convert links to dependencies
-	for(let si_link of g_package.links) {
-		h_dependencies[`@${s_super}/${si_link}`] = s_semver;
-	}
+	// recipe to build ts file
+	ts_lint: (a_deps=[], a_deps_strict=[]) => () => ({
+		deps: [
+			...a_deps,
+			...a_deps_strict,
+			...(a_deps.reduce((a_requires, p_dep) => {
+				// skip directories
+				if(fs.statSync(p_dep).isDirectory()) return a_requires;
 
-	// add package dependency to root library
-	h_lib_root_package_json.dependencies[`@${s_super}/${si_package}`] = s_semver;
-}
+				// preprocess using ts
+				const g_preprocess = ts.preProcessFile(fs.readFileSync(p_dep, 'utf8')+'');
 
+				return [
+					...g_preprocess.importedFiles.map(g => g.fileName)
+						.filter(sr => sr.startsWith('.'))
+						.map(sr => path.normalize(path.join(path.dirname(p_dep), `${sr}.mjs`))),
+				];
+			}, [])),
+		],
 
-// recipe to make package.json file
-const package_json = si_package => () => ({
-	deps: [
-		P_PACKAGE_JSON_BASE,
-		'package.json',
-	],
+				// --outDir $(dirname $@) -d $1 \
+				// --outFile $@ -d $1 \
+		run: /* syntax: bash */ `
+			set -e
 
-	run: /* syntax: bash */ `
-		# load base package.json and enter
-		cat $1| npx lambduh "g_base_package_json => {\
-			${/* syntax: js */`
-				// load package info
-				let g_package_json = ${JSON.stringify(h_packages[si_package].json)};
+			# output file
+			p_out=$@
 
-				// update package.json
-				return Object.assign(g_base_package_json, g_package_json, {
-					version: '${s_base_version}',
-				});
-			`.trim().replace(/(["`])/g, '\\$1')} }" > $@
+			# private build directory
+			pd_build="$p_out.build"
 
-		# sort its package.json
-		npx sort-package-json $@
-	`,
-});
+			# compile typescript
+			npx tsc -t es2019 --lib ES2020,DOM \
+				--strict --skipLibCheck --forceConsistentCasingInFileNames \
+				--allowSyntheticDefaultImports \
+				--moduleResolution node \
+				--outDir $pd_build -d $1
 
-// recipe to make .npmrc file
-const npmrc = () => ({
-	deps: [],
+			# cleanup @internal fields
+			npx idtsc "$pd_build/*.d.ts"
 
-	run: /* syntax: bash */ `
-		# write .npmrc file
-		echo "prefix=$PWD/.npm-packages" > $@
-	`,
-});
+			# output directory
+			pd_out=$(dirname $pd_build)
 
-// recipe to build jmacs file
-const jmacs_lint = (a_deps=[], a_deps_strict=[]) => ({
-	deps: [
-		...a_deps,
-		...a_deps_strict,
-		...(a_deps.reduce((a_requires, p_dep) => {
-			// skip directories
-			if(fs.statSync(p_dep).isDirectory()) return a_requires;
+			# move and replace js files
+			for p_src in $pd_build/*.js; do
+				sr_js=$(basename $p_src)
+				sr_mjs="$\{sr_js%.js}.mjs"
+				p_dst="$pd_out/$sr_mjs"
 
-			// load script into jmacs
-			let g_compiled = jmacs.load(p_dep);
+				echo "$ rm $p_dst"
+				rm -f "$p_dst"
 
-			return [
-				...detective(g_compiled.meta.code),
-				...g_compiled.meta.deps,
-			].filter(s => s.startsWith('/'))
-				.map(p => path.relative(process.cwd(), p));
-		}, [])),
-	],
-	run: /* syntax: bash */ `
-		npx jmacs $1 > $@ \
-			&& ${eslint(/* syntax: bash */ `
+				# fix import/export extensions
+				echo "$ mv $p_src $p_dst"
+				node emk/import-export-module-extension.js < "$p_src" > "$p_dst"
+			done
+
+			# move ts files
+			echo "$ mv $pd_build/*.ts $pd_out"
+			mv $pd_build/*.ts $pd_out/
+
+			# rm build
+			echo "$ rm -r $pd_build/"
+			rm -r $pd_build/
+
+			${run_eslint(/* syntax: bash */ `
 				node emk/pretty-print.js $@
 			`)}
-	`,
-});
+		`,
+		//run: /* syntax: bash */ `
+		//	npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \
+		//		--strict --esModuleInterop --skipLibCheck --forceConsistentCasingInFileNames \
+		//		--outDir $(dirname $@) -d \
+		//		&& ${run_eslint(/* syntax: bash */ `
+		//			node emk/pretty-print.js $@/$(basename $1)
+		//		`)}
+		//`,
+	}),
 
-// recipe to build ts file
-const ts_lint = (a_deps=[], a_deps_strict=[]) => ({
-	deps: [
-		...a_deps,
-		...a_deps_strict,
-		...(a_deps.reduce((a_requires, p_dep) => {
-			// skip directories
-			if(fs.statSync(p_dep).isDirectory()) return a_requires;
-
-			// preprocess using ts
-			let g_preprocess = ts.preprocessFile(fs.readFileSync(p_dep, 'utf8')+'');
-
-			return [
-				...g_preprocess.importedFiles.map(g => g.fileName)
-					.filter(s => s.startsWith('.')),
-			];
-			// .filter(s => s.startsWith('/'))
-			// 	.map(p => path.relative(process.cwd(), p));
-		}, [])),
-	],
-	run: /* syntax: bash */ `
-		npx tsc -t es2019 --lib es2019,es2020.promise,es2020.bigint,es2020.string \
-			--strict --esModuleInterop --skipLibCheck --forceConsistentCasingInfFileNames \
-			--outDir $(dirname $@) -d \
-			&& ${eslint(/* syntax: bash */ `
-				node emk/pretty-print.js $@/$(basename $1)
-			`)}
-	`,
-});
-
-// create intra-library links for development & testing
-const package_node_modules = si_package => ({
-	[`@${s_super}`]: {
-		...h_packages[si_package].links.reduce((h, si_link) => Object.assign(h, {
-			[si_link]: () => ({
-				deps: [
-					// `link_ready.${si_link}`,
-					`link.selected.${si_link}`,
-					// 'link.packages',
-					// ...h_packages[si_link].links.map(s => `build/${s}/**`),
-				],
-
-				run: /* syntax: bash */ `
-					pushd build/package/${si_package}
-
-					# link to dep
-					npm link @${s_super}/${si_link}
-					# echo "link @${s_super}/${si_link}"
-					# touch $@
-				`,
-			}),
-		}), {}),
-
-		// run: /* syntax: bash */ `
-		// 	mkdir -p $@
-		// 	pushd $@
-		// 	${h_packages[si_package].links.map(si_link => /* syntax: bash */ `
-		// 		# link to dep
-		// 		npm link @${s_super}/${si_link}
-		// 	`).join('\n')}
-		// 	popd
-		// 	`,
-	},
-
-	// external dependencies
-	...(h_packages[si_package].dependencies || [])
-		.reduce((h_deps, si_dep) => Object.assign(h_deps, {
-			[si_dep]: () => ({
-				deps: [
-					`node_modules/${si_dep}`,
-					'package.json',
-				],
-				run: /* syntax: bash */ `
-					cd "build/package/${si_package}/node_modules"
-					ln -sf "../../../../$1" ${si_dep}
-				`,
-			}),
-		}), {}),
-});
-
-
-const scoped_package = si_package => ({
-	...(process.env.GRAPHY_USE_NVM
-		? {}
-		: {
-			'.npmrc': npmrc,
-		}),
-
-	'package.json': package_json(si_package),
-
-	node_modules: package_node_modules(si_package),
-});
-
-// carry files from a main source file's subdirectory
-const carry_sub = (pd_src, h_recipe={}, pdr_package=null) => {
-	// scan directory
-	let a_files = fs.readdirSync(pd_src);
-
-	// deps
-	let a_deps = [];
-	let a_direct = [];
-
-	// each file
-	for(let s_file of a_files) {
-		let p_src = `${pd_src}/${s_file}`;
-		let pd_dst = `build/package/${pdr_package}`;
-
-		// *.js files
-		if(s_file.endsWith('.js')) {
-			h_recipe[s_file] = () => ({copy:p_src});
-			a_deps.push(`${pd_dst}/${s_file}`);
-		}
-		// *.jmacs files
-		else if(s_file.endsWith('.js.jmacs')) {
-			const s_dst = s_file.replace(/\.jmacs$/, '');
-			h_recipe[s_dst] = () => jmacs_lint([p_src]);
-			a_deps.push(`${pd_dst}/${s_dst}`);
-		}
-		// *.ts file
-		else if(s_file.endsWith('.ts')) {
-			const s_dst = s_file.replace(/\.ts$/, '.js');
-			h_recipe[s_dst] = () => ts_lint([p_src]);
-			a_deps.push(`${pd_dst}/${s_dst}`);
-		}
-		// subdirectory
-		else if(fs.statSync(p_src).isDirectory()) {
-			// make subrecipe; put in this recipe
-			let h_subrecipe = h_recipe[s_file] = {};
-
-			// recurse
-			a_deps.push(...carry_sub(p_src, h_subrecipe, `${pdr_package}/${s_file}`));
-
-			// simple deps
-			a_direct.push(`${pd_dst}/${s_file}/**`);
-		}
-		// otherwise, notice
-		else {
-			console.warn(`ignoring '${pd_src}/${s_file}'`);
-		}
-	}
-
-	return a_direct.length? a_direct: a_deps;
-	// return a_deps;
+	// transpile module to commonjs
+	module_commonjs_lint: (a_deps=[]) => () => ({
+		deps: [
+			...a_deps,
+		],
+		run: /* syntax: bash */ `
+			npx babel --plugins @babel/plugin-transform-modules-commonjs $1 > $@ \
+				&& ${run_eslint(/* syntax: bash */ `
+					node emk/pretty-print.js $@
+				`, true)}
+		`,
+	}),
 };
 
 
-let a_messages = fs.readdirSync('messages').sort().reverse().map(s => `messages/${s}`);
+// spreadable dir listing
+const scoped_package = si_package => ({
+	...(process.env.GRAPHY_USE_NVM? {}: {  // eslint-disable-line multiline-ternary
+		'.npmrc': H_GEN_LEAF.npmrc(),
+	}),
 
-// emk struct
-module.exports = async() => {
-	// make manifest dependencies
-	let h_manifest_deps = {};
-	{
-		const A_DEPEDENCY_PREDICATES = [
-			'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#action',
-			'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#result',
-		];
+	'package.json': H_GEN_LEAF.package_json(si_package),
 
-		for(let si_package of a_content_subs.filter(s => s.endsWith('.read'))) {
-			let h_deps = h_manifest_deps[`manifest_deps_${si_package.replace(/\./g, '_')}`] = {};
+	'tsconfig.json': () => ({
+		copy: './emk/aux/tsconfig.json',
+	}),
 
-			try {
-				fs.accessSync(`build/package/content.ttl.read/main.js`, fs.constants.F_OK);
-				fs.accessSync(`build/cache/specs/${si_package}/manifest.ttl`, fs.constants.F_OK);
-			}
-			catch(e_access) {
-				continue;
-			}
+	node_modules: H_GEN_LEAF.node_modules(si_package),
+});
 
-			if(process.env.GRAPHY_SKIP_MANIFEST) continue;
 
-			let ttl_read;
-			try {
-				ttl_read = require(`@${s_super}-stable/content.ttl.read`);  // eslint-disable-line global-require
-			}
-			catch(e_require) {
-				continue;
-			}
+// ensure a given set of paths exists on an object
+const mk_path = (h_src, h_make) => {
+	const h_out = {};
 
-			if('function' !== typeof ttl_read) continue;
+	for(const [si_key, z_value] of Object.entries(h_make)) {
+		const h_sub = h_src[si_key] = h_src[si_key] || {};
+		if('function' === typeof z_value) {
+			h_out[z_value()] = h_sub;
+		}
+		else {
+			Object.assign(h_out, mk_path(h_sub, z_value));
+		}
+	}
 
-			let ds_manifest = fs.createReadStream(path.join(`build/cache/specs`, si_package, 'manifest.ttl'));
+	return h_out;
+};
 
-			try {
-				await new Promise((fk_deps, fe_deps) => {
-					ds_manifest.pipe(ttl_read({
-						base_uri: h_packages[si_package].manifest,
-						data(g_quad) {
-							if(A_DEPEDENCY_PREDICATES.includes(g_quad.predicate.value)) {
-								let p_dep = g_quad.object.value;
-								h_deps[path.basename((new url(p_dep)).pathname)] = p_dep;
-							}
+// turn a source file name into a main module file
+const mainify = (s_file, si_module) => s_file.replace(new RegExp('^'+si_module.replace(/([.$+])/g, '\\$1'), 'g'), 'main');
+
+// carry files from a main source file's subdirectory
+const expand_macros = (pd_src, sr_build=null, h_recipe={}) => {
+	// deps
+	const a_deps = [];
+	const a_direct = [];
+
+	// scan directory
+	const a_files = fs.readdirSync(pd_src);
+
+	// each file
+	for(const s_file_src of a_files) {
+		// igonre
+		if(s_file_src.endsWith('.ignore')) continue;
+
+		const p_src = path.join(pd_src, s_file_src);
+		const pd_dst = path.join('build', 'module', sr_build);
+
+		// subdirectory
+		if(fs.statSync(p_src).isDirectory()) {
+			// internal (not for graphy module) directory
+			if(p_src.startsWith('_')) continue;
+
+			// recurse
+			const {
+				deps: a_subdeps,
+				recipe: h_subrecipe,
+			} = expand_macros(p_src, path.join(sr_build, s_file_src));
+
+			// make subrecipe; put in this recipe
+			h_recipe[s_file_src] = h_subrecipe;
+
+			// push deps
+			a_deps.push(...a_subdeps);
+
+			// simple deps
+			a_direct.push(path.join(pd_dst, s_file_src, '**'));
+		}
+		// file
+		else {
+			const si_module = sr_build.replace(/[/\\].*$/, '');
+			const sr_inner = sr_build.replace(/^[^/]+\//, '');
+
+			const add_browser_exports = (s_file_out_mjs, s_file_out_js) => {
+				// target browser
+				if(/-browser\./.test(s_file_out_mjs)) {
+					const {
+						h_esm,
+						h_cjs,
+					} = mk_path(H_MODULES[si_module].json, {
+						exports: {
+							browser: {
+								import: () => 'h_esm',
+								require: () => 'h_cjs',
+							},
 						},
+					});
 
-						error(e_read) {
-							fe_deps(e_read);
-						},
+					h_esm['./'+path.join(sr_inner, s_file_out_mjs.replace(/-browser/, ''))] = './'+path.join(sr_inner, s_file_out_mjs);
+					h_cjs['./'+path.join(sr_inner, s_file_out_js.replace(/-browser/, ''))] = './'+path.join(sr_inner, s_file_out_js);
 
-						end() {
-							fk_deps(h_deps);
+					// rebulid package.json
+					h_recipe['package.json'] = H_GEN_LEAF.package_json(si_module);
+
+					// console.dir(H_MODULES[si_module].json.exports);
+				}
+				// target node
+				else if(/-node\./.test(s_file_out_mjs)) {
+					const {
+						// h_esm,
+						// h_cjs,
+						// h_esm_node,
+						// h_cjs_node,
+						h_node,
+						h_default,
+					} = mk_path(H_MODULES[si_module].json, {
+						exports: {
+							[`./${s_file_out_mjs.replace(/-node\.mjs$/, '')}`]: {
+								node: () => 'h_node',
+								// 	require: () => 'h_cjs_node',
+								// 	default: () => 'h_esm_node',
+								// },
+								default: () => 'h_default',
+								// 	require: () => 'h_cjs',
+								// 	default: () => 'h_esm',
+								// },
+							},
 						},
-					}));
-				});
+					});
+
+					h_node.require = './'+path.join(sr_inner, s_file_out_js);
+					h_node.default = './'+path.join(sr_inner, s_file_out_mjs);
+
+					// h_esm_node['./'+path.join(sr_build, s_file_out_mjs.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_mjs);
+					// h_cjs_node['./'+path.join(sr_build, s_file_out_js.replace(/-node/, ''))] = './'+path.join(sr_build, s_file_out_js);
+
+					const s_file_other_mjs = s_file_out_mjs.replace(/-node/, '-other');
+					const s_file_other_js = s_file_out_js.replace(/-node/, '-other');
+					// h_esm['./'+path.join(sr_build, s_file_other_mjs)] = './'+path.join(sr_build, s_file_other_mjs);
+					// h_cjs['./'+path.join(sr_build, s_file_other_js)] = './'+path.join(sr_build, s_file_other_js);
+
+					h_default.require = './'+path.join(sr_inner, s_file_other_js);
+					h_default.default = './'+path.join(sr_inner, s_file_other_mjs);
+
+					// rebulid package.json
+					h_recipe['package.json'] = H_GEN_LEAF.package_json(si_module);
+
+					// console.dir(H_MODULES[si_module].json.exports);
+				}
+			};
+
+			// expanded intermediate file
+			let s_file_exp = mainify(s_file_src, si_module);
+			let p_exp = path.join(pd_src, s_file_exp);
+
+			// expand jmacs files
+			if(/\.(\w+)\.jmacs$/.test(s_file_src)) {
+				s_file_exp = s_file_exp.replace(/\.jmacs$/, '');
+				p_exp = path.join(pd_dst, s_file_exp);
+				h_recipe[s_file_exp] = H_GEN_LEAF.jmacs_lint([p_src]);
 			}
-			catch(e_read) {
-				continue;
+			// copy js, mjs, and ts files
+			else if(s_file_src.endsWith('.js') || s_file_src.endsWith('.mjs') || s_file_src.endsWith('.ts')) {
+				h_recipe[s_file_exp] = () => ({copy:p_src});
+				p_exp = path.join(pd_dst, s_file_exp);
+			}
+
+			// leave .d.ts files as is
+			if(s_file_exp.endsWith('.d.ts')) {
+				a_deps.push(p_exp);
+			}
+			// compile typescript files
+			else if(s_file_exp.endsWith('.ts')) {
+				// .ts => .mjs
+				const s_file_mjs = s_file_exp.replace(/\.ts$/, '.mjs');
+				h_recipe[s_file_mjs] = H_GEN_LEAF.ts_lint([p_exp]);
+
+				// .mjs => .js
+				const s_file_js = s_file_exp.replace(/\.ts$/, '.js');
+				h_recipe[s_file_js] = H_GEN_LEAF.module_commonjs_lint([path.join(pd_dst, s_file_mjs)]);
+
+				// add browser exports
+				add_browser_exports(s_file_mjs, s_file_js);
+
+				// target the final build file
+				a_deps.push(path.join(pd_dst, s_file_js));
+			}
+			// transpile mjs to js
+			else if(s_file_exp.endsWith('.mjs')) {
+				const s_file_js = s_file_exp.replace(/\.mjs$/, '.js');
+
+				h_recipe[s_file_js] = H_GEN_LEAF.module_commonjs_lint([p_exp]);
+
+				// add browser exports
+				add_browser_exports(s_file_exp, s_file_js);
+
+				// target the final build file
+				a_deps.push(path.join(pd_dst, s_file_js));
+			}
+			// target js file
+			else if(s_file_exp.endsWith('.js')) {
+				a_deps.push(p_exp);
+			}
+			// otherwise, notice
+			else {
+				console.warn(`ignoring '${p_exp}'`);
 			}
 		}
 	}
 
 	return {
-		defs: {
-			// contet sub enum
-			content_sub: a_content_subs,
+		deps: a_direct.length? a_direct: a_deps,
+		recipe: h_recipe,
+	};
+};
 
-			// top packages
-			package_top: Object.keys(h_packages_top),
 
-			...(Object.entries(h_manifest_deps).reduce((h_out, [si_key, h_deps]) => ({
-				...h_out,
-				[si_key]: Object.keys(h_deps),
-			}), {})),
+const A_MODULES = Object.keys(H_MODULES);
 
-			testable: [
-				'core.data.factory',
-				'content.nt.read',
-				'content.nt.scan',
-				'content.nt.scribe',
-				'content.nt.write',
-				'content.nq.read',
-				'content.nq.scan',
-				'content.nq.scribe',
-				'content.nq.write',
-				'content.ttl.read',
-				'content.ttl.scribe',
-				'content.ttl.write',
-				'content.trig.read',
-				'content.trig.scribe',
-				'content.trig.write',
-				'content.xml.scribe',
-				'memory.dataset.fast',
-			],
+// expand module macros into dict
+const H_EXPANDED_MODULE_MACROS = A_MODULES.reduce((h_out, si_module) => ({
+	...h_out,
+	[si_module]: expand_macros(`src/${si_module}`, si_module, {
+		...scoped_package(si_module),
+	}),
+}), {});
 
-			// package enumeration
-			package: Object.keys(h_packages),
+module.exports = {
+	defs: {
+		module: A_MODULES,
+	},
 
-			// non-content-sub packages
-			package_ncs: Object.keys(h_packages)
-				.filter(s => !a_content_subs.includes(s)
-					&& !s.startsWith('content.n')
-					&& !s.startsWith('content.t')
-					&& !s.startsWith('store.memory.query')
-				),
+	tasks: {
+		all: [
+			'build/module/**',
+		],
 
-			// docs snippet
-			snippet: fs.readdirSync('src/docs/snippets')
-				.filter(s => s.endsWith('.js.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
-
-			// docs markdown
-			markdown: fs.readdirSync('src/docs/')
-				.filter(s => s.endsWith('.md.jmacs')).map(s => s.replace(/\.jmacs$/, '')),
-		},
-
-		tasks: {
-			// all tasks
-			all: [
-				'prepublish.*',
-			],
-
-			// clean
-			clean: () => ({
-				run: /* syntax: bash */ `
-					rm -rf \
-						'${P_PACKAGE_PREFIX}/lib/node_modules/${s_super}' \
-						'${P_PACKAGE_PREFIX}/lib/node_modules/@${s_super}' \
-						'${P_PACKAGE_PREFIX}/bin/${s_super}' \
-						'build/package' \
-						'build/test' \
-						'node_modules/${s_super}' \
-						'node_modules/@${s_super}'
-				`,
-			}),
-
-			// link alias
-			link_ready: {
-				':package': h => ([
-					`${P_PACKAGE_PREFIX}/lib/node_modules/@${s_super}/${h.package}.ready`,
+		link: {
+			// link the module from the super context
+			super: {
+				':module': ({module:si_module}) => ([
+					`node_modules/@graphy/${si_module}`,
 				]),
 			},
 
-			link: {
-				// selected: () => ({
-				// 	run() {
-				// 		return a_link_selected.map(si_link => /* syntax: bash */ `
-				// 			# package directory relative to project root
-				// 			PACKAGE_DIR='build/package/${si_link}'
+			// ensures the module is ready to be linked from the super context
+			ready: {
+				':module': ({module:si_module}) => ([
+					`${P_PACKAGE_PREFIX}/lib/node_modules/@graphy/${si_module}.ready`,
+				]),
+			},
 
-				// 			# enter package directory
-				// 			pushd "$PACKAGE_DIR"
-
-				// 			# link self
-				// 			npm link
-
-				// 			# pop dir from stack
-				// 			popd
-				// 		`).map('\n');
-				// 	},
-				// }),
-
-				selected: {
-					':package': ({package:si_package}) => ({
-						deps: [
-							...h_packages[si_package].links.reduce((a_out, si_link) => [
-								...a_out,
-								`link.selected.${si_link}`,
-							], []),
-
-							`link_ready.${si_package}`,
-						],
-						run: /* syntax: bash */ `
-							# package directory relative to project root
-							PACKAGE_DIR='build/package/${si_package}'
-							
-							# enter package directory
-							pushd "$PACKAGE_DIR"
-
-							# link self
-							npm link
-
-							# pop dir from stack
-							popd
-						`,
-					}),
-				},
-
-				packages: () => ({
+			// ensures the built module itself is linked
+			module: {
+				':module': ({module:si_module}) => ({
 					deps: [
-						...Object.keys(h_packages).reduce((a_out, si_package) => [
+						...H_MODULES[si_module].links.reduce((a_out, si_link) => [
 							...a_out,
-							`link_ready.${si_package}`,
+							`link.module.${si_link}`,
 						], []),
+
+						// `link.ready.${si_package}`,
 					],
-					run: Object.keys(h_packages).map(si_package => /* syntax: bash */ `
+					run: /* syntax: bash */ `
 						# package directory relative to project root
-						PACKAGE_DIR='build/package/${si_package}'
+						PACKAGE_DIR='build/module/${si_module}'
 						
 						# enter package directory
 						pushd "$PACKAGE_DIR"
@@ -649,503 +516,160 @@ module.exports = async() => {
 
 						# pop dir from stack
 						popd
-					`).join('\n'),
-				}),
 
-				[s_super]: () => ([
-					`${P_PACKAGE_PREFIX}/lib/node_modules/${s_super}`,
-				]),
-			},
-
-			// link-to alias
-			local: {
-				':package': h => ({
-					deps: [`node_modules/@${s_super}/${h.package}`],
-				}),
-
-				[s_super]: () => ({
-					deps: [`node_modules/${s_super}`],
-				}),
-			},
-
-			// prepublish
-			prepublish: {
-				':package': h => ({
-					deps: [`local.${h.package}`],
-					run: /* syntax: bash */ `
-						cd build/package/${h.package}
-
-						# defer README to GitHub
-						rm -rf README.md
-						cat <(echo "#@${s_super}/${h.package}") ../../../emk/aux/README-defer.md > README.md
-					`,
-				}),
-
-				[s_super]: () => ({
-					deps: [`local.${s_super}`],
-					run: /* syntax: bash */ `
-						cd build/package/${s_super}
-
-						# defer README to GitHub
-						rm -rf README.md
-						cat <(echo "#${s_super}") ../../../emk/aux/README-defer.md > README.md
-					`,
-				}),
-
-				docs: ['docs/**'],
-			},
-
-			// publish
-			publish: {
-				':package': h => ({
-					deps: [`prepublish.${h.package}`],
-					run: /* syntax: bash */ `
-						cd build/package/${h.package}
-
-						# publish to npm
-						npm publish --access=public
-					`,
-				}),
-
-				[s_super]: () => ({
-					deps: [`prepublish.${s_super}`],
-					run: /* syntax: bash */ `
-						cd build/package/${s_super}
-
-						# publish to npm
-						npm publish --access=public
+						# link to
+						npm link @graphy/${si_module}
 					`,
 				}),
 			},
-
-			// tests
-			test: {
-				':testable': ({testable:si_package}) => ({
-					deps: [
-						`prepublish.${si_package}`,
-						'local.memory.dataset.fast',
-						`test/package/${si_package}.js`,
-						...a_content_subs.filter(s => s.endsWith('.read')).includes(si_package)
-							? [
-								`build/cache/specs/${si_package}/**`,
-								// `build/cache/specs/${si_package}/dependencies/*:{optional:true}`,
-							]
-							: [],
-					],
-
-					run: /* syntax: bash */ `
-						npx mocha --timeout 5000 --colors $3
-					`,
-				}),
-
-				[s_super]: () => ({
-					deps: [
-						`test/package/${s_super}.js`,
-						`prepublish.${s_super}`,
-						// 'build/cache/data/dbr/**',
-					],
-
-					run: /* syntax: bash */ `
-						npx mocha --timeout 5000 --colors $1
-					`,
-				}),
-
-				// web test
-				web: {
-					browserify: {
-						chrome: () => ({
-							deps: [
-								'test/web/runner.html',
-								`build/test/browserify/**`,
-							],
-							run: /* syntax: bash */ `
-								npx mocha-webdriver-runner --reporter=spec --headless-chrome $1
-							`,
-						}),
-
-						firefox: () => ({
-							deps: [
-								'test/web/runner.html',
-								`build/test/browserify/**`,
-							],
-							run: /* syntax: bash */ `
-								npx mocha-webdriver-runner --reporter=spec --headless-firefox $1
-							`,
-						}),
-					},
-
-					webpack: {
-						chrome: () => ({
-							deps: [
-								'test/web/runner.html',
-								`build/test/webpack/**`,
-							],
-							run: /* syntax: bash */ `
-								npx mocha-webdriver-runner --reporter=spec --headless-chrome $1
-							`,
-						}),
-
-						firefox: () => ({
-							deps: [
-								'test/web/runner.html',
-								`build/test/webpack/**`,
-							],
-							run: /* syntax: bash */ `
-								npx mocha-webdriver-runner --reporter=spec --headless-firefox $1
-							`,
-						}),
-					},
-				},
-			},
-
-			// performance
-			perf: ['build/perf/**'],
 		},
 
-		outputs: {
-			// eslint config
-			'.eslintrc.yaml': () => ({copy:'~/dev/.eslintrc.yaml'}),
-
-			// CHANGELOG.md
-			'CHANGELOG.md': () => ({
-				deps: [
-					...a_messages,
-				],
+		// prepublish
+		prepublish: {
+			':module': h => ({
+				deps: [`link.module.${h.module}`],
 				run: /* syntax: bash */ `
-					echo -e "# Changelog\\\\n\\\\n${a_messages.map(s => `$(cat '${s}')`).join('\\\\n'.repeat(3))}" > $@
+					cd build/module/${h.module}
+
+					# defer README to GitHub
+					rm -rf README.md
+					cat <(echo "# @graphy/${h.module}") ../../../emk/aux/README-defer.md > README.md
 				`,
 			}),
 
-			// docs
-			docs: {
-				// snippets
-				snippets: {
-					':snippet': h => jmacs_lint([
-						`src/docs/snippets/${h.snippet}.jmacs`,
-					], [
-						'local.*',
-					]),
-				},
+			// [s_super]: () => ({
+			// 	deps: [`local.${s_super}`],
+			// 	run: /* syntax: bash */ `
+			// 		cd build/package/${s_super}
 
-				// markdown
-				':markdown': h => ({
-					deps: [
-						`src/docs/${h.markdown}.jmacs`,
-						`src/docs/docs.jmacs`,
-						'docs/snippets/**',
-					],
-					run: /* syntax: bash */ `
-						npx jmacs $1 > $@
-					`,
-				}),
+			// 		# defer README to GitHub
+			// 		rm -rf README.md
+			// 		cat <(echo "#${s_super}") ../../../emk/aux/README-defer.md > README.md
+			// 	`,
+			// }),
+		},
+
+		// publish
+		publish: {
+			':module': h => ({
+				deps: [`prepublish.${h.module}`],
+				run: /* syntax: bash */ `
+					cd build/module/${h.module}
+
+					# publish to npm
+					npm publish --access=public --tag=alpha
+				`,
+			}),
+
+			// [s_super]: () => ({
+			// 	deps: [`prepublish.${s_super}`],
+			// 	run: /* syntax: bash */ `
+			// 		cd build/package/${s_super}
+
+			// 		# publish to npm
+			// 		npm publish --access=public
+			// 	`,
+			// }),
+		},
+	},
+
+	// outputs
+	outputs: {
+		// primary output build dir
+		build: {
+			// modules
+			module: {
+				// an individual module dir
+				':module': [si_module => ({
+					[si_module]: H_EXPANDED_MODULE_MACROS[si_module].recipe,
+				})],
 			},
+		},
 
-			// package builds
-			build: {
-				cache: {
-					specs: {
-						':content_sub': [si_package => ({
-							...(si_package.endsWith('.read')
-								? {
-									[si_package]: (g_package => ({
-										// manifest file
-										[path.basename(g_package.manifest)]: () => ({
-											deps: [
-												g_package.manifest,
-											],
-
-											run: /* syntax: bash */ `
-												curl "$1" > $@
-											`,
-										}),
-
-										// manifest dependencies
-										...(si_manifest_dep => ({
-											[`:${si_manifest_dep}`]: [s_dep => ({
-												[s_dep]: () => ({
-													deps: [
-														h_manifest_deps[si_manifest_dep][s_dep],
-														`build/cache/specs/${si_package}/${path.basename(g_package.manifest)}`,
-													],
-													run: /* syntax: bash */ `
-														curl "$1" > $@
-													`,
-												}),
-											})],
-										}))(`manifest_deps_${si_package.replace(/\./g, '_')}`),
-									}))(h_packages[si_package]),
-								}
-								: {}),
-						})],
-					},
-				},
-
-				package: {
-					// // supers
-					// ':package_top': [si_package => ({
-					// 	[si_package]: (g_package => ({
-					// 		...scoped_package(si_package),
-
-					// 		'main.js': () => ({
-					// 			deps: [
-					// 				...a_content_subs.map(s => `build/package/${s}/**`),
-					// 			],
-					// 			write: /* syntax: js */ `
-					// 				import 
-					// 				${g_package.links.map}
-					// 			`,
-					// 			run: /* syntax: bash */ `
-					// 				npx jmacs emk
-					// 			`,
-					// 		}),
-					// 	}))(h_packages_top[si_package]),
-					// })],
-
-					// content subs
-					':content_sub': [si_package => ({
-						[si_package]: (g_package => ({
-							...scoped_package(si_package),
-
-							...Object.entries(g_package.files).reduce((h_def, [s_file, a_deps]) => ({
-								...h_def,
-								[s_file]: () => ({
-									deps: [
-										`src/content/${g_package.super}/${si_package.split(/\./g)[2]}/${s_file}.jmacs`,
-										...a_deps.map(s_dep => path.join(`src/content/${g_package.super}/`, s_dep)),
-									],
-
-									run: /* syntax: bash */ `
-										npx jmacs -g '${JSON.stringify({/* eslint-disable indent */
-											...g_package.jmacs,
-											FORMAT: si_package.split(/\./g)[1],
-										})/* eslint-enable indent */}' $1 > $@ \
-										 && ${eslint(/* syntax: bash */ `
-											node emk/pretty-print.js $@
-										`)}
-									`,
-								}),
-							}), {}),
-						}))(h_packages[si_package]),
-					})],
-
-					// all non-content-sub packages
-					':package_ncs': [si_package => ({
-						[si_package]: {
-							...scoped_package(si_package),
-
-							'main.js': () => jmacs_lint([
-								`src/${si_package.replace(/\./g, '/')}.js.jmacs`,
-							], [
-								`build/package/${si_package}/package.json`,
-							]),
-
-							...((h_packages[si_package].includes || []).reduce((h_out, s_include) => ({
-								...h_out,
-								[s_include]: () => ({
-									copy: `src/${si_package.replace(/\./g, '/').replace(/\/[^/]+$/, '')}/${s_include}`,
-								}),
-							}), {})),
-						},
-					})],
-
-					// the super module
-					[s_super]: {
-						...(process.env.GRAPHY_USE_NVM
-							? {}
-							: {
-								'.npmrc': npmrc,
-							}),
-
-						'package.json': () => ({
+		// package linking
+		[P_PACKAGE_PREFIX]: {
+			lib: {
+				node_modules: {
+					'@graphy': {
+						':module.ready': ({module:si_module}) => ({
 							deps: [
-								P_PACKAGE_JSON_BASE,
-								'package.json',
+								`build/module/${si_module}/**`,
 							],
 
 							run: /* syntax: bash */ `
-								cat $1 | npx lambduh "g_base_package_json => { \
-									${/* eslint-disable indent */
-										/* syntax: js */`
-										// load package info
-										let g_package_json = ${JSON.stringify({
-											name: s_super,
-											dependencies: {
-												...g_package_json_super.dependencies,
-												...Object.keys(h_packages).reduce((h, si_link) => Object.assign(h, {
-													[`@${s_super}/${si_link}`]: s_base_version,
-												}), {}),
-											},
-											description: 'A comprehensive RDF toolkit including triplestores, intuitive writers, and the fastest JavaScript parsers on the Web',
-											main: 'api.js',
-											bin: {
-												[s_super]: 'cli.js',
-											},
-										})};
-
-										// update package.json
-										return Object.assign(g_base_package_json, g_package_json);
-									`.trim().replace(/(["`])/g, '\\$1')
-									/* eslint-enable */} }" > $@
-
-								# sort its package.json
-								npx sort-package-json $@
-							`,
-						}),
-
-						node_modules: {
-							[`@${s_super}`]: {
-								':package': ({package:si_package}) => ({
-									deps: [
-										...(process.env.GRAPHY_USE_NVM
-											? []
-											: [`build/package/${s_super}/.npmrc`]),
-										`local.${si_package}`,
-									],
-
-									run: /* syntax: bash */ `
-										cd build/package/${s_super}
-										npm link @${s_super}/${si_package}
-									`,
-								}),
-							},
-						},
-
-						'api.js': () => jmacs_lint([`src/main/graphy.js.jmacs`], ['package.json']),
-
-						'cli.js': () => jmacs_lint([`src/cli/cli.js.jmacs`]),
-
-						// quad-expression parser
-						'quad-expression.js': () => ({
-							deps: [
-								'src/cli/quad-expression.pegjs',
-							],
-
-							run: /* syntax: bash */ `
-								npx pegjs < $1 > $@
-							`,
-						}),
-
-						// quad-expression parser
-						'expression-handler.js': () => ({
-							copy: 'src/cli/expression-handler.js',
-						}),
-						'constants.js': () => ({
-							copy: 'src/cli/constants.js',
-						}),
-					},
-
-				},
-
-				test: {
-					browserify: {
-						':testable.js': ({testable:si_package}) => ({
-							deps: [
-								`test/package/${si_package}.js`,
-							],
-							run: /* syntax: bash */ `
-								npx browserify $1 -d -o $@
-							`,
-						}),
-					},
-
-					webpack: {
-						':testable.js': ({testable:si_package}) => ({
-							deps: [
-								`test/package/${si_package}.js`,
-							],
-							run: /* syntax: bash */ `
-								npx webpack --config=./emk/webpack.config.js $1 -o $@
-							`,
-						}),
-					},
-				},
-			},
-
-			// package linking
-			[P_PACKAGE_PREFIX]: {
-				lib: {
-					node_modules: {
-						[`@${s_super}`]: {
-							':package.ready': ({package:si_package}) => ({
-								deps: [
-									`build/package/${si_package}/**`,
-								],
-
-								run: /* syntax: bash */ `
-									# package directory relative to project root
-									PACKAGE_DIR='build/package/${si_package}'
-									
-									# enter package directory
-									pushd "$PACKAGE_DIR"
-
-									# remove package lock
-									rm -f package-lock.json
-
-									# pop dir off stack
-									popd
-
-									# touch file ready
-									mkdir -p $(dirname $@)
-									touch $@
-
-									# # then link self
-									# npm link
-								`,
-							}),
-						},
-
-						[s_super]: () => ({
-							deps: [
-								`build/package/${s_super}/**`,
-
-								...Object.keys(h_packages).map(s_dep => `link_ready.${s_dep}`),
-								'link.packages',
-							],
-
-							run: /* syntax: bash */ `
+								# module directory relative to project root
+								PACKAGE_DIR='build/module/${si_module}'
+								
 								# enter package directory
-								cd build/package/${s_super}
+								pushd "$PACKAGE_DIR"
 
 								# remove package lock
 								rm -f package-lock.json
 
-								# then link self
-								npm link
+								# pop dir off stack
+								popd
+
+								# touch file ready
+								mkdir -p $(dirname $@)
+								touch $@
+
+								# # then link self
+								# npm link
 							`,
 						}),
 					},
+
+					// [s_super]: () => ({
+					// 	deps: [
+					// 		`build/package/${s_super}/**`,
+
+					// 		...Object.keys(h_packages).map(s_dep => `link_ready.${s_dep}`),
+					// 		'link.packages',
+					// 	],
+
+					// 	run: /* syntax: bash */ `
+					// 		# enter package directory
+					// 		cd build/package/${s_super}
+
+					// 		# remove package lock
+					// 		rm -f package-lock.json
+
+					// 		# then link self
+					// 		npm link
+					// 	`,
+					// }),
 				},
-			},
-
-			// mono-repo testing
-			node_modules: {
-				[`@${s_super}`]: {
-					':package': ({package:si_package}) => {
-						a_link_selected.push(si_package);
-
-						return {
-							deps: [
-								`link_ready.${si_package}`,
-								`link.selected.${si_package}`,
-							],
-
-							run: /* syntax: bash */ `
-								npm link @${s_super}/${si_package}
-							`,
-						};
-					},
-				},
-
-				[s_super]: () => ({
-					deps: [
-						`link.${s_super}`,
-					],
-
-					run: /* syntax: bash */ `
-						npm link ${s_super}
-					`,
-				}),
 			},
 		},
-	};
+
+		// mono-repo testing
+		node_modules: {
+			'@graphy': {
+				':module': ({module:si_module}) => {
+					// a_link_selected.push(si_module);
+
+					return {
+						deps: [
+							`link.module.${si_module}`,
+							`link.ready.${si_module}`,
+						],
+
+						run: /* syntax: bash */ `
+							npm link @graphy/${si_module}
+						`,
+					};
+				},
+			},
+
+			// [s_super]: () => ({
+			// 	deps: [
+			// 		`link.${s_super}`,
+			// 	],
+
+			// 	run: /* syntax: bash */ `
+			// 		npm link ${s_super}
+			// 	`,
+			// }),
+		},
+	},
 };

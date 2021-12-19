@@ -580,11 +580,6 @@ class GenericTerm {
 		isGraphyTerm: /* syntax: js */ `true`,
 		toString: /* syntax: js */ `gp_self.valueOf`,
 		isGraphyQuad:          /* syntax: js */ `false`,
-		isAbleGraph:           /* syntax: js */ `false`,
-		isAbleSubject:         /* syntax: js */ `false`,
-		isAblePredicate:       /* syntax: js */ `false`,
-		isAbleObject:          /* syntax: js */ `false`,
-		isAbleDatatype:        /* syntax: js */ `false`,
 		isDefaultGraph:        /* syntax: js */ `false`,
 		isNode:                /* syntax: js */ `false`,
 		isNamedNode:           /* syntax: js */ `false`,
@@ -648,11 +643,6 @@ class GenericTerm {
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		isAbleGraph:           /* syntax: js */ `true`,
-		isAbleSubject:         /* syntax: js */ `true`,
-		isAblePredicate:       /* syntax: js */ `true`,
-		isAbleObject:          /* syntax: js */ `true`,
-		isAbleDatatype:        /* syntax: js */ `true`,
 		isNode:                /* syntax: js */ `true`,
 		isNamedNode:           /* syntax: js */ `true`,
 		isAbsoluteIri:         /* syntax: js */ `true`,
@@ -820,7 +810,6 @@ const G_ISOLATE_XSD_STRING = KT_XSD_STRING.isolate();
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		isAbleObject:          /* syntax: js */ `true`,
 		isLiteral:             /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'Literal'`,
 		datatype:              /* syntax: js */ `KT_XSD_STRING`,
@@ -1788,9 +1777,6 @@ class NaNLiteral extends DoubleLiteral {
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		isAbleGraph:           /* syntax: js */ `true`,
-		isAbleSubject:         /* syntax: js */ `true`,
-		isAbleObject:          /* syntax: js */ `true`,
 		isNode:                /* syntax: js */ `true`,
 		isBlankNode:           /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'BlankNode'`,
@@ -1906,7 +1892,6 @@ class NaNLiteral extends DoubleLiteral {
 				return '${require('crypto').createHash('sha256').update('*').digest('base64')}';
 			}
 		`.trim(),
-		isAbleGraph:           /* syntax: js */ `true`,
 		isDefaultGraph:        /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'DefaultGraph'`,
 		value:                 /* syntax: js */ `''`,
@@ -2159,8 +2144,6 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 	/* eslint-enable no-undef */
 	properties: {
 		isGraphyQuad:          /* syntax: js */ `true`,
-		isAbleSubject:         /* syntax: js */ `true`,
-		isAbleObject:          /* syntax: js */ `true`,
 		termType:              /* syntax: js */ `'Quad'`,
 		value:                 /* syntax: js */ `''`,
 	},

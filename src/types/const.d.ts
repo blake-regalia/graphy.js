@@ -3,6 +3,8 @@ import type {
 } from 'ts-toolbelt/out/Object/_api';
 
 // IRI constants
+export type P_RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+export type P_XSD = 'http://www.w3.org/2001/XMLSchema#'
 export type P_XSD_STRING = 'http://www.w3.org/2001/XMLSchema#string';
 export type P_RDFS_LANGSTRING = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString';
 
@@ -23,3 +25,14 @@ export type DescribeRdfMode<
 		{[K in RdfMode_easier]: 'EasierRDF'}
 	>
 >[RdfMode];
+
+
+// xsd types
+export type XsdDatatypes = {
+	boolean: 'Boolean';
+	integer: 'Integer';
+	double: 'Double';
+	decimal: 'Decimal';
+	date: 'Date';
+	dateTime: 'DateTime';
+};

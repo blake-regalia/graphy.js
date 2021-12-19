@@ -1,10 +1,13 @@
 import type {
 	Union,
+	List,
+	String,
 } from 'ts-toolbelt';
 
 import type {
 	Extends,
 	Try,
+	Keys,
 } from 'ts-toolbelt/out/Any/_api';
 
 import type {
@@ -15,8 +18,14 @@ import type {
 } from 'ts-toolbelt/out/Boolean/_api';
 
 import type {
+	Split,
+	Join,
+} from 'ts-toolbelt/out/String/_api';
+
+import type {
 	If,
 } from 'ts-toolbelt/out/Any/If';
+import { Add } from 'ts-toolbelt/out/Number/Add';
 
 
 export type False = 0;
@@ -413,12 +422,14 @@ export type Coerce<
 
 export type Auto<
 	Thing extends any,
-	Default extends any,
+	Test extends any,
+	Else extends any=Test,
 > = Thing extends void
-	? Default
-	: Thing extends Default
+	? Else
+	: Thing extends Test
 		? Thing
-		: Default;
+		: Else;
+
 
 // export type Auto<
 // 	Thing extends any,
@@ -436,3 +447,102 @@ export type Auto<
 	const SS: ASSERT_EQUAL<Coerce<string, string, 'Z'>, 'Z'> = 1;
 	/* eslint-enable @typescript-eslint/no-unused-vars */
 }
+
+
+/**
+ * Converts the const map to an entries union
+ */
+export type Entries<h_map extends {}> = {
+	[K in keyof h_map]: [K, h_map[K]];
+}[keyof h_map];
+
+{
+	const AS: ASSERT_SAME<['a', 'A'] | ['b', 'B'], Entries<{
+		a: 'A';
+		b: 'B';
+	}>> = 1;
+}
+
+/**
+ * Searches the given map for values matching find and returns a union of the corresponding keys
+ */
+export type FindKeysForValuesMatching<
+	s_find extends string,
+	h_map extends {},
+> = Union.ListOf<Entries<h_map>> extends infer a_entries
+	? (Exclude<Keys<a_entries>, number> extends infer si_index
+		? (si_index extends keyof a_entries
+			? (a_entries[si_index] extends [infer si_key, s_find]
+				? si_key
+				: never
+			)
+			: never
+		)
+		: never
+	)
+	: never;
+
+
+/**
+ * Searches the given map for values matching find and returns a union of the corresponding keys
+ */
+export type FindKeysForValuesPrefixing<
+	s_find extends string,
+	h_map extends {},
+> = Union.ListOf<Entries<h_map>> extends infer a_entries
+	? (Exclude<Keys<a_entries>, number> extends infer si_index
+		? (si_index extends keyof a_entries
+			? (a_entries[si_index] extends [infer si_key, infer s_value]
+				? (s_value extends string
+					? (s_find extends `${s_value}${string}`
+						? si_key
+						: never
+					)
+					: never
+				)
+				: never
+			)
+			: never
+		)
+		: never
+	)
+	: never;
+
+
+export type StrIncludes<
+	s_src extends string,
+	s_search extends string,
+> = Extends<s_src, `${string}${s_search}${string}`>;
+
+export type Substr<
+	s_src extends string,
+	i_from extends number,
+	i_to extends number=String.Length<s_src>,
+> = Split<s_src, ''> extends infer a_chars_src
+	? (a_chars_src extends string[]
+		? Join<List.Extract<a_chars_src, i_from, i_to>>
+		: never
+	)
+	: never;
+
+export type Replace<
+	s_src extends string,
+	s_find extends string,
+	s_replace extends string,
+> = s_src extends `${infer s_pre}${s_find}${infer s_post}`
+	? `${s_pre}${s_replace}${Replace<s_post, s_find, s_replace>}`
+	: s_src;
+
+export type Escape<
+	s_src extends string,
+	s_find extends string,
+	s_escape extends string='\\',
+> = s_src extends `${infer s_pre}${s_find}${infer s_post}`
+	? (String.Length<s_pre> extends infer nl_pre
+		? (nl_pre extends number
+			? `${s_pre}${s_escape}${Substr<s_src, nl_pre, nl_pre>}${Escape<s_post, s_find, s_escape>}`
+			: never
+		)
+		: never
+	)
+	: s_src;

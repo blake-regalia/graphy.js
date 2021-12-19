@@ -1,8 +1,13 @@
 import type {
 	Union,
+	Number,
+	List,
+	String,
 } from 'ts-toolbelt';
 
 import type {
+	Keys,
+	Cast,
 	Equals,
 	Extends,
 } from 'ts-toolbelt/out/Any/_api';
@@ -19,10 +24,12 @@ import type {
 
 import type {
 	Merge,
+	MergeAll,
 } from 'ts-toolbelt/out/Object/_api';
 
 import type {
 	Join,
+	Split,
 } from 'ts-toolbelt/out/String/_api';
 
 import type {
@@ -37,6 +44,11 @@ import type {
 	StringsMatch,
 	ToPrimitiveBoolean,
 	ActualStringsMatch,
+	Entries,
+	Replace,
+	Escape,
+	FindKeysForValuesPrefixing,
+	StrIncludes,
 } from './utility';
 
 import {
@@ -45,6 +57,9 @@ import {
 	RdfMode_easier,
 	SupportedRdfMode,
 	DescribeRdfMode,
+	P_XSD_STRING,
+	P_XSD,
+	XsdDatatypes,
 } from './const';
 
 import {
@@ -54,6 +69,11 @@ import {
 	Qualifier,
 } from './descriptor';
 
+import type {
+	Iri,
+	Prefix,
+	PrefixMap,
+} from './root';
 
 declare const debug_hint: unique symbol;
 
@@ -484,7 +504,7 @@ export type ObjectArg<
  */
 export type GraphArg<
 	s_mode extends SupportedRdfMode = SupportedRdfMode,
-	> = GraphData<FromQualifier<[GraphTypeKey<s_mode>]>, s_mode>;
+> = GraphData<FromQualifier<[GraphTypeKey<s_mode>]>, s_mode>;
 
 /**
  * Type for quad argument
@@ -630,6 +650,446 @@ export type FromTermData<
 	mode: g_data extends { mode: string } ? g_data['mode'] : void;
 }>;
 
+
+export type RegExpReplacer = ((s_sub: string, ...a_args: any[]) => string);
+
+const H_PREFIXES = {
+	rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+	rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+	rdft: 'http://www.w3.org/ns/rdftest#',
+	dc: 'http://purl.org/dc/terms/',
+	doap: 'http://usefulinc.com/ns/doap#',
+	earl: 'http://www.w3.org/ns/earl#',
+	foaf: 'http://xmlns.com/foaf/0.1/',
+	// foaf_p: 'http://xmlns.com/foaf/0.1/p/',
+	xsd: 'http://www.w3.org/2001/XMLSchema#',
+	mf: 'http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#',
+} as const;
+
+type CompactIri<
+	p_iri extends string,
+	h_prefixes extends {} | void,
+> = string extends p_iri
+	? []
+	: h_prefixes extends {}
+		? (FindKeysForValuesPrefixing<p_iri, h_prefixes> extends infer si_prefix
+			? ([si_prefix] extends [never]
+				// iri not found in namespaces
+				? []
+				: (si_prefix extends string & keyof h_prefixes
+					? {
+						[K in si_prefix]: h_prefixes[si_prefix] extends infer p_namesapce
+							? (string extends p_namesapce
+								? [si_prefix, string]
+								: (p_namesapce extends string
+									? (Split<p_iri, ''> extends infer a_chars_iri
+										? (a_chars_iri extends string[]
+											? [si_prefix, Join<List.Extract<a_chars_iri, String.Length<p_namesapce>, a_chars_iri['length']>>]
+											: never
+										)
+										: never
+									)
+									: never
+								)
+							)
+							: never
+					}[si_prefix]
+					: never
+				)
+			)
+			: never
+		)
+		: [];
+
+type ConcisfyIri<
+	p_iri extends string,
+	h_prefixes extends {} | void,
+> = CompactIri<p_iri, h_prefixes> extends infer a_compacted
+	? (a_compacted extends string[]
+		? (a_compacted['length'] extends 0
+			? `>${p_iri}`
+			: {
+				[K in Keys<a_compacted>]: `${a_compacted[0]}:${a_compacted[1]}`
+					| If<Extends<string, a_compacted[1]>, `>${p_iri}`>;
+			}[Keys<a_compacted>]
+		)
+		: never
+	)
+	: never
+
+type PrefixedNameLocalEscapes = '_' | '~' | '.' | '-' | '!' | '$' | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' | '=' | '/' | '?' | '#' | '@' | '%';
+
+type TersifyIri<
+	p_iri extends string,
+	h_prefixes extends {} | void,
+> = CompactIri<p_iri, h_prefixes> extends infer a_compacted
+	? a_compacted extends string[]
+		? {
+			[K in Keys<a_compacted>]: `${a_compacted[0]}:${Escape<a_compacted[1], PrefixedNameLocalEscapes>}`
+				| If<Extends<string, a_compacted[1]>, `<${p_iri}>`>
+				| If<List.Includes<Split<a_compacted[1], ''>, PrefixedNameLocalEscapes>, `<${p_iri}>`>;
+		}[Keys<a_compacted>]
+		: never
+	: never
+
+{
+	type demo = CompactIri<'http://xmlns.com/foaf/0.1/p/help', typeof H_PREFIXES>;
+	type demo1 = ConcisfyIri<'http://xmlns.com/foaf/0.1/p/help', typeof H_PREFIXES>;
+	type demo1a = ConcisfyIri<'http://xmlns.com/not/exists/help', typeof H_PREFIXES>;
+	type demo2 = TersifyIri<'http://xmlns.com/foaf/0.1/p/help', typeof H_PREFIXES>;
+}
+
+
+type PrefixMapArg = PrefixMap | void;
+
+
+type ReplacementFunction<
+	a_descriptor extends Descriptor,
+	si_key extends keyof Descriptor.KeyMap,
+> = {
+	<
+		w_search extends string | RegExp,
+		w_replace extends string | RegExpReplacer,
+	>(w_search: w_search, w_replace: w_replace): GraphyTerm<Descriptor.Mutate<a_descriptor, {
+		[K in si_key]: w_search extends `${infer s_search}`
+			? (w_replace extends `${infer s_replace}`
+				? Replace<Cast<Descriptor.Access<a_descriptor, si_key>, string>, s_search, s_replace>
+				: string
+			)
+			: string;
+	}>>
+};
+
+
+type ReplacementFunctionStatic<
+	a_descriptor extends Descriptor,
+	g_mutation extends Descriptor.Mutation,
+> = {
+	(w_search: string | RegExp, w_replace: string | RegExpReplacer): GraphyTerm<Descriptor.Mutate<a_descriptor, g_mutation>>;
+}
+
+
+type AsGraphyGenericTerm<
+	a_descriptor extends Descriptor,
+	g_custom extends {},
+> = MergeAll<g_custom, [
+	AsTypedTermData<a_descriptor>,
+	Descriptor.Access<a_descriptor, 'value'> extends infer w_value? {
+		hash(): string;
+		clone(): GraphyTerm<a_descriptor>;
+		isolate(): {
+			termType: Descriptor.Access<a_descriptor, 'termType'>;
+			value: w_value;
+		};
+
+		replaceIri: ReplacementFunctionStatic<a_descriptor, {
+			value: string;
+			datatype: string;
+		}>;
+
+		replaceText: ReplacementFunctionStatic<a_descriptor, {
+			value: string;
+		}>;
+
+		replaceValue: ReplacementFunction<a_descriptor, 'value'>;
+		
+		isGraphyTerm: true;
+		isGraphyQuad: false;
+		isDefaultGraph: false;
+		isNode: false;
+		isNamedNode: false;
+		isAbsoluteIri: false;
+		isRelativeIri: false;
+		isRdfTypeAlias: false;
+		isBlankNode: false;
+		isAnonymousBlankNode: false;
+		isEphemeralBlankNode: false;
+		isLiteral: false;
+		isLanguagedLiteral: false;
+		isDatatypedLiteral: false;
+		isSimpleLiteral: false;
+		isNumericLiteral: false;
+		isIntegerLiteral: false;
+		isDoubleLiteral: false;
+		isDecimalLiteral: false;
+		isBooleanLiteral: false;
+		isInfiniteLiteral: false;
+		isNaNLiteral: false;
+	}: never,
+	g_custom extends {flat:any}? {
+		valueOf: g_custom['flat'];
+		toString: g_custom['flat'];
+	}: {},
+	g_custom extends {terse:any}? {
+		star: g_custom['terse'];
+	}: {},
+]>;
+
+
+type TermIsAll<
+	a_things extends string[],
+> = List.UnionOf<a_things> extends `${infer s_thing}`
+	? {
+		[K in s_thing as `is${K}`]: true;
+	}
+	: never;
+
+
+export type AsGraphyNamedNode<
+	a_descriptor extends Descriptor,
+> = a_descriptor extends Descriptor<NamedNodeTypeKey>
+	? Descriptor.Access<a_descriptor, 'value'> extends infer p_iri
+		? p_iri extends string
+			? AsGraphyGenericTerm<a_descriptor, Merge<
+				{
+					flat(): `>${p_iri}`;
+					verbose(): `<${p_iri}>`;
+
+					concise<
+						h_prefixes extends PrefixMapArg,
+					>(h_prefixes?: h_prefixes): ConcisfyIri<p_iri, h_prefixes>;
+
+					terse<
+						h_prefixes extends PrefixMapArg,
+					>(h_prefixes?: h_prefixes): TersifyIri<p_iri, h_prefixes>;
+
+					replaceIri: ReplacementFunction<a_descriptor, 'value'>;
+				}, TermIsAll<[
+					'Node',
+					'NamedNode',
+					'AbsoluteIri',
+				]>>
+			>
+			: never
+		: never
+	: never;
+
+
+export type AsGraphyBlankNode<
+	a_descriptor extends Descriptor,
+> = a_descriptor extends Descriptor<BlankNodeTypeKey>
+	? Descriptor.Access<a_descriptor, 'value'> extends infer s_label
+		? s_label extends string
+			? AsGraphyGenericTerm<a_descriptor, MergeAll<
+				{
+					flat(): `#${s_label}`;
+					verbose(): `_:${s_label}>`;
+
+					concise(h_prefixes?: PrefixMap): `#${s_label}`;
+					terse(h_prefixes?: PrefixMap): `_:${s_label}`;
+				}, [
+					TermIsAll<[
+						'Node',
+						'BlankNode',
+					]>,
+				]>
+			>
+			: never
+		: never
+	: never;
+
+
+// type test = ReplacementFunction<FromQualifier<[NamedNodeTypeKey]>, 'value', 'https://demo/test'>;
+// let dmo!: test;
+// const reveals = dmo('demo', 'none');
+
+// type debugg = Descriptor.Mutate<FromQualifier<['NamedNode']>, {
+// 	value: 'hello',
+// }>;
+
+type EscapeTerseLiteralContent<
+	s_content extends string,
+> = Escape<s_content, '"' | '\n'>;
+
+type ReplacementFunctionForLiteralValue<
+	a_descriptor extends Descriptor,
+	s_content extends string,
+	p_datatype extends string,
+> = {
+	<
+		w_search extends string | RegExp,
+		w_replace extends string | RegExpReplacer,
+	>(w_search: w_search, w_replace: w_replace): GraphyTerm<Descriptor.Mutate<a_descriptor, w_search extends `${infer s_search}`
+		? (w_replace extends `${infer s_replace}`
+			? {
+				value: Replace<s_content, s_search, s_replace>;
+				dataype: Replace<p_datatype, s_search, s_replace>;
+			}
+			: {
+				value: string;
+				datatype: string;
+			}
+		)
+		: {
+			value: string;
+			datatype: string;
+		}
+	>>;
+}
+
+type NaN = Debug<typeof NaN, 'NaN'>;
+
+type UncertainNumericLiteral = Merge<{
+	[si_type in keyof XsdDatatypes as `is${XsdDatatypes[si_type]}Literal`]: boolean;
+}, {
+	isNumericLiteral: boolean;
+	isInfiniteLiteral: boolean;
+	isNaNLiteral: boolean;
+}>;
+
+export type AsGraphyLiteral<
+	a_descriptor extends Descriptor,
+> = a_descriptor extends Descriptor<LiteralTypeKey>
+	? [
+		Descriptor.Access<a_descriptor, 'value'>,
+		Descriptor.Access<a_descriptor, 'language'>,
+		Descriptor.Access<a_descriptor, 'datatype'>,
+	 ] extends [infer s_content, infer s_language, infer p_datatype]
+	 	? s_content extends string
+	 		? s_language extends string
+			 ? p_datatype extends string
+				? AsGraphyGenericTerm<a_descriptor, MergeAll<
+					TermIsAll<[
+						'Literal',
+					]>, [{
+						simple: {
+							isSimpleLiteral: true;
+
+							flat(): `"${s_content}`;
+							verbose(): `"${EscapeTerseLiteralContent<s_content>}"`;
+
+							concise(h_prefixes?: PrefixMap): `"${s_content}`;
+							terse(h_prefixes?: PrefixMap): `"${EscapeTerseLiteralContent<s_content>}"`;
+
+							replaceIri: ReplacementFunction<a_descriptor, 'datatype'>;
+							replaceText: ReplacementFunction<a_descriptor, 'value'>;
+							replaceValue: ReplacementFunctionForLiteralValue<a_descriptor, s_content, p_datatype>;
+						};
+						languaged: {
+							isLanguagedLiteral: true;
+
+							flat(): `@${s_language}"${s_content}`;
+							verbose(): `"${EscapeTerseLiteralContent<s_content>}"@${s_language}`;
+
+							concise(h_prefixes?: PrefixMap): `@${s_language}"${s_content}`;
+							terse(h_prefixes?: PrefixMap): `"${EscapeTerseLiteralContent<s_content>}"@${s_language}`;
+
+							// datatype is not replaced for languaged literals
+							replaceIri: ReplacementFunctionStatic<a_descriptor, {}>;
+							replaceText: ReplacementFunction<a_descriptor, 'value'>;
+							replaceValue: ReplacementFunction<a_descriptor, 'value'>;
+						};
+						datatyped: Merge<{
+							isDatatypedLiteral: true;
+
+							flat(): `^>${p_datatype}"${s_content}`;
+							verbose(): `"${EscapeTerseLiteralContent<s_content>}"^^<${p_datatype}>`;
+
+							concise<
+								h_prefixes extends PrefixMapArg,
+							>(h_prefixes: h_prefixes): `^${ConcisfyIri<p_datatype, h_prefixes>}"${s_content}`;
+
+							terse<
+								h_prefixes extends PrefixMapArg,
+							>(h_prefixes: h_prefixes): `"${EscapeTerseLiteralContent<s_content>}"^^${TersifyIri<p_datatype, h_prefixes>}`;
+
+							// datatype is not replaced for languaged literals
+							replaceIri: ReplacementFunction<a_descriptor, 'datatype'>;
+							replaceText: ReplacementFunction<a_descriptor, 'value'>;
+							replaceValue: ReplacementFunctionForLiteralValue<a_descriptor, s_content, p_datatype>;
+						}, p_datatype extends `${P_XSD}${infer s_xsd_type}`
+							? s_xsd_type extends keyof XsdDatatypes? Merge<
+								{
+									0: Merge<
+										s_xsd_type extends 'double'? {
+											isInfiniteLiteral: string extends s_content? boolean
+												: s_content extends 'INF' | '-INF'? true: false;
+											isNaNLiteral: string extends s_content? boolean
+												: s_content extends 'NaN'? true: false;
+											isNumberPrecise: s_content extends 'INF' | '-INF' | 'NaN'? false: boolean;
+										}: {},
+										{
+											isNumericLiteral: true;
+											isNumberPrecise: s_xsd_type extends 'date' | 'dateTime'? true: boolean;
+											number: number;
+											bigint: bigint;
+											date: s_xsd_type extends 'date' | 'dateTime'? Date: undefined;
+										}
+									>;
+									1: Merge<
+										{
+											isNumericLiteral: false;
+											isNumberPrecise: true;
+										}, {
+											false: {
+												boolean: false;
+												number: 0;
+												bigint: 0n;
+											};
+											true: {
+												boolean: true;
+												number: 1;
+												bigint: 1n;
+											};
+											none: {
+												boolean: NaN;
+												number: NaN;
+												bigint: NaN;
+											};
+										}[
+											string extends s_content? 'false' | 'true'
+											: s_content extends '0' | 'false'? 'false'
+											: s_content extends '1' | 'true'? 'true'
+											: 'none'
+										]
+									>
+								}[Extends<'boolean', s_xsd_type>],
+								{
+									[K in `is${XsdDatatypes[s_xsd_type]}Literal`]: true;
+								}
+							>: {}
+						}: string extends p_datatype? UncertainNumericLiteral: {}>;
+					}[
+						p_datatype extends P_XSD_STRING? 'simple'
+						: s_language extends `${string}`? 'languaged'
+						: p_datatype extends `${string}`? 'datatyped'
+						: 'simple' | 'languaged' | 'datatyped'
+					], {
+						boolean: Debug<typeof NaN, 'NaN'>;
+						number: Debug<typeof NaN, 'NaN'>;
+						bigint: Debug<typeof NaN, 'NaN'>;
+						date: undefined;
+					}]>
+				>
+				: never
+			: never
+		: never
+	: never;
+
+
+type gnode = AsGraphyNamedNode<FromQualifier<[NamedNodeTypeKey, 'https://demo/test']>>
+
+	declare function concise<
+		h_prefixes extends PrefixMap,
+	>(h_prefixes?: h_prefixes): ConcisfyIri<'https://demo/test', h_prefixes>;
+
+	const h_prefixes = {
+		demo: 'https://demo/',
+		test: 'https://howdy/',
+	};
+
+	const reveal = concise(h_prefixes);
+
+
+// export type AsGraphyTerm<
+// 	a_descriptor extends Descriptor,
+// > = Merge<
+// 	{
+// 		[K in NamedNodeTypeKey]: AsGraphyNamedNode<a_descriptor>
+// 	}
+// >[Descriptor.Access<a_descriptor, 'termType'>];
+
+
 /**
  * Complements term data type with RDFJS methods
  */
@@ -637,23 +1097,35 @@ type Term<
 	z_qualifier_a extends Qualifier = BypassDescriptor,
 > = FromQualifier<z_qualifier_a> extends infer a_descriptor_a
 	? (a_descriptor_a extends Descriptor
-		? Merge<
-			AsTypedTermData<a_descriptor_a>,
-			z_qualifier_a extends BypassDescriptor
-			? {
-				equals<
-					z_other extends TermDataArgument | null | undefined,
-				>(y_other: z_other): z_other extends null | undefined? false: boolean;
-			}
-			: {
-				equals<
-					z_other extends InputTermData,
-				>(y_other: z_other): TermsEqual<a_descriptor_a, FromTermData<z_other>>;
-			}
-		>
+		? GraphyTerm<a_descriptor_a>
 		: never
 	)
 	: never;
+
+type GraphyTerm<
+	a_descriptor extends Descriptor
+> = {
+	NamedNode: AsGraphyNamedNode<a_descriptor>;
+	BlankNode: AsGraphyBlankNode<a_descriptor>;
+	Literal: AsGraphyLiteral<a_descriptor>;
+	Variable: {};
+	DefaultGraph: {};
+	Quad: {};
+}[Cast<Descriptor.Access<a_descriptor, 'termType'>, TermTypeKey>];
+
+
+	// z_qualifier_a extends BypassDescriptor
+	// ? {
+	// 	equals<
+	// 		z_other extends TermDataArgument | null | undefined,
+	// 	>(y_other: z_other): z_other extends null | undefined? false: boolean;
+	// }
+	// : {
+	// 	equals<
+	// 		z_other extends InputTermData,
+	// 	>(y_other: z_other): TermsEqual<a_descriptor_a, FromTermData<z_other>>;
+	// }
+// >;
 
 // {
 // 	type TEST = FromQualifier<['Literal', string, void, void]>;
