@@ -587,7 +587,7 @@ class GenericTerm {
 		isRelativeIri:         /* syntax: js */ `false`,
 		isRdfTypeAlias:        /* syntax: js */ `false`,
 		isBlankNode:           /* syntax: js */ `false`,
-		isAnonymousBlankNode:  /* syntax: js */ `false`,
+		wasAnonymousBlankNode: /* syntax: js */ `false`,
 		isEphemeralBlankNode:  /* syntax: js */ `false`,
 		isLiteral:             /* syntax: js */ `false`,
 		isLanguagedLiteral:    /* syntax: js */ `false`,
@@ -1748,7 +1748,7 @@ class NaNLiteral extends DoubleLiteral {
 @*{yield* declare(/* syntax: js */ `class BlankNode extends GenericTerm`, {
 	constructor(s_value, b_anonymous=false) {
 		this.value = s_value;
-		this.isAnonymousBlankNode = b_anonymous;
+		this.wasAnonymousBlankNode = b_anonymous;
 	},
 	/* eslint-disable no-undef */
 	methods: class {
@@ -1768,11 +1768,11 @@ class NaNLiteral extends DoubleLiteral {
 		}
 
 		clone() {
-			return new BlankNode(this.value, this.isAnonymousBlankNode);
+			return new BlankNode(this.value, this.wasAnonymousBlankNode);
 		}
 
 		replaceValue(w_search, w_replace) {
-			return new BlankNode(this.value.replace(w_search, w_replace), this.isAnonymousBlankNode);
+			return new BlankNode(this.value.replace(w_search, w_replace), this.wasAnonymousBlankNode);
 		}
 	},
 	/* eslint-enable no-undef */
@@ -1823,7 +1823,7 @@ class NaNLiteral extends DoubleLiteral {
 	},
 	/* eslint-enable no-undef */
 	properties: {
-		isAnonymousBlankNode:  /* syntax: js */ `true`,
+		wasAnonymousBlankNode:  /* syntax: js */ `true`,
 		isEphemeralBlankNode:  /* syntax: js */ `true`,
 		flat:                  /* syntax: js */ `gp_self.concise`,
 		star:                  /* syntax: js */ `gp_self.terse`,

@@ -11,5 +11,5 @@ export type Debug<
 type InvalidTermTypeError<
 	TermTypeString extends string,
 	Disguise = unknown,
-	> = Debug<Disguise, `'${TermTypeString}' is an invalid value for the .termType property`>;
+> = Debug<Disguise, `'${TermTypeString}' is an invalid value for the .termType property`>;
 

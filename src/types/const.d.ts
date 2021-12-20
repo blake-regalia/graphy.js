@@ -3,6 +3,7 @@ import type {
 } from 'ts-toolbelt/out/Object/_api';
 
 // IRI constants
+export type P_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
 export type P_RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 export type P_XSD = 'http://www.w3.org/2001/XMLSchema#'
 export type P_XSD_STRING = 'http://www.w3.org/2001/XMLSchema#string';
@@ -36,3 +37,10 @@ export type XsdDatatypes = {
 	date: 'Date';
 	dateTime: 'DateTime';
 };
+
+
+export type NaN = Debug<typeof NaN, 'NaN'>;
+
+
+export type ReservedPrefixMapKey_Cache = '.cache';
+export type ReservedPrefixMapKey_Base = '.base';

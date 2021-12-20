@@ -3,7 +3,7 @@ import { Bcp47 } from "@graphy/types";
 import { Includes } from "ts-toolbelt/out/List/Includes";
 import { Split } from "ts-toolbelt/out/String/Split";
 import { P_RDF_TYPE } from "./const";
-import { Iri, Label, Suffix } from "./root";
+import { Iri, Label, PrefixMap, Suffix } from "./root";
 
 import {
 	NamedNode,
@@ -142,122 +142,9 @@ type QuadOrDataFromC1<
 
 // type SXs = TermFromF1<'^>xsd:data"help'>['datatype']['value'];
 
-/**
- * Absolute term string for DefaultGraph terms
- */
-type A1_DefaultGraph = '*';
-
-/**
- * Absolute term string for NamedNode terms
- */
-type A1_NamedNode<
-	s_value extends string=string,
-> = string extends s_value
-	? `>${Iri}`
-	: s_value extends Iri
-		? `>${s_value}`
-		: never;
-
-// type A1_RelativeIri<
-//    s_f1 extends string=string
-// > = s_f1 extends `>${infer s_value}`
-//    ? (s_value extends IRelativeRef
-//       ? ;
 
 
-/**
- * Absolute term string for LabeledBlankNode terms
- */
-type A1_LabeledBlankNode<
-	s_label extends string=string,
-> = string extends s_label
-	? `#${Label}`
-	: s_label extends Label
-		? `#${s_label}`
-		: never;
 
-
-/**
- * Absolute term string for AnonymousBlankNode terms
- */
-type A1_AnonymousBlankNode<
-	s_id extends string=string,
-> = `#_${s_id}`;
-
-
-/**
- * Absolute term string for SimpleLiteral terms
- */
-type A1_SimpleLiteral<
-	s_content extends string=string,
-> = `"${s_content}`;
-
-
-/**
- * Absolute term string for LanguagedLiteral terms
- */
-type A1_LanguagedLiteral<
-	s_content extends string=string,
-	s_language extends string=string,
-> = string extends s_language
-	? `@${Bcp47}"${s_content}`
-	: s_language extends Bcp47
-		? `@${s_language}${s_content}`
-		: never;
-
-
-/**
- * Absolute term string for DatatypedLiteral terms
- */
-type A1_DatatypedLiteral<
-	s_content extends string=string,
-	s_datatype extends string=string,
-> = `^${A1_NamedNode<s_datatype>}"${s_content}}`;
-
-declare function f1<
-	sc1_blank extends A1_LabeledBlankNode,
->(s_f1: sc1_blank): BlankNodeFromC1<sc1_blank> {
-
-}
-
-
-/**
- * Concise term string for DefaultGraph terms
- */
-type C1_DefaultGraph = A1_DefaultGraph;
-
-
-/**
- * Concise term string for NamedNode terms
- */
-type C1_PrefixedNamedNode<
-	s_prefix extends string=string,
-	s_suffix extends string=string,
-> = string extends s_prefix
-	? (string extends s_suffix
-		? `${Prefix}:${Suffix}`
-		: `${Prefix}:${s_suffix}`
-	)
-	: string extends s_suffix
-		? `${s_prefix}:${Suffix}`
-		: `${s_prefix}:${s_suffix}`;
-
-type C1_NamedNode<
-	p_iri extends string=string,
-	s_prefix extends string=string,
-	s_suffix extends string=string,
-> = A1_NamedNode<p_iri> | C1_PrefixedNamedNode<s_prefix, s_suffix>;
-
-
-type C1_RelativeIri = void;
-
-type C1_LabeledBlankNode<
-	s_label extends string=string,
-> = A1_LabeledBlankNode<s_label>;
-
-type C1_AnonymousBlankNode<
-	s_id extends string=string,
-> = A1_AnonymousBlankNode<s_id>;
 
 
 

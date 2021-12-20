@@ -45,7 +45,7 @@ import {
 	RdfMode_11,
 } from './const';
 
-import { DefaultGraphTypeKey, GraphTypeKey, LiteralTypeKey, ObjectTypeKey, PredicateTypeKey, QuadTypeKey, SubjectTypeKey, TermTypeKey, UnvaluableTypeKey, ValuableTypeKey } from './term';
+import { DefaultGraphTypeKey, GraphTypeKey, LiteralTypeKey, ObjectTypeKey, PredicateTypeKey, QuadTypeKey, Subject, SubjectTypeKey, TermTypeKey, UnvaluableTypeKey, ValuableTypeKey } from './term';
 
 
 declare const debug_hint: unique symbol;
@@ -511,7 +511,7 @@ export type Descriptor<
 
 export namespace Descriptor {
 	/**
-	 * Maps key names to the corresponding descriptor index
+	 * Maps key names to the corresponding Descriptor index
 	 */
 	export type KeyMap = {
 		termType: 0;
@@ -525,63 +525,70 @@ export namespace Descriptor {
 		mode: 8;
 	}
 
-	// type AccessMap<
-	// 	a_descriptor extends Descriptor,
-	// > = Merge<
-	// 	{
-	// 		termType: a_descriptor[0];
-	// 		value: a_descriptor[1];
-	// 		language: a_descriptor[2];
-	// 		datatype: a_descriptor[3];
-	// 		mode: a_descriptor[8];
-	// 	},
-	// 	a_descriptor extends Descriptor<QuadTypeKey>
-	// 	? {
-	// 		subject: a_descriptor[4] extends Descriptor<SubjectTypeKey<AllowedRdfMode>> ? a_descriptor[4] : never;
-	// 		predicate: a_descriptor[5] extends Descriptor<PredicateTypeKey<AllowedRdfMode>> ? a_descriptor[5] : never;
-	// 		object: a_descriptor[6] extends Descriptor<ObjectTypeKey<AllowedRdfMode>> ? a_descriptor[6] : never;
-	// 		graph: a_descriptor[7] extends Descriptor<GraphTypeKey<AllowedRdfMode>> ? a_descriptor[7] : never;
-	// 			// predicate: a_descriptor[5];
-	// 			// object: a_descriptor[6];
-	// 			// graph: a_descriptor[7];
-	// 		}
-	// 	: {
-	// 		subject: void;
-	// 		predicate: void;
-	// 		object: void;
-	// 		graph: void;
-	// 	}
-	// >;
-
 	type AccessMap<
 		a_descriptor extends Descriptor,
-		> = {
-			termType: a_descriptor[0];
-			value: a_descriptor[1];
-			language: a_descriptor[2];
-			datatype: a_descriptor[3];
-			subject: a_descriptor[4] extends Descriptor<SubjectTypeKey> ? a_descriptor[4] : never;
-			predicate: a_descriptor[5] extends Descriptor<PredicateTypeKey> ? a_descriptor[5] : never;
-			object: a_descriptor[6] extends Descriptor<ObjectTypeKey> ? a_descriptor[6] : never;
-			graph: a_descriptor[7] extends Descriptor<GraphTypeKey> ? a_descriptor[7] : never;
-			mode: a_descriptor[8];
-		};
-	
-	// 	mode: a_descriptor[8];
-	// };
+	> = {
+		termType: a_descriptor[0];
+		value: a_descriptor[1];
+		language: a_descriptor[2];
+		datatype: a_descriptor[3];
+		subject: a_descriptor[4] extends Descriptor<SubjectTypeKey> ? a_descriptor[4] : never;
+		predicate: a_descriptor[5] extends Descriptor<PredicateTypeKey> ? a_descriptor[5] : never;
+		object: a_descriptor[6] extends Descriptor<ObjectTypeKey> ? a_descriptor[6] : never;
+		graph: a_descriptor[7] extends Descriptor<GraphTypeKey> ? a_descriptor[7] : never;
+		mode: a_descriptor[8];
+	};
 
+
+	/**
+	 * === _**@graphy/types**_ ===
+	 * 
+	 * ```ts
+	 * type Descriptor.Access<
+	 * 	descriptor: Descriptor,
+	 * 	at: keyof Descriptor.KeyMap,
+	 * > ==> TermTypeKey | string | Descriptor | SupportedRdfMode
+	 * ```
+	 * Returns the given `descriptor` property value at `at`
+	 */
 	export type Access<
 		a_descriptor extends Descriptor,
 		s_at extends keyof KeyMap,
 	> = AccessMap<a_descriptor>[s_at];
 
+
+	/**
+	 * === _**@graphy/types**_ ===
+	 * 
+	 * ```ts
+	 * interface Descriptor.Mutation {}
+	 * ```
+	 * Describes a mutation to apply to a Descriptor
+	 */
 	export type Mutation = {
 		termType?: TermTypeKey;
 		value?: string;
 		language?: string;
 		datatype?: string;
+		subject?: Descriptor<SubjectTypeKey>;
+		predicate?: Descriptor<PredicateTypeKey>;
+		object?: Descriptor<ObjectTypeKey>;
+		graph?: Descriptor<GraphTypeKey>;
+		mode?: SupportedRdfMode;
 	};
 
+
+	/**
+	 * === _**@graphy/types**_ ===
+	 * 
+	 * ```ts
+	 * type Descriptor.Mutate<
+	 * 	descriptor: Descriptor,
+	 * 	mutator: Descriptor.Mutation,
+	 * > ==> Descriptor
+	 * ```
+	 * Apply `mutator` to the given `descriptor`
+	 */
 	export type Mutate<
 		a_descriptor extends Descriptor,
 		g_mutator extends Mutation,
@@ -590,18 +597,18 @@ export namespace Descriptor {
 		Auto<g_mutator['value'], string, a_descriptor[1]>,
 		Auto<g_mutator['language'], string, a_descriptor[2]>,
 		Auto<g_mutator['datatype'], string, a_descriptor[3]>,
-		a_descriptor[4],
-		a_descriptor[5],
-		a_descriptor[6],
-		a_descriptor[7],
-		a_descriptor[8]
+		Auto<g_mutator['subject'], Descriptor, a_descriptor[4]>,
+		Auto<g_mutator['predicate'], Descriptor, a_descriptor[5]>,
+		Auto<g_mutator['object'], Descriptor, a_descriptor[6]>,
+		Auto<g_mutator['graph'], Descriptor, a_descriptor[7]>,
+		Auto<g_mutator['mode'], SupportedRdfMode, a_descriptor[8]>,
 	]>
 
-	export type Devoid<
-		z_descriptor extends any,
-	> = z_descriptor extends Descriptor
-		? z_descriptor
-		: FromQualifier;
+	// export type Devoid<
+	// 	z_descriptor extends any,
+	// > = z_descriptor extends Descriptor
+	// 	? z_descriptor
+	// 	: FromQualifier;
 
 	type NestedQuad<
 		s_term extends QuadTypeKey = QuadTypeKey,
@@ -647,21 +654,16 @@ export namespace Descriptor {
 		? New<a_args, s_term_restrict, s_mode_default>
 		: void;
 
-	// export type New<
-	// 	a_args extends NewArgs,
-	// 	s_term_restrict extends TermTypeKey = TermTypeKey,
-	// 	s_mode_default extends AllowedRdfMode = AllowedRdfMode,
-	// 	> = [
-	// 		NormalizeQualifier.TermType<a_args[0], s_term_restrict>,
-	// 		NormalizeQualifier.Value<a_args[1]>,
-	// 		...NormalizeQualifier.LanguageDatatype<a_args[2], a_args[3]>,
-	// 		RecurseNew<a_args[4], s_term_restrict, s_mode_default>,
-	// 		RecurseNew<a_args[5], s_term_restrict, s_mode_default>,
-	// 		RecurseNew<a_args[6], s_term_restrict, s_mode_default>,
-	// 		RecurseNew<a_args[7], s_term_restrict, s_mode_default>,
-	// 		Auto<a_args[8], s_mode_default>,
-	// 	];
-
+	/**
+	 * ```ts
+	 * Descriptor.New<
+	 * 	args: [string? x 4, Descriptor.NewArgs? x 4, SupportedRdfMode?],
+	 * 	restrict: TermTypeKey,
+	 * 	mode: SupportedRdfMode,
+	 * > ==> Descriptor
+	 * ```
+	 * Creates a new Descriptor
+	 */
 	export type New<
 		a_args extends NewArgs,
 		s_term_restrict extends TermTypeKey = TermTypeKey,
@@ -719,11 +721,11 @@ export namespace Descriptor {
 
 	/**
 	 * ```ts
-	 * FilterDescriptor<
+	 * Descriptor.Filter<
 	 * 	Descriptor extends TermDescriptor,
 	 * 	Target extends TermTypeKey,
 	 * 	TermTypeSring extends TermTypeKey=DescriptorTermType<Descriptor, Target>,
-	 * > => TermDescriptor<Target>
+	 * > ==> TermDescriptor<Target>
 	 * ```
 	 *
 	 * Converts `Descriptor` into `TermDescriptor<Target>`
