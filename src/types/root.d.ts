@@ -1,7 +1,7 @@
 // import * as RDFJS from 'rdf-js';
 import {
 	ObjectArg,
-} from './term';
+} from './terms/term';
 
 import * as RDFJS from '@rdfjs/types';
 

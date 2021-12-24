@@ -24,6 +24,10 @@ import {
 	ConcisifyIri,
 } from './common';
 
+import {
+	PrefixMapArg,
+} from '../terms/graphy';
+
 /**
  * Concise term string for DefaultGraph terms
  */
@@ -63,7 +67,7 @@ export type C1_DefaultGraph = A1_DefaultGraph;
  */
 export type C1_NamedNode<
 	p_iri extends string=string,
-	h_prefixes extends PrefixMap={},
+	h_prefixes extends PrefixMapArg={},
 > = ConcisifyIri<p_iri, h_prefixes>;
 
 

@@ -4,7 +4,6 @@ import type {
 } from 'ts-toolbelt';
 
 import type {
-	Cast,
 	Equals,
 	Type,
 } from 'ts-toolbelt/out/Any/_api';
@@ -13,10 +12,6 @@ import type {
 	And,
 	Not,
 } from 'ts-toolbelt/out/Boolean/_api';
-
-import {
-	Repeat,
-} from 'ts-toolbelt/out/List/Repeat';
 
 import type {
 	If,
@@ -45,29 +40,19 @@ import {
 	RdfMode_11,
 } from './const';
 
-import { DefaultGraphTypeKey, GraphTypeKey, LiteralTypeKey, ObjectTypeKey, PredicateTypeKey, QuadTypeKey, Subject, SubjectTypeKey, TermTypeKey, UnvaluableTypeKey, ValuableTypeKey } from './term';
+import {
+	DefaultGraphTypeKey,
+	GraphTypeKey,
+	LiteralTypeKey,
+	ObjectTypeKey,
+	PredicateTypeKey,
+	QuadTypeKey,
+	SubjectTypeKey,
+	TermTypeKey,
+	UnvaluableTypeKey,
+	ValuableTypeKey,
+} from './terms/key';
 
-
-declare const debug_hint: unique symbol;
-
-// Debug and Error types
-type Debug<
-	A extends any,
-	Hint extends any,
-	> = {
-		[debug_hint]: Hint;
-	} & A;
-
-type InvalidTermTypeError<
-	TermTypeString extends string,
-	Disguise = unknown,
-	> = Debug<Disguise, `'${TermTypeString}' is an invalid value for the .termType property`>;
-
-type IncompatibleTermTypeError<
-	TermTypeString extends string,
-	Category extends string,
-	Disguise = unknown,
-	> = Debug<Disguise, `'${TermTypeString}' is an incompatible .termType value for ${Category}`>;
 
 
 type PreferTermType<
@@ -188,8 +173,7 @@ namespace NormalizeQualifier {
 
 	export type Value<
 		s_value extends string | void,
-	> = s_value extends void? string: s_value;
-
+	> = AutoString<s_value>
 
 	type AutoDatatype<
 		s_datatype extends string | void,
@@ -373,6 +357,41 @@ type FromQualifierMap<
 	}
 
 
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type FromQualifier<
+ * 	qualifier: QualifierSparse | Partial<QualifierMap>,
+ * 	terms: TermTypeKey=TermTypeKey,
+ * 	mode: SupportedRdfMode|void=void,
+ * > ==> [...(
+ * 	[termType: TermTypeKey, value: string?, language: string?, datatype: string?, void x 4]
+ * 	| [termType: QuadTypeKey, value: '', void x 2, spog: Descriptor x  4]
+ * ), mode: SupportedRdfMode]
+ * ```
+ * 
+ * A canonical array for representing the type constraints of any Term.
+ * 
+ * --- **Examples:** ---
+ * ```ts
+ * 	Descriptor.Access<FromQualifier<{
+ * 		termType: 'Literal';
+ * 		language: `en${string}`;
+ * 	}>, 'datatype'>  // 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString'
+ * 
+ * 	Descriptor.Access<Descriptor.Access<FromQualifier<{
+ * 		termType: QuadTypeKey;
+ * 		mode: RdfMode_star;
+ * 	}>, 'subject'>, 'termType'>  // 'NamedNode' | 'BlankNode' | 'Quad'
+ * ```
+ * 
+ * --- **See Also:** ---
+ *  - {@link QualifierSparse} to use an array for the `qualifier` parameter
+ *  - {@link QualifierMap} to use an object for the `qualifier` parameter
+ *  - {@link TermTypeKey} to see more about restricting term types
+ *  - {@link SupportedRdfMode} for the `mode` parameter
+ */
 export type FromQualifier<
 	z_qualifier extends Qualifier|Descriptor|void=void,
 	s_term_restrict extends TermTypeKey=TermTypeKey,
@@ -390,6 +409,19 @@ export type FromQualifier<
 			: never
 		)
 		: never;
+
+{
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+	const LD: ASSERT_SAME<P_RDFS_LANGSTRING, Descriptor.Access<FromQualifier<{
+		termType: LiteralTypeKey;
+		language: 'en';
+	}>, 'datatype'>> = 1;
+
+	// type QST = Descriptor.Access<Descriptor.Access<FromQualifier<{
+	// 	termType: QuadTypeKey;
+	// }>, 'subject'>, 'termType'>;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
+}
 
 
 // /**
@@ -454,7 +486,21 @@ export type FromQualifier<
 // > = SolveDescriptor<FromQualifier<z_qualifier, s_mode, s_terms_restrict>, s_terms_restrict, s_mode>;
 
 /**
- * A canonical struct for representing the type constraints for a Term
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type Descriptor<
+ * 	termTypes: TermTypeKey=TermTypeKey,
+ * 	mode: SupportedRdfMode=SupportedRdfMode,
+ * > ==> [...(
+ * 	[termType: TermTypeKey, value: string?, language: string?, datatype: string?, void x 4]
+ * 	| [termType: QuadTypeKey, value: '', void x 2, spog: Descriptor x  4]
+ * ), mode: SupportedRdfMode]
+ * ```
+ * 
+ * A canonical array for representing the type constraints of any Term.
+ * 
+ * See {@link FromQualifier} to create a Descriptor in a user-friendly syntax.
  * 
  * 0: termType
  * 1: value

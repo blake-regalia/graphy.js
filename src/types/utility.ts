@@ -2,6 +2,7 @@ import type {
 	Union,
 	List,
 	String,
+	Number,
 } from 'ts-toolbelt';
 
 import type {
@@ -27,12 +28,61 @@ import type {
 } from 'ts-toolbelt/out/Any/If';
 
 
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * Unique symbol used to create opaque types for meta debugging. {@link Debug}.
+ */
+declare const debug_hint: unique symbol;
+
+
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type Debug<
+ * 	thing: any,
+ * 	hint: any,
+ * > ==> thing
+ * ```
+ * 
+ * Creates an opaque type atop `thing` with the given `hint` associated with the {@link debug_hint} key.
+ */
+export type Debug<
+	A extends any,
+	Hint extends any,
+> = {
+   [debug_hint]: Hint;
+} & A;
+
+
+/**
+ * Labeled Boolean meta-type for False values
+ */
 export type False = 0;
+
+
+/**
+ * Labeled Boolean meta-type for True values
+ */
 export type True = 1;
+
+
+/**
+ * Labeled Boolean meta-type for True or False values
+ */
 export type Bool = True | False;
 
+
+/**
+ * Casts a meta-value to the Boolean meta-type
+ */
 export type AsBool<Input> = Try<Input, Bool, Bool>;
 
+
+/**
+ * Converts a Boolean meta-value to a boolean type
+ */
 export type ToPrimitiveBoolean<
 	Input extends Bool,
 > = [Input] extends [True]
@@ -45,6 +95,17 @@ export type ToPrimitiveBoolean<
 			)
 		);
 
+
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type ASSERT_TRUE<
+ * 	test: Bool | boolean
+ * > ==> True | False
+ * ```
+ * Returns {@link True} if `test` is exactly `True` or `true`; otherwise returns {@link False}
+ */
 export type ASSERT_TRUE<
 	Test extends True | False | true | false,
 > = [Test] extends [True]
@@ -54,6 +115,17 @@ export type ASSERT_TRUE<
 			: False
 		);
 
+
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type ASSERT_FALSE<
+ * 	test: Bool | boolean
+ * > ==> True | False
+ * ```
+ * Returns {@link True} if `test` is exactly `False` or `false`; otherwise returns {@link False}
+ */
 export type ASSERT_FALSE<
 	Test extends True | False | true | false,
 > = [Test] extends [False]
@@ -63,6 +135,17 @@ export type ASSERT_FALSE<
 			: False
 		);
 
+
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type ASSERT_BOOLEAN<
+ * 	test: Bool | boolean
+ * > ==> True | False
+ * ```
+ * Returns {@link True} if `test` is exactly the union type {@link Bool} or `boolean`; otherwise returns {@link False}
+ */
 export type ASSERT_BOOLEAN<
 	Test extends True | False | true | false,
 > = [Test] extends [False]
@@ -166,10 +249,19 @@ export type IsOnlyLiteralStrings<Test extends string | void> =
 
 
 /**
- * `<Value, Default=string>`
+ * === _**@graphy/types**_ ===
  * 
- * Returns the given type `Value` if it is a string, otherwise returns `Default`
+ * ```ts
+ * type AutoString<
+ * 	value: any,
+ * 	fallback: string=string
+ * > ==> string
+ * ```
  * 
+ * Returns the given `value` if it is a `string`, otherwise returns `fallback`
+ * 
+ * --- Examples: ---
+ * ```ts
  *     AutoString<'A'>  // 'A'
  *     AutoString<void>  // string
  *     AutoString<'A', 'Z'>  // 'A'
@@ -177,17 +269,17 @@ export type IsOnlyLiteralStrings<Test extends string | void> =
  *     AutoString<12, 'Z'>  // 'Z'
  *     AutoString<'A' | 'B'>  // 'A' | 'B'
  *     AutoString<void, 'Y' | 'Z'>  // 'Y' | 'Z'
+ * ```
  */
 export type AutoString<
-	String,
-	Default=string,
-> = 
-	String extends string
-		? (String extends undefined
-			? Default
-			: String
-		)
-		: Default;
+	z_value,
+	w_fallback extends string=string,
+> = z_value extends string
+	? (z_value extends undefined
+		? w_fallback
+		: z_value
+	)
+	: w_fallback;
 
 {
 	/* eslint-disable @typescript-eslint/no-unused-vars */
@@ -449,7 +541,23 @@ export type Auto<
 
 
 /**
- * Converts the const map to an entries union
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type Entries<
+ * 	map: {},
+ * > ==> UnionOf<[key: string, value: unknown][]>
+ * ```
+ * 
+ * Converts const object type `map` to a union of its entries
+ * 
+ * --- Examples: ---
+ * ```ts
+ * 	Entries<{
+ * 		a: 'apple';
+ * 		b: 'banana';
+ * 	}>  // ['a', 'apple'] | ['b', 'banana']
+ * ```
  */
 export type Entries<h_map extends {}> = {
 	[K in keyof h_map]: [K, h_map[K]];
@@ -462,8 +570,28 @@ export type Entries<h_map extends {}> = {
 	}>> = 1;
 }
 
+
 /**
- * Searches the given map for values matching find and returns a union of the corresponding keys
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type FindKeysForValuesMatching<
+ * 	find: any,
+ * 	map: {},
+ * > ==> UnionOf<[key: unknown, value: unknown][]>
+ * ```
+ * 
+ * Searches thru values in the given `map` matching `find` and returns a union of the corresponding keys
+ * 
+ * --- Examples: ---
+ * ```ts
+ * 	FindKeysForValuesMatching<'needle', {
+ * 		red: 'needle';
+ * 		green: 'foo';
+ * 		blue: 'bar';
+ * 		purple: 'needle';
+ * 	}>  // 'red' | 'purple'
+ * ```
  */
 export type FindKeysForValuesMatching<
 	s_find extends string,
@@ -481,13 +609,46 @@ export type FindKeysForValuesMatching<
 	)
 	: never;
 
+{
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+	const AS: ASSERT_SAME<'red' | 'purple', FindKeysForValuesMatching<'needle', {
+		red: 'needle';
+		green: 'foo';
+		blue: 'bar';
+		purple: 'needle';
+	}>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
+}
+
 
 /**
- * Searches the given map for values matching find and returns a union of the corresponding keys
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type FindKeysForValuesPrefixing<
+ * 	text: string,
+ * 	map: Record<any, string>,
+ * > ==> UnionOf<key: unknown>
+ * ```
+ * 
+ * Searches thru values in the given `map` that prefix `text` and returns a union of the corresponding keys.
+ * 
+ * Useful for finding prefixes in a map that can be used to compact a given IRI.
+ * 
+ * --- Examples: ---
+ * ```ts
+ * 	FindKeysForValuesPrefixing<'food', {
+ * 		red: '';
+ * 		green: 'foo';
+ * 		blue: 'bar';
+ * 		purple: 'food';
+ * 		black: 'bar food';
+ * 	}>  // 'red' | 'green' | 'purple'
+ * ```
  */
 export type FindKeysForValuesPrefixing<
 	s_find extends string,
-	h_map extends {},
+	h_map extends Record<string, string>,
 > = Union.ListOf<Entries<h_map>> extends infer a_entries
 	? (Exclude<Keys<a_entries>, number> extends infer si_index
 		? (si_index extends keyof a_entries
@@ -507,23 +668,74 @@ export type FindKeysForValuesPrefixing<
 	)
 	: never;
 
+{
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+	const AS: ASSERT_SAME<'red' | 'green' | 'purple', FindKeysForValuesPrefixing<'food', {
+		red: '';
+		green: 'foo';
+		blue: 'bar';
+		purple: 'food';
+		black: 'bar food';
+	}>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
+}
+	
+
 
 export type StrIncludes<
 	s_src extends string,
 	s_search extends string,
 > = Extends<s_src, `${string}${s_search}${string}`>;
 
+
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type Substr<
+ * 	input: string,
+ * 	indexStart: number,
+ * 	indexEnd: number=LengthOf<input>,
+ * > ==> string
+ * ```
+ * 
+ * Returns a substring of `input` beginning at `indexStart` and ending before `indexEnd` (i.e., exclusively)
+ * 
+ * --- Examples: ---
+ * ```ts
+ * 	Substr<'hello foo world', 6, 9>  // 'foo'
+ * ```
+ */
 export type Substr<
 	s_src extends string,
 	i_from extends number,
 	i_to extends number=String.Length<s_src>,
 > = Split<s_src, ''> extends infer a_chars_src
 	? (a_chars_src extends string[]
-		? Join<List.Extract<a_chars_src, i_from, i_to>>
+		? Join<List.Extract<a_chars_src, i_from, Number.Sub<i_to, 1>>>
 		: never
 	)
 	: never;
+{
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+	const AE: ASSERT_EQUAL<'foo', Substr<'hello foo world', 6, 9>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
+}
 
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type Replace<input: string, find: string, replace: string> ==> string
+ * ```
+ * 
+ * Replaces all occurences of `find` with `replace` within `input`.
+ * 
+ * --- Examples: ---
+ * ```ts
+ * 	Replace<'cat mat flat', 'at', 'op'>  // 'cop mop flop'
+ * ```
+ */
 export type Replace<
 	s_src extends string,
 	s_find extends string,
@@ -532,6 +744,27 @@ export type Replace<
 	? `${s_pre}${s_replace}${Replace<s_post, s_find, s_replace>}`
 	: s_src;
 
+{
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+	const AE: ASSERT_EQUAL<'cop mop flop', Replace<'cat mat flat', 'at', 'op'>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
+}
+
+
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type Escape<input: string, find: string, escapeChar: `${string}`='\\'> ==> string
+ * ```
+ * 
+ * Escapes all occurences of `find` with `escapeChar` within `input`.
+ * 
+ * --- Examples: ---
+ * ```ts
+ * 	Replace<'please "help" me', '"'>  // 'please \\"help\\" me'
+ * ```
+ */
 export type Escape<
 	s_src extends string,
 	s_find extends string,
@@ -539,9 +772,15 @@ export type Escape<
 > = s_src extends `${infer s_pre}${s_find}${infer s_post}`
 	? (String.Length<s_pre> extends infer nl_pre
 		? (nl_pre extends number
-			? `${s_pre}${s_escape}${Substr<s_src, nl_pre, nl_pre>}${Escape<s_post, s_find, s_escape>}`
+			? `${s_pre}${s_escape}${s_find}${Substr<s_src, nl_pre, nl_pre>}${Escape<s_post, s_find, s_escape>}`
 			: never
 		)
 		: never
 	)
 	: s_src;
+
+{
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+	const AE: ASSERT_EQUAL<'please \\"help\\" me', Escape<'please "help" me', '"'>> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
+}

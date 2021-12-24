@@ -15,7 +15,7 @@ import {
 	DatatypedLiteral,
 	BooleanLiteral,
 	Quad,
-} from "./term";
+} from "./terms/term";
 
 export type LiteralMap<
 	s_value extends string=string,
