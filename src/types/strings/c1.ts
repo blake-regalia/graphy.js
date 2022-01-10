@@ -1,4 +1,8 @@
 import {
+	MergeAll,
+} from 'ts-toolbelt/out/Object/MergeAll';
+
+import {
 	Iri,
 	Prefix,
 	Suffix,
@@ -18,6 +22,7 @@ import {
 
 import {
 	PrefixMap,
+	PrefixMapArg,
 } from '../structs'
 
 import {
@@ -25,8 +30,23 @@ import {
 } from './common';
 
 import {
-	PrefixMapArg,
-} from '../terms/graphy';
+	SupportedRdfMode,
+	RdfMode_11,
+	RdfMode_star,
+	RdfMode_easier,
+} from '../const';
+
+import type {
+	RemapRole,
+} from '../terms/role';
+
+
+export type C1_Data = A1_DefaultGraph | C1_NamedNode | C1_LabeledBlankNode | C1_AnonymousBlankNode
+	| C1_SimpleLiteral | C1_LanguagedLiteral | C1_DatatypedLiteral | C1_Quad;
+
+export type C1_Term = C1_Data | C1_Variable;
+
+export type C1_Item = C1_Term | C1_Directive;
 
 /**
  * Concise term string for DefaultGraph terms
@@ -60,6 +80,44 @@ export type C1_DefaultGraph = A1_DefaultGraph;
 // 	: p_iri extends Iri
 // 		? `>${p_iri}`
 // 		: never;
+
+
+export type C1_Node = C1_NamedNode | C1_BlankNode;
+
+export type C1_BlankNode = C1_AnonymousBlankNode | C1_LabeledBlankNode;
+
+export type C1_Literal = C1_SimpleLiteral | C1_LanguagedLiteral | C1_DatatypedLiteral;
+
+
+type Remapper_C1 = {
+	Data: C1_Data;
+	DefaultGraph: C1_DefaultGraph;
+	Node: C1_Node;
+	NamedNode: C1_NamedNode;
+	Literal: C1_Literal;
+	Quad: C1_Quad;
+};
+
+
+export type C1_Graph<
+	s_mode extends SupportedRdfMode=RdfMode_11,
+> = RemapRole<s_mode, Remapper_C1, 'graph'>;
+
+export type C1_Subject<
+	s_mode extends SupportedRdfMode=RdfMode_11,
+> = RemapRole<s_mode, Remapper_C1, 'subject'>;
+
+export type C1_Predicate<
+	s_mode extends SupportedRdfMode=RdfMode_11,
+> = RemapRole<s_mode, Remapper_C1, 'predicate'>;
+
+export type C1_Object<
+	s_mode extends SupportedRdfMode=RdfMode_11,
+> = RemapRole<s_mode, Remapper_C1, 'object'>;
+
+export type C1_Datatype<
+	s_mode extends SupportedRdfMode=RdfMode_11,
+> = RemapRole<s_mode, Remapper_C1, 'datatype'>;
 
 
 /**
@@ -132,3 +190,5 @@ export type C1_Quad<
 	sc1_graph extends string=string,
 > = A1_Quad<sc1_subject, sc1_predicate, sc1_object, sc1_graph>;
 
+
+export type C1_Directive = `\`${string}`;

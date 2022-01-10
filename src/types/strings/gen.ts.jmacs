@@ -1,0 +1,38 @@
+@.{
+	
+	function alpha(s_lo, s_hi) {
+		const a_chars = [];
+		for(let i_code=s_lo.charCodeAt(0); i_code<=s_hi.charCodeAt(0); i_code++) {
+			a_chars.push(`'${String.fromCharCode(i_code)}'`);
+		}
+		return a_chars.join(' | ');
+	}
+
+}
+
+export type ALPHA = @{alpha('a', 'z')};
+
+export type DIGIT = @{alpha('0', '9')}
+
+@*{
+	function explicit_union_mutations(s_word) {
+		const a_forms = [];
+
+		const a_source = s_word.split('');
+		const nl_perms = 1 << s_word.length;
+		for(let i_perm=0; i_perm<nl_perms; i_perm++) {
+			a_forms.push(a_source.reduce((s_out, s_char, i_char) => s_out+((i_perm >> i_char) & 1? s_char.toUpperCase(): s_char), ''));
+		}
+
+		return `export type Literally${s_word[0].toUpperCase()}${s_word.slice(1)} = ${a_forms.map(s => `'${s}'`).join(' | ')};`;
+	}
+
+	const A_WORDS = [
+		'true',
+		'false',
+	];
+
+	for(const s_word of A_WORDS) {
+		yield explicit_union_mutations(s_word)+'\n';
+	}
+}

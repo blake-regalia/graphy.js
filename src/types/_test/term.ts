@@ -153,9 +153,9 @@
 	type DLvs = ['Literal', 'z://', string];
 	type DLvso = ['Literal', 'z://', string, void];
 	type DLvoo = ['Literal', 'z://', void, void];
-	type DLv_k = ['Literal', 'z://', '', P_XSD_STRING];
+	type DLv_k = ['Literal', 'z://', '', P_IRI_XSD_STRING];
 	type DLv_v = ['Literal', 'z://', '', 'x://'];
-	type DLvvr = ['Literal', 'z://', 'en', P_RDFS_LANGSTRING];
+	type DLvvr = ['Literal', 'z://', 'en', P_IRI_RDFS_LANGSTRING];
 	type DLx = ['Literal', 'y://'];
 	type DLxo = ['Literal', 'y://', void];
 	type DLxoo = ['Literal', 'y://', void, void];

@@ -1,8 +1,17 @@
 import {
-	PrefixMap
-} from '../const';
+	PrefixMap,
+} from '../structs';
 
 import {
+	PrefixMapArg,
+} from '../types';
+
+import type {
+	EscapeTerseLiteralContent,
+	TersifyIri,
+} from './common';
+
+import type {
 	V1_DefaultGraph,
 	V1_LabeledBlankNode,
 	V1_SimpleLiteral,
@@ -23,7 +32,7 @@ export type T1_DefaultGraph = V1_DefaultGraph;
  */
 export type T1_NamedNode<
 	p_iri extends string=string,
-	h_prefixes extends PrefixMap={},
+	h_prefixes extends PrefixMapArg={},
 > = TersifyIri<p_iri, h_prefixes>;
 
 

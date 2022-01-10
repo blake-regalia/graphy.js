@@ -1,5 +1,34 @@
+import {
+	Iri,
+	Prefix,
+	Suffix,
+	Label,
+	Bcp47,
+} from './common';
+
 
 /**
+ * === _**@graphy/types**_ ===
+ * 
+ * ## A1 string for any data term
+ */
+export type A1_Data = A1_DefaultGraph | A1_NamedNode | A1_LabeledBlankNode | A1_AnonymousBlankNode
+	| A1_SimpleLiteral | A1_LanguagedLiteral | A1_DatatypedLiteral | A1_Quad;
+
+
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ## A1 string for any term (includes Variables)
+ */
+export type A1_Term = A1_Data | A1_Variable;
+
+
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ## A1 string for DefaultGraph
+ * 
  * Represents an absolute term string type for DefaultGraph terms
  */
 export type A1_DefaultGraph = '*';
@@ -20,7 +49,7 @@ export type A1_NamedNode<
 > = string extends p_iri
 	? `>${Iri}`
 	: p_iri extends Iri
-		? `>${s_value}`
+		? `>${p_iri}`
 		: never;
 
 

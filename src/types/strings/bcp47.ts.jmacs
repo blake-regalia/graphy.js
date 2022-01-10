@@ -68,19 +68,28 @@ import type {
 	Split,
 } from 'ts-toolbelt/out/String/_api';
 
-declare const debug_hint: unique symbol;
+import type {
+	False,
+	True,
+	Bool,
+	Debug,
+	ASSERT_TRUE,
+	ASSERT_SAME,
+	ASSERT_VOID,
+	ASSERT_NEVER,
+} from '../utility'
+
+import type {
+	ALPHA,
+	ALPHA_LOWER,
+	ALPHA_UPPER,
+	ALPHA_ANY,
+	DIGIT,
+	ALPHANUM,
+} from './util';
+
+
 declare const debug_info: unique symbol;
-
-type False = 0;
-type True = 1;
-type Bool = True | False;
-
-type ASSERT_NEVER<Test> = [Test] extends [never]? 1: 0;
-
-type ASSERT_SAME<ThingA, ThingB> = [And<Extends<ThingA, ThingB>, Extends<ThingB, ThingA>>] extends [True]? 1: 0;
-
-type ASSERT_VOID<Thing> = ASSERT_SAME<Thing, void>;
-
 
 
 type StrLen<Input extends string> = String.Length<Input>;
@@ -131,14 +140,6 @@ type StrLen<Input extends string> = String.Length<Input>;
 
 	const ode = Object.entries;
 
-	function alpha(s_lo, s_hi) {
-		const a_chars = [];
-		for(let i_code=s_lo.charCodeAt(0); i_code<=s_hi.charCodeAt(0); i_code++) {
-			a_chars.push(`'${String.fromCharCode(i_code)}'`);
-		}
-		return a_chars.join(' | ');
-	}
-
 	function numeric(i_lo, i_hi) {
 		const a_chars = [];
 		for(let i_num=i_lo; i_num<=i_hi; i_num++) {
@@ -148,14 +149,6 @@ type StrLen<Input extends string> = String.Length<Input>;
 	}
 }
 
-
-type ALPHA = @{alpha('a', 'z')};
-type ALPHA_LOWER = ALPHA;
-type ALPHA_UPPER = Uppercase<ALPHA_LOWER>;
-type ALPHA_ANY = ALPHA_LOWER | ALPHA_UPPER;
-
-type DIGIT = @{alpha('0', '9')}
-type ALPHANUM = ALPHA | DIGIT;
 
 type SINGLETON = Exclude<ALPHANUM, 'x'>;
 
@@ -179,13 +172,6 @@ type Invalid<
 } | {
 	[assertion_err]: Hint,
 };
-
-type Debug<
-	A extends any,
-	Info extends any,
-> = {
-	[debug_info]: Info;
-} & A;
 
 type Stringify2<
 	Input extends any,
@@ -1156,3 +1142,8 @@ type NestedPrivateUsesStruct = {
 		}
 	}
 }
+
+
+export type {
+	Langtag,
+};

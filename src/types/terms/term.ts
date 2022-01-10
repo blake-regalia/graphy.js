@@ -52,12 +52,12 @@ import {
 	RdfMode_easier,
 	SupportedRdfMode,
 	DescribeRdfMode,
-	P_RDF,
-	P_XSD_STRING,
-	P_XSD,
+	P_IRI_RDF,
+	P_IRI_XSD_STRING,
+	P_IRI_XSD,
 	XsdDatatypes,
 	NaN,
-	P_RDF_TYPE,
+	P_IRI_RDF_TYPE,
 } from '../const';
 
 import {

@@ -2,7 +2,7 @@ const G_PACKAGE_JSON_SUPER = require('../package.json');
 
 const S_SEMVER = `^${G_PACKAGE_JSON_SUPER.version}`;
 
-const G_CONTENT = require('./aux/content.js');
+const G_CONTENT = require('./aux/content-esm.js');
 
 const package_exports = s => ({
 	require: `${s}.js`,
@@ -27,11 +27,13 @@ const H_MODULES = {
 	// 		'readable-stream',
 	// 	],
 	// },
-	core: {
+	terms: {
 		links: ['types'],
-		description: 'Contains the core classes used by all other modules',
+		description: 'Everything to do with programmatically creating Terms (and Quads)',
 		dependencies: [
-			'uri-js',
+			// 'bcp-47',
+			// 'crypto',
+			// 'uri-js',
 		],
 		json: {
 		},
@@ -55,7 +57,7 @@ const H_MODULES = {
 		},
 	},
 	memory: {
-		links: ['types', 'core'],
+		links: ['types', 'terms'],
 		description: 'Data structures and algorithms for RDF graphs',
 		json: {
 			exports: {
@@ -64,7 +66,7 @@ const H_MODULES = {
 		},
 	},
 	content: {
-		links: ['types', 'core', 'memory', 'stream'],
+		links: ['types', 'terms', 'memory', 'stream'],
 		description: 'RDF content manipulators; read, write, scan, scribe, load',
 		dependencies: [
 			'uri-js',

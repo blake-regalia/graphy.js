@@ -1,0 +1,349 @@
+const ode = Object.entries;
+
+const escape_ts = (sj_ts, b_no_infer=false) => {
+	let sj_rep = (sj_ts+'')
+		.replace(/([`$])/g, '\\$1')
+
+	if(!b_no_infer) {
+		sj_rep = sj_rep
+			// replace string inference
+			.replace(/^(.*?) extends (?:\\`)?\\\$\{(?:infer\s+)?([^}]+)}(?:\\`)?\s*$/g, '$2 := $1 = \'${$2}\'')  // eslint-disable-line no-template-curly-in-string
+			// replace direct inference
+			.replace(/^(.*?) extends infer (\w+)/, '$2 := $1 = ${Cast<$1, string>}')  // eslint-disable-line no-template-curly-in-string
+			// .replace(/infer (\w+)/g, '${AsString<$1>}')
+			// .replace(/ extends /, ' is ');
+
+			.replace(/(?:\\`)?\\\$\{(?:infer\s+)?([^}]+)}(?:\\`)?/g, '\'${$1}\'');  // eslint-disable-line no-template-curly-in-string
+	}
+	else {
+		sj_rep = sj_rep
+			.replace(/^(.*?) extends infer (\w+)/, '$2 := $1')
+			// .replace(/infer (\w+)/g, '${AsString<$1>}')
+			// .replace(/ extends /, ' is ');
+	}
+
+	return sj_rep;
+};
+
+const stringify_ts = (z_ts) => {
+	if('string' === typeof z_ts) {
+		return z_ts;
+	}
+	else if(Array.isArray(z_ts)) {
+		return `[${z_ts.map(w => stringify_ts(w)).join(', ')}]`;
+	}
+	else {
+		return `unknown`;
+	}
+};
+
+const $ELSE = Symbol('else');
+
+const $ASSERTIONS = Symbol('assertions');
+
+
+const recurse_expand = (a_conditions, w_actions, h_append={}) => () => ({
+	[a_conditions[0]]: a_conditions.length > 1? recurse_expand(a_conditions.slice(1), w_actions): w_actions,
+	...h_append,
+});
+
+let i_assertion_error = 0;
+
+class Coder {
+	constructor(s_language) {
+		this._s_language = s_language;
+		this._nl_indent = 1;
+	}
+
+	nl(nl_indent=0) {
+		this._nl_indent += nl_indent;
+		return '\n'+'\t'.repeat(this._nl_indent);
+	}
+
+	incr(sj_code) {
+		return `\n${'\t'.repeat(this._nl_indent-1)}${sj_code.split(/\n/g).map(s => `\t\t${s}`).join('\n')}`;
+	}
+
+	// eslint-disable-next-line class-methods-use-this
+	assign(si_var, sj_expr) {
+		return `${sj_expr} extends infer ${si_var}`;
+	}
+
+	// eslint-disable-next-line class-methods-use-this
+	cassign(si_var, sj_expr) {
+		const [, sj_var, s_cast] = /^([\w0-9_$]+)(?:<([^>]+)>)?$/.exec(si_var);
+		return [
+			`${sj_expr} extends infer ${sj_var}`,
+			`${sj_var} extends ${s_cast}`,
+		];
+	}
+
+	// eslint-disable-next-line class-methods-use-this
+	assign_str(si_var, sj_expr) {
+		return `${sj_expr} extends \`\${infer ${si_var}}\``;
+	}
+
+	// eslint-disable-next-line class-methods-use-this
+	switch_(sj_expr, si_var, h_cases) {
+		return {
+			[sj_expr]: () => Object.entries(h_cases)
+				.reduce((h_out, [sj_case, w_case]) => ({
+					...h_out,
+					[`${si_var} extends ${sj_case}`]: w_case,
+				}), $ELSE in h_cases
+					? {[$ELSE]: h_cases[$ELSE]}
+					: {}),
+		};
+	}
+
+	switch_eq(sj_expr, si_var=`z_${sj_expr.replace(/^a-z/g, '').toLowerCase()}`, h_cases) {
+		return this.switch_(`${sj_expr} extends infer ${si_var}`, si_var, h_cases);
+	}
+
+	switch_str(sj_expr, si_var=`s_${sj_expr.replace(/^a-z/g, '').toLowerCase()}`, h_cases) {
+		return this.switch_(`${sj_expr} extends \`\${infer ${si_var}}\``, si_var, h_cases);
+	}
+
+	and(a_conditions) {
+		const nl_conditions = a_conditions.length;
+		if(!nl_conditions) return 'True';
+		if(1 === nl_conditions) return a_conditions[0];
+
+		// return `And<${this.nl(1)}${a_conditions[0]},${this.nl()}${and(a_conditions.slice(1))}${this.nl(-1)}>`;
+		return [
+			'And<', this.nl(1),
+				a_conditions[0]+',', this.nl(),
+				this.and(a_conditions.slice(1)), this.nl(-1),
+			'>',
+		].join('')
+	}
+
+	match_str(si_var, a_pattern) {
+		return this.and(a_pattern
+			.map((s_pattern, i_char) => `Extends<String.At<${si_var}, ${i_char}>, ${s_pattern}>`)
+		)+' extends True';
+	}
+
+	if_(sj_condition, sj_then, sj_else, s_comment='') {
+		sj_condition = sj_condition.replace(/\?$/, ' extends True');
+
+		return [
+			// this.nl(),
+			// '(', this.incr(sj_condition), this.nl(1),
+			'(', sj_condition, this.nl(1),
+				...s_comment? [`// ^^ ${s_comment.replace(/\n/g, ' ')}`, this.nl()]: [],
+				'\t? ', sj_then, this.nl(),
+				'\t: ', sj_else, this.nl(-1),
+			')',
+		].join('');
+	}
+
+	compile_struct(h_struct, a_path=['/']) {
+		const h_append = {};
+
+		let s_assertion_input = 's_input';
+		const gc_assertion = h_struct[$ASSERTIONS];
+		if(gc_assertion) {
+			if('string' === typeof gc_assertion.input) {
+				s_assertion_input = gc_assertion.input;
+			}
+
+			h_append[$ASSERTIONS] = gc_assertion;
+		}
+
+		// refactor
+		{
+			const a_refactor = [];
+			let b_refactored = false;
+
+			for(const [s_conditions, w_actions] of ode(h_struct)) {
+				const a_conditions = s_conditions.split('\0');
+				if(a_conditions.length > 1) {
+					b_refactored = true;
+					a_refactor.push([
+						a_conditions[0],
+						recurse_expand(a_conditions.slice(1), w_actions, h_append),
+					]);
+				}
+				else {
+					a_refactor.push([s_conditions, w_actions]);
+				}
+			}
+
+			if(b_refactored) {
+				return this.compile_struct(a_refactor.reduce((h_out, [si_key, w_value]) => ({
+					...h_out,
+					[si_key]: w_value,
+				}), {
+					...h_append,
+					...(h_struct[$ELSE]? {[$ELSE]:h_struct[$ELSE]}: {}),
+				}), a_path);
+			}
+		}
+
+		const i_condition = i_assertion_error++;
+
+		let s_out = [`AssertionError<string, {`,
+			`assertion_id: ${i_condition};`,
+			`path: [${a_path.map(s => `\`${escape_ts(s)}\``).join(', ')}];`,
+			`false: \`${escape_ts(Object.keys(h_struct).reverse().slice(-1) || '', true)}\`;`,
+			`input: ${s_assertion_input};`,
+			`scope: {
+				${[...new Set(Object.keys(h_struct)
+					.map(sj => sj.replace(/^(.*?) extends .*$/, '$1').replace(/\n\s*/g, ' ')))]
+					.reduce((a_out, sj) => [
+						...a_out,
+						`'${sj.replace(/\n\s*/, ' ')}': ${
+								sj
+									.replace(/\n\s*/g, ' ')
+									.replace(/\?$/, ``)
+									.replace(/( extends infer .*)$/, `$1? 'True': 'False'`)
+							};`,
+					], [])
+					.join(' ')
+				}
+			};`,
+		`}>`].join(' ');
+
+		// \`${JSON.stringify(h_struct).replace(/\\[tn"]/g, '')}\`>`;
+
+		let b_asserted = true;
+
+		if(h_struct[$ELSE]) {
+			b_asserted = false;
+			s_out = h_struct[$ELSE];
+			delete h_struct[$ELSE];
+		}
+
+		// eslint-disable-next-line prefer-const
+		for(let [sj_condition, z_actions] of ode(h_struct).reverse()) {
+			let s_then = '';
+
+			if('function' === typeof z_actions) {
+				z_actions = z_actions(this);
+			}
+
+			if('string' === typeof z_actions) {
+				s_then = z_actions;
+			}
+			else {
+				this._nl_indent += 1;
+				s_then = this.compile_struct(z_actions, [...a_path, sj_condition]);
+				this._nl_indent -= 1;
+			}
+
+			s_out = this.if_(sj_condition, s_then, s_out, b_asserted? `Assertion ID: ${i_condition}`: '');
+		}
+
+		return s_out;
+	}
+
+	// eslint-disable-next-line class-methods-use-this
+	numeric(i_lo, i_hi=i_lo) {
+		const a_chars = [];
+		for(let i_num=i_lo; i_num<=i_hi; i_num++) {
+			a_chars.push(`${i_num}`);
+		}
+		return a_chars.join('|');
+	}
+
+	// eslint-disable-next-line class-methods-use-this
+	valid(h_desc) {
+		const a_out = [];
+		for(const [si_key, w_value] of ode(h_desc)) {
+			a_out.push(`${si_key}: ${stringify_ts(w_value)}`);
+		}
+		return `{${a_out.join(', ')}}`;
+	}
+
+	invalid(h_desc) {
+		const a_out = [];
+		for(const [si_key, sj_value] of ode(h_desc)) {
+			a_out.push(`${si_key}:${sj_value}`);
+		}
+		return `Debug<string, {_message:\`Invalid ${this._s_language}; found in the "${this._si_production}" production\`, ${a_out.join(',')}}>`.replace(/\n/g, '\\n');
+	}
+
+	merge(si_var) {
+		return h_append => `Merge<${this.valid(h_append)}, Cast<${si_var}, object>>`;
+	}
+
+	// eslint-disable-next-line class-methods-use-this
+	steps(a_steps) {
+		return a_steps.join('\0');
+	}
+
+	// eslint-disable-next-line class-methods-use-this
+	prod(si_prod) {
+		return `${si_prod}<g_init extends Parsed, s_input extends string>`;
+	}
+}
+
+
+function grammar(fk_coder) {
+	const a_out = [];
+	const k_coder = new Coder('BCP-47 language tag');
+	const h_grammar = fk_coder(k_coder);
+	for(const [si_type, h_struct] of ode(h_grammar)) {
+		k_coder._si_production =  si_type.replace(/\r?\n/g, '').replace(/^\s*([a-zA-Z0-9$_]+).*$/, '$1');
+		a_out.push(`type ${si_type} = ${k_coder.compile_struct(h_struct)};`);
+	}
+	return a_out.join('\n\n');
+}
+
+function cache(a_sets, fk_sets=() => ({})) {
+	return fk_sets(...a_sets);
+}
+
+function* patterns(g_types) {
+	const {
+		pure: a_pures=[],
+		mixed: h_patterns={},
+	} = g_types;
+
+	for(const si_pure of a_pures) {
+		yield `\ntype RTA_${si_pure}<a_input extends string[]> = Extends<a_input, ${si_pure}[]>;\n`;
+		yield `\ntype RTS_${si_pure}<s_input extends string> = RTA_${si_pure}<Split<s_input>>;\n`;
+	}
+
+	for(const [si_var, a_matches] of ode(h_patterns)) {
+		const si_type = `R_${si_var}`;
+
+		const nl_matches = a_matches.length;
+
+		const a_cases = [
+			'False',
+			`Extends<String.At<s_input, 0>, ${a_matches[0]}>`,
+		];
+
+		for(let i_char=2; i_char<=nl_matches; i_char++) {
+			a_cases.push([
+				'And<',
+				`	Extends<String.At<s_input, ${i_char-1}>, ${a_matches[i_char-1]}>,`,
+				`	${si_type}<s_input>[${i_char-1}]`,
+				'>',
+			].join('\n\t'));
+		}
+
+		yield `\ntype ${si_type}<s_input extends string> = {${a_cases.map((s, i) => `\n\t${i}: ${s};`).join('')}\n};\n`;
+	}
+}
+
+const join = a_parts => a_parts.join('\0');
+
+
+const G_ELSE_REST = ({
+	[$ELSE]: 'Merge<{_rest: a_parts}, g_init>',
+});
+
+module.exports = {
+	$ELSE,
+	$ASSERTIONS,
+	recurse_expand,
+	Coder,
+	grammar,
+	cache,
+	patterns,
+	join,
+	G_ELSE_REST,
+};

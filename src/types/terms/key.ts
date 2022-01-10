@@ -15,23 +15,45 @@ import {
 } from '../const';
 
 import {
-   NamedNode,
-   BlankNode,
-   Literal,
-   Variable,
-   DefaultGraph,
-   Quad,
+   G_NamedNode,
+   G_BlankNode,
+   G_Literal,
+   G_Variable,
+   G_DefaultGraph,
+   G_Quad,
 } from './graphy'
 
 
 interface TermTypes {
-	NamedNode: NamedNode;
-	BlankNode: BlankNode;
-	Literal: Literal;
-	Variable: Variable;
-	DefaultGraph: DefaultGraph;
-	Quad: Quad;
+	NamedNode: G_NamedNode;
+	BlankNode: G_BlankNode;
+	Literal: G_Literal;
+	Variable: G_Variable;
+	DefaultGraph: G_DefaultGraph;
+	Quad: {};
 }
+
+// export namespace TermType {
+// 	export type DefaultGraph = 'DefaultGraph';
+
+// 	export type NamedNode = 'NamedNode';
+
+// 	export type BlankNode = 'BlankNode';
+
+// 	export type Literal = 'Literal';
+
+// 	export type Quad = 'Quad';
+
+// 	export type Variable = 'Variable';
+
+// 	export type ForNodes = NamedNode | BlankNode;
+
+// 	export type ForValuables = ForNodes | Literal | Variable;
+
+// 	export type ForUnvaluables = DefaultGraph | Quad;
+
+// 	export type ForData = 
+// }
 
 /**
  * Union of all valid .termType string value types

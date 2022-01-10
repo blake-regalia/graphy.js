@@ -2,6 +2,7 @@
 @import '../share/iris.jmacs'
 @import '../content/text.read.jmacs'
 
+import bcp47 from 'bcp-47';
 import crypto from 'crypto';
 import perf_hooks from 'perf_hooks';
 const {performance} = perf_hooks;
@@ -640,6 +641,10 @@ class GenericTerm {
 		replaceIri(w_search, w_replace) {
 			return namedNode(this.value.replace(w_search, w_replace));
 		}
+
+		get url() {
+			return new URL(this.value);
+		}
 	},
 	/* eslint-enable no-undef */
 	properties: {
@@ -939,6 +944,10 @@ class DatatypedLiteral extends GenericLiteral {
 		else {
 			return new ExplicitlyDatatypedLiteral(s_value, kt_datatype);
 		}
+	}
+
+	get langtag() {
+		return bcp47.parse(this.language);
 	}
 } {
 	const gp_self = DatatypedLiteral.prototype;
@@ -1913,6 +1922,41 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 		this.graph = h_graph;
 	},
 	methods: class {
+		get s() {
+			return this.subject;
+		}
+
+		get p() {
+			return this.predicate;
+		}
+
+		get o() {
+			return this.object;
+		}
+
+		get g() {
+			return this.graph;
+		}
+
+
+		get gspo() {
+			return [
+				this.graph,
+				this.subject,
+				this.predicate,
+				this.object,
+			];
+		}
+
+		get spog() {
+			return [
+				this.subject,
+				this.predicate,
+				this.object,
+				this.graph,
+			];
+		}
+
 		equals(z_other) {
 			return z_other
 				? this === z_other
@@ -1925,24 +1969,6 @@ const KT_DEFAULT_GRAPH = new DefaultGraph();
 
 		valueOf() {
 			return this.verbose();
-		}
-
-		gspo() {
-			return [
-				this.graph,
-				this.subject,
-				this.predicate,
-				this.object,
-			];
-		}
-
-		spog() {
-			return [
-				this.subject,
-				this.predicate,
-				this.object,
-				this.graph,
-			];
 		}
 
 		flat(h_prefixes=null) {

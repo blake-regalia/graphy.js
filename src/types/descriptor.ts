@@ -19,11 +19,15 @@ import type {
 
 import type {
 	Merge,
+	MergeAll,
 } from 'ts-toolbelt/out/Object/_api';
 
 
 import type {
 	ASSERT_SAME,
+	ASSERT_STRING,
+	ASSERT_EQUAL,
+	ASSERT_VOID,
 	Coerce,
 	IsOnlyLiteralStrings,
 	AutoString,
@@ -32,15 +36,20 @@ import type {
 	Auto,
 } from './utility';
 
-import {
-	P_XSD_STRING,
-	P_RDFS_LANGSTRING,
+import type {
+	P_IRI_XSD_STRING,
+	P_IRI_RDFS_LANGSTRING,
 	RdfMode_star,
 	SupportedRdfMode,
 	RdfMode_11,
+	NodeType,
 } from './const';
 
-import {
+import type {
+	NodeTypeKey,
+	NamedNodeTypeKey,
+	BlankNodeTypeKey,
+
 	DefaultGraphTypeKey,
 	GraphTypeKey,
 	LiteralTypeKey,
@@ -51,6 +60,7 @@ import {
 	TermTypeKey,
 	UnvaluableTypeKey,
 	ValuableTypeKey,
+	VariableTypeKey,
 } from './terms/key';
 
 
@@ -79,6 +89,14 @@ type QualifierSparse<
 	| [s_term, string | void]
 	| [s_term, string | void, string | void]
 	| [s_term, string | void, string | void, string | void]
+	| [
+		s_term, string, void, void,
+		Descriptor<SubjectTypeKey<s_mode>>,
+		Descriptor<PredicateTypeKey<s_mode>>,
+		Descriptor<ObjectTypeKey<s_mode>>,
+		Descriptor<GraphTypeKey<s_mode>>,
+		s_mode,
+	]
 	| ({
 		[K in SupportedRdfMode]: [
 			s_term, string, void, void,
@@ -86,15 +104,20 @@ type QualifierSparse<
 			Descriptor<PredicateTypeKey<s_mode>>,
 			Descriptor<ObjectTypeKey<s_mode>>,
 			Descriptor<GraphTypeKey<s_mode>>,
-		] | [
-			s_term, string, void, void,
-			Descriptor<SubjectTypeKey<s_mode>>,
-			Descriptor<PredicateTypeKey<s_mode>>,
-			Descriptor<ObjectTypeKey<s_mode>>,
-			Descriptor<GraphTypeKey<s_mode>>,
-			s_mode,
 		]
-	})[s_mode];
+	 })[s_mode];
+
+// {
+// 	type s_mode = SupportedRdfMode;
+// 	type insp = [QuadTypeKey, '', void, void, Descriptor<SubjectTypeKey>, Descriptor<PredicateTypeKey>, Descriptor<ObjectTypeKey>, Descriptor<GraphTypeKey>] extends [
+// 			QuadTypeKey, string, void, void,
+// 			Descriptor<SubjectTypeKey<s_mode>>,
+// 			Descriptor<PredicateTypeKey<s_mode>>,
+// 			Descriptor<ObjectTypeKey<s_mode>>,
+// 			Descriptor<GraphTypeKey<s_mode>>,
+// 		]
+// 		? 'y': 'n';;
+// }
 
 type QualifierMap<
 	s_term extends TermTypeKey=TermTypeKey,
@@ -104,6 +127,7 @@ type QualifierMap<
 		{
 			termType: void | s_term;
 			value: void | string;
+			nodeType: void | string;
 			language: void | string;
 			datatype: void | string;
 		},
@@ -173,17 +197,26 @@ namespace NormalizeQualifier {
 
 	export type Value<
 		s_value extends string | void,
-	> = AutoString<s_value>
+		si_node_type extends string | void=void,
+	> = si_node_type extends NodeType
+		? {
+			'relative': string;
+			'absolute': s_value;
+			'labeled': s_value;
+			'anonymous': s_value;
+			'ephemeral': string;
+		}[si_node_type]
+		: AutoString<s_value>;
 
 	type AutoDatatype<
 		s_datatype extends string | void,
 		s_laguage,
 	> = If<
 			Equals<s_laguage, ''>,
-			AutoString<s_datatype, P_XSD_STRING>,
+			AutoString<s_datatype, P_IRI_XSD_STRING>,
 			If<
 				IsOnlyLiteralStrings<AsString<s_laguage>>,
-				P_RDFS_LANGSTRING,
+				P_IRI_RDFS_LANGSTRING,
 				AutoString<s_datatype>
 			>
 		>;
@@ -195,7 +228,7 @@ namespace NormalizeQualifier {
 			And<
 				Includes<s_language, string>,
 				And<
-					Not<Includes<s_datatype, P_RDFS_LANGSTRING>>,
+					Not<Includes<s_datatype, P_IRI_RDFS_LANGSTRING>>,
 					Not<Includes<s_datatype, string>>
 				>
 			>,
@@ -214,9 +247,9 @@ namespace NormalizeQualifier {
 	 * Deduces the proper value types for the .language and .datatype.value properties.
 	 * Gives precedence to `LanguageString` in case both arguments are specific, non-empty strings.
 	 *
-	 *     LanguageDatatype<void, void>  // ['', P_XSD_STRING]
-	 *     LanguageDatatype<'en', void>  // ['en', P_RDFS_LANGSTRING]
-	 *     LanguageDatatype<'en', 'z://y/'>  // ['en', P_RDFS_LANGSTRING]
+	 *     LanguageDatatype<void, void>  // ['', P_IRI_XSD_STRING]
+	 *     LanguageDatatype<'en', void>  // ['en', P_IRI_RDFS_LANGSTRING]
+	 *     LanguageDatatype<'en', 'z://y/'>  // ['en', P_IRI_RDFS_LANGSTRING]
 	 *     LanguageDatatype<void, 'z://y/'>  // ['', 'z://y/']
 	 *     LanguageDatatype<string, 'z://y/'>  // ['', 'z://y/']
 	 *     LanguageDatatype<'', 'z://y/'>  // ['', 'z://y/']
@@ -237,21 +270,21 @@ namespace NormalizeQualifier {
 	/* eslint-disable @typescript-eslint/no-unused-vars, brace-style, indent */
 	{
 		// language takes precedence over datatype
-		const VV: ASSERT_SAME<LanguageDatatype<'en', 'z://'>, ['en', P_RDFS_LANGSTRING]> = 1;
-		const VS: ASSERT_SAME<LanguageDatatype<'en', string>, ['en', P_RDFS_LANGSTRING]> = 1;
-		const VO: ASSERT_SAME<LanguageDatatype<'en', void>, ['en', P_RDFS_LANGSTRING]> = 1;
+		const VV: ASSERT_SAME<LanguageDatatype<'en', 'z://'>, ['en', P_IRI_RDFS_LANGSTRING]> = 1;
+		const VS: ASSERT_SAME<LanguageDatatype<'en', string>, ['en', P_IRI_RDFS_LANGSTRING]> = 1;
+		const VO: ASSERT_SAME<LanguageDatatype<'en', void>, ['en', P_IRI_RDFS_LANGSTRING]> = 1;
 		// even for unions
-		const VU: ASSERT_SAME<LanguageDatatype<'en', 'z://' | string>, ['en', P_RDFS_LANGSTRING]> = 1;
+		const VU: ASSERT_SAME<LanguageDatatype<'en', 'z://' | string>, ['en', P_IRI_RDFS_LANGSTRING]> = 1;
 
 		// language unions make it thru
-		const UV: ASSERT_SAME<LanguageDatatype<'en' | 'fr', 'z://'>, ['en' | 'fr', P_RDFS_LANGSTRING]> = 1;
-		const US: ASSERT_SAME<LanguageDatatype<'en' | 'fr', string>, ['en' | 'fr', P_RDFS_LANGSTRING]> = 1;
-		const UO: ASSERT_SAME<LanguageDatatype<'en' | 'fr', void>, ['en' | 'fr', P_RDFS_LANGSTRING]> = 1;
+		const UV: ASSERT_SAME<LanguageDatatype<'en' | 'fr', 'z://'>, ['en' | 'fr', P_IRI_RDFS_LANGSTRING]> = 1;
+		const US: ASSERT_SAME<LanguageDatatype<'en' | 'fr', string>, ['en' | 'fr', P_IRI_RDFS_LANGSTRING]> = 1;
+		const UO: ASSERT_SAME<LanguageDatatype<'en' | 'fr', void>, ['en' | 'fr', P_IRI_RDFS_LANGSTRING]> = 1;
 
 		// empty string language
 		const _V: ASSERT_SAME<LanguageDatatype<'', 'z://'>, ['', 'z://']> = 1;
 		const _S: ASSERT_SAME<LanguageDatatype<'', string>, ['', string]> = 1;
-		const _O: ASSERT_SAME<LanguageDatatype<'', void>, ['', P_XSD_STRING]> = 1;
+		const _O: ASSERT_SAME<LanguageDatatype<'', void>, ['', P_IRI_XSD_STRING]> = 1;
 
 		// datatype unions make it thru
 		const _U: ASSERT_SAME<LanguageDatatype<'', 'z://' | 'y://'>, ['', 'z://' | 'y://']> = 1;
@@ -261,7 +294,7 @@ namespace NormalizeQualifier {
 		// void language => ''
 		const OV: ASSERT_SAME<LanguageDatatype<void, 'z://'>, ['', 'z://']> = 1;
 		const OS: ASSERT_SAME<LanguageDatatype<void, string>, ['', string]> = 1;
-		const OO: ASSERT_SAME<LanguageDatatype<void, void>, ['', P_XSD_STRING]> = 1;
+		const OO: ASSERT_SAME<LanguageDatatype<void, void>, ['', P_IRI_XSD_STRING]> = 1;
 	}
 	/* eslint-enable @typescript-eslint/no-unused-vars, brace-style, indent */
 
@@ -275,7 +308,10 @@ namespace NormalizeQualifier {
 			: RdfMode_star
 		)
 		: s_mode extends SupportedRdfMode
-			? s_mode
+			? (s_mode_default extends SupportedRdfMode
+				? Extract<s_mode, s_mode_default>
+				: s_mode
+			)
 			: (s_mode_default extends SupportedRdfMode
 				? s_mode_default
 				: RdfMode_star
@@ -307,7 +343,6 @@ type FromQualifierSparse<
 	)
 	: never;
 
-
 type FromQualifierMap<
 	g_qualifier extends Partial<QualifierMap>,
 	s_term_restrict extends TermTypeKey,
@@ -319,21 +354,24 @@ type FromQualifierMap<
 				? Descriptor.New<[
 						g_qualifier['termType'],
 						g_qualifier['value'],
-						g_qualifier['language'],
+						AutoString<g_qualifier['language'], AutoString<g_qualifier['nodeType']>>,
 						g_qualifier['datatype'],
-						g_qualifier['subject'] extends Descriptor
-							// ? Descriptor.Filter<g_qualifier['subject'], SubjectTypeKey<s_mode_pass>>
-							? g_qualifier['subject']
-							: FromQualifierSparse<[SubjectTypeKey<s_mode_pass>], TermTypeKey, s_mode_pass>,
-						g_qualifier['predicate'] extends Descriptor
-							? Descriptor.Filter<g_qualifier['predicate'], PredicateTypeKey<s_mode_pass>>
-							: FromQualifierSparse<[PredicateTypeKey<s_mode_pass>], TermTypeKey, s_mode_pass>,
-						g_qualifier['object'] extends Descriptor
-							? Descriptor.Filter<g_qualifier['object'], Extract<s_term_restrict, ObjectTypeKey<s_mode_pass>>>
-							: FromQualifierSparse<[ObjectTypeKey<s_mode_pass>], TermTypeKey, s_mode_pass>,
-						g_qualifier['graph'] extends Descriptor
-							? Descriptor.Filter<g_qualifier['graph'], Extract<s_term_restrict, GraphTypeKey<s_mode_pass>>>
-							: FromQualifierSparse<[GraphTypeKey<s_mode_pass>], TermTypeKey, s_mode_pass>,
+						g_qualifier['subject'],
+						g_qualifier['predicate'],
+						g_qualifier['object'],
+						g_qualifier['graph'],
+						// g_qualifier['subject'] extends Descriptor
+						// 	? g_qualifier['subject']
+						// 	: FromQualifierSparse<[SubjectTypeKey<s_mode_pass>], TermTypeKey, s_mode_pass>,
+						// g_qualifier['predicate'] extends Descriptor
+						// 	? Descriptor.Filter<g_qualifier['predicate'], PredicateTypeKey<s_mode_pass>>
+						// 	: FromQualifierSparse<[PredicateTypeKey<s_mode_pass>], TermTypeKey, s_mode_pass>,
+						// g_qualifier['object'] extends Descriptor
+						// 	? Descriptor.Filter<g_qualifier['object'], Extract<s_term_restrict, ObjectTypeKey<s_mode_pass>>>
+						// 	: FromQualifierSparse<[ObjectTypeKey<s_mode_pass>], TermTypeKey, s_mode_pass>,
+						// g_qualifier['graph'] extends Descriptor
+						// 	? Descriptor.Filter<g_qualifier['graph'], Extract<s_term_restrict, GraphTypeKey<s_mode_pass>>>
+						// 	: FromQualifierSparse<[GraphTypeKey<s_mode_pass>], TermTypeKey, s_mode_pass>,
 						s_mode,
 					],
 					s_term_restrict,
@@ -347,6 +385,7 @@ type FromQualifierMap<
 	: never;
 
 	{
+		type wa = FromQualifier<[QuadTypeKey]>;
 
 		type e1 = FromQualifier<{ termType: QuadTypeKey; mode: RdfMode_11 }>;
 		type i1 = FromQualifier<{ mode: RdfMode_11 }>;
@@ -412,7 +451,7 @@ export type FromQualifier<
 
 {
 	/* eslint-disable @typescript-eslint/no-unused-vars */
-	const LD: ASSERT_SAME<P_RDFS_LANGSTRING, Descriptor.Access<FromQualifier<{
+	const LD: ASSERT_SAME<P_IRI_RDFS_LANGSTRING, Descriptor.Access<FromQualifier<{
 		termType: LiteralTypeKey;
 		language: 'en';
 	}>, 'datatype'>> = 1;
@@ -532,7 +571,7 @@ export type Descriptor<
 			[K in LiteralTypeKey]: [
 				Extract < LiteralTypeKey, s_term >, string, string, string,
 				void, void, void, void,
-				SupportedRdfMode,
+				s_mode,
 			];
 		},
 		Merge<
@@ -540,14 +579,14 @@ export type Descriptor<
 				[K in ValuableTypeKey]: [
 					Extract<ValuableTypeKey, s_term>, string, void, void,
 					void, void, void, void,
-					SupportedRdfMode,
+					s_mode,
 				];
 			},
 			{
 				[K in UnvaluableTypeKey]: [
 					Extract < DefaultGraphTypeKey, s_term >, '', void, void,
 					void, void, void, void,
-					SupportedRdfMode,
+					s_mode,
 				];
 			}
 		>
@@ -562,6 +601,7 @@ export namespace Descriptor {
 	export type KeyMap = {
 		termType: 0;
 		value: 1;
+		nodeType: 2;
 		language: 2;
 		datatype: 3;
 		subject: 4;
@@ -576,6 +616,7 @@ export namespace Descriptor {
 	> = {
 		termType: a_descriptor[0];
 		value: a_descriptor[1];
+		nodeType: a_descriptor[2];
 		language: a_descriptor[2];
 		datatype: a_descriptor[3];
 		subject: a_descriptor[4] extends Descriptor<SubjectTypeKey> ? a_descriptor[4] : never;
@@ -692,13 +733,14 @@ export namespace Descriptor {
 		SupportedRdfMode | void,
 	];
 
-	type RecurseNew<
-		a_args extends NewArgs | void,
-		s_term_restrict extends TermTypeKey,
-		s_mode_default extends SupportedRdfMode,
-	> = a_args extends NewArgs
-		? New<a_args, s_term_restrict, s_mode_default>
-		: void;
+	type QuadComponent<
+		z_component extends unknown,
+		s_terms extends TermTypeKey,
+		s_mode extends SupportedRdfMode,
+	> = z_component extends Descriptor
+		? Descriptor.Filter<z_component, s_terms>
+		: FromQualifierSparse<[s_terms], TermTypeKey, s_mode>;
+
 
 	/**
 	 * ```ts
@@ -718,45 +760,50 @@ export namespace Descriptor {
 		? (s_term extends s_term_restrict
 			? (Auto<a_args[8], s_mode_default> extends infer s_mode
 				? (s_mode extends SupportedRdfMode
-					? (Merge<
+					? (MergeAll<{}, [
 						{
 							[K in QuadTypeKey]: [
 								s_term, '', void, void,
-								RecurseNew<a_args[4], s_term_restrict, s_mode_default>,
-								RecurseNew<a_args[5], s_term_restrict, s_mode_default>,
-								RecurseNew<a_args[6], s_term_restrict, s_mode_default>,
-								RecurseNew<a_args[7], s_term_restrict, s_mode_default>,
+								QuadComponent<a_args[4], SubjectTypeKey<s_mode>, s_mode>,
+								QuadComponent<a_args[5], PredicateTypeKey<s_mode>, s_mode>,
+								QuadComponent<a_args[6], ObjectTypeKey<s_mode>, s_mode>,
+								QuadComponent<a_args[7], GraphTypeKey<s_mode>, s_mode>,
 								s_mode
 							]
 						},
-						Merge<
-							{
-								[K in LiteralTypeKey]: [
-									s_term,
-									NormalizeQualifier.Value<a_args[1]>,
-									...NormalizeQualifier.LanguageDatatype<a_args[2], a_args[3]>,
-									void, void, void, void,
-									s_mode,
-								]
-							},
-							Merge<
-								{
-									[K in ValuableTypeKey]: [
-										s_term, NormalizeQualifier.Value<a_args[1]>, void, void,
-										void, void, void, void,
-										s_mode,
-									]
-								},
-								{
-									[K in UnvaluableTypeKey]: [
-										s_term, '', void, void,
-										void, void, void, void,
-										s_mode,
-									];
-								}
-							>
-						>
-					>)[s_term]
+						{
+							[K in LiteralTypeKey]: [
+								s_term,
+								NormalizeQualifier.Value<a_args[1]>,
+								...NormalizeQualifier.LanguageDatatype<a_args[2], a_args[3]>,
+								void, void, void, void,
+								s_mode,
+							]
+						},
+						{
+							[K in NodeTypeKey]: [
+								s_term,
+								NormalizeQualifier.Value<a_args[1], a_args[2]>,
+								a_args[2] extends NodeType? a_args[2]: void,
+								void, void, void, void, void,
+								s_mode,
+							]
+						},
+						{
+							[K in ValuableTypeKey]: [
+								s_term, NormalizeQualifier.Value<a_args[1]>, void, void,
+								void, void, void, void,
+								s_mode,
+							]
+						},
+						{
+							[K in UnvaluableTypeKey]: [
+								s_term, '', void, void,
+								void, void, void, void,
+								s_mode,
+							];
+						},
+					]>)[s_term]
 					: never
 				)
 				: never
@@ -858,96 +905,106 @@ export namespace Descriptor {
 // 	type V = 'z://';
 
 // 	const V_: ASSERT_EQUAL<AutoDatatype<V, ''>, V> = 1;
-// 	const VE: ASSERT_EQUAL<AutoDatatype<V, E>, P_RDFS_LANGSTRING> = 1;
+// 	const VE: ASSERT_EQUAL<AutoDatatype<V, E>, P_IRI_RDFS_LANGSTRING> = 1;
 // 	const VS: ASSERT_EQUAL<AutoDatatype<V, string>, V> = 1;
 
 // 	const S_: ASSERT_STRING<AutoDatatype<string, ''>> = 1;
-// 	const SE: ASSERT_EQUAL<AutoDatatype<string, E>, P_RDFS_LANGSTRING> = 1;
+// 	const SE: ASSERT_EQUAL<AutoDatatype<string, E>, P_IRI_RDFS_LANGSTRING> = 1;
 // 	const SS: ASSERT_STRING<AutoDatatype<string, string>> = 1;
 
-// 	const O_: ASSERT_EQUAL<AutoDatatype<void, ''>, P_XSD_STRING> = 1;
-// 	const OE: ASSERT_EQUAL<AutoDatatype<void, E>, P_RDFS_LANGSTRING> = 1;
+// 	const O_: ASSERT_EQUAL<AutoDatatype<void, ''>, P_IRI_XSD_STRING> = 1;
+// 	const OE: ASSERT_EQUAL<AutoDatatype<void, E>, P_IRI_RDFS_LANGSTRING> = 1;
 // 	const OS: ASSERT_STRING<AutoDatatype<void, string>> = 1;
 
 // 	/* eslint-enable @typescript-eslint/no-unused-vars */
 // }
 
 
-// {
-// 	/* eslint-disable @typescript-eslint/no-unused-vars */
-// 	type N = SolveDescriptor<[NamedNodeTypeKey]>;
-// 	const N_0: ASSERT_EQUAL<N[0], NamedNodeTypeKey> = 1;
-// 	const N_1: ASSERT_STRING<N[1]> = 1;
-// 	const N_2: ASSERT_VOID<N[2]> = 1;
-// 	const N_3: ASSERT_VOID<N[3]> = 1;
+{
+	/* eslint-disable @typescript-eslint/no-unused-vars */
+	type N = FromQualifier<[NamedNodeTypeKey]>;
+	const N_0: ASSERT_EQUAL<N[0], NamedNodeTypeKey> = 1;
+	const N_1: ASSERT_STRING<N[1]> = 1;
+	const N_2: ASSERT_VOID<N[2]> = 1;
+	const N_3: ASSERT_VOID<N[3]> = 1;
 
-// 	type Nv = SolveDescriptor<[NamedNodeTypeKey, 'A']>;
-// 	const Nv0: ASSERT_EQUAL<Nv[0], NamedNodeTypeKey> = 1;
-// 	const Nv1: ASSERT_EQUAL<Nv[1], 'A'> = 1;
-// 	const Nv2: ASSERT_VOID<Nv[2]> = 1;
-// 	const Nv3: ASSERT_VOID<Nv[3]> = 1;
+	type Nv = FromQualifier<[NamedNodeTypeKey, 'A']>;
+	const Nv0: ASSERT_EQUAL<Nv[0], NamedNodeTypeKey> = 1;
+	const Nv1: ASSERT_EQUAL<Nv[1], 'A'> = 1;
+	const Nv2: ASSERT_VOID<Nv[2]> = 1;
+	const Nv3: ASSERT_VOID<Nv[3]> = 1;
 
-// 	type B = SolveDescriptor<[BlankNodeTypeKey]>;
-// 	const B_0: ASSERT_EQUAL<B[0], BlankNodeTypeKey> = 1;
-// 	const B_1: ASSERT_STRING<B[1]> = 1;
-// 	const B_2: ASSERT_VOID<B[2]> = 1;
-// 	const B_3: ASSERT_VOID<B[3]> = 1;
+	type B = FromQualifier<[BlankNodeTypeKey]>;
+	const B_0: ASSERT_EQUAL<B[0], BlankNodeTypeKey> = 1;
+	const B_1: ASSERT_STRING<B[1]> = 1;
+	const B_2: ASSERT_VOID<B[2]> = 1;
+	const B_3: ASSERT_VOID<B[3]> = 1;
 
-// 	type Bv = SolveDescriptor<[BlankNodeTypeKey, 'A']>;
-// 	const Bv0: ASSERT_EQUAL<Bv[0], BlankNodeTypeKey> = 1;
-// 	const Bv1: ASSERT_EQUAL<Bv[1], 'A'> = 1;
-// 	const Bv2: ASSERT_VOID<Bv[2]> = 1;
-// 	const Bv3: ASSERT_VOID<Bv[3]> = 1;
+	type Bv = FromQualifier<[BlankNodeTypeKey, 'A']>;
+	const Bv0: ASSERT_EQUAL<Bv[0], BlankNodeTypeKey> = 1;
+	const Bv1: ASSERT_EQUAL<Bv[1], 'A'> = 1;
+	const Bv2: ASSERT_VOID<Bv[2]> = 1;
+	const Bv3: ASSERT_VOID<Bv[3]> = 1;
 
-// 	type L = SolveDescriptor<[LiteralTypeKey]>;
-// 	const L_0: ASSERT_EQUAL<L[0], LiteralTypeKey> = 1;
-// 	const L_1: ASSERT_STRING<L[1]> = 1;
-// 	const L_2: ASSERT_EQUAL<L[2], ''> = 1;
-// 	const L_3: ASSERT_EQUAL<L[3], P_XSD_STRING> = 1;
+	type Bve = FromQualifier<{
+		termType: BlankNodeTypeKey;
+		value: 'A';
+		nodeType: NodeType.Anonymous;
+	}>;
+	const Bve0: ASSERT_EQUAL<Bve[0], BlankNodeTypeKey> = 1;
+	const Bve1: ASSERT_EQUAL<Bve[1], 'A'> = 1;
+	const Bve2: ASSERT_EQUAL<Bve[2], NodeType.Anonymous> = 1;
+	const Bve3: ASSERT_VOID<Bve[3]> = 1;
 
-// 	type Lv = SolveDescriptor<[LiteralTypeKey, 'A']>;
-// 	const Lv0: ASSERT_EQUAL<Lv[0], LiteralTypeKey> = 1;
-// 	const Lv1: ASSERT_EQUAL<Lv[1], 'A'> = 1;
-// 	const Lv2: ASSERT_EQUAL<Lv[2], ''> = 1;
-// 	const Lv3: ASSERT_EQUAL<Lv[3], P_XSD_STRING> = 1;
+	type L = FromQualifier<[LiteralTypeKey]>;
+	const L_0: ASSERT_EQUAL<L[0], LiteralTypeKey> = 1;
+	const L_1: ASSERT_STRING<L[1]> = 1;
+	const L_2: ASSERT_EQUAL<L[2], ''> = 1;
+	const L_3: ASSERT_EQUAL<L[3], P_IRI_XSD_STRING> = 1;
 
-// 	type Lvv = SolveDescriptor<[LiteralTypeKey, 'A', 'en']>;
-// 	const Lvv0: ASSERT_EQUAL<Lvv[0], LiteralTypeKey> = 1;
-// 	const Lvv1: ASSERT_EQUAL<Lvv[1], 'A'> = 1;
-// 	const Lvv2: ASSERT_EQUAL<Lvv[2], 'en'> = 1;
-// 	const Lvv3: ASSERT_EQUAL<Lvv[3], P_RDFS_LANGSTRING> = 1;
+	type Lv = FromQualifier<[LiteralTypeKey, 'A']>;
+	const Lv0: ASSERT_EQUAL<Lv[0], LiteralTypeKey> = 1;
+	const Lv1: ASSERT_EQUAL<Lv[1], 'A'> = 1;
+	const Lv2: ASSERT_EQUAL<Lv[2], ''> = 1;
+	const Lv3: ASSERT_EQUAL<Lv[3], P_IRI_XSD_STRING> = 1;
 
-// 	type G = SolveDescriptor<[DefaultGraphTypeKey]>;
-// 	const G_0: ASSERT_EQUAL<G[0], DefaultGraphTypeKey> = 1;
-// 	const G_1: ASSERT_EQUAL<G[1], ''> = 1;
-// 	const G_2: ASSERT_VOID<G[2]> = 1;
-// 	const G_3: ASSERT_VOID<G[3]> = 1;
+	type Lvv = FromQualifier<[LiteralTypeKey, 'A', 'en']>;
+	const Lvv0: ASSERT_EQUAL<Lvv[0], LiteralTypeKey> = 1;
+	const Lvv1: ASSERT_EQUAL<Lvv[1], 'A'> = 1;
+	const Lvv2: ASSERT_EQUAL<Lvv[2], 'en'> = 1;
+	const Lvv3: ASSERT_EQUAL<Lvv[3], P_IRI_RDFS_LANGSTRING> = 1;
 
-// 	type R = SolveDescriptor<[VariableTypeKey]>;
-// 	const R_0: ASSERT_EQUAL<R[0], VariableTypeKey> = 1;
-// 	const R_1: ASSERT_STRING<R[1]> = 1;
-// 	const R_2: ASSERT_VOID<R[2]> = 1;
-// 	const R_3: ASSERT_VOID<R[3]> = 1;
+	type G = FromQualifier<[DefaultGraphTypeKey]>;
+	const G_0: ASSERT_EQUAL<G[0], DefaultGraphTypeKey> = 1;
+	const G_1: ASSERT_EQUAL<G[1], ''> = 1;
+	const G_2: ASSERT_VOID<G[2]> = 1;
+	const G_3: ASSERT_VOID<G[3]> = 1;
 
-// 	const NmO_N: ASSERT_SAME<N, SolveDescriptor<[void], NamedNodeTypeKey>> = 1;
-// 	const BmO_B: ASSERT_SAME<B, SolveDescriptor<[void], BlankNodeTypeKey>> = 1;
-// 	const LmO_L: ASSERT_SAME<L, SolveDescriptor<[void], LiteralTypeKey>> = 1;
-// 	const GmO_G: ASSERT_SAME<G, SolveDescriptor<[void], DefaultGraphTypeKey>> = 1;
-// 	const RmO_R: ASSERT_SAME<R, SolveDescriptor<[void], VariableTypeKey>> = 1;
+	type R = FromQualifier<[VariableTypeKey]>;
+	const R_0: ASSERT_EQUAL<R[0], VariableTypeKey> = 1;
+	const R_1: ASSERT_STRING<R[1]> = 1;
+	const R_2: ASSERT_VOID<R[2]> = 1;
+	const R_3: ASSERT_VOID<R[3]> = 1;
+
+	// const NmO_N: ASSERT_SAME<N, FromQualifier<[void], NamedNodeTypeKey>> = 1;
+	// const BmO_B: ASSERT_SAME<B, FromQualifier<[void], BlankNodeTypeKey>> = 1;
+	// const LmO_L: ASSERT_SAME<L, FromQualifier<[void], LiteralTypeKey>> = 1;
+	// const GmO_G: ASSERT_SAME<G, FromQualifier<[void], DefaultGraphTypeKey>> = 1;
+	// const RmO_R: ASSERT_SAME<R, FromQualifier<[void], VariableTypeKey>> = 1;
 
 
-// 	type NL = SolveDescriptor<[NamedNodeTypeKey | LiteralTypeKey]>;
-// 	const NL_0: ASSERT_SAME<NL[0], NamedNodeTypeKey | LiteralTypeKey> = 1;
-// 	const NL_1: ASSERT_STRING<NL[1]> = 1;
-// 	const NL_2: ASSERT_SAME<NL[2], void | ''> = 1;
-// 	const NL_3: ASSERT_SAME<NL[3], void | P_XSD_STRING> = 1;
+	type NL = FromQualifier<[NamedNodeTypeKey | LiteralTypeKey]>;
+	const NL_0: ASSERT_SAME<NL[0], NamedNodeTypeKey | LiteralTypeKey> = 1;
+	const NL_1: ASSERT_STRING<NL[1]> = 1;
+	const NL_2: ASSERT_SAME<NL[2], void | ''> = 1;
+	const NL_3: ASSERT_SAME<NL[3], void | P_IRI_XSD_STRING> = 1;
 
-// 	type Q = SolveDescriptor<[QuadTypeKey]>;
-// 	const Q_0: ASSERT_SAME<Q[0], QuadTypeKey> = 1;
-// 	const Q_4: ASSERT_SAME<Q[4][0], SubjectTypeKey> = 1;
-// 	const Q_5: ASSERT_SAME<Q[5][0], PredicateTypeKey> = 1;
-// 	const Q_6: ASSERT_SAME<Q[6][0], ObjectTypeKey> = 1;
-// 	const Q_7: ASSERT_SAME<Q[7][0], GraphTypeKey> = 1;
-// 	/* eslint-enable @typescript-eslint/no-unused-vars */
-// }
+	// type Q = FromQualifier<[QuadTypeKey]>;
+	// const Q_0: ASSERT_SAME<Q[0], QuadTypeKey> = 1;
+	// const Q_4: ASSERT_SAME<Q[4][0], SubjectTypeKey> = 1;
+	// const Q_5: ASSERT_SAME<Q[5][0], PredicateTypeKey> = 1;
+	// const Q_6: ASSERT_SAME<Q[6][0], ObjectTypeKey> = 1;
+	// const Q_7: ASSERT_SAME<Q[7][0], GraphTypeKey> = 1;
+	/* eslint-enable @typescript-eslint/no-unused-vars */
+}
 

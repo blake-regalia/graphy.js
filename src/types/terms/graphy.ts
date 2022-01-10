@@ -47,24 +47,31 @@ import type {
 } from '../utility';
 
 import type {
-   ParseInteger,
+	ParseInteger,
 } from '../integer';
 
-import {
+import type {
 	RdfMode_11,
 	RdfMode_star,
 	RdfMode_easier,
 	SupportedRdfMode,
 	DescribeRdfMode,
-	P_RDF,
-	P_XSD_STRING,
-	P_XSD,
+	P_IRI_RDF,
+	P_IRI_XSD,
+	P_IRI_XSD_BOOLEAN,
+	P_IRI_XSD_STRING,
 	XsdDatatypes,
 	NaN,
-	P_RDF_TYPE,
+	P_IRI_RDF_TYPE,
+	P_IRI_XSD_INTEGER,
+	P_IRI_XSD_DOUBLE,
+	P_IRI_XSD_DECIMAL,
+	NodeType,
+	P_IRI_XSD_DATETIME,
+	P_IRI_XSD_DATE,
 } from '../const';
 
-import {
+import type {
 	BypassDescriptor,
 	Descriptor,
 	FromQualifier,
@@ -74,90 +81,104 @@ import {
 import type {
 	Iri,
 	Prefix,
-	PrefixMap,
-} from '../root';
+} from '../strings/common';
 
-import {
-   A1_DefaultGraph,
-   A1_NamedNode,
-   A1_LabeledBlankNode,
-   A1_AnonymousBlankNode,
-   A1_SimpleLiteral,
-   A1_LanguagedLiteral,
-   A1_DatatypedLiteral,
-   A1_Quad,
-   A1_Variable,
+import type {
+	PrefixMap,
+	PrefixMapArg,
+} from '../structs';
+
+
+import type {
+	A1_Term,
+	A1_DefaultGraph,
+	A1_NamedNode,
+	A1_LabeledBlankNode,
+	A1_AnonymousBlankNode,
+	A1_SimpleLiteral,
+	A1_LanguagedLiteral,
+	A1_DatatypedLiteral,
+	A1_Quad,
+	A1_Variable,
 } from '../strings/a1'
 
-import {
-   C1_DefaultGraph,
-   C1_NamedNode,
-   C1_LabeledBlankNode,
-   C1_AnonymousBlankNode,
-   C1_SimpleLiteral,
-   C1_LanguagedLiteral,
-   C1_DatatypedLiteral,
-   C1_Quad,
-   C1_Variable,
+import type {
+	C1_DefaultGraph,
+	C1_NamedNode,
+	C1_LabeledBlankNode,
+	C1_AnonymousBlankNode,
+	C1_SimpleLiteral,
+	C1_LanguagedLiteral,
+	C1_DatatypedLiteral,
+	C1_Quad,
+	C1_Variable,
 } from '../strings/c1'
 
-import {
-   V1_DefaultGraph,
-   V1_NamedNode,
-   V1_LabeledBlankNode,
-   V1_AnonymousBlankNode,
-   V1_SimpleLiteral,
-   V1_LanguagedLiteral,
-   V1_DatatypedLiteral,
-   V1_Quad,
-   V1_Variable,
+import type {
+	V1_DefaultGraph,
+	V1_NamedNode,
+	V1_LabeledBlankNode,
+	V1_AnonymousBlankNode,
+	V1_SimpleLiteral,
+	V1_LanguagedLiteral,
+	V1_DatatypedLiteral,
+	V1_Quad,
+	V1_Variable,
 } from '../strings/v1'
 
-import {
-   T1_DefaultGraph,
-   T1_NamedNode,
-   T1_LabeledBlankNode,
-   T1_AnonymousBlankNode,
-   T1_SimpleLiteral,
-   T1_LanguagedLiteral,
-   T1_DatatypedLiteral,
-   T1_Quad,
-   T1_Variable,
+import type {
+	T1_DefaultGraph,
+	T1_NamedNode,
+	T1_LabeledBlankNode,
+	T1_AnonymousBlankNode,
+	T1_SimpleLiteral,
+	T1_LanguagedLiteral,
+	T1_DatatypedLiteral,
+	T1_Quad,
+	T1_Variable,
 } from '../strings/t1'
 
+import type {
+	Langtag,
+	// @ts-ignore jmacs compilation
+} from '../strings/bcp47';
 
-import {
-   TermTypeKey,
-   NodeTypeKey,
-   DataTypeKey,
-   DefaultGraphTypeKey,
-   NamedNodeTypeKey,
-   BlankNodeTypeKey,
-   LiteralTypeKey,
-   VariableTypeKey,
-   QuadTypeKey,
-   SubjectTypeKey,
-   PredicateTypeKey,
-   ObjectTypeKey,
-   GraphTypeKey,
+import type {
+	LiterallyDouble,
+	LiterallyInteger,
+} from '../strings/util';
+
+import type {
+	TermTypeKey,
+	NodeTypeKey,
+	DataTypeKey,
+	DefaultGraphTypeKey,
+	NamedNodeTypeKey,
+	BlankNodeTypeKey,
+	LiteralTypeKey,
+	VariableTypeKey,
+	QuadTypeKey,
+	SubjectTypeKey,
+	PredicateTypeKey,
+	ObjectTypeKey,
+	GraphTypeKey,
 } from './key';
 
-import {
-   CoreData,
-   LiteralData,
-   QuadData,
-   InputTermData,
-   FromTermData,
-   TermDataArgument,
-   FavorTermType,
-   AsTypedTermData,
+import type {
+	CoreData,
+	D_Literal,
+	D_Quad,
+	InputTermData,
+	FromTermData,
+	TermDataArgument,
+	FavorTermType,
+	AsTypedTermData,
+	D_Datatype,
 } from './data';
 
 
+
 export type RegExpReplacer = ((s_sub: string, ...a_args: any[]) => string);
-
-
-export type PrefixMapArg = PrefixMap | void;
 
 
 type ReplacementFunction<
@@ -186,6 +207,7 @@ type ReplacementFunctionStatic<
 }
 
 
+
 type AsGraphyGenericTerm<
 	a_descriptor extends Descriptor,
 	g_custom extends {},
@@ -211,37 +233,267 @@ type AsGraphyGenericTerm<
 
 		replaceValue: ReplacementFunction<a_descriptor, 'value'>;
 		
-		isGraphyTerm: true;
-		isGraphyQuad: false;
-		isDefaultGraph: false;
-		isNode: false;
-		isNamedNode: false;
-		isAbsoluteIri: false;
-		isRelativeIri: false;
-		isRdfTypeAlias: false;
-		isBlankNode: false;
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isGraphyTerm = true
+		 * ```
+		 * 
+		 * This narrowing property is `true` for all Term instances (including Quads) created by graphy
+		 */
+		readonly isGraphyTerm: true;
+
+		readonly isGraphyQuad: false;
 
 		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isDefaultGraph = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_DefaultGraph}.
+		 */
+		readonly isDefaultGraph: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isNode = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_NamedNode} or {@link G_BlankNode}.
+		 */
+		readonly isNode: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isNamedNode = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_NamedNode}.
+		 */
+		readonly isNamedNode: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isAbsoluteIri = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_NamedNode} with an absolute IRI.
+		 */
+		readonly isAbsoluteIri: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isRelativeIri = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_NamedNode} with a relative IRI.
+		 */
+		readonly isRelativeIri: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isRdfTypeAlias = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a special type of {@link G_NamedNode} representing the `rdf:type` alias `"a"`.
+		 */
+		readonly isRdfTypeAlias: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isBlankNode = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_BlankNode}.
+		 */
+		readonly isBlankNode: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isAnonymousBlankNode = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_BlankNode} that was created from a syntactic anonymous blank node.
+		 * 
 		 * @deprecated Use `.wasAnonymousBlankNode` instead
 		 */
-		isAnonymousBlankNode: boolean;
+		readonly isAnonymousBlankNode: false;
 
-		wasAnonymousBlankNode: false;
-		isEphemeralBlankNode: false;
-		isLiteral: false;
-		isLanguagedLiteral: false;
-		isDatatypedLiteral: false;
-		isSimpleLiteral: false;
-		isNumericLiteral: false;
-		isIntegerLiteral: false;
-		isDoubleLiteral: false;
-		isDecimalLiteral: false;
-		isBooleanLiteral: false;
-		isInfiniteLiteral: false;
-		isNaNLiteral: false;
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type wasAnonymousBlankNode = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_BlankNode} that was created from a syntactic anonymous blank node.
+		 */
+		readonly wasAnonymousBlankNode: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isEphemeralBlankNode = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_BlankNode} that will serialize as a syntactic anonymous blank node.
+		 */
+		readonly isEphemeralBlankNode: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_Literal}.
+		 */
+		readonly isLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isLanguagedLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_Literal} with a non-empty language tag.
+		 */
+		readonly isLanguagedLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isDatatypedLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_Literal} with a {@link Term_datatype `.datatype`} value other than `xsd:string` or `rdfs:langString`.
+		 */
+		readonly isDatatypedLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isSimpleLteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a simple {@link G_Literal} (i.e., no language tag and a datatype of `xsd:string`).
+		 */
+		readonly isSimpleLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isNumericLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_Literal} with a datatype of `xsd:boolean`, making it a {@link G_BooleanLiteral}.
+		 */
+		readonly isBooleanLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isNumericLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_Literal} with any of the following datatypes:
+		 *  - `xsd:integer`
+		 *  - `xsd:double`
+		 *  - `xsd:decimal`
+		 */
+		readonly isNumericLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isIntegerLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is an {@link G_Literal} with a datatype of `xsd:integer`, making it an {@link G_IntegerLiteral}.
+		 */
+		readonly isIntegerLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isDoubleLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_Literal} with a datatype of `xsd:double`, making it a {@link G_DoubleLiteral}.
+		 */
+		readonly isDoubleLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isDecimalLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_Literal} with a datatype of `xsd:decimal`, making it a {@link G_DecimalLiteral}.
+		 */
+		readonly isDecimalLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isInfiniteLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_Literal} with a datatype of `xsd:double` and a value of `"INF" | "-INF"`, making it an {@link G_InfiniteLiteral}.
+		 */
+		readonly isInfiniteLiteral: false;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * type isNaNLiteral = false | true
+		 * ```
+		 * 
+		 * This narrowing property is `true` iff the Term is a {@link G_Literal} with a datatype of `xsd:double` and a value of `"NaN"`, making it a {@link G_NaNLiteral}.
+		 */
+		readonly isNaNLiteral: false;
 	}: never,
 	g_custom extends {flat:any}? {
 		valueOf: g_custom['flat'];
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * function toString(): A1_Term
+		 * ```
+		 * 
+		 * Returns the canonical {@link A1_Term} string
+		 */
 		toString: g_custom['flat'];
 	}: {},
 	g_custom extends {terse:any}? {
@@ -261,20 +513,83 @@ type TermIsAll<
 
 export type AsGraphyDefaultGraph<
 	a_descriptor extends Descriptor,
-> = a_descriptor extends Descriptor<NamedNodeTypeKey>
+> = a_descriptor extends Descriptor<DefaultGraphTypeKey>
 	? AsGraphyGenericTerm<a_descriptor, {
-		isDefaultGraph: true;
+		readonly isDefaultGraph: true;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * function flat(): '*'
+		 * ```
+		 * 
+		 * Returns the canonical {@link A1_DefaultGraph} string.
+		 */
 		flat(): A1_DefaultGraph;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * function verbose(): ''
+		 * ```
+		 * 
+		 * Returns the canonical {@link V1_DefaultGraph} string.
+		 */
 		verbose(): V1_DefaultGraph;
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * function concise(): '*'
+		 * ```
+		 * 
+		 * Returns the concise {@link C1_DefaultGraph} string.
+		 */
 		concise(h_prefixes?: PrefixMap): '*';
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * function terse(): ''
+		 * ```
+		 * 
+		 * Returns the terse {@link T1_DefaultGraph} string.
+		 */
 		terse(h_prefixes?: PrefixMap): '';
+
+		/**
+		 * === _**@graphy/types**_ ===
+		 * 
+		 * ```ts
+		 * function star(): ''
+		 * ```
+		 * 
+		 * Returns the terse {@link T1_DefaultGraph} string.
+		 */
 		star(h_prefixes?: PrefixMap): '';
+		
+
 		replaceIri: ReplacementFunctionStatic<a_descriptor, {value: ''}>;
 		replaceValue: ReplacementFunctionStatic<a_descriptor, {value: ''}>;
 		replaceText: ReplacementFunctionStatic<a_descriptor, {value: ''}>;
 	}>
 	: never;
 
+{
+	const h_prefixes = {
+		z: 'z://y/',
+	} as const;
+
+	let nn!: G_NamedNode;
+	const show = nn.terse(h_prefixes);
+
+	let dg!: G_DefaultGraph | G_NamedNode;
+	const test = dg.terse()
+}
 
 export type AsGraphyNamedNode<
 	a_descriptor extends Descriptor,
@@ -292,6 +607,16 @@ export type AsGraphyNamedNode<
 					terse<h_prefixes extends PrefixMapArg>(h_prefixes?: h_prefixes): T1_NamedNode<p_iri, h_prefixes>;
 
 					replaceIri: ReplacementFunction<a_descriptor, 'value'>;
+
+					/**
+					 * === _**@graphy/types**_ ===
+					 * 
+					 * @deprecated ## [ ! ] - Useless operation warning
+					 * Using `.replaceText` on a NamedNode will have no effect.
+					 */
+					replaceText(): GraphyTerm<a_descriptor>;
+
+					get url(): URL;
 				}, TermIsAll<[
 					'Node',
 					'NamedNode',
@@ -302,6 +627,20 @@ export type AsGraphyNamedNode<
 		: never
 	: never;
 
+type BlankNodeTypeMap = {
+	ephemeral: {
+		value: string;
+		readonly isEphemeralBlankNode: true;
+	};
+	anonymous: {
+		value: `_g${number}`;
+		/**
+		 * @deprecated Use `.wasAnonymousBlankNode` instead
+		 */
+		readonly isAnonymousBlankNode: boolean;
+		readonly wasAnonymousBlankNode: true;
+	};
+};
 
 export type AsGraphyBlankNode<
 	a_descriptor extends Descriptor,
@@ -309,22 +648,23 @@ export type AsGraphyBlankNode<
 	? Descriptor.Access<a_descriptor, 'value'> extends infer s_label
 		? s_label extends string
 			? AsGraphyGenericTerm<a_descriptor, MergeAll<
-				{
-					/**
-					 * @deprecated Use `.wasAnonymousBlankNode` instead
-					 */
-					isAnonymousBlankNode: boolean;
-					wasAnonymousBlankNode: boolean;
-					isEphemeralBlankNode: s_label extends `${string}`? (s_label extends ''? true: false): boolean;
+				Descriptor.Access<a_descriptor, 'nodeType'> extends `${infer si_node_type}`
+					? si_node_type extends keyof BlankNodeTypeMap
+						? BlankNodeTypeMap[si_node_type]
+						: BlankNodeTypeMap[keyof BlankNodeTypeMap]
+					: BlankNodeTypeMap[keyof BlankNodeTypeMap],
+				[
+					{
+						value: NodeType.Ephemeral extends Descriptor.Access<a_descriptor, 'nodeType'>? string: s_label;
 
-					flat(): A1_LabeledBlankNode<s_label>;
+						flat(): A1_LabeledBlankNode<s_label>;
 
-					verbose(): V1_LabeledBlankNode<s_label>;
+						verbose(): V1_LabeledBlankNode<s_label>;
 
-					concise(h_prefixes?: PrefixMap): C1_LabeledBlankNode<s_label>;
+						concise(h_prefixes?: PrefixMap): C1_LabeledBlankNode<s_label>;
 
-					terse(h_prefixes?: PrefixMap): T1_LabeledBlankNode<s_label>;
-				}, [
+						terse(h_prefixes?: PrefixMap): T1_LabeledBlankNode<s_label>;
+					},
 					TermIsAll<[
 						'Node',
 						'BlankNode',
@@ -367,9 +707,9 @@ type ReplacementFunctionForLiteralValue<
 type UncertainNumericLiteral = Merge<{
 	[si_type in keyof XsdDatatypes as `is${XsdDatatypes[si_type]}Literal`]: boolean;
 }, {
-	isNumericLiteral: boolean;
-	isInfiniteLiteral: boolean;
-	isNaNLiteral: boolean;
+	readonly isNumericLiteral: boolean;
+	readonly isInfiniteLiteral: boolean;
+	readonly isNaNLiteral: boolean;
 }>;
 
 export type AsGraphyLiteral<
@@ -385,11 +725,14 @@ export type AsGraphyLiteral<
 			 ? p_datatype extends string
 				? AsGraphyGenericTerm<a_descriptor, MergeAll<
 					{
-						isLiteral: true;
-						isolate(): LiteralData<a_descriptor>;
+						readonly isLiteral: true;
+
+						readonly langtag: Langtag<s_language>;
+
+						isolate(): D_Literal<a_descriptor>;
 					}, [{
 						simple: {
-							isSimpleLiteral: true;
+							readonly isSimpleLiteral: true;
 
 							flat(): A1_SimpleLiteral<s_content>;
 
@@ -404,7 +747,7 @@ export type AsGraphyLiteral<
 							replaceValue: ReplacementFunctionForLiteralValue<a_descriptor, s_content, p_datatype>;
 						};
 						languaged: {
-							isLanguagedLiteral: true;
+							readonly isLanguagedLiteral: true;
 
 							flat(): A1_LanguagedLiteral<s_content, s_language>;
 
@@ -420,7 +763,7 @@ export type AsGraphyLiteral<
 							replaceValue: ReplacementFunction<a_descriptor, 'value'>;
 						};
 						datatyped: Merge<{
-							isDatatypedLiteral: true;
+							readonly isDatatypedLiteral: true;
 
 							flat(): A1_DatatypedLiteral<s_content, p_datatype>;
 
@@ -434,46 +777,46 @@ export type AsGraphyLiteral<
 							replaceIri: ReplacementFunction<a_descriptor, 'datatype'>;
 							replaceText: ReplacementFunction<a_descriptor, 'value'>;
 							replaceValue: ReplacementFunctionForLiteralValue<a_descriptor, s_content, p_datatype>;
-						}, p_datatype extends `${P_XSD}${infer s_xsd_type}`
+						}, p_datatype extends `${P_IRI_XSD}${infer s_xsd_type}`
 							? s_xsd_type extends keyof XsdDatatypes? Merge<
 								{
 									0: Merge<
 										s_xsd_type extends 'double'? {
-											isInfiniteLiteral: string extends s_content? boolean
+											readonly isInfiniteLiteral: string extends s_content? boolean
 												: s_content extends 'INF' | '-INF'? true: false;
-											isNaNLiteral: string extends s_content? boolean
+											readonly isNaNLiteral: string extends s_content? boolean
 												: s_content extends 'NaN'? true: false;
-											isNumberPrecise: s_content extends 'INF' | '-INF' | 'NaN'? false: boolean;
+											readonly isNumberPrecise: s_content extends 'INF' | '-INF' | 'NaN'? false: boolean;
 										}: {},
 										{
-											isNumericLiteral: true;
-											isNumberPrecise: s_xsd_type extends 'date' | 'dateTime'? true: boolean;
-											number: s_xsd_type extends 'integer'
+											readonly isNumericLiteral: true;
+											readonly isNumberPrecise: s_xsd_type extends 'date' | 'dateTime'? true: boolean;
+											readonly number: s_xsd_type extends 'integer'
 												? ParseInteger<s_content>
 												: number;
-											bigint: bigint;
-											date: s_xsd_type extends 'date' | 'dateTime'? Date: undefined;
+											readonly bigint: bigint;
+											readonly date: s_xsd_type extends 'date' | 'dateTime'? Date: undefined;
 										}
 									>;
 									1: Merge<
 										{
-											isNumericLiteral: false;
-											isNumberPrecise: true;
+											readonly isNumericLiteral: false;
+											readonly isNumberPrecise: true;
 										}, {
 											false: {
-												boolean: false;
-												number: 0;
-												bigint: 0n;
+												readonly boolean: false;
+												readonly number: 0;
+												readonly bigint: 0n;
 											};
 											true: {
-												boolean: true;
-												number: 1;
-												bigint: 1n;
+												readonly boolean: true;
+												readonly number: 1;
+												readonly bigint: 1n;
 											};
 											none: {
-												boolean: NaN;
-												number: NaN;
-												bigint: NaN;
+												readonly boolean: NaN;
+												readonly number: NaN;
+												readonly bigint: NaN;
 											};
 										}[
 											string extends s_content? 'false' | 'true'
@@ -484,20 +827,20 @@ export type AsGraphyLiteral<
 									>;
 								}[Extends<'boolean', s_xsd_type>],
 								{
-									[K in `is${XsdDatatypes[s_xsd_type]}Literal`]: true;
+									readonly [K in `is${XsdDatatypes[s_xsd_type]}Literal`]: true;
 								}
 							>: {}
 						: string extends p_datatype? UncertainNumericLiteral: {}>;
 					}[
-						p_datatype extends P_XSD_STRING? 'simple'
+						p_datatype extends P_IRI_XSD_STRING? 'simple'
 						: And<Extends<s_language, `${string}`>, Not<Extends<s_language, ''>>> extends True? 'languaged'
 						: p_datatype extends `${string}`? 'datatyped'
 						: 'simple' | 'languaged' | 'datatyped'
 					], {
-						boolean: Debug<typeof NaN, 'NaN'>;
-						number: Debug<typeof NaN, 'NaN'>;
-						bigint: Debug<typeof NaN, 'NaN'>;
-						date: undefined;
+						readonly boolean: Debug<typeof NaN, 'NaN'>;
+						readonly number: Debug<typeof NaN, 'NaN'>;
+						readonly bigint: Debug<typeof NaN, 'NaN'>;
+						readonly date: undefined;
 					}]>>
 					: never
 				: never
@@ -512,11 +855,11 @@ export type AsGraphyVariable<
 	? Descriptor.Access<a_descriptor, 'value'> extends infer s_value
 		? s_value extends string
 			? AsGraphyGenericTerm<a_descriptor, {
-				isVariable: true;
-				flat: `?${s_value}`;
+				readonly isVariable: true;
+				flat(): `?${s_value}`;
 				concise(h_prefixes?: PrefixMap): `?${s_value}`;
 				terse(h_prefixes?: PrefixMap): `?${s_value}`;
-				verbose: never;
+				verbose(): never;
 			}>
 			: never
 		: never
@@ -574,18 +917,28 @@ export type AsGraphyQuad<
 				? a_object extends Descriptor<ObjectTypeKey>
 					? a_graph extends Descriptor<GraphTypeKey>
 						? AsGraphyGenericTerm<a_descriptor, {
-							isGraphyQuad: true;
+							subject: GraphyTerm<a_subject>;
+							predicate: GraphyTerm<a_predicate>;
+							object: GraphyTerm<a_object>;
+							graph: GraphyTerm<a_graph>;
 
-							isolate(): QuadData<a_descriptor>;
+							readonly s: GraphyTerm<a_subject>;
+							readonly p: GraphyTerm<a_predicate>;
+							readonly o: GraphyTerm<a_object>;
+							readonly g: GraphyTerm<a_graph>;
 
-							gspo(): [
+							readonly isGraphyQuad: true;
+
+							isolate(): D_Quad<a_descriptor>;
+
+							get gspo(): [
 								GraphyTerm<a_graph>,
 								GraphyTerm<a_subject>,
 								GraphyTerm<a_predicate>,
 								GraphyTerm<a_object>,
 							];
 
-							spog(): [
+							get spog(): [
 								GraphyTerm<a_subject>,
 								GraphyTerm<a_predicate>,
 								GraphyTerm<a_object>,
@@ -622,25 +975,25 @@ export type AsGraphyQuad<
 									quads: [
 										AsGraphyQuad<Descriptor.Mutate<a_descriptor, {
 											subject: a_reify;
-											predicate: FromQualifier<[NamedNodeTypeKey, P_RDF_TYPE]>;
-											object: FromQualifier<[NamedNodeTypeKey, `${P_RDF}statement`]>;
+											predicate: FromQualifier<[NamedNodeTypeKey, P_IRI_RDF_TYPE]>;
+											object: FromQualifier<[NamedNodeTypeKey, `${P_IRI_RDF}statement`]>;
 											graph: FromQualifier<[DefaultGraphTypeKey]>;
 										}>>,
 										AsGraphyQuad<Descriptor.Mutate<a_descriptor, {
 											subject: a_reify;
-											predicate: FromQualifier<[NamedNodeTypeKey, `${P_RDF}subject`]>;
+											predicate: FromQualifier<[NamedNodeTypeKey, `${P_IRI_RDF}subject`]>;
 											object: a_subject;
 											graph: FromQualifier<[DefaultGraphTypeKey]>;
 										}>>,
 										AsGraphyQuad<Descriptor.Mutate<a_descriptor, {
 											subject: a_reify;
-											predicate: FromQualifier<[NamedNodeTypeKey, `${P_RDF}predicate`]>;
+											predicate: FromQualifier<[NamedNodeTypeKey, `${P_IRI_RDF}predicate`]>;
 											object: a_predicate;
 											graph: FromQualifier<[DefaultGraphTypeKey]>;
 										}>>,
 										AsGraphyQuad<Descriptor.Mutate<a_descriptor, {
 											subject: a_reify;
-											predicate: FromQualifier<[NamedNodeTypeKey, `${P_RDF}object`]>;
+											predicate: FromQualifier<[NamedNodeTypeKey, `${P_IRI_RDF}object`]>;
 											object: a_object;
 											graph: FromQualifier<[DefaultGraphTypeKey]>;
 										}>>,
@@ -660,26 +1013,26 @@ export type AsGraphyQuad<
 		
 
 type BooleanTermGetters = {
-	isDefaultGraph: false;
-	isNode: false;
-	isNamedNode: false;
-	isAbsoluteIri: false;
-	isRelativeIri: false;
-	isRdfTypeAlias: false;
-	isBlankNode: false;
-	wasAnonymousBlankNode: false;
-	isEphemeralBlankNode: false;
-	isLiteral: false;
-	isLanguagedLiteral: false;
-	isDatatypedLiteral: false;
-	isSimpleLiteral: false;
-	isNumericLiteral: false;
-	isIntegerLiteral: false;
-	isDoubleLiteral: false;
-	isDecimalLiteral: false;
-	isBooleanLiteral: false;
-	isInfiniteLiteral: false;
-	isNaNLiteral: false;
+	readonly isDefaultGraph: false;
+	readonly isNode: false;
+	readonly isNamedNode: false;
+	readonly isAbsoluteIri: false;
+	readonly isRelativeIri: false;
+	readonly isRdfTypeAlias: false;
+	readonly isBlankNode: false;
+	readonly wasAnonymousBlankNode: false;
+	readonly isEphemeralBlankNode: false;
+	readonly isLiteral: false;
+	readonly isLanguagedLiteral: false;
+	readonly isDatatypedLiteral: false;
+	readonly isSimpleLiteral: false;
+	readonly isNumericLiteral: false;
+	readonly isIntegerLiteral: false;
+	readonly isDoubleLiteral: false;
+	readonly isDecimalLiteral: false;
+	readonly isBooleanLiteral: false;
+	readonly isInfiniteLiteral: false;
+	readonly isNaNLiteral: false;
 };
 
 /**
@@ -802,32 +1155,159 @@ export type TermsEqual<
 
 
 
+export type G_DefaultGraph = Term<['DefaultGraph', '']>;
 
-export type NamedNode<
+
+/**
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type NamedNode<
+ *    value extends Iri=Iri,
+ * >: Term<['NamedNode', value]>
+ * ```
+ * 
+ * - (!) The return types for all properties and methods are deeply and statically inferenced in Typescript.
+ * 
+ * --- **Examples:** ---
+ * ```ts
+ * // typing prefixes `as const` enables URI compacting within return types for methods like `.terse(prefixes)` and `.concise(prefixes)`
+ * const prefixes = {test:'https://example.test/ontology/'} as const;
+ * const testNode = namedNode(`${prefixes.test}Class`);
+ * 
+ * // RDFJS properties
+ * testNode.termType;  // 'NamedNode'
+ * testNode.value;  // 'https://example.test/ontology/Class'
+ * 
+ * // beware RDFJS equality is case-sensitive even for semantically equivalent identifiers
+ * testNode.equals(namedNode('https://example.test/ontology/Class'));  // true
+ * testNode.equals(namedNode('HTTPS://example.test/ontology/Class'));  // false
+ * 
+ * // narrowing properties
+ * testNode.isGraphyTerm;    // true
+ * testNode.isNode;          // true
+ * testNode.isNamedNode;     // true
+ * testNode.isAbsoluteIri;   // true
+ * testNode.isRelativeIri;   // false
+ * testNode.isRdfTypeAlias;  // false
+ * 
+ * // special properties
+ * testNode.url;  // URL {origin:'https://example.test', protocol:'https:', ...}
+ * 
+ * // serialiation
+ * testNode+'';                 // '>https://example.test/ontology/Class'  // returns this.flat()
+ * testNode.flat();             // '>https://example.test/ontology/Class'
+ * testNode.verbose();          // '<https://example.test/ontology/Class>'
+ * testNode.concise(prefixes);  // 'test:Class'
+ * testNode.terse(prefixes);    // 'test:Class'
+ * testNode.star(prefixes);     // 'test:Class'
+ * testNode.concise();          // '>https://example.test/ontology/Class'
+ * testNode.terse();            // '<https://example.test/ontology/Class>'
+ * testNode.star();             // '>https://example.test/ontology/Class'
+ * 
+ * // mutation
+ * testNode.clone();                            // namedNode(this.value)
+ * testNode.replaceValue('Class', 'Property');  // namedNode('https://example.test/ontology/Property')
+ * testNode.replaceIri('Class', 'Property');    // namedNode('https://example.test/ontology/Property')
+ * testNode.replaceValue(/^https?/, 'ftp');     // namedNode('ftp://example.test/ontology/Class')
+ * testNode.replaceIri(/^https?/, 'ftp');       // namedNode('ftp://example.test/ontology/Class')
+ * testNode.replaceText('Class', 'Property');   // namedNode(this.value)   // no effect
+ * 
+ * // hashing
+ * testNode.hash();  // sha256(this.flat())
+ * 
+ * // isolation
+ * testNode.isolate();  // {termType:'NamedNode', value:'https://example.test/'}
+ * ```
+ * 
+ * --- **See Also:** ---
+ *  - Data properties:
+ *    - {@link Term_termType}
+ *    - {@link Term_value}
+ *    - {@link Term_url}
+ * 
+ *  - Narrowing properties:
+ *    - {@link Term_isGraphyTerm}
+ *    - {@link Term_isNode}
+ *    - {@link Term_isNamedNode}
+ *    - {@link Term_isNamedNode}
+ * 
+ * - Methods:
+ *    - {@link Term_equals}
+ */
+export type G_NamedNode<
 	s_value extends string=string,
 > = Term<['NamedNode', s_value]>;
 
-export type BlankNode<
+export type G_BlankNode<
 	s_value extends string=string,
-> = Term<['BlankNode', s_value]>;
+	si_node_type extends NodeType.ForBlankNodes=NodeType.ForBlankNodes,
+> = Term<['BlankNode', s_value, si_node_type]>;
 
-export type Literal<
+export type G_Literal<
 	s_value extends string=string,
 	s_language extends string|void=string,
 	s_datatype extends string|void=string,
 > = Term<['Literal', s_value, s_language, s_datatype]>;
 
-export type DefaultGraph = Term<['DefaultGraph', '']>;
+// export namespace Literal {
+// 	/**
+// 	 * === _**@graphy/types**_ ===
+// 	 * 
+// 	 * ```ts
+// 	 * type Literal.Datatype = Datatype
+// 	 * ```
+// 	 * 
+// 	 * The `.datatype` property of a {@link Literal} is of type {@link Datatype}.
+// 	 */
+// 	export type Datatype = Datatype;
+// }
 
-export type Variable<
+export type G_NumericLiteral<
+	s_value extends string,
+> = G_Literal<s_value extends `${number}`? s_value: `${number}`, '', P_IRI_XSD_INTEGER | P_IRI_XSD_DOUBLE | P_IRI_XSD_DECIMAL>;
+
+type BooleanStringValue = '0' | '1' | 'false' | 'true';
+
+export type G_BooleanLiteral<
+	s_value extends string,
+> = G_Literal<s_value extends BooleanStringValue? s_value: BooleanStringValue, '', P_IRI_XSD_BOOLEAN>;
+
+export type G_IntegerLiteral<
+	s_value extends LiterallyInteger,
+> = G_Literal<s_value, '', P_IRI_XSD_INTEGER>;
+
+export type G_DoubleLiteral<
+	s_value extends LiterallyDouble,
+> = G_Literal<s_value, '', P_IRI_XSD_DOUBLE>;
+
+export type G_InfiniteLiteral<
+	s_value extends 'INF' | '-INF',
+> = G_Literal<s_value, '', P_IRI_XSD_DOUBLE>;
+
+export type G_NaNLiteral = G_Literal<'NaN', '', P_IRI_XSD_DOUBLE>;
+
+export type G_DecimalLiteral<
+	s_value extends string,
+> = G_Literal<s_value, '', P_IRI_XSD_DECIMAL>;
+
+export type G_DateLiteral<
+	s_value extends string,
+> = G_Literal<s_value, '', P_IRI_XSD_DATE>;
+
+export type G_DateTimeLiteral<
+	s_value extends string,
+> = G_Literal<s_value, '', P_IRI_XSD_DATETIME>;
+
+export type G_Variable<
 	s_value extends string=string,
 > = Term<['Variable', s_value]>;
 
-export type Datatype<
+export type G_Datatype<
 	s_datatype extends string=string,
-> = NamedNode<s_datatype>;
+> = G_NamedNode<s_datatype>;
 
-export type Node<
+export type G_Node<
 	s_term extends string=TermTypeKey,
 	s_value extends string=string,
 > = FavorTermType<s_term> extends infer s_favored
@@ -839,47 +1319,65 @@ export type Node<
 	)
 	: never;
 
-export type Subject<
+export type G_Subject<
 	s_term extends string=string,
 	s_value extends string=string,
-> = Node<s_term, s_value>;
+> = G_Node<s_term, s_value>;
 
-export type Predicate<
+export type G_Predicate<
 	s_term extends string=string,
 	s_value extends string=string,
 > = s_term extends `${infer ActualTermTypeString}`
 	? (ActualTermTypeString extends NamedNodeTypeKey
-		? NamedNode<s_value>
+		? G_NamedNode<s_value>
 		: never
 	)
-	: NamedNode<s_value>;
+	: G_NamedNode<s_value>;
 
-export type Object<
+export type G_Object<
 	s_term extends string=string,
 	s_value extends string=string,
 	s_language extends string=string,
 	s_datatype extends string=string,
 > = s_term extends `${infer ActualTermTypeString}`
 	? (ActualTermTypeString extends NodeTypeKey
-		? Node<ActualTermTypeString, s_value>
+		? G_Node<ActualTermTypeString, s_value>
 		: (ActualTermTypeString extends LiteralTypeKey
-			? Literal<ActualTermTypeString, s_language, s_datatype>
+			? G_Literal<ActualTermTypeString, s_language, s_datatype>
 			: never)
 	)
-	: Node<s_term, s_value> | Literal<s_value, s_language, s_datatype>;
+	: G_Node<s_term, s_value> | G_Literal<s_value, s_language, s_datatype>;
 
-export type Graph<
+export type G_Graph<
 	s_term extends string=string,
 	s_value extends string=string,
 > = s_term extends `${infer ActualTermTypeString}`
-	? Node<ActualTermTypeString, s_value> | DefaultGraph
-	: Node<s_term, s_value> | DefaultGraph;
+	? G_Node<ActualTermTypeString, s_value> | G_DefaultGraph
+	: G_Node<s_term, s_value> | G_DefaultGraph;
 
 
 
-export type Quad<
-   z_qualifier extends Qualifier<QuadTypeKey>=Qualifier<QuadTypeKey>,
-> = Term<z_qualifier>;
+// export type __Recursive_Quad<
+// 	s_mode extends SupportedRdfMode=SupportedRdfMode,
+// 	a_subject extends Descriptor<SubjectTypeKey<s_mode>, s_mode>=Descriptor<SubjectTypeKey<s_mode>, s_mode>,
+// 	a_predicate extends Descriptor<PredicateTypeKey<s_mode>, s_mode>=Descriptor<PredicateTypeKey<s_mode>, s_mode>,
+// 	a_object extends Descriptor<ObjectTypeKey<s_mode>, s_mode>=Descriptor<ObjectTypeKey<s_mode>, s_mode>,
+// 	a_graph extends Descriptor<GraphTypeKey<s_mode>, s_mode>=Descriptor<GraphTypeKey<s_mode>, s_mode>,
+// > = GraphyTerm<FromQualifier<[QuadTypeKey, '', void, void, a_subject, a_predicate, a_object, a_graph, s_mode]>>;
+
+export type G_Quad<
+	s_mode extends SupportedRdfMode=SupportedRdfMode,
+	a_graph extends Descriptor<GraphTypeKey<s_mode>, s_mode>=Descriptor<GraphTypeKey<s_mode>, s_mode>,
+	a_subject extends Descriptor<SubjectTypeKey<s_mode>, s_mode>=Descriptor<SubjectTypeKey<s_mode>, s_mode>,
+	a_predicate extends Descriptor<PredicateTypeKey<s_mode>, s_mode>=Descriptor<PredicateTypeKey<s_mode>, s_mode>,
+	a_object extends Descriptor<ObjectTypeKey<s_mode>, s_mode>=Descriptor<ObjectTypeKey<s_mode>, s_mode>,
+> = GraphyTerm<FromQualifier<[QuadTypeKey, '', void, void, a_subject, a_predicate, a_object, a_graph, s_mode]>>;
+
+// {
+// 	type ind = Descriptor<SubjectTypeKey<RdfMode_11>, RdfMode_11>;
+// 	type insp = Quad<RdfMode_11>;
+
+// }
 
 // {
 // 	type: 'Quad';

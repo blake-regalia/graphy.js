@@ -52,12 +52,12 @@ import {
 	RdfMode_easier,
 	SupportedRdfMode,
 	DescribeRdfMode,
-	P_RDF,
-	P_XSD_STRING,
-	P_XSD,
+	P_IRI_RDF,
+	P_IRI_XSD_STRING,
+	P_IRI_XSD,
 	XsdDatatypes,
 	NaN,
-	P_RDF_TYPE,
+	P_IRI_RDF_TYPE,
 } from '../const';
 
 import {
@@ -70,8 +70,11 @@ import {
 import type {
 	Iri,
 	Prefix,
+} from '../strings/common';
+
+import type {
 	PrefixMap,
-} from '../root';
+} from '../structs';
 
 import {
    TermTypeKey,
@@ -232,28 +235,21 @@ type ExplainPosition<
  */
 export type AsTypedTermData<
 	a_descriptor extends Descriptor,
-> = Merge<
+> = MergeAll<{}, [
 	{
-		[K in QuadTypeKey]: a_descriptor extends Descriptor<QuadTypeKey>? QuadData<a_descriptor>: never;
+		[K in QuadTypeKey]: a_descriptor extends Descriptor<QuadTypeKey>? D_Quad<a_descriptor>: never;
 		// 	Descriptor.Filter<a_descriptor, Descriptor.Access<a_descriptor, 'termType'>>
-		// >;
 	},
-	Merge<
-		{
-			[K in LiteralTypeKey]: a_descriptor extends Descriptor<LiteralTypeKey>? LiteralData<a_descriptor>: never;
-			// 	Descriptor.Filter<a_descriptor, Descriptor.Access<a_descriptor, 'termType'>>
-			// >;
-		},
-		// Merge<
-			{
-				[K in TermTypeKey]: CoreData<
-					Descriptor.Filter<a_descriptor, Descriptor.Access<a_descriptor, 'termType'>>
-				>
-			}
-		// >
-	>
->[Descriptor.Access<a_descriptor, 'termType'>];
-
+	{
+		[K in LiteralTypeKey]: a_descriptor extends Descriptor<LiteralTypeKey>? D_Literal<a_descriptor>: never;
+		// 	Descriptor.Filter<a_descriptor, Descriptor.Access<a_descriptor, 'termType'>>
+	},
+	{
+		[K in TermTypeKey]: CoreData<
+			Descriptor.Filter<a_descriptor, Descriptor.Access<a_descriptor, 'termType'>>
+		>
+	},
+]>[Descriptor.Access<a_descriptor, 'termType'>];
 
 
 
@@ -292,14 +288,15 @@ export type CoreData<
 	value: Descriptor.Access<a_descriptor, 'value'>;
 };
 
+
 /**
  * Type for Literal term data (i.e., no methods, just data fields)
  */
-export type LiteralData<
+export type D_Literal<
 	a_descriptor extends Descriptor<LiteralTypeKey> = Descriptor<LiteralTypeKey>,
 	> = Merge<CoreData<a_descriptor>, {
 		language: Descriptor.Access<a_descriptor, 'language'>;
-		datatype: DatatypeData<
+		datatype: D_Datatype<
 			FromQualifier<[NamedNodeTypeKey, Descriptor.Access<a_descriptor, 'datatype'>]>
 		>;
 	}>;
@@ -308,13 +305,13 @@ export type LiteralData<
 /**
  * Type for quad term data (i.e., no methods, just data fields)
  */
-export type QuadData<
+export type D_Quad<
 	a_descriptor extends Descriptor<QuadTypeKey> = Descriptor<QuadTypeKey>,
 > = Merge<CoreData<a_descriptor>, {
-	subject: SubjectData<Descriptor.Access<a_descriptor, 'subject'>>;
-	predicate: PredicateData<Descriptor.Access<a_descriptor, 'predicate'>>;
-	object: ObjectData<Descriptor.Access<a_descriptor, 'object'>>;
-	graph: GraphData<Descriptor.Access<a_descriptor, 'graph'>>;
+	subject: D_Subject<Descriptor.Access<a_descriptor, 'subject'>>;
+	predicate: D_Predicate<Descriptor.Access<a_descriptor, 'predicate'>>;
+	object: D_Object<Descriptor.Access<a_descriptor, 'object'>>;
+	graph: D_Graph<Descriptor.Access<a_descriptor, 'graph'>>;
 }>;
 
 
@@ -331,40 +328,41 @@ type SafeTermType<
 	: IncompatibleTermTypeError<s_term, s_category, CoreData>;
 
 
-type BlankNodeData<
+export type D_BlankNode<
 	a_descriptor extends Descriptor,
 	s_category extends string = 'a blank node',
 > = SafeTermType<a_descriptor, BlankNodeTypeKey, s_category>
 
 
-type NamedNodeData<
+export type D_NamedNode<
 	a_descriptor extends Descriptor,
 	s_category extends string = 'a named node',
 > = SafeTermType<a_descriptor, NamedNodeTypeKey, s_category>
 
 
-type NodeData<
+export type D_Node<
 	a_descriptor extends Descriptor,
 	s_category extends string = 'a node type',
 > = SafeTermType<a_descriptor, NodeTypeKey, s_category>
 
 
-type DatatypeData<
+export type D_Datatype<
 	a_descriptor extends Descriptor,
    s_category extends string='a datatype',
 > = SafeTermType<a_descriptor, NamedNodeTypeKey, s_category>;
 
 
+
 /**
  * Type for subject position term data
  */
-export type SubjectData<
+export type D_Subject<
 	a_descriptor extends Descriptor<SubjectTypeKey> = Descriptor<SubjectTypeKey>,
 	s_mode extends SupportedRdfMode=Descriptor.Access<a_descriptor, 'mode'>,
 	s_category extends string = ExplainPosition<CategorySubjectPosition, s_mode>,
 > = Merge<
 	{
-		[K in RdfMode_11]: NodeData<a_descriptor, s_category>;
+		[K in RdfMode_11]: D_Node<a_descriptor, s_category>;
 	},
 	Merge<
 		{
@@ -380,13 +378,13 @@ export type SubjectData<
 /**
  * Type for predicatte position term data
  */
-export type PredicateData<
+export type D_Predicate<
 	a_descriptor extends Descriptor<PredicateTypeKey> = Descriptor<PredicateTypeKey>,
 	s_mode extends SupportedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
 	s_category extends string = ExplainPosition<CategoryPredicatePosition, s_mode>,
 > = Merge<
 	{
-		[K in RdfMode_11 | RdfMode_star]: NamedNodeData<a_descriptor, s_category>;
+		[K in RdfMode_11 | RdfMode_star]: D_NamedNode<a_descriptor, s_category>;
 	},
 	{
 		[K in RdfMode_easier]: AllowedTermType<a_descriptor, TermTypeKey>;
@@ -397,7 +395,7 @@ export type PredicateData<
 /**
  * Type for object position term data
  */
-export type ObjectData<
+export type D_Object<
 	a_descriptor extends Descriptor<ObjectTypeKey> = Descriptor<ObjectTypeKey>,
 	s_mode extends SupportedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
 	s_category extends string = ExplainPosition<CategoryObjectPosition, s_mode>,
@@ -435,7 +433,7 @@ export type ObjectData<
  *  - {@link FromQualifier} to create a Descriptor
  *  - {@link TermData to see the shape of possible return types
  */
-export type GraphData<
+export type D_Graph<
 	a_descriptor extends Descriptor<GraphTypeKey> = Descriptor<GraphTypeKey>,
 	s_mode extends SupportedRdfMode = Descriptor.Access<a_descriptor, 'mode'>,
 	s_category extends string = ExplainPosition<CategoryGraphPosition, s_mode>,

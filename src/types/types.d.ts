@@ -1,6 +1,7 @@
 export * from './const';
-export * from './root';
+export * from './descriptor';
 export * from './forms';
-export * from './rdfjs';
+export * from './integer';
+export * from './structs';
 export * from './strings/_api';
-export * as Api from './terms/term';
+export * from './terms/_api';

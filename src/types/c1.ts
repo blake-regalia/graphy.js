@@ -2,7 +2,7 @@
 import { Bcp47 } from "@graphy/types";
 import { Includes } from "ts-toolbelt/out/List/Includes";
 import { Split } from "ts-toolbelt/out/String/Split";
-import { P_RDF_TYPE } from "./const";
+import { P_IRI_RDF_TYPE } from "./const";
 import { Iri, Label, PrefixMap, Suffix } from "./root";
 
 import {
@@ -45,7 +45,7 @@ type NamedNodeFromC1<
 			: NamedNode<p_iri>
 		)
 		: s_c1 extends 'a'
-			? NamedNode<P_RDF_TYPE>
+			? NamedNode<P_IRI_RDF_TYPE>
 			: s_c1 extends `${infer s_prefix}:${infer s_suffix}`
 				? If<ValidPrefix<s_c1>, PrefixedNamedNode<s_prefix, s_suffix>, never>
 				: never;

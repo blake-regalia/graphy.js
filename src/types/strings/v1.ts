@@ -1,4 +1,7 @@
-import {
+import type {
+	Iri,
+	Label,
+	Bcp47,
    EscapeTerseLiteralContent,
 } from './common';
 
@@ -13,8 +16,8 @@ export type V1_DefaultGraph = '';
  * Verbose term string for NamedNode terms
  */
 export type V1_NamedNode<
-	s_value extends string=string,
-> = string extends s_value
+	p_iri extends string=string,
+> = string extends p_iri
 	? `<${Iri}>`
 	: p_iri extends Iri
 		? `<${p_iri}>`

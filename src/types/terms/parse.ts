@@ -52,12 +52,12 @@ import {
 	RdfMode_easier,
 	SupportedRdfMode,
 	DescribeRdfMode,
-	P_RDF,
-	P_XSD_STRING,
-	P_XSD,
+	P_IRI_RDF,
+	P_IRI_XSD_STRING,
+	P_IRI_XSD,
 	XsdDatatypes,
 	NaN,
-	P_RDF_TYPE,
+	P_IRI_RDF_TYPE,
 } from '../const';
 
 import {
@@ -70,8 +70,13 @@ import {
 import type {
 	Iri,
 	Prefix,
+} from '../strings/common';
+
+import type {
 	PrefixMap,
-} from '../root';
+	PrefixMapArg,
+} from '../structs';
+
 
 import {
    TermTypeKey,
@@ -85,8 +90,8 @@ import {
 
 import {
    Term,
-   NamedNode,
-   BlankNode,
+   G_NamedNode,
+   G_BlankNode,
 } from './graphy';
 
 
@@ -94,7 +99,7 @@ type ExpandC1Node<
 	sc1_node extends string=string,
 	h_prefixes extends PrefixMap={},
 > = string extends sc1_node
-	? NamedNode | BlankNode
+	? G_NamedNode | G_BlankNode
 	: sc1_node extends `>${infer p_iri}`
 		? p_iri
 	: sc1_node extends `${infer si_prefix}:${infer s_suffix}`
@@ -107,7 +112,16 @@ type ExpandC1Node<
 
 
 /**
- * Parses a C1 string into a Term
+ * === _**@graphy/types**_ ===
+ * 
+ * ```ts
+ * type ParseC1<
+ * 	c1: C1_Term,
+ * 	prefixes: PrefixMap={},
+ * > ==> Qualifier
+ * ```
+ *
+ * Parses a {@link C1_Term} string (with optional {@link PrefixMap}) into a Term {@link Qualifier}
  */
 export type ParseC1<
 	sc1_term extends string=string,
@@ -122,7 +136,7 @@ export type ParseC1<
 	: sc1_term extends 'a'
 		? {
 			termType: NamedNodeTypeKey;
-			value: P_RDF_TYPE;
+			value: P_IRI_RDF_TYPE;
 		}
 	: sc1_term extends `>${infer p_iri}`
 		? {
@@ -213,6 +227,11 @@ export type ParseC1<
 			: never
 		: never;
 	
+// export type DataFromC1<
+// 	sc1_term extends string=string,
+// 	h_prefixes extends PrefixMap={},
+// > = string extends sc1_term
+// 	? Data
 
 export type TermFromC1<
 	sc1_term extends string=string,
@@ -236,5 +255,5 @@ export type TermFromC1<
 // type t2 = TermFromC1<string>['termType'];
 
 // type integer = TermFromC1<'^xsd:integer"54', {
-// 	xsd: P_XSD;
+// 	xsd: P_IRI_XSD;
 // }>['number']

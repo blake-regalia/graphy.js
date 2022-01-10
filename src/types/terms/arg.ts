@@ -52,12 +52,12 @@ import {
 	RdfMode_easier,
 	SupportedRdfMode,
 	DescribeRdfMode,
-	P_RDF,
-	P_XSD_STRING,
-	P_XSD,
+	P_IRI_RDF,
+	P_IRI_XSD_STRING,
+	P_IRI_XSD,
 	XsdDatatypes,
 	NaN,
-	P_RDF_TYPE,
+	P_IRI_RDF_TYPE,
 } from '../const';
 
 import {
@@ -70,8 +70,11 @@ import {
 import type {
 	Iri,
 	Prefix,
+} from '../strings/common';
+
+import type {
 	PrefixMap,
-} from '../root';
+} from '../structs';
 
 import {
    SubjectTypeKey,
@@ -82,11 +85,11 @@ import {
 } from './key';
 
 import {
-   SubjectData,
-   PredicateData,
-   ObjectData,
-   GraphData,
-   QuadData,
+   D_Subject,
+   D_Predicate,
+   D_Object,
+   D_Graph,
+   D_Quad,
 } from './data';
 
 
@@ -95,33 +98,33 @@ import {
  */
 export type SubjectArg<
 	s_mode extends SupportedRdfMode=SupportedRdfMode,
-> = SubjectData<FromQualifier<[SubjectTypeKey<s_mode>]>, s_mode>;
+> = D_Subject<FromQualifier<[SubjectTypeKey<s_mode>]>, s_mode>;
 
 /**
  * Type for predicate argument
  */
 export type PredicateArg<
 	s_mode extends SupportedRdfMode = SupportedRdfMode,
-> = PredicateData<FromQualifier<[PredicateTypeKey<s_mode>]>, s_mode>;
+> = D_Predicate<FromQualifier<[PredicateTypeKey<s_mode>]>, s_mode>;
 
 /**
  * Type for object argument
  */
 export type ObjectArg<
 	s_mode extends SupportedRdfMode=SupportedRdfMode,
-> = ObjectData<FromQualifier<[ObjectTypeKey<s_mode>]>, s_mode>;
+> = D_Object<FromQualifier<[ObjectTypeKey<s_mode>]>, s_mode>;
 
 /**
  * Type for graph argument
  */
 export type GraphArg<
 	s_mode extends SupportedRdfMode = SupportedRdfMode,
-> = GraphData<FromQualifier<[GraphTypeKey<s_mode>]>, s_mode>;
+> = D_Graph<FromQualifier<[GraphTypeKey<s_mode>]>, s_mode>;
 
 /**
  * Type for quad argument
  */
 export type QuadArg<
 	s_mode extends SupportedRdfMode = SupportedRdfMode,
-> = QuadData<FromQualifier<{termType:QuadTypeKey; mode:s_mode}>>;
+> = D_Quad<FromQualifier<{termType:QuadTypeKey; mode:s_mode}>>;
 
