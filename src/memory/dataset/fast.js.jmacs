@@ -2819,6 +2819,24 @@ class FastDataset extends stream.Duplex {
 						// prep pairs remainder
 						let h_pairs_r = {[$_KEYS]:0, [$_QUADS]:0};
 
+						// each predicate in a
+						for(let p_predicate in h_pairs_a) {
+							// that is not in b
+							if(p_predicate in h_pairs_b) continue;
+
+							// clone object set
+							const as_objects_r = new Set(h_pairs_a[p_predicate]);
+
+							// add to pairs
+							h_pairs_r[p_predicate] = as_objects_r;
+
+							// update key count
+							h_pairs_r[$_KEYS] += 1;
+
+							// update quad count
+							h_pairs_r[$_QUADS] += as_objects_r.size;
+						}
+
 						// each predicate in b
 						for(let p_predicate in h_pairs_b) {
 							// ref objects
