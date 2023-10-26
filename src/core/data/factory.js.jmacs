@@ -1245,25 +1245,25 @@ const factory = module.exports = {
 
 		if('function' !== typeof dc_factory.boolean) {
 			let kt_xsd_boolean = dc_factory.namedNode('@{P_IRI_XSD}boolean');
-			dc_extend.boolean = b_value => dc_factory.literal(b_value, kt_xsd_boolean);
+			dc_extend.boolean = b_value => dc_factory.literal(b_value+'', kt_xsd_boolean);
 			b_use_extend = true;
 		}
 
 		if('function' !== typeof dc_factory.double) {
 			let kt_xsd_double = dc_factory.namedNode('@{P_IRI_XSD}double');
-			dc_extend.double = s_value => dc_factory.double(s_value, kt_xsd_double);
+			dc_extend.double = s_value => dc_factory.literal(s_value+'', kt_xsd_double);
 			b_use_extend = true;
 		}
 
 		if('function' !== typeof dc_factory.decimal) {
 			let kt_xsd_decimal = dc_factory.namedNode('@{P_IRI_XSD}decimal');
-			dc_extend.decimal = s_value => dc_factory.decimal(s_value, kt_xsd_decimal);
+			dc_extend.decimal = s_value => dc_factory.literal(s_value+'', kt_xsd_decimal);
 			b_use_extend = true;
 		}
 
 		if('function' !== typeof dc_factory.integer) {
 			let kt_xsd_integer = dc_factory.namedNode('@{P_IRI_XSD}integer');
-			dc_extend.integer = s_value => dc_factory.integer(s_value, kt_xsd_integer);
+			dc_extend.integer = s_value => dc_factory.literal(s_value+'', kt_xsd_integer);
 			b_use_extend = true;
 		}
 
@@ -1665,12 +1665,16 @@ const factory = module.exports = {
 
 	from: {
 		term(z_term) {
+			if(null === z_term) return z_term;
+
 			if(z_term.isGraphyTerm) return z_term;
 
 			return factory.from.rdfjs_term(z_term);
 		},
 
 		quad(g_quad) {
+			if(null === g_quad) return g_quad;
+
 			if(g_quad.isGraphyQuad) return g_quad;
 
 			let g_from = factory.from;

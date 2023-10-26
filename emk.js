@@ -206,7 +206,7 @@ const package_json = si_package => () => ({
 
 	run: /* syntax: bash */ `
 		# load base package.json and enter
-		cat $1| npx lambduh "g_base_package_json => {\
+		cat $1 | npx lambduh "g_base_package_json => {\
 			${/* syntax: js */`
 				// load package info
 				let g_package_json = ${JSON.stringify(h_packages[si_package].json)};
