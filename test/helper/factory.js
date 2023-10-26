@@ -242,6 +242,38 @@ class factory_suite {
 									break;
 								}
 
+								case 'augments': {
+									// adopt ad-hoc factory instance
+									const dc_adopted = factory.adopt({
+										namedNode: p_iri => ({
+											termType: 'NamedNode',
+											value: p_iri,
+										}),
+										literal: (s_value, z_lang_or_datatype) => ({
+											termType: 'Literal',
+											value: s_value,
+											...'string' === typeof z_lang_or_datatype
+												? {
+													language: z_lang_or_datatype,
+													datatype: {
+														termType: 'NamedNode',
+														value: P_IRI_RDF+'langString',
+													},
+												}
+												: {
+													language: '',
+													datatype: z_lang_or_datatype || {
+														termType: 'NamedNode',
+														value: P_IRI_XSD+'string',
+													},
+												},
+										}),
+									});
+
+									expect(dc_adopted[s_method](z_case)).to.deep.equal(factory[s_method](z_case).isolate());
+									break;
+								}
+
 								default: {
 									throw new Error(`invalid test case action: ${s_action}`);
 								}
@@ -324,6 +356,7 @@ class factory_suite {
 							'numeric string: 0xff': ['0xff', 0xff],
 							'numeric string: 0b101': ['0b101', 0b101],
 						},
+						augments: [0, 1, '0', '1'],
 					},
 					double: {
 						throws: {
@@ -383,6 +416,7 @@ class factory_suite {
 								expect(kt_actual.number).to.be.NaN;
 							},
 						},
+						augments: [0.1, -1.2, '0.1', '-1.2'],
 					},
 					decimal: {
 						throws: {
@@ -415,6 +449,7 @@ class factory_suite {
 							'numeric string: 0xff': ['0xff', 0xff],
 							'numeric string: 0b101': ['0b101', 0b101],
 						},
+						augments: [0.1, -1.2, '0.1', '-1.2'],
 					},
 					boolean: {
 						throws: {
@@ -441,6 +476,7 @@ class factory_suite {
 							'boolean string: TRUE': ['TRUE', true],
 							'boolean string: FALSE': ['FALSE', false],
 						},
+						augments: [true, false, 'true', 'false'],
 					},
 					number: {
 						throws: {

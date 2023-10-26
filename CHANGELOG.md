@@ -1,5 +1,14 @@
 # Changelog
 
+## v4.3.4 (2023-10-26)
+------------------------
+
+Fixed DatasetFactory adoption.
+
+### 🔧 Fixes
+ - `@graphy/core.data.factory` - Fixed a bug that was not correctly patching an adopted DatasetFactory with XSD-specific literal methods.
+
+
 ## v4.3.3 (2020-09-08)
 ------------------------
 
