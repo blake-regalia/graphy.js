@@ -2,7 +2,7 @@
 [![NPM version][npm-image]][npm-url] [![Dependency Status][daviddm-image]][daviddm-url] 
 
 <h1>
-  <code class="super-graphy">graphy</code> is a collection of <b>high-performane</b> RDF libraries for JavaScript developers with a focus on usability.
+  <code class="super-graphy">graphy</code> is a collection of <b>high-performance</b> RDF libraries for JavaScript developers with a focus on usability.
 </h1>
 > Each package works with both Node.js and the browser (with the help of a bundler such as Browserify or Webpack).
 
